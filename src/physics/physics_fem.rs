@@ -1,3 +1,23 @@
+//! # Finite Element Method (FEM) Solvers
+//!
+//! This module implements Finite Element Analysis (FEM) tools for solving partial differential equations,
+//! specifically focusing on the Poisson equation in one, two, and three dimensions.
+//!
+//! # Overview
+//!
+//! The Finite Element Method is a powerful numerical technique for solving problems of engineering and mathematical physics.
+//! This module provides a set of solvers that discretize the domain into simpler elements (lines, quads, hexes) to approximate
+//! the solution of the Poisson equation with Dirichlet boundary conditions.
+//!
+//! Key components include:
+//! - **Dimensional Solvers**: Specialized solvers for 1D (`solve_poisson_1d`), 2D (`solve_poisson_2d`), and 3D (`solve_poisson_3d`) problems.
+//! - **Parallel Assembly**: Utilizes `rayon` to assemble the global stiffness matrix and load vector in parallel, significantly speeding up the process for large meshes.
+//! - **Numerical Integration**: Implements Gaussian Quadrature for accurate evaluation of element stiffness matrices.
+//! - **Sparse Linear Solver**: Leverages a Conjugate Gradient method to solve the resulting large, sparse linear systems.
+//! - **Simulation Scenarios**: Ready-to-run examples demonstrating the application of the solvers to standard test problems.
+//!
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fem_bridge_3d_disp.png)
+
 use ndarray::Array1;
 use rayon::prelude::*;
 use serde::Deserialize;

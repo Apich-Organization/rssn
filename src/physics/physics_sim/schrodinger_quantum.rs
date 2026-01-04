@@ -1,3 +1,32 @@
+//! # Schrodinger Equation Simulation
+//!
+//! This module provides a solver for the time-dependent Schrödinger equation, a fundamental equation
+//! in quantum mechanics that describes how the quantum state of a physical system changes over time.
+//!
+//! # Overview
+//!
+//! The simulation solves the 2D Schrödinger equation on a grid using the Split-Step Fourier Method.
+//! This method is particularly efficient because it handles the kinetic energy operator in the
+//! frequency domain (using FFTs) and the potential energy operator in the spatial domain.
+//!
+//! Key features include:
+//! - **Spectral Solver**: Utilizes Fast Fourier Transforms (FFT) for high accuracy and stability.
+//! - **Arbitrary Potentials**: Supports user-defined potential energy landscapes (e.g., barriers, wells).
+//! - **Wave Packet Dynamics**: Simulates the evolution of Gaussian wave packets.
+//! - **Scenario Simulation**: Includes a pre-configured double-slit experiment scenario.
+//!
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_001.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_005.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_007.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_009.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_010.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_020.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_025.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_032.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_033.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_039.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_3d.png)
+
 use ndarray::Array2;
 use num_complex::Complex;
 use rayon::prelude::*;

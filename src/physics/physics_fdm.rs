@@ -3,6 +3,17 @@
 //! This module provides tools for solving partial differential equations (PDEs)
 //! using the finite difference method. It includes a generic grid structure
 //! and a solver for the 2D heat equation as an example.
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/ripple_3d_slice_frame_02.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_00.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_01.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_02.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_03.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_04.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_05.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_06.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_07.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_08.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_09.png)
 
 use std::ops::Index;
 use std::ops::IndexMut;
@@ -351,6 +362,30 @@ pub struct FdmSolverConfig2D {
     pub steps: usize,
 }
 
+/// Configuration for 3D FDM solvers.
+#[derive(
+    Clone, Debug, Serialize, Deserialize,
+)]
+
+pub struct FdmSolverConfig3D {
+    /// Grid width (number of points in x direction).
+    pub width: usize,
+    /// Grid height (number of points in y direction).
+    pub height: usize,
+    /// Grid depth (number of points in z direction).
+    pub depth: usize,
+    /// Grid spacing in x direction.
+    pub dx: f64,
+    /// Grid spacing in y direction.
+    pub dy: f64,
+    /// Grid spacing in z direction.
+    pub dz: f64,
+    /// Time step.
+    pub dt: f64,
+    /// Number of time steps.
+    pub steps: usize,
+}
+
 /// Configuration for 2D Poisson solver.
 #[derive(
     Clone, Debug, Serialize, Deserialize,
@@ -611,6 +646,168 @@ where
                         )
                         + s_x * lap_x
                         + s_y * lap_y;
+                },
+            );
+
+        std::mem::swap(
+            &mut u_prev,
+            &mut u_curr,
+        );
+
+        std::mem::swap(
+            &mut u_curr,
+            &mut u_next,
+        );
+    }
+
+    u_curr
+}
+
+/// Solves 3D Wave equation `u_tt = c^2 * ∇²u`.
+
+pub fn solve_wave_equation_3d<F>(
+    config: &FdmSolverConfig3D,
+    c: f64,
+    initial_u: F,
+) -> FdmGrid<f64>
+where
+    F: Fn(usize, usize, usize) -> f64
+        + Sync,
+{
+
+    let width = config.width;
+
+    let height = config.height;
+
+    let depth = config.depth;
+
+    let dx = config.dx;
+
+    let dy = config.dy;
+
+    let dz = config.dz;
+
+    let dt = config.dt;
+
+    let steps = config.steps;
+
+    let dims = Dimensions::D3(
+        width,
+        height,
+        depth,
+    );
+
+    let mut u_prev =
+        FdmGrid::new(dims.clone());
+
+    let mut u_curr =
+        FdmGrid::new(dims.clone());
+
+    let mut u_next = FdmGrid::new(dims);
+
+    u_curr
+        .as_mut_slice()
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, val)| {
+
+            let x = i % width;
+
+            let y =
+                (i / width) % height;
+
+            let z =
+                i / (width * height);
+
+            *val = initial_u(x, y, z);
+        });
+
+    let s_x = (c * dt / dx).powi(2);
+
+    let s_y = (c * dt / dy).powi(2);
+
+    let s_z = (c * dt / dz).powi(2);
+
+    u_prev
+        .data
+        .copy_from_slice(&u_curr.data);
+
+    for _ in 0 .. steps {
+
+        u_next
+            .as_mut_slice()
+            .par_iter_mut()
+            .enumerate()
+            .for_each(
+                |(i, next_val)| {
+
+                    let x = i % width;
+
+                    let y = (i / width)
+                        % height;
+
+                    let z = i
+                        / (width
+                            * height);
+
+                    if x == 0
+                        || x == width
+                            - 1
+                        || y == 0
+                        || y == height
+                            - 1
+                        || z == 0
+                        || z == depth
+                            - 1
+                    {
+
+                        *next_val = 0.0;
+
+                        return;
+                    }
+
+                    let lap_x = u_curr
+                        [(x + 1, y, z)]
+                        - 2.0
+                            * u_curr[(
+                                x, y, z,
+                            )]
+                        + u_curr[(
+                            x - 1,
+                            y,
+                            z,
+                        )];
+
+                    let lap_y = u_curr
+                        [(x, y + 1, z)]
+                        - 2.0
+                            * u_curr[(
+                                x, y, z,
+                            )]
+                        + u_curr[(
+                            x,
+                            y - 1,
+                            z,
+                        )];
+
+                    let lap_z = u_curr
+                        [(x, y, z + 1)]
+                        - 2.0
+                            * u_curr[(
+                                x, y, z,
+                            )]
+                        + u_curr[(
+                            x,
+                            y,
+                            z - 1,
+                        )];
+
+                    *next_val = 2.0
+                        * u_curr[i]
+                        - u_prev[i]
+                        + s_x * lap_x
+                        + s_y * lap_y
+                        + s_z * lap_z;
                 },
             );
 

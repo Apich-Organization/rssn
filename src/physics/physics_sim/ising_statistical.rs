@@ -1,3 +1,23 @@
+//! #  Ising Model Simulation
+//!
+//! This module implements a Monte Carlo simulation of the 2D Ising model, a mathematical model
+//! of ferromagnetism in statistical mechanics. It uses the Metropolis-Hastings algorithm to explore
+//! the configuration space of spins on a grid.
+//!
+//! # Overview
+//!
+//! The simulation models a lattice of magnetic spins that can be in one of two states (+1 or -1).
+//! The system evolves towards thermal equilibrium by randomly flipping spins based on the energy cost
+//! and the temperature (Metropolis criterion).
+//!
+//! Key features include:
+//! - **Monte Carlo Method**: Uses the Metropolis algorithm to sample states according to the Boltzmann distribution.
+//! - **Parallel Update**: Implements a checkerboard (Red-Black) update scheme to allow parallel updates of non-interacting spins.
+//! - **Phase Transition**: Can simulate the system across a range of temperatures to observe the transition from ordered (ferromagnetic) to disordered (paramagnetic) phases.
+//! - **Magnetization Tracking**: Calculates the average magnetization of the system to characterize the phase.
+//!
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/ising_phase_transition.png)
+
 use std::fmt::Write as OtherWrite;
 use std::fs::File;
 use std::io::Write;

@@ -1,4 +1,4 @@
-//! # RSSN: Rust Symbolic and Scientific Numerics
+//! # RSSN: Rust Symbolic, Scientific and Numerical Computing Library
 //!
 //! `rssn` is a high-performance, modern library for symbolic mathematics and scientific
 //! computing in Rust. It leverages a Directed Acyclic Graph (DAG) based model for
@@ -31,7 +31,12 @@
 //!   and advanced algebraic tools in `cas_foundations` and `grobner`.
 //! - **`numerical`**: Contains implementations of various numerical algorithms.
 //! - **`physics`**: Implements numerical methods specifically for physics simulations.
+//! - **`input`**: Provides tools for parsing and formatting expressions.
 //! - **`output`**: Provides tools for formatting and displaying expressions.
+//! - **`jit`**: Just-in-time compilation of expressions and commands.
+//! - **`compute`**: Provides tools for numerical and symbolic computation commands.
+//! - **`plugins`**: Provides tools for loading and managing plugins.
+//! - **`nightly`**: Provides tools with nightly features such as with AVX512.
 //! - **`prelude`**: Re-exports the most common types and functions for convenient use.
 //!
 //! ## Example: Simplification with Relations
@@ -40,7 +45,6 @@
 //! simplifying `x^2` given the side-relation that `x^2 + y^2 - 1 = 0` (the unit circle).
 //!
 //! ```rust
-//! 
 //! use rssn::symbolic::cas_foundations::simplify_with_relations;
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::grobner::MonomialOrder;
@@ -81,8 +85,8 @@
 //!     MonomialOrder::Lexicographical,
 //! );
 //!
-//! // The result will be 2 - 2y^2
-//! // Note: The exact output format and canonical form may vary.
+//! // The result will be 2 - 4y + 2y^2
+//! // Note: The exact output format and canonical form may vary between versions.
 //! println!(
 //!     "Original expression: {}",
 //!     expr_to_simplify
@@ -94,6 +98,9 @@
 //! );
 //! ```
 //!
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_3d.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/ode_lorenz_attractor_1_fg.svg)
+
 //! This library is in active development. The API may change, and community
 //! contributions are welcome.
 
@@ -313,6 +320,12 @@
     clippy::collapsible_else_if,
     clippy::no_effect_underscore_binding,
     clippy::must_use_candidate
+)]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/logo.png"
+)]
+#![doc(
+    html_favicon_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/favicon.ico"
 )]
 
 #[cfg(feature = "compute")]

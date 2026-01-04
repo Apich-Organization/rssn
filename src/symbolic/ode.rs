@@ -5,6 +5,8 @@
 //! exact, Cauchy-Euler, reduction of order), as well as methods for solving systems of ODEs
 //! and applying initial conditions. Techniques like series solutions and Fourier transforms
 //! are also supported for specific cases.
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/lorenz_attractor.png)
+//! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/ode_lorenz_attractor_1_fg.png)
 
 use std::collections::HashMap;
 use std::collections::HashSet;

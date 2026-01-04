@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use ndarray::Array2;
 use num_traits::ToPrimitive;
 use plotters::prelude::*;
 
@@ -22,6 +23,16 @@ pub struct PlotConfig {
     pub mesh_color: RGBAColor,
     /// The number of samples to use when plotting.
     pub samples: usize,
+    /// The pitch for 3D plots (in radians).
+    pub pitch: f64,
+    /// The yaw for 3D plots (in radians).
+    pub yaw: f64,
+    /// The scale for 3D plots.
+    pub scale: f64,
+    /// The font size for labels (axis, legend).
+    pub label_font_size: u32,
+    /// The font size for the caption.
+    pub caption_font_size: u32,
 }
 
 impl Default for PlotConfig {
@@ -34,6 +45,11 @@ impl Default for PlotConfig {
             line_color: RED.to_rgba(),
             mesh_color: BLACK.mix(0.1),
             samples: 500,
+            pitch: 0.5,
+            yaw: 0.5,
+            scale: 0.7,
+            label_font_size: 20,
+            caption_font_size: 40,
         }
     }
 }
@@ -267,6 +283,178 @@ pub fn plot_function_2d(
 
     Ok(())
 }
+
+/// Plots multiple data series on a single 2D plot and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
+
+pub fn plot_series_2d(
+    series: &[(
+        String,
+        Vec<(f64, f64)>,
+    )],
+    path: &str,
+    config: Option<PlotConfig>,
+) -> Result<(), String> {
+
+    let conf =
+        config.unwrap_or_default();
+
+    let root = BitMapBackend::new(
+        path,
+        (
+            conf.width,
+            conf.height,
+        ),
+    )
+    .into_drawing_area();
+
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
+
+    if series.is_empty() {
+
+        return Err("No data series \
+                    provided"
+            .to_string());
+    }
+
+    // Find x and y ranges
+    let mut x_min = f64::INFINITY;
+
+    let mut x_max = f64::NEG_INFINITY;
+
+    let mut y_min = f64::INFINITY;
+
+    let mut y_max = f64::NEG_INFINITY;
+
+    for (_, data) in series {
+
+        for &(x, y) in data {
+
+            x_min = x_min.min(x);
+
+            x_max = x_max.max(x);
+
+            y_min = y_min.min(y);
+
+            y_max = y_max.max(y);
+        }
+    }
+
+    // Add padding
+    let x_pad = (x_max - x_min) * 0.05;
+
+    let y_pad = (y_max - y_min) * 0.1;
+
+    let x_range = (x_min - x_pad)
+        .. (x_max + x_pad);
+
+    let y_range = (y_min - y_pad)
+        .. (y_max + y_pad);
+
+    let mut chart = ChartBuilder::on(
+        &root,
+    )
+    .caption(
+        &conf.caption,
+        (
+            "sans-serif",
+            conf.caption_font_size,
+        )
+            .into_font(),
+    )
+    .margin(conf.label_font_size / 2)
+    .x_label_area_size(
+        conf.label_font_size * 2,
+    )
+    .y_label_area_size(
+        conf.label_font_size * 2,
+    )
+    .build_cartesian_2d(
+        x_range,
+        y_range,
+    )
+    .map_err(|e| e.to_string())?;
+
+    chart
+        .configure_mesh()
+        .light_line_style(
+            conf.mesh_color,
+        )
+        .label_style(
+            (
+                "sans-serif",
+                conf.label_font_size,
+            )
+                .into_font(),
+        )
+        .draw()
+        .map_err(|e| e.to_string())?;
+
+    let colors = [
+        &RED,
+        &BLUE,
+        &GREEN,
+        &CYAN,
+        &MAGENTA,
+        &YELLOW,
+        &BLACK,
+    ];
+
+    for (i, (label, data)) in series
+        .iter()
+        .enumerate()
+    {
+
+        let color =
+            colors[i % colors.len()];
+
+        chart
+            .draw_series(
+                LineSeries::new(
+                    data.clone(),
+                    color,
+                ),
+            )
+            .map_err(|e| e.to_string())?
+            .label(label)
+            .legend(move |(x, y)| {
+
+                PathElement::new(
+                    vec![
+                        (x, y),
+                        (x + 20, y),
+                    ],
+                    color,
+                )
+            });
+    }
+
+    chart
+        .configure_series_labels()
+        .background_style(
+            &WHITE.mix(0.8),
+        )
+        .border_style(&BLACK)
+        .label_font(
+            (
+                "sans-serif",
+                conf.label_font_size,
+            )
+                .into_font(),
+        )
+        .draw()
+        .map_err(|e| e.to_string())?;
+
+    root.present()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 
 /// Plots a 2D vector field and saves it to a file.
 ///
@@ -534,6 +722,130 @@ pub fn plot_surface_3d(
 
     Ok(())
 }
+
+/// Plots a 2D array as a 3D surface plot and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
+
+pub fn plot_surface_2d(
+    data: &Array2<f64>,
+    path: &str,
+    config: Option<PlotConfig>,
+) -> Result<(), String> {
+
+    let conf =
+        config.unwrap_or_default();
+
+    let root = BitMapBackend::new(
+        path,
+        (
+            conf.width,
+            conf.height,
+        ),
+    )
+    .into_drawing_area();
+
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
+
+    let (height, width) = data.dim();
+
+    let mut min_val = f64::INFINITY;
+
+    let mut max_val = f64::NEG_INFINITY;
+
+    for &val in data.iter() {
+
+        min_val = min_val.min(val);
+
+        max_val = max_val.max(val);
+    }
+
+    // Add a bit of padding to the Z axis
+    let z_min = if (max_val - min_val)
+        .abs()
+        < 1e-9
+    {
+
+        min_val - 1.0
+    } else {
+
+        min_val
+            - (max_val - min_val) * 0.1
+    };
+
+    let z_max = if (max_val - min_val)
+        .abs()
+        < 1e-9
+    {
+
+        max_val + 1.0
+    } else {
+
+        max_val
+            + (max_val - min_val) * 0.1
+    };
+
+    let mut chart =
+        ChartBuilder::on(&root)
+            .caption(
+                &conf.caption,
+                ("sans-serif", 40)
+                    .into_font(),
+            )
+            .build_cartesian_3d(
+                0.0 .. width as f64,
+                z_min .. z_max,
+                0.0 .. height as f64,
+            )
+            .map_err(|e| {
+
+                e.to_string()
+            })?;
+
+    chart
+        .configure_axes()
+        .draw()
+        .map_err(|e| e.to_string())?;
+
+    chart
+        .draw_series(
+            SurfaceSeries::xoz(
+                (0 .. width)
+                    .map(|x| x as f64),
+                (0 .. height)
+                    .map(|y| y as f64),
+                |x, y| {
+
+                    let ix = (x
+                        as usize)
+                        .min(width - 1);
+
+                    let iy = (y
+                        as usize)
+                        .min(
+                            height - 1,
+                        );
+
+                    data[[iy, ix]]
+                },
+            )
+            .style(
+                conf.line_color
+                    .mix(0.5)
+                    .filled(),
+            ),
+        )
+        .map_err(|e| e.to_string())?;
+
+    root.present()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 
 /// Plots a 3D parametric curve (x(t), y(t), z(t)) and saves it to a file.
 ///
@@ -918,4 +1230,193 @@ mod tests {
             let _ = eval_expr(&expr, &vars);
         }
     }
+}
+
+/// Plots a 3D path from a series of points (x, y, z) and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
+
+pub fn plot_3d_path_from_points(
+    data: &[Vec<f64>],
+    path: &str,
+    config: Option<PlotConfig>,
+) -> Result<(), String> {
+
+    let conf =
+        config.unwrap_or_default();
+
+    let root = BitMapBackend::new(
+        path,
+        (
+            conf.width,
+            conf.height,
+        ),
+    )
+    .into_drawing_area();
+
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
+
+    // Find the ranges for x, y, and z axes
+    let (mut x_min, mut x_max) = (
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    );
+
+    let (mut y_min, mut y_max) = (
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    );
+
+    let (mut z_min, mut z_max) = (
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    );
+
+    for point in data {
+
+        if point.len() >= 3 {
+
+            x_min = x_min.min(point[0]);
+
+            x_max = x_max.max(point[0]);
+
+            y_min = y_min.min(point[1]);
+
+            y_max = y_max.max(point[1]);
+
+            z_min = z_min.min(point[2]);
+
+            z_max = z_max.max(point[2]);
+        }
+    }
+
+    let mut chart =
+        ChartBuilder::on(&root)
+            .caption(
+                &conf.caption,
+                ("sans-serif", 40)
+                    .into_font(),
+            )
+            .build_cartesian_3d(
+                x_min .. x_max,
+                z_min .. z_max,
+                y_min .. y_max,
+            ) // Note: y and z are swapped in plotters' 3D coordinate system
+            .map_err(|e| {
+
+                e.to_string()
+            })?;
+
+    chart
+        .configure_axes()
+        .draw()
+        .map_err(|e| e.to_string())?;
+
+    chart
+        .draw_series(LineSeries::new(
+            data.iter().filter_map(|p| if p.len() >= 3 { Some((p[0], p[2], p[1])) } else { None }), // Note: y and z are swapped here as well
+            &conf.line_color,
+        ))
+        .map_err(|e| e.to_string())?;
+
+    root.present()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Plots a 2D heat map from a 2D array of data and saves it to a file.
+///
+/// # Errors
+///
+/// This function will return an error if the plot cannot be created or saved.
+
+pub fn plot_heatmap_2d(
+    data: &Array2<f64>,
+    path: &str,
+    config: Option<PlotConfig>,
+) -> Result<(), String> {
+
+    let conf =
+        config.unwrap_or_default();
+
+    let root = BitMapBackend::new(
+        path,
+        (
+            conf.width,
+            conf.height,
+        ),
+    )
+    .into_drawing_area();
+
+    root.fill(&WHITE)
+        .map_err(|e| e.to_string())?;
+
+    let (height, width) = data.dim();
+
+    // Find min and max values for color mapping
+    let mut min_val = f64::INFINITY;
+
+    let mut max_val = f64::NEG_INFINITY;
+
+    for &val in data.iter() {
+
+        min_val = min_val.min(val);
+
+        println!(
+            "min_val: {}",
+            min_val
+        );
+
+        max_val = max_val.max(val);
+
+        println!(
+            "max_val: {}",
+            max_val
+        );
+    }
+
+    let mut chart =
+        ChartBuilder::on(&root)
+            .caption(
+                &conf.caption,
+                ("sans-serif", 40)
+                    .into_font(),
+            )
+            .build_cartesian_2d(
+                0 .. width as u32,
+                0 .. height as u32,
+            )
+            .map_err(|e| {
+
+                e.to_string()
+            })?;
+
+    chart
+        .configure_mesh()
+        .draw()
+        .map_err(|e| e.to_string())?;
+
+    chart.draw_series(
+        (0..width).flat_map(move |x| (0..height).map(move |y| {
+            let val = data[[y, x]]; // ndarray is (row, col) which corresponds to (y, x)
+            let normalized = if max_val - min_val > 0.0 {
+                (val - min_val) / (max_val - min_val)
+            } else {
+                0.5 // Avoid division by zero if all values are the same
+            };
+            // Use a blue-to-red color gradient
+            // let color = HSLColor(240.0 - 240.0 * normalized, 1.0, 0.5);
+            let color = HSLColor(240.0 * normalized, 1.0, 0.5);
+            Rectangle::new([(x as u32, y as u32), (x as u32 + 1, y as u32 + 1)], color.filled())
+        }))
+    ).map_err(|e| e.to_string())?;
+
+    root.present()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
 }

@@ -3693,10 +3693,16 @@ pub mod output {
     pub use crate::output::plotting::plot_function_2d;
     pub use crate::output::plotting::plot_parametric_curve_3d;
     pub use crate::output::plotting::plot_surface_3d;
+    pub use crate::output::plotting::plot_surface_2d;
     pub use crate::output::plotting::plot_vector_field_2d;
     pub use crate::output::plotting::plot_vector_field_3d;
+    pub use crate::output::plotting::plot_series_2d;
+
+    // crate::output::pretty_print exports:
     pub use crate::output::pretty_print::pretty_print;
     pub use crate::output::pretty_print::PrintBox;
+
+    // crate::output::typst exports:
     pub use crate::output::typst::to_typst;
 
     // crate::output::io exports:
@@ -3717,10 +3723,8 @@ pub mod output {
 
     // crate::output::plotting exports:
     pub use crate::output::plotting::PlotConfig;
-
-    // crate::output::pretty_print exports:
-
-    // crate::output::typst exports:
+    pub use crate::output::plotting::plot_heatmap_2d;
+    pub use crate::output::plotting::plot_3d_path_from_points;
 }
 
 #[cfg(feature = "physics")]
@@ -6105,4 +6109,12 @@ pub mod jit {
     pub use cranelift_jit::*;
     pub use cranelift_module::*;
     pub use cranelift_native::*;
+}
+
+/// Unified layer under development, for now rssn only provide campatible version choises.
+#[cfg(feature = "experimental")]
+
+pub mod simba {
+
+    pub use simba::*;
 }

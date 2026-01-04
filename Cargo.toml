@@ -1,6 +1,6 @@
 [package]
 name = "rssn"
-version = "0.1.21"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.89.0"
 authors = ["The rssn developers"]
@@ -50,6 +50,7 @@ codegen-units = 1
 panic = "abort"
 opt-level = 3
 strip = true
+debug = true
 
 [dependencies]
 uuid = { version = "1.4", features = ["v4"] }
@@ -120,6 +121,7 @@ pulp = { version = "0.22.2", features = [
     "x86-v4",
     "nightly",
 ], optional = true }
+simba = { version = "0.9.1", features = ["libm", "cordic", "decimal", "rand", "portable_simd"] , optional = true }
 
 [build-dependencies]
 cbindgen = "0.29.2"
@@ -160,7 +162,7 @@ ffi_api = []
 # Will be available at v0.3.0 release.
 ffi_blinding = ["dep:libc"]
 # Experimental features
-experimental = ["ffi_blinding", "jit", "dep:pulp"]
+experimental = ["ffi_blinding", "jit", "dep:pulp", "dep:simba"]
 nightly = ["dep:pulp"]
 full = [
     "default",
@@ -184,6 +186,7 @@ harness = false
 
 [package.metadata.docs.rs]
 all-features = true
+rustdoc-args = ["--html-in-header", "doc-header.html"]
 
 [lints.clippy]
 empty-line-after-doc-comments = "allow"
