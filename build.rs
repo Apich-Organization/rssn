@@ -1,3 +1,5 @@
+use std::env;
+
 use vergen_gitcl::BuildBuilder;
 use vergen_gitcl::CargoBuilder;
 use vergen_gitcl::Emitter;
@@ -9,6 +11,8 @@ fn main() -> Result<
     (),
     Box<dyn std::error::Error>,
 > {
+
+    const ENV_VAR_NAME: &str = "DEV";
 
     let mut emitter =
         Emitter::default();
@@ -35,8 +39,28 @@ fn main() -> Result<
 
     emitter.emit()?;
 
-    // Generate C and C++ headers using cbindgen
-    generate_headers()?;
+    // 1. Attempt to get the environment variable's value.
+    match env::var(ENV_VAR_NAME) {
+        // 2. If the variable is successfully retrieved (Ok(value)), check if the value is "1".
+        | Ok(value) if value == "1" => {
+
+            println!(
+                "cargo:warning=Condition met: {} is set to '1'.",
+                ENV_VAR_NAME
+            );
+
+            // 3. If the value is "1", call the function and use '?' to propagate errors.
+            generate_headers()?;
+        },
+        // 4. If the variable is set to any other value, or not set (Err), skip.
+        | _ => {
+
+            println!(
+                "cargo:warning=Skipping header generation. Set {}='1' to enable.",
+                ENV_VAR_NAME
+            );
+        },
+    }
 
     Ok(())
 }
@@ -59,7 +83,9 @@ fn generate_headers() -> Result<
                 "rssn.h",
             );
 
-            println!("cargo:warning=Generated rssn.h");
+            println!(
+                "cargo:warning=Generated rssn.h"
+            );
         },
         | Err(e) => {
 
@@ -70,7 +96,9 @@ fn generate_headers() -> Result<
                 e
             );
 
-            println!("cargo:warning=Continuing build without C header generation");
+            println!(
+                "cargo:warning=Continuing build without C header generation"
+            );
         },
     }
 
@@ -98,7 +126,9 @@ fn generate_headers() -> Result<
                 "rssn.hpp",
             );
 
-            println!("cargo:warning=Generated rssn.hpp");
+            println!(
+                "cargo:warning=Generated rssn.hpp"
+            );
         },
         | Err(e) => {
 
@@ -109,7 +139,9 @@ fn generate_headers() -> Result<
                 e
             );
 
-            println!("cargo:warning=Continuing build without C++ header generation");
+            println!(
+                "cargo:warning=Continuing build without C++ header generation"
+            );
         },
     }
 
@@ -117,7 +149,9 @@ fn generate_headers() -> Result<
         "cargo:rerun-if-changed=src/"
     );
 
-    println!("cargo:rerun-if-changed=cbindgen.toml");
+    println!(
+        "cargo:rerun-if-changed=cbindgen.toml"
+    );
 
     Ok(())
 }
