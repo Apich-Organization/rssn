@@ -50,7 +50,6 @@ codegen-units = 1
 panic = "abort"
 opt-level = 3
 strip = true
-debug = true
 
 [dependencies]
 uuid = { version = "1.4", features = ["v4"] }
@@ -121,7 +120,7 @@ pulp = { version = "0.22.2", features = [
     "x86-v4",
     "nightly",
 ], optional = true }
-simba = { version = "0.9.1", features = ["libm", "cordic", "decimal", "rand", "portable_simd"] , optional = true }
+simba = { version = "0.9.1", features = ["libm", "cordic", "decimal", "rand"] , optional = true }
 
 [build-dependencies]
 cbindgen = "0.29.2"
