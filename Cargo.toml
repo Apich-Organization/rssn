@@ -24,16 +24,20 @@ categories = [
     "algorithms",
 ]
 exclude = [
-    "examples/fortran/*.dll",
-    "examples/fortran/*.exe",
-    "examples/fortran/*.lib",
-    "examples/fortran/*.pdb",
-    "examples/fortran/*.d",
-    "examples/fortran/*.exp",
+    "examples/*",
+    "tests/*",
+    "benches/*",
+    "doc/*",
+    ".gitea/*",
+    ".github/*",
+    ".vscode/*",
+    ".idea/*",
     "*.sh",
     "*.bat",
-    "/scripts/*",
-    "/docs/*"
+    "scripts/*",
+    "docs/*",
+    "rssn.h",
+    "rssn.hpp"
 ]
 
 [lib]
@@ -120,7 +124,12 @@ pulp = { version = "0.22.2", features = [
     "x86-v4",
     "nightly",
 ], optional = true }
-simba = { version = "0.9.1", features = ["libm", "cordic", "decimal", "rand"] , optional = true }
+simba = { version = "0.9.1", features = [
+    "libm",
+    "cordic",
+    "decimal",
+    "rand",
+], optional = true }
 
 [build-dependencies]
 cbindgen = "0.29.2"
