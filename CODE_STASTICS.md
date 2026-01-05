@@ -4,6 +4,213 @@ This is the code stastics report for the RSSN project.
 
 This version is writen after the v0.2.2 release.
 
+## Core Code
+
+```text
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Language                              Files     Lines   Blanks  Comments     Code Complexity Complexity/Lines
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Rust                                    164    141765    26142     20293    95330       7235          1047.15
+MaxLine / MeanLine                      225        22
+(ULOC)                                          49187
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Total                                   164    141765    26142     20293    95330       7235          1047.15
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Unique Lines of Code (ULOC)                     49187
+DRYness %                                        0.35
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Estimated Cost to Develop (semi-detached) $11,124,294
+Estimated Schedule Effort (semi-detached) 27.94 months
+Estimated People Required (semi-detached) 35.38
+Processed 3287467 bytes, 3.287 megabytes (SI)
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+```
+
+```text
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Language                              Files     Lines   Blanks  Comments     Code Complexity Complexity/Lines
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Rust                                    164    141765    26142     20293    95330       7235          1047.15
+MaxLine / MeanLine                      225        22
+(ULOC)                                          49187
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+src/symbolic/calculus.rs                         5272      834       283     4155        407             9.80
+src/input/parser.rs                              4823       85        50     4688         25             0.53
+src/symbolic/simplify_dag.rs                     3953      690       402     2861        380            13.28
+src/symbolic/pde.rs                              3768      739       370     2659        261             9.82
+src/symbolic/simplify.rs                         3471      508       255     2708        228             8.42
+src/symbolic/graph_algorithms.rs                 3228      711       368     2149        301            14.01
+src/symbolic/ode.rs                              2814      500       287     2027        200             9.87
+src/numerical/matrix.rs                          2565      590       280     1695        226            13.33
+src/symbolic/core/api.rs                         2546      458       333     1755         69             3.93
+src/nightly/matrix.rs                            2546      578       277     1691        224            13.25
+src/symbolic/core/expr_impl.rs                   2540      430        80     2030        114             5.62
+src/symbolic/polynomial.rs                       2490      449       440     1601        151             9.43
+src/numerical/computer_graphics.rs               2360      429       242     1689         48             2.84
+src/symbolic/solve.rs                            2258      385       190     1683        141             8.38
+src/numerical/physics.rs                         2183      493       414     1276        100             7.84
+src/symbolic/matrix.rs                           2160      466       289     1405        193            13.74
+src/numerical/error_correction.rs                2064      478       556     1030        153            14.85
+~rc/numerical/fractal_geometry_and_chaos.rs      1921      409       485     1027         83             8.08
+src/symbolic/special_functions.rs                1778      278       555      945        108            11.43
+src/numerical/testing.rs                         1755      305       136     1314        123             9.36
+src/symbolic/core/to_expr.rs                     1608      418        42     1148        137            11.93
+src/symbolic/computer_graphics.rs                1599      172       264     1163         16             1.38
+src/numerical/physics_fea.rs                     1499      304       205      990         33             3.33
+src/symbolic/coordinates.rs                      1454      249       238      967         63             6.51
+src/symbolic/special.rs                          1453      229       674      550         54             9.82
+src/output/plotting.rs                           1422      275        68     1079         34             3.15
+src/symbolic/number_theory.rs                    1392      277       160      955        120            12.57
+src/numerical/physics_cfd.rs                     1378      335       213      830         59             7.11
+src/symbolic/core/ast_impl.rs                    1374      147        21     1206         31             2.57
+src/symbolic/error_correction_helper.rs          1331      283       238      810         99            12.22
+src/numerical/physics_md.rs                      1315      296       241      778         58             7.46
+src/symbolic/integration.rs                      1313      246       118      949         40             4.21
+src/symbolic/topology.rs                         1299      265       239      795         78             9.81
+src/physics/physics_rkm.rs                       1245      261        80      904         47             5.20
+src/symbolic/poly_factorization.rs               1197      242       145      810         59             7.28
+src/physics/physics_fdm.rs                       1175      277        84      814         78             9.58
+src/symbolic/stats_probability.rs                1172      200        66      906          9             0.99
+src/symbolic/combinatorics.rs                    1167      219       200      748         57             7.62
+src/symbolic/logic.rs                            1145      202       109      834         84            10.07
+src/symbolic/cas_foundations.rs                  1142      189        70      883         65             7.36
+src/symbolic/transforms.rs                       1131      134       229      768         38             4.95
+src/symbolic/grobner.rs                          1113      164       412      537         45             8.38
+src/numerical/special.rs                         1112      334        75      703        101            14.37
+src/physics/physics_fvm.rs                       1091      258        74      759         56             7.38
+src/symbolic/tensor.rs                           1085      202       204      679         66             9.72
+src/numerical/stats.rs                           1076      292       166      618         45             7.28
+src/symbolic/finite_field.rs                     1020      185       122      713         51             7.15
+src/output/pretty_print.rs                        943      202        10      731         65             8.89
+src/output/io.rs                                  938      208       118      612         42             6.86
+src/numerical/optimize.rs                         911      172        72      667         32             4.80
+src/symbolic/unit_unification.rs                  898       94       119      685         28             4.09
+src/symbolic/graph_operations.rs                  886      149       246      491         63            12.83
+src/symbolic/core/dag_mgr.rs                      867      116       240      511         34             6.65
+src/symbolic/core/expr.rs                         857       49       371      437          0             0.00
+src/symbolic/error_correction.rs                  854      183       249      422         52            12.32
+src/symbolic/complex_analysis.rs                  852      162       115      575         20             3.48
+src/symbolic/series.rs                            849      126       164      559         32             5.72
+src/compute/engine.rs                             832      103       327      402         11             2.74
+src/plugins/manager.rs                            822      151       103      568         23             4.05
+src/physics/physics_fem.rs                        804      190        66      548         56            10.22
+src/physics/physics_mtm.rs                        797      184        52      561         46             8.20
+src/symbolic/cryptography.rs                      797      136       175      486         41             8.44
+src/numerical/differential_geometry.rs            780      166        77      537         67            12.48
+src/symbolic/elementary.rs                        777      161        56      560         21             3.75
+src/jit/engine.rs                                 755      130        43      582         51             8.76
+src/symbolic/integral_equations.rs                739      100       149      490          7             1.43
+src/physics/physics_sm.rs                         729      179        33      517         10             1.93
+src/symbolic/geometric_algebra.rs                 687      138       115      434         42             9.68
+src/symbolic/cad.rs                               685      156        49      480         45             9.38
+src/numerical/sparse.rs                           660      169        90      401         38             9.48
+~physics/physics_sim/navier_stokes_fluid.rs       633      140        82      411         46            11.19
+src/physics/physics_em.rs                         632      157       102      373          9             2.41
+src/numerical/geometric_algebra.rs                630       48        51      531          6             1.13
+src/constant.rs                                   617       88        81      448          0             0.00
+src/symbolic/quantum_mechanics.rs                 616      125        53      438          0             0.00
+src/symbolic/vector.rs                            602       86       145      371          4             1.08
+src/symbolic/rewriting.rs                         601      111        45      445         46            10.34
+src/physics/physics_bem.rs                        579      129        75      375         24             6.40
+src/physics/physics_cnm.rs                        573      166        40      367         33             8.99
+src/symbolic/solid_state_physics.rs               571       77       100      394          0             0.00
+src/numerical/polynomial.rs                       569      128        62      379         33             8.71
+src/symbolic/fractal_geometry_and_chaos.rs        568      116        99      353         14             3.97
+src/numerical/graph.rs                            563      148        77      338         45            13.31
+src/numerical/integrate.rs                        556      110       167      279         28            10.04
+src/symbolic/lie_groups_and_algebras.rs           555       97       139      319         13             4.08
+src/numerical/elementary.rs                       555      152       113      290         23             7.93
+src/numerical/finite_field.rs                     550      122        77      351         41            11.68
+src/numerical/complex_analysis.rs                 550       78        93      379          3             0.79
+src/symbolic/proof.rs                             549      117        49      383         38             9.92
+src/physics/physics_mm.rs                         541      128        43      370         21             5.68
+src/numerical/interpolate.rs                      530      114       145      271         31            11.44
+src/numerical/vector.rs                           511      107       129      275         39            14.18
+src/symbolic/differential_geometry.rs             508       77        67      364         20             5.49
+src/numerical/tensor.rs                           496      103        63      330         25             7.58
+src/symbolic/graph.rs                             490       93       108      289         14             4.84
+src/symbolic/discrete_groups.rs                   490       98        58      334         26             7.78
+src/numerical/vector_calculus.rs                  472      102       120      250         17             6.80
+src/symbolic/real_roots.rs                        458       97        73      288         29            10.07
+src/output/latex.rs                               451       85         9      357         17             4.76
+src/symbolic/convergence.rs                       445       77       121      247         42            17.00
+src/symbolic/multi_valued.rs                      444       74       121      249          0             0.00
+src/verification/symbolic_core.rs                 439      162        19      258          6             2.33
+src/symbolic/radicals.rs                          437       85        38      314         34            10.83
+src/numerical/calculus.rs                         421       77       158      186         12             6.45
+src/symbolic/handles.rs                           415       41       274      100          1             1.00
+src/symbolic/group_theory.rs                      414       96        27      291         34            11.68
+src/symbolic/stats_information_theory.rs          412       66       107      239         12             5.02
+src/symbolic/classical_mechanics.rs               406       73        58      275          0             0.00
+src/numerical/real_roots.rs                       406      106        65      235         54            22.98
+src/numerical/topology.rs                         403      102        40      261         30            11.49
+~c/physics/physics_sim/linear_elasticity.rs       401       86        50      265         12             4.53
+src/lib.rs                                        399       10       295       94          1             1.06
+src/symbolic/functional_analysis.rs               389       65        60      264          7             2.65
+src/numerical/ode.rs                              386       72        60      254          7             2.76
+src/numerical/convergence.rs                      384       91       103      190         25            13.16
+~physics/physics_sim/schrodinger_quantum.rs       375       75        57      243         13             5.35
+src/symbolic/optimize.rs                          369       63        66      240         19             7.92
+src/symbolic/numeric.rs                           359       40        31      288         18             6.25
+src/symbolic/relativity.rs                        358       66        39      253          0             0.00
+src/numerical/number_theory.rs                    349      105        47      197         49            24.87
+src/symbolic/stats_inference.rs                   346       44        34      268          0             0.00
+src/symbolic/quantum_field_theory.rs              346       66        23      257          2             0.78
+~symbolic/graph_isomorphism_and_coloring.rs       340       72        42      226         29            12.83
+src/symbolic/thermodynamics.rs                    333       57        37      239          1             0.42
+src/symbolic/electromagnetism.rs                  324       56        45      223          0             0.00
+src/output/typst.rs                               323       62         4      257         12             4.67
+src/symbolic/vector_calculus.rs                   321       51        62      208          0             0.00
+~c/physics/physics_sim/ising_statistical.rs       310       76        35      199         18             9.05
+src/numerical/combinatorics.rs                    297       78        58      161         35            21.74
+src/numerical/transforms.rs                       297       68       121      108         19            17.59
+src/numerical/coordinates.rs                      294       68        75      151         16            10.60
+src/numerical/solve.rs                            290       63        46      181         23            12.71
+~physics/physics_sim/geodesic_relativity.rs       280       53        52      175          3             1.71
+~c/physics/physics_sim/gpe_superfluidity.rs       274       55        24      195          3             1.54
+src/numerical/functional_analysis.rs              273       59        64      150          9             6.00
+src/numerical/multi_valued.rs                     253       68        27      158         10             6.33
+~hysics/physics_sim/fdtd_electrodynamics.rs       252       67        26      159         16            10.06
+src/symbolic/stats_regression.rs                  248       46        52      150          5             3.33
+src/symbolic/stats.rs                             217       42        59      116          7             6.03
+src/symbolic/core/mod.rs                          217        4       201       12          0             0.00
+src/compute/cache.rs                              212       39        54      119          2             1.68
+src/numerical/signal.rs                           210       40        90       80         14            17.50
+src/symbolic/calculus_of_variations.rs            204       22        97       85          0             0.00
+src/numerical/calculus_of_variations.rs           193       20        92       81          0             0.00
+src/plugins/plugin_c.rs                           181       33        53       95          2             2.11
+src/compute/mod.rs                                156        1       150        5          0             0.00
+src/numerical/series.rs                           150       35        50       65          3             4.62
+src/jit/instructions.rs                           114       14        45       55          0             0.00
+src/compute/computation.rs                        100       14        20       66          0             0.00
+src/symbolic/mod.rs                                90        1        21       68          0             0.00
+src/plugins/stable_abi.rs                          82       18        13       51          0             0.00
+src/numerical/mod.rs                               56        1         8       47          0             0.00
+src/physics/mod.rs                                 52        2        38       12          0             0.00
+src/compute/state.rs                               36        7         7       22          1             4.55
+src/output/mod.rs                                  27        1        21        5          0             0.00
+src/compute/computable.rs                          27        3        15        9          0             0.00
+src/numerical/pde.rs                               26        4        10       12          0             0.00
+src/physics/physics_sim/mod.rs                     18        1        10        7          0             0.00
+src/jit/mod.rs                                     16        3         2       11          0             0.00
+src/plugins/mod.rs                                 15        1        11        3          0             0.00
+src/verification/mod.rs                             8        1         6        1          0             0.00
+src/ffi_blindings/mod.rs                            4        1         2        1          0             0.00
+src/input/mod.rs                                    3        0         2        1          0             0.00
+src/nightly/mod.rs                                  1        0         0        1          0             0.00
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Total                                   164    141765    26142     20293    95330       7235          1047.15
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Unique Lines of Code (ULOC)                     49187
+DRYness %                                        0.35
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Estimated Cost to Develop (semi-detached) $11,124,294
+Estimated Schedule Effort (semi-detached) 27.94 months
+Estimated People Required (semi-detached) 35.38
+Processed 3287467 bytes, 3.287 megabytes (SI)
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+```
+
 ## Main repository
 
 ```text
