@@ -36,6 +36,7 @@ exclude = [
     "*.bat",
     "scripts/*",
     "docs/*",
+    "certificates/*",
     "rssn.h",
     "rssn.hpp"
 ]
