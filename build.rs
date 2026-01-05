@@ -1,5 +1,4 @@
 use std::env;
-use std::io;
 
 use vergen_gitcl::BuildBuilder;
 use vergen_gitcl::CargoBuilder;
