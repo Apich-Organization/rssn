@@ -49,8 +49,8 @@ jobs:
       - name: Install Clippy & Rustfmt if using v1.89
         run: |
              if [[ "${{ matrix.toolchain }}" == "1.89.0" ]]; then
-                rustup component add --toolchain clippy
-                rustup component add --toolchain rustfmt
+                rustup component add --toolchain 1.89.0 clippy
+                rustup component add --toolchain 1.89.0 rustfmt
              fi
       
       - name: Build with full features
