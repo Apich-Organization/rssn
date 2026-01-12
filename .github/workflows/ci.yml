@@ -32,6 +32,27 @@ jobs:
       - name: Install Cargo flamegraph
         run: cargo install flamegraph
 
+      - name: Install Clippy & Rustfmt if using nightly
+        run: |
+             if [[ "${{ matrix.toolchain }}" == "nightly" ]]; then
+                rustup component add --toolchain nightly clippy
+                rustup component add --toolchain nightly rustfmt
+             fi
+      
+      - name: Install Clippy & Rustfmt if using beta
+        run: |
+             if [[ "${{ matrix.toolchain }}" == "beta" ]]; then
+                rustup component add --toolchain beta clippy
+                rustup component add --toolchain beta rustfmt
+             fi
+      
+      - name: Install Clippy & Rustfmt if using v1.89
+        run: |
+             if [[ "${{ matrix.toolchain }}" == "1.89.0" ]]; then
+                rustup component add --toolchain clippy
+                rustup component add --toolchain rustfmt
+             fi
+      
       - name: Build with full features
         run: cargo clippy --features full --verbose
 
