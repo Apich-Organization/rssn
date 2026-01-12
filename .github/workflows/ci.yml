@@ -54,11 +54,11 @@ jobs:
              fi
       
       - name: Build with full features
-        run: cargo clippy --features full --verbose
+        run: cargo clippy --all-features --verbose
         continue-on-error: true
 
       - name: Test with full features
-        run: cargo test --features full --verbose
+        run: cargo test --all-features --verbose
 
       - name: Flamegraph with full features
         run: cargo flamegraph --examples matrix_demo.rs
