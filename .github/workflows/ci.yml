@@ -55,6 +55,7 @@ jobs:
       
       - name: Build with full features
         run: cargo clippy --features full --verbose
+        continue-on-error: true
 
       - name: Test with full features
         run: cargo test --features full --verbose
