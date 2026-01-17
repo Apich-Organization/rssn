@@ -82,7 +82,6 @@
 //! use rssn::symbolic::grobner::{buchberger, MonomialOrder};
 //! use rssn::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
 //!
-//! fn main() {
 //!     println!("=== Grobner Basis Computation Example ===\n");
 //!
 //!     // Define the polynomial equations as strings
@@ -130,7 +129,6 @@
 //!     }
 //!
 //!     println!("\n=== Example Complete ===");
-//! }
 //! ```
 //!
 //! **Demo Three**
@@ -168,7 +166,7 @@
 //!     SparsePolynomial { terms }
 //! }
 //!
-//! fn main() {
+//!
 //!     println!("=== Grobner Basis Computation Example ===\n");
 //!
 //!     // Define variables and constants as SparsePolynomials
@@ -206,7 +204,6 @@
 //!     }
 //!
 //!     println!("\n=== Example Complete ===");
-//! }
 //! ```
 //!
 //! **Demo Four**
@@ -231,7 +228,7 @@
 //! use rssn::symbolic::polynomial::expr_to_sparse_poly;
 //! use rssn::symbolic::polynomial::sparse_poly_to_expr;
 //!
-//! fn main() {
+//!
 //!
 //!     println!(
 //!         "=== Grobner Basis \
@@ -348,7 +345,6 @@
 //!     println!(
 //!         "\n=== Example Complete ==="
 //!     );
-//! }
 //! ```
 
 use std::cmp::Ordering;
@@ -982,7 +978,10 @@ pub fn reduced_basis(
 
         let mut redundant = false;
 
-        for j in 0 .. sorted_basis.len()
+        for (j, other_poly) in
+            sorted_basis
+                .iter()
+                .enumerate()
         {
 
             if i == j {
@@ -992,7 +991,7 @@ pub fn reduced_basis(
 
             let lt_j =
                 match leading_term(
-                    &sorted_basis[j],
+                    other_poly,
                     order,
                 ) {
                     | Some((m, _)) => m,
@@ -1003,13 +1002,9 @@ pub fn reduced_basis(
                 &lt_i, &lt_j,
             ) {
 
-                if lt_i == lt_j && i > j
+                // If LT_j divides LT_i, then LT_i is redundant.
+                if lt_i != lt_j || i > j
                 {
-
-                    redundant = true;
-
-                    break;
-                } else if lt_i != lt_j {
 
                     redundant = true;
 
@@ -1042,10 +1037,12 @@ pub fn reduced_basis(
                 &others,
                 order,
             )
-            .unwrap_or((
-                vec![],
-                minimal[i].clone(),
-            ));
+            .unwrap_or_else(|_| {
+                (
+                    vec![],
+                    minimal[i].clone(),
+                )
+            });
 
         // 3. Make monic
         if let Some((_, lc)) =

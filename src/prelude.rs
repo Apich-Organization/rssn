@@ -149,6 +149,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_vector_ffi::*;
     pub use crate::ffi_apis::nightly_ffi::*;
     pub use crate::ffi_apis::symbolic_cad_ffi::*;
+    pub use crate::ffi_apis::symbolic_core_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::*;
     pub use crate::ffi_apis::symbolic_cas_foundations_ffi::*;

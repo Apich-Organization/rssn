@@ -1,4 +1,8 @@
+//! The macros used by the symbolic_core_ffi module.
+//! These macros are not intended to be used by users.
+
 /// Macro for generating handle-based FFI unary functions.
+
 macro_rules! handle_unary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
         #[unsafe(no_mangle)]
@@ -27,6 +31,7 @@ macro_rules! handle_unary_ffi {
 }
 
 /// Macro for generating handle-based FFI binary functions.
+
 macro_rules! handle_binary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
         #[unsafe(no_mangle)]
@@ -57,6 +62,7 @@ macro_rules! handle_binary_ffi {
 }
 
 /// Macro for generating handle-based FFI n-ary functions (from C array).
+
 macro_rules! handle_nary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
         #[unsafe(no_mangle)]
@@ -93,6 +99,7 @@ macro_rules! handle_nary_ffi {
 }
 
 /// Macro for generating Bincode-based FFI unary functions.
+
 macro_rules! bincode_unary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
         #[unsafe(no_mangle)]
@@ -121,6 +128,7 @@ macro_rules! bincode_unary_ffi {
 }
 
 /// Macro for generating Bincode-based FFI binary functions.
+
 macro_rules! bincode_binary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
         #[unsafe(no_mangle)]
@@ -152,6 +160,7 @@ macro_rules! bincode_binary_ffi {
 }
 
 /// Macro for generating JSON-based FFI unary functions.
+
 macro_rules! json_unary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
         #[unsafe(no_mangle)]
@@ -180,6 +189,7 @@ macro_rules! json_unary_ffi {
 }
 
 /// Macro for generating JSON-based FFI binary functions.
+
 macro_rules! json_binary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
         #[unsafe(no_mangle)]
@@ -211,6 +221,7 @@ macro_rules! json_binary_ffi {
 }
 
 /// Macro for generating Bincode-based FFI n-ary functions.
+
 macro_rules! bincode_nary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
         #[unsafe(no_mangle)]
@@ -239,6 +250,7 @@ macro_rules! bincode_nary_ffi {
 }
 
 /// Macro for generating JSON-based FFI n-ary functions.
+
 macro_rules! json_nary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
         #[unsafe(no_mangle)]

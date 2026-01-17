@@ -18,7 +18,11 @@ use crate::symbolic::unit_unification::UnitQuantity;
 /// Trait representing a probability distribution.
 
 pub trait Distribution:
-    Debug + Send + Sync + std::panic::RefUnwindSafe + std::panic::UnwindSafe
+    Debug
+    + Send
+    + Sync
+    + std::panic::RefUnwindSafe
+    + std::panic::UnwindSafe
 {
     /// Probability Density Function (PDF).
 

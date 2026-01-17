@@ -772,7 +772,8 @@ pub fn plot_surface_2d(
         min_val - 1.0
     } else {
 
-        (max_val - min_val).mul_add(-0.1, min_val)
+        (max_val - min_val)
+            .mul_add(-0.1, min_val)
     };
 
     let z_max = if (max_val - min_val)
@@ -783,7 +784,8 @@ pub fn plot_surface_2d(
         max_val + 1.0
     } else {
 
-        (max_val - min_val).mul_add(0.1, max_val)
+        (max_val - min_val)
+            .mul_add(0.1, max_val)
     };
 
     let mut chart =
@@ -1358,17 +1360,11 @@ pub fn plot_heatmap_2d(
 
         min_val = min_val.min(val);
 
-        println!(
-            "min_val: {}",
-            min_val
-        );
+        println!("min_val: {min_val}");
 
         max_val = max_val.max(val);
 
-        println!(
-            "max_val: {}",
-            max_val
-        );
+        println!("max_val: {max_val}");
     }
 
     let mut chart =

@@ -72,6 +72,12 @@ pub type NavierStokesOutput = Result<
 ///
 /// # Returns
 /// Tuple of (u, v, p) arrays.
+///
+/// # Panics
+/// Panics if `nx` or `ny` is less than 2.
+///
+/// # Errors
+/// Returns an error if the obstacle mask is not the same size as the grid.
 
 pub fn run_channel_flow(
     nx: usize,
@@ -160,14 +166,12 @@ pub fn run_channel_flow(
                 } / h;
 
                 // Diffusion (Central Difference)
-                let lap_u = (u_old[[j, i + 1]] - 2.0 * u_curr + u_old[[j, i - 1]]
-                    + u_old[[j + 1, i]] - 2.0 * u_curr + u_old[[j - 1, i]]) / (h * h);
+                let lap_u = (2.0f64.mul_add(-u_curr, 2.0f64.mul_add(-u_curr, u_old[[j, i + 1]]) + u_old[[j, i - 1]] + u_old[[j + 1, i]]) + u_old[[j - 1, i]]) / (h * h);
 
-                let lap_v = (v_old[[j, i + 1]] - 2.0 * v_curr + v_old[[j, i - 1]]
-                    + v_old[[j + 1, i]] - 2.0 * v_curr + v_old[[j - 1, i]]) / (h * h);
+                let lap_v = (2.0f64.mul_add(-v_curr, 2.0f64.mul_add(-v_curr, v_old[[j, i + 1]]) + v_old[[j, i - 1]] + v_old[[j + 1, i]]) + v_old[[j - 1, i]]) / (h * h);
 
-                *u_val = u_curr + dt * (-(u_curr * du_dx + v_curr * du_dy) + nu * lap_u);
-                *v_val = v_curr + dt * (-(u_curr * dv_dx + v_curr * dv_dy) + nu * lap_v);
+                *u_val = dt.mul_add(-u_curr.mul_add(du_dx, v_curr * du_dy) + nu * lap_u, u_curr);
+                *v_val = dt.mul_add(-u_curr.mul_add(dv_dx, v_curr * dv_dy) + nu * lap_v, v_curr);
             });
 
         // Apply BCs to u_star, v_star
@@ -255,7 +259,7 @@ pub fn run_channel_flow(
         // Solve Poisson
         // Note: Our MG solver expects "f" where "-laplacian u = f".
         // Our equation is "laplacian p = R". So we pass "-R" as f.
-        for val in rhs_vec.iter_mut() {
+        for val in &mut rhs_vec {
 
             *val = -*val;
         }
@@ -303,13 +307,15 @@ pub fn run_channel_flow(
                     - p[[j - 1, i]])
                     / (2.0 * h);
 
-                u[[j, i]] = u_star
-                    [[j, i]]
-                    - dt * dp_dx;
+                u[[j, i]] = dt.mul_add(
+                    -dp_dx,
+                    u_star[[j, i]],
+                );
 
-                v[[j, i]] = v_star
-                    [[j, i]]
-                    - dt * dp_dy;
+                v[[j, i]] = dt.mul_add(
+                    -dp_dy,
+                    v_star[[j, i]],
+                );
             }
         }
 
