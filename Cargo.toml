@@ -56,6 +56,9 @@ panic = "abort"
 opt-level = 3
 strip = true
 debug = false
+debug-assertions = false
+overflow-checks = false
+incremental = true
 
 [dependencies]
 uuid = { version = "1.19", features = ["v4"] }

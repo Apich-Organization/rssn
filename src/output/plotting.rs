@@ -436,9 +436,9 @@ pub fn plot_series_2d(
     chart
         .configure_series_labels()
         .background_style(
-            &WHITE.mix(0.8),
+            WHITE.mix(0.8),
         )
-        .border_style(&BLACK)
+        .border_style(BLACK)
         .label_font(
             (
                 "sans-serif",
@@ -756,7 +756,7 @@ pub fn plot_surface_2d(
 
     let mut max_val = f64::NEG_INFINITY;
 
-    for &val in data.iter() {
+    for &val in data {
 
         min_val = min_val.min(val);
 
@@ -772,8 +772,7 @@ pub fn plot_surface_2d(
         min_val - 1.0
     } else {
 
-        min_val
-            - (max_val - min_val) * 0.1
+        (max_val - min_val).mul_add(-0.1, min_val)
     };
 
     let z_max = if (max_val - min_val)
@@ -784,8 +783,7 @@ pub fn plot_surface_2d(
         max_val + 1.0
     } else {
 
-        max_val
-            + (max_val - min_val) * 0.1
+        (max_val - min_val).mul_add(0.1, max_val)
     };
 
     let mut chart =
@@ -819,15 +817,9 @@ pub fn plot_surface_2d(
                     .map(|y| y as f64),
                 |x, y| {
 
-                    let ix = (x
-                        as usize)
-                        .min(width - 1);
+                    let ix = usize::try_from(x.round() as isize).unwrap_or(0).min(width - 1);
 
-                    let iy = (y
-                        as usize)
-                        .min(
-                            height - 1,
-                        );
+                    let iy = usize::try_from(y.round() as isize).unwrap_or(0).min(height - 1);
 
                     data[[iy, ix]]
                 },
@@ -1362,7 +1354,7 @@ pub fn plot_heatmap_2d(
 
     let mut max_val = f64::NEG_INFINITY;
 
-    for &val in data.iter() {
+    for &val in data {
 
         min_val = min_val.min(val);
 

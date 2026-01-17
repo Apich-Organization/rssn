@@ -9207,6 +9207,597 @@ rssn_Expr *rssn_coordinates_get_metric_tensor_handle(rssn_CoordinateSystem aSyst
 ;
 
 /*
+ Creates a constant expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_constant(double aVal)
+;
+
+/*
+ Creates a new derivative expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_derivative(rssn_BincodeBuffer aExprBuf,
+                                                       const char *aVar)
+;
+
+/*
+ Creates a new higher-order derivative expression (derivativen).
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_derivativen(rssn_BincodeBuffer aFunctionBuf,
+                                                        const char *aVariable,
+                                                        rssn_BincodeBuffer aGradesBuf)
+;
+
+/*
+ Creates an E expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_e()
+;
+
+/*
+ Creates a new Exists quantifier expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_exists(const char *aVar,
+                                                   rssn_BincodeBuffer aExprBuf)
+;
+
+/*
+ Creates a new ForAll quantifier expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_forall(const char *aVar,
+                                                   rssn_BincodeBuffer aExprBuf)
+;
+
+/*
+ Creates an Infinity expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_infinity()
+;
+
+/*
+ Creates a new Interval expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_interval(rssn_BincodeBuffer aLowerBuf,
+                                                     rssn_BincodeBuffer aUpperBuf,
+                                                     bool aInclLower,
+                                                     bool aInclUpper)
+;
+
+/*
+ Creates a new Matrix expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_matrix(rssn_BincodeBuffer aElementsBuf)
+;
+
+/*
+ Creates a NegativeInfinity expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_negative_infinity()
+;
+
+/*
+ Creates a Pi expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_pi()
+;
+
+/*
+ Creates a new Predicate expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_predicate(const char *aName,
+                                                      rssn_BincodeBuffer aArgsBuf)
+;
+
+/*
+ Creates a new SparsePolynomial expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_sparse_polynomial(rssn_BincodeBuffer aPolyBuf)
+;
+
+/*
+ Creates a variable expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_BincodeBuffer rssn_core_bincode_create_variable(const char *aName)
+;
+
+/*
+ Creates a new symbolic constant (f64).
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_Expr *rssn_core_create_constant(double aVal)
+;
+
+/*
+ Creates a new derivative expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ */
+rssn_
+rssn_Expr *rssn_core_create_derivative(const rssn_Expr *aExpr,
+                                       const char *aVar)
+;
+
+/*
+ Creates a new higher-order derivative expression (derivativen).
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_Expr *rssn_core_create_derivativen(const rssn_Expr *aFunction,
+                                        const char *aVariable,
+                                        const rssn_Expr *aGrades)
+;
+
+/*
+ Creates a new E expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_Expr *rssn_core_create_e()
+;
+
+/*
+ Creates a new Exists quantifier expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ */
+rssn_
+rssn_Expr *rssn_core_create_exists(const char *aVar,
+                                   const rssn_Expr *aExpr)
+;
+
+/*
+ Creates a new ForAll quantifier expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ */
+rssn_
+rssn_Expr *rssn_core_create_forall(const char *aVar,
+                                   const rssn_Expr *aExpr)
+;
+
+/*
+ Creates a new Infinity expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_Expr *rssn_core_create_infinity()
+;
+
+/*
+ Creates a new Interval expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_Expr *rssn_core_create_interval(const rssn_Expr *aLower,
+                                     const rssn_Expr *aUpper,
+                                     bool aInclLower,
+                                     bool aInclUpper)
+;
+
+/*
+ Creates a new Matrix expression from a flat array of elements.
+ Elements should be in row-major order.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_Expr *rssn_core_create_matrix(const rssn_Expr *const *aElements,
+                                   size_t aRows,
+                                   size_t aCols)
+;
+
+/*
+ Creates a new NegativeInfinity expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_Expr *rssn_core_create_negative_infinity()
+;
+
+/*
+ Creates a new Pi expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_Expr *rssn_core_create_pi()
+;
+
+/*
+ Creates a new Predicate expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_Expr *rssn_core_create_predicate(const char *aName,
+                                      const rssn_Expr *const *aArgs,
+                                      size_t aLen)
+;
+
+/*
+ Creates a new variable expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+rssn_Expr *rssn_core_create_variable(const char *aName)
+;
+
+/*
+ Frees a symbolic expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+void rssn_core_free_expr(rssn_Expr *aExpr)
+;
+
+/*
+ Frees a C string returned by `rssn_core_to_string`.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+void rssn_core_free_string(char *aS)
+;
+
+/*
+ Creates a constant expression using JSON.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_json_create_constant(double aVal)
+;
+
+/*
+ Creates a new higher-order derivative expression (derivativen).
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_json_create_derivativen(const char *aFunctionJson,
+                                        const char *aVariable,
+                                        const char *aGradesJson)
+;
+
+/*
+ Creates an E expression using JSON.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_json_create_e()
+;
+
+/*
+ Creates an Infinity expression using JSON.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_json_create_infinity()
+;
+
+/*
+ Creates a new Interval expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_json_create_interval(const char *aLowerJson,
+                                     const char *aUpperJson,
+                                     bool aInclLower,
+                                     bool aInclUpper)
+;
+
+/*
+ Creates a new Matrix expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_json_create_matrix(const char *aElementsJson)
+;
+
+/*
+ Creates a NegativeInfinity expression using JSON.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_json_create_negative_infinity()
+;
+
+/*
+ Creates a Pi expression using JSON.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_json_create_pi()
+;
+
+/*
+ Creates a new Predicate expression.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_json_create_predicate(const char *aName,
+                                      const char *aArgsJson)
+;
+
+/*
+ Creates a new SparsePolynomial expression using JSON.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_json_create_sparse_polynomial(const char *aPolyJson)
+;
+
+/*
+ Creates a variable expression using JSON.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_json_create_variable(const char *aName)
+;
+
+/*
+ Returns the string representation of an expression.
+ The caller is responsible for freeing the returned string using `rssn_core_free_string`.
+ # Safety
+
+ This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+ The caller must ensure:
+ 1. All pointer arguments are valid and point to initialized memory.
+ 2. The memory layout of passed structures matches the expected C-ABI layout.
+ 3. Any pointers returned by this function are managed according to the API's ownership rules.
+ */
+rssn_
+char *rssn_core_to_string(const rssn_Expr *aExpr)
+;
+
+/*
  Computes the symbolic Pearson correlation coefficient.
 
  # Safety
