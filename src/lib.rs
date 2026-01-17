@@ -341,6 +341,7 @@ pub mod ffi_apis;
 #[cfg(feature = "ffi_blinding")]
 /// FFI blinding and security utilities.
 pub mod ffi_blindings;
+#[cfg(feature = "input")]
 /// Input parsing and handling.
 pub mod input;
 #[cfg(feature = "jit")]
@@ -371,6 +372,8 @@ pub mod verification;
 // --- Useful Public Re-exports ---
 use std::sync::Arc;
 
+#[cfg(feature = "input")]
+pub use crate::input::parser::*;
 pub use crate::numerical::matrix::*;
 pub use crate::symbolic::calculus::*;
 pub use crate::symbolic::core::*;

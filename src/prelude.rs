@@ -3996,14 +3996,14 @@ pub use crate::constant::SYSTEM_INFO as constant_SYSTEM_INFO;
 pub mod compute {
 
     pub use crate::compute::cache::ComputationResultCache;
-pub use crate::compute::cache::ParsingCache;
-pub use crate::compute::computable::Computable;
-pub use crate::compute::computation::Computation;
-pub use crate::compute::computation::ComputationProgress;
-pub use crate::compute::computation::ComputationStatus;
-pub use crate::compute::computation::Value;
-pub use crate::compute::engine::ComputeEngine;
-pub use crate::compute::state::State;
+    pub use crate::compute::cache::ParsingCache;
+    pub use crate::compute::computable::Computable;
+    pub use crate::compute::computation::Computation;
+    pub use crate::compute::computation::ComputationProgress;
+    pub use crate::compute::computation::ComputationStatus;
+    pub use crate::compute::computation::Value;
+    pub use crate::compute::engine::ComputeEngine;
+    pub use crate::compute::state::State;
 }
 
 pub use crate::constant::get_build_date;
@@ -4011,6 +4011,8 @@ pub use crate::constant::get_cargo_target_triple;
 pub use crate::constant::get_commit_sha;
 pub use crate::constant::get_rustc_version;
 pub use crate::constant::get_system_info;
+#[cfg(feature = "input")]
+
 pub use crate::input::parser::parse_expr;
 
 // crate::symbolic::cad exports:

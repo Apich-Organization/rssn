@@ -18,7 +18,7 @@ At its core, `rssn` utilizes a **Directed Acyclic Graph (DAG)** to represent mat
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 - **Efficient DAG-based Expression Model**: Expressions are stored as a canonical DAG, ensuring that identical subexpressions are represented by a single node in memory for maximum efficiency.
 - **Advanced Symbolic Algebra**: A powerful Computer Algebra System (CAS) that goes beyond simple simplification:
@@ -31,7 +31,7 @@ At its core, `rssn` utilizes a **Directed Acyclic Graph (DAG)** to represent mat
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 Add **rssn** to your Rust project:
 
@@ -62,7 +62,7 @@ For more advanced examples, such as simplification with relations, please see th
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 * **v0.1.0** — Finalize core symbolic engine, expand simplification rules.
 * **v0.2.0** — Stabilization release, expand numerical methods.
@@ -72,14 +72,14 @@ For more advanced examples, such as simplification with relations, please see th
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions of all kinds — bug fixes, performance optimizations, new algorithms, and documentation improvements.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 👥 Maintainers & Contributors
+## Maintainers & Contributors
 
 * **Author**: [Pana Yang](https://github.com/panayang) (ORCID: 0009-0007-2600-0948, email: [Pana.Yang@hotmail.com](mailto:Pana.Yang@hotmail.com))
 * **Consultants**:
@@ -92,42 +92,50 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 📜 License
+## License
 
-Licensed under the **Apache 2.0**.
-See [LICENSE](LICENSE) for details.
-
----
-
-## 📜 Architecture
-
-See [ARCHITECTURE](ARCHITECTURE.md) for details.
+Licensed under the **Apache 2.0** License.
+Please see [LICENSE](LICENSE) for more details.
 
 ---
 
-## 📜 Code Stastics
+## Architecture
 
-See [CODE_STASTICS](CODE_STASTICS.md) for details.
-
----
-
-## 📜 Attributions
-
-See [ATTRIBUTIONS](ATTRIBUTIONS.md) for details.
+Please see [ARCHITECTURE](ARCHITECTURE.md) for more details.
 
 ---
 
-## 📜 Security
+## Code Stastics
 
-See [SECURITY](SECURITY.md) for details.
+Please see [CODE_STASTICS](CODE_STASTICS.md) for more details.
 
 ---
 
-## 📜 Code Of Conduct
+## Attributions
 
-See [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for details.
+Please see [ATTRIBUTIONS](ATTRIBUTIONS.md) for more details.
+
+---
+
+## Security
+
+Please see [SECURITY](SECURITY.md) for more details.
+
+---
+
+## Code Of Conduct
+
+Please see [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for more details.
 
 Report of abuse are fully avalible in this project.
+
+---
+
+## Project Wiki
+
+Please see the GitHub wiki Page for more details.
+
+---
 
 ## A Note from the Author
 

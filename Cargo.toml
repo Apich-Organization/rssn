@@ -103,7 +103,7 @@ dashmap = "6"
 once_cell = "1.19"
 lazy_static = "1.4"
 # Not updating nom for compatibility issues.
-nom = "7.1"
+nom = { version = "7.1", optional = true } 
 
 plotters = { version = "0.3", features = [
     "image",
@@ -158,6 +158,7 @@ vergen-gitcl = { version = "1", features = [
 [features]
 default = []
 compute = []
+input = ["dep:nom"]
 output = ["dep:plotters", "dep:ndarray-npy"]
 physics = []
 plugins = ["dep:libloading", "dep:abi_stable"]
@@ -182,6 +183,7 @@ full = [
     "compute",
     "ffi_blinding",
     "jit",
+    "input",
     "experimental",
 ]
 
