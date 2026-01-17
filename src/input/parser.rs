@@ -5,6 +5,7 @@
 use std::sync::Arc;
 
 use nom::IResult;
+use nom::Parser;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::alpha1;
@@ -47,18 +48,21 @@ pub(crate) fn identifier_name(
         alpha1,
         // nom::multi::many0(nom::character::complete::alphanumeric1)
         nom::bytes::complete::take_while(is_identifier_char),
-    ))(input)
+    )).parse(input)
 }
 
 pub(crate) fn parse_rational_structure(
     input: &str
 ) -> IResult<&str, ()> {
 
-    let (input, _) = nom_i64(input)?;
+    let (input, _) =
+        nom_i64.parse(input)?;
 
-    let (input, _) = char('/')(input)?;
+    let (input, _) =
+        char('/').parse(input)?;
 
-    let (input, _) = nom_i64(input)?;
+    let (input, _) =
+        nom_i64.parse(input)?;
 
     Ok((input, ()))
 }
@@ -79,7 +83,7 @@ pub fn parse_expr(
     input: &str
 ) -> IResult<&str, Expr> {
 
-    expr(input)
+    expr.parse(input)
 }
 
 // expr = comparison_expr
@@ -87,7 +91,7 @@ pub(crate) fn expr(
     input: &str
 ) -> IResult<&str, Expr> {
 
-    comparison_expr(input)
+    comparison_expr.parse(input)
 }
 
 // comparison_expr = additive_expr { ("=" | "<" | ">" | "<=" | ">=") additive_expr }
@@ -96,7 +100,7 @@ pub(crate) fn comparison_expr(
 ) -> IResult<&str, Expr> {
 
     let (input, init) =
-        additive_expr(input)?;
+        additive_expr.parse(input)?;
 
     fold_many0(
         pair(
@@ -146,7 +150,8 @@ pub(crate) fn comparison_expr(
                 | _ => unreachable!(),
             }
         },
-    )(input)
+    )
+    .parse(input)
 }
 
 // additive_expr = term { ("+" | "-") term }
@@ -154,7 +159,8 @@ pub(crate) fn additive_expr(
     input: &str
 ) -> IResult<&str, Expr> {
 
-    let (input, init) = term(input)?;
+    let (input, init) =
+        term.parse(input)?;
 
     fold_many0(
         pair(
@@ -177,7 +183,8 @@ pub(crate) fn additive_expr(
                 )
             }
         },
-    )(input)
+    )
+    .parse(input)
 }
 
 // term = factor { ("*" | "/") factor }
@@ -185,7 +192,8 @@ pub(crate) fn term(
     input: &str
 ) -> IResult<&str, Expr> {
 
-    let (input, init) = factor(input)?;
+    let (input, init) =
+        factor.parse(input)?;
 
     fold_many0(
         pair(
@@ -208,7 +216,8 @@ pub(crate) fn term(
                 )
             }
         },
-    )(input)
+    )
+    .parse(input)
 }
 
 // factor = unary | "(" expr ")"
@@ -223,7 +232,8 @@ pub(crate) fn factor(
             parenthesized_expr,
         )),
         multispace0,
-    )(input)
+    )
+    .parse(input)
 }
 
 // unary = ["-"] ["not"] power
@@ -236,19 +246,20 @@ pub(crate) fn unary(
     let original_input = input;
 
     let (input, neg) =
-        opt(char('-'))(input)?;
+        opt(char('-')).parse(input)?;
 
     let (input, not_op) =
         opt(preceded(
             tag("not"),
             multispace1,
-        ))(input)?;
+        ))
+        .parse(input)?;
 
     // println!("{}",input);
     ////println!("{}",neg);
     if neg.is_some() {
 
-        if let Ok((_, ())) = nom::combinator::peek(parse_rational_structure)(input) {
+        if let Ok((_, ())) = nom::combinator::peek(parse_rational_structure).parse(input) {
 
             // If it looks like a rational number, we need to parse it differently
             // to handle negative rationals properly
@@ -257,7 +268,7 @@ pub(crate) fn unary(
     }
 
     let (input, mut expr) =
-        power(input)?;
+        power.parse(input)?;
 
     // println!("in unary start again");
     if neg.is_some() {
@@ -292,16 +303,16 @@ pub(crate) fn power(
     input: &str
 ) -> IResult<&str, Expr> {
 
-    let (input, base) = atom(input)?;
+    let (input, base) =
+        atom.parse(input)?;
 
     let (input, power_expr) = opt(
         preceded(char('^'), unary),
-    )(
-        input
-    )?;
+    )
+    .parse(input)?;
 
     let (input, factorial_op) =
-        opt(char('!'))(input)?;
+        opt(char('!')).parse(input)?;
 
     let mut result = base;
 
@@ -330,14 +341,15 @@ pub(crate) fn parse_bigint(
     map(nom_i64, |n| {
 
         Expr::BigInt(BigInt::from(n))
-    })(input)
+    })
+    .parse(input)
 }
 
 // pub(crate) fn parse_rational(input: &str) -> IResult<&str, Expr> {
 //     //println!("parse_rational");
 //     map(pair(nom_i64, preceded(char('/'), nom_i64)), |(num, den)| {
 //         Expr::Rational(BigRational::new(BigInt::from(num), BigInt::from(den)))
-//     })(input)
+//     }).parse(input)
 // }
 // ----------------------------------------------------
 
@@ -347,17 +359,16 @@ pub(crate) fn parse_rational(
 
     // println!("parse_rational start");
     let (input, sign) =
-        opt(char('-'))(input)?;
+        opt(char('-')).parse(input)?;
 
     // println!("{}", input);
     let (input, numerator) =
-        nom_i64(input)?;
+        nom_i64.parse(input)?;
 
     // println!("{}", numerator);
     let (input, denominator) =
-        preceded(char('/'), nom_i64)(
-            input,
-        )?;
+        preceded(char('/'), nom_i64)
+            .parse(input)?;
 
     // println!("{}", denominator);
     let final_numerator =
@@ -377,9 +388,8 @@ pub(crate) fn parse_rational(
 
     if denominator <= 0 {
 
-        return nom::combinator::fail(
-            input,
-        );
+        return nom::combinator::fail()
+            .parse(input);
     }
 
     // println!("input:");
@@ -415,7 +425,8 @@ pub(crate) fn parse_boolean(
 
             Expr::Boolean(false)
         }),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 pub(crate) fn parse_infinity(
@@ -425,7 +436,8 @@ pub(crate) fn parse_infinity(
     map(
         tag("Infinity"),
         |_| Expr::Infinity,
-    )(input)
+    )
+    .parse(input)
 }
 
 pub(crate) fn parse_negative_infinity(
@@ -435,7 +447,8 @@ pub(crate) fn parse_negative_infinity(
     map(
         tag("-Infinity"),
         |_| Expr::NegativeInfinity,
-    )(input)
+    )
+    .parse(input)
 }
 
 pub(crate) fn parse_string_literal(
@@ -449,7 +462,7 @@ pub(crate) fn parse_string_literal(
             char('"'),
         ),
         |s : &str| Expr::Variable(s.to_string()),
-    )(input)
+    ).parse(input)
 }
 
 pub(crate) fn parse_numeric_literals(
@@ -461,8 +474,9 @@ pub(crate) fn parse_numeric_literals(
         parse_rational,
         parse_number,
         parse_bigint,
-    ))(input)
-    // alt((parse_bigint, parse_number))(input)
+    ))
+    .parse(input)
+    // alt((parse_bigint, parse_number)).parse(input)
 }
 
 pub(crate) fn parse_boolean_and_infinities(
@@ -473,7 +487,8 @@ pub(crate) fn parse_boolean_and_infinities(
         parse_boolean,
         parse_infinity,
         parse_negative_infinity,
-    ))(input)
+    ))
+    .parse(input)
 }
 
 #[allow(clippy::too_many_lines)]
@@ -483,9 +498,9 @@ pub(crate) fn parse_function_call(
 ) -> IResult<&str, Expr> {
 
     // println!("parse function call");
-    // let (input, func_name) = alpha1(input)?;
+    // let (input, func_name) = alpha1.parse(input)?;
     let (input, func_name) =
-        identifier_name(input)?;
+        identifier_name.parse(input)?;
 
     // println!("Parsed function name: {}", func_name);
     let (input, args) = delimited(
@@ -499,7 +514,8 @@ pub(crate) fn parse_function_call(
             expr,
         ),
         char(')'),
-    )(input)?;
+    )
+    .parse(input)?;
 
     // println!("Remaining input after args: '{}'", input);
     match func_name {
@@ -574,7 +590,7 @@ pub(crate) fn parse_function_call(
                     Arc::new(args[0].clone()),
                     match &args[1] {
                         | Expr::Variable(s) => s.clone(),
-                        | _ => return nom::combinator::fail(input),
+                        | _ => return nom::combinator::fail().parse(input),
                     },
                 ),
             ))
@@ -1150,7 +1166,7 @@ pub(crate) fn parse_function_call(
                     Arc::new(args[0].clone()),
                     match &args[1] {
                         | Expr::Variable(s) => s.clone(),
-                        | _ => return nom::combinator::fail(input),
+                        | _ => return nom::combinator::fail().parse(input),
                     },
                 ),
             ))
@@ -1162,7 +1178,7 @@ pub(crate) fn parse_function_call(
                     Arc::new(args[0].clone()),
                     match &args[1] {
                         | Expr::Variable(s) => s.clone(),
-                        | _ => return nom::combinator::fail(input),
+                        | _ => return nom::combinator::fail().parse(input),
                     },
                 ),
             ))
@@ -1174,7 +1190,7 @@ pub(crate) fn parse_function_call(
                     Arc::new(args[0].clone()),
                     match &args[1] {
                         | Expr::Variable(s) => s.clone(),
-                        | _ => return nom::combinator::fail(input),
+                        | _ => return nom::combinator::fail().parse(input),
                     },
                 ),
             ))
@@ -1186,7 +1202,7 @@ pub(crate) fn parse_function_call(
                     Arc::new(args[0].clone()),
                     match &args[1] {
                         | Expr::Variable(s) => s.clone(),
-                        | _ => return nom::combinator::fail(input),
+                        | _ => return nom::combinator::fail().parse(input),
                     },
                     Arc::new(args[2].clone()),
                 ),
@@ -1199,7 +1215,7 @@ pub(crate) fn parse_function_call(
                     Arc::new(args[0].clone()),
                     match &args[1] {
                         | Expr::Variable(s) => s.clone(),
-                        | _ => return nom::combinator::fail(input),
+                        | _ => return nom::combinator::fail().parse(input),
                     },
                     Arc::new(args[2].clone()),
                 ),
@@ -1212,7 +1228,7 @@ pub(crate) fn parse_function_call(
                     Arc::new(args[0].clone()),
                     match &args[1] {
                         | Expr::Variable(s) => s.clone(),
-                        | _ => return nom::combinator::fail(input),
+                        | _ => return nom::combinator::fail().parse(input),
                     },
                     Arc::new(args[2].clone()),
                 ),
@@ -1235,9 +1251,10 @@ pub(crate) fn parse_matrix(
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
-        tag("matrix")(input)?;
+        tag("matrix").parse(input)?;
 
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
     let (input, rows) = delimited(
         char('['),
@@ -1261,9 +1278,11 @@ pub(crate) fn parse_matrix(
             ),
         ),
         char(']'),
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) =
+        char(')').parse(input)?;
 
     Ok((
         input,
@@ -1275,43 +1294,48 @@ pub(crate) fn parse_pde(
     input: &str
 ) -> IResult<&str, Expr> {
 
-    let (input, _) = tag("pde")(input)?;
+    let (input, _) =
+        tag("pde").parse(input)?;
 
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
     let (input, equation) =
-        expr(input)?;
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     let (input, func_name) =
-        alpha1(input)?;
+        alpha1.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, vars_list) =
-        delimited(
-            char('['),
-            separated_list1(
-                delimited(
-                    multispace0,
-                    char(','),
-                    multispace0,
-                ),
-                alpha1,
+    let (input, vars_list) = delimited(
+        char('['),
+        separated_list1(
+            delimited(
+                multispace0,
+                char(','),
+                multispace0,
             ),
-            char(']'),
-        )(input)?;
+            alpha1,
+        ),
+        char(']'),
+    )
+    .parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) =
+        char(')').parse(input)?;
 
     Ok((
         input,
@@ -1349,7 +1373,8 @@ pub(crate) fn parse_path_type(
             tag("Rectangle"),
             |_| PathType::Rectangle,
         ),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 pub(crate) fn parse_path(
@@ -1357,30 +1382,36 @@ pub(crate) fn parse_path(
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
-        tag("path")(input)?;
+        tag("path").parse(input)?;
 
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
     let (input, path_type) =
-        parse_path_type(input)?;
+        parse_path_type.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, arg1) = expr(input)?;
+    let (input, arg1) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, arg2) = expr(input)?;
+    let (input, arg2) =
+        expr.parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) =
+        char(')').parse(input)?;
 
     Ok((
         input,
@@ -1397,41 +1428,46 @@ pub(crate) fn parse_interval(
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
-        tag("interval")(input)?;
+        tag("interval").parse(input)?;
 
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
     let (input, lower_bound) =
-        expr(input)?;
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     let (input, upper_bound) =
-        expr(input)?;
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     let (input, incl_lower) =
-        parse_boolean(input)?;
+        parse_boolean.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     let (input, incl_upper) =
-        parse_boolean(input)?;
+        parse_boolean.parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) =
+        char(')').parse(input)?;
 
     Ok((
         input,
@@ -1440,11 +1476,11 @@ pub(crate) fn parse_interval(
             Arc::new(upper_bound),
             match incl_lower {
                 | Expr::Boolean(b) => b,
-                | _ => return nom::combinator::fail(input),
+                | _ => return nom::combinator::fail().parse(input),
             },
             match incl_upper {
                 | Expr::Boolean(b) => b,
-                | _ => return nom::combinator::fail(input),
+                | _ => return nom::combinator::fail().parse(input),
             },
         ),
     ))
@@ -1458,21 +1494,24 @@ pub(crate) fn parse_quantifier(
         alt((
             tag("forall"),
             tag("exists"),
-        ))(input)?;
+        ))
+        .parse(input)?;
 
     let (input, _) =
-        multispace1(input)?;
+        multispace1.parse(input)?;
 
     let (input, var_name) =
-        alpha1(input)?;
+        alpha1.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char('.'),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, body) = expr(input)?;
+    let (input, body) =
+        expr.parse(input)?;
 
     match quantifier_type {
         | "forall" => {
@@ -1504,14 +1543,15 @@ pub(crate) fn parse_domain(
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
-        tag("domain")(input)?;
+        tag("domain").parse(input)?;
 
     let (input, domain_name) =
         delimited(
             char('('),
             alpha1,
             char(')'),
-        )(input)?;
+        )
+        .parse(input)?;
 
     Ok((
         input,
@@ -1525,32 +1565,37 @@ pub(crate) fn parse_ode(
     input: &str
 ) -> IResult<&str, Expr> {
 
-    let (input, _) = tag("ode")(input)?;
+    let (input, _) =
+        tag("ode").parse(input)?;
 
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
     let (input, equation) =
-        expr(input)?;
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     let (input, func_name) =
-        alpha1(input)?;
+        alpha1.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     let (input, var_name) =
-        alpha1(input)?;
+        alpha1.parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) =
+        char(')').parse(input)?;
 
     Ok((
         input,
@@ -1568,15 +1613,18 @@ pub(crate) fn parse_sum(
     input: &str
 ) -> IResult<&str, Expr> {
 
-    let (input, _) = tag("sum")(input)?;
+    let (input, _) =
+        tag("sum").parse(input)?;
 
     // println!("step1");
     // println!("{}", input);
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
     // println!("step2");
     // println!("{}", input);
-    let (input, body) = expr(input)?;
+    let (input, body) =
+        expr.parse(input)?;
 
     // println!("step3");
     // println!("{}", input);
@@ -1585,11 +1633,13 @@ pub(crate) fn parse_sum(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     // println!("step4");
     // println!("{}", input);
-    let (input, var) = expr(input)?;
+    let (input, var) =
+        expr.parse(input)?;
 
     // println!("step5");
     // println!("{}", input);
@@ -1598,19 +1648,24 @@ pub(crate) fn parse_sum(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, from) = expr(input)?;
+    let (input, from) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, to) = expr(input)?;
+    let (input, to) =
+        expr.parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) =
+        char(')').parse(input)?;
 
     Ok((
         input,
@@ -1628,40 +1683,46 @@ pub(crate) fn parse_integral(
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
-        tag("integral")(input)?;
+        tag("integral").parse(input)?;
 
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
     let (input, integrand) =
-        expr(input)?;
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, var) = expr(input)?;
+    let (input, var) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     let (input, lower_bound) =
-        expr(input)?;
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     let (input, upper_bound) =
-        expr(input)?;
+        expr.parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) =
+        char(')').parse(input)?;
 
     Ok((
         input,
@@ -1684,48 +1745,56 @@ pub(crate) fn parse_series_like_function(
     input: &str
 ) -> IResult<&str, Expr> {
 
-    let (input, func_name) =
-        alt((
-            tag("series"),
-            tag("summation"),
-            tag("product"),
-        ))(input)?;
+    let (input, func_name) = alt((
+        tag("series"),
+        tag("summation"),
+        tag("product"),
+    ))
+    .parse(input)?;
 
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
-    let (input, arg1) = expr(input)?;
+    let (input, arg1) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     let (input, var_name_expr) =
-        expr(input)?;
+        expr.parse(input)?;
 
     let var_name = match var_name_expr {
         | Expr::Variable(s) => s,
-        | _ => return nom::combinator::fail(input),
+        | _ => return nom::combinator::fail().parse(input),
     };
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, arg3) = expr(input)?;
+    let (input, arg3) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, arg4) = expr(input)?;
+    let (input, arg4) =
+        expr.parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) =
+        char(')').parse(input)?;
 
     match func_name {
         | "series" => {
@@ -1770,17 +1839,19 @@ pub(crate) fn parse_asymptotic_expansion(
 ) -> IResult<&str, Expr> {
 
     // println!("asymptotic_expansion started");
-    let (input, _) = tag(
-        "asymptotic_expansion",
-    )(input)?;
+    let (input, _) =
+        tag("asymptotic_expansion")
+            .parse(input)?;
 
     // println!("step2");
     // println!("{}", input);
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
     // println!("step3");
     // println!("{}", input);
-    let (input, arg1) = expr(input)?;
+    let (input, arg1) =
+        expr.parse(input)?;
 
     // println!("step4");
     // println!("{}", arg1);
@@ -1789,16 +1860,17 @@ pub(crate) fn parse_asymptotic_expansion(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     // println!("step5");
     let (input, var_name_expr) =
-        expr(input)?;
+        expr.parse(input)?;
 
     // println!("Nom started");
     let var_name = match var_name_expr {
         | Expr::Variable(s) => s,
-        | _ => return nom::combinator::fail(input),
+        | _ => return nom::combinator::fail().parse(input),
     };
 
     // println!("Nom end");
@@ -1806,19 +1878,24 @@ pub(crate) fn parse_asymptotic_expansion(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, arg3) = expr(input)?;
+    let (input, arg3) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, arg4) = expr(input)?;
+    let (input, arg4) =
+        expr.parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) =
+        char(')').parse(input)?;
 
     // println!("{}", input);
     // println!("{}", arg1);
@@ -1840,37 +1917,46 @@ pub(crate) fn parse_fredholm(
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
-        tag("fredholm")(input)?;
+        tag("fredholm").parse(input)?;
 
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
-    let (input, arg1) = expr(input)?;
-
-    let (input, _) = delimited(
-        multispace0,
-        char(','),
-        multispace0,
-    )(input)?;
-
-    let (input, arg2) = expr(input)?;
+    let (input, arg1) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, arg3) = expr(input)?;
+    let (input, arg2) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, arg4) = expr(input)?;
+    let (input, arg3) =
+        expr.parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )
+    .parse(input)?;
+
+    let (input, arg4) =
+        expr.parse(input)?;
+
+    let (input, _) =
+        char(')').parse(input)?;
 
     Ok((
         input,
@@ -1888,37 +1974,46 @@ pub(crate) fn parse_volterra(
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
-        tag("volterra")(input)?;
+        tag("volterra").parse(input)?;
 
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
-    let (input, arg1) = expr(input)?;
-
-    let (input, _) = delimited(
-        multispace0,
-        char(','),
-        multispace0,
-    )(input)?;
-
-    let (input, arg2) = expr(input)?;
+    let (input, arg1) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, arg3) = expr(input)?;
+    let (input, arg2) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, arg4) = expr(input)?;
+    let (input, arg3) =
+        expr.parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) = delimited(
+        multispace0,
+        char(','),
+        multispace0,
+    )
+    .parse(input)?;
+
+    let (input, arg4) =
+        expr.parse(input)?;
+
+    let (input, _) =
+        char(')').parse(input)?;
 
     Ok((
         input,
@@ -1935,23 +2030,28 @@ pub(crate) fn parse_parametric_solution(
     input: &str
 ) -> IResult<&str, Expr> {
 
-    let (input, _) = tag(
-        "parametric_solution",
-    )(input)?;
+    let (input, _) =
+        tag("parametric_solution")
+            .parse(input)?;
 
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
-    let (input, x_expr) = expr(input)?;
+    let (input, x_expr) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
-    let (input, y_expr) = expr(input)?;
+    let (input, y_expr) =
+        expr.parse(input)?;
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) =
+        char(')').parse(input)?;
 
     Ok((
         input,
@@ -1967,27 +2067,31 @@ pub(crate) fn parse_root_of(
 ) -> IResult<&str, Expr> {
 
     let (input, _) =
-        tag("root_of")(input)?;
+        tag("root_of").parse(input)?;
 
-    let (input, _) = char('(')(input)?;
+    let (input, _) =
+        char('(').parse(input)?;
 
-    let (input, poly) = expr(input)?;
+    let (input, poly) =
+        expr.parse(input)?;
 
     let (input, _) = delimited(
         multispace0,
         char(','),
         multispace0,
-    )(input)?;
+    )
+    .parse(input)?;
 
     let (input, index_expr) =
-        expr(input)?;
+        expr.parse(input)?;
 
     let index = match index_expr {
         | Expr::Constant(c) => (c as i64).try_into().unwrap_or(0),
-        | _ => return nom::combinator::fail(input),
+        | _ => return nom::combinator::fail().parse(input),
     };
 
-    let (input, _) = char(')')(input)?;
+    let (input, _) =
+        char(')').parse(input)?;
 
     Ok((
         input,
@@ -2027,7 +2131,7 @@ pub(crate) fn atom(
             parse_string_literal,
             parse_variable,
         )),
-    ))(input)
+    )).parse(input)
 }
 
 pub(crate) fn parse_float(
@@ -2056,7 +2160,8 @@ pub(crate) fn parse_float(
             )),
         )),
         |s: &str| s.parse::<f64>(),
-    )(input)
+    )
+    .parse(input)
 }
 
 // Parses a floating-point number
@@ -2067,7 +2172,8 @@ pub(crate) fn parse_number(
     map(
         parse_float,
         Expr::Constant,
-    )(input)
+    )
+    .parse(input)
 }
 
 // Parses a mathematical constant
@@ -2092,7 +2198,8 @@ pub(crate) fn parse_constant(
             tag("NoSolution"),
             |_| Expr::NoSolution,
         ),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 // Parses a variable (a sequence of alphabetic characters)
@@ -2120,7 +2227,8 @@ pub(crate) fn parse_variable(
                 )
             }
         },
-    )(input)
+    )
+    .parse(input)
 }
 
 // Parses an expression enclosed in parentheses
@@ -2132,7 +2240,8 @@ pub(crate) fn parenthesized_expr(
         char('('),
         expr,
         char(')'),
-    )(input)
+    )
+    .parse(input)
 }
 
 #[cfg(test)]
