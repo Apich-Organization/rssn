@@ -60,7 +60,7 @@ debug = false
 [dependencies]
 uuid = { version = "1.19", features = ["v4"] }
 libc = { version = "0.2", optional = true }
-ndarray = { version = "0.17", features = ["serde"] }
+ndarray = { version = "0.16", features = ["serde"] }
 statrs = "0.18"
 argmin-math = { version = "0.5", features = [
     "ndarray_latest-nolinalg",
