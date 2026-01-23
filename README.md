@@ -12,7 +12,7 @@
 [![Discord Server](https://img.shields.io/discord/1459399539403522074.svg?label=Discord&logo=discord&color=blue)](https://discord.gg/D5e2czMTT9)
 [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.31044715.svg)](https://doi.org/10.6084/m9.figshare.31044715)
 
-**rssn** is an open-source scientific computing library for Rust, combining a high-performance **symbolic computation** engine with **numerical methods** and **physics simulations**.
+**rssn** is an open-source scientific computing library for Rust, combining a high-performance **symbolic computation** engine with **numerical methods** support and **physics simulations** functionalities.
 
 At its core, `rssn` utilizes a **Directed Acyclic Graph (DAG)** to represent mathematical expressions, ensuring that they are always in a canonical form. This allows for highly efficient memory use and computational speed.
 
@@ -67,7 +67,8 @@ For more advanced examples, such as simplification with relations, please see th
 * **v0.1.0** — Finalize core symbolic engine, expand simplification rules.
 * **v0.2.0** — Stabilization release, expand numerical methods.
 * **v0.3.0** — Performance improvements & broader algorithm coverage.
-* **v0.4.0** — Optional FFI for HPC, start development of **rsst** scripting toolkit.
+* **v0.4.0** — Building up Computation Ecosystem, expand physics simulations.
+* **v0.5.0** — Optional FFI for HPC, start development of **rsst** scripting toolkit.
 * **v1.0.0** — Full API stabilization.
 
 ---
