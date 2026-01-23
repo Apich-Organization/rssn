@@ -190,6 +190,8 @@ pub mod symbolic_computer_graphics_ffi;
 pub mod symbolic_convergence_ffi;
 /// FFI for symbolic coordinates.
 pub mod symbolic_coordinates_ffi;
+/// FFI for symbolic core operations.
+pub mod symbolic_core_ffi;
 /// FFI for symbolic cryptography.
 pub mod symbolic_cryptography_ffi;
 /// FFI for symbolic differential geometry.

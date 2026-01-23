@@ -766,45 +766,59 @@ where
                         return;
                     }
 
-                    let lap_x = u_curr
-                        [(x + 1, y, z)]
-                        - 2.0
-                            * u_curr[(
+                    let lap_x =
+                        2.0f64.mul_add(
+                            -u_curr[(
                                 x, y, z,
-                            )]
-                        + u_curr[(
+                            )],
+                            u_curr[(
+                                x + 1,
+                                y,
+                                z,
+                            )],
+                        ) + u_curr[(
                             x - 1,
                             y,
                             z,
                         )];
 
-                    let lap_y = u_curr
-                        [(x, y + 1, z)]
-                        - 2.0
-                            * u_curr[(
+                    let lap_y =
+                        2.0f64.mul_add(
+                            -u_curr[(
                                 x, y, z,
-                            )]
-                        + u_curr[(
+                            )],
+                            u_curr[(
+                                x,
+                                y + 1,
+                                z,
+                            )],
+                        ) + u_curr[(
                             x,
                             y - 1,
                             z,
                         )];
 
-                    let lap_z = u_curr
-                        [(x, y, z + 1)]
-                        - 2.0
-                            * u_curr[(
+                    let lap_z =
+                        2.0f64.mul_add(
+                            -u_curr[(
                                 x, y, z,
-                            )]
-                        + u_curr[(
+                            )],
+                            u_curr[(
+                                x,
+                                y,
+                                z + 1,
+                            )],
+                        ) + u_curr[(
                             x,
                             y,
                             z - 1,
                         )];
 
-                    *next_val = 2.0
-                        * u_curr[i]
-                        - u_prev[i]
+                    *next_val = 2.0f64
+                        .mul_add(
+                            u_curr[i],
+                            -u_prev[i],
+                        )
                         + s_x * lap_x
                         + s_y * lap_y
                         + s_z * lap_z;

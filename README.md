@@ -9,14 +9,16 @@
 [![Scc Count Badge Comments](https://sloc.xyz/github/Apich-Organization/rssn/?category=comments)](https://github.com/Apich-Organization/rssn/)
 [![Scc Count Badge Cocomo](https://sloc.xyz/github/Apich-Organization/rssn/?category=cocomo)](https://github.com/Apich-Organization/rssn/)
 [![Scc Count Badge Effort](https://sloc.xyz/github/Apich-Organization/rssn/?category=effort)](https://github.com/Apich-Organization/rssn/)
+[![Discord Server](https://img.shields.io/discord/1459399539403522074.svg?label=Discord&logo=discord&color=blue)](https://discord.gg/D5e2czMTT9)
+[![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.31044715.svg)](https://doi.org/10.6084/m9.figshare.31044715)
 
-**rssn** is an open-source scientific computing library for Rust, combining a high-performance **symbolic computation** engine with **numerical methods** and **physics simulations**.
+**rssn** is an open-source scientific computing library for Rust, combining a high-performance **symbolic computation** engine with **numerical methods** support and **physics simulations** functionalities.
 
 At its core, `rssn` utilizes a **Directed Acyclic Graph (DAG)** to represent mathematical expressions, ensuring that they are always in a canonical form. This allows for highly efficient memory use and computational speed.
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 - **Efficient DAG-based Expression Model**: Expressions are stored as a canonical DAG, ensuring that identical subexpressions are represented by a single node in memory for maximum efficiency.
 - **Advanced Symbolic Algebra**: A powerful Computer Algebra System (CAS) that goes beyond simple simplification:
@@ -29,7 +31,7 @@ At its core, `rssn` utilizes a **Directed Acyclic Graph (DAG)** to represent mat
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 Add **rssn** to your Rust project:
 
@@ -60,24 +62,25 @@ For more advanced examples, such as simplification with relations, please see th
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 * **v0.1.0** — Finalize core symbolic engine, expand simplification rules.
 * **v0.2.0** — Stabilization release, expand numerical methods.
 * **v0.3.0** — Performance improvements & broader algorithm coverage.
-* **v0.4.0** — Optional FFI for HPC, start development of **rsst** scripting toolkit.
+* **v0.4.0** — Building up Computation Ecosystem, expand physics simulations.
+* **v0.5.0** — Optional FFI for HPC, start development of **rsst** scripting toolkit.
 * **v1.0.0** — Full API stabilization.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions of all kinds — bug fixes, performance optimizations, new algorithms, and documentation improvements.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 👥 Maintainers & Contributors
+## Maintainers & Contributors
 
 * **Author**: [Pana Yang](https://github.com/panayang) (ORCID: 0009-0007-2600-0948, email: [Pana.Yang@hotmail.com](mailto:Pana.Yang@hotmail.com))
 * **Consultants**:
@@ -90,42 +93,50 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 📜 License
+## License
 
-Licensed under the **Apache 2.0**.
-See [LICENSE](LICENSE) for details.
-
----
-
-## 📜 Architecture
-
-See [ARCHITECTURE](ARCHITECTURE.md) for details.
+Licensed under the **Apache 2.0** License.
+Please see [LICENSE](LICENSE) for more details.
 
 ---
 
-## 📜 Code Stastics
+## Architecture
 
-See [CODE_STASTICS](CODE_STASTICS.md) for details.
-
----
-
-## 📜 Attributions
-
-See [ATTRIBUTIONS](ATTRIBUTIONS.md) for details.
+Please see [ARCHITECTURE](ARCHITECTURE.md) for more details.
 
 ---
 
-## 📜 Security
+## Code Stastics
 
-See [SECURITY](SECURITY.md) for details.
+Please see [CODE_STASTICS](CODE_STASTICS.md) for more details.
 
 ---
 
-## 📜 Code Of Conduct
+## Attributions
 
-See [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for details.
+Please see [ATTRIBUTIONS](ATTRIBUTIONS.md) for more details.
+
+---
+
+## Security
+
+Please see [SECURITY](SECURITY.md) for more details.
+
+---
+
+## Code Of Conduct
+
+Please see [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) for more details.
 
 Report of abuse are fully avalible in this project.
+
+---
+
+## Project Wiki
+
+Please see the GitHub wiki Page for more details.
+
+---
 
 ## A Note from the Author
 
@@ -138,3 +149,5 @@ And also, as one of the mission of Apich, we will continue to test the edges of 
 I sincerely appreciate all of your patience and understanding, and I welcome any contribution from the community.
 
 --- Pana Yang
+
+

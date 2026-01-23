@@ -1,0 +1,68 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  The Rust Scientific, Symbolic and Numerical Computing
+  Library (RSSN) Project
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Xinyu
+    family-names: Yang
+    email: Pana.Yang@hotmail.com
+    affiliation: >-
+      Jinan Zhensheng Middle School, Jinan 250100, Shandong,
+      China
+    orcid: 'https://orcid.org/0009-0007-2600-0948'
+identifiers:
+  - type: doi
+    value: 10.6084/m9.figshare.31044715
+    description: First Published on Figshare
+  - type: url
+    value: 'https://crates.io/crates/rssn'
+    description: First Published on crates.io (Rust Package Registry)
+  - type: url
+    value: 'https://docs.rs/rssn'
+    description: First Published on docs.io (Rust Package Docs Index)
+repository-code: 'https://github.com/Apich-Organization/rssn'
+url: 'https://apich-organization.github.io/rssn/'
+repository: 'https://codeberg.org/Apich-Organization/rssn'
+repository-artifact: 'https://github.com/Apich-Organization/rssn/releases'
+abstract: >-
+  This is the Rust Scientific, Symbolic and Numerical
+  Computing Library (RSSN) Project source code archive. In
+  this project, we explore the possibilities of using modern
+  technology (like LLVM) and programming language (like
+  Rust) to build computing tools for our research. Our main
+  develop focus of the project are symbolic computing
+  functionalities, along side modules for physics simulation
+  functionalities and numerical functionalities. A
+  significant portion of our research investigates how
+  modern compiler technologies could have an impact on
+  modernizing programming language and in the mean time
+  maintain high performance. Special attention is also given
+  to the pros and cons of LLM assistant coding and testing
+  the boundary for its application. The project is still
+  under active development and research findings are subject
+  to updates. Community feedback and contributions are
+  highly welcome.
+keywords:
+  - Computational complexity and computability
+  - Mathematical physics not elsewhere classified
+  - Physics
+  - Computer Simulation/history
+  - Physics/methods
+  - Rust
+  - Numerical Analysis
+  - Optimization
+  - Physics Simulation
+  - Scientific Computing
+  - Symbolic Mathematics
+  - Advanced Algebras
+license: Apache-2.0
+commit: 6da1b54e4383f8af0c1057d7bf76eb05787c33aa
+version: v0.2.3
+date-released: '2026-01-17'
