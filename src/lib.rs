@@ -333,6 +333,7 @@
 pub mod compute;
 /// System and physical constants.
 pub mod constant;
+/// FFI APIs for the 'rssn' Library.
 #[cfg(feature = "ffi_api")]
 pub mod ffi_apis;
 
