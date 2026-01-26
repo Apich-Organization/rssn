@@ -135,19 +135,3 @@ Report of abuse are fully avalible in this project.
 ## Project Wiki
 
 Please see the GitHub wiki Page for more details.
-
----
-
-## A Note from the Author
-
-As one of the primary author, I extend my deepest gratitude for your interest in this project.
-
-I am a high school student in mainland China with an interest in the field of hep-th and computing science. Due to my demanding academic commitments, sometimes my time is limited, and my responses to issues and core pull requests which need my review may sometimes be delayed.
-
-And also, as one of the mission of Apich, we will continue to test the edges of the current AI system assisted coding and development. Discussions on that is welcomed but only without hate. 
-
-I sincerely appreciate all of your patience and understanding, and I welcome any contribution from the community.
-
---- Pana Yang
-
-
