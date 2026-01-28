@@ -20,6 +20,7 @@ use num_bigint::ToBigInt as _;
 use num_rational::BigRational;
 use num_rational::Ratio;
 use num_traits::One;
+use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
@@ -1954,6 +1955,164 @@ pub enum Number {
     Rational(BigRational),
     /// A standard 64-bit floating-point number.
     Float(OrderedFloat<f64>),
+}
+
+impl Number {
+    /// Calculate the absolute value of a number.
+    #[must_use]
+
+    pub fn abs(&self) -> Self {
+
+        match self {
+            | Self::BigInteger(i) => {
+                Self::BigInteger(
+                    i.abs(),
+                )
+            },
+            | Self::Rational(r) => {
+                Self::Rational(r.abs())
+            },
+            | Self::Float(f) => {
+                Self::Float(
+                    OrderedFloat(
+                        f.0.abs(),
+                    ),
+                )
+            },
+        }
+    }
+}
+
+impl Number {
+    /// Converts the number to f64 for floating-point operations.
+    #[must_use]
+
+    pub fn to_f64(&self) -> f64 {
+
+        match self {
+            | Self::BigInteger(i) => {
+                i.to_f64()
+                    .unwrap_or(
+                        f64::INFINITY,
+                    )
+            },
+            | Self::Rational(r) => {
+                r.to_f64()
+                    .unwrap_or(
+                        f64::INFINITY,
+                    )
+            },
+            | Self::Float(f) => f.0,
+        }
+    }
+
+    /// Calculate the square root of a number.
+    #[must_use]
+
+    pub fn sqrt(&self) -> Option<Self> {
+
+        // Handle negative numbers (sqrt of negative is undefined for Real numbers)
+        if self.is_negative() {
+
+            return None;
+        }
+
+        match self {
+            // High-precision check for BigInts
+            | Self::BigInteger(i) => {
+
+                if let Some(root) =
+                    i.sqrt().to_bigint()
+                {
+
+                    // Only return BigInt if it's a perfect square
+                    if &root * &root
+                        == *i
+                    {
+
+                        return Some(Self::BigInteger(root));
+                    }
+                }
+
+                // Fallback to float if not a perfect square
+                Some(Self::Float(
+                    OrderedFloat(
+                        self.to_f64()
+                            .sqrt(),
+                    ),
+                ))
+            },
+            // Standard fallback
+            | _ => {
+                Some(Self::Float(
+                    OrderedFloat(
+                        self.to_f64()
+                            .sqrt(),
+                    ),
+                ))
+            },
+        }
+    }
+}
+
+impl Number {
+    /// Returns true if the number is greater than zero.
+    #[must_use]
+
+    pub fn is_positive(&self) -> bool {
+
+        match self {
+            | Self::BigInteger(i) => {
+                i.is_positive()
+            },
+            | Self::Rational(r) => {
+                r.is_positive()
+            },
+            | Self::Float(f) => {
+                f.0 > 0.0
+            },
+        }
+    }
+
+    /// Returns true if the number is less than zero.
+    #[must_use]
+
+    pub fn is_negative(&self) -> bool {
+
+        match self {
+            | Self::BigInteger(i) => {
+                i.is_negative()
+            },
+            | Self::Rational(r) => {
+                r.is_negative()
+            },
+            // Using is_sign_negative handles -0.0 and negative infinity correctly
+            | Self::Float(f) => {
+                f.0.is_sign_negative()
+                    && f.0 != 0.0
+            },
+        }
+    }
+
+    /// Returns true if the number is not a whole integer.
+    #[must_use]
+
+    pub fn is_fractional(
+        &self
+    ) -> bool {
+
+        match self {
+            | Self::BigInteger(_) => {
+                false
+            },
+            | Self::Rational(r) => {
+                !r.is_integer()
+            },
+            | Self::Float(f) => {
+                f.0.fract() != 0.0
+            },
+        }
+    }
 }
 
 impl Number {

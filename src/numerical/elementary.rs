@@ -524,7 +524,7 @@ pub mod pure {
     /// Floor rounding.
     #[must_use]
 
-    pub fn floor(x: f64) -> f64 {
+    pub const fn floor(x: f64) -> f64 {
 
         x.floor()
     }
@@ -532,7 +532,7 @@ pub mod pure {
     /// Ceil rounding.
     #[must_use]
 
-    pub fn ceil(x: f64) -> f64 {
+    pub const fn ceil(x: f64) -> f64 {
 
         x.ceil()
     }
@@ -540,7 +540,7 @@ pub mod pure {
     /// Round to nearest integer.
     #[must_use]
 
-    pub fn round(x: f64) -> f64 {
+    pub const fn round(x: f64) -> f64 {
 
         x.round()
     }
