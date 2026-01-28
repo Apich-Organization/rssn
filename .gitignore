@@ -280,3 +280,4 @@ out.perf
 perf.data.old
 perf.data.old
 plot_orbits.py
+*.rpm
