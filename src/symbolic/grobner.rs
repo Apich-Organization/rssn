@@ -1038,6 +1038,7 @@ pub fn reduced_basis(
                 order,
             )
             .unwrap_or_else(|_| {
+
                 (
                     vec![],
                     minimal[i].clone(),
