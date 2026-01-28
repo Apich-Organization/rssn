@@ -89,7 +89,7 @@ pub fn taylor_series(
         );
 
     let mut series_sum =
-        Expr::BigInt(BigInt::zero());
+        Expr::new_bigint(BigInt::zero());
 
     for (n, coeff) in coeffs
         .iter()
@@ -103,7 +103,7 @@ pub fn taylor_series(
                 ),
                 center.clone(),
             ),
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 n,
             )),
         );
@@ -161,7 +161,7 @@ pub fn calculate_taylor_coefficients(
         let term_coefficient =
             simplify(&Expr::new_div(
                 evaluated_derivative,
-                Expr::Constant(
+                Expr::new_constant(
                     n_factorial,
                 ),
             ));
@@ -219,7 +219,7 @@ pub fn laurent_series(
                 ),
                 center.clone(),
             ),
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 k,
             )),
         );
@@ -238,7 +238,7 @@ pub fn laurent_series(
             ),
         );
 
-        if let Expr::Constant(c) =
+        if let Expr::new_constant(c) =
             val_at_center
         {
 
@@ -262,7 +262,7 @@ pub fn laurent_series(
                 Arc::new(
                     center.clone(),
                 ),
-                Arc::new(Expr::BigInt(
+                Arc::new(Expr::new_bigint(
                     BigInt::from(order),
                 )),
             );
@@ -283,7 +283,7 @@ pub fn laurent_series(
             ),
             center.clone(),
         ),
-        Expr::BigInt(BigInt::from(k)),
+        Expr::new_bigint(BigInt::from(k)),
     );
 
     simplify(&Expr::new_div(
@@ -316,7 +316,7 @@ pub fn fourier_series(
 
     let l = simplify(&Expr::new_div(
         period.clone(),
-        Expr::BigInt(BigInt::from(2)),
+        Expr::new_bigint(BigInt::from(2)),
     ));
 
     let neg_l = simplify(
@@ -341,7 +341,7 @@ pub fn fourier_series(
     let mut series_sum =
         simplify(&Expr::new_div(
             a0,
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 2,
             )),
         ));
@@ -352,7 +352,7 @@ pub fn fourier_series(
 
         let n_pi_x_over_l = Expr::new_div(
             Expr::new_mul(
-                Expr::Constant(n_f64 * std::f64::consts::PI),
+                Expr::new_constant(n_f64 * std::f64::consts::PI),
                 Expr::Variable(var.to_string()),
             ),
             l.clone(),
@@ -458,7 +458,7 @@ pub fn summation(
 ) -> Expr {
 
     if let (
-        Expr::Constant(lower),
+        Expr::new_constant(lower),
         Expr::Variable(upper_name),
     ) = (
         lower_bound,
@@ -488,14 +488,14 @@ pub fn summation(
                         let term1 = Expr::new_div(
                             Expr::new_add(
                                 n.clone(),
-                                Expr::BigInt(BigInt::one()),
+                                Expr::new_bigint(BigInt::one()),
                             ),
-                            Expr::BigInt(BigInt::from(2)),
+                            Expr::new_bigint(BigInt::from(2)),
                         );
 
                         let term2 = Expr::new_add(
                             Expr::new_mul(
-                                Expr::BigInt(BigInt::from(2)),
+                                Expr::new_bigint(BigInt::from(2)),
                                 a.clone(),
                             ),
                             Expr::new_mul(d.clone(), n),
@@ -516,7 +516,7 @@ pub fn summation(
             upper_bound
         ),
         (
-            Expr::Constant(0.0),
+            Expr::new_constant(0.0),
             Expr::Infinity
         )
     ) {
@@ -533,9 +533,9 @@ pub fn summation(
                 if exp_var_name == var {
 
                     return Expr::new_div(
-                        Expr::BigInt(BigInt::one()),
+                        Expr::new_bigint(BigInt::one()),
                         Expr::new_sub(
-                            Expr::BigInt(BigInt::one()),
+                            Expr::new_bigint(BigInt::one()),
                             base.clone(),
                         ),
                     );
@@ -552,7 +552,7 @@ pub fn summation(
         upper_bound.to_f64(),
     ) {
 
-        let mut sum = Expr::BigInt(
+        let mut sum = Expr::new_bigint(
             BigInt::zero(),
         );
 
@@ -565,7 +565,7 @@ pub fn summation(
                 evaluate_at_point(
                     expr,
                     var,
-                    &Expr::BigInt(BigInt::from(i)),
+                    &Expr::new_bigint(BigInt::from(i)),
                 ),
             ));
         }
@@ -612,7 +612,7 @@ pub fn product(
     ) {
 
         let mut prod =
-            Expr::BigInt(BigInt::one());
+            Expr::new_bigint(BigInt::one());
 
         for i in lower_val as i64
             ..= upper_val as i64
@@ -623,7 +623,7 @@ pub fn product(
                 evaluate_at_point(
                     expr,
                     var,
-                    &Expr::BigInt(BigInt::from(i)),
+                    &Expr::new_bigint(BigInt::from(i)),
                 ),
             ));
         }
@@ -680,7 +680,7 @@ pub fn analyze_convergence(
                 var,
                 &Expr::new_add(
                     Expr::Variable(var.to_string()),
-                    Expr::BigInt(BigInt::one()),
+                    Expr::new_bigint(BigInt::one()),
                 ),
             );
 
@@ -705,7 +705,7 @@ pub fn analyze_convergence(
 
             return Expr::Lt(
                 Arc::new(limit_expr),
-                Arc::new(Expr::BigInt(
+                Arc::new(Expr::new_bigint(
                     BigInt::one(),
                 )),
             );
@@ -756,7 +756,7 @@ pub fn asymptotic_expansion(
         );
 
         let one_over_y = Expr::new_div(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             y,
         );
 
@@ -774,12 +774,12 @@ pub fn asymptotic_expansion(
             taylor_series(
                 &simplified_expr_in_y,
                 "y",
-                &Expr::Constant(0.0),
+                &Expr::new_constant(0.0),
                 order,
             );
 
         let one_over_x = Expr::new_div(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             Expr::Variable(
                 var.to_string(),
             ),
@@ -800,7 +800,7 @@ pub fn asymptotic_expansion(
 
     let _ = Arc::new(point.clone());
 
-    let _ = Arc::new(Expr::BigInt(
+    let _ = Arc::new(Expr::new_bigint(
         BigInt::from(order),
     ));
 

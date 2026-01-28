@@ -16,7 +16,7 @@ fn test_path_continuation_new() {
         CString::new("z").unwrap();
 
     let start_point =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     let order = 5;
 

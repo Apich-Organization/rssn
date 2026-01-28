@@ -23,16 +23,16 @@ fn test_fredholm_neumann_series() {
 
     let f_x = x.clone();
 
-    let lambda = Expr::Constant(0.1);
+    let lambda = Expr::new_constant(0.1);
 
     let kernel = Expr::new_mul(
         x.clone(),
         t.clone(),
     );
 
-    let lower = Expr::Constant(0.0);
+    let lower = Expr::new_constant(0.0);
 
-    let upper = Expr::Constant(1.0);
+    let upper = Expr::new_constant(1.0);
 
     let eq = FredholmEquation::new(
         FredholmEquationParams {
@@ -84,15 +84,15 @@ fn test_fredholm_separable_kernel() {
 
     let f_x = x.clone();
 
-    let lambda = Expr::Constant(1.0);
+    let lambda = Expr::new_constant(1.0);
 
     let kernel = Expr::new_mul(
         x.clone(),
         t.clone(),
     ); // Not used directly in separable solver but good for context
-    let lower = Expr::Constant(0.0);
+    let lower = Expr::new_constant(0.0);
 
-    let upper = Expr::Constant(1.0);
+    let upper = Expr::new_constant(1.0);
 
     let eq = FredholmEquation::new(
         FredholmEquationParams {
@@ -138,7 +138,7 @@ fn test_fredholm_separable_kernel() {
     let val_at_1 = rssn::symbolic::calculus::substitute(
         &solution,
         "x",
-        &Expr::Constant(1.0),
+        &Expr::new_constant(1.0),
     );
 
     let simplified_val =
@@ -176,13 +176,13 @@ fn test_volterra_successive_approximations()
 
     let x = Expr::new_variable("x");
 
-    let f_x = Expr::Constant(1.0);
+    let f_x = Expr::new_constant(1.0);
 
-    let lambda = Expr::Constant(1.0);
+    let lambda = Expr::new_constant(1.0);
 
-    let kernel = Expr::Constant(1.0);
+    let kernel = Expr::new_constant(1.0);
 
-    let lower = Expr::Constant(0.0);
+    let lower = Expr::new_constant(0.0);
 
     let eq = VolterraEquation::new(
         VolterraEquationParams {
@@ -216,7 +216,7 @@ fn test_volterra_successive_approximations()
     let val_at_1 = rssn::symbolic::calculus::substitute(
         &solution,
         "x",
-        &Expr::Constant(1.0),
+        &Expr::new_constant(1.0),
     );
 
     let simplified_val =
@@ -242,7 +242,7 @@ fn test_airfoil_equation() {
     // f(x) = 1
     // Known solution involves Chebyshev polynomials
 
-    let f_x = Expr::Constant(1.0);
+    let f_x = Expr::new_constant(1.0);
 
     let solution =
         solve_airfoil_equation(
@@ -257,6 +257,6 @@ fn test_airfoil_equation() {
     // Just ensure it returns something non-trivial
     assert!(!matches!(
         solution,
-        Expr::Constant(_)
+        Expr::new_constant(_)
     ));
 }

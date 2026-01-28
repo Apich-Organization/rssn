@@ -397,14 +397,14 @@ fn test_poly_operations_gf() {
 
     // p1 = x + 1 = [1, 1]
     let p1 = Expr::Polynomial(vec![
-        Expr::BigInt(BigInt::from(1)),
-        Expr::BigInt(BigInt::from(1)),
+        Expr::new_bigint(BigInt::from(1)),
+        Expr::new_bigint(BigInt::from(1)),
     ]);
 
     // p2 = x + 2 = [1, 2]
     let p2 = Expr::Polynomial(vec![
-        Expr::BigInt(BigInt::from(1)),
-        Expr::BigInt(BigInt::from(2)),
+        Expr::new_bigint(BigInt::from(1)),
+        Expr::new_bigint(BigInt::from(2)),
     ]);
 
     // Add: (x+1) + (x+2) = 2x + 3
@@ -421,14 +421,14 @@ fn test_poly_operations_gf() {
         // coeffs[0] = 2, coeffs[1] = 3
         assert_eq!(
             coeffs[0],
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 2
             ))
         );
 
         assert_eq!(
             coeffs[1],
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 3
             ))
         );

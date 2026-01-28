@@ -11,7 +11,7 @@ fn test_add_meters_and_centimeters() {
 
     let ten_meters =
         Expr::QuantityWithValue(
-            Box::new(Expr::Constant(
+            Box::new(Expr::new_constant(
                 10.0,
             ))
             .into(),
@@ -20,7 +20,7 @@ fn test_add_meters_and_centimeters() {
 
     let five_cm =
         Expr::QuantityWithValue(
-            Box::new(Expr::Constant(
+            Box::new(Expr::new_constant(
                 5.0,
             ))
             .into(),

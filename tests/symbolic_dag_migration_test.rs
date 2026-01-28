@@ -14,13 +14,13 @@ fn test_is_dag() {
 
     let dag_add = Expr::new_add(
         Expr::new_variable("x"),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     assert!(dag_add.is_dag());
 
     // AST expressions
-    let ast_const = Expr::Constant(1.0);
+    let ast_const = Expr::new_constant(1.0);
 
     assert!(!ast_const.is_dag());
 
@@ -34,7 +34,7 @@ fn test_is_dag() {
 
 fn test_to_dag_constant() {
 
-    let ast = Expr::Constant(42.0);
+    let ast = Expr::new_constant(42.0);
 
     assert!(!ast.is_dag());
 
@@ -69,7 +69,7 @@ fn test_to_dag_add() {
         Arc::new(Expr::Variable(
             "x".to_string(),
         )),
-        Arc::new(Expr::Constant(1.0)),
+        Arc::new(Expr::new_constant(1.0)),
     );
 
     assert!(!ast.is_dag());
@@ -103,7 +103,7 @@ fn test_to_dag_already_dag() {
 
 fn test_to_dag_form_in_place() {
 
-    let mut expr = Expr::Constant(1.0);
+    let mut expr = Expr::new_constant(1.0);
 
     assert!(!expr.is_dag());
 
@@ -121,11 +121,11 @@ fn test_to_dag_form_nested() {
             Arc::new(Expr::Variable(
                 "x".to_string(),
             )),
-            Arc::new(Expr::Constant(
+            Arc::new(Expr::new_constant(
                 2.0,
             )),
         )),
-        Arc::new(Expr::Constant(1.0)),
+        Arc::new(Expr::new_constant(1.0)),
     );
 
     assert!(!expr.is_dag());
@@ -154,7 +154,7 @@ fn test_to_ast_from_dag() {
 
 fn test_to_ast_from_ast() {
 
-    let ast1 = Expr::Constant(1.0);
+    let ast1 = Expr::new_constant(1.0);
 
     assert!(!ast1.is_dag());
 
@@ -176,11 +176,11 @@ fn test_dag_conversion_preserves_semantics()
             Arc::new(Expr::Variable(
                 "x".to_string(),
             )),
-            Arc::new(Expr::Constant(
+            Arc::new(Expr::new_constant(
                 1.0,
             )),
         )),
-        Arc::new(Expr::Constant(2.0)),
+        Arc::new(Expr::new_constant(2.0)),
     );
 
     // Convert to DAG
@@ -225,7 +225,7 @@ fn test_mixed_ast_dag() {
     // Create a mixed expression (some AST, some DAG)
     let dag_x = Expr::new_variable("x");
 
-    let ast_const = Expr::Constant(1.0);
+    let ast_const = Expr::new_constant(1.0);
 
     // This creates an AST node containing a DAG node
     let mixed = Expr::Add(

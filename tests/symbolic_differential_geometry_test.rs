@@ -21,7 +21,7 @@ fn test_exterior_derivative_0form() {
     let f = Expr::new_add(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         y.clone(),
     );
@@ -61,7 +61,7 @@ fn test_wedge_product() {
 
     form1_terms.insert(
         1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     ); // dx (blade 1 = 0b01)
     let form1 = DifferentialForm {
         terms: form1_terms,
@@ -72,7 +72,7 @@ fn test_wedge_product() {
 
     form2_terms.insert(
         2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     ); // dy (blade 2 = 0b10)
     let form2 = DifferentialForm {
         terms: form2_terms,
@@ -99,7 +99,7 @@ fn test_wedge_product_antisymmetry() {
 
     form_terms.insert(
         1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     ); // dx
     let form = DifferentialForm {
         terms: form_terms,

@@ -140,17 +140,17 @@ impl FieldElement {
     ) -> Option<Self> {
 
         let (g, x, _) = extended_gcd(
-            &Expr::BigInt(
+            &Expr::new_bigint(
                 self.value.clone(),
             ),
-            &Expr::BigInt(
+            &Expr::new_bigint(
                 self.field
                     .modulus
                     .clone(),
             ),
         );
 
-        if let Expr::BigInt(g_val) = g {
+        if let Expr::new_bigint(g_val) = g {
 
             if g_val.is_one() {
 
@@ -1024,7 +1024,7 @@ pub(crate) fn field_elements_to_expr(
         .iter()
         .map(|c| {
 
-            Expr::BigInt(
+            Expr::new_bigint(
                 c.value.clone(),
             )
         })

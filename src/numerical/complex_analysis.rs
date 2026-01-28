@@ -375,12 +375,12 @@ pub fn eval_complex_expr<
                 vars,
             )
         },
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
             Ok(Complex::new(
                 *c, 0.0,
             ))
         },
-        | Expr::BigInt(i) => {
+        | Expr::new_bigint(i) => {
             Ok(Complex::new(
                 i.to_f64().ok_or(
                     "f64 conversion \

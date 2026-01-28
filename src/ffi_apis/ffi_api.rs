@@ -6019,7 +6019,7 @@ pub unsafe extern "C" fn rssn_interp_lagrange(
             let expr_coeffs = poly
                 .coeffs
                 .into_iter()
-                .map(Expr::Constant)
+                .map(Expr::new_constant)
                 .collect();
 
             let poly_expr = Expr::Polynomial(expr_coeffs);

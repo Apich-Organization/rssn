@@ -99,7 +99,7 @@
 //! // Parsing cache
 //! let parsing_cache = ParsingCache::new();
 //!
-//! let expr = Arc::new(Expr::Constant(42.0));
+//! let expr = Arc::new(Expr::new_constant(42.0));
 //!
 //! parsing_cache.set(
 //!     "my_expr".to_string(),

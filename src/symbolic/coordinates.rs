@@ -187,11 +187,11 @@ pub(crate) fn from_cartesian(
                 Expr::new_add(
                     Expr::new_pow(
                         x.clone(),
-                        Expr::Constant(2.0),
+                        Expr::new_constant(2.0),
                     ),
                     Expr::new_pow(
                         y.clone(),
-                        Expr::Constant(2.0),
+                        Expr::new_constant(2.0),
                     ),
                 ),
             ));
@@ -228,16 +228,16 @@ pub(crate) fn from_cartesian(
                     Expr::new_add(
                         Expr::new_pow(
                             x.clone(),
-                            Expr::Constant(2.0),
+                            Expr::new_constant(2.0),
                         ),
                         Expr::new_pow(
                             y.clone(),
-                            Expr::Constant(2.0),
+                            Expr::new_constant(2.0),
                         ),
                     ),
                     Expr::new_pow(
                         z.clone(),
-                        Expr::Constant(2.0),
+                        Expr::new_constant(2.0),
                     ),
                 ),
             ));
@@ -564,11 +564,11 @@ pub(crate) fn get_from_cartesian_rules(
                     Arc::new(Expr::Add(
                         Arc::new(Expr::Power(
                             Arc::new(x.clone()),
-                            Arc::new(Expr::Constant(2.0)),
+                            Arc::new(Expr::new_constant(2.0)),
                         )),
                         Arc::new(Expr::Power(
                             Arc::new(y.clone()),
-                            Arc::new(Expr::Constant(2.0)),
+                            Arc::new(Expr::new_constant(2.0)),
                         )),
                     )),
                 )),
@@ -598,16 +598,16 @@ pub(crate) fn get_from_cartesian_rules(
                     Expr::new_add(
                         Expr::new_pow(
                             x.clone(),
-                            Expr::Constant(2.0),
+                            Expr::new_constant(2.0),
                         ),
                         Expr::new_pow(
                             y.clone(),
-                            Expr::Constant(2.0),
+                            Expr::new_constant(2.0),
                         ),
                     ),
                     Expr::new_pow(
                         z.clone(),
-                        Expr::Constant(2.0),
+                        Expr::new_constant(2.0),
                     ),
                 ),
             ));
@@ -856,7 +856,7 @@ pub(crate) fn symbolic_mat_vec_mul(
     for row in matrix {
 
         let mut sum =
-            Expr::Constant(0.0);
+            Expr::new_constant(0.0);
 
         for (i, val) in row
             .iter()
@@ -1026,7 +1026,7 @@ pub fn symbolic_mat_mat_mul(
 
     let mut result = vec![
         vec![
-                Expr::Constant(0.0);
+                Expr::new_constant(0.0);
                 m2_cols
             ];
         m1_rows
@@ -1040,7 +1040,7 @@ pub fn symbolic_mat_mat_mul(
         for j in 0 .. m2_cols {
 
             let mut sum =
-                Expr::Constant(0.0);
+                Expr::new_constant(0.0);
 
             for (k, val) in row
                 .iter()
@@ -1162,7 +1162,7 @@ pub fn transform_divergence(
         get_to_cartesian_rules(from)?;
 
     let mut total_divergence =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     for i in 0 .. vector_comps.len() {
 

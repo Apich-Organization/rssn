@@ -13,9 +13,9 @@ fn evaluate_expr(
 ) -> Option<f64> {
 
     match expr {
-        | Expr::Constant(v) => Some(*v),
-        | Expr::BigInt(v) => v.to_f64(),
-        | Expr::Rational(v) => {
+        | Expr::new_constant(v) => Some(*v),
+        | Expr::new_bigint(v) => v.to_f64(),
+        | Expr::new_rational(v) => {
             v.to_f64()
         },
         | Expr::Add(a, b) => {
@@ -194,16 +194,16 @@ fn test_simple_linear_regression() {
     // (1, 3), (2, 5), (3, 7)
     let data = vec![
         (
-            Expr::Constant(1.0),
-            Expr::Constant(3.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(3.0),
         ),
         (
-            Expr::Constant(2.0),
-            Expr::Constant(5.0),
+            Expr::new_constant(2.0),
+            Expr::new_constant(5.0),
         ),
         (
-            Expr::Constant(3.0),
-            Expr::Constant(7.0),
+            Expr::new_constant(3.0),
+            Expr::new_constant(7.0),
         ),
     ];
 
@@ -229,16 +229,16 @@ fn test_polynomial_regression() {
     // c0=0, c1=0, c2=1
     let data = vec![
         (
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ),
         (
-            Expr::Constant(1.0),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(1.0),
         ),
         (
-            Expr::Constant(2.0),
-            Expr::Constant(4.0),
+            Expr::new_constant(2.0),
+            Expr::new_constant(4.0),
         ),
     ];
 
@@ -279,12 +279,12 @@ fn test_nonlinear_regression_simple() {
     // y = 2x + 1
     let data = vec![
         (
-            Expr::Constant(1.0),
-            Expr::Constant(3.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(3.0),
         ),
         (
-            Expr::Constant(2.0),
-            Expr::Constant(5.0),
+            Expr::new_constant(2.0),
+            Expr::new_constant(5.0),
         ),
     ];
 

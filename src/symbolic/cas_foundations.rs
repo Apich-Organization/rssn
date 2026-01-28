@@ -84,7 +84,7 @@ pub fn get_term_factors(
         | Expr::Neg(a) => {
 
             factors.insert(
-                Expr::Constant(-1.0),
+                Expr::new_constant(-1.0),
                 1,
             );
 
@@ -120,7 +120,7 @@ pub fn build_expr_from_factors<
 
     if factors.is_empty() {
 
-        return Expr::Constant(1.0);
+        return Expr::new_constant(1.0);
     }
 
     let mut terms: Vec<Expr> = factors
@@ -137,7 +137,7 @@ pub fn build_expr_from_factors<
 
                 Expr::new_pow(
                     base,
-                    Expr::Constant(
+                    Expr::new_constant(
                         f64::from(
                             count,
                         ),
@@ -149,7 +149,7 @@ pub fn build_expr_from_factors<
 
     if terms.is_empty() {
 
-        return Expr::Constant(1.0);
+        return Expr::new_constant(1.0);
     }
 
     terms.sort();
@@ -245,7 +245,7 @@ pub(crate) fn flatten_product(
                 other_factors,
             );
         },
-        | Expr::Constant(n) => {
+        | Expr::new_constant(n) => {
 
             numeric_factors.push(n);
         },
@@ -780,7 +780,7 @@ pub fn factorize(expr: Expr) -> Expr {
             // For simplicity, just fold
             if new_factors.is_empty() {
 
-                Expr::Constant(1.0)
+                Expr::new_constant(1.0)
             } else {
 
                 let mut res =
@@ -870,7 +870,7 @@ pub(crate) fn factorize_terms(
                 .keys()
                 .next()
                 == Some(
-                    &Expr::Constant(
+                    &Expr::new_constant(
                         1.0,
                     ),
                 ))
@@ -931,7 +931,7 @@ pub(crate) fn build_sum_from_vec(
 
     if terms.is_empty() {
 
-        return Expr::Constant(0.0);
+        return Expr::new_constant(0.0);
     }
 
     if terms.len() == 1 {
@@ -975,7 +975,7 @@ pub(crate) fn build_product_from_vecs(
     let mut tree: Option<Expr> =
         if has_numeric_term {
 
-            Some(Expr::Constant(
+            Some(Expr::new_constant(
                 numeric_product,
             ))
         } else {
@@ -996,7 +996,7 @@ pub(crate) fn build_product_from_vecs(
         );
     }
 
-    tree.unwrap_or(Expr::Constant(1.0))
+    tree.unwrap_or(Expr::new_constant(1.0))
 }
 
 /// Placeholder for Risch algorithm for symbolic integration.

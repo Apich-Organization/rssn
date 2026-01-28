@@ -13,7 +13,7 @@ fn test_apply_rules_simple() {
     let p_x =
         Expr::Pattern("x".to_string());
 
-    let zero = Expr::Constant(0.0);
+    let zero = Expr::new_constant(0.0);
 
     // Rule: x + 0 -> x
     let rule = RewriteRule {

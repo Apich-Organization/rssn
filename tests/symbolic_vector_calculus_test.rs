@@ -9,16 +9,16 @@ fn test_line_integral_scalar() {
     // Line integral of f(x,y,z) = x^2 + y^2 along the curve r(t) = [t, t^2, 0] from t=0 to t=1
     let t = Expr::new_variable("t");
 
-    let zero = Expr::Constant(0.0);
+    let zero = Expr::new_constant(0.0);
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     let curve = ParametricCurve {
         r: Vector::new(
             t.clone(),
             Expr::new_pow(
                 t.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
             zero.clone(),
         ),
@@ -36,11 +36,11 @@ fn test_line_integral_scalar() {
     let scalar_field = Expr::new_add(
         Expr::new_pow(
             x,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         Expr::new_pow(
             y,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
@@ -57,8 +57,8 @@ fn test_line_integral_scalar() {
     // The result should be a valid expression
     assert!(matches!(
         result,
-        Expr::Constant(_)
-            | Expr::Rational(_)
+        Expr::new_constant(_)
+            | Expr::new_rational(_)
             | Expr::Dag(_)
     ));
 }
@@ -70,10 +70,10 @@ fn test_line_integral_vector() {
     // Line integral of F = [y, -x, 0] along the unit circle r(t) = [cos(t), sin(t), 0] from t=0 to t=2π
     let t = Expr::new_variable("t");
 
-    let zero = Expr::Constant(0.0);
+    let zero = Expr::new_constant(0.0);
 
     let two_pi = Expr::new_mul(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
         Expr::Pi,
     );
 
@@ -113,8 +113,8 @@ fn test_line_integral_vector() {
     // The result should be a valid expression
     assert!(matches!(
         result,
-        Expr::Constant(_)
-            | Expr::Rational(_)
+        Expr::new_constant(_)
+            | Expr::new_rational(_)
             | Expr::Dag(_)
             | Expr::Mul(_, _)
     ));
@@ -130,12 +130,12 @@ fn test_surface_integral() {
 
     let v = Expr::new_variable("v");
 
-    let zero = Expr::Constant(0.0);
+    let zero = Expr::new_constant(0.0);
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     let two_pi = Expr::new_mul(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
         Expr::Pi,
     );
 
@@ -188,8 +188,8 @@ fn test_surface_integral() {
     // The result should be a valid expression
     assert!(matches!(
         result,
-        Expr::Constant(_)
-            | Expr::Rational(_)
+        Expr::new_constant(_)
+            | Expr::new_rational(_)
             | Expr::Dag(_)
             | Expr::Mul(_, _)
     ));
@@ -200,9 +200,9 @@ fn test_surface_integral() {
 fn test_volume_integral() {
 
     // Volume integral of f(x,y,z) = x*y*z over the unit cube [0,1]×[0,1]×[0,1]
-    let zero = Expr::Constant(0.0);
+    let zero = Expr::new_constant(0.0);
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     let volume = Volume {
         z_bounds: (
@@ -246,13 +246,13 @@ fn test_volume_integral() {
     );
 
     // The result should be 1/8 = 0.125
-    if let Expr::Constant(val) = result
+    if let Expr::new_constant(val) = result
     {
 
         assert!(
             (val - 0.125).abs() < 1e-9
         );
-    } else if let Expr::Rational(r) =
+    } else if let Expr::new_rational(r) =
         result
     {
 
@@ -281,9 +281,9 @@ fn test_parametric_curve_serialization()
     // Test that ParametricCurve can be serialized/deserialized
     let t = Expr::new_variable("t");
 
-    let zero = Expr::Constant(0.0);
+    let zero = Expr::new_constant(0.0);
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     let curve = ParametricCurve {
         r: Vector::new(
@@ -319,9 +319,9 @@ fn test_parametric_surface_serialization()
 
     let v = Expr::new_variable("v");
 
-    let zero = Expr::Constant(0.0);
+    let zero = Expr::new_constant(0.0);
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     let surface = ParametricSurface {
         r: Vector::new(
@@ -360,9 +360,9 @@ fn test_parametric_surface_serialization()
 fn test_volume_serialization() {
 
     // Test that Volume can be serialized/deserialized
-    let zero = Expr::Constant(0.0);
+    let zero = Expr::new_constant(0.0);
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     let volume = Volume {
         z_bounds: (

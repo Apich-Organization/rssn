@@ -353,7 +353,7 @@ where
 
         let mut matrix = vec![
             vec![
-                    Expr::Constant(0.0);
+                    Expr::new_constant(0.0);
                     n
                 ];
             n
@@ -399,7 +399,7 @@ where
 
         let mut matrix = vec![
             vec![
-                    Expr::Constant(0.0);
+                    Expr::new_constant(0.0);
                     m
                 ];
             n
@@ -413,17 +413,17 @@ where
             if self.is_directed {
 
                 matrix[u][j] =
-                    Expr::Constant(
+                    Expr::new_constant(
                         -1.0,
                     );
             } else {
 
                 matrix[u][j] =
-                    Expr::Constant(1.0);
+                    Expr::new_constant(1.0);
             }
 
             matrix[v][j] =
-                Expr::Constant(1.0);
+                Expr::new_constant(1.0);
         }
 
         Expr::Matrix(matrix)
@@ -463,7 +463,7 @@ where
 
         let mut deg_matrix = vec![
             vec![
-                    Expr::Constant(0.0);
+                    Expr::new_constant(0.0);
                     n
                 ];
             n
@@ -477,7 +477,7 @@ where
             let degree =
                 self.out_degree(i);
 
-            row[i] = Expr::Constant(
+            row[i] = Expr::new_constant(
                 degree as f64,
             );
         }

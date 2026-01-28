@@ -180,7 +180,7 @@ fn proof_to_dag_idempotence() {
     if c.is_finite() {
 
         let ast_expr =
-            Expr::Constant(c);
+            Expr::new_constant(c);
 
         let dag_expr_1 = ast_expr
             .to_dag()

@@ -74,16 +74,16 @@ impl Vector {
                 Expr::new_add(
                     Expr::new_pow(
                         self.x.clone(),
-                        Expr::BigInt(BigInt::from(2)),
+                        Expr::new_bigint(BigInt::from(2)),
                     ),
                     Expr::new_pow(
                         self.y.clone(),
-                        Expr::BigInt(BigInt::from(2)),
+                        Expr::new_bigint(BigInt::from(2)),
                     ),
                 ),
                 Expr::new_pow(
                     self.z.clone(),
-                    Expr::BigInt(BigInt::from(2)),
+                    Expr::new_bigint(BigInt::from(2)),
                 ),
             ),
         ))
@@ -205,7 +205,7 @@ impl Vector {
         }
 
         self.scalar_mul(&Expr::new_div(
-            Expr::BigInt(BigInt::one()),
+            Expr::new_bigint(BigInt::one()),
             mag,
         ))
     }
@@ -305,9 +305,9 @@ impl Vector {
 
             // Projection onto zero vector is zero vector
             return Self::new(
-                Expr::Constant(0.0),
-                Expr::Constant(0.0),
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
+                Expr::new_constant(0.0),
+                Expr::new_constant(0.0),
             );
         }
 

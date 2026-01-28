@@ -91,12 +91,12 @@ fn test_solve_pell() {
     // Note: solve_pell returns BigInts wrapped in Expr
     assert_eq!(
         solutions[0],
-        Expr::BigInt(BigInt::from(3))
+        Expr::new_bigint(BigInt::from(3))
     );
 
     assert_eq!(
         solutions[1],
-        Expr::BigInt(BigInt::from(2))
+        Expr::new_bigint(BigInt::from(2))
     );
 }
 
@@ -147,27 +147,27 @@ fn test_extended_gcd() {
     // gcd(10, 6) = 2
     // 10x + 6y = 2 -> 10(-1) + 6(2) = -10 + 12 = 2
     let a =
-        Expr::BigInt(BigInt::from(10));
+        Expr::new_bigint(BigInt::from(10));
 
     let b =
-        Expr::BigInt(BigInt::from(6));
+        Expr::new_bigint(BigInt::from(6));
 
     let (g, x, y) =
         extended_gcd(&a, &b);
 
     assert_eq!(
         g,
-        Expr::BigInt(BigInt::from(2))
+        Expr::new_bigint(BigInt::from(2))
     );
 
     assert_eq!(
         x,
-        Expr::BigInt(BigInt::from(-1))
+        Expr::new_bigint(BigInt::from(-1))
     );
 
     assert_eq!(
         y,
-        Expr::BigInt(BigInt::from(2))
+        Expr::new_bigint(BigInt::from(2))
     );
 }
 
@@ -185,26 +185,26 @@ fn test_chinese_remainder() {
 
     let congruences = vec![
         (
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 2,
             )),
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 3,
             )),
         ),
         (
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 3,
             )),
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 5,
             )),
         ),
         (
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 2,
             )),
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 7,
             )),
         ),
@@ -254,7 +254,7 @@ fn test_chinese_remainder() {
         };
 
     match &*modulus {
-        | Expr::BigInt(i) => {
+        | Expr::new_bigint(i) => {
 
             println!(
                 "DEBUG: modulus is \
@@ -262,7 +262,7 @@ fn test_chinese_remainder() {
                 i
             )
         },
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
 
             println!(
                 "DEBUG: modulus is \
@@ -288,12 +288,12 @@ fn test_chinese_remainder() {
 
     assert_eq!(
         *val,
-        Expr::Constant(23.0)
+        Expr::new_constant(23.0)
     );
 
     assert_eq!(
         *modulus,
-        Expr::BigInt(BigInt::from(105))
+        Expr::new_bigint(BigInt::from(105))
     );
 }
 
@@ -302,35 +302,35 @@ fn test_chinese_remainder() {
 fn test_is_prime() {
 
     assert_eq!(
-        is_prime(&Expr::BigInt(
+        is_prime(&Expr::new_bigint(
             BigInt::from(2)
         )),
         Expr::Boolean(true)
     );
 
     assert_eq!(
-        is_prime(&Expr::BigInt(
+        is_prime(&Expr::new_bigint(
             BigInt::from(3)
         )),
         Expr::Boolean(true)
     );
 
     assert_eq!(
-        is_prime(&Expr::BigInt(
+        is_prime(&Expr::new_bigint(
             BigInt::from(4)
         )),
         Expr::Boolean(false)
     );
 
     assert_eq!(
-        is_prime(&Expr::BigInt(
+        is_prime(&Expr::new_bigint(
             BigInt::from(17)
         )),
         Expr::Boolean(true)
     );
 
     assert_eq!(
-        is_prime(&Expr::BigInt(
+        is_prime(&Expr::new_bigint(
             BigInt::from(100)
         )),
         Expr::Boolean(false)

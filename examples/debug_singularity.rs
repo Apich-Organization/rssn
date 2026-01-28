@@ -7,7 +7,7 @@ fn main() {
         Expr::Variable("z".to_string());
 
     let func = Expr::new_div(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         z.clone(),
     );
 
@@ -17,7 +17,7 @@ fn main() {
     );
 
     let singularity =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     let factor = Expr::new_sub(
         z.clone(),

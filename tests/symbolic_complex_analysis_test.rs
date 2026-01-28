@@ -33,24 +33,24 @@ fn test_mobius_composition() {
 
     // f(z) = z + 1 (translation)
     let f = MobiusTransformation::new(
-        Expr::Constant(1.0),
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     // g(z) = 2z (scaling)
     let g = MobiusTransformation::new(
-        Expr::Constant(2.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     // Compose: (f ∘ g)(z) = f(g(z)) = f(2z) = 2z + 1
     let composed = f.compose(&g);
 
-    let z = Expr::Constant(3.0);
+    let z = Expr::new_constant(3.0);
 
     let result = composed.apply(&z);
 
@@ -65,7 +65,7 @@ fn test_mobius_composition() {
 
     assert_eq!(
         result_val,
-        Expr::Constant(7.0)
+        Expr::new_constant(7.0)
     );
 }
 
@@ -75,16 +75,16 @@ fn test_mobius_inverse() {
 
     // f(z) = (2z + 1) / (z + 3)
     let f = MobiusTransformation::new(
-        Expr::Constant(2.0),
-        Expr::Constant(1.0),
-        Expr::Constant(1.0),
-        Expr::Constant(3.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(3.0),
     );
 
     let f_inv = f.inverse();
 
     // f^(-1)(f(z)) should equal z
-    let z = Expr::Constant(5.0);
+    let z = Expr::new_constant(5.0);
 
     let fz = f.apply(&z);
 
@@ -113,8 +113,8 @@ fn test_complex_modulus() {
 
     // |3 + 4i| = 5
     let z = Expr::Complex(
-        Arc::new(Expr::Constant(3.0)),
-        Arc::new(Expr::Constant(4.0)),
+        Arc::new(Expr::new_constant(3.0)),
+        Arc::new(Expr::new_constant(4.0)),
     );
 
     let modulus = complex_modulus(&z);
@@ -131,7 +131,7 @@ fn test_complex_modulus() {
         format!("{:?}", result);
 
     let is_correct = result
-        == Expr::Constant(5.0)
+        == Expr::new_constant(5.0)
         || result_str.contains("sqrt")
         || result_str.contains("Sqrt");
 
@@ -149,8 +149,8 @@ fn test_complex_arg() {
 
     // arg(1 + i) = π/4
     let z = Expr::Complex(
-        Arc::new(Expr::Constant(1.0)),
-        Arc::new(Expr::Constant(1.0)),
+        Arc::new(Expr::new_constant(1.0)),
+        Arc::new(Expr::new_constant(1.0)),
     );
 
     let arg = complex_arg(&z);
@@ -178,7 +178,7 @@ fn test_classify_singularity() {
         Expr::Variable("z".to_string());
 
     let func = Expr::new_div(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         z.clone(),
     );
 
@@ -191,7 +191,7 @@ fn test_classify_singularity() {
         classify_singularity(
             &func,
             "z",
-            &Expr::Constant(0.0),
+            &Expr::new_constant(0.0),
             5,
         );
 
@@ -232,14 +232,14 @@ fn test_calculate_residue() {
         Expr::Variable("z".to_string());
 
     let func = Expr::new_div(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         z.clone(),
     );
 
     let residue = calculate_residue(
         &func,
         "z",
-        &Expr::Constant(0.0),
+        &Expr::new_constant(0.0),
     );
 
     println!(
@@ -267,14 +267,14 @@ fn test_cauchy_integral_formula() {
 
     let func = Expr::new_pow(
         z.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let result =
         cauchy_integral_formula(
             &func,
             "z",
-            &Expr::Constant(1.0),
+            &Expr::new_constant(1.0),
         );
 
     println!(
@@ -284,7 +284,7 @@ fn test_cauchy_integral_formula() {
 
     assert_eq!(
         simplify(&result),
-        Expr::Constant(1.0)
+        Expr::new_constant(1.0)
     );
 }
 
@@ -298,14 +298,14 @@ fn test_cauchy_derivative_formula() {
 
     let func = Expr::new_pow(
         z.clone(),
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     let result =
         cauchy_derivative_formula(
             &func,
             "z",
-            &Expr::Constant(2.0),
+            &Expr::new_constant(2.0),
             1,
         );
 
@@ -316,7 +316,7 @@ fn test_cauchy_derivative_formula() {
 
     assert_eq!(
         simplify(&result),
-        Expr::Constant(12.0)
+        Expr::new_constant(12.0)
     );
 }
 
@@ -325,11 +325,11 @@ fn test_cauchy_derivative_formula() {
 fn test_complex_distance() {
 
     // Distance between 0 and 3+4i should be 5
-    let p1 = Expr::Constant(0.0);
+    let p1 = Expr::new_constant(0.0);
 
     let p2 = Expr::Complex(
-        Arc::new(Expr::Constant(3.0)),
-        Arc::new(Expr::Constant(4.0)),
+        Arc::new(Expr::new_constant(3.0)),
+        Arc::new(Expr::new_constant(4.0)),
     );
 
     let distance =

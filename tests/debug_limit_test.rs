@@ -38,7 +38,7 @@ fn test_lim_sinc_only() {
     );
 
     match &lim_sinc {
-        | Expr::BigInt(i) => {
+        | Expr::new_bigint(i) => {
 
             println!(
                 "DEBUG: lim_sinc is \
@@ -46,7 +46,7 @@ fn test_lim_sinc_only() {
                 i
             )
         },
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
 
             println!(
                 "DEBUG: lim_sinc is \

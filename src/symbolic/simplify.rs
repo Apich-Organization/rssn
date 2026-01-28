@@ -46,7 +46,7 @@
 //! );
 //!
 //! let result = simplify(expr);
-//! // result is Expr::Constant(5.0)
+//! // result is Expr::new_constant(5.0)
 //! ```
 //!
 //! ## Migration Guide
@@ -149,9 +149,9 @@ pub(crate) fn build_expr_from_op_and_children(
     }
 
     match op {
-        | DagOp::Constant(c) => Expr::Constant(c.into_inner()),
-        | DagOp::BigInt(i) => Expr::BigInt(i.clone()),
-        | DagOp::Rational(r) => Expr::Rational(r.clone()),
+        | DagOp::Constant(c) => Expr::new_constant(c.into_inner()),
+        | DagOp::BigInt(i) => Expr::new_bigint(i.clone()),
+        | DagOp::Rational(r) => Expr::new_rational(r.clone()),
         | DagOp::Boolean(b) => Expr::Boolean(*b),
         | DagOp::Variable(s) => Expr::Variable(s.clone()),
         | DagOp::Pattern(s) => Expr::Pattern(s.clone()),
@@ -498,7 +498,7 @@ pub fn simplify(expr: Expr) -> Expr {
 /// Checks if a symbolic expression is equivalent to zero.
 ///
 /// This function handles `Expr::Dag` by converting it to an `Expr` and then checking
-/// `Expr::Constant`, `Expr::BigInt`, and `Expr::Rational`.
+/// `Expr::new_constant`, `Expr::new_bigint`, and `Expr::new_rational`.
 ///
 /// # Arguments
 /// * `expr` - The expression to check.
@@ -524,17 +524,17 @@ pub fn is_zero(expr: &Expr) -> bool {
                     ),
             )
         },
-        | Expr::Constant(val)
+        | Expr::new_constant(val)
             if *val == 0.0 =>
         {
             true
         },
-        | Expr::BigInt(val)
+        | Expr::new_bigint(val)
             if val.is_zero() =>
         {
             true
         },
-        | Expr::Rational(val)
+        | Expr::new_rational(val)
             if val.is_zero() =>
         {
             true
@@ -546,7 +546,7 @@ pub fn is_zero(expr: &Expr) -> bool {
 /// Checks if a symbolic expression is infinite.
 ///
 /// This function handles `Expr::Dag` by converting it to an `Expr` and then checking
-/// `Expr::Infinity`, `Expr::NegativeInfinity`, `Expr::Constant`, and `Expr::BigInt`.
+/// `Expr::Infinity`, `Expr::NegativeInfinity`, `Expr::new_constant`, and `Expr::new_bigint`.
 ///
 /// # Arguments
 /// * `expr` - The expression to check.
@@ -578,7 +578,7 @@ pub fn is_infinite(
         | Expr::NegativeInfinity => {
             true
         },
-        | Expr::Constant(val) => {
+        | Expr::new_constant(val) => {
             val.is_infinite()
         },
         | _ => false,
@@ -591,7 +591,7 @@ pub fn is_infinite(
 /// Checks if a symbolic expression is equivalent to the constant value one.
 ///
 /// This function handles `Expr::Dag` by converting it to an `Expr` and then checking
-/// `Expr::Constant`, `Expr::BigInt`, and `Expr::Rational`.
+/// `Expr::new_constant`, `Expr::new_bigint`, and `Expr::new_rational`.
 ///
 /// # Arguments
 /// * `expr` - The expression to check.
@@ -617,18 +617,18 @@ pub fn is_one(expr: &Expr) -> bool {
                     ),
             )
         },
-        | Expr::Constant(val)
+        | Expr::new_constant(val)
             if (*val - 1.0).abs()
                 < f64::EPSILON =>
         {
             true
         },
-        | Expr::BigInt(val)
+        | Expr::new_bigint(val)
             if val.is_one() =>
         {
             true
         },
-        | Expr::Rational(val)
+        | Expr::new_rational(val)
             if val.is_one() =>
         {
             true
@@ -671,13 +671,13 @@ pub fn as_f64(
                     ),
             )
         },
-        | Expr::Constant(val) => {
+        | Expr::new_constant(val) => {
             Some(*val)
         },
-        | Expr::BigInt(val) => {
+        | Expr::new_bigint(val) => {
             val.to_f64()
         },
-        | Expr::Rational(val) => {
+        | Expr::new_rational(val) => {
             val.to_f64()
         },
         | _ => None,
@@ -970,7 +970,7 @@ pub(crate) fn apply_rules(
                 as_f64(&arg)
             {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     -v,
                 );
             }
@@ -1002,7 +1002,7 @@ pub(crate) fn apply_rules(
 
             if is_zero(&arg) {
 
-                return Expr::BigInt(
+                return Expr::new_bigint(
                     BigInt::one(),
                 );
             }
@@ -1013,14 +1013,14 @@ pub(crate) fn apply_rules(
 
             if is_zero(&arg) {
 
-                return Expr::BigInt(
+                return Expr::new_bigint(
                     BigInt::zero(),
                 );
             }
 
             if *arg == Expr::Pi {
 
-                return Expr::BigInt(
+                return Expr::new_bigint(
                     BigInt::zero(),
                 );
             }
@@ -1047,7 +1047,7 @@ pub(crate) fn apply_rules(
 
             if is_zero(&arg) {
 
-                return Expr::BigInt(
+                return Expr::new_bigint(
                     BigInt::one(),
                 );
             }
@@ -1055,7 +1055,7 @@ pub(crate) fn apply_rules(
             if *arg == Expr::Pi {
 
                 return Expr::new_neg(
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::one(),
                     ),
                 );
@@ -1080,14 +1080,14 @@ pub(crate) fn apply_rules(
 
             if is_zero(&arg) {
 
-                return Expr::BigInt(
+                return Expr::new_bigint(
                     BigInt::zero(),
                 );
             }
 
             if *arg == Expr::Pi {
 
-                return Expr::BigInt(
+                return Expr::new_bigint(
                     BigInt::zero(),
                 );
             }
@@ -1126,7 +1126,7 @@ pub(crate) fn apply_rules(
             ) {
 
                 let mut total =
-                    Expr::Constant(0.0);
+                    Expr::new_constant(0.0);
 
                 for i in (start.round()
                     as i64)
@@ -1135,7 +1135,7 @@ pub(crate) fn apply_rules(
                 {
 
                     let i_expr =
-                        Expr::Constant(
+                        Expr::new_constant(
                             i as f64,
                         );
 
@@ -1237,7 +1237,7 @@ pub(crate) fn apply_rules(
 
                     non_constants.insert(
                         0,
-                        Expr::Constant(constant_sum),
+                        Expr::new_constant(constant_sum),
                     );
                 }
 
@@ -1257,12 +1257,12 @@ pub(crate) fn apply_rules(
                 != 0.0
             {
 
-                Expr::Constant(
+                Expr::new_constant(
                     constant_sum,
                 )
             } else {
 
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::zero(),
                 )
             }
@@ -1309,7 +1309,7 @@ pub(crate) fn apply_rules(
 
                 if is_zero(&factor) {
 
-                    return Expr::BigInt(BigInt::zero());
+                    return Expr::new_bigint(BigInt::zero());
                 }
 
                 if is_one(&factor) {
@@ -1342,7 +1342,7 @@ pub(crate) fn apply_rules(
 
                     non_constants.insert(
                         0,
-                        Expr::Constant(constant_product),
+                        Expr::new_constant(constant_product),
                     );
                 }
 
@@ -1364,12 +1364,12 @@ pub(crate) fn apply_rules(
                 > f64::EPSILON
             {
 
-                Expr::Constant(
+                Expr::new_constant(
                     constant_product,
                 )
             } else {
 
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::one(),
                 )
             }
@@ -1441,11 +1441,11 @@ pub(crate) fn simplify_log(
             Expr::new_add(
                 Expr::new_pow(
                     re.clone(),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
                 Expr::new_pow(
                     im.clone(),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
             );
 
@@ -1471,7 +1471,7 @@ pub(crate) fn simplify_log(
 
     if matches!(arg, Expr::E) {
 
-        return Some(Expr::BigInt(
+        return Some(Expr::new_bigint(
             BigInt::one(),
         ));
     }
@@ -1487,7 +1487,7 @@ pub(crate) fn simplify_log(
 
     if is_one(arg) {
 
-        return Some(Expr::BigInt(
+        return Some(Expr::new_bigint(
             BigInt::zero(),
         ));
     }
@@ -1534,7 +1534,7 @@ pub(crate) fn simplify_sqrt(
                 return simplify(
                     Expr::new_pow(
                         b.clone(),
-                        Expr::Constant(
+                        Expr::new_constant(
                             val / 2.0,
                         ),
                     ),
@@ -1560,14 +1560,14 @@ pub(crate) fn simplify_power(
         (as_f64(b), as_f64(e))
     {
 
-        return Some(Expr::Constant(
+        return Some(Expr::new_constant(
             vb.powf(ve),
         ));
     }
 
     if is_zero(e) {
 
-        return Some(Expr::BigInt(
+        return Some(Expr::new_bigint(
             BigInt::one(),
         ));
     }
@@ -1589,14 +1589,14 @@ pub(crate) fn simplify_power(
             }
         }
 
-        return Some(Expr::BigInt(
+        return Some(Expr::new_bigint(
             BigInt::zero(),
         ));
     }
 
     if is_one(b) {
 
-        return Some(Expr::BigInt(
+        return Some(Expr::new_bigint(
             BigInt::one(),
         ));
     }
@@ -1647,7 +1647,7 @@ pub(crate) fn simplify_div(
         if vb != 0.0 {
 
             return Some(
-                Expr::Constant(va / vb),
+                Expr::new_constant(va / vb),
             );
         }
     }
@@ -1659,7 +1659,7 @@ pub(crate) fn simplify_div(
             return None;
         }
 
-        return Some(Expr::BigInt(
+        return Some(Expr::new_bigint(
             BigInt::zero(),
         ));
     }
@@ -1671,7 +1671,7 @@ pub(crate) fn simplify_div(
 
     if *a == *b {
 
-        return Some(Expr::BigInt(
+        return Some(Expr::new_bigint(
             BigInt::one(),
         ));
     }
@@ -1690,7 +1690,7 @@ pub(crate) fn simplify_mul(
         (as_f64(a), as_f64(b))
     {
 
-        return Some(Expr::Constant(
+        return Some(Expr::new_constant(
             va * vb,
         ));
     }
@@ -1702,7 +1702,7 @@ pub(crate) fn simplify_mul(
             return None;
         }
 
-        return Some(Expr::BigInt(
+        return Some(Expr::new_bigint(
             BigInt::zero(),
         ));
     }
@@ -1714,7 +1714,7 @@ pub(crate) fn simplify_mul(
             return None;
         }
 
-        return Some(Expr::BigInt(
+        return Some(Expr::new_bigint(
             BigInt::zero(),
         ));
     }
@@ -1798,7 +1798,7 @@ pub(crate) fn simplify_sub(
         (as_f64(a), as_f64(b))
     {
 
-        return Some(Expr::Constant(
+        return Some(Expr::new_constant(
             va - vb,
         ));
     }
@@ -1810,7 +1810,7 @@ pub(crate) fn simplify_sub(
 
     if *a == *b {
 
-        return Some(Expr::BigInt(
+        return Some(Expr::new_bigint(
             BigInt::zero(),
         ));
     }
@@ -1821,12 +1821,12 @@ pub(crate) fn simplify_sub(
             b
         {
 
-            let two = Expr::BigInt(
+            let two = Expr::new_bigint(
                 BigInt::from(2),
             );
 
             let two_f =
-                Expr::Constant(2.0);
+                Expr::new_constant(2.0);
 
             if *exp == Arc::new(two)
                 || *exp
@@ -1840,7 +1840,7 @@ pub(crate) fn simplify_sub(
                     return Some(simplify(
                         Expr::new_pow(
                             Expr::new_sin(arg.clone()),
-                            Expr::Constant(2.0),
+                            Expr::new_constant(2.0),
                         ),
                     ));
                 }
@@ -1852,7 +1852,7 @@ pub(crate) fn simplify_sub(
                     return Some(simplify(
                         Expr::new_pow(
                             Expr::new_cos(arg.clone()),
-                            Expr::Constant(2.0),
+                            Expr::new_constant(2.0),
                         ),
                     ));
                 }
@@ -1871,23 +1871,23 @@ pub(crate) fn simplify_add(
 ) -> Result<Expr, Expr> {
 
     if let (
-        Expr::BigInt(ia),
-        Expr::BigInt(ib),
+        Expr::new_bigint(ia),
+        Expr::new_bigint(ib),
     ) = (&a, &b)
     {
 
-        return Err(Expr::BigInt(
+        return Err(Expr::new_bigint(
             ia + ib,
         ));
     }
 
     if let (
-        Expr::Rational(ra),
-        Expr::Rational(rb),
+        Expr::new_rational(ra),
+        Expr::new_rational(rb),
     ) = (&a, &b)
     {
 
-        return Err(Expr::Rational(
+        return Err(Expr::new_rational(
             ra + rb,
         ));
     }
@@ -1897,7 +1897,7 @@ pub(crate) fn simplify_add(
         as_f64(&b),
     ) {
 
-        return Err(Expr::Constant(
+        return Err(Expr::new_constant(
             va + vb,
         ));
     }
@@ -2107,7 +2107,7 @@ pub(crate) fn get_default_rules()
         RewriteRule {
             name : "double_angle_sin",
             pattern : Expr::Mul(
-                Arc::new(Expr::BigInt(
+                Arc::new(Expr::new_bigint(
                     BigInt::from(2),
                 )),
                 Arc::new(Expr::Mul(
@@ -2120,7 +2120,7 @@ pub(crate) fn get_default_rules()
                 )),
             ),
             replacement : Expr::Sin(Arc::new(Expr::Mul(
-                Arc::new(Expr::BigInt(
+                Arc::new(Expr::new_bigint(
                     BigInt::from(2),
                 )),
                 Arc::new(Expr::Pattern(
@@ -2135,7 +2135,7 @@ pub(crate) fn get_default_rules()
                     Arc::new(Expr::Cos(Arc::new(
                         Expr::Pattern("x".to_string()),
                     ))),
-                    Arc::new(Expr::BigInt(
+                    Arc::new(Expr::new_bigint(
                         BigInt::from(2),
                     )),
                 )),
@@ -2143,13 +2143,13 @@ pub(crate) fn get_default_rules()
                     Arc::new(Expr::Sin(Arc::new(
                         Expr::Pattern("x".to_string()),
                     ))),
-                    Arc::new(Expr::BigInt(
+                    Arc::new(Expr::new_bigint(
                         BigInt::from(2),
                     )),
                 )),
             ),
             replacement : Expr::Cos(Arc::new(Expr::Mul(
-                Arc::new(Expr::BigInt(
+                Arc::new(Expr::new_bigint(
                     BigInt::from(2),
                 )),
                 Arc::new(Expr::Pattern(
@@ -2161,24 +2161,24 @@ pub(crate) fn get_default_rules()
             name : "double_angle_cos_2",
             pattern : Expr::Sub(
                 Arc::new(Expr::Mul(
-                    Arc::new(Expr::BigInt(
+                    Arc::new(Expr::new_bigint(
                         BigInt::from(2),
                     )),
                     Arc::new(Expr::Power(
                         Arc::new(Expr::Cos(Arc::new(
                             Expr::Pattern("x".to_string()),
                         ))),
-                        Arc::new(Expr::BigInt(
+                        Arc::new(Expr::new_bigint(
                             BigInt::from(2),
                         )),
                     )),
                 )),
-                Arc::new(Expr::BigInt(
+                Arc::new(Expr::new_bigint(
                     BigInt::from(1),
                 )),
             ),
             replacement : Expr::Cos(Arc::new(Expr::Mul(
-                Arc::new(Expr::BigInt(
+                Arc::new(Expr::new_bigint(
                     BigInt::from(2),
                 )),
                 Arc::new(Expr::Pattern(
@@ -2189,25 +2189,25 @@ pub(crate) fn get_default_rules()
         RewriteRule {
             name : "double_angle_cos_3",
             pattern : Expr::Sub(
-                Arc::new(Expr::BigInt(
+                Arc::new(Expr::new_bigint(
                     BigInt::from(1),
                 )),
                 Arc::new(Expr::Mul(
-                    Arc::new(Expr::BigInt(
+                    Arc::new(Expr::new_bigint(
                         BigInt::from(2),
                     )),
                     Arc::new(Expr::Power(
                         Arc::new(Expr::Sin(Arc::new(
                             Expr::Pattern("x".to_string()),
                         ))),
-                        Arc::new(Expr::BigInt(
+                        Arc::new(Expr::new_bigint(
                             BigInt::from(2),
                         )),
                     )),
                 )),
             ),
             replacement : Expr::Cos(Arc::new(Expr::Mul(
-                Arc::new(Expr::BigInt(
+                Arc::new(Expr::new_bigint(
                     BigInt::from(2),
                 )),
                 Arc::new(Expr::Pattern(
@@ -2639,9 +2639,9 @@ pub(crate) fn complexity(
 ) -> usize {
 
     match expr {
-        | Expr::BigInt(_) => 1,
-        | Expr::Rational(_) => 2,
-        | Expr::Constant(_) => 3,
+        | Expr::new_bigint(_) => 1,
+        | Expr::new_rational(_) => 2,
+        | Expr::new_constant(_) => 3,
         | Expr::Variable(_)
         | Expr::Pattern(_) => 5,
         | Expr::Add(a, b)
@@ -2858,7 +2858,7 @@ pub fn collect_and_order_terms(
 
     collect_terms_recursive(
         expr,
-        &Expr::BigInt(BigInt::one()),
+        &Expr::new_bigint(BigInt::one()),
         &mut terms,
     );
 
@@ -2883,7 +2883,7 @@ pub fn collect_and_order_terms(
         .map_or_else(
             || {
 
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::zero(),
                 )
             },
@@ -2979,7 +2979,7 @@ pub(crate) fn fold_constants(
                 as_f64(&b),
             ) {
 
-                Expr::Constant(va + vb)
+                Expr::new_constant(va + vb)
             } else {
 
                 Expr::new_add(a, b)
@@ -2995,7 +2995,7 @@ pub(crate) fn fold_constants(
                 as_f64(&b),
             ) {
 
-                Expr::Constant(va - vb)
+                Expr::new_constant(va - vb)
             } else {
 
                 Expr::new_sub(a, b)
@@ -3011,7 +3011,7 @@ pub(crate) fn fold_constants(
                 as_f64(&b),
             ) {
 
-                Expr::Constant(va * vb)
+                Expr::new_constant(va * vb)
             } else {
 
                 Expr::new_mul(a, b)
@@ -3032,7 +3032,7 @@ pub(crate) fn fold_constants(
                     Expr::new_div(a, b)
                 } else {
 
-                    Expr::Constant(
+                    Expr::new_constant(
                         va / vb,
                     )
                 }
@@ -3051,7 +3051,7 @@ pub(crate) fn fold_constants(
                 as_f64(&e),
             ) {
 
-                Expr::Constant(
+                Expr::new_constant(
                     vb.powf(ve),
                 )
             } else {
@@ -3062,7 +3062,7 @@ pub(crate) fn fold_constants(
         | Expr::Neg(arg) => {
             as_f64(&arg).map_or_else(
                 || Expr::new_neg(arg),
-                |v| Expr::Constant(-v),
+                |v| Expr::new_constant(-v),
             )
         },
         | _ => expr,
@@ -3087,9 +3087,9 @@ pub const fn is_numeric(
 
     matches!(
         expr,
-        Expr::Constant(_)
-            | Expr::BigInt(_)
-            | Expr::Rational(_)
+        Expr::new_constant(_)
+            | Expr::new_bigint(_)
+            | Expr::new_rational(_)
     )
 }
 
@@ -3180,7 +3180,7 @@ pub(crate) fn collect_terms_recursive(
 
                     let entry = terms
                         .entry(base)
-                        .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                        .or_insert_with(|| Expr::new_bigint(BigInt::zero()));
 
                     *entry = fold_constants(Expr::new_add(
                         entry.clone(),
@@ -3194,7 +3194,7 @@ pub(crate) fn collect_terms_recursive(
 
                 // Try to extract numeric coefficient from MulList
                 let mut numeric_part =
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::one(),
                     );
 
@@ -3224,7 +3224,7 @@ pub(crate) fn collect_terms_recursive(
 
                     // All factors are numeric
                     let base =
-                        Expr::BigInt(
+                        Expr::new_bigint(
                             BigInt::one(
                             ),
                         );
@@ -3236,7 +3236,7 @@ pub(crate) fn collect_terms_recursive(
 
                     let entry = terms
                         .entry(base)
-                        .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                        .or_insert_with(|| Expr::new_bigint(BigInt::zero()));
 
                     *entry = fold_constants(Expr::new_add(
                         entry.clone(),
@@ -3259,7 +3259,7 @@ pub(crate) fn collect_terms_recursive(
 
                     let entry = terms
                         .entry(base)
-                        .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                        .or_insert_with(|| Expr::new_bigint(BigInt::zero()));
 
                     *entry = fold_constants(Expr::new_add(
                         entry.clone(),
@@ -3273,7 +3273,7 @@ pub(crate) fn collect_terms_recursive(
 
                 let entry = terms
                     .entry(base)
-                    .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                    .or_insert_with(|| Expr::new_bigint(BigInt::zero()));
 
                 *entry = fold_constants(
                     Expr::new_add(
@@ -3302,7 +3302,7 @@ pub(crate) fn as_rational(
 
         (
             expr.clone(),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         )
     }
 }
@@ -3407,7 +3407,7 @@ pub(crate) fn simplify_rational_expression(
 
         if is_zero(&new_num_expr) {
 
-            return Expr::Constant(0.0);
+            return Expr::new_constant(0.0);
         }
 
         let var = "x";

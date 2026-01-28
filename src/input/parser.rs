@@ -340,7 +340,7 @@ pub(crate) fn parse_bigint(
 
     map(nom_i64, |n| {
 
-        Expr::BigInt(BigInt::from(n))
+        Expr::new_bigint(BigInt::from(n))
     })
     .parse(input)
 }
@@ -348,7 +348,7 @@ pub(crate) fn parse_bigint(
 // pub(crate) fn parse_rational(input: &str) -> IResult<&str, Expr> {
 //     //println!("parse_rational");
 //     map(pair(nom_i64, preceded(char('/'), nom_i64)), |(num, den)| {
-//         Expr::Rational(BigRational::new(BigInt::from(num), BigInt::from(den)))
+//         Expr::new_rational(BigRational::new(BigInt::from(num), BigInt::from(den)))
 //     }).parse(input)
 // }
 // ----------------------------------------------------
@@ -395,10 +395,10 @@ pub(crate) fn parse_rational(
     // println!("input:");
     // println!("{}", input);
     // println!("output:");
-    // println!("{}", Expr::Rational(BigRational::new(final_numerator.clone(), BigInt::from(denominator))));
+    // println!("{}", Expr::new_rational(BigRational::new(final_numerator.clone(), BigInt::from(denominator))));
     Ok((
         input,
-        Expr::Rational(
+        Expr::new_rational(
             BigRational::new(
                 final_numerator,
                 BigInt::from(
@@ -406,7 +406,7 @@ pub(crate) fn parse_rational(
                 ),
             ),
         ),
-        // Expr::Rational(BigRational::new(BigInt::from(-3), BigInt::from(4))),
+        // Expr::new_rational(BigRational::new(BigInt::from(-3), BigInt::from(4))),
     ))
 }
 
@@ -2086,7 +2086,7 @@ pub(crate) fn parse_root_of(
         expr.parse(input)?;
 
     let index = match index_expr {
-        | Expr::Constant(c) => (c as i64).try_into().unwrap_or(0),
+        | Expr::new_constant(c) => (c as i64).try_into().unwrap_or(0),
         | _ => return nom::combinator::fail().parse(input),
     };
 
@@ -2171,7 +2171,7 @@ pub(crate) fn parse_number(
 
     map(
         parse_float,
-        Expr::Constant,
+        Expr::new_constant,
     )
     .parse(input)
 }
@@ -2261,7 +2261,7 @@ mod tests {
             parse_expr("123.45"),
             Ok((
                 "",
-                Expr::Constant(123.45)
+                Expr::new_constant(123.45)
             ))
         );
     }
@@ -2293,7 +2293,7 @@ mod tests {
                     Arc::new(Expr::Variable(
                         "x".to_string()
                     )),
-                    Arc::new(Expr::Constant(2.0))
+                    Arc::new(Expr::new_constant(2.0))
                 )
             ))
         );
@@ -2311,7 +2311,7 @@ mod tests {
                     Arc::new(Expr::Variable(
                         "y".to_string()
                     )),
-                    Arc::new(Expr::Constant(3.14))
+                    Arc::new(Expr::new_constant(3.14))
                 )
             ))
         );
@@ -2349,7 +2349,7 @@ mod tests {
                     Arc::new(Expr::Variable(
                         "z".to_string()
                     )),
-                    Arc::new(Expr::Constant(2.5))
+                    Arc::new(Expr::new_constant(2.5))
                 )
             ))
         );
@@ -2400,7 +2400,7 @@ mod tests {
                             Arc::new(Expr::Variable(
                                 "z".to_string()
                             )),
-                            Arc::new(Expr::Constant(1.0))
+                            Arc::new(Expr::new_constant(1.0))
                         ))
                     ))
                 )
@@ -2459,7 +2459,7 @@ mod tests {
         }
 
         let expected = Expr::Neg(
-            Arc::new(Expr::BigInt(
+            Arc::new(Expr::new_bigint(
                 BigInt::from(456),
             )),
         );
@@ -2470,13 +2470,13 @@ mod tests {
 
         print_type_of(&aa.unwrap().1);
 
-        let bb = Expr::BigInt(
+        let bb = Expr::new_bigint(
             BigInt::from(123),
         );
 
         print_type_of(&bb);
 
-        print_type_of(&Expr::BigInt(
+        print_type_of(&Expr::new_bigint(
             BigInt::from(123),
         ));
 
@@ -2487,7 +2487,7 @@ mod tests {
                      failed."
                 )
                 .1,
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 123
             ))
         );
@@ -2509,10 +2509,10 @@ mod tests {
 
         let expected = Expr::Neg(
             Arc::new(Expr::Div(
-                Arc::new(Expr::BigInt(
+                Arc::new(Expr::new_bigint(
                     BigInt::from(3),
                 )),
-                Arc::new(Expr::BigInt(
+                Arc::new(Expr::new_bigint(
                     BigInt::from(4),
                 )),
             )),
@@ -2522,7 +2522,7 @@ mod tests {
             parse_expr("1/2"),
             Ok((
                 "",
-                Expr::Rational(
+                Expr::new_rational(
                     BigRational::new(
                         BigInt::from(1),
                         BigInt::from(2)
@@ -2534,7 +2534,7 @@ mod tests {
         //     parse_expr("-3/4"),
         //     Ok((
         //         "",
-        //         Expr::Rational(BigRational::new(BigInt::from(-3), BigInt::from(4)))
+        //         Expr::new_rational(BigRational::new(BigInt::from(-3), BigInt::from(4)))
         //         //expected
         //     ))
         // );
@@ -2596,7 +2596,7 @@ mod tests {
                     Arc::new(Expr::Variable(
                         "x".to_string()
                     )),
-                    Arc::new(Expr::Constant(5.0))
+                    Arc::new(Expr::new_constant(5.0))
                 )
             ))
         );
@@ -2614,7 +2614,7 @@ mod tests {
                     Arc::new(Expr::Variable(
                         "x".to_string()
                     )),
-                    Arc::new(Expr::Constant(5.0))
+                    Arc::new(Expr::new_constant(5.0))
                 )
             ))
         );
@@ -2632,7 +2632,7 @@ mod tests {
                     Arc::new(Expr::Variable(
                         "x".to_string()
                     )),
-                    Arc::new(Expr::Constant(5.0))
+                    Arc::new(Expr::new_constant(5.0))
                 )
             ))
         );
@@ -2650,7 +2650,7 @@ mod tests {
                     Arc::new(Expr::Variable(
                         "x".to_string()
                     )),
-                    Arc::new(Expr::Constant(5.0))
+                    Arc::new(Expr::new_constant(5.0))
                 )
             ))
         );
@@ -2668,7 +2668,7 @@ mod tests {
                     Arc::new(Expr::Variable(
                         "x".to_string()
                     )),
-                    Arc::new(Expr::Constant(5.0))
+                    Arc::new(Expr::new_constant(5.0))
                 )
             ))
         );
@@ -2703,7 +2703,7 @@ mod tests {
                     Arc::new(Expr::Variable(
                         "y".to_string()
                     )),
-                    Arc::new(Expr::Constant(1.0))
+                    Arc::new(Expr::new_constant(1.0))
                 )))
             ))
         );
@@ -2721,7 +2721,7 @@ mod tests {
                     Arc::new(Expr::Variable(
                         "x".to_string()
                     )),
-                    Arc::new(Expr::Constant(2.0))
+                    Arc::new(Expr::new_constant(2.0))
                 )
             ))
         );
@@ -3385,7 +3385,7 @@ mod tests {
             Ok((
                 "",
                 Expr::Floor(Arc::new(
-                    Expr::Constant(
+                    Expr::new_constant(
                         3.14
                     )
                 ))
@@ -3403,7 +3403,7 @@ mod tests {
                 "",
                 Expr::IsPrime(
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             7.0
                         )
                     )
@@ -3422,12 +3422,12 @@ mod tests {
                 "",
                 Expr::Gcd(
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             12.0
                         )
                     ),
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             18.0
                         )
                     )
@@ -3446,12 +3446,12 @@ mod tests {
                 "",
                 Expr::Mod(
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             10.0
                         )
                     ),
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             3.0
                         )
                     )
@@ -3471,9 +3471,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Vector(vec![
-                    Expr::Constant(1.0),
-                    Expr::Constant(2.0),
-                    Expr::Constant(3.0),
+                    Expr::new_constant(1.0),
+                    Expr::new_constant(2.0),
+                    Expr::new_constant(3.0),
                 ])
             ))
         );
@@ -3489,12 +3489,12 @@ mod tests {
                 "",
                 Expr::Complex(
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             1.0
                         )
                     ),
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0
                         )
                     )
@@ -3569,7 +3569,7 @@ mod tests {
                         )],
                     }),
                     "x".to_string(),
-                    Arc::new(Expr::Constant(2.0))
+                    Arc::new(Expr::new_constant(2.0))
                 )
             ))
         );
@@ -3616,8 +3616,8 @@ mod tests {
                         )],
                     }),
                     "x".to_string(),
-                    Arc::new(Expr::Constant(0.0)),
-                    Arc::new(Expr::Constant(3.0)),
+                    Arc::new(Expr::new_constant(0.0)),
+                    Arc::new(Expr::new_constant(3.0)),
                 )
             ))
         );
@@ -3636,7 +3636,7 @@ mod tests {
                         "i".to_string()
                     )),
                     "i".to_string(),
-                    Arc::new(Expr::Constant(1.0)),
+                    Arc::new(Expr::new_constant(1.0)),
                     Arc::new(Expr::Variable(
                         "N".to_string()
                     )),
@@ -3657,7 +3657,7 @@ mod tests {
                 Expr::ConvergenceAnalysis(
                     Arc::new(Expr::Sum {
                         body : Arc::new(Expr::Div(
-                            Arc::new(Expr::Constant(1.0)),
+                            Arc::new(Expr::new_constant(1.0)),
                             Arc::new(Expr::Variable(
                                 "n".to_string()
                             )),
@@ -3665,7 +3665,7 @@ mod tests {
                         var : Arc::new(Expr::Variable(
                             "n".to_string()
                         )),
-                        from : Arc::new(Expr::Constant(1.0)),
+                        from : Arc::new(Expr::new_constant(1.0)),
                         to : Arc::new(Expr::Variable(
                             "inf".to_string()
                         )),
@@ -3810,7 +3810,7 @@ mod tests {
                 "",
                 Expr::QuantityWithValue(
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             10.0
                         )
                     ),
@@ -3831,7 +3831,7 @@ mod tests {
             Ok((
                 "",
                 Expr::Tuple(vec![
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                     Expr::Variable(
                         "x".to_string()
                     ),
@@ -3938,11 +3938,11 @@ mod tests {
                                 Arc::new(Expr::Variable(
                                     "x".to_string()
                                 )),
-                                Arc::new(Expr::Constant(2.0)),
+                                Arc::new(Expr::new_constant(2.0)),
                             )),
-                            Arc::new(Expr::Constant(4.0)),
+                            Arc::new(Expr::new_constant(4.0)),
                         )),
-                        Arc::new(Expr::Constant(0.0)),
+                        Arc::new(Expr::new_constant(0.0)),
                     )),
                     "x".to_string(),
                 )
@@ -3964,7 +3964,7 @@ mod tests {
                         Arc::new(Expr::Variable(
                             "t".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0)),
+                        Arc::new(Expr::new_constant(2.0)),
                     )),
                     y : Arc::new(Expr::Variable(
                         "t".to_string()
@@ -4013,9 +4013,9 @@ mod tests {
                             Arc::new(Expr::Variable(
                                 "x".to_string()
                             )),
-                            Arc::new(Expr::Constant(2.0)),
+                            Arc::new(Expr::new_constant(2.0)),
                         )),
-                        Arc::new(Expr::Constant(1.0)),
+                        Arc::new(Expr::new_constant(1.0)),
                     )),
                     index : 1,
                 }
@@ -4036,10 +4036,10 @@ mod tests {
                         Arc::new(Expr::Variable(
                             "x".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0)),
+                        Arc::new(Expr::new_constant(2.0)),
                     )),
                     "x".to_string(),
-                    Arc::new(Expr::Constant(2.0)),
+                    Arc::new(Expr::new_constant(2.0)),
                 )
             ))
         );
@@ -4058,12 +4058,12 @@ mod tests {
                 Expr::Path(
                     PathType::Line,
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             0.0
                         )
                     ),
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             1.0
                         )
                     )
@@ -4125,7 +4125,7 @@ mod tests {
                                 args : vec![],
                             }),
                         )),
-                        Arc::new(Expr::Constant(0.0)),
+                        Arc::new(Expr::new_constant(0.0)),
                     )),
                     func : "u".to_string(),
                     vars : vec![
@@ -4156,7 +4156,7 @@ mod tests {
                                 "y".to_string()
                             )),
                         )),
-                        Arc::new(Expr::Constant(0.0)),
+                        Arc::new(Expr::new_constant(0.0)),
                     )),
                     func : "y".to_string(),
                     var : "x".to_string(),
@@ -4182,8 +4182,8 @@ mod tests {
                         )],
                     }),
                     "x".to_string(),
-                    Arc::new(Expr::Constant(0.0)),
-                    Arc::new(Expr::Constant(3.0)),
+                    Arc::new(Expr::new_constant(0.0)),
+                    Arc::new(Expr::new_constant(3.0)),
                 )
             ))
         );
@@ -4202,7 +4202,7 @@ mod tests {
                         "i".to_string()
                     )),
                     "i".to_string(),
-                    Arc::new(Expr::Constant(1.0)),
+                    Arc::new(Expr::new_constant(1.0)),
                     Arc::new(Expr::Variable(
                         "N".to_string()
                     )),
@@ -4224,13 +4224,13 @@ mod tests {
                         Arc::new(Expr::Variable(
                             "i".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0)),
+                        Arc::new(Expr::new_constant(2.0)),
                     )),
                     var : Arc::new(Expr::Variable(
                         "i".to_string()
                     )),
-                    from : Arc::new(Expr::Constant(1.0)),
-                    to : Arc::new(Expr::Constant(10.0)),
+                    from : Arc::new(Expr::new_constant(1.0)),
+                    to : Arc::new(Expr::new_constant(10.0)),
                 }
             ))
         );
@@ -4274,13 +4274,13 @@ mod tests {
                         Arc::new(Expr::Variable(
                             "x".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0)),
+                        Arc::new(Expr::new_constant(2.0)),
                     )),
                     var : Arc::new(Expr::Variable(
                         "x".to_string()
                     )),
-                    lower_bound : Arc::new(Expr::Constant(0.0)),
-                    upper_bound : Arc::new(Expr::Constant(1.0)),
+                    lower_bound : Arc::new(Expr::new_constant(0.0)),
+                    upper_bound : Arc::new(Expr::new_constant(1.0)),
                 }
             ))
         );
@@ -4302,7 +4302,7 @@ mod tests {
                         )],
                     }),
                     "x".to_string(),
-                    Arc::new(Expr::Constant(0.0))
+                    Arc::new(Expr::new_constant(0.0))
                 )
             ))
         );
@@ -4321,7 +4321,7 @@ mod tests {
                         Arc::new(Expr::Variable(
                             "x".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0))
+                        Arc::new(Expr::new_constant(2.0))
                     )),
                     "x".to_string()
                 )
@@ -4342,18 +4342,18 @@ mod tests {
                 "",
                 Expr::Matrix(vec![
                     vec![
-                        Expr::Constant(
+                        Expr::new_constant(
                             1.0
                         ),
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0
                         )
                     ],
                     vec![
-                        Expr::Constant(
+                        Expr::new_constant(
                             3.0
                         ),
-                        Expr::Constant(
+                        Expr::new_constant(
                             4.0
                         )
                     ],
@@ -4396,9 +4396,9 @@ mod tests {
         > = Ok((
             "",
             Expr::Polynomial(vec![
-                Expr::Constant(1.0),
-                Expr::Constant(2.0),
-                Expr::Constant(3.0),
+                Expr::new_constant(1.0),
+                Expr::new_constant(2.0),
+                Expr::new_constant(3.0),
             ]),
         ));
 
@@ -4411,9 +4411,9 @@ mod tests {
             Ok((
                 "",
                 Expr::Polynomial(vec![
-                    Expr::Constant(1.0),
-                    Expr::Constant(2.0),
-                    Expr::Constant(3.0),
+                    Expr::new_constant(1.0),
+                    Expr::new_constant(2.0),
+                    Expr::new_constant(3.0),
                 ])
             ))
         );
@@ -4427,9 +4427,9 @@ mod tests {
         let expected_tuple = (
             "",
             Expr::Polynomial(vec![
-                Expr::Constant(1.0),
-                Expr::Constant(2.0),
-                Expr::Constant(3.0),
+                Expr::new_constant(1.0),
+                Expr::new_constant(2.0),
+                Expr::new_constant(3.0),
             ]),
         );
 
@@ -4550,12 +4550,12 @@ mod tests {
                 "",
                 Expr::Interval(
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             0.0
                         )
                     ),
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             1.0
                         )
                     ),
@@ -4758,7 +4758,7 @@ mod tests {
                     Arc::new(Expr::Variable(
                         "x".to_string()
                     )),
-                    Arc::new(Expr::Constant(1.0))
+                    Arc::new(Expr::new_constant(1.0))
                 )))
             ))
         );
@@ -4876,12 +4876,12 @@ mod tests {
                 "",
                 Expr::LogBase(
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0
                         )
                     ),
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             8.0
                         )
                     )
@@ -4923,7 +4923,7 @@ mod tests {
                         Arc::new(Expr::Variable(
                             "x".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0))
+                        Arc::new(Expr::new_constant(2.0))
                     )
                 ))
             ))

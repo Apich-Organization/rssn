@@ -7,21 +7,21 @@ use rssn::symbolic::vector::Vector;
 fn test_crystal_lattice_volume() {
 
     let a1 = Vector::new(
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let a2 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
     );
 
     let a3 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let lattice =
@@ -31,7 +31,7 @@ fn test_crystal_lattice_volume() {
 
     assert_eq!(
         vol,
-        Expr::Constant(1.0)
+        Expr::new_constant(1.0)
     );
 }
 
@@ -40,21 +40,21 @@ fn test_crystal_lattice_volume() {
 fn test_reciprocal_lattice_vectors() {
 
     let a1 = Vector::new(
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let a2 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
     );
 
     let a3 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let lattice =
@@ -247,14 +247,14 @@ fn test_bloch_theorem() {
 
     let k = Vector::new(
         Expr::new_variable("k_x"),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let r = Vector::new(
         Expr::new_variable("x"),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let u = Expr::new_variable("u");

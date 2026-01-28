@@ -122,6 +122,6 @@ fn test_maxwell_relation() {
 
     assert_eq!(
         diff,
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     );
 }

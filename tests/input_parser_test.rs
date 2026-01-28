@@ -14,7 +14,7 @@ fn test_parse_number() {
         parse_expr("123.45"),
         Ok((
             "",
-            Expr::Constant(123.45)
+            Expr::new_constant(123.45)
         ))
     );
 }
@@ -49,7 +49,7 @@ fn test_parse_addition() {
                     )
                 ),
                 Arc::new(
-                    Expr::Constant(2.0)
+                    Expr::new_constant(2.0)
                 )
             )
         ))
@@ -71,7 +71,7 @@ fn test_parse_subtraction() {
                     )
                 ),
                 Arc::new(
-                    Expr::Constant(
+                    Expr::new_constant(
                         3.14
                     )
                 )
@@ -119,7 +119,7 @@ fn test_parse_division() {
                     )
                 ),
                 Arc::new(
-                    Expr::Constant(2.5)
+                    Expr::new_constant(2.5)
                 )
             )
         ))
@@ -171,7 +171,7 @@ fn test_parse_complex_expression() {
                             Arc::new(Expr::Variable(
                                 "z".to_string()
                             )),
-                            Arc::new(Expr::Constant(1.0))
+                            Arc::new(Expr::new_constant(1.0))
                         ))
                     ))
                 )
@@ -229,7 +229,7 @@ fn test_parse_bigint() {
     }
 
     let expected = Expr::Neg(Arc::new(
-        Expr::BigInt(BigInt::from(456)),
+        Expr::new_bigint(BigInt::from(456)),
     ));
 
     let aa = parse_expr("123");
@@ -239,11 +239,11 @@ fn test_parse_bigint() {
     print_type_of(&aa.unwrap().1);
 
     let bb =
-        Expr::BigInt(BigInt::from(123));
+        Expr::new_bigint(BigInt::from(123));
 
     print_type_of(&bb);
 
-    print_type_of(&Expr::BigInt(
+    print_type_of(&Expr::new_bigint(
         BigInt::from(123),
     ));
 
@@ -253,7 +253,7 @@ fn test_parse_bigint() {
         .1;
 
     let right =
-        Expr::BigInt(BigInt::from(123));
+        Expr::new_bigint(BigInt::from(123));
 
     println!("{:#?}", left);
 
@@ -265,7 +265,7 @@ fn test_parse_bigint() {
                 "Parse Expr failed."
             )
             .1,
-        Expr::BigInt(BigInt::from(123))
+        Expr::new_bigint(BigInt::from(123))
     );
 
     assert_eq!(
@@ -284,10 +284,10 @@ fn test_parse_rational() {
 
     let expected =
         Expr::Neg(Arc::new(Expr::Div(
-            Arc::new(Expr::BigInt(
+            Arc::new(Expr::new_bigint(
                 BigInt::from(3),
             )),
-            Arc::new(Expr::BigInt(
+            Arc::new(Expr::new_bigint(
                 BigInt::from(4),
             )),
         )));
@@ -296,7 +296,7 @@ fn test_parse_rational() {
         parse_expr("1/2"),
         Ok((
             "",
-            Expr::Rational(
+            Expr::new_rational(
                 BigRational::new(
                     BigInt::from(1),
                     BigInt::from(2)
@@ -308,7 +308,7 @@ fn test_parse_rational() {
     //     parse_expr("-3/4"),
     //     Ok((
     //         "",
-    //         Expr::Rational(BigRational::new(BigInt::from(-3), BigInt::from(4)))
+    //         Expr::new_rational(BigRational::new(BigInt::from(-3), BigInt::from(4)))
     //         //expected
     //     ))
     // );
@@ -373,7 +373,7 @@ fn test_parse_eq() {
                     )
                 ),
                 Arc::new(
-                    Expr::Constant(5.0)
+                    Expr::new_constant(5.0)
                 )
             )
         ))
@@ -395,7 +395,7 @@ fn test_parse_lt() {
                     )
                 ),
                 Arc::new(
-                    Expr::Constant(5.0)
+                    Expr::new_constant(5.0)
                 )
             )
         ))
@@ -417,7 +417,7 @@ fn test_parse_gt() {
                     )
                 ),
                 Arc::new(
-                    Expr::Constant(5.0)
+                    Expr::new_constant(5.0)
                 )
             )
         ))
@@ -439,7 +439,7 @@ fn test_parse_le() {
                     )
                 ),
                 Arc::new(
-                    Expr::Constant(5.0)
+                    Expr::new_constant(5.0)
                 )
             )
         ))
@@ -461,7 +461,7 @@ fn test_parse_ge() {
                     )
                 ),
                 Arc::new(
-                    Expr::Constant(5.0)
+                    Expr::new_constant(5.0)
                 )
             )
         ))
@@ -497,7 +497,7 @@ fn test_parse_cos() {
                     Arc::new(Expr::Variable(
                         "y".to_string()
                     )),
-                    Arc::new(Expr::Constant(1.0))
+                    Arc::new(Expr::new_constant(1.0))
                 )))
             ))
         );
@@ -518,7 +518,7 @@ fn test_parse_power() {
                     )
                 ),
                 Arc::new(
-                    Expr::Constant(2.0)
+                    Expr::new_constant(2.0)
                 )
             )
         ))
@@ -1229,7 +1229,7 @@ fn test_parse_floor() {
         Ok((
             "",
             Expr::Floor(Arc::new(
-                Expr::Constant(3.14)
+                Expr::new_constant(3.14)
             ))
         ))
     );
@@ -1244,7 +1244,7 @@ fn test_parse_is_prime() {
         Ok((
             "",
             Expr::IsPrime(Arc::new(
-                Expr::Constant(7.0)
+                Expr::new_constant(7.0)
             ))
         ))
     );
@@ -1260,12 +1260,12 @@ fn test_parse_gcd() {
             "",
             Expr::Gcd(
                 Arc::new(
-                    Expr::Constant(
+                    Expr::new_constant(
                         12.0
                     )
                 ),
                 Arc::new(
-                    Expr::Constant(
+                    Expr::new_constant(
                         18.0
                     )
                 )
@@ -1284,12 +1284,12 @@ fn test_parse_mod() {
             "",
             Expr::Mod(
                 Arc::new(
-                    Expr::Constant(
+                    Expr::new_constant(
                         10.0
                     )
                 ),
                 Arc::new(
-                    Expr::Constant(3.0)
+                    Expr::new_constant(3.0)
                 )
             )
         ))
@@ -1305,9 +1305,9 @@ fn test_parse_vector() {
         Ok((
             "",
             Expr::Vector(vec![
-                Expr::Constant(1.0),
-                Expr::Constant(2.0),
-                Expr::Constant(3.0),
+                Expr::new_constant(1.0),
+                Expr::new_constant(2.0),
+                Expr::new_constant(3.0),
             ])
         ))
     );
@@ -1323,10 +1323,10 @@ fn test_parse_complex() {
             "",
             Expr::Complex(
                 Arc::new(
-                    Expr::Constant(1.0)
+                    Expr::new_constant(1.0)
                 ),
                 Arc::new(
-                    Expr::Constant(2.0)
+                    Expr::new_constant(2.0)
                 )
             )
         ))
@@ -1407,7 +1407,7 @@ fn test_parse_derivative_n() {
                         )],
                     }),
                     "x".to_string(),
-                    Arc::new(Expr::Constant(2.0))
+                    Arc::new(Expr::new_constant(2.0))
                 )
             ))
         );
@@ -1500,8 +1500,8 @@ fn test_parse_series() {
                         )],
                     }),
                     "x".to_string(),
-                    Arc::new(Expr::Constant(0.0)),
-                    Arc::new(Expr::Constant(3.0)),
+                    Arc::new(Expr::new_constant(0.0)),
+                    Arc::new(Expr::new_constant(3.0)),
                 )
             ))
         );
@@ -1525,7 +1525,7 @@ fn test_parse_summation() {
                 ),
                 "i".to_string(),
                 Arc::new(
-                    Expr::Constant(1.0)
+                    Expr::new_constant(1.0)
                 ),
                 Arc::new(
                     Expr::Variable(
@@ -1548,7 +1548,7 @@ fn test_parse_convergence_analysis() {
                 Expr::ConvergenceAnalysis(
                     Arc::new(Expr::Sum {
                         body : Arc::new(Expr::Div(
-                            Arc::new(Expr::Constant(1.0)),
+                            Arc::new(Expr::new_constant(1.0)),
                             Arc::new(Expr::Variable(
                                 "n".to_string()
                             )),
@@ -1556,7 +1556,7 @@ fn test_parse_convergence_analysis() {
                         var : Arc::new(Expr::Variable(
                             "n".to_string()
                         )),
-                        from : Arc::new(Expr::Constant(1.0)),
+                        from : Arc::new(Expr::new_constant(1.0)),
                         to : Arc::new(Expr::Variable(
                             "inf".to_string()
                         )),
@@ -1708,7 +1708,7 @@ fn test_parse_quantity_with_value() {
             "",
             Expr::QuantityWithValue(
                 Arc::new(
-                    Expr::Constant(
+                    Expr::new_constant(
                         10.0
                     )
                 ),
@@ -1727,7 +1727,7 @@ fn test_parse_tuple() {
         Ok((
             "",
             Expr::Tuple(vec![
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
                 Expr::Variable(
                     "x".to_string()
                 ),
@@ -1826,11 +1826,11 @@ fn test_parse_solve() {
                                 Arc::new(Expr::Variable(
                                     "x".to_string()
                                 )),
-                                Arc::new(Expr::Constant(2.0)),
+                                Arc::new(Expr::new_constant(2.0)),
                             )),
-                            Arc::new(Expr::Constant(4.0)),
+                            Arc::new(Expr::new_constant(4.0)),
                         )),
-                        Arc::new(Expr::Constant(0.0)),
+                        Arc::new(Expr::new_constant(0.0)),
                     )),
                     "x".to_string(),
                 )
@@ -1851,7 +1851,7 @@ fn test_parse_parametric_solution() {
                         Arc::new(Expr::Variable(
                             "t".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0)),
+                        Arc::new(Expr::new_constant(2.0)),
                     )),
                     y : Arc::new(Expr::Variable(
                         "t".to_string()
@@ -1898,9 +1898,9 @@ fn test_parse_root_of() {
                             Arc::new(Expr::Variable(
                                 "x".to_string()
                             )),
-                            Arc::new(Expr::Constant(2.0)),
+                            Arc::new(Expr::new_constant(2.0)),
                         )),
-                        Arc::new(Expr::Constant(1.0)),
+                        Arc::new(Expr::new_constant(1.0)),
                     )),
                     index : 1,
                 }
@@ -1921,10 +1921,10 @@ fn test_parse_substitute() {
                         Arc::new(Expr::Variable(
                             "x".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0)),
+                        Arc::new(Expr::new_constant(2.0)),
                     )),
                     "x".to_string(),
-                    Arc::new(Expr::Constant(2.0)),
+                    Arc::new(Expr::new_constant(2.0)),
                 )
             ))
         );
@@ -1941,10 +1941,10 @@ fn test_parse_path() {
             Expr::Path(
                 PathType::Line,
                 Arc::new(
-                    Expr::Constant(0.0)
+                    Expr::new_constant(0.0)
                 ),
                 Arc::new(
-                    Expr::Constant(1.0)
+                    Expr::new_constant(1.0)
                 )
             )
         ))
@@ -2008,7 +2008,7 @@ fn test_parse_pde() {
                     },
                 ),
             )),
-            Arc::new(Expr::Constant(
+            Arc::new(Expr::new_constant(
                 0.0,
             )),
         )),
@@ -2057,7 +2057,7 @@ fn test_parse_pde() {
                                 args : vec![],
                             }),
                         )),
-                        Arc::new(Expr::Constant(0.0)),
+                        Arc::new(Expr::new_constant(0.0)),
                     )),
                     func : "u".to_string(),
                     vars : vec![
@@ -2087,7 +2087,7 @@ fn test_parse_ode() {
                                 "y".to_string()
                             )),
                         )),
-                        Arc::new(Expr::Constant(0.0)),
+                        Arc::new(Expr::new_constant(0.0)),
                     )),
                     func : "y".to_string(),
                     var : "x".to_string(),
@@ -2112,8 +2112,8 @@ fn test_parse_asymptotic_expansion() {
                         )],
                     }),
                     "x".to_string(),
-                    Arc::new(Expr::Constant(0.0)),
-                    Arc::new(Expr::Constant(3.0)),
+                    Arc::new(Expr::new_constant(0.0)),
+                    Arc::new(Expr::new_constant(3.0)),
                 )
             ))
         );
@@ -2137,7 +2137,7 @@ fn test_parse_product() {
                 ),
                 "i".to_string(),
                 Arc::new(
-                    Expr::Constant(1.0)
+                    Expr::new_constant(1.0)
                 ),
                 Arc::new(
                     Expr::Variable(
@@ -2162,13 +2162,13 @@ fn test_parse_sum() {
                         Arc::new(Expr::Variable(
                             "i".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0)),
+                        Arc::new(Expr::new_constant(2.0)),
                     )),
                     var : Arc::new(Expr::Variable(
                         "i".to_string()
                     )),
-                    from : Arc::new(Expr::Constant(1.0)),
-                    to : Arc::new(Expr::Constant(10.0)),
+                    from : Arc::new(Expr::new_constant(1.0)),
+                    to : Arc::new(Expr::new_constant(10.0)),
                 }
             ))
         );
@@ -2212,13 +2212,13 @@ fn test_parse_integral() {
                         Arc::new(Expr::Variable(
                             "x".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0)),
+                        Arc::new(Expr::new_constant(2.0)),
                     )),
                     var : Arc::new(Expr::Variable(
                         "x".to_string()
                     )),
-                    lower_bound : Arc::new(Expr::Constant(0.0)),
-                    upper_bound : Arc::new(Expr::Constant(1.0)),
+                    lower_bound : Arc::new(Expr::new_constant(0.0)),
+                    upper_bound : Arc::new(Expr::new_constant(1.0)),
                 }
             ))
         );
@@ -2240,7 +2240,7 @@ fn test_parse_limit() {
                         )],
                     }),
                     "x".to_string(),
-                    Arc::new(Expr::Constant(0.0))
+                    Arc::new(Expr::new_constant(0.0))
                 )
             ))
         );
@@ -2259,7 +2259,7 @@ fn test_parse_derivative() {
                         Arc::new(Expr::Variable(
                             "x".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0))
+                        Arc::new(Expr::new_constant(2.0))
                     )),
                     "x".to_string()
                 )
@@ -2279,12 +2279,12 @@ fn test_parse_matrix() {
             "",
             Expr::Matrix(vec![
                 vec![
-                    Expr::Constant(1.0),
-                    Expr::Constant(2.0)
+                    Expr::new_constant(1.0),
+                    Expr::new_constant(2.0)
                 ],
                 vec![
-                    Expr::Constant(3.0),
-                    Expr::Constant(4.0)
+                    Expr::new_constant(3.0),
+                    Expr::new_constant(4.0)
                 ],
             ])
         ))
@@ -2331,9 +2331,9 @@ fn test_parse_polynomial() {
     > = Ok((
         "",
         Expr::Polynomial(vec![
-            Expr::Constant(1.0),
-            Expr::Constant(2.0),
-            Expr::Constant(3.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(2.0),
+            Expr::new_constant(3.0),
         ]),
     ));
 
@@ -2346,9 +2346,9 @@ fn test_parse_polynomial() {
         Ok((
             "",
             Expr::Polynomial(vec![
-                Expr::Constant(1.0),
-                Expr::Constant(2.0),
-                Expr::Constant(3.0),
+                Expr::new_constant(1.0),
+                Expr::new_constant(2.0),
+                Expr::new_constant(3.0),
             ])
         ))
     );
@@ -2361,9 +2361,9 @@ fn test_parse_polynomial_unwrapped() {
     let expected_tuple = (
         "",
         Expr::Polynomial(vec![
-            Expr::Constant(1.0),
-            Expr::Constant(2.0),
-            Expr::Constant(3.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(2.0),
+            Expr::new_constant(3.0),
         ]),
     );
 
@@ -2484,10 +2484,10 @@ fn test_parse_interval() {
             "",
             Expr::Interval(
                 Arc::new(
-                    Expr::Constant(0.0)
+                    Expr::new_constant(0.0)
                 ),
                 Arc::new(
-                    Expr::Constant(1.0)
+                    Expr::new_constant(1.0)
                 ),
                 true,
                 false
@@ -2708,7 +2708,7 @@ fn test_parse_factorial() {
                     Arc::new(Expr::Variable(
                         "x".to_string()
                     )),
-                    Arc::new(Expr::Constant(1.0))
+                    Arc::new(Expr::new_constant(1.0))
                 )))
             ))
         );
@@ -2848,10 +2848,10 @@ fn test_parse_log_base() {
             "",
             Expr::LogBase(
                 Arc::new(
-                    Expr::Constant(2.0)
+                    Expr::new_constant(2.0)
                 ),
                 Arc::new(
-                    Expr::Constant(8.0)
+                    Expr::new_constant(8.0)
                 )
             )
         ))
@@ -2895,7 +2895,7 @@ fn test_parse_power_and_negation() {
                         Arc::new(Expr::Variable(
                             "x".to_string()
                         )),
-                        Arc::new(Expr::Constant(2.0))
+                        Arc::new(Expr::new_constant(2.0))
                     )
                 ))
             ))

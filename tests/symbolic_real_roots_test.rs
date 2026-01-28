@@ -7,7 +7,7 @@ fn create_poly_expr(
     var: &str,
 ) -> Expr {
 
-    let mut expr = Expr::Constant(0.0);
+    let mut expr = Expr::new_constant(0.0);
 
     let x =
         Expr::Variable(var.to_string());
@@ -20,10 +20,10 @@ fn create_poly_expr(
         if *coeff != 0.0 {
 
             let term = Expr::new_mul(
-                Expr::Constant(*coeff),
+                Expr::new_constant(*coeff),
                 Expr::new_pow(
                     x.clone(),
-                    Expr::Constant(
+                    Expr::new_constant(
                         i as f64,
                     ),
                 ),
@@ -49,9 +49,9 @@ fn test_sturm_sequence_simple() {
     let expr = Expr::new_sub(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let poly = expr_to_sparse_poly(
@@ -85,9 +85,9 @@ fn test_count_real_roots() {
     let expr = Expr::new_sub(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let poly = expr_to_sparse_poly(
@@ -143,9 +143,9 @@ fn test_isolate_real_roots() {
     let expr = Expr::new_sub(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let poly = expr_to_sparse_poly(
@@ -188,7 +188,7 @@ fn test_multiple_roots() {
     let expr = Expr::new_sub(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(3.0),
+            Expr::new_constant(3.0),
         ),
         x.clone(),
     );

@@ -25,7 +25,7 @@ fn test_simplify_dag_consistency() {
 
     // (2*x) - (2*x) -> 0
     let two_x = Expr::new_mul(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
         x.clone(),
     );
 
@@ -46,8 +46,8 @@ fn test_simplify_dag_consistency() {
         |expr: &Expr| -> bool {
 
             match expr {
-            | Expr::Constant(c) => c.abs() < 1e-9,
-            | Expr::BigInt(n) => n.is_zero(),
+            | Expr::new_constant(c) => c.abs() < 1e-9,
+            | Expr::new_bigint(n) => n.is_zero(),
             | Expr::Dag(node) => {
                 match &node.op {
                     | rssn::symbolic::core::DagOp::Constant(c) => c.abs() < 1e-9,

@@ -12,9 +12,9 @@ fn evaluate_expr(
 ) -> Option<f64> {
 
     match expr {
-        | Expr::Constant(v) => Some(*v),
-        | Expr::BigInt(v) => v.to_f64(),
-        | Expr::Rational(v) => {
+        | Expr::new_constant(v) => Some(*v),
+        | Expr::new_bigint(v) => v.to_f64(),
+        | Expr::new_rational(v) => {
             v.to_f64()
         },
         | Expr::Sqrt(a) => {
@@ -193,9 +193,9 @@ fn assert_approx_eq(
 fn test_mean() {
 
     let data = vec![
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(3.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(3.0),
     ];
 
     let m = mean(&data);
@@ -208,9 +208,9 @@ fn test_mean() {
 fn test_variance() {
 
     let data = vec![
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(3.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(3.0),
     ];
 
     let v = variance(&data);
@@ -223,9 +223,9 @@ fn test_variance() {
 fn test_std_dev() {
 
     let data = vec![
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(3.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(3.0),
     ];
 
     let s = std_dev(&data);
@@ -241,15 +241,15 @@ fn test_std_dev() {
 fn test_covariance_correlation() {
 
     let data1 = vec![
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(3.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(3.0),
     ];
 
     let data2 = vec![
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(3.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(3.0),
     ];
 
     // Perfect correlation

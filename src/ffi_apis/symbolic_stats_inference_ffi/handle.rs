@@ -105,7 +105,7 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
         let target =
             if target_mean.is_null() {
 
-                Expr::Constant(0.0)
+                Expr::new_constant(0.0)
             } else {
 
                 (*target_mean).clone()
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
         // Return Tuple(statistic, p_value_formula, df)
         let df = result
             .degrees_of_freedom
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 0.0,
             )); // 0 if None
         Box::into_raw(Box::new(
@@ -178,7 +178,7 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
         let diff = if mu_diff.is_null()
         {
 
-            Expr::Constant(0.0)
+            Expr::new_constant(0.0)
         } else {
 
             (*mu_diff).clone()
@@ -192,7 +192,7 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
 
         let df = result
             .degrees_of_freedom
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 0.0,
             ));
 
@@ -251,7 +251,7 @@ pub unsafe extern "C" fn rssn_z_test(
         let target =
             if target_mean.is_null() {
 
-                Expr::Constant(0.0)
+                Expr::new_constant(0.0)
             } else {
 
                 (*target_mean).clone()

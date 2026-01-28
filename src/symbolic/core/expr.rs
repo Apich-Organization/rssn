@@ -12,6 +12,7 @@ use num_rational::BigRational;
 
 use super::dag_mgr::DagNode;
 use crate::symbolic::unit_unification::UnitQuantity;
+use crate::symbolic::core::Number;
 
 // --- Distribution Trait ---
 // Moved here to break circular dependency
@@ -142,11 +143,11 @@ pub struct SparsePolynomial {
 pub enum Expr {
     // --- Basic & Numeric Types ---
     /// A floating-point constant (64-bit).
-    Constant(f64),
+    Constant(Number),
     /// An arbitrary-precision integer.
-    BigInt(BigInt),
+    BigInt(Number),
     /// An arbitrary-precision rational number.
-    Rational(BigRational),
+    Rational(Number),
     /// A boolean value (`true` or `false`).
     Boolean(bool),
     /// A symbolic variable, represented by a string name.

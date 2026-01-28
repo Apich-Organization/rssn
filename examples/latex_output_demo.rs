@@ -55,7 +55,7 @@ fn main() {
                 ),
             ),
             lower_bound: Arc::new(
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
             ),
             upper_bound: Arc::new(
                 Expr::Pi,

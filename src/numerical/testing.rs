@@ -184,7 +184,7 @@ pub fn extract_polynomial_coeffs(
         expr,
         var,
         &mut coeffs_map,
-        &Expr::BigInt(BigInt::one()),
+        &Expr::new_bigint(BigInt::one()),
     )?;
 
     if coeffs_map.is_empty() {
@@ -205,7 +205,7 @@ pub fn extract_polynomial_coeffs(
         .unwrap_or(&0);
 
     let mut coeffs = vec![
-        Expr::BigInt(
+        Expr::new_bigint(
             BigInt::zero()
         );
         max_degree
@@ -239,16 +239,16 @@ pub(crate) fn eval_as_constant(
                 var,
             )
         },
-        | Expr::Constant(c) => {
-            Some(Expr::Constant(*c))
+        | Expr::new_constant(c) => {
+            Some(Expr::new_constant(*c))
         },
-        | Expr::BigInt(i) => {
-            Some(Expr::BigInt(
+        | Expr::new_bigint(i) => {
+            Some(Expr::new_bigint(
                 i.clone(),
             ))
         },
-        | Expr::Rational(r) => {
-            Some(Expr::Rational(
+        | Expr::new_rational(r) => {
+            Some(Expr::new_rational(
                 r.clone(),
             ))
         },
@@ -335,18 +335,18 @@ pub(crate) fn collect_coeffs(
 ) -> Option<()> {
 
     match expr {
-        | Expr::Constant(_)
-        | Expr::BigInt(_)
-        | Expr::Rational(_) => {
+        | Expr::new_constant(_)
+        | Expr::new_bigint(_)
+        | Expr::new_rational(_) => {
 
             *coeffs
                 .entry(0)
-                .or_insert(Expr::BigInt(
+                .or_insert(Expr::new_bigint(
                     BigInt::zero(),
                 )) = simplify(&Expr::new_add(
                 coeffs
                     .get(&0)
-                    .unwrap_or(&Expr::BigInt(
+                    .unwrap_or(&Expr::new_bigint(
                         BigInt::zero(),
                     ))
                     .clone(),
@@ -364,12 +364,12 @@ pub(crate) fn collect_coeffs(
 
             *coeffs
                 .entry(1)
-                .or_insert(Expr::BigInt(
+                .or_insert(Expr::new_bigint(
                     BigInt::zero(),
                 )) = simplify(&Expr::new_add(
                 coeffs
                     .get(&1)
-                    .unwrap_or(&Expr::BigInt(
+                    .unwrap_or(&Expr::new_bigint(
                         BigInt::zero(),
                     ))
                     .clone(),
@@ -424,7 +424,7 @@ pub(crate) fn collect_coeffs(
                     r,
                     var,
                     &mut term_coeffs,
-                    &Expr::BigInt(
+                    &Expr::new_bigint(
                         BigInt::one(),
                     ),
                 )?;
@@ -435,12 +435,12 @@ pub(crate) fn collect_coeffs(
 
                     *coeffs
                         .entry(deg)
-                        .or_insert(Expr::BigInt(
+                        .or_insert(Expr::new_bigint(
                             BigInt::zero(),
                         )) = simplify(&Expr::new_add(
                         coeffs
                             .get(&deg)
-                            .unwrap_or(&Expr::BigInt(
+                            .unwrap_or(&Expr::new_bigint(
                                 BigInt::zero(),
                             ))
                             .clone(),
@@ -459,7 +459,7 @@ pub(crate) fn collect_coeffs(
                     l,
                     var,
                     &mut term_coeffs,
-                    &Expr::BigInt(
+                    &Expr::new_bigint(
                         BigInt::one(),
                     ),
                 )?;
@@ -470,12 +470,12 @@ pub(crate) fn collect_coeffs(
 
                     *coeffs
                         .entry(deg)
-                        .or_insert(Expr::BigInt(
+                        .or_insert(Expr::new_bigint(
                             BigInt::zero(),
                         )) = simplify(&Expr::new_add(
                         coeffs
                             .get(&deg)
-                            .unwrap_or(&Expr::BigInt(
+                            .unwrap_or(&Expr::new_bigint(
                                 BigInt::zero(),
                             ))
                             .clone(),
@@ -493,7 +493,7 @@ pub(crate) fn collect_coeffs(
 
             if let (
                 Expr::Variable(v),
-                Expr::Constant(p),
+                Expr::new_constant(p),
             ) = (&**b, &**e)
             {
 
@@ -504,12 +504,12 @@ pub(crate) fn collect_coeffs(
                     let p_u32: u32 = (*p as i64).try_into().unwrap_or(0);
                     *coeffs
                         .entry(p_u32)
-                        .or_insert(Expr::BigInt(
+                        .or_insert(Expr::new_bigint(
                             BigInt::zero(),
                         )) = simplify(&Expr::new_add(
                         coeffs
                             .get(&p_u32)
-                            .unwrap_or(&Expr::BigInt(
+                            .unwrap_or(&Expr::new_bigint(
                                 BigInt::zero(),
                             ))
                             .clone(),
@@ -599,12 +599,12 @@ pub(crate) fn solve_quadratic(
         simplify(&Expr::new_sub(
             Expr::new_pow(
                 c1.clone(),
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::from(2),
                 ),
             ),
             Expr::new_mul(
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::from(4),
                 ),
                 Expr::new_mul(
@@ -620,7 +620,7 @@ pub(crate) fn solve_quadratic(
 
         if d_val >= 0.0 {
 
-            let sqrt_d = Expr::Constant(
+            let sqrt_d = Expr::new_constant(
                 d_val.sqrt(),
             );
 
@@ -648,7 +648,7 @@ pub(crate) fn solve_quadratic(
             ]
         } else {
 
-            let sqrt_d = Expr::Constant(
+            let sqrt_d = Expr::new_constant(
                 (-d_val).sqrt(),
             );
 
@@ -841,14 +841,14 @@ pub(crate) fn solve_polynomial_numerical(
         .map(|r| {
             if r.im.abs() < 1e-9 {
 
-                Expr::Constant(r.re)
+                Expr::new_constant(r.re)
             } else {
 
                 Expr::new_complex(
-                    Expr::Constant(
+                    Expr::new_constant(
                         r.re,
                     ),
-                    Expr::Constant(
+                    Expr::new_constant(
                         r.im,
                     ),
                 )
@@ -893,9 +893,9 @@ pub(crate) fn evaluate_expr(
                 val,
             )
         },
-        | Expr::Constant(c) => Some(*c),
-        | Expr::BigInt(i) => i.to_f64(),
-        | Expr::Rational(r) => {
+        | Expr::new_constant(c) => Some(*c),
+        | Expr::new_bigint(i) => i.to_f64(),
+        | Expr::new_rational(r) => {
             r.to_f64()
         },
         | Expr::Variable(v)
@@ -1026,7 +1026,7 @@ pub fn solve_transcendental_numerical(
     /// * `var` - The variable `x` to solve for.
     ///
     /// # Returns
-    /// A `Vec<Expr>` containing the numerical solution as `Expr::Constant`,
+    /// A `Vec<Expr>` containing the numerical solution as `Expr::new_constant`,
     /// or `Expr::Solve` if no convergence or symbolic issues.
     let derivative = differentiate(
         &expr.clone(),
@@ -1098,7 +1098,7 @@ pub fn solve_transcendental_numerical(
         if (x1 - x0).abs() < 1e-9 {
 
             return vec![
-                Expr::Constant(x1),
+                Expr::new_constant(x1),
             ];
         }
 
@@ -1125,9 +1125,9 @@ pub(crate) fn evaluate_expr_with_vars(
                 var_values,
             )
         },
-        | Expr::Constant(c) => Some(*c),
-        | Expr::BigInt(i) => i.to_f64(),
-        | Expr::Rational(r) => r.to_f64(),
+        | Expr::new_constant(c) => Some(*c),
+        | Expr::new_bigint(i) => i.to_f64(),
+        | Expr::new_rational(r) => r.to_f64(),
         | Expr::Variable(v) => {
             var_values
                 .get(v)
@@ -1379,7 +1379,7 @@ pub fn solve_linear_system_symbolic(
         let pivot_expr =
             matrix[i][i].clone();
 
-        if let Expr::Constant(val) =
+        if let Expr::new_constant(val) =
             simplify(
                 &pivot_expr.clone(),
             )
@@ -1520,7 +1520,7 @@ pub fn solve_system(
         for &var_name in vars {
 
             row_exprs.push(
-                Expr::Constant(
+                Expr::new_constant(
                     *current_row_coeffs
                         .get(var_name)
                         .unwrap_or(
@@ -1533,7 +1533,7 @@ pub fn solve_system(
         symbolic_matrix[i] = row_exprs;
 
         symbolic_rhs.push(
-            Expr::Constant(
+            Expr::new_constant(
                 -current_constant,
             ),
         );
@@ -1732,7 +1732,7 @@ pub fn solve_nonlinear_system_numerical(
         {
 
             result_solution.push(
-                Expr::Constant(*val),
+                Expr::new_constant(*val),
             );
         } else {
 

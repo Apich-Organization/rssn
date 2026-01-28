@@ -6,7 +6,7 @@ use rssn::symbolic::radicals::simplify_radicals;
 fn is_one(expr: &Expr) -> bool {
 
     match expr {
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
             (c - 1.0).abs()
                 < f64::EPSILON
         },
@@ -25,7 +25,7 @@ fn is_sqrt_k(
     match expr {
         | Expr::Sqrt(inner) => {
             match inner.as_ref() {
-                | Expr::Constant(c) => {
+                | Expr::new_constant(c) => {
                     (c - k).abs()
                         < f64::EPSILON
                 },
@@ -48,7 +48,7 @@ fn is_neg_sqrt_k(
         | Expr::Mul(a, b) => {
 
             // Check for -1 * sqrt(k)
-            if let Expr::Constant(c) =
+            if let Expr::new_constant(c) =
                 a.as_ref()
             {
 
@@ -62,7 +62,7 @@ fn is_neg_sqrt_k(
                 }
             }
 
-            if let Expr::Constant(c) =
+            if let Expr::new_constant(c) =
                 b.as_ref()
             {
 

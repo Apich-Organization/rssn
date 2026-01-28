@@ -188,7 +188,7 @@ pub fn christoffel_symbols(
                 r.iter()
                     .map(|&v| {
 
-                        Expr::Constant(
+                        Expr::new_constant(
                             v,
                         )
                     })
@@ -215,10 +215,10 @@ pub fn christoffel_symbols(
 
                 for j in 0 .. dim {
 
-                    if let Expr::Constant(v) = rows[i][j] {
+                    if let Expr::new_constant(v) = rows[i][j] {
 
                     mat[i][j] = v;
-                } else if let Expr::BigInt(b) = &rows[i][j] {
+                } else if let Expr::new_bigint(b) = &rows[i][j] {
 
                     mat[i][j] = b
                         .to_f64()
@@ -614,7 +614,7 @@ pub(crate) fn invert_mat_num(
                 r.iter()
                     .map(|&v| {
 
-                        Expr::Constant(
+                        Expr::new_constant(
                             v,
                         )
                     })
@@ -637,8 +637,8 @@ pub(crate) fn invert_mat_num(
             for j in 0 .. dim {
 
                 match &rows[i][j] {
-                    | Expr::Constant(v) => res[i][j] = *v,
-                    | Expr::BigInt(b) => {
+                    | Expr::new_constant(v) => res[i][j] = *v,
+                    | Expr::new_bigint(b) => {
                         res[i][j] = b
                             .to_f64()
                             .unwrap_or(0.0);
@@ -740,7 +740,7 @@ pub fn ricci_scalar(
                 r.iter()
                     .map(|&v| {
 
-                        Expr::Constant(
+                        Expr::new_constant(
                             v,
                         )
                     })
@@ -762,7 +762,7 @@ pub fn ricci_scalar(
 
             for nu in 0 .. dim {
 
-                let g_inv_val = if let Expr::Constant(v) = rows[mu][nu] {
+                let g_inv_val = if let Expr::new_constant(v) = rows[mu][nu] {
 
                     v
                 } else {

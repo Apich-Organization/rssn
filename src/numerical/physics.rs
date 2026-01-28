@@ -273,7 +273,7 @@ pub fn simulate_particle_motion(
     let (fx_expr, fy_expr, fz_expr) =
         force_exprs;
 
-    let m_expr = Expr::Constant(mass);
+    let m_expr = Expr::new_constant(mass);
 
     let ode_funcs: Vec<Expr> = vec![
         Expr::Variable(

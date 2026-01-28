@@ -12,7 +12,7 @@ fn test_find_extrema_1d() {
 
     let f = Expr::new_pow(
         x.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let extrema =
@@ -53,11 +53,11 @@ fn test_find_extrema_2d_min() {
     let f = Expr::new_add(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         Expr::new_pow(
             y.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
@@ -102,11 +102,11 @@ fn test_find_extrema_2d_saddle() {
     let f = Expr::new_sub(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         Expr::new_pow(
             y.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
@@ -151,11 +151,11 @@ fn test_hessian_matrix() {
     let f = Expr::new_add(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         Expr::new_pow(
             y.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 

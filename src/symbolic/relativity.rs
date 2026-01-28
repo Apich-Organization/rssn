@@ -25,12 +25,12 @@ pub fn lorentz_factor(
 
     let v_sq = Expr::new_pow(
         velocity.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let c_sq = Expr::new_pow(
         c,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let beta_sq =
@@ -38,10 +38,10 @@ pub fn lorentz_factor(
 
     Expr::new_pow(
         Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             beta_sq,
         ),
-        Expr::Constant(-0.5),
+        Expr::new_constant(-0.5),
     )
 }
 
@@ -64,7 +64,7 @@ pub fn lorentz_transformation_x(
 
     let c_sq = Expr::new_pow(
         c,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let x_prime = Expr::new_mul(
@@ -109,7 +109,7 @@ pub fn velocity_addition(
 
     let c_sq = Expr::new_pow(
         c,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let numerator = Expr::new_add(
@@ -118,7 +118,7 @@ pub fn velocity_addition(
     );
 
     let denominator = Expr::new_add(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         Expr::new_div(
             Expr::new_mul(
                 v.clone(),
@@ -145,7 +145,7 @@ pub fn mass_energy_equivalence(
 
     let c_sq = Expr::new_pow(
         c,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     Expr::new_mul(mass.clone(), c_sq)
@@ -188,11 +188,11 @@ pub fn doppler_effect(
 
     let ratio = Expr::new_div(
         Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             beta.clone(),
         ),
         Expr::new_add(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             beta,
         ),
     );
@@ -201,7 +201,7 @@ pub fn doppler_effect(
         f_src.clone(),
         Expr::new_pow(
             ratio,
-            Expr::Constant(0.5),
+            Expr::new_constant(0.5),
         ),
     )
 }
@@ -219,12 +219,12 @@ pub fn schwarzschild_radius(
 
     let c_sq = Expr::new_pow(
         c,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     Expr::new_div(
         Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             Expr::new_mul(
                 g,
                 mass.clone(),
@@ -255,10 +255,10 @@ pub fn gravitational_time_dilation(
         t_far.clone(),
         Expr::new_pow(
             Expr::new_sub(
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
                 ratio,
             ),
-            Expr::Constant(0.5),
+            Expr::new_constant(0.5),
         ),
     )
 }
@@ -277,7 +277,7 @@ pub fn einstein_tensor(
     Expr::new_sub(
         ricci_tensor.clone(),
         Expr::new_mul(
-            Expr::Constant(0.5),
+            Expr::new_constant(0.5),
             Expr::new_mul(
                 scalar_curvature
                     .clone(),

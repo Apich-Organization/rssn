@@ -220,7 +220,7 @@ mod dag_migration_tests {
     fn test_ast_to_dag_conversion() {
         let ast = Expr::Add(
             Arc::new(Expr::Variable("x".to_string())),
-            Arc::new(Expr::Constant(1.0))
+            Arc::new(Expr::new_constant(1.0))
         );
         let dag = ast.to_dag().unwrap();
         assert!(dag.is_dag());
@@ -230,7 +230,7 @@ mod dag_migration_tests {
     fn test_dag_serialization() {
         let expr = Expr::new_add(
             Expr::new_variable("x"),
-            Expr::Constant(1.0)
+            Expr::new_constant(1.0)
         );
         let json = serde_json::to_string(&expr).unwrap();
         let deserialized: Expr = serde_json::from_str(&json).unwrap();

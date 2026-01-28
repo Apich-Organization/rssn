@@ -53,15 +53,15 @@
 //! use rssn::symbolic::special_functions::gamma;
 //!
 //! // Γ(5) = 4! = 24
-//! let g = gamma(&Expr::Constant(5.0));
+//! let g = gamma(&Expr::new_constant(5.0));
 //!
 //! assert_eq!(
 //!     g,
-//!     Expr::Constant(24.0)
+//!     Expr::new_constant(24.0)
 //! );
 //!
 //! // Γ(0.5) = √π
-//! let g_half = gamma(&Expr::Constant(0.5));
+//! let g_half = gamma(&Expr::new_constant(0.5));
 //! // Returns Expr::Sqrt(Expr::Pi)
 //! ```
 //!
@@ -74,24 +74,24 @@
 //!
 //! // P₀(x) = 1
 //! let p0 = legendre_p(
-//!     &Expr::Constant(0.0),
+//!     &Expr::new_constant(0.0),
 //!     Expr::Variable("x".to_string()),
 //! );
 //!
 //! assert_eq!(
 //!     p0,
-//!     Expr::Constant(1.0)
+//!     Expr::new_constant(1.0)
 //! );
 //!
 //! // H₀(x) = 1, H₁(x) = 2x
 //! let h0 = hermite_h(
-//!     &Expr::Constant(0.0),
+//!     &Expr::new_constant(0.0),
 //!     Expr::Variable("x".to_string()),
 //! );
 //!
 //! assert_eq!(
 //!     h0,
-//!     Expr::Constant(1.0)
+//!     Expr::new_constant(1.0)
 //! );
 //! ```
 
@@ -126,11 +126,11 @@ use crate::symbolic::simplify_dag::simplify;
 /// use rssn::symbolic::special_functions::gamma;
 ///
 /// // Γ(5) = 4! = 24
-/// let g = gamma(&Expr::Constant(5.0));
+/// let g = gamma(&Expr::new_constant(5.0));
 ///
 /// assert_eq!(
 ///     g,
-///     Expr::Constant(24.0)
+///     Expr::new_constant(24.0)
 /// );
 /// ```
 #[must_use]
@@ -143,7 +143,7 @@ pub fn gamma(arg: &Expr) -> Expr {
 
         if n > 0.0 && n.fract() == 0.0 {
 
-            return Expr::Constant(
+            return Expr::new_constant(
                 factorial(
                     ((n - 1.0) as i64)
                         .try_into()
@@ -160,14 +160,14 @@ pub fn gamma(arg: &Expr) -> Expr {
         }
     }
 
-    if s_arg == Expr::Constant(1.0) {
+    if s_arg == Expr::new_constant(1.0) {
 
-        return Expr::Constant(1.0);
+        return Expr::new_constant(1.0);
     }
 
     if let Expr::Add(a, b) = &s_arg {
 
-        if **b == Expr::Constant(1.0) {
+        if **b == Expr::new_constant(1.0) {
 
             return simplify(
                 &Expr::new_mul(
@@ -180,7 +180,7 @@ pub fn gamma(arg: &Expr) -> Expr {
             );
         }
 
-        if **a == Expr::Constant(1.0) {
+        if **a == Expr::new_constant(1.0) {
 
             return simplify(
                 &Expr::new_mul(
@@ -214,11 +214,11 @@ pub fn ln_gamma(arg: &Expr) -> Expr {
     let g = gamma(arg);
 
     // If gamma simplified to a constant, compute the log
-    if let Expr::Constant(v) = &g {
+    if let Expr::new_constant(v) = &g {
 
         if *v > 0.0 {
 
-            return Expr::Constant(
+            return Expr::new_constant(
                 v.ln(),
             );
         }
@@ -247,13 +247,13 @@ pub fn ln_gamma(arg: &Expr) -> Expr {
 ///
 /// // B(1, 1) = 1
 /// let b = beta(
-///     Expr::Constant(1.0),
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// assert_eq!(
 ///     b,
-///     Expr::Constant(1.0)
+///     Expr::new_constant(1.0)
 /// );
 /// ```
 #[must_use]
@@ -306,7 +306,7 @@ pub fn digamma(arg: &Expr) -> Expr {
 
     if let Expr::Add(a, b) = &s_arg {
 
-        if **b == Expr::Constant(1.0) {
+        if **b == Expr::new_constant(1.0) {
 
             return simplify(
                 &Expr::new_add(
@@ -315,7 +315,7 @@ pub fn digamma(arg: &Expr) -> Expr {
                             .clone(),
                     ),
                     Expr::new_div(
-                        Expr::Constant(
+                        Expr::new_constant(
                             1.0,
                         ),
                         a.clone(),
@@ -324,7 +324,7 @@ pub fn digamma(arg: &Expr) -> Expr {
             );
         }
 
-        if **a == Expr::Constant(1.0) {
+        if **a == Expr::new_constant(1.0) {
 
             return simplify(
                 &Expr::new_add(
@@ -333,7 +333,7 @@ pub fn digamma(arg: &Expr) -> Expr {
                             .clone(),
                     ),
                     Expr::new_div(
-                        Expr::Constant(
+                        Expr::new_constant(
                             1.0,
                         ),
                         b.clone(),
@@ -410,11 +410,11 @@ pub fn polygamma(
 /// use rssn::symbolic::special_functions::erf;
 ///
 /// // erf(0) = 0
-/// let e = erf(&Expr::Constant(0.0));
+/// let e = erf(&Expr::new_constant(0.0));
 ///
 /// assert_eq!(
 ///     e,
-///     Expr::Constant(0.0)
+///     Expr::new_constant(0.0)
 /// );
 /// ```
 #[must_use]
@@ -425,7 +425,7 @@ pub fn erf(arg: &Expr) -> Expr {
 
     if is_zero(&s_arg) {
 
-        return Expr::Constant(0.0);
+        return Expr::new_constant(0.0);
     }
 
     if let Expr::Neg(inner) = s_arg {
@@ -452,7 +452,7 @@ pub fn erf(arg: &Expr) -> Expr {
 pub fn erfc(arg: &Expr) -> Expr {
 
     simplify(&Expr::new_sub(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         erf(arg),
     ))
 }
@@ -471,8 +471,8 @@ pub fn erfc(arg: &Expr) -> Expr {
 pub fn erfi(arg: Expr) -> Expr {
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     simplify(&Expr::new_mul(
@@ -506,11 +506,11 @@ pub fn erfi(arg: Expr) -> Expr {
 /// use rssn::symbolic::special_functions::zeta;
 ///
 /// // ζ(0) = -1/2
-/// let z0 = zeta(&Expr::Constant(0.0));
+/// let z0 = zeta(&Expr::new_constant(0.0));
 ///
 /// assert_eq!(
 ///     z0,
-///     Expr::Constant(-0.5)
+///     Expr::new_constant(-0.5)
 /// );
 /// ```
 #[must_use]
@@ -527,7 +527,7 @@ pub fn zeta(arg: &Expr) -> Expr {
 
             if n_int == 0 {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     -0.5,
                 );
             }
@@ -542,9 +542,9 @@ pub fn zeta(arg: &Expr) -> Expr {
                 return simplify(&Expr::new_div(
                     Expr::new_pow(
                         Expr::Pi,
-                        Expr::Constant(2.0),
+                        Expr::new_constant(2.0),
                     ),
-                    Expr::Constant(6.0),
+                    Expr::new_constant(6.0),
                 ));
             }
 
@@ -553,9 +553,9 @@ pub fn zeta(arg: &Expr) -> Expr {
                 return simplify(&Expr::new_div(
                     Expr::new_pow(
                         Expr::Pi,
-                        Expr::Constant(4.0),
+                        Expr::new_constant(4.0),
                     ),
-                    Expr::Constant(90.0),
+                    Expr::new_constant(90.0),
                 ));
             }
 
@@ -563,7 +563,7 @@ pub fn zeta(arg: &Expr) -> Expr {
                 && n_int % 2 == 0
             {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     0.0,
                 );
             }
@@ -598,13 +598,13 @@ pub fn zeta(arg: &Expr) -> Expr {
 ///
 /// // J_0(0) = 1
 /// let j0 = bessel_j(
-///     &Expr::Constant(0.0),
-///     &Expr::Constant(0.0),
+///     &Expr::new_constant(0.0),
+///     &Expr::new_constant(0.0),
 /// );
 ///
 /// assert_eq!(
 ///     j0,
-///     Expr::Constant(1.0)
+///     Expr::new_constant(1.0)
 /// );
 /// ```
 #[must_use]
@@ -626,14 +626,14 @@ pub fn bessel_j(
 
             if n == 0.0 {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     1.0,
                 );
             }
 
             if n > 0.0 {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     0.0,
                 );
             }
@@ -652,10 +652,10 @@ pub fn bessel_j(
 
                 let factor =
                     Expr::new_pow(
-                        Expr::Constant(
+                        Expr::new_constant(
                             -1.0,
                         ),
-                        Expr::Constant(
+                        Expr::new_constant(
                             n,
                         ),
                     );
@@ -740,14 +740,14 @@ pub fn bessel_i(
 
             if n == 0.0 {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     1.0,
                 );
             }
 
             if n > 0.0 {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     0.0,
                 );
             }
@@ -821,13 +821,13 @@ pub fn bessel_k(
 ///
 /// // P_0(x) = 1
 /// let p0 = legendre_p(
-///     &Expr::Constant(0.0),
+///     &Expr::new_constant(0.0),
 ///     Expr::Variable("x".to_string()),
 /// );
 ///
 /// assert_eq!(
 ///     p0,
-///     Expr::Constant(1.0)
+///     Expr::new_constant(1.0)
 /// );
 /// ```
 #[must_use]
@@ -848,7 +848,7 @@ pub fn legendre_p(
 
             if n_int == 0 {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     1.0,
                 );
             }
@@ -862,7 +862,7 @@ pub fn legendre_p(
             if n_int <= 10 {
 
                 let p_n = legendre_p(
-                    &Expr::Constant(
+                    &Expr::new_constant(
                         n - 1.0,
                     ),
                     arg.clone(),
@@ -870,20 +870,20 @@ pub fn legendre_p(
 
                 let p_n_minus_1 =
                     legendre_p(
-                        &Expr::Constant(
+                        &Expr::new_constant(
                             n - 2.0,
                         ),
                         arg.clone(),
                     );
 
                 let term1 = Expr::new_mul(
-                    Expr::Constant(2.0f64.mul_add(n, -1.0)),
+                    Expr::new_constant(2.0f64.mul_add(n, -1.0)),
                     Expr::new_mul(arg, p_n),
                 );
 
                 let term2 =
                     Expr::new_mul(
-                        Expr::Constant(
+                        Expr::new_constant(
                             n - 1.0,
                         ),
                         p_n_minus_1,
@@ -895,7 +895,7 @@ pub fn legendre_p(
                             term1,
                             term2,
                         ),
-                        Expr::Constant(
+                        Expr::new_constant(
                             n,
                         ),
                     ),
@@ -937,7 +937,7 @@ pub fn laguerre_l(
 
             if n_int == 0 {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     1.0,
                 );
             }
@@ -946,7 +946,7 @@ pub fn laguerre_l(
 
                 return simplify(
                     &Expr::new_sub(
-                        Expr::Constant(
+                        Expr::new_constant(
                             1.0,
                         ),
                         arg,
@@ -958,7 +958,7 @@ pub fn laguerre_l(
             if n_int <= 10 {
 
                 let l_n = laguerre_l(
-                    &Expr::Constant(
+                    &Expr::new_constant(
                         n - 1.0,
                     ),
                     arg.clone(),
@@ -966,14 +966,14 @@ pub fn laguerre_l(
 
                 let l_n_minus_1 =
                     laguerre_l(
-                        &Expr::Constant(
+                        &Expr::new_constant(
                             n - 2.0,
                         ),
                         arg.clone(),
                     );
 
                 let term1_factor = simplify(&Expr::new_sub(
-                    Expr::Constant(2.0f64.mul_add(n, -1.0)),
+                    Expr::new_constant(2.0f64.mul_add(n, -1.0)),
                     arg,
                 ));
 
@@ -985,7 +985,7 @@ pub fn laguerre_l(
 
                 let term2 =
                     Expr::new_mul(
-                        Expr::Constant(
+                        Expr::new_constant(
                             n - 1.0,
                         ),
                         l_n_minus_1,
@@ -997,7 +997,7 @@ pub fn laguerre_l(
                             term1,
                             term2,
                         ),
-                        Expr::Constant(
+                        Expr::new_constant(
                             n,
                         ),
                     ),
@@ -1051,7 +1051,7 @@ pub fn generalized_laguerre(
 
         if n_val.abs() < 1e-9 {
 
-            return Expr::Constant(1.0);
+            return Expr::new_constant(1.0);
         }
     }
 
@@ -1084,13 +1084,13 @@ pub fn generalized_laguerre(
 ///
 /// // H_0(x) = 1
 /// let h0 = hermite_h(
-///     &Expr::Constant(0.0),
+///     &Expr::new_constant(0.0),
 ///     Expr::Variable("x".to_string()),
 /// );
 ///
 /// assert_eq!(
 ///     h0,
-///     Expr::Constant(1.0)
+///     Expr::new_constant(1.0)
 /// );
 /// ```
 #[must_use]
@@ -1111,7 +1111,7 @@ pub fn hermite_h(
 
             if n_int == 0 {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     1.0,
                 );
             }
@@ -1120,7 +1120,7 @@ pub fn hermite_h(
 
                 return simplify(
                     &Expr::new_mul(
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0,
                         ),
                         arg,
@@ -1132,7 +1132,7 @@ pub fn hermite_h(
             if n_int <= 10 {
 
                 let h_n = hermite_h(
-                    &Expr::Constant(
+                    &Expr::new_constant(
                         n - 1.0,
                     ),
                     arg.clone(),
@@ -1140,7 +1140,7 @@ pub fn hermite_h(
 
                 let h_n_minus_1 =
                     hermite_h(
-                        &Expr::Constant(
+                        &Expr::new_constant(
                             n - 2.0,
                         ),
                         arg.clone(),
@@ -1148,7 +1148,7 @@ pub fn hermite_h(
 
                 let term1 =
                     Expr::new_mul(
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0,
                         ),
                         Expr::new_mul(
@@ -1158,7 +1158,7 @@ pub fn hermite_h(
 
                 let term2 =
                     Expr::new_mul(
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0 * (n
                                 - 1.0),
                         ),
@@ -1197,13 +1197,13 @@ pub fn hermite_h(
 ///
 /// // T_0(x) = 1, T_1(x) = x
 /// let t0 = chebyshev_t(
-///     &Expr::Constant(0.0),
+///     &Expr::new_constant(0.0),
 ///     &Expr::Variable("x".to_string()),
 /// );
 ///
 /// assert_eq!(
 ///     t0,
-///     Expr::Constant(1.0)
+///     Expr::new_constant(1.0)
 /// );
 /// ```
 #[must_use]
@@ -1227,7 +1227,7 @@ pub fn chebyshev_t(
 
             if n_int == 0 {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     1.0,
                 );
             }
@@ -1241,14 +1241,14 @@ pub fn chebyshev_t(
             if n_int <= 10 {
 
                 let t_n1 = chebyshev_t(
-                    &Expr::Constant(
+                    &Expr::new_constant(
                         n_val - 1.0,
                     ),
                     &s_x,
                 );
 
                 let t_n2 = chebyshev_t(
-                    &Expr::Constant(
+                    &Expr::new_constant(
                         n_val - 2.0,
                     ),
                     &s_x,
@@ -1256,7 +1256,7 @@ pub fn chebyshev_t(
 
                 return simplify(&Expr::new_sub(
                     Expr::new_mul(
-                        Expr::Constant(2.0),
+                        Expr::new_constant(2.0),
                         Expr::new_mul(s_x, t_n1),
                     ),
                     t_n2,
@@ -1304,7 +1304,7 @@ pub fn chebyshev_u(
 
             if n_int == 0 {
 
-                return Expr::Constant(
+                return Expr::new_constant(
                     1.0,
                 );
             }
@@ -1313,7 +1313,7 @@ pub fn chebyshev_u(
 
                 return simplify(
                     &Expr::new_mul(
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0,
                         ),
                         s_x,
@@ -1325,14 +1325,14 @@ pub fn chebyshev_u(
             if n_int <= 10 {
 
                 let u_n1 = chebyshev_u(
-                    &Expr::Constant(
+                    &Expr::new_constant(
                         n_val - 1.0,
                     ),
                     &s_x,
                 );
 
                 let u_n2 = chebyshev_u(
-                    &Expr::Constant(
+                    &Expr::new_constant(
                         n_val - 2.0,
                     ),
                     &s_x,
@@ -1340,7 +1340,7 @@ pub fn chebyshev_u(
 
                 return simplify(&Expr::new_sub(
                     Expr::new_mul(
-                        Expr::Constant(2.0),
+                        Expr::new_constant(2.0),
                         Expr::new_mul(s_x, u_n1),
                     ),
                     u_n2,
@@ -1390,7 +1390,7 @@ pub fn bessel_differential_equation(
     let term1 = Expr::new_mul(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         y_double_prime,
     );
@@ -1404,11 +1404,11 @@ pub fn bessel_differential_equation(
         Expr::new_sub(
             Expr::new_pow(
                 x.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
             Expr::new_pow(
                 n.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
         y.clone(),
@@ -1419,7 +1419,7 @@ pub fn bessel_differential_equation(
             term1,
             Expr::new_add(term2, term3),
         )),
-        Arc::new(Expr::Constant(0.0)),
+        Arc::new(Expr::new_constant(0.0)),
     )
 }
 
@@ -1450,17 +1450,17 @@ pub fn legendre_differential_equation(
 
     let term1 = Expr::new_mul(
         Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             Expr::new_pow(
                 x.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
         y_double_prime,
     );
 
     let term2 = Expr::new_mul(
-        Expr::Constant(-2.0),
+        Expr::new_constant(-2.0),
         Expr::new_mul(
             x.clone(),
             y_prime,
@@ -1472,7 +1472,7 @@ pub fn legendre_differential_equation(
             n.clone(),
             Expr::new_add(
                 n.clone(),
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
             ),
         ),
         y.clone(),
@@ -1483,7 +1483,7 @@ pub fn legendre_differential_equation(
             term1,
             Expr::new_add(term2, term3),
         )),
-        Arc::new(Expr::Constant(0.0)),
+        Arc::new(Expr::new_constant(0.0)),
     )
 }
 
@@ -1505,7 +1505,7 @@ pub fn legendre_rodrigues_formula(
     x: &Expr,
 ) -> Expr {
 
-    let n_f64 = if let Expr::Constant(
+    let n_f64 = if let Expr::new_constant(
         val,
     ) = n
     {
@@ -1519,7 +1519,7 @@ pub fn legendre_rodrigues_formula(
         );
     };
 
-    let n_factorial = Expr::Constant(
+    let n_factorial = Expr::new_constant(
         if n_f64 >= 0.0 {
 
             factorial(
@@ -1540,10 +1540,10 @@ pub fn legendre_rodrigues_formula(
         )),
         Arc::new(Expr::new_mul(
             Expr::new_div(
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
                 Expr::new_mul(
                     Expr::new_pow(
-                        Expr::Constant(2.0),
+                        Expr::new_constant(2.0),
                         n.clone(),
                     ),
                     n_factorial,
@@ -1554,9 +1554,9 @@ pub fn legendre_rodrigues_formula(
                     Expr::new_sub(
                         Expr::new_pow(
                             x.clone(),
-                            Expr::Constant(2.0),
+                            Expr::new_constant(2.0),
                         ),
-                        Expr::Constant(1.0),
+                        Expr::new_constant(1.0),
                     ),
                     n.clone(),
                 )),
@@ -1599,7 +1599,7 @@ pub fn laguerre_differential_equation(
 
     let term2 = Expr::new_mul(
         Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             x.clone(),
         ),
         y_prime,
@@ -1615,7 +1615,7 @@ pub fn laguerre_differential_equation(
             term1,
             Expr::new_add(term2, term3),
         )),
-        Arc::new(Expr::Constant(0.0)),
+        Arc::new(Expr::new_constant(0.0)),
     )
 }
 
@@ -1647,7 +1647,7 @@ pub fn hermite_differential_equation(
     let term1 = y_double_prime;
 
     let term2 = Expr::new_mul(
-        Expr::Constant(-2.0),
+        Expr::new_constant(-2.0),
         Expr::new_mul(
             x.clone(),
             y_prime,
@@ -1656,7 +1656,7 @@ pub fn hermite_differential_equation(
 
     let term3 = Expr::new_mul(
         Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             n.clone(),
         ),
         y.clone(),
@@ -1667,7 +1667,7 @@ pub fn hermite_differential_equation(
             term1,
             Expr::new_add(term2, term3),
         )),
-        Arc::new(Expr::Constant(0.0)),
+        Arc::new(Expr::new_constant(0.0)),
     )
 }
 
@@ -1696,19 +1696,19 @@ pub fn hermite_rodrigues_formula(
         )),
         Arc::new(Expr::new_mul(
             Expr::new_pow(
-                Expr::Constant(-1.0),
+                Expr::new_constant(-1.0),
                 n.clone(),
             ),
             Expr::new_mul(
                 Expr::new_exp(Expr::new_pow(
                     x.clone(),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 )),
                 Expr::DerivativeN(
                     Arc::new(Expr::new_exp(
                         Expr::new_neg(Expr::new_pow(
                             x.clone(),
-                            Expr::Constant(2.0),
+                            Expr::new_constant(2.0),
                         )),
                     )),
                     "x".to_string(),
@@ -1745,10 +1745,10 @@ pub fn chebyshev_differential_equation(
 
     let term1 = Expr::new_mul(
         Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             Expr::new_pow(
                 x.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
         y_double_prime,
@@ -1763,7 +1763,7 @@ pub fn chebyshev_differential_equation(
     let term3 = Expr::new_mul(
         Expr::new_pow(
             n.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         y.clone(),
     );
@@ -1773,6 +1773,6 @@ pub fn chebyshev_differential_equation(
             term1,
             Expr::new_add(term2, term3),
         )),
-        Arc::new(Expr::Constant(0.0)),
+        Arc::new(Expr::new_constant(0.0)),
     )
 }

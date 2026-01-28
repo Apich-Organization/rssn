@@ -23,12 +23,12 @@ fn test_add_poly() {
 
     terms1.insert(
         Monomial(mono_x),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     terms1.insert(
         Monomial(BTreeMap::new()),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let mut terms2 = BTreeMap::new();
@@ -39,12 +39,12 @@ fn test_add_poly() {
 
     terms2.insert(
         Monomial(mono_x2),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     terms2.insert(
         Monomial(BTreeMap::new()),
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     let p1 = SparsePolynomial {
@@ -77,12 +77,12 @@ fn test_mul_poly() {
 
     terms1.insert(
         Monomial(mono_x),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     terms1.insert(
         Monomial(BTreeMap::new()),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let mut terms2 = BTreeMap::new();
@@ -93,12 +93,12 @@ fn test_mul_poly() {
 
     terms2.insert(
         Monomial(mono_x2),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     terms2.insert(
         Monomial(BTreeMap::new()),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let p1 = SparsePolynomial {
@@ -131,7 +131,7 @@ fn test_differentiate_poly() {
 
     terms.insert(
         Monomial(mono_x3),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let mut mono_x2 = BTreeMap::new();
@@ -140,7 +140,7 @@ fn test_differentiate_poly() {
 
     terms.insert(
         Monomial(mono_x2),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let mut mono_x = BTreeMap::new();
@@ -149,7 +149,7 @@ fn test_differentiate_poly() {
 
     terms.insert(
         Monomial(mono_x),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let poly = SparsePolynomial {
@@ -278,7 +278,7 @@ fn test_leading_coefficient() {
     // Leading coefficient should be close to 5
     // The result might be in DAG form, so we check the value
     match lc {
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
 
             assert!(
                 (c - 5.0).abs() < 1e-10
@@ -289,7 +289,7 @@ fn test_leading_coefficient() {
             // If it's a DAG, convert and check
             match lc.to_ast() {
                 | Ok(
-                    Expr::Constant(c),
+                    Expr::new_constant(c),
                 ) => {
 
                     assert!(
@@ -388,9 +388,9 @@ fn test_from_coeffs_to_expr() {
 
     // [1, 2, 3] should give 1 + 2x + 3x^2
     let coeffs = vec![
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(3.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(3.0),
     ];
 
     let expr = from_coeffs_to_expr(
@@ -445,7 +445,7 @@ fn test_sparse_poly_degree() {
 
     terms.insert(
         Monomial(mono_x3),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let poly = SparsePolynomial {
@@ -507,14 +507,14 @@ fn test_poly_mul_scalar() {
 
     terms.insert(
         Monomial(mono_x),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let poly = SparsePolynomial {
         terms,
     };
 
-    let scalar = Expr::Constant(3.0);
+    let scalar = Expr::new_constant(3.0);
 
     let result = poly_mul_scalar_expr(
         &poly,

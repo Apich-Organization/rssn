@@ -441,12 +441,12 @@ mod tests {
 
         let expr = Expr::Matrix(vec![
             vec![
-                Expr::Constant(1.0),
-                Expr::Constant(2.0),
+                Expr::new_constant(1.0),
+                Expr::new_constant(2.0),
             ],
             vec![
-                Expr::Constant(3.0),
-                Expr::Constant(4.0),
+                Expr::new_constant(3.0),
+                Expr::new_constant(4.0),
             ],
         ]);
 
@@ -706,7 +706,7 @@ pub fn load_csv_as_expr<
             row.iter()
                 .map(|&v| {
 
-                    Expr::Constant(v)
+                    Expr::new_constant(v)
                 })
                 .collect(),
         );
@@ -808,7 +808,7 @@ pub fn load_json_as_expr<
             row.iter()
                 .map(|&v| {
 
-                    Expr::Constant(v)
+                    Expr::new_constant(v)
                 })
                 .collect(),
         );
@@ -848,7 +848,7 @@ pub fn load_npy_as_expr<
         for val in row {
 
             expr_row.push(
-                Expr::Constant(*val),
+                Expr::new_constant(*val),
             );
         }
 

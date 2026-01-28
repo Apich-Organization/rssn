@@ -410,7 +410,7 @@ impl ComputeEngine {
     ///
     /// let engine = ComputeEngine::new();
     ///
-    /// let expr = Arc::new(Expr::Constant(42.0));
+    /// let expr = Arc::new(Expr::new_constant(42.0));
     ///
     /// let id = engine.submit(expr);
     ///

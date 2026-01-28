@@ -711,14 +711,14 @@ pub fn solve_linear_system_gauss(
 
         let mut matrix_a = vec![
             vec![
-                    Expr::Constant(0.0);
+                    Expr::new_constant(0.0);
                     n
                 ];
             n
         ];
 
         let mut vector_b = vec![
-                Expr::Constant(0.0);
+                Expr::new_constant(0.0);
                 n
             ];
 
@@ -1285,10 +1285,10 @@ pub(crate) fn solve_quadratic(
         simplify(&Expr::new_sub(
             Expr::new_pow(
                 b.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
             Expr::new_mul(
-                Expr::Constant(4.0),
+                Expr::new_constant(4.0),
                 Expr::new_mul(
                     a.clone(),
                     c.clone(),
@@ -1302,7 +1302,7 @@ pub(crate) fn solve_quadratic(
 
     let two_a =
         simplify(&Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             a.clone(),
         ));
 
@@ -1357,9 +1357,9 @@ pub(crate) fn solve_cubic(
         Expr::new_div(
             Expr::new_pow(
                 b.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
-            Expr::Constant(3.0),
+            Expr::new_constant(3.0),
         ),
     ));
 
@@ -1373,16 +1373,16 @@ pub(crate) fn solve_cubic(
                         b.clone(),
                         c.clone(),
                     ),
-                    Expr::Constant(3.0),
+                    Expr::new_constant(3.0),
                 ),
             ),
             Expr::new_mul(
-                Expr::Constant(
+                Expr::new_constant(
                     2.0 / 27.0,
                 ),
                 Expr::new_pow(
                     b.clone(),
-                    Expr::Constant(3.0),
+                    Expr::new_constant(3.0),
                 ),
             ),
         ),
@@ -1393,16 +1393,16 @@ pub(crate) fn solve_cubic(
             Expr::new_pow(
                 Expr::new_div(
                     q.clone(),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
             Expr::new_pow(
                 Expr::new_div(
                     p,
-                    Expr::Constant(3.0),
+                    Expr::new_constant(3.0),
                 ),
-                Expr::Constant(3.0),
+                Expr::new_constant(3.0),
             ),
         ));
 
@@ -1414,7 +1414,7 @@ pub(crate) fn solve_cubic(
             Expr::new_neg(
                 Expr::new_div(
                     q.clone(),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
             ),
             sqrt_inner.clone(),
@@ -1425,7 +1425,7 @@ pub(crate) fn solve_cubic(
             Expr::new_neg(
                 Expr::new_div(
                     q,
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
             ),
             sqrt_inner,
@@ -1433,38 +1433,38 @@ pub(crate) fn solve_cubic(
 
     let u = simplify(&Expr::new_pow(
         u_term,
-        Expr::Constant(1.0 / 3.0),
+        Expr::new_constant(1.0 / 3.0),
     ));
 
     let v = simplify(&Expr::new_pow(
         v_term,
-        Expr::Constant(1.0 / 3.0),
+        Expr::new_constant(1.0 / 3.0),
     ));
 
     let omega = Expr::new_complex(
-        Expr::Constant(-0.5),
+        Expr::new_constant(-0.5),
         Expr::new_div(
             Expr::new_sqrt(
-                Expr::Constant(3.0),
+                Expr::new_constant(3.0),
             ),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
     let omega2 = Expr::new_complex(
-        Expr::Constant(-0.5),
+        Expr::new_constant(-0.5),
         Expr::new_neg(Expr::new_div(
             Expr::new_sqrt(
-                Expr::Constant(3.0),
+                Expr::new_constant(3.0),
             ),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         )),
     );
 
     let sub_term =
         simplify(&Expr::new_div(
             b.clone(),
-            Expr::Constant(3.0),
+            Expr::new_constant(3.0),
         ));
 
     let root1 =
@@ -1540,23 +1540,23 @@ pub(crate) fn solve_quartic(
     // Reduced quartic: y^4 + py^2 + qy + r = 0, where x = y - b/4
     let b2 = Expr::new_pow(
         b.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let b3 = Expr::new_pow(
         b.clone(),
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     let b4 = Expr::new_pow(
         b.clone(),
-        Expr::Constant(4.0),
+        Expr::new_constant(4.0),
     );
 
     let p = simplify(&Expr::new_sub(
         c.clone(),
         Expr::new_mul(
-            Expr::Constant(3.0 / 8.0),
+            Expr::new_constant(3.0 / 8.0),
             b2.clone(),
         ),
     ));
@@ -1566,7 +1566,7 @@ pub(crate) fn solve_quartic(
         Expr::new_add(
             Expr::new_neg(
                 Expr::new_mul(
-                    Expr::Constant(0.5),
+                    Expr::new_constant(0.5),
                     Expr::new_mul(
                         b.clone(),
                         c.clone(),
@@ -1574,7 +1574,7 @@ pub(crate) fn solve_quartic(
                 ),
             ),
             Expr::new_mul(
-                Expr::Constant(0.125),
+                Expr::new_constant(0.125),
                 b3,
             ),
         ),
@@ -1585,7 +1585,7 @@ pub(crate) fn solve_quartic(
         Expr::new_add(
             Expr::new_neg(
                 Expr::new_mul(
-                    Expr::Constant(
+                    Expr::new_constant(
                         0.25,
                     ),
                     Expr::new_mul(
@@ -1596,7 +1596,7 @@ pub(crate) fn solve_quartic(
             ),
             Expr::new_add(
                 Expr::new_mul(
-                    Expr::Constant(
+                    Expr::new_constant(
                         1.0 / 16.0,
                     ),
                     Expr::new_mul(
@@ -1606,7 +1606,7 @@ pub(crate) fn solve_quartic(
                 ),
                 Expr::new_neg(
                     Expr::new_mul(
-                        Expr::Constant(
+                        Expr::new_constant(
                             3.0 / 256.0,
                         ),
                         b4,
@@ -1623,10 +1623,10 @@ pub(crate) fn solve_quartic(
             simplify(&Expr::new_sub(
                 Expr::new_pow(
                     p.clone(),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
                 Expr::new_mul(
-                    Expr::Constant(4.0),
+                    Expr::new_constant(4.0),
                     r,
                 ),
             ));
@@ -1635,7 +1635,7 @@ pub(crate) fn solve_quartic(
             discriminant,
         );
 
-        let two = Expr::Constant(2.0);
+        let two = Expr::new_constant(2.0);
 
         let y2_1 =
             simplify(&Expr::new_div(
@@ -1676,7 +1676,7 @@ pub(crate) fn solve_quartic(
         let b_over_4 =
             simplify(&Expr::new_div(
                 b.clone(),
-                Expr::Constant(4.0),
+                Expr::new_constant(4.0),
             ));
 
         return vec![
@@ -1701,27 +1701,27 @@ pub(crate) fn solve_quartic(
 
     // Resolvent cubic: 8m^3 + 8pm^2 + (2p^2 - 8r)m - q^2 = 0
     let cubic_coeffs = [
-        Expr::Constant(8.0),
+        Expr::new_constant(8.0),
         Expr::new_mul(
-            Expr::Constant(8.0),
+            Expr::new_constant(8.0),
             p.clone(),
         ),
         Expr::new_sub(
             Expr::new_mul(
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
                 Expr::new_pow(
                     p.clone(),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
             ),
             Expr::new_mul(
-                Expr::Constant(8.0),
+                Expr::new_constant(8.0),
                 r,
             ),
         ),
         Expr::new_neg(Expr::new_pow(
             q.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         )),
     ];
 
@@ -1732,25 +1732,25 @@ pub(crate) fn solve_quartic(
 
     let sqrt_2m =
         Expr::new_sqrt(Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             m.clone(),
         ));
 
     let q_over_2sqrt_2m = Expr::new_div(
         q,
         Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             sqrt_2m.clone(),
         ),
     );
 
     // Quadratic 1: y^2 - sqrt(2m)y + (p/2 + m + q/(2sqrt(2m))) = 0
     let quad1_coeffs = [
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         Expr::new_neg(sqrt_2m.clone()),
         Expr::new_add(
             Expr::new_mul(
-                Expr::Constant(0.5),
+                Expr::new_constant(0.5),
                 p.clone(),
             ),
             Expr::new_add(
@@ -1762,12 +1762,12 @@ pub(crate) fn solve_quartic(
 
     // Quadratic 2: y^2 + sqrt(2m)y + (p/2 + m - q/(2sqrt(2m))) = 0
     let quad2_coeffs = [
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         sqrt_2m,
         Expr::new_sub(
             Expr::new_add(
                 Expr::new_mul(
-                    Expr::Constant(0.5),
+                    Expr::new_constant(0.5),
                     p,
                 ),
                 m,
@@ -1785,7 +1785,7 @@ pub(crate) fn solve_quartic(
     let b_over_4 =
         simplify(&Expr::new_div(
             b.clone(),
-            Expr::Constant(4.0),
+            Expr::new_constant(4.0),
         ));
 
     let mut solutions = Vec::new();
@@ -1867,7 +1867,7 @@ pub(crate) fn solve_transcendental_pattern(
                         Expr::new_mul(n.clone(), pi),
                         Expr::new_mul(
                             Expr::new_pow(
-                                Expr::Constant(-1.0),
+                                Expr::new_constant(-1.0),
                                 n,
                             ),
                             Expr::new_arcsin(const_part.clone()),
@@ -1886,7 +1886,7 @@ pub(crate) fn solve_transcendental_pattern(
                     arg.clone(),
                     Arc::new(Expr::new_add(
                         Expr::new_mul(
-                            Expr::Constant(2.0),
+                            Expr::new_constant(2.0),
                             Expr::new_mul(
                                 n.clone(),
                                 pi.clone(),
@@ -1903,7 +1903,7 @@ pub(crate) fn solve_transcendental_pattern(
                     arg.clone(),
                     Arc::new(Expr::new_sub(
                         Expr::new_mul(
-                            Expr::Constant(2.0),
+                            Expr::new_constant(2.0),
                             Expr::new_mul(n, pi),
                         ),
                         Expr::new_arccos(const_part.clone()),
@@ -1932,8 +1932,8 @@ pub(crate) fn solve_transcendental_pattern(
         | Expr::Exp(arg) => {
 
             let i = Expr::new_complex(
-                Expr::Constant(0.0),
-                Expr::Constant(1.0),
+                Expr::new_constant(0.0),
+                Expr::new_constant(1.0),
             );
 
             let log_sol = Expr::new_add(
@@ -1942,7 +1942,7 @@ pub(crate) fn solve_transcendental_pattern(
                 ),
                 Expr::new_mul(
                     Expr::new_mul(
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0,
                         ),
                         Expr::new_mul(
@@ -2011,7 +2011,7 @@ pub fn extract_polynomial_coeffs(
         expr,
         var,
         &mut coeffs_map,
-        &Expr::Constant(1.0),
+        &Expr::new_constant(1.0),
     )?;
 
     if coeffs_map.is_empty() {
@@ -2037,7 +2037,7 @@ pub fn extract_polynomial_coeffs(
 
     let mut coeffs =
         vec![
-            Expr::Constant(0.0);
+            Expr::new_constant(0.0);
             max_degree as usize + 1
         ];
 
@@ -2080,7 +2080,7 @@ pub(crate) fn collect_coeffs(
                 .entry(1)
                 .or_insert_with(|| {
 
-                    Expr::Constant(0.0)
+                    Expr::new_constant(0.0)
                 });
 
             *entry = simplify(
@@ -2096,7 +2096,7 @@ pub(crate) fn collect_coeffs(
 
             if let (
                 Expr::Variable(v),
-                Expr::Constant(p),
+                Expr::new_constant(p),
             ) = (&**b, &**e)
             {
 
@@ -2107,7 +2107,7 @@ pub(crate) fn collect_coeffs(
 
                     let entry = coeffs
                         .entry(degree)
-                        .or_insert_with(|| Expr::Constant(0.0));
+                        .or_insert_with(|| Expr::new_constant(0.0));
 
                     *entry = simplify(
                         &Expr::new_add(
@@ -2128,7 +2128,7 @@ pub(crate) fn collect_coeffs(
                 .entry(0)
                 .or_insert_with(|| {
 
-                    Expr::Constant(0.0)
+                    Expr::new_constant(0.0)
                 });
 
             *entry = simplify(
@@ -2238,7 +2238,7 @@ pub(crate) fn collect_coeffs(
                 .entry(0)
                 .or_insert_with(|| {
 
-                    Expr::Constant(0.0)
+                    Expr::new_constant(0.0)
                 });
 
             *entry = simplify(

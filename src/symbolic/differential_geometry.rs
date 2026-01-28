@@ -120,7 +120,7 @@ pub fn exterior_derivative(
             let entry = result_terms
                 .entry(new_blade)
                 .or_insert(
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::zero(),
                     ),
                 );
@@ -222,7 +222,7 @@ pub fn wedge_product(
             let entry = result_terms
                 .entry(new_blade)
                 .or_insert(
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::zero(),
                     ),
                 );
@@ -291,7 +291,7 @@ pub fn generalized_stokes_theorem(
                 ),
             ),
             upper_bound: Arc::new(
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::zero(),
                 ),
             ),
@@ -316,7 +316,7 @@ pub fn generalized_stokes_theorem(
                 boundary(manifold),
             ),
             upper_bound: Arc::new(
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::zero(),
                 ),
             ),
@@ -420,7 +420,7 @@ pub fn stokes_theorem(
                 boundary(surface),
             ),
             upper_bound: Arc::new(
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::zero(),
                 ),
             ),
@@ -461,7 +461,7 @@ pub fn greens_theorem(
             &Expr::Domain(format!(
                 "{domain}"
             )),
-            &Expr::BigInt(
+            &Expr::new_bigint(
                 BigInt::zero(),
             ),
         );
@@ -495,7 +495,7 @@ pub fn greens_theorem(
                 boundary(domain),
             ),
             upper_bound: Arc::new(
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::zero(),
                 ),
             ),

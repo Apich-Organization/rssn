@@ -25,7 +25,7 @@ fn test_evaluate_constant() {
 fn test_evaluate_bigint() {
 
     let expr =
-        Expr::BigInt(BigInt::from(42));
+        Expr::new_bigint(BigInt::from(42));
 
     let result =
         evaluate_numerical(&expr)
@@ -41,7 +41,7 @@ fn test_evaluate_bigint() {
 fn test_evaluate_rational() {
 
     // 3/4 = 0.75
-    let expr = Expr::Rational(
+    let expr = Expr::new_rational(
         BigRational::new(
             BigInt::from(3),
             BigInt::from(4),

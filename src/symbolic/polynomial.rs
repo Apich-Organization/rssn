@@ -214,7 +214,7 @@ pub fn add_poly(
 
         let coeff1 = result_terms
             .entry(monomial.clone())
-            .or_insert(Expr::Constant(
+            .or_insert(Expr::new_constant(
                 0.0,
             ));
 
@@ -283,7 +283,7 @@ pub fn mul_poly(
                 result_terms
                     .entry(new_mono)
                     .or_insert(
-                        Expr::Constant(
+                        Expr::new_constant(
                             0.0,
                         ),
                     );
@@ -337,7 +337,7 @@ pub fn differentiate_poly(
                 let new_coeff =
                     Expr::new_mul(
                         coeff.clone(),
-                        Expr::Constant(
+                        Expr::new_constant(
                             f64::from(
                                 exp,
                             ),
@@ -447,9 +447,9 @@ pub fn is_polynomial(
                 var,
             )
         },
-        | Expr::Constant(_)
-        | Expr::BigInt(_)
-        | Expr::Rational(_) => true,
+        | Expr::new_constant(_)
+        | Expr::new_bigint(_)
+        | Expr::new_rational(_) => true,
         | Expr::Variable(_) => true,
         | Expr::Add(a, b)
         | Expr::Sub(a, b)
@@ -465,9 +465,9 @@ pub fn is_polynomial(
 
             // Check if exponent is a non-negative integer
             let is_valid_exp = match &**exp {
-                | Expr::BigInt(n) => n >= &BigInt::zero(),
-                | Expr::Constant(c) => *c >= 0.0 && c.fract() == 0.0,
-                | Expr::Rational(r) => r >= &BigRational::zero() && r.is_integer(),
+                | Expr::new_bigint(n) => n >= &BigInt::zero(),
+                | Expr::new_constant(c) => *c >= 0.0 && c.fract() == 0.0,
+                | Expr::new_rational(r) => r >= &BigRational::zero() && r.is_integer(),
                 | _ => false,
             };
 
@@ -602,12 +602,12 @@ pub fn polynomial_degree(
 
                     // Extract the exponent value
                     return match exp.as_ref() {
-                        | Expr::BigInt(n) => {
+                        | Expr::new_bigint(n) => {
                             n.to_i64()
                                 .unwrap_or(0)
                         },
-                        | Expr::Constant(c) if c.fract() == 0.0 && *c >= 0.0 => *c as i64,
-                        | Expr::Rational(r) if r.is_integer() && r >= &BigRational::zero() => {
+                        | Expr::new_constant(c) if c.fract() == 0.0 && *c >= 0.0 => *c as i64,
+                        | Expr::new_rational(r) if r.is_integer() && r >= &BigRational::zero() => {
                             r.to_integer()
                                 .to_i64()
                                 .unwrap_or(0)
@@ -765,13 +765,13 @@ pub fn leading_coefficient(
 
             if let (
                 Expr::Variable(v),
-                Expr::BigInt(_),
+                Expr::new_bigint(_),
             ) = (&*base, &*exp)
             {
 
                 if v == var {
 
-                    return Expr::BigInt(BigInt::one());
+                    return Expr::new_bigint(BigInt::one());
                 }
             }
 
@@ -785,7 +785,7 @@ pub fn leading_coefficient(
         | Expr::Variable(name)
             if name == var =>
         {
-            Expr::BigInt(BigInt::one())
+            Expr::new_bigint(BigInt::one())
         },
         | _ => s_expr,
     }
@@ -826,13 +826,13 @@ pub fn polynomial_long_division(
                         ),
                 )
             },
-            | Expr::Constant(c) => {
+            | Expr::new_constant(c) => {
                 *c == 0.0
             },
-            | Expr::BigInt(i) => {
+            | Expr::new_bigint(i) => {
                 i.is_zero()
             },
-            | Expr::Rational(r) => {
+            | Expr::new_rational(r) => {
                 r.is_zero()
             },
             | _ => false,
@@ -843,7 +843,7 @@ pub fn polynomial_long_division(
         100;
 
     let mut q =
-        Expr::BigInt(BigInt::zero());
+        Expr::new_bigint(BigInt::zero());
 
     let mut r = n.clone();
 
@@ -853,7 +853,7 @@ pub fn polynomial_long_division(
     if d_deg < 0 {
 
         return (
-            Expr::BigInt(BigInt::zero()),
+            Expr::new_bigint(BigInt::zero()),
             r,
         );
     }
@@ -898,7 +898,7 @@ pub fn polynomial_long_division(
                     Expr::Variable(
                         var.to_string(),
                     ),
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::from(
                             t_deg,
                         ),
@@ -981,7 +981,7 @@ pub(crate) fn collect_coeffs_recursive(
 
                 let coeff_a = map_a
                     .entry(deg)
-                    .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                    .or_insert_with(|| Expr::new_bigint(BigInt::zero()));
 
                 *coeff_a = simplify(
                     &Expr::new_add(
@@ -1004,7 +1004,7 @@ pub(crate) fn collect_coeffs_recursive(
 
                 let coeff_a = map_a
                     .entry(deg)
-                    .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                    .or_insert_with(|| Expr::new_bigint(BigInt::zero()));
 
                 *coeff_a = simplify(
                     &Expr::new_sub(
@@ -1043,7 +1043,7 @@ pub(crate) fn collect_coeffs_recursive(
 
                     let entry = result_map
                         .entry(new_deg)
-                        .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                        .or_insert_with(|| Expr::new_bigint(BigInt::zero()));
 
                     *entry = simplify(&Expr::new_add(
                         entry.clone(),
@@ -1058,7 +1058,7 @@ pub(crate) fn collect_coeffs_recursive(
 
             if let (
                 Expr::Variable(v),
-                Expr::BigInt(n),
+                Expr::new_bigint(n),
             ) = (
                 base.as_ref(),
                 exp.as_ref(),
@@ -1074,7 +1074,7 @@ pub(crate) fn collect_coeffs_recursive(
                             .unwrap_or(
                                 0,
                             ),
-                        Expr::BigInt(
+                        Expr::new_bigint(
                             BigInt::one(
                             ),
                         ),
@@ -1109,7 +1109,7 @@ pub(crate) fn collect_coeffs_recursive(
 
             map.insert(
                 1,
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::one(),
                 ),
             );
@@ -1192,7 +1192,7 @@ pub fn to_polynomial_coeffs_vec(
         .unwrap_or(0);
 
     let mut result = vec![
-        Expr::BigInt(
+        Expr::new_bigint(
             BigInt::zero()
         );
         max_deg
@@ -1228,7 +1228,7 @@ pub fn from_coeffs_to_expr(
 ) -> Expr {
 
     let mut expr =
-        Expr::BigInt(BigInt::zero());
+        Expr::new_bigint(BigInt::zero());
 
     for (i, coeff) in coeffs
         .iter()
@@ -1241,7 +1241,7 @@ pub fn from_coeffs_to_expr(
 
             let power = if i == 0 {
 
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::one(),
                 )
             } else {
@@ -1250,7 +1250,7 @@ pub fn from_coeffs_to_expr(
                     Expr::Variable(
                         var.to_string(),
                     ),
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::from(i),
                     ),
                 )
@@ -1259,7 +1259,7 @@ pub fn from_coeffs_to_expr(
             let term = if i == 0 {
 
                 coeff.clone()
-            } else if let Expr::BigInt(
+            } else if let Expr::new_bigint(
                 b,
             ) = coeff
             {
@@ -1359,7 +1359,7 @@ pub fn polynomial_long_division_coeffs(
     if num_deg < den_deg {
 
         return Ok((
-            Expr::BigInt(BigInt::zero()),
+            Expr::new_bigint(BigInt::zero()),
             n.clone(),
         ));
     }
@@ -1372,7 +1372,7 @@ pub fn polynomial_long_division_coeffs(
 
     let mut quot_coeffs =
         vec![
-            Expr::BigInt(BigInt::zero());
+            Expr::new_bigint(BigInt::zero());
             num_deg - den_deg + 1
         ];
 
@@ -1558,7 +1558,7 @@ pub(crate) fn collect_terms_recursive(
 
                 let entry = terms
                     .entry(mono)
-                    .or_insert_with(|| Expr::Constant(0.0));
+                    .or_insert_with(|| Expr::new_constant(0.0));
 
                 *entry = simplify(
                     &Expr::new_sub(
@@ -1604,7 +1604,7 @@ pub(crate) fn collect_terms_recursive(
 
                 let entry = terms
                     .entry(mono)
-                    .or_insert_with(|| Expr::Constant(0.0));
+                    .or_insert_with(|| Expr::new_constant(0.0));
 
                 *entry = simplify(
                     &Expr::new_add(
@@ -1640,7 +1640,7 @@ pub(crate) fn collect_terms_recursive(
                     let mut result = SparsePolynomial {
                         terms : BTreeMap::from([(
                             Monomial(BTreeMap::new()),
-                            Expr::Constant(1.0),
+                            Expr::new_constant(1.0),
                         )]),
                     };
 
@@ -1662,7 +1662,7 @@ pub(crate) fn collect_terms_recursive(
 
                         let entry = terms
                             .entry(mono)
-                            .or_insert_with(|| Expr::Constant(0.0));
+                            .or_insert_with(|| Expr::new_constant(0.0));
 
                         *entry = simplify(&Expr::new_add(
                             entry.clone(),
@@ -1676,7 +1676,7 @@ pub(crate) fn collect_terms_recursive(
 
             add_term(
                 expr,
-                &Expr::Constant(1.0),
+                &Expr::new_constant(1.0),
                 terms,
                 vars,
             );
@@ -1698,7 +1698,7 @@ pub(crate) fn collect_terms_recursive(
 
                 let entry = terms
                     .entry(mono)
-                    .or_insert_with(|| Expr::Constant(0.0));
+                    .or_insert_with(|| Expr::new_constant(0.0));
 
                 *entry = simplify(
                     &Expr::new_sub(
@@ -1712,7 +1712,7 @@ pub(crate) fn collect_terms_recursive(
 
             add_term(
                 expr,
-                &Expr::Constant(1.0),
+                &Expr::new_constant(1.0),
                 terms,
                 vars,
             );
@@ -1748,7 +1748,7 @@ pub(crate) fn add_term(
             .entry(Monomial(
                 BTreeMap::new(),
             ))
-            .or_insert(Expr::Constant(
+            .or_insert(Expr::new_constant(
                 0.0,
             ));
 
@@ -1779,7 +1779,7 @@ pub(crate) fn add_term(
                     mono_map,
                 ))
                 .or_insert(
-                    Expr::Constant(0.0),
+                    Expr::new_constant(0.0),
                 );
 
             *entry = simplify(
@@ -1797,7 +1797,7 @@ pub(crate) fn add_term(
         .entry(Monomial(
             BTreeMap::new(),
         ))
-        .or_insert(Expr::Constant(0.0));
+        .or_insert(Expr::new_constant(0.0));
 
     *entry = simplify(&Expr::new_add(
         entry.clone(),
@@ -1947,8 +1947,8 @@ pub fn gcd(
             .values()
             .all(|coeff| {
 
-                matches!(coeff, Expr::Constant(c) if c.abs() < 1e-10)
-                    || matches!(coeff, Expr::BigInt(n) if n.is_zero())
+                matches!(coeff, Expr::new_constant(c) if c.abs() < 1e-10)
+                    || matches!(coeff, Expr::new_bigint(n) if n.is_zero())
             });
 
         if b_is_zero {
@@ -2221,7 +2221,7 @@ impl SparsePolynomial {
         }
 
         let mut coeffs = vec![
-                Expr::Constant(0.0);
+                Expr::new_constant(0.0);
                 (deg + 1)
                     .try_into()
                     .unwrap_or(0)
@@ -2350,7 +2350,7 @@ impl Sub for SparsePolynomial {
         let neg_rhs = mul_poly(
             &rhs,
             &poly_from_coeffs(
-                &[Expr::Constant(-1.0)],
+                &[Expr::new_constant(-1.0)],
                 "",
             ),
         );
@@ -2444,7 +2444,7 @@ pub fn sparse_poly_to_expr(
 ) -> Expr {
 
     let mut total_expr =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     for (mono, coeff) in &poly.terms {
 
@@ -2463,7 +2463,7 @@ pub fn sparse_poly_to_expr(
                                 .clone(
                                 ),
                         ),
-                        Expr::Constant(
+                        Expr::new_constant(
                             f64::from(
                                 exp,
                             ),

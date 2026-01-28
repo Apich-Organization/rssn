@@ -185,7 +185,7 @@ impl IteratedFunctionSystem {
 
         if all_same {
 
-            let n = Expr::Constant(
+            let n = Expr::new_constant(
                 scaling_factors.len()
                     as f64,
             );
@@ -210,7 +210,7 @@ impl IteratedFunctionSystem {
             );
 
             let mut sum =
-                Expr::Constant(0.0);
+                Expr::new_constant(0.0);
 
             for r in scaling_factors {
 
@@ -226,7 +226,7 @@ impl IteratedFunctionSystem {
             Expr::Eq(
                 Arc::new(sum),
                 Arc::new(
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                 ),
             )
         }
@@ -269,7 +269,7 @@ impl ComplexDynamicalSystem {
 
         let f = Expr::new_pow(
             z,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         );
 
         Self {
@@ -456,7 +456,7 @@ pub fn lyapunov_exponent(
         initial_x.clone();
 
     let mut sum_log_derivs =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     // Pre-calculate derivative function
     let deriv_func = differentiate(
@@ -500,7 +500,7 @@ pub fn lyapunov_exponent(
             simplify(&sum_log_derivs);
     }
 
-    let n = Expr::Constant(
+    let n = Expr::new_constant(
         n_iterations as f64,
     );
 

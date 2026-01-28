@@ -155,14 +155,14 @@
 //!     let mut terms = BTreeMap::new();
 //!     let mut mono = BTreeMap::new();
 //!     mono.insert(name.to_string(), 1);
-//!     terms.insert(Monomial(mono), Expr::Constant(1.0));
+//!     terms.insert(Monomial(mono), Expr::new_constant(1.0));
 //!     SparsePolynomial { terms }
 //! }
 //!
 //! // Helper function to create a SparsePolynomial from a constant.
 //! fn const_poly(value: f64) -> SparsePolynomial {
 //!     let mut terms = BTreeMap::new();
-//!     terms.insert(Monomial(BTreeMap::new()), Expr::Constant(value));
+//!     terms.insert(Monomial(BTreeMap::new()), Expr::new_constant(value));
 //!     SparsePolynomial { terms }
 //! }
 //!
@@ -737,7 +737,7 @@ pub fn subtract_poly(
             .entry(mono.clone())
             .or_insert_with(|| {
 
-                Expr::Constant(0.0)
+                Expr::new_constant(0.0)
             });
 
         *entry =
@@ -820,7 +820,7 @@ pub(crate) fn s_polynomial(
 
     let t1_coeff =
         simplify(&Expr::new_div(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             lc1,
         ));
 
@@ -837,7 +837,7 @@ pub(crate) fn s_polynomial(
 
     let t2_coeff =
         simplify(&Expr::new_div(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             lc2,
         ));
 

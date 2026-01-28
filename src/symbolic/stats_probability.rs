@@ -30,11 +30,11 @@ impl Distribution for Normal {
         x: &Expr,
     ) -> Expr {
 
-        let pi = Expr::Constant(PI);
+        let pi = Expr::new_constant(PI);
 
-        let two = Expr::Constant(2.0);
+        let two = Expr::new_constant(2.0);
 
-        let one = Expr::Constant(1.0);
+        let one = Expr::new_constant(1.0);
 
         let term1 = Expr::new_div(
             one,
@@ -85,9 +85,9 @@ impl Distribution for Normal {
         x: &Expr,
     ) -> Expr {
 
-        let one = Expr::Constant(1.0);
+        let one = Expr::new_constant(1.0);
 
-        let two = Expr::Constant(2.0);
+        let two = Expr::new_constant(2.0);
 
         let arg = Expr::new_div(
             Expr::new_sub(
@@ -101,7 +101,7 @@ impl Distribution for Normal {
         );
 
         simplify(&Expr::new_mul(
-            Expr::Constant(0.5),
+            Expr::new_constant(0.5),
             Expr::new_add(
                 one,
                 Expr::new_erf(arg),
@@ -118,7 +118,7 @@ impl Distribution for Normal {
 
         simplify(&Expr::new_pow(
             self.std_dev.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ))
     }
 
@@ -135,12 +135,12 @@ impl Distribution for Normal {
 
         let sigma_sq = Expr::new_pow(
             self.std_dev.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         );
 
         let t_sq = Expr::new_pow(
             t.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         );
 
         let half_sigma_sq_t_sq =
@@ -149,7 +149,7 @@ impl Distribution for Normal {
                     sigma_sq,
                     t_sq,
                 ),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             );
 
         simplify(&Expr::new_exp(
@@ -187,7 +187,7 @@ impl Distribution for Uniform {
         // Technically this should be piece-wise, but for symbolic simplification we often return the density inside the support
         // Or we could return a Piecewise if supported. For now, sticking to the main density.
         simplify(&Expr::new_div(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             Expr::new_sub(
                 self.max.clone(),
                 self.min.clone(),
@@ -223,7 +223,7 @@ impl Distribution for Uniform {
                 self.max.clone(),
                 self.min.clone(),
             ),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ))
     }
 
@@ -237,12 +237,12 @@ impl Distribution for Uniform {
 
         let num = Expr::new_pow(
             range,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         );
 
         simplify(&Expr::new_div(
             num,
-            Expr::Constant(12.0),
+            Expr::new_constant(12.0),
         ))
     }
 
@@ -319,7 +319,7 @@ impl Distribution for Binomial {
         );
 
         let one_minus_p = Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             self.p.clone(),
         );
 
@@ -360,7 +360,7 @@ impl Distribution for Binomial {
                 Expr::new_variable("i"),
             ),
             from: Arc::new(
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
             ),
             to: Arc::new(k.clone()),
         }
@@ -377,7 +377,7 @@ impl Distribution for Binomial {
     fn variance(&self) -> Expr {
 
         let one_minus_p = Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             self.p.clone(),
         );
 
@@ -400,7 +400,7 @@ impl Distribution for Binomial {
             Expr::new_exp(t.clone());
 
         let one_minus_p = Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             self.p.clone(),
         );
 
@@ -485,7 +485,7 @@ impl Distribution for Poisson {
                 Expr::new_variable("i"),
             ),
             from: Arc::new(
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
             ),
             to: Arc::new(Expr::Floor(
                 Arc::new(k.clone()),
@@ -511,7 +511,7 @@ impl Distribution for Poisson {
         // exp(lambda * (e^t - 1))
         let et_minus_1 = Expr::new_sub(
             Expr::new_exp(t.clone()),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         );
 
         let arg = Expr::new_mul(
@@ -546,7 +546,7 @@ impl Distribution for Bernoulli {
 
         // p^k * (1-p)^(1-k) for k in {0, 1}
         let one_minus_p = Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             self.p.clone(),
         );
 
@@ -556,7 +556,7 @@ impl Distribution for Bernoulli {
         );
 
         let one_minus_k = Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             k.clone(),
         );
 
@@ -591,7 +591,7 @@ impl Distribution for Bernoulli {
                 Expr::new_variable("i"),
             ),
             from: Arc::new(
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
             ),
             to: Arc::new(Expr::Floor(
                 Arc::new(k.clone()),
@@ -609,7 +609,7 @@ impl Distribution for Bernoulli {
         simplify(&Expr::new_mul(
             self.p.clone(),
             Expr::new_sub(
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
                 self.p.clone(),
             ),
         ))
@@ -625,7 +625,7 @@ impl Distribution for Bernoulli {
             Expr::new_exp(t.clone());
 
         let one_minus_p = Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             self.p.clone(),
         );
 
@@ -682,7 +682,7 @@ impl Distribution for Exponential {
     ) -> Expr {
 
         simplify(&Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             Expr::new_exp(
                 Expr::new_neg(
                     Expr::new_mul(
@@ -698,7 +698,7 @@ impl Distribution for Exponential {
     fn expectation(&self) -> Expr {
 
         simplify(&Expr::new_div(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             self.rate.clone(),
         ))
     }
@@ -706,10 +706,10 @@ impl Distribution for Exponential {
     fn variance(&self) -> Expr {
 
         simplify(&Expr::new_div(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             Expr::new_pow(
                 self.rate.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ))
     }
@@ -771,7 +771,7 @@ impl Distribution for Gamma {
             x.clone(),
             Expr::new_sub(
                 self.shape.clone(),
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
             ),
         );
 
@@ -810,7 +810,7 @@ impl Distribution for Gamma {
                 Expr::new_variable("t"),
             ),
             lower_bound: Arc::new(
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
             ),
             upper_bound: Arc::new(
                 x.clone(),
@@ -831,7 +831,7 @@ impl Distribution for Gamma {
         // alpha / beta^2
         let beta_sq = Expr::new_pow(
             self.rate.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         );
 
         simplify(&Expr::new_div(
@@ -852,7 +852,7 @@ impl Distribution for Gamma {
         );
 
         let base = Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             t_over_beta,
         );
 
@@ -893,12 +893,12 @@ impl Distribution for Beta {
             x.clone(),
             Expr::new_sub(
                 self.alpha.clone(),
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
             ),
         );
 
         let one_minus_x = Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             x.clone(),
         );
 
@@ -906,7 +906,7 @@ impl Distribution for Beta {
             one_minus_x,
             Expr::new_sub(
                 self.beta.clone(),
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
             ),
         );
 
@@ -939,7 +939,7 @@ impl Distribution for Beta {
                 Expr::new_variable("t"),
             ),
             lower_bound: Arc::new(
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
             ),
             upper_bound: Arc::new(
                 x.clone(),
@@ -971,12 +971,12 @@ impl Distribution for Beta {
 
         let sum_sq = Expr::new_pow(
             sum.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         );
 
         let sum_plus_1 = Expr::new_add(
             sum,
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         );
 
         let den = Expr::new_mul(
@@ -1016,8 +1016,8 @@ impl Distribution for Beta {
             var : Arc::new(Expr::new_variable(
                 "x",
             )),
-            lower_bound : Arc::new(Expr::Constant(0.0)),
-            upper_bound : Arc::new(Expr::Constant(1.0)),
+            lower_bound : Arc::new(Expr::new_constant(0.0)),
+            upper_bound : Arc::new(Expr::new_constant(1.0)),
         }
     }
 
@@ -1047,9 +1047,9 @@ impl Distribution for StudentT {
             Expr::new_div(
                 Expr::new_add(
                     self.nu.clone(),
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                 ),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         );
 
@@ -1065,7 +1065,7 @@ impl Distribution for StudentT {
             Expr::new_gamma(
                 Expr::new_div(
                     self.nu.clone(),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
             );
 
@@ -1078,11 +1078,11 @@ impl Distribution for StudentT {
         );
 
         let term2_base = Expr::new_add(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             Expr::new_div(
                 Expr::new_pow(
                     t.clone(),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
                 self.nu.clone(),
             ),
@@ -1092,9 +1092,9 @@ impl Distribution for StudentT {
             Expr::new_div(
                 Expr::new_add(
                     self.nu.clone(),
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                 ),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         );
 
@@ -1139,7 +1139,7 @@ impl Distribution for StudentT {
 
         // 0 if nu > 1, undefined otherwise
         // Assuming nu > 1
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     }
 
     fn variance(&self) -> Expr {
@@ -1149,7 +1149,7 @@ impl Distribution for StudentT {
             self.nu.clone(),
             Expr::new_sub(
                 self.nu.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ))
     }

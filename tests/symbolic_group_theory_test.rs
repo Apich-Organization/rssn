@@ -9,15 +9,15 @@ fn test_cyclic_group_c3() {
 
     // Elements: e=0, a=1, a^2=2 (using integers for simplicity)
     let e = GroupElement(
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let a = GroupElement(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let b = GroupElement(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     ); // a^2
 
     let elements = vec![
@@ -114,15 +114,15 @@ fn test_representation_c3() {
 
     // Trivial representation: rho(g) = [1]
     let e = GroupElement(
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let a = GroupElement(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let b = GroupElement(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let elements = vec![
@@ -177,7 +177,7 @@ fn test_representation_c3() {
 
     let one_matrix =
         Expr::Matrix(vec![vec![
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ]]);
 
     matrices.insert(
@@ -209,7 +209,7 @@ fn test_representation_c3() {
 
         assert_eq!(
             val,
-            Expr::Constant(1.0)
+            Expr::new_constant(1.0)
         );
     }
 }

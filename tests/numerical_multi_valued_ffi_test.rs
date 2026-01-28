@@ -27,13 +27,13 @@ fn test_mv_handle_ffi() {
         let f = Expr::new_sub(
             Expr::new_pow(
                 z.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         );
 
         let f_prime = Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             z.clone(),
         );
 
@@ -76,13 +76,13 @@ fn test_mv_json_ffi() {
         let f = Expr::new_sub(
             Expr::new_pow(
                 z.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         );
 
         let f_prime = Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             z.clone(),
         );
 
@@ -161,13 +161,13 @@ fn test_mv_bincode_ffi() {
         let f = Expr::new_sub(
             Expr::new_pow(
                 z.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         );
 
         let f_prime = Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             z.clone(),
         );
 

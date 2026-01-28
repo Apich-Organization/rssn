@@ -151,7 +151,7 @@ fn test_differentiate_x_cubed() {
         .clone()
         .unwrap()
     {
-        | Expr::BigInt(i) => {
+        | Expr::new_bigint(i) => {
 
             println!(
                 "DEBUG: derivative_dag is \
@@ -159,7 +159,7 @@ fn test_differentiate_x_cubed() {
                 i
             )
         },
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
 
             println!(
                 "DEBUG: derivative_dag is \
@@ -188,7 +188,7 @@ fn test_differentiate_x_cubed() {
         .clone()
         .unwrap()
     {
-        | Expr::BigInt(i) => {
+        | Expr::new_bigint(i) => {
 
             println!(
                 "DEBUG: expected_dag \
@@ -196,7 +196,7 @@ fn test_differentiate_x_cubed() {
                 i
             )
         },
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
 
             println!(
                 "DEBUG: expected_dag \

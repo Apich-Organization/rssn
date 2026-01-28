@@ -13,9 +13,9 @@ fn evaluate_expr(
 ) -> Option<f64> {
 
     match expr {
-        | Expr::Constant(v) => Some(*v),
-        | Expr::BigInt(v) => v.to_f64(),
-        | Expr::Rational(v) => {
+        | Expr::new_constant(v) => Some(*v),
+        | Expr::new_bigint(v) => v.to_f64(),
+        | Expr::new_rational(v) => {
             v.to_f64()
         },
         | Expr::Add(a, b) => {
@@ -210,12 +210,12 @@ fn test_one_sample_t_test() {
     // Target mean = 2.
     // t should be (2 - 2) / (1/sqrt(3)) = 0
     let data = vec![
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(3.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(3.0),
     ];
 
-    let target = Expr::Constant(2.0);
+    let target = Expr::new_constant(2.0);
 
     let result =
         one_sample_t_test_symbolic(
@@ -250,18 +250,18 @@ fn test_two_sample_t_test() {
     // t = (2 - 5 - 0) / sqrt(1/3 + 1/3) = -3 / sqrt(2/3) = -3 / 0.816 = -3.67
 
     let data1 = vec![
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(3.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(3.0),
     ];
 
     let data2 = vec![
-        Expr::Constant(4.0),
-        Expr::Constant(5.0),
-        Expr::Constant(6.0),
+        Expr::new_constant(4.0),
+        Expr::new_constant(5.0),
+        Expr::new_constant(6.0),
     ];
 
-    let diff = Expr::Constant(0.0);
+    let diff = Expr::new_constant(0.0);
 
     let result =
         two_sample_t_test_symbolic(
@@ -288,14 +288,14 @@ fn test_z_test() {
     // Sigma = 1.
     // Z = (2 - 2) / (1/sqrt(3)) = 0
     let data = vec![
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(3.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(3.0),
     ];
 
-    let target = Expr::Constant(2.0);
+    let target = Expr::new_constant(2.0);
 
-    let sigma = Expr::Constant(1.0);
+    let sigma = Expr::new_constant(1.0);
 
     let result = z_test_symbolic(
         &data,

@@ -263,7 +263,7 @@ pub fn solve_pde_by_separation_of_variables(
             (
                 Expr::new_pow(
                     lambda_n,
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
                 x_n,
             )
@@ -283,7 +283,7 @@ pub fn solve_pde_by_separation_of_variables(
             (
                 Expr::new_pow(
                     lambda_n,
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
                 x_n,
             )
@@ -294,7 +294,7 @@ pub fn solve_pde_by_separation_of_variables(
                 Expr::new_mul(
                     Expr::new_add(
                         n,
-                        Expr::Constant(0.5),
+                        Expr::new_constant(0.5),
                     ),
                     Expr::Pi,
                 ),
@@ -309,7 +309,7 @@ pub fn solve_pde_by_separation_of_variables(
             (
                 Expr::new_pow(
                     lambda_n,
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
                 x_n,
             )
@@ -320,7 +320,7 @@ pub fn solve_pde_by_separation_of_variables(
                 Expr::new_mul(
                     Expr::new_add(
                         n,
-                        Expr::Constant(0.5),
+                        Expr::new_constant(0.5),
                     ),
                     Expr::Pi,
                 ),
@@ -335,7 +335,7 @@ pub fn solve_pde_by_separation_of_variables(
             (
                 Expr::new_pow(
                     lambda_n,
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
                 x_n,
             )
@@ -378,13 +378,13 @@ pub fn solve_pde_by_separation_of_variables(
         let cn_integral = integrate(
             &cn_integrand,
             x_var,
-            Some(&Expr::Constant(0.0)),
+            Some(&Expr::new_constant(0.0)),
             Some(&l),
         );
 
         let cn = Expr::new_mul(
             Expr::new_div(
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
                 l,
             ),
             cn_integral,
@@ -398,7 +398,7 @@ pub fn solve_pde_by_separation_of_variables(
         let solution = Expr::Summation(
             Arc::new(series_term),
             "n".to_string(),
-            Arc::new(Expr::Constant(
+            Arc::new(Expr::new_constant(
                 1.0,
             )),
             Arc::new(Expr::Infinity),
@@ -417,7 +417,7 @@ pub fn solve_pde_by_separation_of_variables(
                 Expr::Pattern(
                     "c".to_string(),
                 ),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
             u_xx,
         ),
@@ -453,13 +453,13 @@ pub fn solve_pde_by_separation_of_variables(
         let an_integral = integrate(
             &an_integrand,
             x_var,
-            Some(&Expr::Constant(0.0)),
+            Some(&Expr::new_constant(0.0)),
             Some(&l),
         );
 
         let an = Expr::new_mul(
             Expr::new_div(
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
                 l.clone(),
             ),
             an_integral,
@@ -474,13 +474,13 @@ pub fn solve_pde_by_separation_of_variables(
         let bn_integral = integrate(
             &bn_integrand,
             x_var,
-            Some(&Expr::Constant(0.0)),
+            Some(&Expr::new_constant(0.0)),
             Some(&l),
         );
 
         let bn = Expr::new_mul(
             Expr::new_div(
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
                 Expr::new_mul(
                     l,
                     omega_n.clone(),
@@ -512,7 +512,7 @@ pub fn solve_pde_by_separation_of_variables(
         let solution = Expr::Summation(
             Arc::new(series_term),
             "n".to_string(),
-            Arc::new(Expr::Constant(
+            Arc::new(Expr::new_constant(
                 1.0,
             )),
             Arc::new(Expr::Infinity),
@@ -1196,7 +1196,7 @@ fn extract_coefficient(
 
     if &term == var {
 
-        return Some(Expr::Constant(
+        return Some(Expr::new_constant(
             1.0,
         ));
     }
@@ -1222,7 +1222,7 @@ fn extract_coefficient(
             if &inner == var {
 
                 return Some(
-                    Expr::Constant(
+                    Expr::new_constant(
                         -1.0,
                     ),
                 );
@@ -1363,9 +1363,9 @@ fn collect_terms(
                             .as_ref()
                             .clone(),
                     ); // -(-x) = x
-                } else if let Expr::Constant(c) = term {
+                } else if let Expr::new_constant(c) = term {
 
-                    terms.push(Expr::Constant(-c));
+                    terms.push(Expr::new_constant(-c));
                 } else {
 
                     terms.push(Expr::new_neg(term));
@@ -1441,11 +1441,11 @@ pub fn solve_pde_by_characteristics(
 
     let terms = collect_terms(equation);
 
-    let mut a = Expr::Constant(0.0);
+    let mut a = Expr::new_constant(0.0);
 
-    let mut b = Expr::Constant(0.0);
+    let mut b = Expr::new_constant(0.0);
 
-    let mut c_neg = Expr::Constant(0.0); // Terms not containing u_x or u_y
+    let mut c_neg = Expr::new_constant(0.0); // Terms not containing u_x or u_y
 
     for term in terms {
 
@@ -1573,7 +1573,7 @@ pub fn solve_pde_by_greens_function(
 
         (
             equation,
-            &Expr::Constant(0.0),
+            &Expr::new_constant(0.0),
         )
     };
 
@@ -1637,22 +1637,22 @@ pub fn solve_pde_by_greens_function(
                         Expr::Variable(vars[0].to_string()),
                         x_p.clone(),
                     ),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
                 Expr::new_pow(
                     Expr::new_sub(
                         Expr::Variable(vars[1].to_string()),
                         y_p.clone(),
                     ),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
             );
 
             let g = Expr::new_mul(
                 Expr::new_div(
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                     Expr::new_mul(
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0,
                         ),
                         Expr::Pi,
@@ -1693,14 +1693,14 @@ pub fn solve_pde_by_greens_function(
                         Expr::Variable(vars[1].to_string()),
                         t_p.clone(),
                     ),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
                 Expr::new_pow(
                     Expr::new_sub(
                         Expr::Variable(vars[0].to_string()),
                         x_p.clone(),
                     ),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
             );
 
@@ -1714,9 +1714,9 @@ pub fn solve_pde_by_greens_function(
 
             let g = Expr::new_mul(
                 Expr::new_div(
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                     Expr::new_mul(
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0,
                         ),
                         c,
@@ -1867,10 +1867,10 @@ pub fn solve_wave_equation_1d_dalembert(
     let terms = collect_terms(equation);
 
     let mut coeff_u_tt =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     let mut coeff_u_xx =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     for term in terms {
 
@@ -2042,10 +2042,10 @@ pub fn solve_heat_equation_1d(
     let terms = collect_terms(equation);
 
     let mut coeff_u_t =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     let mut coeff_u_xx =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     for term in terms {
 
@@ -2127,7 +2127,7 @@ pub fn solve_heat_equation_1d(
                     alpha,
                     Expr::new_pow(
                         n.clone(),
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0,
                         ),
                     ),
@@ -2135,7 +2135,7 @@ pub fn solve_heat_equation_1d(
                 Expr::new_mul(
                     Expr::new_pow(
                         Expr::Pi,
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0,
                         ),
                     ),
@@ -2144,7 +2144,7 @@ pub fn solve_heat_equation_1d(
             ),
             Expr::new_pow(
                 l.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ));
 
@@ -2174,7 +2174,7 @@ pub fn solve_heat_equation_1d(
     let solution = Expr::Sum {
         body: Arc::new(term),
         var: Arc::new(n),
-        from: Arc::new(Expr::Constant(
+        from: Arc::new(Expr::new_constant(
             1.0,
         )),
         to: Arc::new(Expr::Infinity),
@@ -2248,10 +2248,10 @@ pub fn solve_laplace_equation_2d(
     let terms = collect_terms(equation);
 
     let mut coeff_u_xx =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     let mut coeff_u_yy =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     for term in terms {
 
@@ -2396,7 +2396,7 @@ pub fn solve_laplace_equation_2d(
     let solution = Expr::Sum {
         body: Arc::new(term),
         var: Arc::new(n),
-        from: Arc::new(Expr::Constant(
+        from: Arc::new(Expr::new_constant(
             1.0,
         )),
         to: Arc::new(Expr::Infinity),
@@ -2550,13 +2550,13 @@ pub fn solve_poisson_equation_2d(
     let terms = collect_terms(equation);
 
     let mut coeff_u_xx =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     let mut coeff_u_yy =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     let mut source_term =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     for term in terms {
 
@@ -2640,22 +2640,22 @@ pub fn solve_poisson_equation_2d(
                 x,
                 xi.clone(),
             ),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         Expr::new_pow(
             Expr::new_sub(
                 y,
                 eta.clone(),
             ),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
     let green = Expr::new_mul(
         Expr::new_div(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             Expr::new_mul(
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
                 Expr::Pi,
             ),
         ),
@@ -3265,7 +3265,7 @@ pub fn solve_with_fourier_transform(
                     alpha.clone(),
                     Expr::new_pow(
                         k,
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0,
                         ),
                     ),
@@ -3442,7 +3442,7 @@ pub(crate) fn classify_second_order_pde(
         .cloned()
         .unwrap_or_else(|| {
 
-            Expr::Constant(0.0)
+            Expr::new_constant(0.0)
         });
 
     let b = coeffs
@@ -3450,7 +3450,7 @@ pub(crate) fn classify_second_order_pde(
         .cloned()
         .unwrap_or_else(|| {
 
-            Expr::Constant(0.0)
+            Expr::new_constant(0.0)
         });
 
     let c = coeffs
@@ -3458,17 +3458,17 @@ pub(crate) fn classify_second_order_pde(
         .cloned()
         .unwrap_or_else(|| {
 
-            Expr::Constant(0.0)
+            Expr::new_constant(0.0)
         });
 
     let discriminant =
         simplify(&Expr::new_sub(
             Expr::new_pow(
                 b.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
             Expr::new_mul(
-                Expr::Constant(4.0),
+                Expr::new_constant(4.0),
                 Expr::new_mul(
                     a.clone(),
                     c.clone(),
@@ -3613,7 +3613,7 @@ pub(crate) fn parse_conditions(
             match get_value_at_point(
                 lhs,
                 t_var,
-                &Expr::Constant(0.0),
+                &Expr::new_constant(0.0),
                 &vars_order,
             ) {
                 | Some(val_str) => {
@@ -3645,7 +3645,7 @@ pub(crate) fn parse_conditions(
                     get_value_at_point(
                         lhs,
                         x_var,
-                        &Expr::Constant(
+                        &Expr::new_constant(
                             0.0,
                         ),
                         &vars_order,

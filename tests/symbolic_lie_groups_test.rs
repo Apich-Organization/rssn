@@ -81,7 +81,7 @@ fn test_lie_bracket_antisymmetry() {
 
     let neg_yx =
         matrix::scalar_mul_matrix(
-            &Expr::Constant(-1.0),
+            &Expr::new_constant(-1.0),
             &yx,
         );
 
@@ -296,12 +296,12 @@ fn test_exponential_map_identity() {
     let zero_matrix =
         Expr::Matrix(vec![
             vec![
-                Expr::Constant(0.0),
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
+                Expr::new_constant(0.0),
             ],
             vec![
-                Expr::Constant(0.0),
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
+                Expr::new_constant(0.0),
             ],
         ]);
 
@@ -340,23 +340,23 @@ fn test_adjoint_representation_group() {
     // Create a simple 2x2 group element (rotation matrix)
     let g = Expr::Matrix(vec![
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(-1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(-1.0),
         ],
         vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
         ],
     ]);
 
     let x = Expr::Matrix(vec![
         vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
         ],
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(-1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(-1.0),
         ],
     ]);
 

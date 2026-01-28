@@ -22,8 +22,8 @@ use crate::symbolic::solve::solve;
 pub(crate) fn i_complex() -> Expr {
 
     Expr::new_complex(
-        Expr::BigInt(BigInt::zero()),
-        Expr::BigInt(BigInt::one()),
+        Expr::new_bigint(BigInt::zero()),
+        Expr::new_bigint(BigInt::one()),
     )
 }
 
@@ -115,7 +115,7 @@ pub fn fourier_scaling(
 
     simplify(&Expr::new_mul(
         Expr::new_div(
-            Expr::BigInt(BigInt::one()),
+            Expr::new_bigint(BigInt::one()),
             Expr::new_abs(a.clone()),
         ),
         Expr::Substitute(
@@ -276,7 +276,7 @@ pub fn laplace_scaling(
 
     simplify(&Expr::new_mul(
         Expr::new_div(
-            Expr::BigInt(BigInt::one()),
+            Expr::new_bigint(BigInt::one()),
             a.clone(),
         ),
         Expr::Substitute(
@@ -444,9 +444,9 @@ pub fn inverse_fourier_transform(
 ) -> Expr {
 
     let factor = Expr::new_div(
-        Expr::BigInt(BigInt::one()),
+        Expr::new_bigint(BigInt::one()),
         Expr::new_mul(
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 2,
             )),
             Expr::Variable(
@@ -520,7 +520,7 @@ pub fn laplace_transform(
     definite_integrate(
         &integrand,
         in_var,
-        &Expr::BigInt(BigInt::zero()),
+        &Expr::new_bigint(BigInt::zero()),
         &Expr::Infinity,
     )
 }
@@ -568,7 +568,7 @@ pub fn inverse_laplace_transform(
     {
 
         let mut result_expr =
-            Expr::BigInt(BigInt::zero());
+            Expr::new_bigint(BigInt::zero());
 
         for term in terms {
 
@@ -601,10 +601,10 @@ pub fn inverse_laplace_transform(
     );
 
     let factor = Expr::new_div(
-        Expr::BigInt(BigInt::one()),
+        Expr::new_bigint(BigInt::one()),
         Expr::new_mul(
             Expr::new_mul(
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::from(2),
                 ),
                 Expr::Variable(
@@ -702,10 +702,10 @@ pub fn inverse_z_transform(
 ) -> Expr {
 
     let factor = Expr::new_div(
-        Expr::BigInt(BigInt::one()),
+        Expr::new_bigint(BigInt::one()),
         Expr::new_mul(
             Expr::new_mul(
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::from(2),
                 ),
                 Expr::Variable(
@@ -726,7 +726,7 @@ pub fn inverse_z_transform(
                 Expr::Variable(
                     out_var.to_string(),
                 ),
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::one(),
                 ),
             ),
@@ -738,7 +738,7 @@ pub fn inverse_z_transform(
         in_var,
         &Expr::Path(
             crate::symbolic::core::PathType::Circle,
-            Arc::new(Expr::BigInt(
+            Arc::new(Expr::new_bigint(
                 BigInt::zero(),
             )),
             Arc::new(Expr::Variable(
@@ -864,7 +864,7 @@ pub fn partial_fraction_decomposition(
 
                 let c = simplify(&Expr::new_div(
                     crate::symbolic::calculus::evaluate_at_point(&g, var, &root),
-                    Expr::Constant(crate::symbolic::calculus::factorial(multiplicity - k)),
+                    Expr::new_constant(crate::symbolic::calculus::factorial(multiplicity - k)),
                 ));
 
                 terms.push(simplify(
@@ -872,7 +872,7 @@ pub fn partial_fraction_decomposition(
                         c,
                         Expr::new_pow(
                             factor.clone(),
-                            Expr::BigInt(BigInt::from(k)),
+                            Expr::new_bigint(BigInt::from(k)),
                         ),
                     ),
                 ));
@@ -906,17 +906,17 @@ pub(crate) fn lookup_inverse_laplace(
         | Expr::Div(num, den) => {
             match (&**num, &**den) {
                 | (
-                    Expr::BigInt(n),
+                    Expr::new_bigint(n),
                     Expr::Variable(v),
                 ) if n.is_one()
                     && v == in_var =>
                 {
-                    Some(Expr::BigInt(
+                    Some(Expr::new_bigint(
                         BigInt::one(),
                     ))
                 },
                 | (
-                    Expr::BigInt(n),
+                    Expr::new_bigint(n),
                     Expr::Sub(
                         s_var,
                         a_const,
@@ -927,7 +927,7 @@ pub(crate) fn lookup_inverse_laplace(
                         Expr::Variable(
                             v,
                         ),
-                        Expr::Constant(
+                        Expr::new_constant(
                             a,
                         ),
                     ) = (
@@ -939,7 +939,7 @@ pub(crate) fn lookup_inverse_laplace(
 
                             return Some(Expr::new_exp(
                                 Expr::new_mul(
-                                    Expr::Constant(*a),
+                                    Expr::new_constant(*a),
                                     Expr::Variable(out_var.to_string()),
                                 ),
                             ));
@@ -949,7 +949,7 @@ pub(crate) fn lookup_inverse_laplace(
                     None
                 },
                 | (
-                    Expr::Constant(w),
+                    Expr::new_constant(w),
                     Expr::Add(
                         s_sq,
                         w_sq,
@@ -975,11 +975,11 @@ pub(crate) fn lookup_inverse_laplace(
                             s_exp.clone(),
                         ) {
 
-                            if let Expr::BigInt(s_exp_val) = &*s_exp_expr {
+                            if let Expr::new_bigint(s_exp_val) = &*s_exp_expr {
 
                                 if s_exp_val == &BigInt::from(2)
                                     && v == in_var
-                                    && (if let Expr::Constant(val) = **w_const {
+                                    && (if let Expr::new_constant(val) = **w_const {
                                         val
                                     } else {
                                         return None;
@@ -1026,7 +1026,7 @@ pub(crate) fn lookup_inverse_laplace(
                             s_exp.clone(),
                         ) {
 
-                            if let Expr::BigInt(s_exp_val) = &*s_exp_expr {
+                            if let Expr::new_bigint(s_exp_val) = &*s_exp_expr {
 
                                 if s_exp_val == &BigInt::from(2) && s == in_var {
 

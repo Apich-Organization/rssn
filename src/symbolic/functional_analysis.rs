@@ -246,7 +246,7 @@ pub fn banach_norm(
     );
 
     let one_over_p = Expr::new_div(
-        Expr::BigInt(BigInt::one()),
+        Expr::new_bigint(BigInt::one()),
         space.p.clone(),
     );
 
@@ -296,7 +296,7 @@ pub fn project(
         &inner_product_g_g,
     )) {
 
-        return Expr::BigInt(
+        return Expr::new_bigint(
             num_bigint::BigInt::zero(),
         );
     }

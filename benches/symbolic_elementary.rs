@@ -182,9 +182,9 @@ fn bench_expand_operations(
 
     let y = Expr::new_variable("y");
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
-    let two = Expr::Constant(2.0);
+    let two = Expr::new_constant(2.0);
 
     let x_plus_1 = Expr::new_add(
         x.clone(),
@@ -218,7 +218,7 @@ fn bench_expand_operations(
 
     let squared = Expr::new_pow(
         x_plus_1,
-        Expr::BigInt(BigInt::from(2)),
+        Expr::new_bigint(BigInt::from(2)),
     );
 
     c.bench_function(

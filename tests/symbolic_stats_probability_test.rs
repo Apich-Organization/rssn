@@ -11,9 +11,9 @@ fn evaluate_expr(
 ) -> Option<f64> {
 
     match expr {
-        | Expr::Constant(v) => Some(*v),
-        | Expr::BigInt(v) => v.to_f64(),
-        | Expr::Rational(v) => {
+        | Expr::new_constant(v) => Some(*v),
+        | Expr::new_bigint(v) => v.to_f64(),
+        | Expr::new_rational(v) => {
             v.to_f64()
         },
         | Expr::Sqrt(a) => {
@@ -189,9 +189,9 @@ fn assert_approx_eq(
 
 fn test_normal_distribution() {
 
-    let mu = Expr::Constant(0.0);
+    let mu = Expr::new_constant(0.0);
 
-    let sigma = Expr::Constant(1.0);
+    let sigma = Expr::new_constant(1.0);
 
     let dist = Normal {
         mean: mu.clone(),
@@ -212,7 +212,7 @@ fn test_normal_distribution() {
 
     // PDF at 0 should be 1/sqrt(2pi)
     let pdf_0 =
-        dist.pdf(&Expr::Constant(0.0));
+        dist.pdf(&Expr::new_constant(0.0));
 
     // Check approximate value: 1 / sqrt(2 * pi) approx 0.39894228
     // Evaluate symbolically
@@ -228,7 +228,7 @@ fn test_normal_distribution() {
 
 fn test_exponential_distribution() {
 
-    let lambda = Expr::Constant(2.0);
+    let lambda = Expr::new_constant(2.0);
 
     let dist = Exponential {
         rate: lambda.clone(),
@@ -251,9 +251,9 @@ fn test_exponential_distribution() {
 
 fn test_uniform_distribution() {
 
-    let min = Expr::Constant(0.0);
+    let min = Expr::new_constant(0.0);
 
-    let max = Expr::Constant(10.0);
+    let max = Expr::new_constant(10.0);
 
     let dist = Uniform {
         min,
@@ -277,7 +277,7 @@ fn test_uniform_distribution() {
 
 fn test_bernoulli_distribution() {
 
-    let p = Expr::Constant(0.3);
+    let p = Expr::new_constant(0.3);
 
     let dist = Bernoulli {
         p: p.clone(),
@@ -300,7 +300,7 @@ fn test_bernoulli_distribution() {
 
 fn test_poisson_distribution() {
 
-    let lambda = Expr::Constant(3.0);
+    let lambda = Expr::new_constant(3.0);
 
     let dist = Poisson {
         rate: lambda.clone(),
@@ -322,8 +322,8 @@ fn test_poisson_distribution() {
 fn test_usage_in_expr() {
 
     let n = Normal {
-        mean: Expr::Constant(0.0),
-        std_dev: Expr::Constant(1.0),
+        mean: Expr::new_constant(0.0),
+        std_dev: Expr::new_constant(1.0),
     };
 
     let _expr =

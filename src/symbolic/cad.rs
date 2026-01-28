@@ -524,7 +524,7 @@ pub(crate) fn substitute_map(
         result = crate::symbolic::calculus::substitute(
             &result,
             var,
-            &Expr::Constant(*val),
+            &Expr::new_constant(*val),
         );
     }
 
@@ -553,13 +553,13 @@ pub(crate) fn sylvester_matrix(
     if n == 0 && m == 0 {
 
         return Expr::Matrix(vec![
-            vec![Expr::Constant(0.0)],
+            vec![Expr::new_constant(0.0)],
         ]);
     }
 
     let mut matrix_rows = vec![
         vec![
-                Expr::Constant(0.0);
+                Expr::new_constant(0.0);
                 n + m
             ];
         n + m
@@ -580,7 +580,7 @@ pub(crate) fn sylvester_matrix(
                 matrix_rows[i][i + j] = p_coeffs_rev
                     .get(j)
                     .cloned()
-                    .unwrap_or_else(|| Expr::Constant(0.0));
+                    .unwrap_or_else(|| Expr::new_constant(0.0));
             }
         }
     }
@@ -594,7 +594,7 @@ pub(crate) fn sylvester_matrix(
                 matrix_rows[i + m][i + j] = q_coeffs_rev
                     .get(j)
                     .cloned()
-                    .unwrap_or_else(|| Expr::Constant(0.0));
+                    .unwrap_or_else(|| Expr::new_constant(0.0));
             }
         }
     }
@@ -618,7 +618,7 @@ pub(crate) fn resultant(
 
         if m.is_empty() {
 
-            return Expr::Constant(0.0);
+            return Expr::new_constant(0.0);
         }
 
         if m.len() == 1
@@ -656,7 +656,7 @@ mod tests {
 
         terms.insert(
             Monomial(vars_map),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         );
 
         let vars_map_0 =
@@ -664,7 +664,7 @@ mod tests {
 
         terms.insert(
             Monomial(vars_map_0),
-            Expr::Constant(-1.0),
+            Expr::new_constant(-1.0),
         );
 
         let p = SparsePolynomial {

@@ -143,7 +143,7 @@ pub fn carnot_efficiency(
 ) -> Expr {
 
     simplify(&Expr::new_sub(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         Expr::new_div(
             t_cold.clone(),
             t_hot.clone(),
@@ -188,7 +188,7 @@ pub fn partition_function(
 
     let k_b = Expr::new_variable("k_B");
 
-    let mut z = Expr::Constant(0.0);
+    let mut z = Expr::new_constant(0.0);
 
     for e in energies {
 
@@ -236,10 +236,10 @@ pub fn fermi_dirac_distribution(
     );
 
     simplify(&Expr::new_div(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         Expr::new_add(
             Expr::new_exp(exponent),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
     ))
 }
@@ -269,10 +269,10 @@ pub fn bose_einstein_distribution(
     );
 
     simplify(&Expr::new_div(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         Expr::new_sub(
             Expr::new_exp(exponent),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
     ))
 }

@@ -11,25 +11,25 @@ fn test_induced_subgraph() {
     g.add_edge(
         &"A",
         &"B",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &"B",
         &"C",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &"C",
         &"A",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &"C",
         &"D",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let sub = induced_subgraph(
@@ -59,7 +59,7 @@ fn test_union() {
     g1.add_edge(
         &"A",
         &"B",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let mut g2 = Graph::new(false);
@@ -67,7 +67,7 @@ fn test_union() {
     g2.add_edge(
         &"B",
         &"C",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let u = union(&g1, &g2);
@@ -88,13 +88,13 @@ fn test_intersection() {
     g1.add_edge(
         &"A",
         &"B",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g1.add_edge(
         &"B",
         &"C",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let mut g2 = Graph::new(false);
@@ -102,13 +102,13 @@ fn test_intersection() {
     g2.add_edge(
         &"B",
         &"C",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g2.add_edge(
         &"C",
         &"D",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let i = intersection(&g1, &g2);
@@ -129,7 +129,7 @@ fn test_cartesian_product() {
     g1.add_edge(
         &"A",
         &"B",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     ); // Path graph P2
 
     let mut g2 = Graph::new(false);
@@ -137,7 +137,7 @@ fn test_cartesian_product() {
     g2.add_edge(
         &"1",
         &"2",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     ); // Path graph P2
 
     // P2 x P2 should be C4 (Cycle graph with 4 nodes)
@@ -163,19 +163,19 @@ fn test_complement() {
     g.add_edge(
         &"A",
         &"B",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &"B",
         &"C",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &"C",
         &"A",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     // Complement of K3 is empty graph (with 3 nodes)
@@ -195,13 +195,13 @@ fn test_complement() {
     g2.add_edge(
         &"A",
         &"B",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g2.add_edge(
         &"B",
         &"C",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     // Complement of P3 should have edge A-C
@@ -226,7 +226,7 @@ fn test_disjoint_union() {
     g1.add_edge(
         &"A",
         &"B",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let mut g2 = Graph::new(false);
@@ -234,7 +234,7 @@ fn test_disjoint_union() {
     g2.add_edge(
         &"A",
         &"B",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let du = disjoint_union(&g1, &g2);

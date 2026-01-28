@@ -17,7 +17,7 @@ fn main() {
     // Integration
     let g = Expr::new_pow(
         x.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     println!("g(x) = {}", g);

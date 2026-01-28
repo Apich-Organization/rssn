@@ -308,7 +308,7 @@ mod tests {
 
         let expr = Expr::new_div(
             x,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         );
 
         let latex = to_latex(&expr);
@@ -351,7 +351,7 @@ mod tests {
         let expr =
             Expr::new_matrix(vec![
                 vec![
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                     Expr::Variable(
                         "a".into(),
                     ),
@@ -360,7 +360,7 @@ mod tests {
                     Expr::Variable(
                         "b".into(),
                     ),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ],
             ]);
 
@@ -392,7 +392,7 @@ mod tests {
                 std::sync::Arc::new(
                     Expr::new_pow(
                         x.clone(),
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0,
                         ),
                     ),
@@ -402,11 +402,11 @@ mod tests {
             ),
             lower_bound:
                 std::sync::Arc::new(
-                    Expr::Constant(0.0),
+                    Expr::new_constant(0.0),
                 ),
             upper_bound:
                 std::sync::Arc::new(
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                 ),
         };
 
@@ -440,9 +440,9 @@ mod tests {
             let x = Expr::Variable("x".to_string());
             let mut expr = x.clone();
             for _ in 0..depth {
-                expr = Expr::new_add(expr.clone(), Expr::Constant(1.0));
+                expr = Expr::new_add(expr.clone(), Expr::new_constant(1.0));
                 expr = Expr::new_div(expr.clone(), Expr::new_sqrt(x.clone()));
-                expr = Expr::new_pow(expr.clone(), Expr::Constant(2.0));
+                expr = Expr::new_pow(expr.clone(), Expr::new_constant(2.0));
             }
             let latex = to_latex(&expr);
             assert!(!latex.is_empty());

@@ -17,7 +17,7 @@ fn var(name: &str) -> Expr {
 
 fn c(val: f64) -> Expr {
 
-    Expr::Constant(val)
+    Expr::new_constant(val)
 }
 
 #[test]

@@ -79,7 +79,7 @@ pub fn expr_to_sparse_poly(
     collect_poly_terms_recursive(
         expr,
         &mut terms,
-        &Expr::BigInt(BigInt::one()),
+        &Expr::new_bigint(BigInt::one()),
     );
 
     SparsePolynomial {
@@ -159,7 +159,7 @@ pub(crate) fn collect_poly_terms_recursive(
 
                 let next_coeff = simplify(&Expr::new_mul(
                     current_coeff.clone(),
-                    Expr::BigInt(val),
+                    Expr::new_bigint(val),
                 ));
 
                 collect_poly_terms_recursive(
@@ -173,7 +173,7 @@ pub(crate) fn collect_poly_terms_recursive(
 
                 let next_coeff = simplify(&Expr::new_mul(
                     current_coeff.clone(),
-                    Expr::BigInt(val),
+                    Expr::new_bigint(val),
                 ));
 
                 collect_poly_terms_recursive(
@@ -189,7 +189,7 @@ pub(crate) fn collect_poly_terms_recursive(
 
                 let entry = terms
                     .entry(mono)
-                    .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                    .or_insert_with(|| Expr::new_bigint(BigInt::zero()));
 
                 *entry = simplify(
                     &Expr::new_add(
@@ -227,7 +227,7 @@ pub(crate) fn collect_poly_terms_recursive(
 
                     let entry = terms
                         .entry(mono)
-                        .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                        .or_insert_with(|| Expr::new_bigint(BigInt::zero()));
 
                     *entry = simplify(&Expr::new_add(
                         entry.clone(),
@@ -247,7 +247,7 @@ pub(crate) fn collect_poly_terms_recursive(
                 .entry(mono)
                 .or_insert_with(|| {
 
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::zero(),
                     )
                 });
@@ -281,7 +281,7 @@ pub(crate) fn collect_poly_terms_recursive(
                 .entry(mono)
                 .or_insert_with(|| {
 
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::zero(),
                     )
                 });
@@ -330,7 +330,7 @@ pub(crate) fn collect_poly_terms_recursive(
                 .entry(mono)
                 .or_insert_with(|| {
 
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::zero(),
                     )
                 });
@@ -419,17 +419,17 @@ pub(crate) fn solve_linear_diophantine(
     let a_div_g = &a_int / &g;
 
     let x_sol_expr = Expr::new_add(
-        Expr::BigInt(x0_sol),
+        Expr::new_bigint(x0_sol),
         Expr::new_mul(
-            Expr::BigInt(b_div_g),
+            Expr::new_bigint(b_div_g),
             t.clone(),
         ),
     );
 
     let y_sol_expr = Expr::new_sub(
-        Expr::BigInt(y0_sol),
+        Expr::new_bigint(y0_sol),
         Expr::new_mul(
-            Expr::BigInt(a_div_g),
+            Expr::new_bigint(a_div_g),
             t,
         ),
     );
@@ -488,8 +488,8 @@ pub(crate) fn solve_pell(
         get_convergent(a0, &period, k);
 
     Ok((
-        Expr::BigInt(h),
-        Expr::BigInt(p),
+        Expr::new_bigint(h),
+        Expr::new_bigint(p),
     ))
 }
 
@@ -568,12 +568,12 @@ pub(crate) fn solve_pythagorean(
 
     let m_sq = Expr::new_pow(
         m.clone(),
-        Expr::BigInt(BigInt::from(2)),
+        Expr::new_bigint(BigInt::from(2)),
     );
 
     let n_sq = Expr::new_pow(
         n.clone(),
-        Expr::BigInt(BigInt::from(2)),
+        Expr::new_bigint(BigInt::from(2)),
     );
 
     let x_sol = Expr::new_mul(
@@ -587,7 +587,7 @@ pub(crate) fn solve_pythagorean(
     let y_sol = Expr::new_mul(
         k.clone(),
         Expr::new_mul(
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 2,
             )),
             Expr::new_mul(m, n),
@@ -600,7 +600,7 @@ pub(crate) fn solve_pythagorean(
     );
 
     let mut solutions =
-        vec![Expr::Constant(0.0); 3];
+        vec![Expr::new_constant(0.0); 3];
 
     if let Some(idx) = vars
         .iter()
@@ -684,7 +684,7 @@ pub fn solve_diophantine(
     let mut var_coeffs = HashMap::new();
 
     let mut constant_term =
-        Expr::BigInt(BigInt::zero());
+        Expr::new_bigint(BigInt::zero());
 
     let mut degrees = HashMap::new();
 
@@ -750,7 +750,7 @@ pub fn solve_diophantine(
 
                     let entry = var_coeffs
                         .entry(var.clone())
-                        .or_insert_with(|| Expr::BigInt(BigInt::zero()));
+                        .or_insert_with(|| Expr::new_bigint(BigInt::zero()));
 
                     *entry = simplify(
                         &Expr::new_add(
@@ -997,24 +997,24 @@ pub fn solve_pell_from_poly(
 
 /// Checks if an expression is numerically equal to -1.
 ///
-/// Handles `Expr::Constant` and `Expr::BigInt` variants.
+/// Handles `Expr::new_constant` and `Expr::new_bigint` variants.
 #[must_use]
 
 pub fn is_neg_one(expr: &Expr) -> bool {
 
-    matches!(expr, Expr::Constant(val) if (*val - -1.0).abs() < f64::EPSILON)
-        || matches!(expr, Expr::BigInt(val) if *val == BigInt::from(-1))
+    matches!(expr, Expr::new_constant(val) if (*val - -1.0).abs() < f64::EPSILON)
+        || matches!(expr, Expr::new_bigint(val) if *val == BigInt::from(-1))
 }
 
 /// Checks if an expression is numerically equal to 2.
 ///
-/// Handles `Expr::Constant` and `Expr::BigInt` variants.
+/// Handles `Expr::new_constant` and `Expr::new_bigint` variants.
 #[must_use]
 
 pub fn is_two(expr: &Expr) -> bool {
 
-    matches!(expr, Expr::Constant(val) if (*val - 2.0).abs() < f64::EPSILON)
-        || matches!(expr, Expr::BigInt(val) if *val == BigInt::from(2))
+    matches!(expr, Expr::new_constant(val) if (*val - 2.0).abs() < f64::EPSILON)
+        || matches!(expr, Expr::new_bigint(val) if *val == BigInt::from(2))
 }
 
 /// The internal, recursive implementation of the Extended Euclidean Algorithm for `BigInt`.
@@ -1080,7 +1080,7 @@ pub fn chinese_remainder(
 ) -> Option<Expr> {
 
     let mut n_total =
-        Expr::BigInt(BigInt::one());
+        Expr::new_bigint(BigInt::one());
 
     for (_, n) in congruences {
 
@@ -1092,7 +1092,7 @@ pub fn chinese_remainder(
     }
 
     let mut result =
-        Expr::BigInt(BigInt::zero());
+        Expr::new_bigint(BigInt::zero());
 
     for (a, n) in congruences {
 
@@ -1350,7 +1350,7 @@ pub fn get_convergent(
 /// Public wrapper for the Extended Euclidean Algorithm.
 ///
 /// This function attempts to convert the input expressions `a` and `b` to `BigInt`s.
-/// - If successful, it calls the concrete `extended_gcd_inner` implementation and returns the result as `Expr::BigInt`.
+/// - If successful, it calls the concrete `extended_gcd_inner` implementation and returns the result as `Expr::new_bigint`.
 /// - If the inputs are symbolic, it returns a tuple of symbolic variables `(g, x, y)`
 ///   representing the result of the computation.
 ///
@@ -1378,9 +1378,9 @@ pub fn extended_gcd(
             );
 
         return (
-            Expr::BigInt(g),
-            Expr::BigInt(x),
-            Expr::BigInt(y),
+            Expr::new_bigint(g),
+            Expr::new_bigint(x),
+            Expr::new_bigint(y),
         );
     }
 

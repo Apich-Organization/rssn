@@ -310,7 +310,7 @@ impl FredholmEquation {
             let sum_of_terms = lhs_sum_terms
                 .into_iter()
                 .fold(
-                    Expr::Constant(0.0),
+                    Expr::new_constant(0.0),
                     |acc, x| {
 
                         simplify(&Expr::new_add(
@@ -365,7 +365,7 @@ impl FredholmEquation {
         let sum_of_solution_terms = solution_sum_terms
             .into_iter()
             .fold(
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
                 |acc, x| {
 
                     simplify(&Expr::new_add(
@@ -652,9 +652,9 @@ pub fn solve_airfoil_equation(
     var_t: &str,
 ) -> Expr {
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
-    let neg_one = Expr::Constant(-1.0);
+    let neg_one = Expr::new_constant(-1.0);
 
     let pi = Expr::Pi;
 
@@ -665,7 +665,7 @@ pub fn solve_airfoil_equation(
                 Expr::Variable(
                     var_t.to_string(),
                 ),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ));
 
@@ -708,12 +708,12 @@ pub fn solve_airfoil_equation(
                 Expr::Variable(
                     var_x.to_string(),
                 ),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ));
 
     let factor1 = Expr::new_div(
-        Expr::Constant(-1.0),
+        Expr::new_constant(-1.0),
         Expr::new_mul(
             pi,
             sqrt_1_minus_x2.clone(),

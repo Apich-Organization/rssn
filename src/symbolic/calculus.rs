@@ -485,7 +485,7 @@ pub(crate) fn get_real_imag_parts(
         | other => {
             (
                 other,
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::zero(),
                 ),
             )
@@ -678,11 +678,11 @@ pub(crate) fn differentiate_results(
 ) -> Expr {
 
     match processed_expr {
-        | Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) | Expr::Pi | Expr::E => {
-            Expr::BigInt(BigInt::zero())
+        | Expr::new_constant(_) | Expr::new_bigint(_) | Expr::new_rational(_) | Expr::Pi | Expr::E => {
+            Expr::new_bigint(BigInt::zero())
         },
-        | Expr::Variable(name) if name == var => Expr::BigInt(BigInt::one()),
-        | Expr::Variable(_) => Expr::BigInt(BigInt::zero()),
+        | Expr::Variable(name) if name == var => Expr::new_bigint(BigInt::one()),
+        | Expr::Variable(_) => Expr::new_bigint(BigInt::zero()),
         | Expr::Add(a, b) => {
             simplify(&Expr::new_add(
                 cache[a.as_ref()].clone(),
@@ -721,7 +721,7 @@ pub(crate) fn differentiate_results(
                 ),
                 Expr::new_pow(
                     b.as_ref().clone(),
-                    Expr::BigInt(BigInt::from(2)),
+                    Expr::new_bigint(BigInt::from(2)),
                 ),
             ))
         },
@@ -738,7 +738,7 @@ pub(crate) fn differentiate_results(
 
                 let n_minus_1 = Expr::new_sub(
                     n.clone(),
-                    Expr::BigInt(BigInt::one()),
+                    Expr::new_bigint(BigInt::one()),
                 ); // or simplified subtraction
                 let term = Expr::new_mul(
                     Expr::new_mul(
@@ -807,7 +807,7 @@ pub(crate) fn differentiate_results(
             simplify(&Expr::new_mul(
                 Expr::new_pow(
                     Expr::new_sec(arg.as_ref().clone()),
-                    Expr::BigInt(BigInt::from(2)),
+                    Expr::new_bigint(BigInt::from(2)),
                 ),
                 cache[arg.as_ref()].clone(),
             ))
@@ -836,7 +836,7 @@ pub(crate) fn differentiate_results(
             simplify(&Expr::new_mul(
                 Expr::new_neg(Expr::new_pow(
                     Expr::new_csc(arg.as_ref().clone()),
-                    Expr::BigInt(BigInt::from(2)),
+                    Expr::new_bigint(BigInt::from(2)),
                 )),
                 cache[arg.as_ref()].clone(),
             ))
@@ -857,7 +857,7 @@ pub(crate) fn differentiate_results(
             simplify(&Expr::new_mul(
                 Expr::new_pow(
                     Expr::new_sech(arg.as_ref().clone()),
-                    Expr::BigInt(BigInt::from(2)),
+                    Expr::new_bigint(BigInt::from(2)),
                 ),
                 cache[arg.as_ref()].clone(),
             ))
@@ -879,10 +879,10 @@ pub(crate) fn differentiate_results(
                 Expr::new_div(
                     cache[arg.as_ref()].clone(),
                     Expr::new_add(
-                        Expr::BigInt(BigInt::one()),
+                        Expr::new_bigint(BigInt::one()),
                         Expr::new_pow(
                             arg.as_ref().clone(),
-                            Expr::BigInt(BigInt::from(2)),
+                            Expr::new_bigint(BigInt::from(2)),
                         ),
                     ),
                 ),
@@ -896,9 +896,9 @@ pub(crate) fn differentiate_results(
                     Expr::new_sqrt(Expr::new_sub(
                         Expr::new_pow(
                             arg.as_ref().clone(),
-                            Expr::BigInt(BigInt::from(2)),
+                            Expr::new_bigint(BigInt::from(2)),
                         ),
-                        Expr::BigInt(BigInt::one()),
+                        Expr::new_bigint(BigInt::one()),
                     )),
                 ),
             ))
@@ -912,9 +912,9 @@ pub(crate) fn differentiate_results(
                         Expr::new_sqrt(Expr::new_sub(
                             Expr::new_pow(
                                 arg.as_ref().clone(),
-                                Expr::BigInt(BigInt::from(2)),
+                                Expr::new_bigint(BigInt::from(2)),
                             ),
-                            Expr::BigInt(BigInt::one()),
+                            Expr::new_bigint(BigInt::one()),
                         )),
                     ),
                 ),
@@ -924,7 +924,7 @@ pub(crate) fn differentiate_results(
             simplify(&Expr::new_neg(
                 Expr::new_pow(
                     Expr::new_csch(arg.as_ref().clone()),
-                    Expr::BigInt(BigInt::from(2)),
+                    Expr::new_bigint(BigInt::from(2)),
                 ),
             ))
         },
@@ -950,9 +950,9 @@ pub(crate) fn differentiate_results(
                 Expr::new_sqrt(Expr::new_add(
                     Expr::new_pow(
                         arg.as_ref().clone(),
-                        Expr::BigInt(BigInt::from(2)),
+                        Expr::new_bigint(BigInt::from(2)),
                     ),
-                    Expr::BigInt(BigInt::one()),
+                    Expr::new_bigint(BigInt::one()),
                 )),
             ))
         },
@@ -962,9 +962,9 @@ pub(crate) fn differentiate_results(
                 Expr::new_sqrt(Expr::new_sub(
                     Expr::new_pow(
                         arg.as_ref().clone(),
-                        Expr::BigInt(BigInt::from(2)),
+                        Expr::new_bigint(BigInt::from(2)),
                     ),
-                    Expr::BigInt(BigInt::one()),
+                    Expr::new_bigint(BigInt::one()),
                 )),
             ))
         },
@@ -972,10 +972,10 @@ pub(crate) fn differentiate_results(
             simplify(&Expr::new_div(
                 cache[arg.as_ref()].clone(),
                 Expr::new_sub(
-                    Expr::BigInt(BigInt::one()),
+                    Expr::new_bigint(BigInt::one()),
                     Expr::new_pow(
                         arg.as_ref().clone(),
-                        Expr::BigInt(BigInt::from(2)),
+                        Expr::new_bigint(BigInt::from(2)),
                     ),
                 ),
             ))
@@ -987,10 +987,10 @@ pub(crate) fn differentiate_results(
                     Expr::new_mul(
                         arg.as_ref().clone(),
                         Expr::new_sqrt(Expr::new_sub(
-                            Expr::BigInt(BigInt::one()),
+                            Expr::new_bigint(BigInt::one()),
                             Expr::new_pow(
                                 arg.as_ref().clone(),
-                                Expr::BigInt(BigInt::from(2)),
+                                Expr::new_bigint(BigInt::from(2)),
                             ),
                         )),
                     ),
@@ -1004,10 +1004,10 @@ pub(crate) fn differentiate_results(
                     Expr::new_mul(
                         Expr::new_abs(arg.as_ref().clone()),
                         Expr::new_sqrt(Expr::new_add(
-                            Expr::BigInt(BigInt::one()),
+                            Expr::new_bigint(BigInt::one()),
                             Expr::new_pow(
                                 arg.as_ref().clone(),
-                                Expr::BigInt(BigInt::from(2)),
+                                Expr::new_bigint(BigInt::from(2)),
                             ),
                         )),
                     ),
@@ -1215,25 +1215,25 @@ pub(crate) fn integrate_basic(
                 var,
             )
         },
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
             Expr::new_mul(
-                Expr::Constant(*c),
+                Expr::new_constant(*c),
                 Expr::Variable(
                     var.to_string(),
                 ),
             )
         },
-        | Expr::BigInt(i) => {
+        | Expr::new_bigint(i) => {
             Expr::new_mul(
-                Expr::BigInt(i.clone()),
+                Expr::new_bigint(i.clone()),
                 Expr::Variable(
                     var.to_string(),
                 ),
             )
         },
-        | Expr::Rational(r) => {
+        | Expr::new_rational(r) => {
             Expr::new_mul(
-                Expr::Rational(
+                Expr::new_rational(
                     r.clone(),
                 ),
                 Expr::Variable(
@@ -1249,11 +1249,11 @@ pub(crate) fn integrate_basic(
                     Expr::Variable(
                         var.to_string(),
                     ),
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::from(2),
                     ),
                 ),
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::from(2),
                 ),
             )
@@ -1282,7 +1282,7 @@ pub(crate) fn integrate_basic(
 
             if let (
                 Expr::Variable(name),
-                Expr::Constant(n),
+                Expr::new_constant(n),
             ) = (&**base, &**exp)
             {
 
@@ -1300,9 +1300,9 @@ pub(crate) fn integrate_basic(
                     return Expr::new_div(
                         Expr::new_pow(
                             Expr::Variable(var.to_string()),
-                            Expr::Constant(n + 1.0),
+                            Expr::new_constant(n + 1.0),
                         ),
-                        Expr::Constant(n + 1.0),
+                        Expr::new_constant(n + 1.0),
                     );
                 }
             }
@@ -1400,7 +1400,7 @@ pub(crate) const fn get_liate_type(
         | Expr::ArcCos(_)
         | Expr::ArcTan(_) => 2,
         | Expr::Variable(_)
-        | Expr::Constant(_)
+        | Expr::new_constant(_)
         | Expr::Power(_, _) => 3,
         | Expr::Sin(_)
         | Expr::Cos(_)
@@ -2038,7 +2038,7 @@ pub(crate) fn handle_trig_sub_sum(
         };
 
     if let (
-        Expr::Constant(a_val),
+        Expr::new_constant(a_val),
         Expr::Power(x, two),
     ) = (
         &a_sq_expanded,
@@ -2047,7 +2047,7 @@ pub(crate) fn handle_trig_sub_sum(
 
         if let (
             Expr::Variable(v),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ) = (
             &**x,
             two.as_ref().clone(),
@@ -2056,7 +2056,7 @@ pub(crate) fn handle_trig_sub_sum(
             if v == var && *a_val > 0.0
             {
 
-                let a = Expr::Constant(
+                let a = Expr::new_constant(
                     a_val.sqrt(),
                 );
 
@@ -2194,7 +2194,7 @@ pub(crate) fn trig_substitution(
                 };
 
             if let (
-                Expr::Constant(a_val),
+                Expr::new_constant(a_val),
                 Expr::Power(x, two),
             ) = (
                 &a_sq_expanded,
@@ -2203,7 +2203,7 @@ pub(crate) fn trig_substitution(
 
                 if let (
                     Expr::Variable(v),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ) = (
                     &**x,
                     two.as_ref()
@@ -2214,7 +2214,7 @@ pub(crate) fn trig_substitution(
                         && *a_val > 0.0
                     {
 
-                        let a = Expr::Constant(a_val.sqrt());
+                        let a = Expr::new_constant(a_val.sqrt());
 
                         let theta = Expr::Variable("theta".to_string());
 
@@ -2309,7 +2309,7 @@ pub(crate) fn trig_substitution(
 
             if let (
                 Expr::Power(x, two),
-                Expr::Constant(a_val),
+                Expr::new_constant(a_val),
             ) = (
                 &x_sq_expanded,
                 &a_sq_expanded,
@@ -2317,7 +2317,7 @@ pub(crate) fn trig_substitution(
 
                 if let (
                     Expr::Variable(v),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ) = (
                     &**x,
                     two.as_ref()
@@ -2328,7 +2328,7 @@ pub(crate) fn trig_substitution(
                         && *a_val > 0.0
                     {
 
-                        let a = Expr::Constant(a_val.sqrt());
+                        let a = Expr::new_constant(a_val.sqrt());
 
                         let theta = Expr::Variable("theta".to_string());
 
@@ -2493,7 +2493,7 @@ pub fn check_analytic(
     let u = simplify(&substitute(
         &f_xy,
         "i",
-        &Expr::Constant(0.0),
+        &Expr::new_constant(0.0),
     ));
 
     eprintln!("u: {u}");
@@ -2514,7 +2514,7 @@ pub fn check_analytic(
     let v = simplify(&substitute(
         &v,
         "i",
-        &Expr::Constant(1.0),
+        &Expr::new_constant(1.0),
     ));
 
     eprintln!("{v}");
@@ -2609,7 +2609,7 @@ pub(crate) fn find_pole_order(
                 ),
                 pole.clone(),
             ),
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 order,
             )),
         );
@@ -2628,7 +2628,7 @@ pub(crate) fn find_pole_order(
             ),
         );
 
-        if let Expr::Constant(c) =
+        if let Expr::new_constant(c) =
             val_at_pole
         {
 
@@ -2737,7 +2737,7 @@ pub fn calculate_residue(
             ),
             pole.clone(),
         ),
-        Expr::BigInt(BigInt::from(m)),
+        Expr::new_bigint(BigInt::from(m)),
     );
 
     let g_z = simplify(&Expr::new_mul(
@@ -2763,7 +2763,7 @@ pub fn calculate_residue(
 
     simplify(&Expr::new_div(
         limit,
-        Expr::Constant(
+        Expr::new_constant(
             m_minus_1_factorial,
         ),
     ))
@@ -2928,7 +2928,7 @@ pub fn is_inside_contour(
                 center_re,
                 center_im,
             ),
-            Expr::Constant(r),
+            Expr::new_constant(r),
         ) = (
             &center_expanded,
             &radius_expanded,
@@ -2941,7 +2941,7 @@ pub fn is_inside_contour(
                         center_re
                             .clone(),
                     ),
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::from(2),
                     ),
                 ),
@@ -2951,13 +2951,13 @@ pub fn is_inside_contour(
                         center_im
                             .clone(),
                     ),
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::from(2),
                     ),
                 ),
             );
 
-            if let Expr::Constant(d2) =
+            if let Expr::new_constant(d2) =
                 simplify(&dist_sq)
             {
 
@@ -3026,7 +3026,7 @@ pub fn path_integrate(
                     expr, var,
                 ) {
 
-                    return Expr::BigInt(BigInt::zero());
+                    return Expr::new_bigint(BigInt::zero());
                 }
 
                 let poles = find_poles(
@@ -3034,7 +3034,7 @@ pub fn path_integrate(
                 );
 
                 let mut sum_of_residues =
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::zero(),
                     );
 
@@ -3055,10 +3055,10 @@ pub fn path_integrate(
                 }
 
                 let two_pi_i = Expr::new_mul(
-                        Expr::Constant(2.0 * std::f64::consts::PI),
+                        Expr::new_constant(2.0 * std::f64::consts::PI),
                         Expr::new_complex(
-                            Expr::BigInt(BigInt::zero()),
-                            Expr::BigInt(BigInt::one()),
+                            Expr::new_bigint(BigInt::zero()),
+                            Expr::new_bigint(BigInt::one()),
                         ),
                     );
 
@@ -3115,10 +3115,10 @@ pub fn path_integrate(
                 definite_integrate(
                     &integrand_t,
                     "t",
-                    &Expr::BigInt(
+                    &Expr::new_bigint(
                         BigInt::zero(),
                     ),
-                    &Expr::BigInt(
+                    &Expr::new_bigint(
                         BigInt::one(),
                     ),
                 )
@@ -3308,7 +3308,7 @@ pub fn improper_integral(
                 im_part,
             ) => {
 
-                if let Expr::Constant(
+                if let Expr::new_constant(
                     val,
                 ) = *im_part
                 {
@@ -3324,7 +3324,7 @@ pub fn improper_integral(
                     None
                 }
             },
-            | Expr::Constant(_val) => {
+            | Expr::new_constant(_val) => {
                 Some(0.0)
             },
             | expr if is_zero(&expr) => {
@@ -3337,7 +3337,7 @@ pub fn improper_integral(
     let poles = find_poles(expr, var);
 
     let mut sum_of_residues_in_uhp =
-        Expr::BigInt(BigInt::zero());
+        Expr::new_bigint(BigInt::zero());
 
     for pole in poles {
 
@@ -3362,12 +3362,12 @@ pub fn improper_integral(
     }
 
     let two_pi_i = Expr::new_mul(
-        Expr::Constant(
+        Expr::new_constant(
             2.0 * std::f64::consts::PI,
         ),
         Expr::new_complex(
-            Expr::BigInt(BigInt::zero()),
-            Expr::BigInt(BigInt::one()),
+            Expr::new_bigint(BigInt::zero()),
+            Expr::new_bigint(BigInt::one()),
         ),
     );
 
@@ -3396,25 +3396,25 @@ pub(crate) fn integrate_by_rules(
                 var,
             )
         },
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
             Some(Expr::new_mul(
-                Expr::Constant(*c),
+                Expr::new_constant(*c),
                 Expr::Variable(
                     var.to_string(),
                 ),
             ))
         },
-        | Expr::BigInt(i) => {
+        | Expr::new_bigint(i) => {
             Some(Expr::new_mul(
-                Expr::BigInt(i.clone()),
+                Expr::new_bigint(i.clone()),
                 Expr::Variable(
                     var.to_string(),
                 ),
             ))
         },
-        | Expr::Rational(r) => {
+        | Expr::new_rational(r) => {
             Some(Expr::new_mul(
-                Expr::Rational(
+                Expr::new_rational(
                     r.clone(),
                 ),
                 Expr::Variable(
@@ -3430,11 +3430,11 @@ pub(crate) fn integrate_by_rules(
                     Expr::Variable(
                         var.to_string(),
                     ),
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::from(2),
                     ),
                 ),
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::from(2),
                 ),
             ))
@@ -3601,7 +3601,7 @@ pub(crate) fn integrate_by_rules(
             if matches!(
                 &**base,
                 Expr::Sec(_)
-            ) && matches!(&** exp, Expr::BigInt(b) if * b == BigInt::from(2)) =>
+            ) && matches!(&** exp, Expr::new_bigint(b) if * b == BigInt::from(2)) =>
         {
 
             if let Expr::Sec(arg) =
@@ -3628,7 +3628,7 @@ pub(crate) fn integrate_by_rules(
             if matches!(
                 &**base,
                 Expr::Csc(_)
-            ) && matches!(&** exp, Expr::BigInt(b) if * b == BigInt::from(2)) =>
+            ) && matches!(&** exp, Expr::new_bigint(b) if * b == BigInt::from(2)) =>
         {
 
             if let Expr::Csc(arg) =
@@ -3776,12 +3776,12 @@ pub(crate) fn integrate_by_rules(
                         );
 
                     let term2 = Expr::new_mul(
-                        Expr::Constant(0.5),
+                        Expr::new_constant(0.5),
                         Expr::new_log(Expr::new_add(
-                            Expr::BigInt(BigInt::one()),
+                            Expr::new_bigint(BigInt::one()),
                             Expr::new_pow(
                                 x,
-                                Expr::BigInt(BigInt::from(2)),
+                                Expr::new_bigint(BigInt::from(2)),
                             ),
                         )),
                     );
@@ -3816,10 +3816,10 @@ pub(crate) fn integrate_by_rules(
                         );
 
                     let term2 = Expr::new_sqrt(Expr::new_sub(
-                        Expr::BigInt(BigInt::one()),
+                        Expr::new_bigint(BigInt::one()),
                         Expr::new_pow(
                             x,
-                            Expr::BigInt(BigInt::from(2)),
+                            Expr::new_bigint(BigInt::from(2)),
                         ),
                     ));
 
@@ -3891,7 +3891,7 @@ pub(crate) fn integrate_by_rules(
             if matches!(
                 &**base,
                 Expr::Sech(_)
-            ) && matches!(&** exp, Expr::BigInt(b) if * b == BigInt::from(2)) =>
+            ) && matches!(&** exp, Expr::new_bigint(b) if * b == BigInt::from(2)) =>
         {
 
             if let Expr::Sech(arg) =
@@ -3918,7 +3918,7 @@ pub(crate) fn integrate_by_rules(
 
             if let (
                 Expr::Variable(name),
-                Expr::Constant(n),
+                Expr::new_constant(n),
             ) = (&**base, &**exp)
             {
 
@@ -3938,9 +3938,9 @@ pub(crate) fn integrate_by_rules(
                     return Some(Expr::new_div(
                         Expr::new_pow(
                             Expr::Variable(var.to_string()),
-                            Expr::Constant(n + 1.0),
+                            Expr::new_constant(n + 1.0),
                         ),
-                        Expr::Constant(n + 1.0),
+                        Expr::new_constant(n + 1.0),
                     ));
                 }
             }
@@ -3961,7 +3961,7 @@ pub(crate) fn integrate_div(
 ) -> Option<Expr> {
 
     if let (
-        Expr::BigInt(one),
+        Expr::new_bigint(one),
         Expr::Variable(name),
     ) = (&**num, &**den)
     {
@@ -3976,7 +3976,7 @@ pub(crate) fn integrate_div(
         }
     }
 
-    if let Expr::BigInt(one) = &**num {
+    if let Expr::new_bigint(one) = &**num {
 
         if one.is_one() {
 
@@ -4002,7 +4002,7 @@ pub(crate) fn integrate_div(
                 };
 
                 if let (
-                    Expr::Constant(
+                    Expr::new_constant(
                         a_val,
                     ),
                     Expr::Power(x, two),
@@ -4015,7 +4015,7 @@ pub(crate) fn integrate_div(
                         Expr::Variable(
                             v,
                         ),
-                        Expr::Constant(
+                        Expr::new_constant(
                             val,
                         ),
                     ) =
@@ -4024,11 +4024,11 @@ pub(crate) fn integrate_div(
 
                         if v == var && (*val - 2.0).abs() < ERROR_MARGIN {
 
-                            let a = Expr::Constant(a_val.sqrt());
+                            let a = Expr::new_constant(a_val.sqrt());
 
                             return Some(Expr::new_mul(
                                 Expr::new_div(
-                                    Expr::BigInt(BigInt::one()),
+                                    Expr::new_bigint(BigInt::one()),
                                     a.clone(),
                                 ),
                                 Expr::new_arctan(Expr::new_div(
@@ -4044,7 +4044,7 @@ pub(crate) fn integrate_div(
     }
 
     if let (
-        Expr::BigInt(one),
+        Expr::new_bigint(one),
         Expr::Sqrt(sqrt_arg),
     ) = (&**num, &**den)
     {
@@ -4058,7 +4058,7 @@ pub(crate) fn integrate_div(
             {
 
                 if let (
-                    Expr::Constant(
+                    Expr::new_constant(
                         a_val,
                     ),
                     Expr::Power(x, two),
@@ -4070,7 +4070,7 @@ pub(crate) fn integrate_div(
                         Expr::Variable(
                             v,
                         ),
-                        Expr::Constant(
+                        Expr::new_constant(
                             val,
                         ),
                     ) =
@@ -4079,7 +4079,7 @@ pub(crate) fn integrate_div(
 
                         if v == var && (*val - 2.0).abs() < ERROR_MARGIN {
 
-                            let a = Expr::Constant(a_val.sqrt());
+                            let a = Expr::new_constant(a_val.sqrt());
 
                             return Some(Expr::new_arcsin(
                                 Expr::new_div(
@@ -4166,7 +4166,7 @@ pub(crate) fn integrate_exp(
     if let Expr::Mul(a, x) = &**arg {
 
         if let (
-            Expr::Constant(coeff),
+            Expr::new_constant(coeff),
             Expr::Variable(v),
         ) = (&**a, &**x)
         {
@@ -4176,7 +4176,7 @@ pub(crate) fn integrate_exp(
                 return Some(
                     Expr::new_div(
                         expr.clone(),
-                        Expr::Constant(
+                        Expr::new_constant(
                             *coeff,
                         ),
                     ),
@@ -4186,7 +4186,7 @@ pub(crate) fn integrate_exp(
 
         if let (
             Expr::Variable(v),
-            Expr::Constant(coeff),
+            Expr::new_constant(coeff),
         ) = (&**x, &**a)
         {
 
@@ -4195,7 +4195,7 @@ pub(crate) fn integrate_exp(
                 return Some(
                     Expr::new_div(
                         expr.clone(),
-                        Expr::Constant(
+                        Expr::new_constant(
                             *coeff,
                         ),
                     ),
@@ -4299,7 +4299,7 @@ pub(crate) fn integrate_by_parts_tabular(
             return None;
         }
 
-        let mut total = Expr::BigInt(
+        let mut total = Expr::new_bigint(
             BigInt::zero(),
         );
 
@@ -4452,7 +4452,7 @@ pub(crate) fn integrate_by_partial_fractions(
 
                 let integral_of_remainder = if is_zero(&remainder) {
 
-                    Expr::BigInt(BigInt::zero())
+                    Expr::new_bigint(BigInt::zero())
                 } else {
 
                     let remainder_fraction = Expr::new_div(
@@ -4487,7 +4487,7 @@ pub(crate) fn integrate_by_partial_fractions(
         }
 
         let mut total_integral =
-            Expr::BigInt(BigInt::zero());
+            Expr::new_bigint(BigInt::zero());
 
         for (root, m) in roots {
 
@@ -4496,7 +4496,7 @@ pub(crate) fn integrate_by_partial_fractions(
                     Expr::Variable(var.to_string()),
                     root.clone(),
                 ),
-                Expr::BigInt(BigInt::from(m)),
+                Expr::new_bigint(BigInt::from(m)),
             );
 
             let g_z = simplify(
@@ -4528,7 +4528,7 @@ pub(crate) fn integrate_by_partial_fractions(
                     );
 
                 let k_factorial =
-                    Expr::Constant(
+                    Expr::new_constant(
                         factorial(k),
                     );
 
@@ -4578,7 +4578,7 @@ pub(crate) fn integrate_by_partial_fractions(
                         1_i64 - j_i64;
 
                     let new_denom =
-                        Expr::Constant(
+                        Expr::new_constant(
                             new_power
                                 as f64,
                         );
@@ -4588,7 +4588,7 @@ pub(crate) fn integrate_by_partial_fractions(
                             Expr::Variable(var.to_string()),
                             root.clone(),
                         ),
-                        Expr::Constant(new_power as f64),
+                        Expr::new_constant(new_power as f64),
                     );
 
                     Expr::new_mul(
@@ -4714,18 +4714,18 @@ pub(crate) fn tangent_half_angle_substitution(
 
     let t_squared = Expr::new_pow(
         t.clone(),
-        Expr::BigInt(BigInt::from(2)),
+        Expr::new_bigint(BigInt::from(2)),
     );
 
     let one_plus_t_squared =
         Expr::new_add(
-            Expr::BigInt(BigInt::one()),
+            Expr::new_bigint(BigInt::one()),
             t_squared.clone(),
         );
 
     let sin_x_sub = Expr::new_div(
         Expr::new_mul(
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 2,
             )),
             t,
@@ -4735,7 +4735,7 @@ pub(crate) fn tangent_half_angle_substitution(
 
     let cos_x_sub = Expr::new_div(
         Expr::new_sub(
-            Expr::BigInt(BigInt::one()),
+            Expr::new_bigint(BigInt::one()),
             t_squared,
         ),
         one_plus_t_squared.clone(),
@@ -4748,7 +4748,7 @@ pub(crate) fn tangent_half_angle_substitution(
         ));
 
     let dx_sub = Expr::new_div(
-        Expr::BigInt(BigInt::from(2)),
+        Expr::new_bigint(BigInt::from(2)),
         one_plus_t_squared,
     );
 
@@ -4801,7 +4801,7 @@ pub(crate) fn tangent_half_angle_substitution(
             Expr::Variable(
                 var.to_string(),
             ),
-            Expr::BigInt(BigInt::from(
+            Expr::new_bigint(BigInt::from(
                 2,
             )),
         ));
@@ -4902,7 +4902,7 @@ pub fn limit_internal(
                 },
                 | Expr::ArcTan(arg) if **arg == Expr::Variable(var.to_string()) => {
 
-                    return Expr::Constant(std::f64::consts::PI / 2.0);
+                    return Expr::new_constant(std::f64::consts::PI / 2.0);
                 },
                 | Expr::Variable(v) if v == var => return Expr::Infinity,
                 | _ => {},
@@ -4912,11 +4912,11 @@ pub fn limit_internal(
             match working_expr {
                 | Expr::Exp(arg) if **arg == Expr::Variable(var.to_string()) => {
 
-                    return Expr::BigInt(BigInt::zero());
+                    return Expr::new_bigint(BigInt::zero());
                 },
                 | Expr::ArcTan(arg) if **arg == Expr::Variable(var.to_string()) => {
 
-                    return Expr::Constant(-std::f64::consts::PI / 2.0);
+                    return Expr::new_constant(-std::f64::consts::PI / 2.0);
                 },
                 | Expr::Variable(v) if v == var => return Expr::NegativeInfinity,
                 | _ => {},
@@ -5044,7 +5044,7 @@ pub fn limit_internal(
 
                 let den = Expr::new_pow(
                     b.clone(),
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::from(
                             -1,
                         ),
@@ -5083,7 +5083,7 @@ pub fn limit_internal(
 
                 let den = Expr::new_pow(
                     a.clone(),
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::from(
                             -1,
                         ),
@@ -5232,7 +5232,7 @@ pub fn limit_internal(
 
                 match deg_num.cmp(&deg_den) {
                     std::cmp::Ordering::Less => {
-                        return Expr::BigInt(BigInt::zero());
+                        return Expr::new_bigint(BigInt::zero());
                     }
                     std::cmp::Ordering::Greater => {
                         return if matches!(to, Expr::NegativeInfinity) {

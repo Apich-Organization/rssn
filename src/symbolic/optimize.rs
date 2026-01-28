@@ -87,7 +87,7 @@ pub fn find_extrema(
 
         grad_eqs.push(Expr::Eq(
             Arc::new(deriv),
-            Arc::new(Expr::Constant(
+            Arc::new(Expr::new_constant(
                 0.0,
             )),
         ));
@@ -193,9 +193,9 @@ pub(crate) fn evaluate_constant_expr(
     use num_traits::ToPrimitive;
 
     match expr {
-        | Expr::Constant(c) => Some(*c),
-        | Expr::BigInt(i) => i.to_f64(),
-        | Expr::Rational(r) => r.to_f64(),
+        | Expr::new_constant(c) => Some(*c),
+        | Expr::new_bigint(i) => i.to_f64(),
+        | Expr::new_rational(r) => r.to_f64(),
         | Expr::Add(a, b) => Some(evaluate_constant_expr(a)? + evaluate_constant_expr(b)?),
         | Expr::Sub(a, b) => Some(evaluate_constant_expr(a)? - evaluate_constant_expr(b)?),
         | Expr::Mul(a, b) => Some(evaluate_constant_expr(a)? * evaluate_constant_expr(b)?),
@@ -237,7 +237,7 @@ pub fn hessian_matrix(
 
     let mut matrix = vec![
         vec![
-                Expr::Constant(0.0);
+                Expr::new_constant(0.0);
                 n
             ];
         n
@@ -347,7 +347,7 @@ pub fn find_constrained_extrema(
 
         grad_eqs.push(Expr::Eq(
             Arc::new(deriv),
-            Arc::new(Expr::Constant(
+            Arc::new(Expr::new_constant(
                 0.0,
             )),
         ));

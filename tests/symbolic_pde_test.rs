@@ -41,7 +41,7 @@ fn test_method_of_characteristics() {
 
     let eq = Expr::new_sub(
         lhs,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let sol =
@@ -93,7 +93,7 @@ fn test_wave_equation_dalembert() {
 
     // u_tt - 4*u_xx = 0 (c = 2)
     let rhs = Expr::new_mul(
-        Expr::Constant(4.0),
+        Expr::new_constant(4.0),
         u_xx,
     );
 
@@ -138,7 +138,7 @@ fn test_heat_equation_1d() {
 
     // u_t - 0.5*u_xx = 0 (α = 0.5)
     let rhs = Expr::new_mul(
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
         u_xx,
     );
 
@@ -248,7 +248,7 @@ fn test_pde_classification_wave() {
     let eq = Expr::new_sub(
         u_tt,
         Expr::new_mul(
-            Expr::Constant(4.0),
+            Expr::new_constant(4.0),
             u_xx,
         ),
     );
@@ -371,7 +371,7 @@ fn test_pde_classification_heat() {
     let eq = Expr::new_sub(
         u_t,
         Expr::new_mul(
-            Expr::Constant(0.5),
+            Expr::new_constant(0.5),
             u_xx,
         ),
     );
@@ -444,7 +444,7 @@ fn test_poisson_equation_2d() {
     // u_xx + u_yy + 1 = 0  (equivalent to u_xx + u_yy = -1)
     let eq = Expr::new_add(
         Expr::new_add(u_xx, u_yy),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let sol = solve_poisson_equation_2d(
@@ -496,7 +496,7 @@ fn test_helmholtz_equation() {
         Expr::new_mul(
             Expr::new_pow(
                 k,
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
             u.clone(),
         ),
@@ -540,8 +540,8 @@ fn test_schrodinger_equation() {
 
     // i*psi_t + psi_xx = 0
     let i = Expr::Complex(
-        Arc::new(Expr::Constant(0.0)),
-        Arc::new(Expr::Constant(1.0)),
+        Arc::new(Expr::new_constant(0.0)),
+        Arc::new(Expr::new_constant(1.0)),
     );
 
     let eq = Expr::new_add(
@@ -599,7 +599,7 @@ fn test_klein_gordon_equation() {
         Expr::new_mul(
             Expr::new_pow(
                 m,
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
             phi.clone(),
         ),

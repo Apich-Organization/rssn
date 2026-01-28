@@ -539,7 +539,7 @@ pub(crate) fn parse_quantity(
 
 /// Converts a numeric `Expr` variant into an `f64`.
 ///
-/// This function handles `Expr::Constant`, `Expr::BigInt`, `Expr::Rational`, and `Expr::Dag`
+/// This function handles `Expr::new_constant`, `Expr::new_bigint`, `Expr::new_rational`, and `Expr::Dag`
 /// (by converting it to an AST expression first).
 ///
 /// # Arguments
@@ -765,12 +765,12 @@ pub fn unify_expression(
                 },
                 | (
                     Expr::Quantity(qa),
-                    Expr::Constant(
+                    Expr::new_constant(
                         scalar_f64,
                     ),
                 )
                 | (
-                    Expr::Constant(
+                    Expr::new_constant(
                         scalar_f64,
                     ),
                     Expr::Quantity(qa),
@@ -820,7 +820,7 @@ pub fn unify_expression(
                 #[allow(clippy::arithmetic_side_effects)]
                 | (
                     Expr::Quantity(qa),
-                    Expr::Constant(
+                    Expr::new_constant(
                         scalar_f64,
                     ),
                 ) => {
@@ -845,7 +845,7 @@ pub fn unify_expression(
                     ))
                 },
                 | (
-                    Expr::Constant(_),
+                    Expr::new_constant(_),
                     Expr::Quantity(_),
                 ) => Err(
                     "Error: Scalar \

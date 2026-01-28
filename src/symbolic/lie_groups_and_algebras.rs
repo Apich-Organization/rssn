@@ -137,8 +137,8 @@ pub fn exponential_map(
         factorial *= i;
 
         let factor = Expr::new_div(
-            Expr::BigInt(BigInt::one()),
-            Expr::BigInt(
+            Expr::new_bigint(BigInt::one()),
+            Expr::new_bigint(
                 factorial.clone(),
             ),
         );
@@ -382,55 +382,55 @@ pub fn so3_generators()
 
     let lz = Expr::Matrix(vec![
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(-1.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(-1.0),
+            Expr::new_constant(0.0),
         ],
         vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
     ]);
 
     let ly = Expr::Matrix(vec![
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
-            Expr::Constant(1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(1.0),
         ],
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
         vec![
-            Expr::Constant(-1.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(-1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
     ]);
 
     let lx = Expr::Matrix(vec![
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
-            Expr::Constant(-1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(-1.0),
         ],
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
         ],
     ]);
 
@@ -474,8 +474,8 @@ pub fn su2_generators()
         Expr::Variable("i".to_string());
 
     let half = Expr::new_div(
-        Expr::BigInt(One::one()),
-        Expr::BigInt(BigInt::from(2)),
+        Expr::new_bigint(One::one()),
+        Expr::new_bigint(BigInt::from(2)),
     );
 
     let i_half =
@@ -485,12 +485,12 @@ pub fn su2_generators()
         &i_half,
         &Expr::Matrix(vec![
             vec![
-                Expr::Constant(0.0),
-                Expr::Constant(1.0),
+                Expr::new_constant(0.0),
+                Expr::new_constant(1.0),
             ],
             vec![
-                Expr::Constant(1.0),
-                Expr::Constant(0.0),
+                Expr::new_constant(1.0),
+                Expr::new_constant(0.0),
             ],
         ]),
     );
@@ -499,10 +499,10 @@ pub fn su2_generators()
         &i_half,
         &Expr::Matrix(vec![
             vec![
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
                 Expr::Mul(
                     Arc::new(
-                        Expr::Constant(
+                        Expr::new_constant(
                             -1.0,
                         ),
                     ),
@@ -511,7 +511,7 @@ pub fn su2_generators()
             ],
             vec![
                 i,
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
             ],
         ]),
     );
@@ -520,12 +520,12 @@ pub fn su2_generators()
         &i_half,
         &Expr::Matrix(vec![
             vec![
-                Expr::Constant(1.0),
-                Expr::Constant(0.0),
+                Expr::new_constant(1.0),
+                Expr::new_constant(0.0),
             ],
             vec![
-                Expr::Constant(0.0),
-                Expr::Constant(-1.0),
+                Expr::new_constant(0.0),
+                Expr::new_constant(-1.0),
             ],
         ]),
     );

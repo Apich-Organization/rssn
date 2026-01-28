@@ -97,12 +97,12 @@ pub fn eval_expr<
                 vars,
             )
         },
-        | Expr::Constant(c) => Ok(*c),
-        | Expr::BigInt(i) => {
+        | Expr::new_constant(c) => Ok(*c),
+        | Expr::new_bigint(i) => {
             i.to_f64()
                 .ok_or_else(|| "BigInt overflow during evaluation".to_string())
         },
-        | Expr::Rational(r) => {
+        | Expr::new_rational(r) => {
             r.to_f64()
                 .ok_or_else(|| "Rational overflow during evaluation".to_string())
         },

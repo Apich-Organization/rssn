@@ -30,7 +30,7 @@ fn create_sparse_poly(
 
         terms.insert(
             Monomial(mono),
-            Expr::Constant(
+            Expr::new_constant(
                 (i + 1) as f64,
             ),
         );
@@ -46,19 +46,19 @@ fn create_expr_poly(
     var: &str,
 ) -> Expr {
 
-    let mut expr = Expr::Constant(1.0);
+    let mut expr = Expr::new_constant(1.0);
 
     for i in 1 ..= degree {
 
         let term = Expr::new_mul(
-            Expr::Constant(
+            Expr::new_constant(
                 (i + 1) as f64,
             ),
             Expr::new_pow(
                 Expr::Variable(
                     var.to_string(),
                 ),
-                Expr::Constant(
+                Expr::new_constant(
                     i as f64,
                 ),
             ),
@@ -172,9 +172,9 @@ fn bench_polynomial_long_division(
             Expr::Variable(
                 "x".to_string(),
             ),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     c.bench_function(
@@ -222,7 +222,7 @@ fn bench_from_coeffs_to_expr(
     let coeffs: Vec<Expr> = (0 .. 20)
         .map(|i| {
 
-            Expr::Constant(i as f64)
+            Expr::new_constant(i as f64)
         })
         .collect();
 
@@ -253,7 +253,7 @@ fn bench_expr_to_sparse_poly(
                     Expr::Variable(
                         "x".to_string(),
                     ),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
                 Expr::Variable(
                     "y".to_string(),
@@ -267,7 +267,7 @@ fn bench_expr_to_sparse_poly(
                     Expr::Variable(
                         "y".to_string(),
                     ),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
             ),
         ),
@@ -280,7 +280,7 @@ fn bench_expr_to_sparse_poly(
                     "y".to_string(),
                 ),
             ),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
     );
 
@@ -307,9 +307,9 @@ fn bench_gcd(c: &mut Criterion) {
             Expr::Variable(
                 "x".to_string(),
             ),
-            Expr::Constant(6.0),
+            Expr::new_constant(6.0),
         ),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let expr2 = Expr::new_sub(
@@ -317,9 +317,9 @@ fn bench_gcd(c: &mut Criterion) {
             Expr::Variable(
                 "x".to_string(),
             ),
-            Expr::Constant(4.0),
+            Expr::new_constant(4.0),
         ),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let poly1 = expr_to_sparse_poly(

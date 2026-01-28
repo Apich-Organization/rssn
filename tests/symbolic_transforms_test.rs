@@ -62,7 +62,7 @@ fn test_z_transform_construction() {
     let n = Expr::new_variable("n");
 
     let f = Expr::new_pow(
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
         n.clone(),
     );
 
@@ -89,8 +89,8 @@ fn test_fourier_time_shift() {
     let omega =
         Expr::new_variable("omega");
 
-    let f_omega = Expr::Constant(1.0); // F(omega) = 1
-    let a = Expr::Constant(2.0);
+    let f_omega = Expr::new_constant(1.0); // F(omega) = 1
+    let a = Expr::new_constant(2.0);
 
     let result = fourier_time_shift(
         &f_omega,
@@ -138,7 +138,7 @@ fn test_laplace_differentiation() {
 
     let f_s = Expr::new_variable("F_s");
 
-    let f_zero = Expr::Constant(0.0);
+    let f_zero = Expr::new_constant(0.0);
 
     let result =
         laplace_differentiation(
@@ -195,7 +195,7 @@ fn test_laplace_properties() {
 
     let f_s = Expr::new_variable("F_s");
 
-    let a = Expr::Constant(2.0);
+    let a = Expr::new_constant(2.0);
 
     // Frequency shift
     let _ = laplace_frequency_shift(
@@ -217,13 +217,13 @@ fn test_z_properties() {
 
     let f_z = Expr::new_variable("F_z");
 
-    let k = Expr::Constant(2.0);
+    let k = Expr::new_constant(2.0);
 
     // Time shift
     let _ = z_time_shift(&f_z, &k, "z");
 
     // Scaling
-    let a = Expr::Constant(3.0);
+    let a = Expr::new_constant(3.0);
 
     let _ = z_scaling(&f_z, &a, "z");
 

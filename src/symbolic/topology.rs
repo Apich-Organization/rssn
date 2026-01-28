@@ -178,12 +178,12 @@ impl Simplex {
             coeffs.push(
                 if i % 2 == 0 {
 
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::one(),
                     )
                 } else {
 
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::from(
                             -1,
                         ),
@@ -339,7 +339,7 @@ impl SymbolicChain {
         let entry = self
             .terms
             .entry(simplex)
-            .or_insert(Expr::BigInt(
+            .or_insert(Expr::new_bigint(
                 BigInt::zero(),
             ));
 
@@ -592,7 +592,7 @@ impl SimplicialComplex {
 
         let mut matrix = vec![
             vec![
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::zero()
                     );
                     cols
@@ -752,7 +752,7 @@ impl SimplicialComplex {
             )?;
 
         let mut input_vec = vec![
-            vec![Expr::BigInt(
+            vec![Expr::new_bigint(
                 BigInt::zero()
             )];
             k_simplices.len()

@@ -141,9 +141,9 @@ impl DagNode {
 
                 let expr = match &node.op {
                     // --- Leaf Nodes ---
-                    | DagOp::Constant(c) => Expr::Constant(c.into_inner()),
-                    | DagOp::BigInt(i) => Expr::BigInt(i.clone()),
-                    | DagOp::Rational(r) => Expr::Rational(r.clone()),
+                    | DagOp::Constant(c) => Expr::new_constant(c.into_inner()),
+                    | DagOp::BigInt(i) => Expr::new_bigint(i.clone()),
+                    | DagOp::Rational(r) => Expr::new_rational(r.clone()),
                     | DagOp::Boolean(b) => Expr::Boolean(*b),
                     | DagOp::Variable(s) => Expr::Variable(s.clone()),
                     | DagOp::Pattern(s) => Expr::Pattern(s.clone()),

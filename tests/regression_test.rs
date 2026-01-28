@@ -21,7 +21,7 @@ fn test_differentiate_x_squared_stack_overflow()
 
     // The derivative of x^2 is 2*x.
     // The simplification process might result in Constant(2.0) or BigInt(2).
-    let two_const = Expr::Constant(2.0);
+    let two_const = Expr::new_constant(2.0);
 
     let expected_const = Expr::new_mul(
         two_const,
@@ -29,7 +29,7 @@ fn test_differentiate_x_squared_stack_overflow()
     );
 
     let two_int =
-        Expr::BigInt(BigInt::from(2));
+        Expr::new_bigint(BigInt::from(2));
 
     let expected_int = Expr::new_mul(
         two_int,

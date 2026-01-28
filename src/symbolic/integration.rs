@@ -188,14 +188,14 @@ pub(crate) fn build_and_solve_hermite_system(
             .get_coeff_for_power(x, i)
             .unwrap_or_else(|| {
 
-                Expr::Constant(0.0)
+                Expr::new_constant(0.0)
             });
 
         let rhs_coeff = rhs_poly
             .get_coeff_for_power(x, i)
             .unwrap_or_else(|| {
 
-                Expr::Constant(0.0)
+                Expr::new_constant(0.0)
             });
 
         equations.push(simplify(
@@ -346,7 +346,7 @@ pub fn risch_norman_integrate(
             .is_empty()
         {
 
-            Ok(Expr::Constant(0.0))
+            Ok(Expr::new_constant(0.0))
         } else {
 
             hermite_integrate_rational(
@@ -394,7 +394,7 @@ pub(crate) fn integrate_poly_log(
 
     if p_in_t.degree(t_var) < 0 {
 
-        return Ok(Expr::Constant(0.0));
+        return Ok(Expr::new_constant(0.0));
     }
 
     let n = p_in_t
@@ -432,7 +432,7 @@ pub(crate) fn integrate_poly_log(
                         .unwrap_or(0),
                 ),
             ])),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         )]),
     };
 
@@ -488,7 +488,7 @@ pub(crate) fn integrate_poly_log(
                     t_var.to_string(),
                     (n - 1).try_into().unwrap_or(0),
                 )])),
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
             )]),
         };
 
@@ -496,7 +496,7 @@ pub(crate) fn integrate_poly_log(
             simplify(&Expr::new_mul(
                 Expr::new_mul(
                     q_n.clone(),
-                    Expr::Constant(
+                    Expr::new_constant(
                         f64::from(n),
                     ),
                 ),
@@ -527,7 +527,7 @@ pub(crate) fn integrate_poly_log(
         q_n,
         Expr::new_pow(
             t.clone(),
-            Expr::Constant(f64::from(
+            Expr::new_constant(f64::from(
                 n,
             )),
         ),
@@ -615,7 +615,7 @@ pub fn integrate_poly_exp(
         .unwrap_or(0);
 
     let mut q_coeffs = vec![
-            Expr::Constant(0.0);
+            Expr::new_constant(0.0);
             n + 1
         ];
 
@@ -626,7 +626,7 @@ pub fn integrate_poly_exp(
             .cloned()
             .unwrap_or_else(|| {
 
-                Expr::Constant(0.0)
+                Expr::new_constant(0.0)
             });
 
         let rhs = if i < n {
@@ -635,7 +635,7 @@ pub fn integrate_poly_exp(
                 q_coeffs[i + 1].clone();
 
             let factor = Expr::new_mul(
-                Expr::Constant(
+                Expr::new_constant(
                     (i + 1) as f64,
                 ),
                 g_prime.clone(),
@@ -664,7 +664,7 @@ pub fn integrate_poly_exp(
 
         let ode_p_term =
             simplify(&Expr::new_mul(
-                Expr::Constant(
+                Expr::new_constant(
                     i as f64,
                 ),
                 g_prime.clone(),
@@ -799,11 +799,11 @@ pub fn partial_fraction_integrate(
 
     if roots_c.is_empty() {
 
-        return Ok(Expr::Constant(0.0));
+        return Ok(Expr::new_constant(0.0));
     }
 
     let mut total_log_sum =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     for c_i in roots_c {
 
@@ -860,7 +860,7 @@ pub(crate) fn sylvester_matrix(
 
     let mut matrix = vec![
         vec![
-                Expr::Constant(0.0);
+                Expr::new_constant(0.0);
                 n + m
             ];
         n + m
@@ -881,7 +881,7 @@ pub(crate) fn sylvester_matrix(
                 .cloned()
                 .unwrap_or_else(|| {
 
-                    Expr::Constant(0.0)
+                    Expr::new_constant(0.0)
                 });
         }
     }
@@ -893,7 +893,7 @@ pub(crate) fn sylvester_matrix(
             matrix[i + m][i + j] = q_coeffs
                 .get(j)
                 .cloned()
-                .unwrap_or_else(|| Expr::Constant(0.0));
+                .unwrap_or_else(|| Expr::new_constant(0.0));
         }
     }
 
@@ -908,7 +908,7 @@ pub(crate) fn poly_integrate(
 ) -> Expr {
 
     let mut integral_expr =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     if p.terms.is_empty() {
 
@@ -929,7 +929,7 @@ pub(crate) fn poly_integrate(
         let new_coeff =
             simplify(&Expr::new_div(
                 coeff.clone(),
-                Expr::Constant(new_exp),
+                Expr::new_constant(new_exp),
             ));
 
         let term = Expr::new_mul(
@@ -938,7 +938,7 @@ pub(crate) fn poly_integrate(
                 Expr::Variable(
                     x.to_string(),
                 ),
-                Expr::Constant(new_exp),
+                Expr::new_constant(new_exp),
             ),
         );
 
@@ -1080,11 +1080,11 @@ pub(crate) fn integrate_square_free_rational_part(
 
     if roots_c.is_empty() {
 
-        return Expr::Constant(0.0);
+        return Expr::new_constant(0.0);
     }
 
     let mut total_log_sum =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     for c_i in roots_c {
 
@@ -1151,7 +1151,7 @@ pub(crate) fn expr_to_rational_poly(
     let one_poly = SparsePolynomial {
         terms: BTreeMap::from([(
             Monomial(BTreeMap::new()),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         )]),
     };
 
@@ -1284,7 +1284,7 @@ pub fn integrate_rational_function_expr(
     let q = SparsePolynomial {
         terms: BTreeMap::from([(
             Monomial(BTreeMap::new()),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         )]),
     };
 

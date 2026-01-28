@@ -21,7 +21,7 @@ fn test_complex_handle_ffi() {
 
         let expr = Expr::new_pow(
             z,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         );
 
         let z_name =

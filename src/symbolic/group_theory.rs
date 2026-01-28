@@ -384,7 +384,7 @@ pub fn character(
         {
 
             let mut trace_val =
-                Expr::Constant(0.0);
+                Expr::new_constant(0.0);
 
             for (i, _item) in rows
                 .iter()

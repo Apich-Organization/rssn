@@ -9,7 +9,7 @@ fn test_dag_serialization_json() {
     // Create a DAG expression
     let expr = Expr::new_add(
         Expr::new_variable("x"),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     assert!(expr.is_dag());
@@ -43,7 +43,7 @@ fn test_dag_serialization_bincode() {
     // Create a DAG expression
     let expr = Expr::new_add(
         Expr::new_variable("x"),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     assert!(expr.is_dag());
@@ -83,11 +83,11 @@ fn test_nested_dag_serialization() {
     let expr = Expr::new_mul(
         Expr::new_add(
             Expr::new_variable("x"),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
         Expr::new_add(
             Expr::new_variable("y"),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
@@ -117,7 +117,7 @@ fn test_ast_serialization_still_works()
         Arc::new(Expr::Variable(
             "x".to_string(),
         )),
-        Arc::new(Expr::Constant(1.0)),
+        Arc::new(Expr::new_constant(1.0)),
     );
 
     assert!(!ast.is_dag());

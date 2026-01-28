@@ -118,9 +118,9 @@ fn test_eval_complex_expr() {
     let expr = Expr::new_add(
         Expr::new_pow(
             z,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let res =

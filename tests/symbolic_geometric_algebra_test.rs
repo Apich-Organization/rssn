@@ -8,7 +8,7 @@ fn test_scalar_creation() {
     let signature = (3, 0, 0); // 3D Euclidean space
     let scalar = Multivector::scalar(
         signature,
-        Expr::Constant(5.0),
+        Expr::new_constant(5.0),
     );
 
     assert_eq!(
@@ -18,7 +18,7 @@ fn test_scalar_creation() {
 
     assert_eq!(
         scalar.terms.get(&0),
-        Some(&Expr::Constant(5.0))
+        Some(&Expr::new_constant(5.0))
     );
 }
 
@@ -29,9 +29,9 @@ fn test_vector_creation() {
     let signature = (3, 0, 0);
 
     let components = vec![
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(3.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(3.0),
     ];
 
     let vector = Multivector::vector(
@@ -47,15 +47,15 @@ fn test_vector_creation() {
 
     assert_eq!(
         vector.terms.get(&1),
-        Some(&Expr::Constant(1.0))
+        Some(&Expr::new_constant(1.0))
     ); // e1
     assert_eq!(
         vector.terms.get(&2),
-        Some(&Expr::Constant(2.0))
+        Some(&Expr::new_constant(2.0))
     ); // e2
     assert_eq!(
         vector.terms.get(&4),
-        Some(&Expr::Constant(3.0))
+        Some(&Expr::new_constant(3.0))
     ); // e3
 }
 
@@ -67,12 +67,12 @@ fn test_multivector_addition() {
 
     let mv1 = Multivector::scalar(
         signature,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let mv2 = Multivector::scalar(
         signature,
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     let result = mv1 + mv2;
@@ -92,12 +92,12 @@ fn test_multivector_subtraction() {
 
     let mv1 = Multivector::scalar(
         signature,
-        Expr::Constant(5.0),
+        Expr::new_constant(5.0),
     );
 
     let mv2 = Multivector::scalar(
         signature,
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     let result = mv1 - mv2;
@@ -117,10 +117,10 @@ fn test_scalar_multiplication() {
 
     let mv = Multivector::scalar(
         signature,
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
-    let scalar = Expr::Constant(2.0);
+    let scalar = Expr::new_constant(2.0);
 
     let result = mv * scalar;
 
@@ -139,12 +139,12 @@ fn test_geometric_product_scalars() {
 
     let mv1 = Multivector::scalar(
         signature,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let mv2 = Multivector::scalar(
         signature,
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     let result =
@@ -167,9 +167,9 @@ fn test_geometric_product_vectors() {
     let v1 = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
     );
 
@@ -177,9 +177,9 @@ fn test_geometric_product_vectors() {
     let v2 = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
         ],
     );
 
@@ -206,9 +206,9 @@ fn test_geometric_product_same_vector()
     let v1 = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
     );
 
@@ -232,18 +232,18 @@ fn test_outer_product() {
     let v1 = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
     );
 
     let v2 = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
         ],
     );
 
@@ -266,18 +266,18 @@ fn test_inner_product() {
     let v1 = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
     );
 
     let v2 = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
     );
 
@@ -302,15 +302,15 @@ fn test_grade_projection() {
 
     mv.terms.insert(
         0,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     ); // scalar
     mv.terms.insert(
         1,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     ); // e1 (vector)
     mv.terms.insert(
         3,
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     ); // e12 (bivector)
 
     let scalar_part =
@@ -352,7 +352,7 @@ fn test_reverse_scalar() {
 
     let mv = Multivector::scalar(
         signature,
-        Expr::Constant(5.0),
+        Expr::new_constant(5.0),
     );
 
     let reversed = mv.reverse();
@@ -373,9 +373,9 @@ fn test_reverse_vector() {
     let v = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(1.0),
-            Expr::Constant(2.0),
-            Expr::Constant(3.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(2.0),
+            Expr::new_constant(3.0),
         ],
     );
 
@@ -397,9 +397,9 @@ fn test_magnitude() {
     let v = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(3.0),
-            Expr::Constant(4.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(3.0),
+            Expr::new_constant(4.0),
+            Expr::new_constant(0.0),
         ],
     );
 
@@ -409,7 +409,7 @@ fn test_magnitude() {
     // We can't easily verify the exact value symbolically, but it should be non-zero
     assert!(!matches!(
         mag,
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     ));
 }
 
@@ -422,9 +422,9 @@ fn test_dual() {
     let v = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
     );
 
@@ -447,9 +447,9 @@ fn test_normalize() {
     let v = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(3.0),
-            Expr::Constant(4.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(3.0),
+            Expr::new_constant(4.0),
+            Expr::new_constant(0.0),
         ],
     );
 
@@ -470,7 +470,7 @@ fn test_minkowski_signature() {
     let signature = (1, 3, 0); // Minkowski spacetime (1 time, 3 space)
     let mv = Multivector::scalar(
         signature,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     assert_eq!(
@@ -488,17 +488,17 @@ fn test_geometric_product_associativity()
 
     let v1 = Multivector::scalar(
         signature,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let v2 = Multivector::scalar(
         signature,
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     let v3 = Multivector::scalar(
         signature,
-        Expr::Constant(5.0),
+        Expr::new_constant(5.0),
     );
 
     let result1 = v1
@@ -527,18 +527,18 @@ fn test_outer_product_anticommutativity()
     let v1 = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(0.0),
         ],
     );
 
     let v2 = Multivector::vector(
         signature,
         vec![
-            Expr::Constant(0.0),
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(0.0),
         ],
     );
 

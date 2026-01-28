@@ -159,7 +159,7 @@ fn test_simplify_constants() {
     );
 
     let three =
-        Expr::BigInt(BigInt::from(3));
+        Expr::new_bigint(BigInt::from(3));
 
     let expr = Expr::new_add(one, two);
 

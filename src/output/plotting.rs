@@ -1119,7 +1119,7 @@ mod tests {
 
         let expr = Expr::new_add(
             x,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         );
 
         let mut vars = HashMap::new();
@@ -1216,8 +1216,8 @@ mod tests {
             let x = Expr::Variable("x".to_string());
             let mut expr = x.clone();
             for _ in 0..depth {
-                expr = Expr::new_add(expr.clone(), Expr::Constant(1.0));
-                expr = Expr::new_mul(expr.clone(), Expr::Constant(0.5));
+                expr = Expr::new_add(expr.clone(), Expr::new_constant(1.0));
+                expr = Expr::new_mul(expr.clone(), Expr::new_constant(0.5));
             }
             let mut vars = HashMap::new();
             vars.insert("x".to_string(), val);

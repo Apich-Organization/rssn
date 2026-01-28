@@ -13,9 +13,9 @@ fn evaluate_expr(
 ) -> Option<f64> {
 
     match expr {
-        | Expr::Constant(v) => Some(*v),
-        | Expr::BigInt(v) => v.to_f64(),
-        | Expr::Rational(v) => {
+        | Expr::new_constant(v) => Some(*v),
+        | Expr::new_bigint(v) => v.to_f64(),
+        | Expr::new_rational(v) => {
             v.to_f64()
         },
         | Expr::Add(a, b) => {
@@ -239,8 +239,8 @@ fn test_shannon_entropy() {
     // log2(0.5) = -1.
     // H = - (0.5 * -1 + 0.5 * -1) = - (-0.5 - 0.5) = 1.0
     let probs = vec![
-        Expr::Constant(0.5),
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
+        Expr::new_constant(0.5),
     ];
 
     let ent = shannon_entropy(&probs);
@@ -259,13 +259,13 @@ fn test_kl_divergence() {
     // = 0.5 + 0.5 - 0.5 * log2(3) = 1 - 0.5 * 1.58496 = 1 - 0.79248 = 0.20752
 
     let p = vec![
-        Expr::Constant(0.5),
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
+        Expr::new_constant(0.5),
     ];
 
     let q = vec![
-        Expr::Constant(0.25),
-        Expr::Constant(0.75),
+        Expr::new_constant(0.25),
+        Expr::new_constant(0.75),
     ];
 
     let kl =
@@ -284,13 +284,13 @@ fn test_cross_entropy() {
 
     // H(P, Q) = H(P) + KL(P||Q) = 1.0 + 0.20752 = 1.20752
     let p = vec![
-        Expr::Constant(0.5),
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
+        Expr::new_constant(0.5),
     ];
 
     let q = vec![
-        Expr::Constant(0.25),
-        Expr::Constant(0.75),
+        Expr::new_constant(0.25),
+        Expr::new_constant(0.75),
     ];
 
     let ce =
@@ -309,8 +309,8 @@ fn test_gini_impurity() {
 
     // G([0.5, 0.5]) = 1 - (0.5^2 + 0.5^2) = 1 - 0.5 = 0.5
     let probs = vec![
-        Expr::Constant(0.5),
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
+        Expr::new_constant(0.5),
     ];
 
     let gini = gini_impurity(&probs);
@@ -330,12 +330,12 @@ fn test_joint_entropy() {
 
     let matrix = Expr::Matrix(vec![
         vec![
-            Expr::Constant(0.25),
-            Expr::Constant(0.25),
+            Expr::new_constant(0.25),
+            Expr::new_constant(0.25),
         ],
         vec![
-            Expr::Constant(0.25),
-            Expr::Constant(0.25),
+            Expr::new_constant(0.25),
+            Expr::new_constant(0.25),
         ],
     ]);
 
@@ -355,12 +355,12 @@ fn test_mutual_information() {
 
     let matrix = Expr::Matrix(vec![
         vec![
-            Expr::Constant(0.25),
-            Expr::Constant(0.25),
+            Expr::new_constant(0.25),
+            Expr::new_constant(0.25),
         ],
         vec![
-            Expr::Constant(0.25),
-            Expr::Constant(0.25),
+            Expr::new_constant(0.25),
+            Expr::new_constant(0.25),
         ],
     ]);
 
@@ -380,8 +380,8 @@ fn test_mutual_information() {
     let matrix_dep = Expr::Matrix(
         vec![
             vec![
-                Expr::Constant(0.5),
-                Expr::Constant(1e-10),
+                Expr::new_constant(0.5),
+                Expr::new_constant(1e-10),
             ], /* Use small epsilon for 0 log 0 if log(0) causes issues, or check if 0 handled */
             // Actually log(0) usually undefined/neg inf.
             // Logic might need to handle 0 probability by skipping term or using limit.
@@ -389,8 +389,8 @@ fn test_mutual_information() {
             // It does p * log(p). 0 * -inf is NaN if not handled.
             // Let's use small eps for test.
             vec![
-                Expr::Constant(1e-10),
-                Expr::Constant(0.5),
+                Expr::new_constant(1e-10),
+                Expr::new_constant(0.5),
             ],
         ],
     );

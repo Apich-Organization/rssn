@@ -40,7 +40,7 @@ pub fn transform_point(
 
     let point_expr: Vec<Expr> = point
         .iter()
-        .map(|&v| Expr::Constant(v))
+        .map(|&v| Expr::new_constant(v))
         .collect();
 
     let transformed_expr =

@@ -77,7 +77,7 @@ pub fn create_empty_matrix(
 
     vec![
         vec![
-            Expr::BigInt(BigInt::zero());
+            Expr::new_bigint(BigInt::zero());
             cols
         ];
         rows
@@ -109,7 +109,7 @@ pub fn identity_matrix(
     {
 
         row[i] =
-            Expr::BigInt(BigInt::one());
+            Expr::new_bigint(BigInt::one());
     }
 
     Expr::Matrix(rows)
@@ -320,7 +320,7 @@ pub fn mul_matrices(
             for j in 0 .. c2 {
 
                 let mut sum_term =
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::zero(),
                     );
 
@@ -484,7 +484,7 @@ pub fn determinant(
 
         if r == 0 {
 
-            return Expr::BigInt(
+            return Expr::new_bigint(
                 BigInt::one(),
             );
         }
@@ -538,7 +538,7 @@ pub fn determinant(
             unreachable!()
         };
 
-        let mut det = Expr::BigInt(
+        let mut det = Expr::new_bigint(
             BigInt::zero(),
         );
 
@@ -552,12 +552,12 @@ pub fn determinant(
 
             let sign = if j % 2 == 0 {
 
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::one(),
                 )
             } else {
 
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::from(-1),
                 )
             };
@@ -716,12 +716,12 @@ pub fn inverse_matrix(
                     == 0
                 {
 
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::one(),
                     )
                 } else {
 
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::from(
                             -1,
                         ),
@@ -746,7 +746,7 @@ pub fn inverse_matrix(
 
         scalar_mul_matrix(
             &simplify(&Expr::new_div(
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::one(),
                 ),
                 det,
@@ -1003,7 +1003,7 @@ pub fn trace(
     };
 
     let mut tr =
-        Expr::BigInt(BigInt::zero());
+        Expr::new_bigint(BigInt::zero());
 
     for (i, row) in mat
         .iter()
@@ -1121,14 +1121,14 @@ pub fn lu_decomposition(
     {
 
         row[i] =
-            Expr::BigInt(BigInt::one());
+            Expr::new_bigint(BigInt::one());
     }
 
     for j in 0 .. n {
 
         for i in 0 ..= j {
 
-            let mut sum = Expr::BigInt(
+            let mut sum = Expr::new_bigint(
                 BigInt::zero(),
             );
 
@@ -1163,7 +1163,7 @@ pub fn lu_decomposition(
 
         for i in (j + 1) .. n {
 
-            let mut sum = Expr::BigInt(
+            let mut sum = Expr::new_bigint(
                 BigInt::zero(),
             );
 
@@ -1265,7 +1265,7 @@ pub fn qr_decomposition(
                 &q_cols[i];
 
             let mut dot_a_q =
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::zero(),
                 );
 
@@ -1312,7 +1312,7 @@ pub fn qr_decomposition(
         }
 
         let mut norm_u_j_sq =
-            Expr::BigInt(BigInt::zero());
+            Expr::new_bigint(BigInt::zero());
 
         for item in &u_j {
 
@@ -1320,7 +1320,7 @@ pub fn qr_decomposition(
                 norm_u_j_sq,
                 Expr::new_pow(
                     item.clone(),
-                    Expr::BigInt(BigInt::from(2)),
+                    Expr::new_bigint(BigInt::from(2)),
                 ),
             ));
         }
@@ -1574,7 +1574,7 @@ pub fn null_space(
             );
 
         vec[free_col][0] =
-            Expr::BigInt(BigInt::one());
+            Expr::new_bigint(BigInt::one());
 
         for (i, &pivot_col) in
             pivot_cols
@@ -1924,7 +1924,7 @@ pub fn svd_decomposition(
 
                 scalar_mul_matrix(
                     &simplify(&Expr::new_div(
-                        Expr::BigInt(BigInt::one()),
+                        Expr::new_bigint(BigInt::one()),
                         sigma_i.clone(),
                     )),
                     &a_v_i,

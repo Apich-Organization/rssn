@@ -304,10 +304,10 @@ fn test_metric_tensor_symbolic() {
 
     // Create a simple 2D Euclidean metric: g = [[1, 0], [0, 1]]
     let one =
-        Expr::BigInt(BigInt::one());
+        Expr::new_bigint(BigInt::one());
 
     let zero =
-        Expr::BigInt(BigInt::zero());
+        Expr::new_bigint(BigInt::zero());
 
     let g = Tensor::new(
         vec![
@@ -372,10 +372,10 @@ fn test_metric_tensor_raise_lower_index_symbolic()
 
     // Use identity metric for simplicity
     let one =
-        Expr::BigInt(BigInt::one());
+        Expr::new_bigint(BigInt::one());
 
     let zero =
-        Expr::BigInt(BigInt::zero());
+        Expr::new_bigint(BigInt::zero());
 
     let g = Tensor::new(
         vec![

@@ -13,14 +13,14 @@ fn test_integrate_polynomial() {
     let expr = Expr::new_add(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         Expr::new_add(
             Expr::new_mul(
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
                 x.clone(),
             ),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
     );
 
@@ -47,7 +47,7 @@ fn test_integrate_rational_simple() {
         Expr::Variable("x".to_string());
 
     let expr = Expr::new_div(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         x.clone(),
     );
 
@@ -58,7 +58,7 @@ fn test_integrate_rational_simple() {
     // Let's check if it's not zero.
     assert!(!matches!(
         result,
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     ));
 }
 
@@ -71,10 +71,10 @@ fn test_integrate_rational_log_part() {
         Expr::Variable("x".to_string());
 
     let expr = Expr::new_div(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         Expr::new_add(
             x.clone(),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
     );
 
@@ -86,7 +86,7 @@ fn test_integrate_rational_log_part() {
     // But we can check it's not a constant
     assert!(!matches!(
         result,
-        Expr::Constant(_)
+        Expr::new_constant(_)
     ));
 }
 
@@ -100,10 +100,10 @@ fn test_integrate_rational_hermite_part()
         Expr::Variable("x".to_string());
 
     let expr = Expr::new_div(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
@@ -113,7 +113,7 @@ fn test_integrate_rational_hermite_part()
     // Check it's not zero
     assert!(!matches!(
         result,
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     ));
 }
 
@@ -137,7 +137,7 @@ fn test_risch_norman_exp() {
     // For now, just check it returns something valid
     assert!(!matches!(
         result,
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     ));
 }
 
@@ -161,7 +161,7 @@ fn test_risch_norman_x_exp_x() {
     // Should be (x-1)e^x
     assert!(!matches!(
         result,
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     ));
 }
 
@@ -182,7 +182,7 @@ fn test_risch_norman_log() {
     // Should be x*log(x) - x
     assert!(!matches!(
         result,
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     ));
 }
 
@@ -205,6 +205,6 @@ fn test_risch_norman_mixed() {
 
     assert!(!matches!(
         result,
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     ));
 }

@@ -86,7 +86,7 @@ pub fn nonlinear_regression_symbolic(
 ) -> Option<Vec<(Expr, Expr)>> {
 
     let mut s_expr =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     let x_var = vars
         .first()
@@ -112,7 +112,7 @@ pub fn nonlinear_regression_symbolic(
 
         let residual_sq = Expr::new_pow(
             residual,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         );
 
         s_expr = Expr::new_add(
@@ -129,7 +129,7 @@ pub fn nonlinear_regression_symbolic(
 
         grad_eqs.push(Expr::Eq(
             Arc::new(deriv),
-            Arc::new(Expr::Constant(
+            Arc::new(Expr::new_constant(
                 0.0,
             )),
         ));
@@ -186,7 +186,7 @@ pub fn polynomial_regression_symbolic(
             row.push(simplify(
                 &Expr::new_pow(
                     x_i.clone(),
-                    Expr::Constant(
+                    Expr::new_constant(
                         j as f64,
                     ),
                 ),

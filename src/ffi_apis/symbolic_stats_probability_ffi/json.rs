@@ -52,11 +52,11 @@ pub unsafe extern "C" fn rssn_json_dist_normal(
 ) -> *mut c_char {
 
     let mean = parse_expr(mean_json)
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     let std_dev =
         parse_expr(std_dev_json)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 1.0,
             ));
 
@@ -94,10 +94,10 @@ pub unsafe extern "C" fn rssn_json_dist_uniform(
 ) -> *mut c_char {
 
     let min = parse_expr(min_json)
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     let max = parse_expr(max_json)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(Uniform {
@@ -133,10 +133,10 @@ pub unsafe extern "C" fn rssn_json_dist_binomial(
 ) -> *mut c_char {
 
     let n = parse_expr(n_json)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let p = parse_expr(p_json)
-        .unwrap_or(Expr::Constant(0.5));
+        .unwrap_or(Expr::new_constant(0.5));
 
     let dist = Expr::Distribution(
         Arc::new(Binomial {
@@ -171,7 +171,7 @@ pub unsafe extern "C" fn rssn_json_dist_poisson(
 ) -> *mut c_char {
 
     let rate = parse_expr(rate_json)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(Poisson {
@@ -205,7 +205,7 @@ pub unsafe extern "C" fn rssn_json_dist_bernoulli(
 ) -> *mut c_char {
 
     let p = parse_expr(p_json)
-        .unwrap_or(Expr::Constant(0.5));
+        .unwrap_or(Expr::new_constant(0.5));
 
     let dist = Expr::Distribution(
         Arc::new(Bernoulli {
@@ -239,7 +239,7 @@ pub unsafe extern "C" fn rssn_json_dist_exponential(
 ) -> *mut c_char {
 
     let rate = parse_expr(rate_json)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(Exponential {
@@ -274,10 +274,10 @@ pub unsafe extern "C" fn rssn_json_dist_gamma(
 ) -> *mut c_char {
 
     let shape = parse_expr(shape_json)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let rate = parse_expr(rate_json)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(Gamma {
@@ -313,10 +313,10 @@ pub unsafe extern "C" fn rssn_json_dist_beta(
 ) -> *mut c_char {
 
     let alpha = parse_expr(alpha_json)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let beta = parse_expr(beta_json)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(Beta {
@@ -351,7 +351,7 @@ pub unsafe extern "C" fn rssn_json_dist_student_t(
 ) -> *mut c_char {
 
     let nu = parse_expr(nu_json)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(StudentT {
@@ -391,7 +391,7 @@ pub unsafe extern "C" fn rssn_json_dist_pdf(
         parse_expr(dist_json);
 
     let x_expr = parse_expr(x_json)
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     if let Some(Expr::Distribution(d)) =
         dist_expr
@@ -433,7 +433,7 @@ pub unsafe extern "C" fn rssn_json_dist_cdf(
         parse_expr(dist_json);
 
     let x_expr = parse_expr(x_json)
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     if let Some(Expr::Distribution(d)) =
         dist_expr
@@ -551,7 +551,7 @@ pub unsafe extern "C" fn rssn_json_dist_mgf(
         parse_expr(dist_json);
 
     let t_expr = parse_expr(t_json)
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     if let Some(Expr::Distribution(d)) =
         dist_expr

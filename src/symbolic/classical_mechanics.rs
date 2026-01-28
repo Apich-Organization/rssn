@@ -120,12 +120,12 @@ pub fn kinetic_energy(
 ) -> Expr {
 
     simplify(&Expr::new_mul(
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
         Expr::new_mul(
             mass.clone(),
             Expr::new_pow(
                 velocity.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
     ))
@@ -182,12 +182,12 @@ pub fn potential_energy_spring(
 ) -> Expr {
 
     simplify(&Expr::new_mul(
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
         Expr::new_mul(
             k.clone(),
             Expr::new_pow(
                 x.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
     ))
@@ -262,7 +262,7 @@ pub fn centripetal_acceleration(
     simplify(&Expr::new_div(
         Expr::new_pow(
             velocity.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         radius.clone(),
     ))
@@ -280,7 +280,7 @@ pub fn moment_of_inertia_point_mass(
         mass.clone(),
         Expr::new_pow(
             radius.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     ))
 }
@@ -294,13 +294,13 @@ pub fn rotational_kinetic_energy(
 ) -> Expr {
 
     simplify(&Expr::new_mul(
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
         Expr::new_mul(
             moment_of_inertia.clone(),
             Expr::new_pow(
                 angular_velocity
                     .clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
     ))

@@ -2483,8 +2483,8 @@ pub(crate) fn get_numeric_value_efficient(
 ) -> Option<f64> {
 
     match e {
-        | Expr::Constant(f) => Some(*f),
-        | Expr::BigInt(b) => {
+        | Expr::new_constant(f) => Some(*f),
+        | Expr::new_bigint(b) => {
 
             // Safety check for extremely large integers beyond f64 range.
             // A BigInt with > 1024 bits is definitely infinity in f64 (~1.8e308).
@@ -2505,7 +2505,7 @@ pub(crate) fn get_numeric_value_efficient(
 
             b.to_f64()
         },
-        | Expr::Rational(r) => {
+        | Expr::new_rational(r) => {
             r.to_f64()
         },
         | Expr::Pi => {

@@ -12,30 +12,30 @@ fn test_ifs_apply() {
 
     let f1 = Expr::new_div(
         x.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let f2 = Expr::new_div(
         Expr::new_add(
             x.clone(),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let ifs =
         IteratedFunctionSystem::new(
             vec![f1, f2],
             vec![
-                Expr::Constant(0.5),
-                Expr::Constant(0.5),
+                Expr::new_constant(0.5),
+                Expr::new_constant(0.5),
             ],
             vec!["x".to_string()],
         );
 
     // Apply to x=0
     let point =
-        vec![Expr::Constant(0.0)];
+        vec![Expr::new_constant(0.0)];
 
     let results = ifs.apply(&point);
 
@@ -44,13 +44,13 @@ fn test_ifs_apply() {
     // f1(0) = 0
     assert_eq!(
         simplify(&results[0][0]),
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     );
 
     // f2(0) = 0.5
     assert_eq!(
         simplify(&results[1][0]),
-        Expr::Constant(0.5)
+        Expr::new_constant(0.5)
     );
 }
 
@@ -60,7 +60,7 @@ fn test_similarity_dimension() {
 
     // Sierpinski triangle: 3 scalings of 1/2
     // D = -log(3)/log(1/2) = log(3)/log(2)
-    let r = Expr::Constant(0.5);
+    let r = Expr::new_constant(0.5);
 
     let scalings = vec![
         r.clone(),
@@ -85,7 +85,7 @@ fn test_complex_system_fixed_points() {
     // Fixed points: z = z^2 + c => z^2 - z + c = 0
     // z = (1 +/- sqrt(1 - 4c)) / 2
 
-    let c = Expr::Constant(-2.0); // z^2 - 2
+    let c = Expr::new_constant(-2.0); // z^2 - 2
     let system = ComplexDynamicalSystem::new_mandelbrot_family(c);
 
     let fixed_points =
@@ -120,14 +120,14 @@ fn test_lyapunov_exponent_logistic() {
     let x =
         Expr::Variable("x".to_string());
 
-    let r = Expr::Constant(4.0);
+    let r = Expr::new_constant(4.0);
 
     let map = Expr::new_mul(
         r,
         Expr::new_mul(
             x.clone(),
             Expr::new_sub(
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
                 x.clone(),
             ),
         ),
@@ -136,7 +136,7 @@ fn test_lyapunov_exponent_logistic() {
     let lya = lyapunov_exponent(
         &map,
         "x",
-        &Expr::Constant(0.1),
+        &Expr::new_constant(0.1),
         1,
     );
 

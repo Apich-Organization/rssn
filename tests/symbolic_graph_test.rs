@@ -13,13 +13,13 @@ fn test_graph_basics() {
     g.add_edge(
         &"A",
         &"B",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &"B",
         &"C",
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     assert_eq!(g.node_count(), 3);
@@ -47,25 +47,25 @@ fn test_bfs_dfs() {
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &0,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &1,
         &3,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &2,
         &4,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let bfs_order = bfs(&g, 0);
@@ -105,25 +105,25 @@ fn test_bipartite_matching() {
     g.add_edge(
         &0,
         &3,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &0,
         &4,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &1,
         &3,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &2,
         &5,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let partition =
@@ -149,31 +149,31 @@ fn test_max_flow() {
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(10.0),
+        Expr::new_constant(10.0),
     );
 
     g.add_edge(
         &0,
         &2,
-        Expr::Constant(10.0),
+        Expr::new_constant(10.0),
     );
 
     g.add_edge(
         &1,
         &2,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     g.add_edge(
         &1,
         &3,
-        Expr::Constant(4.0),
+        Expr::new_constant(4.0),
     );
 
     g.add_edge(
         &2,
         &3,
-        Expr::Constant(8.0),
+        Expr::new_constant(8.0),
     );
 
     let flow =
@@ -193,7 +193,7 @@ fn test_serialization() {
     g.add_edge(
         &"A".to_string(),
         &"B".to_string(),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let serialized =

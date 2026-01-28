@@ -51,7 +51,7 @@ pub fn one_sample_t_test_symbolic(
     target_mean: &Expr,
 ) -> HypothesisTest {
 
-    let n = Expr::Constant(
+    let n = Expr::new_constant(
         sample.len() as f64,
     );
 
@@ -65,7 +65,7 @@ pub fn one_sample_t_test_symbolic(
 
     let n_minus_1 = Expr::new_sub(
         n,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let standard_error_sq =
@@ -90,9 +90,9 @@ pub fn one_sample_t_test_symbolic(
 
     // Two-tailed p-value: 2 * (1 - CDF(|t|))
     let p_value = Expr::new_mul(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
         Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             Expr::new_apply(
                 Expr::Variable(
                     "t_dist_cdf"
@@ -145,11 +145,11 @@ pub fn two_sample_t_test_symbolic(
     mu_diff: &Expr,
 ) -> HypothesisTest {
 
-    let n1 = Expr::Constant(
+    let n1 = Expr::new_constant(
         sample1.len() as f64,
     );
 
-    let n2 = Expr::Constant(
+    let n2 = Expr::new_constant(
         sample2.len() as f64,
     );
 
@@ -168,7 +168,7 @@ pub fn two_sample_t_test_symbolic(
         var1,
         Expr::new_sub(
             n1.clone(),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
     );
 
@@ -176,7 +176,7 @@ pub fn two_sample_t_test_symbolic(
         var2,
         Expr::new_sub(
             n2.clone(),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
     );
 
@@ -197,28 +197,28 @@ pub fn two_sample_t_test_symbolic(
             term1.clone(),
             term2.clone(),
         ),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let df_den1 = Expr::new_div(
         Expr::new_pow(
             term1,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         Expr::new_sub(
             n1,
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
     );
 
     let df_den2 = Expr::new_div(
         Expr::new_pow(
             term2,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         Expr::new_sub(
             n2,
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
     );
 
@@ -228,9 +228,9 @@ pub fn two_sample_t_test_symbolic(
     );
 
     let p_value_formula = Expr::new_mul(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
         Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             Expr::new_apply(
                 Expr::Variable(
                     "t_dist_cdf"
@@ -280,7 +280,7 @@ pub fn z_test_symbolic(
     pop_std_dev: &Expr,
 ) -> HypothesisTest {
 
-    let n = Expr::Constant(
+    let n = Expr::new_constant(
         sample.len() as f64,
     );
 
@@ -300,9 +300,9 @@ pub fn z_test_symbolic(
     );
 
     let p_value = Expr::new_mul(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
         Expr::new_sub(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             Expr::new_apply(
                 Expr::Variable(
                     "normal_cdf"

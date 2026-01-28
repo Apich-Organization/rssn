@@ -470,7 +470,7 @@ pub fn contour_integral_residue_theorem(
     singularities: &[Expr],
 ) -> Expr {
 
-    let mut sum = Expr::Constant(0.0);
+    let mut sum = Expr::new_constant(0.0);
 
     for singularity in singularities {
 
@@ -486,15 +486,15 @@ pub fn contour_integral_residue_theorem(
 
     // Multiply by 2πi
     let two_pi_i = Expr::new_mul(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
         Expr::new_mul(
             Expr::Pi,
             Expr::Complex(
                 Arc::new(
-                    Expr::Constant(0.0),
+                    Expr::new_constant(0.0),
                 ),
                 Arc::new(
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                 ),
             ),
         ),
@@ -556,16 +556,16 @@ impl MobiusTransformation {
     pub fn identity() -> Self {
 
         Self {
-            a: Expr::BigInt(
+            a: Expr::new_bigint(
                 BigInt::one(),
             ),
-            b: Expr::BigInt(
+            b: Expr::new_bigint(
                 BigInt::zero(),
             ),
-            c: Expr::BigInt(
+            c: Expr::new_bigint(
                 BigInt::zero(),
             ),
-            d: Expr::BigInt(
+            d: Expr::new_bigint(
                 BigInt::one(),
             ),
         }
@@ -796,11 +796,11 @@ pub fn complex_log(z: &Expr) -> Expr {
         Expr::new_sqrt(Expr::new_add(
             Expr::new_pow(
                 re.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
             Expr::new_pow(
                 im.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ));
 
@@ -842,11 +842,11 @@ pub fn complex_modulus(
     Expr::new_sqrt(Expr::new_add(
         Expr::new_pow(
             re,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         Expr::new_pow(
             im,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     ))
 }

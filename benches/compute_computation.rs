@@ -22,7 +22,7 @@ fn bench_computation_creation(
 
             b.iter(|| {
 
-                let expr = Arc::new(Expr::Constant(
+                let expr = Arc::new(Expr::new_constant(
                     black_box(1.0),
                 ));
 
@@ -54,7 +54,7 @@ fn bench_computation_status_check(
 ) {
 
     let expr =
-        Arc::new(Expr::Constant(1.0));
+        Arc::new(Expr::new_constant(1.0));
 
     let computation = Computation {
         id: "test_id".to_string(),

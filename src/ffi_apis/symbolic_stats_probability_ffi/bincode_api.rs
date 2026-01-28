@@ -36,11 +36,11 @@ pub extern "C" fn rssn_bincode_dist_normal(
 ) -> BincodeBuffer {
 
     let mean = parse_expr(mean_buf)
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     let std_dev =
         parse_expr(std_dev_buf)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 1.0,
             ));
 
@@ -70,10 +70,10 @@ pub extern "C" fn rssn_bincode_dist_uniform(
 ) -> BincodeBuffer {
 
     let min = parse_expr(min_buf)
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     let max = parse_expr(max_buf)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(Uniform {
@@ -101,10 +101,10 @@ pub extern "C" fn rssn_bincode_dist_binomial(
 ) -> BincodeBuffer {
 
     let n = parse_expr(n_buf)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let p = parse_expr(p_buf)
-        .unwrap_or(Expr::Constant(0.5));
+        .unwrap_or(Expr::new_constant(0.5));
 
     let dist = Expr::Distribution(
         Arc::new(Binomial {
@@ -131,7 +131,7 @@ pub extern "C" fn rssn_bincode_dist_poisson(
 ) -> BincodeBuffer {
 
     let rate = parse_expr(rate_buf)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(Poisson {
@@ -157,7 +157,7 @@ pub extern "C" fn rssn_bincode_dist_bernoulli(
 ) -> BincodeBuffer {
 
     let p = parse_expr(p_buf)
-        .unwrap_or(Expr::Constant(0.5));
+        .unwrap_or(Expr::new_constant(0.5));
 
     let dist = Expr::Distribution(
         Arc::new(Bernoulli {
@@ -183,7 +183,7 @@ pub extern "C" fn rssn_bincode_dist_exponential(
 ) -> BincodeBuffer {
 
     let rate = parse_expr(rate_buf)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(Exponential {
@@ -210,10 +210,10 @@ pub extern "C" fn rssn_bincode_dist_gamma(
 ) -> BincodeBuffer {
 
     let shape = parse_expr(shape_buf)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let rate = parse_expr(rate_buf)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(Gamma {
@@ -241,10 +241,10 @@ pub extern "C" fn rssn_bincode_dist_beta(
 ) -> BincodeBuffer {
 
     let alpha = parse_expr(alpha_buf)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let beta = parse_expr(beta_buf)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(Beta {
@@ -271,7 +271,7 @@ pub extern "C" fn rssn_bincode_dist_student_t(
 ) -> BincodeBuffer {
 
     let nu = parse_expr(nu_buf)
-        .unwrap_or(Expr::Constant(1.0));
+        .unwrap_or(Expr::new_constant(1.0));
 
     let dist = Expr::Distribution(
         Arc::new(StudentT {
@@ -303,7 +303,7 @@ pub extern "C" fn rssn_bincode_dist_pdf(
         parse_expr(dist_buf);
 
     let x_expr = parse_expr(x_buf)
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     if let Some(Expr::Distribution(d)) =
         dist_expr
@@ -337,7 +337,7 @@ pub extern "C" fn rssn_bincode_dist_cdf(
         parse_expr(dist_buf);
 
     let x_expr = parse_expr(x_buf)
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     if let Some(Expr::Distribution(d)) =
         dist_expr
@@ -431,7 +431,7 @@ pub extern "C" fn rssn_bincode_dist_mgf(
         parse_expr(dist_buf);
 
     let t_expr = parse_expr(t_buf)
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     if let Some(Expr::Distribution(d)) =
         dist_expr

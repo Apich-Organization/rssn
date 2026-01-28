@@ -6,7 +6,7 @@ mod tests {
 
     #[test]
     fn test_rk4_overflow() {
-        let funcs = vec![Expr::Power(Arc::new(Expr::Variable("y0".to_string())), Arc::new(Expr::Constant(2.0)))];
+        let funcs = vec![Expr::Power(Arc::new(Expr::Variable("y0".to_string())), Arc::new(Expr::new_constant(2.0)))];
         let y0 = &[1.0];
         let x_range = (0.0, 2.0); // Go past the singularity at x=1
         let num_steps = 100;

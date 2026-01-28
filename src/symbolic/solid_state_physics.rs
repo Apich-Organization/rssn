@@ -54,28 +54,28 @@ impl CrystalLattice {
     /// use rssn::symbolic::vector::Vector;
     ///
     /// let a1 = Vector::new(
-    ///     Expr::Constant(1.0),
-    ///     Expr::Constant(0.0),
-    ///     Expr::Constant(0.0),
+    ///     Expr::new_constant(1.0),
+    ///     Expr::new_constant(0.0),
+    ///     Expr::new_constant(0.0),
     /// );
     ///
     /// let a2 = Vector::new(
-    ///     Expr::Constant(0.0),
-    ///     Expr::Constant(1.0),
-    ///     Expr::Constant(0.0),
+    ///     Expr::new_constant(0.0),
+    ///     Expr::new_constant(1.0),
+    ///     Expr::new_constant(0.0),
     /// );
     ///
     /// let a3 = Vector::new(
-    ///     Expr::Constant(0.0),
-    ///     Expr::Constant(0.0),
-    ///     Expr::Constant(1.0),
+    ///     Expr::new_constant(0.0),
+    ///     Expr::new_constant(0.0),
+    ///     Expr::new_constant(1.0),
     /// );
     ///
     /// let lattice = CrystalLattice::new(a1, a2, a3);
     ///
     /// assert_eq!(
     ///     lattice.volume(),
-    ///     Expr::Constant(1.0)
+    ///     Expr::new_constant(1.0)
     /// );
     /// ```
     #[must_use]
@@ -107,21 +107,21 @@ impl CrystalLattice {
     /// use rssn::symbolic::vector::Vector;
     ///
     /// let a1 = Vector::new(
-    ///     Expr::Constant(1.0),
-    ///     Expr::Constant(0.0),
-    ///     Expr::Constant(0.0),
+    ///     Expr::new_constant(1.0),
+    ///     Expr::new_constant(0.0),
+    ///     Expr::new_constant(0.0),
     /// );
     ///
     /// let a2 = Vector::new(
-    ///     Expr::Constant(0.0),
-    ///     Expr::Constant(1.0),
-    ///     Expr::Constant(0.0),
+    ///     Expr::new_constant(0.0),
+    ///     Expr::new_constant(1.0),
+    ///     Expr::new_constant(0.0),
     /// );
     ///
     /// let a3 = Vector::new(
-    ///     Expr::Constant(0.0),
-    ///     Expr::Constant(0.0),
-    ///     Expr::Constant(1.0),
+    ///     Expr::new_constant(0.0),
+    ///     Expr::new_constant(0.0),
+    ///     Expr::new_constant(1.0),
     /// );
     ///
     /// let lattice = CrystalLattice::new(a1, a2, a3);
@@ -141,7 +141,7 @@ impl CrystalLattice {
         let v = self.volume();
 
         let two_pi = Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             Expr::new_variable("pi"),
         );
 
@@ -151,7 +151,7 @@ impl CrystalLattice {
             .scalar_mul(&two_pi)
             .scalar_mul(
                 &Expr::new_div(
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                     v.clone(),
                 ),
             );
@@ -162,7 +162,7 @@ impl CrystalLattice {
             .scalar_mul(&two_pi)
             .scalar_mul(
                 &Expr::new_div(
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                     v.clone(),
                 ),
             );
@@ -173,7 +173,7 @@ impl CrystalLattice {
             .scalar_mul(&two_pi)
             .scalar_mul(
                 &Expr::new_div(
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                     v,
                 ),
             );
@@ -211,8 +211,8 @@ pub fn bloch_theorem(
 ) -> Expr {
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let k_dot_r =
@@ -244,18 +244,18 @@ pub fn energy_band(
 
     let hbar_sq = Expr::new_pow(
         hbar,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let k_sq = Expr::new_pow(
         k_magnitude.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let kinetic_term = Expr::new_div(
         Expr::new_mul(hbar_sq, k_sq),
         Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             effective_mass.clone(),
         ),
     );
@@ -285,10 +285,10 @@ pub fn density_of_states_3d(
     let factor1 = Expr::new_div(
         volume.clone(),
         Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             Expr::new_pow(
                 pi,
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
     );
@@ -296,25 +296,25 @@ pub fn density_of_states_3d(
     let factor2 = Expr::new_pow(
         Expr::new_div(
             Expr::new_mul(
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
                 effective_mass.clone(),
             ),
             Expr::new_pow(
                 hbar,
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
         Expr::new_div(
-            Expr::Constant(3.0),
-            Expr::Constant(2.0),
+            Expr::new_constant(3.0),
+            Expr::new_constant(2.0),
         ),
     );
 
     let sqrt_e = Expr::new_pow(
         energy.clone(),
         Expr::new_div(
-            Expr::Constant(1.0),
-            Expr::Constant(2.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(2.0),
         ),
     );
 
@@ -341,10 +341,10 @@ pub fn fermi_energy_3d(
     let term1 = Expr::new_div(
         Expr::new_pow(
             hbar,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             effective_mass.clone(),
         ),
     );
@@ -352,18 +352,18 @@ pub fn fermi_energy_3d(
     let term2 = Expr::new_pow(
         Expr::new_mul(
             Expr::new_mul(
-                Expr::Constant(3.0),
+                Expr::new_constant(3.0),
                 Expr::new_pow(
                     pi,
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
             ),
             electron_concentration
                 .clone(),
         ),
         Expr::new_div(
-            Expr::Constant(2.0),
-            Expr::Constant(3.0),
+            Expr::new_constant(2.0),
+            Expr::new_constant(3.0),
         ),
     );
 
@@ -388,7 +388,7 @@ pub fn drude_conductivity(
             Expr::new_mul(
                 Expr::new_pow(
                     e_charge.clone(),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(2.0),
                 ),
                 relaxation_time.clone(),
             ),
@@ -406,7 +406,7 @@ pub fn hall_coefficient(
 ) -> Expr {
 
     simplify(&Expr::new_div(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         Expr::new_mul(
             carrier_concentration
                 .clone(),
@@ -428,10 +428,10 @@ pub fn debye_frequency(
 
     let inner = Expr::new_mul(
         Expr::new_mul(
-            Expr::Constant(6.0),
+            Expr::new_constant(6.0),
             Expr::new_pow(
                 pi,
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
         atom_density.clone(),
@@ -442,8 +442,8 @@ pub fn debye_frequency(
         Expr::new_pow(
             inner,
             Expr::new_div(
-                Expr::Constant(1.0),
-                Expr::Constant(3.0),
+                Expr::new_constant(1.0),
+                Expr::new_constant(3.0),
             ),
         ),
     ))
@@ -470,7 +470,7 @@ pub fn einstein_heat_capacity(
 
     let numerator = Expr::new_mul(
         Expr::new_mul(
-            Expr::Constant(3.0),
+            Expr::new_constant(3.0),
             Expr::new_mul(
                 n_atoms.clone(),
                 k_b,
@@ -479,7 +479,7 @@ pub fn einstein_heat_capacity(
         Expr::new_mul(
             Expr::new_pow(
                 x.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
             exp_x,
         ),
@@ -488,9 +488,9 @@ pub fn einstein_heat_capacity(
     let denominator = Expr::new_pow(
         Expr::new_sub(
             Expr::new_exp(x),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     simplify(&Expr::new_div(
@@ -513,7 +513,7 @@ pub fn plasma_frequency(
         n.clone(),
         Expr::new_pow(
             e_charge.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
@@ -528,8 +528,8 @@ pub fn plasma_frequency(
             denominator,
         ),
         Expr::new_div(
-            Expr::Constant(1.0),
-            Expr::Constant(2.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(2.0),
         ),
     ))
 }
@@ -553,7 +553,7 @@ pub fn london_penetration_depth(
                 .clone(),
             Expr::new_pow(
                 charge.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
     );
@@ -564,8 +564,8 @@ pub fn london_penetration_depth(
             denominator,
         ),
         Expr::new_div(
-            Expr::Constant(1.0),
-            Expr::Constant(2.0),
+            Expr::new_constant(1.0),
+            Expr::new_constant(2.0),
         ),
     ))
 }

@@ -72,7 +72,7 @@ fn bench_submit_direct(
     let engine = ComputeEngine::new();
 
     let expr =
-        Arc::new(Expr::Constant(42.0));
+        Arc::new(Expr::new_constant(42.0));
 
     c.bench_function(
         "submit_direct",

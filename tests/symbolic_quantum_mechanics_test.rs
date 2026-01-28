@@ -53,7 +53,7 @@ fn test_commutator() {
     // In this symbolic representation, A and B commute as simple variables, so A*B*psi - B*A*psi = 0.
     assert_eq!(
         comm,
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     );
 }
 

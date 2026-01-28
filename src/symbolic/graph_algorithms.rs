@@ -35,13 +35,13 @@ pub(crate) fn try_numeric_value(
 ) -> Option<f64> {
 
     match expr {
-        | Expr::Constant(val) => {
+        | Expr::new_constant(val) => {
             Some(*val)
         },
-        | Expr::BigInt(val) => {
+        | Expr::new_bigint(val) => {
             val.to_f64()
         },
-        | Expr::Rational(val) => {
+        | Expr::new_rational(val) => {
             val.to_f64()
         },
         | Expr::Add(lhs, rhs) => {
@@ -143,13 +143,13 @@ pub(crate) fn try_numeric_value(
                 simplify(&expr.clone());
 
             match simplified {
-                | Expr::Constant(
+                | Expr::new_constant(
                     val,
                 ) => Some(val),
-                | Expr::BigInt(val) => {
+                | Expr::new_bigint(val) => {
                     val.to_f64()
                 },
-                | Expr::Rational(
+                | Expr::new_rational(
                     val,
                 ) => val.to_f64(),
                 | _ => None,
@@ -1430,7 +1430,7 @@ pub fn bellman_ford<
 
     dist.insert(
         start_node,
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     for _ in 1 .. n {
@@ -2934,7 +2934,7 @@ pub fn dijkstra<
 
     dist.insert(
         start_node,
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     prev.insert(start_node, None);
@@ -2973,7 +2973,7 @@ pub fn dijkstra<
 
                 let new_dist = simplify(
                     &Expr::new_add(
-                        Expr::Constant(
+                        Expr::new_constant(
                             cost,
                         ),
                         weight.clone(),
@@ -3055,7 +3055,7 @@ pub fn floyd_warshall<
         .enumerate()
     {
 
-        row[i] = Expr::Constant(0.0);
+        row[i] = Expr::new_constant(0.0);
     }
 
     for (u, row) in dist
@@ -3214,7 +3214,7 @@ where
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        Ok(Expr::Constant(
+        Ok(Expr::new_constant(
             numerical_eigenvalues[1],
         ))
     } else {

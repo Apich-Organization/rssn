@@ -79,14 +79,14 @@ pub unsafe extern "C" fn rssn_dist_normal(
     unsafe {
 
         let mean = ptr_to_expr(mean)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 0.0,
             ));
 
         let std_dev =
             ptr_to_expr(std_dev)
                 .unwrap_or(
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                 );
 
         wrap_dist(Normal {
@@ -122,12 +122,12 @@ pub unsafe extern "C" fn rssn_dist_uniform(
     unsafe {
 
         let min = ptr_to_expr(min)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 0.0,
             ));
 
         let max = ptr_to_expr(max)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 1.0,
             ));
 
@@ -164,12 +164,12 @@ pub unsafe extern "C" fn rssn_dist_binomial(
     unsafe {
 
         let n = ptr_to_expr(n)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 1.0,
             ));
 
         let p = ptr_to_expr(p)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 0.5,
             ));
 
@@ -205,7 +205,7 @@ pub unsafe extern "C" fn rssn_dist_poisson(
     unsafe {
 
         let rate = ptr_to_expr(rate)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 1.0,
             ));
 
@@ -240,7 +240,7 @@ pub unsafe extern "C" fn rssn_dist_bernoulli(
     unsafe {
 
         let p = ptr_to_expr(p)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 0.5,
             ));
 
@@ -275,7 +275,7 @@ pub unsafe extern "C" fn rssn_dist_exponential(
     unsafe {
 
         let rate = ptr_to_expr(rate)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 1.0,
             ));
 
@@ -311,12 +311,12 @@ pub unsafe extern "C" fn rssn_dist_gamma(
     unsafe {
 
         let shape = ptr_to_expr(shape)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 1.0,
             ));
 
         let rate = ptr_to_expr(rate)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 1.0,
             ));
 
@@ -353,12 +353,12 @@ pub unsafe extern "C" fn rssn_dist_beta(
     unsafe {
 
         let alpha = ptr_to_expr(alpha)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 1.0,
             ));
 
         let beta = ptr_to_expr(beta)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 1.0,
             ));
 
@@ -394,7 +394,7 @@ pub unsafe extern "C" fn rssn_dist_student_t(
     unsafe {
 
         let nu = ptr_to_expr(nu)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 1.0,
             ));
 
@@ -435,7 +435,7 @@ pub unsafe extern "C" fn rssn_dist_pdf(
             ptr_to_expr(dist);
 
         let x_expr = ptr_to_expr(x)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 0.0,
             ));
 
@@ -483,7 +483,7 @@ pub unsafe extern "C" fn rssn_dist_cdf(
             ptr_to_expr(dist);
 
         let x_expr = ptr_to_expr(x)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 0.0,
             ));
 
@@ -615,7 +615,7 @@ pub unsafe extern "C" fn rssn_dist_mgf(
             ptr_to_expr(dist);
 
         let t_expr = ptr_to_expr(t)
-            .unwrap_or(Expr::Constant(
+            .unwrap_or(Expr::new_constant(
                 0.0,
             ));
 

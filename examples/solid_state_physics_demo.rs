@@ -12,19 +12,19 @@ fn main() {
     // 1. Crystal Lattice and Reciprocal Lattice
     let a1 = Vector::new(
         Expr::new_variable("a"),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let a2 = Vector::new(
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
         Expr::new_variable("a"),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let a3 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
         Expr::new_variable("a"),
     );
 

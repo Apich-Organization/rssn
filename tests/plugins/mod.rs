@@ -28,7 +28,7 @@ impl Plugin for MockPlugin {
             "identity" => Ok(args.clone()),
             "double" => {
                 if let DagOp::Constant(c) = args.op() {
-                    Ok(Expr::Constant(c.into_inner() * 2.0))
+                    Ok(Expr::new_constant(c.into_inner() * 2.0))
                 } else {
                     Err(PluginError::new(PluginErrorKind::ExecutionFailed, "Expected constant"))
                 }
@@ -64,7 +64,7 @@ fn test_plugin_execution() {
 
     manager.register_plugin(Box::new(MockPlugin));
     
-    let args = Expr::Constant(5.0);
+    let args = Expr::new_constant(5.0);
     let res = manager.execute_plugin("mock_plugin", "double", &args).unwrap();
     
     if let DagOp::Constant(c) = res.op() {

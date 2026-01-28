@@ -25,7 +25,7 @@ pub fn mean(data: &[Expr]) -> Expr {
 
     if n == 0 {
 
-        return Expr::Constant(0.0);
+        return Expr::new_constant(0.0);
     }
 
     let sum = data
@@ -37,11 +37,11 @@ pub fn mean(data: &[Expr]) -> Expr {
                 acc, e,
             ))
         })
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     simplify(&Expr::new_div(
         sum,
-        Expr::Constant(n as f64),
+        Expr::new_constant(n as f64),
     ))
 }
 
@@ -63,7 +63,7 @@ pub fn variance(data: &[Expr]) -> Expr {
 
     if n == 0 {
 
-        return Expr::Constant(0.0);
+        return Expr::new_constant(0.0);
     }
 
     let mu = mean(data);
@@ -79,7 +79,7 @@ pub fn variance(data: &[Expr]) -> Expr {
 
             Expr::new_pow(
                 diff,
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             )
         })
         .reduce(|acc, e| {
@@ -88,11 +88,11 @@ pub fn variance(data: &[Expr]) -> Expr {
                 acc, e,
             ))
         })
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     simplify(&Expr::new_div(
         squared_diffs,
-        Expr::Constant(n as f64),
+        Expr::new_constant(n as f64),
     ))
 }
 
@@ -138,7 +138,7 @@ pub fn covariance(
         || data1.is_empty()
     {
 
-        return Expr::Constant(0.0);
+        return Expr::new_constant(0.0);
     }
 
     let n = data1.len();
@@ -173,11 +173,11 @@ pub fn covariance(
                 acc, e,
             ))
         })
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     simplify(&Expr::new_div(
         sum_of_products,
-        Expr::Constant(n as f64),
+        Expr::new_constant(n as f64),
     ))
 }
 

@@ -41,14 +41,14 @@ impl ToExpr for Expr {
 impl ToExpr for usize {
     fn to_expr(&self) -> Expr {
 
-        Expr::Constant(*self as f64)
+        Expr::new_constant(*self as f64)
     }
 }
 
 impl ToExpr for i32 {
     fn to_expr(&self) -> Expr {
 
-        Expr::Constant(f64::from(*self))
+        Expr::new_constant(f64::from(*self))
     }
 }
 
@@ -66,13 +66,13 @@ impl ToExpr for i32 {
 /// g.add_edge(
 ///     &"A",
 ///     &"B",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// g.add_edge(
 ///     &"B",
 ///     &"C",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// let sub = induced_subgraph(&g, &["A", "B"]);
@@ -168,7 +168,7 @@ pub fn induced_subgraph<
 /// g1.add_edge(
 ///     &"A",
 ///     &"B",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// let mut g2 = Graph::new(false);
@@ -176,7 +176,7 @@ pub fn induced_subgraph<
 /// g2.add_edge(
 ///     &"B",
 ///     &"C",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// let u = union(&g1, &g2);
@@ -227,7 +227,7 @@ pub fn union<
 /// g1.add_edge(
 ///     &"A",
 ///     &"B",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// let mut g2 = Graph::new(false);
@@ -235,13 +235,13 @@ pub fn union<
 /// g2.add_edge(
 ///     &"A",
 ///     &"B",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// g2.add_edge(
 ///     &"B",
 ///     &"C",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// let i = intersection(&g1, &g2);
@@ -340,7 +340,7 @@ pub fn intersection<
 /// g1.add_edge(
 ///     &"A",
 ///     &"B",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// let mut g2 = Graph::new(false);
@@ -348,7 +348,7 @@ pub fn intersection<
 /// g2.add_edge(
 ///     &"1",
 ///     &"2",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// let prod = cartesian_product(&g1, &g2);
@@ -467,7 +467,7 @@ pub fn cartesian_product<
 /// g1.add_edge(
 ///     &"A",
 ///     &"B",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// let mut g2 = Graph::new(false);
@@ -475,7 +475,7 @@ pub fn cartesian_product<
 /// g2.add_edge(
 ///     &"1",
 ///     &"2",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// let prod = tensor_product(&g1, &g2);
@@ -616,19 +616,19 @@ pub fn tensor_product<
 /// g.add_edge(
 ///     &"A",
 ///     &"B",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// g.add_edge(
 ///     &"B",
 ///     &"C",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// g.add_edge(
 ///     &"C",
 ///     &"A",
-///     Expr::Constant(1.0),
+///     Expr::new_constant(1.0),
 /// );
 ///
 /// let comp = complement(&g);
@@ -688,7 +688,7 @@ pub fn complement<
                 new_graph.add_edge(
                     &graph.nodes[i],
                     &graph.nodes[j],
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                 );
             }
         }
@@ -736,7 +736,7 @@ pub fn disjoint_union<
 
         let new_label =
             Expr::Tuple(vec![
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
                 label.to_expr(),
             ]);
 
@@ -747,7 +747,7 @@ pub fn disjoint_union<
 
         let new_label =
             Expr::Tuple(vec![
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
                 label.to_expr(),
             ]);
 
@@ -759,13 +759,13 @@ pub fn disjoint_union<
 
         let u_label =
             Expr::Tuple(vec![
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
                 g1.nodes[u].to_expr(),
             ]);
 
         let v_label =
             Expr::Tuple(vec![
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
                 g1.nodes[v].to_expr(),
             ]);
 
@@ -781,13 +781,13 @@ pub fn disjoint_union<
 
         let u_label =
             Expr::Tuple(vec![
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
                 g2.nodes[u].to_expr(),
             ]);
 
         let v_label =
             Expr::Tuple(vec![
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
                 g2.nodes[v].to_expr(),
             ]);
 
@@ -843,7 +843,7 @@ pub fn join<
         .map(|l| {
 
             Expr::Tuple(vec![
-                Expr::Constant(0.0),
+                Expr::new_constant(0.0),
                 l.to_expr(),
             ])
         })
@@ -855,7 +855,7 @@ pub fn join<
         .map(|l| {
 
             Expr::Tuple(vec![
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
                 l.to_expr(),
             ])
         })
@@ -868,7 +868,7 @@ pub fn join<
             new_graph.add_edge(
                 u_label,
                 v_label,
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
             );
 
             if new_graph.is_directed {
@@ -876,7 +876,7 @@ pub fn join<
                 new_graph.add_edge(
                     v_label,
                     u_label,
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                 );
             }
         }

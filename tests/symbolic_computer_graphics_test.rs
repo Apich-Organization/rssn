@@ -11,9 +11,9 @@ use rssn::symbolic::vector::Vector;
 
 fn test_translation_2d() {
 
-    let tx = Expr::Constant(3.0);
+    let tx = Expr::new_constant(3.0);
 
-    let ty = Expr::Constant(4.0);
+    let ty = Expr::new_constant(4.0);
 
     let matrix = translation_2d(tx, ty);
 
@@ -26,28 +26,28 @@ fn test_translation_2d() {
         // Check identity part
         assert_eq!(
             rows[0][0],
-            Expr::BigInt(BigInt::one())
+            Expr::new_bigint(BigInt::one())
         );
 
         assert_eq!(
             rows[1][1],
-            Expr::BigInt(BigInt::one())
+            Expr::new_bigint(BigInt::one())
         );
 
         assert_eq!(
             rows[2][2],
-            Expr::BigInt(BigInt::one())
+            Expr::new_bigint(BigInt::one())
         );
 
         // Check translation part
         assert_eq!(
             rows[0][2],
-            Expr::Constant(3.0)
+            Expr::new_constant(3.0)
         );
 
         assert_eq!(
             rows[1][2],
-            Expr::Constant(4.0)
+            Expr::new_constant(4.0)
         );
     } else {
 
@@ -59,11 +59,11 @@ fn test_translation_2d() {
 
 fn test_translation_3d() {
 
-    let tx = Expr::Constant(1.0);
+    let tx = Expr::new_constant(1.0);
 
-    let ty = Expr::Constant(2.0);
+    let ty = Expr::new_constant(2.0);
 
-    let tz = Expr::Constant(3.0);
+    let tz = Expr::new_constant(3.0);
 
     let matrix =
         translation_3d(tx, ty, tz);
@@ -77,17 +77,17 @@ fn test_translation_3d() {
         // Check translation column
         assert_eq!(
             rows[0][3],
-            Expr::Constant(1.0)
+            Expr::new_constant(1.0)
         );
 
         assert_eq!(
             rows[1][3],
-            Expr::Constant(2.0)
+            Expr::new_constant(2.0)
         );
 
         assert_eq!(
             rows[2][3],
-            Expr::Constant(3.0)
+            Expr::new_constant(3.0)
         );
     } else {
 
@@ -99,9 +99,9 @@ fn test_translation_3d() {
 
 fn test_scaling_2d() {
 
-    let sx = Expr::Constant(2.0);
+    let sx = Expr::new_constant(2.0);
 
-    let sy = Expr::Constant(3.0);
+    let sy = Expr::new_constant(3.0);
 
     let matrix = scaling_2d(sx, sy);
 
@@ -111,17 +111,17 @@ fn test_scaling_2d() {
 
         assert_eq!(
             rows[0][0],
-            Expr::Constant(2.0)
+            Expr::new_constant(2.0)
         );
 
         assert_eq!(
             rows[1][1],
-            Expr::Constant(3.0)
+            Expr::new_constant(3.0)
         );
 
         assert_eq!(
             rows[2][2],
-            Expr::BigInt(BigInt::one())
+            Expr::new_bigint(BigInt::one())
         );
     } else {
 
@@ -133,11 +133,11 @@ fn test_scaling_2d() {
 
 fn test_scaling_3d() {
 
-    let sx = Expr::Constant(2.0);
+    let sx = Expr::new_constant(2.0);
 
-    let sy = Expr::Constant(3.0);
+    let sy = Expr::new_constant(3.0);
 
-    let sz = Expr::Constant(4.0);
+    let sz = Expr::new_constant(4.0);
 
     let matrix = scaling_3d(sx, sy, sz);
 
@@ -147,22 +147,22 @@ fn test_scaling_3d() {
 
         assert_eq!(
             rows[0][0],
-            Expr::Constant(2.0)
+            Expr::new_constant(2.0)
         );
 
         assert_eq!(
             rows[1][1],
-            Expr::Constant(3.0)
+            Expr::new_constant(3.0)
         );
 
         assert_eq!(
             rows[2][2],
-            Expr::Constant(4.0)
+            Expr::new_constant(4.0)
         );
 
         assert_eq!(
             rows[3][3],
-            Expr::BigInt(BigInt::one())
+            Expr::new_bigint(BigInt::one())
         );
     } else {
 
@@ -175,7 +175,7 @@ fn test_scaling_3d() {
 fn test_rotation_2d() {
 
     // Just ensure it constructs without panic
-    let angle = Expr::Constant(
+    let angle = Expr::new_constant(
         std::f64::consts::PI / 4.0,
     );
 
@@ -196,7 +196,7 @@ fn test_rotation_2d() {
 
 fn test_rotation_3d_x() {
 
-    let angle = Expr::Constant(
+    let angle = Expr::new_constant(
         std::f64::consts::PI / 6.0,
     );
 
@@ -209,12 +209,12 @@ fn test_rotation_3d_x() {
         // First row should be [1, 0, 0, 0]
         assert_eq!(
             rows[0][0],
-            Expr::BigInt(BigInt::one())
+            Expr::new_bigint(BigInt::one())
         );
 
         assert_eq!(
             rows[0][1],
-            Expr::BigInt(BigInt::zero())
+            Expr::new_bigint(BigInt::zero())
         );
     } else {
 
@@ -226,9 +226,9 @@ fn test_rotation_3d_x() {
 
 fn test_shear_2d() {
 
-    let shx = Expr::Constant(0.5);
+    let shx = Expr::new_constant(0.5);
 
-    let shy = Expr::Constant(0.3);
+    let shy = Expr::new_constant(0.3);
 
     let matrix = shear_2d(
         shx.clone(),
@@ -242,12 +242,12 @@ fn test_shear_2d() {
         // Diagonal should be 1
         assert_eq!(
             rows[0][0],
-            Expr::BigInt(BigInt::one())
+            Expr::new_bigint(BigInt::one())
         );
 
         assert_eq!(
             rows[1][1],
-            Expr::BigInt(BigInt::one())
+            Expr::new_bigint(BigInt::one())
         );
 
         // Shear components
@@ -265,7 +265,7 @@ fn test_shear_2d() {
 fn test_reflection_2d() {
 
     // Reflection across the x-axis (angle = 0)
-    let angle = Expr::Constant(0.0);
+    let angle = Expr::new_constant(0.0);
 
     let matrix = reflection_2d(angle);
 
@@ -285,11 +285,11 @@ fn test_reflection_2d() {
 fn test_reflection_3d() {
 
     // Reflection across xy-plane (normal = (0, 0, 1))
-    let nx = Expr::Constant(0.0);
+    let nx = Expr::new_constant(0.0);
 
-    let ny = Expr::Constant(0.0);
+    let ny = Expr::new_constant(0.0);
 
-    let nz = Expr::Constant(1.0);
+    let nz = Expr::new_constant(1.0);
 
     let matrix =
         reflection_3d(nx, ny, nz);
@@ -311,12 +311,12 @@ fn test_rotation_axis_angle() {
 
     // Rotation around z-axis should be similar to rotation_3d_z
     let axis = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
-    let angle = Expr::Constant(
+    let angle = Expr::new_constant(
         std::f64::consts::PI / 4.0,
     );
 
@@ -333,7 +333,7 @@ fn test_rotation_axis_angle() {
         // Last row should be [0, 0, 0, 1]
         assert_eq!(
             rows[3][3],
-            Expr::BigInt(BigInt::one())
+            Expr::new_bigint(BigInt::one())
         );
     } else {
 
@@ -346,21 +346,21 @@ fn test_rotation_axis_angle() {
 fn test_bezier_curve_new() {
 
     let p0 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let p1 = Vector::new(
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(0.0),
     );
 
     let p2 = Vector::new(
-        Expr::Constant(3.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(3.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let curve = BezierCurve {
@@ -386,15 +386,15 @@ fn test_bezier_curve_evaluate_endpoints()
  {
 
     let p0 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let p1 = Vector::new(
-        Expr::Constant(1.0),
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
     );
 
     let curve = BezierCurve {
@@ -407,26 +407,26 @@ fn test_bezier_curve_evaluate_endpoints()
 
     // At t=0, should be at p0
     let at_0 = curve
-        .evaluate(&Expr::Constant(0.0));
+        .evaluate(&Expr::new_constant(0.0));
 
     // At t=1, should be at p1
     let at_1 = curve
-        .evaluate(&Expr::Constant(1.0));
+        .evaluate(&Expr::new_constant(1.0));
 
     // Just verify they don't panic and produce valid vectors
     assert!(matches!(
         at_0.x,
         Expr::Dag(_)
-            | Expr::Constant(_)
-            | Expr::BigInt(_)
+            | Expr::new_constant(_)
+            | Expr::new_bigint(_)
             | _
     ));
 
     assert!(matches!(
         at_1.x,
         Expr::Dag(_)
-            | Expr::Constant(_)
-            | Expr::BigInt(_)
+            | Expr::new_constant(_)
+            | Expr::new_bigint(_)
             | _
     ));
 }
@@ -437,15 +437,15 @@ fn test_bezier_curve_derivative() {
 
     // Linear Bezier: derivative should be constant (P1 - P0)
     let p0 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let p1 = Vector::new(
-        Expr::Constant(2.0),
-        Expr::Constant(4.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(4.0),
+        Expr::new_constant(0.0),
     );
 
     let curve = BezierCurve {
@@ -454,7 +454,7 @@ fn test_bezier_curve_derivative() {
     };
 
     let tangent = curve.derivative(
-        &Expr::Constant(0.5),
+        &Expr::new_constant(0.5),
     );
 
     // For a linear curve of degree 1, derivative is n * (P1 - P0) = 1 * (2, 4, 0)
@@ -470,21 +470,21 @@ fn test_bezier_curve_derivative() {
 fn test_bezier_curve_split() {
 
     let p0 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let p1 = Vector::new(
-        Expr::Constant(1.0),
-        Expr::Constant(2.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(0.0),
     );
 
     let p2 = Vector::new(
-        Expr::Constant(2.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(2.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let curve = BezierCurve {
@@ -495,7 +495,7 @@ fn test_bezier_curve_split() {
     };
 
     let (left, right) = curve
-        .split(&Expr::Constant(0.5));
+        .split(&Expr::new_constant(0.5));
 
     // Both curves should have same degree
     assert_eq!(left.degree, 2);
@@ -522,21 +522,21 @@ fn test_bezier_curve_split() {
 fn test_polygon_mesh_new() {
 
     let v0 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let v1 = Vector::new(
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let v2 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
     );
 
     let mesh = PolygonMesh::new(
@@ -568,15 +568,15 @@ fn test_polygon_mesh_apply_transformation()
  {
 
     let v0 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let v1 = Vector::new(
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let mesh = PolygonMesh::new(
@@ -586,9 +586,9 @@ fn test_polygon_mesh_apply_transformation()
 
     // Apply translation
     let transform = translation_3d(
-        Expr::Constant(5.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(5.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let transformed = mesh
@@ -614,21 +614,21 @@ fn test_polygon_mesh_compute_normals() {
 
     // Triangle in XY plane
     let v0 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let v1 = Vector::new(
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let v2 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
     );
 
     let mesh = PolygonMesh::new(
@@ -651,27 +651,27 @@ fn test_polygon_mesh_triangulate() {
 
     // Quad (4 vertices)
     let v0 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let v1 = Vector::new(
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let v2 = Vector::new(
-        Expr::Constant(1.0),
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
     );
 
     let v3 = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
+        Expr::new_constant(0.0),
     );
 
     let mesh = PolygonMesh::new(

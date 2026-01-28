@@ -50,7 +50,7 @@ pub fn scalar_field_lagrangian(
     m: &Expr,
 ) -> Expr {
 
-    let half = Expr::Constant(0.5);
+    let half = Expr::new_constant(0.5);
 
     let d_mu_phi = Expr::new_variable(
         "partial_mu_phi",
@@ -58,17 +58,17 @@ pub fn scalar_field_lagrangian(
 
     let d_mu_phi_sq = Expr::new_pow(
         d_mu_phi,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let m_sq = Expr::new_pow(
         m.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let phi_sq = Expr::new_pow(
         phi.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let mass_term =
@@ -98,8 +98,8 @@ pub fn qed_lagrangian(
 ) -> Expr {
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let partial_slash = feynman_slash(
@@ -135,11 +135,11 @@ pub fn qed_lagrangian(
 
     let f_sq = Expr::new_pow(
         f_mu_nu,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let gauge_part = Expr::new_mul(
-        Expr::Constant(-0.25),
+        Expr::new_constant(-0.25),
         f_sq,
     );
 
@@ -162,8 +162,8 @@ pub fn qcd_lagrangian(
 ) -> Expr {
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let partial_slash = feynman_slash(
@@ -200,11 +200,11 @@ pub fn qcd_lagrangian(
 
     let g_sq = Expr::new_pow(
         g_strength,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let gluon_part = Expr::new_mul(
-        Expr::Constant(-0.25),
+        Expr::new_constant(-0.25),
         g_sq,
     );
 
@@ -227,18 +227,18 @@ pub fn propagator(
 ) -> Expr {
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let p_sq = Expr::new_pow(
         p.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let m_sq = Expr::new_pow(
         m.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let eps = Expr::new_mul(
@@ -289,7 +289,7 @@ pub fn scattering_cross_section(
         Expr::new_abs(
             matrix_element.clone(),
         ),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     simplify(&Expr::new_mul(
@@ -322,8 +322,8 @@ pub fn feynman_propagator_position_space(
 
     let exponent = Expr::new_mul(
         Expr::new_complex(
-            Expr::Constant(0.0),
-            Expr::Constant(-1.0),
+            Expr::new_constant(0.0),
+            Expr::new_constant(-1.0),
         ),
         Expr::new_mul(p.clone(), diff),
     );

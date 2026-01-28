@@ -26,12 +26,12 @@ fn test_free_particle() {
 
     let kinetic_energy = Expr::new_mul(
         Expr::new_mul(
-            Expr::Constant(0.5),
+            Expr::new_constant(0.5),
             m.clone(),
         ),
         Expr::new_pow(
             v_expr.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
@@ -77,12 +77,12 @@ fn test_free_particle_2() {
     // L = 1/2 * m * (x')^2
     let lagrangian = Expr::new_mul(
         Expr::new_mul(
-            Expr::Constant(0.5),
+            Expr::new_constant(0.5),
             m,
         ),
         Expr::new_pow(
             &x_prime,
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
@@ -126,23 +126,23 @@ fn test_harmonic_oscillator() {
 
     let kinetic = Expr::new_mul(
         Expr::new_mul(
-            Expr::Constant(0.5),
+            Expr::new_constant(0.5),
             m.clone(),
         ),
         Expr::new_pow(
             v_expr.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
     let potential = Expr::new_mul(
         Expr::new_mul(
-            Expr::Constant(0.5),
+            Expr::new_constant(0.5),
             k.clone(),
         ),
         Expr::new_pow(
             x_expr.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
@@ -200,17 +200,17 @@ fn test_pendulum_nonlinear() {
 
     let kinetic = Expr::new_mul(
         Expr::new_mul(
-            Expr::Constant(0.5),
+            Expr::new_constant(0.5),
             m.clone(),
         ),
         Expr::new_mul(
             Expr::new_pow(
                 l.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
             Expr::new_pow(
                 omega,
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
     );

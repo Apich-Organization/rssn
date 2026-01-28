@@ -26,7 +26,7 @@ pub fn shannon_entropy(
 ) -> Expr {
 
     let log2 = Expr::new_log(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let sum = probs
@@ -51,7 +51,7 @@ pub fn shannon_entropy(
                 acc, e,
             ))
         })
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     simplify(&Expr::new_neg(sum))
 }
@@ -87,7 +87,7 @@ pub fn kl_divergence(
     }
 
     let log2 = Expr::new_log(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let sum = p_dist
@@ -119,7 +119,7 @@ pub fn kl_divergence(
                 acc, e,
             ))
         })
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     Ok(simplify(&sum))
 }
@@ -155,7 +155,7 @@ pub fn cross_entropy(
     }
 
     let log2 = Expr::new_log(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let sum = p_dist
@@ -181,7 +181,7 @@ pub fn cross_entropy(
                 acc, e,
             ))
         })
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     Ok(simplify(
         &Expr::new_neg(sum),
@@ -263,7 +263,7 @@ pub fn conditional_entropy(
                 row.iter()
                     .cloned()
                     .reduce(|a, b| simplify(&Expr::new_add(a, b)))
-                    .unwrap_or(Expr::Constant(0.0))
+                    .unwrap_or(Expr::new_constant(0.0))
             })
             .collect();
 
@@ -317,7 +317,7 @@ pub fn mutual_information(
                 row.iter()
                     .cloned()
                     .reduce(|a, b| simplify(&Expr::new_add(a, b)))
-                    .unwrap_or(Expr::Constant(0.0))
+                    .unwrap_or(Expr::new_constant(0.0))
             })
             .collect();
 
@@ -328,7 +328,7 @@ pub fn mutual_information(
             );
 
         let mut p_y = vec![
-                Expr::Constant(0.0);
+                Expr::new_constant(0.0);
                 num_cols
             ];
 
@@ -394,7 +394,7 @@ pub fn gini_impurity(
 
             Expr::new_pow(
                 p.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             )
         })
         .reduce(|acc, e| {
@@ -403,10 +403,10 @@ pub fn gini_impurity(
                 acc, e,
             ))
         })
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     simplify(&Expr::new_sub(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         sum_of_squares,
     ))
 }

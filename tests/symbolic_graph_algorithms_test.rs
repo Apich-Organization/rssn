@@ -11,25 +11,25 @@ fn test_dfs_traversal() {
     g.add_edge(
         &"A",
         &"B",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &"B",
         &"C",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &"C",
         &"D",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &"A",
         &"D",
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let result = dfs(&g, 0);
@@ -48,25 +48,25 @@ fn test_bfs_traversal() {
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &0,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &1,
         &3,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &2,
         &4,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let result = bfs(&g, 0);
@@ -92,20 +92,20 @@ fn test_connected_components() {
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &1,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     // Component 2: 3-4
     g.add_edge(
         &3,
         &4,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     // Isolated node: 5
@@ -126,13 +126,13 @@ fn test_is_connected() {
     g1.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g1.add_edge(
         &1,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     assert!(is_connected(&g1));
@@ -142,7 +142,7 @@ fn test_is_connected() {
     g2.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g2.add_node(2); // Isolated node
@@ -160,33 +160,33 @@ fn test_strongly_connected_components()
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &1,
         &0,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     // SCC 2: 2 <-> 3
     g.add_edge(
         &2,
         &3,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &3,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     // Connection between SCCs
     g.add_edge(
         &1,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let sccs =
@@ -206,13 +206,13 @@ fn test_has_cycle_undirected() {
     g1.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g1.add_edge(
         &1,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     assert!(!has_cycle(&g1)); // Tree, no cycle
@@ -222,19 +222,19 @@ fn test_has_cycle_undirected() {
     g2.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g2.add_edge(
         &1,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g2.add_edge(
         &2,
         &0,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     assert!(has_cycle(&g2)); // Triangle, has cycle
@@ -249,13 +249,13 @@ fn test_has_cycle_directed() {
     g1.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g1.add_edge(
         &1,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     assert!(!has_cycle(&g1)); // DAG, no cycle
@@ -265,19 +265,19 @@ fn test_has_cycle_directed() {
     g2.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g2.add_edge(
         &1,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g2.add_edge(
         &2,
         &0,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     assert!(has_cycle(&g2)); // Cycle
@@ -294,13 +294,13 @@ fn test_bridges_and_articulation_points()
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &1,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let (bridges, aps) = find_bridges_and_articulation_points(&g);
@@ -321,31 +321,31 @@ fn test_kruskal_mst() {
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &0,
         &2,
-        Expr::Constant(4.0),
+        Expr::new_constant(4.0),
     );
 
     g.add_edge(
         &1,
         &2,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     g.add_edge(
         &1,
         &3,
-        Expr::Constant(5.0),
+        Expr::new_constant(5.0),
     );
 
     g.add_edge(
         &2,
         &3,
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     let mst = kruskal_mst(&g);
@@ -358,7 +358,7 @@ fn test_kruskal_mst() {
         .filter_map(|(_, _, w)| {
 
             match w {
-                | Expr::Constant(v) => {
+                | Expr::new_constant(v) => {
                     Some(*v)
                 },
                 | _ => None,
@@ -382,55 +382,55 @@ fn test_edmonds_karp_max_flow() {
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(10.0),
+        Expr::new_constant(10.0),
     );
 
     g.add_edge(
         &0,
         &2,
-        Expr::Constant(10.0),
+        Expr::new_constant(10.0),
     );
 
     g.add_edge(
         &1,
         &2,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     g.add_edge(
         &1,
         &3,
-        Expr::Constant(4.0),
+        Expr::new_constant(4.0),
     );
 
     g.add_edge(
         &1,
         &4,
-        Expr::Constant(8.0),
+        Expr::new_constant(8.0),
     );
 
     g.add_edge(
         &2,
         &4,
-        Expr::Constant(9.0),
+        Expr::new_constant(9.0),
     );
 
     g.add_edge(
         &3,
         &5,
-        Expr::Constant(10.0),
+        Expr::new_constant(10.0),
     );
 
     g.add_edge(
         &4,
         &3,
-        Expr::Constant(6.0),
+        Expr::new_constant(6.0),
     );
 
     g.add_edge(
         &4,
         &5,
-        Expr::Constant(10.0),
+        Expr::new_constant(10.0),
     );
 
     let flow =
@@ -448,25 +448,25 @@ fn test_dinic_max_flow() {
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(10.0),
+        Expr::new_constant(10.0),
     );
 
     g.add_edge(
         &0,
         &2,
-        Expr::Constant(10.0),
+        Expr::new_constant(10.0),
     );
 
     g.add_edge(
         &1,
         &3,
-        Expr::Constant(4.0),
+        Expr::new_constant(4.0),
     );
 
     g.add_edge(
         &2,
         &3,
-        Expr::Constant(8.0),
+        Expr::new_constant(8.0),
     );
 
     let flow = dinic_max_flow(&g, 0, 3);
@@ -485,31 +485,31 @@ fn test_bellman_ford_symbolic() {
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(5.0),
+        Expr::new_constant(5.0),
     );
 
     g.add_edge(
         &0,
         &2,
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     g.add_edge(
         &1,
         &3,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     g.add_edge(
         &2,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &2,
         &3,
-        Expr::Constant(6.0),
+        Expr::new_constant(6.0),
     );
 
     let result = bellman_ford(&g, 0);
@@ -523,7 +523,7 @@ fn test_bellman_ford_symbolic() {
 
     // Distance to node 0 should be 0
     match &distances[&0] {
-        | Expr::Constant(v) => {
+        | Expr::new_constant(v) => {
 
             assert_eq!(*v, 0.0)
         },
@@ -543,19 +543,19 @@ fn test_bellman_ford_negative_cycle() {
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &1,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &2,
         &0,
-        Expr::Constant(-5.0),
+        Expr::new_constant(-5.0),
     ); // Creates negative cycle
 
     let result = bellman_ford(&g, 0);
@@ -573,25 +573,25 @@ fn test_is_bipartite() {
     g1.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g1.add_edge(
         &0,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g1.add_edge(
         &1,
         &3,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g1.add_edge(
         &2,
         &3,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let partition = is_bipartite(&g1);
@@ -604,19 +604,19 @@ fn test_is_bipartite() {
     g2.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g2.add_edge(
         &1,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g2.add_edge(
         &2,
         &0,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     assert!(
@@ -646,31 +646,31 @@ fn test_bipartite_maximum_matching() {
     g.add_edge(
         &0,
         &3,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &0,
         &4,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &1,
         &3,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &1,
         &5,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &2,
         &5,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let partition =
@@ -695,25 +695,25 @@ fn test_topological_sort() {
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &0,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &1,
         &3,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &2,
         &3,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let sorted = topological_sort(&g);
@@ -748,19 +748,19 @@ fn test_topological_sort_with_cycle() {
     g.add_edge(
         &0,
         &1,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &1,
         &2,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     g.add_edge(
         &2,
         &0,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let sorted = topological_sort(&g);
@@ -816,8 +816,8 @@ fn test_min_cost_max_flow() {
         &0,
         &1,
         Expr::Tuple(vec![
-            Expr::Constant(10.0),
-            Expr::Constant(2.0),
+            Expr::new_constant(10.0),
+            Expr::new_constant(2.0),
         ]),
     );
 
@@ -825,8 +825,8 @@ fn test_min_cost_max_flow() {
         &0,
         &2,
         Expr::Tuple(vec![
-            Expr::Constant(10.0),
-            Expr::Constant(4.0),
+            Expr::new_constant(10.0),
+            Expr::new_constant(4.0),
         ]),
     );
 
@@ -834,8 +834,8 @@ fn test_min_cost_max_flow() {
         &1,
         &3,
         Expr::Tuple(vec![
-            Expr::Constant(5.0),
-            Expr::Constant(1.0),
+            Expr::new_constant(5.0),
+            Expr::new_constant(1.0),
         ]),
     );
 
@@ -843,8 +843,8 @@ fn test_min_cost_max_flow() {
         &2,
         &3,
         Expr::Tuple(vec![
-            Expr::Constant(5.0),
-            Expr::Constant(3.0),
+            Expr::new_constant(5.0),
+            Expr::new_constant(3.0),
         ]),
     );
 

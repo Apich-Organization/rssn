@@ -7,15 +7,15 @@ use rssn::symbolic::simplify::simplify;
 fn test_simplify_one_plus_one_expr() {
 
     let expr = Expr::new_add(
-        Expr::BigInt(BigInt::from(1)),
-        Expr::BigInt(BigInt::from(1)),
+        Expr::new_bigint(BigInt::from(1)),
+        Expr::new_bigint(BigInt::from(1)),
     );
 
     let simplified = simplify(expr);
 
     assert_eq!(
         simplified,
-        Expr::BigInt(BigInt::from(2))
+        Expr::new_bigint(BigInt::from(2))
     );
 }
 

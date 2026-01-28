@@ -467,7 +467,7 @@ impl Tensor {
             };
 
         let new_components = vec![
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::zero()
                 );
                 new_len
@@ -484,7 +484,7 @@ impl Tensor {
         loop {
 
             let mut sum_val =
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::zero(),
                 );
 
@@ -836,7 +836,7 @@ pub fn christoffel_symbols_first_kind(
                 );
 
                 let christoffel = simplify(&Expr::new_mul(
-                    Expr::Rational(BigRational::new(
+                    Expr::new_rational(BigRational::new(
                         BigInt::one(),
                         BigInt::from(2),
                     )),
@@ -935,7 +935,7 @@ pub fn riemann_curvature_tensor(
                         vars[l],
                     );
 
-                    let mut term3 = Expr::BigInt(BigInt::zero());
+                    let mut term3 = Expr::new_bigint(BigInt::zero());
 
                     for m in 0 .. dim {
 
@@ -952,7 +952,7 @@ pub fn riemann_curvature_tensor(
                         ));
                     }
 
-                    let mut term4 = Expr::BigInt(BigInt::zero());
+                    let mut term4 = Expr::new_bigint(BigInt::zero());
 
                     for m in 0 .. dim {
 
@@ -1043,7 +1043,7 @@ pub fn covariant_derivative_vector(
                 );
 
             let mut christoffel_term =
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::zero(),
                 );
 

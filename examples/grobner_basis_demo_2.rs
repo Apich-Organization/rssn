@@ -32,7 +32,7 @@ fn var_poly(
 
     terms.insert(
         Monomial(mono),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     SparsePolynomial {
@@ -49,7 +49,7 @@ fn const_poly(
 
     terms.insert(
         Monomial(BTreeMap::new()),
-        Expr::Constant(value),
+        Expr::new_constant(value),
     );
 
     SparsePolynomial {

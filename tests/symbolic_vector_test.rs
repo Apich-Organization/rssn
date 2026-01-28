@@ -79,7 +79,7 @@ fn test_vector_dot_product() {
         .unwrap_or(dot.clone());
 
     // Check if it's 32
-    if let Expr::Constant(val) = dot_ast
+    if let Expr::new_constant(val) = dot_ast
     {
 
         assert!(
@@ -134,17 +134,17 @@ fn test_vector_cross_product() {
 
     assert_eq!(
         x_ast,
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     );
 
     assert_eq!(
         y_ast,
-        Expr::Constant(0.0)
+        Expr::new_constant(0.0)
     );
 
     assert_eq!(
         z_ast,
-        Expr::Constant(1.0)
+        Expr::new_constant(1.0)
     );
 }
 
@@ -212,12 +212,12 @@ fn test_vector_angle() {
     if let Expr::ArcCos(arg) = angle_ast
     {
 
-        if let Expr::Constant(val) =
+        if let Expr::new_constant(val) =
             *arg
         {
 
             assert!(val.abs() < 1e-10);
-        } else if let Expr::BigInt(
+        } else if let Expr::new_bigint(
             ref val,
         ) = *arg
         {

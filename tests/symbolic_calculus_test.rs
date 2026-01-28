@@ -12,14 +12,14 @@ fn test_differentiate_basic() {
 
     let x = Expr::new_variable("x");
 
-    let c = Expr::Constant(5.0);
+    let c = Expr::new_constant(5.0);
 
     // d/dx(5) = 0
     let diff_c = differentiate(&c, "x");
 
     assert_eq!(
         diff_c,
-        Expr::BigInt(BigInt::from(0))
+        Expr::new_bigint(BigInt::from(0))
     );
 
     // d/dx(x) = 1
@@ -27,13 +27,13 @@ fn test_differentiate_basic() {
 
     assert_eq!(
         diff_x,
-        Expr::BigInt(BigInt::from(1))
+        Expr::new_bigint(BigInt::from(1))
     );
 
     // d/dx(x^2) = 2x
     let x_sq = Expr::new_pow(
         x.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let diff_x_sq =
@@ -162,7 +162,7 @@ fn test_integrate_basic() {
     ));
 
     // int(1, x) = x
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     let int_one = integrate(
         &one, "x", None, None,
@@ -187,9 +187,9 @@ fn test_definite_integrate() {
 
     let x = Expr::new_variable("x");
 
-    let zero = Expr::Constant(0.0);
+    let zero = Expr::new_constant(0.0);
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     // int(x, x, 0, 1) = 0.5
     let def_int = definite_integrate(
@@ -197,13 +197,13 @@ fn test_definite_integrate() {
     );
 
     // Result should be constant 0.5
-    if let Expr::Constant(val) = def_int
+    if let Expr::new_constant(val) = def_int
     {
 
         assert!(
             (val - 0.5).abs() < 1e-9
         );
-    } else if let Expr::Rational(r) =
+    } else if let Expr::new_rational(r) =
         def_int
     {
 
@@ -229,13 +229,13 @@ fn test_limit() {
 
     let x = Expr::new_variable("x");
 
-    let zero = Expr::Constant(0.0);
+    let zero = Expr::new_constant(0.0);
 
     // limit(x, x->0) = 0
     let lim_x = limit(&x, "x", &zero);
 
     match &lim_x {
-        | Expr::BigInt(i) => {
+        | Expr::new_bigint(i) => {
 
             println!(
                 "DEBUG: lim_x is \
@@ -243,7 +243,7 @@ fn test_limit() {
                 i
             )
         },
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
 
             println!(
                 "DEBUG: lim_x is \
@@ -284,7 +284,7 @@ fn test_limit() {
     );
 
     match &lim_sinc {
-        | Expr::BigInt(i) => {
+        | Expr::new_bigint(i) => {
 
             println!(
                 "DEBUG: lim_sinc is \
@@ -292,7 +292,7 @@ fn test_limit() {
                 i
             )
         },
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
 
             println!(
                 "DEBUG: lim_sinc is \
@@ -373,7 +373,7 @@ fn test_check_analytic() {
     // z^2 is analytic
     let z_sq = Expr::new_pow(
         z.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     println!("z_sq: {:?}", z_sq);
@@ -405,7 +405,7 @@ fn test_check_analytic_new() {
     // z^2 is analytic
     let z_sq = Expr::new_pow(
         z.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     println!("z_sq: {:?}", z_sq);
@@ -444,7 +444,7 @@ fn test_poles_and_residues() {
 
     let z = Expr::new_variable("z");
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     // f(z) = 1/(z-1) has pole at z=1 with residue 1
     let z_minus_1 = Expr::new_sub(
@@ -470,7 +470,7 @@ fn test_poles_and_residues() {
     );
 
     match &res {
-        | Expr::BigInt(i) => {
+        | Expr::new_bigint(i) => {
 
             println!(
                 "DEBUG: res is \
@@ -478,7 +478,7 @@ fn test_poles_and_residues() {
                 i
             )
         },
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
 
             println!(
                 "DEBUG: res is \

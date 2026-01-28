@@ -101,7 +101,7 @@ impl MaxwellEquations {
                 ),
             )
             .scalar_mul(
-                &Expr::Constant(-1.0),
+                &Expr::new_constant(-1.0),
             );
 
             (lhs - rhs).to_expr()
@@ -189,7 +189,7 @@ pub fn electric_field_from_potentials(
 
     // -(grad V + dA/dt)
     (grad_v + da_dt).scalar_mul(
-        &Expr::Constant(-1.0),
+        &Expr::new_constant(-1.0),
     )
 }
 
@@ -204,7 +204,7 @@ pub fn electric_field_from_potential(
 ) -> Vector {
 
     gradient(v, vars).scalar_mul(
-        &Expr::Constant(-1.0),
+        &Expr::new_constant(-1.0),
     )
 }
 
@@ -237,7 +237,7 @@ pub fn poynting_vector(
     e_field
         .cross(b_field)
         .scalar_mul(&Expr::new_div(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             mu_0,
         ))
 }
@@ -262,20 +262,20 @@ pub fn energy_density(
         epsilon_0,
         Expr::new_pow(
             e_field.magnitude(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
     let term_b = Expr::new_div(
         Expr::new_pow(
             b_field.magnitude(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         mu_0,
     );
 
     simplify(&Expr::new_mul(
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
         Expr::new_add(term_e, term_b),
     ))
 }
@@ -298,7 +298,7 @@ pub fn coulombs_law(
     let denominator =
         simplify(&Expr::new_mul(
             Expr::new_mul(
-                Expr::Constant(4.0),
+                Expr::new_constant(4.0),
                 pi,
             ),
             epsilon_0,
@@ -308,7 +308,7 @@ pub fn coulombs_law(
 
     let mag_r_cubed = Expr::new_pow(
         mag_r,
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     let scalar =

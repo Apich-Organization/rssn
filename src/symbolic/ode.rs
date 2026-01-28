@@ -132,7 +132,7 @@ pub(crate) fn parse_ode(
 
                 let entry = coeffs
                     .entry(order)
-                    .or_insert_with(|| Expr::Constant(0.0));
+                    .or_insert_with(|| Expr::new_constant(0.0));
 
                 *entry = simplify(
                     &Expr::new_add(
@@ -147,7 +147,7 @@ pub(crate) fn parse_ode(
     let mut coeffs = HashMap::new();
 
     let mut remaining_expr =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
 
     collect_terms(
@@ -255,7 +255,7 @@ pub(crate) fn get_term_order_and_coeff(
         {
             (
                 0,
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
             )
         },
         | _ => (999, expr.clone()),
@@ -1102,14 +1102,14 @@ pub(crate) fn separate_factors(
 
         return Some((
             expr.clone(),
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
         ));
     }
 
     if !contains_var(expr, var) {
 
         return Some((
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             expr.clone(),
         ));
     }
@@ -1248,7 +1248,7 @@ pub fn solve_separable_ode(
             if **lhs == y_prime =>
         {
             (
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
                 rhs.as_ref().clone(),
             )
         },
@@ -1293,7 +1293,7 @@ pub fn solve_separable_ode(
             {
 
                 (
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                     inner
                         .as_ref()
                         .clone(),
@@ -1305,24 +1305,24 @@ pub fn solve_separable_ode(
             {
 
                 // Check if it's -1 * something or something * -1
-                if let Expr::Constant(c) = a.as_ref() {
+                if let Expr::new_constant(c) = a.as_ref() {
 
                     if (*c + 1.0).abs() < f64::EPSILON {
 
                         (
-                            Expr::Constant(1.0),
+                            Expr::new_constant(1.0),
                             b.as_ref().clone(),
                         )
                     } else {
 
                         return None;
                     }
-                } else if let Expr::Constant(c) = b.as_ref() {
+                } else if let Expr::new_constant(c) = b.as_ref() {
 
                     if (*c + 1.0).abs() < f64::EPSILON {
 
                         (
-                            Expr::Constant(1.0),
+                            Expr::new_constant(1.0),
                             a.as_ref().clone(),
                         )
                     } else {
@@ -1589,7 +1589,7 @@ pub fn solve_bernoulli_ode(
 
         let p_v =
             simplify(&Expr::new_mul(
-                Expr::Constant(
+                Expr::new_constant(
                     one_minus_n,
                 ),
                 p_x.clone(),
@@ -1597,7 +1597,7 @@ pub fn solve_bernoulli_ode(
 
         let q_v =
             simplify(&Expr::new_mul(
-                Expr::Constant(
+                Expr::new_constant(
                     one_minus_n,
                 ),
                 q_x.clone(),
@@ -1643,7 +1643,7 @@ pub fn solve_bernoulli_ode(
                 v_solution
                     .as_ref()
                     .clone(),
-                Expr::Constant(
+                Expr::new_constant(
                     1.0 / one_minus_n,
                 ),
             ));
@@ -1778,13 +1778,13 @@ pub fn solve_riccati_ode(
     let eq_y_prime_0 = substitute_expr(
         &eq,
         &y_prime,
-        &Expr::Constant(0.0),
+        &Expr::new_constant(0.0),
     );
 
     let eq_y_prime_1 = substitute_expr(
         &eq,
         &y_prime,
-        &Expr::Constant(1.0),
+        &Expr::new_constant(1.0),
     );
 
     let a_x = simplify(&Expr::new_sub(
@@ -1855,7 +1855,7 @@ pub fn solve_riccati_ode(
             let entry = coeffs
                 .entry(0)
                 .or_insert(
-                    Expr::Constant(0.0),
+                    Expr::new_constant(0.0),
                 );
 
             *entry = simplify(
@@ -1883,11 +1883,11 @@ pub fn solve_riccati_ode(
 
                     let entry = coeffs
                         .entry((n as i64).try_into().unwrap_or(0))
-                        .or_insert(Expr::Constant(0.0));
+                        .or_insert(Expr::new_constant(0.0));
 
                     *entry = simplify(&Expr::new_add(
                         entry.clone(),
-                        Expr::Constant(1.0),
+                        Expr::new_constant(1.0),
                     ));
                 }
             }
@@ -1902,7 +1902,7 @@ pub fn solve_riccati_ode(
                 let entry = coeffs
                     .entry(1)
                     .or_insert(
-                        Expr::Constant(
+                        Expr::new_constant(
                             0.0,
                         ),
                     );
@@ -1910,7 +1910,7 @@ pub fn solve_riccati_ode(
                 *entry = simplify(
                     &Expr::new_add(
                         entry.clone(),
-                        Expr::Constant(
+                        Expr::new_constant(
                             1.0,
                         ),
                     ),
@@ -1996,7 +1996,7 @@ pub fn solve_riccati_ode(
             let entry = coeffs
                 .entry(deg)
                 .or_insert(
-                    Expr::Constant(0.0),
+                    Expr::new_constant(0.0),
                 );
 
             *entry = simplify(
@@ -2023,17 +2023,17 @@ pub fn solve_riccati_ode(
     let _p = coeffs
         .get(&0)
         .cloned()
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     let q = coeffs
         .get(&1)
         .cloned()
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     let r = coeffs
         .get(&2)
         .cloned()
-        .unwrap_or(Expr::Constant(0.0));
+        .unwrap_or(Expr::new_constant(0.0));
 
     // 5. Construct linear ODE for v
     // v' + (Q + 2*R*y1)v = -R
@@ -2052,7 +2052,7 @@ pub fn solve_riccati_ode(
     let p_v = simplify(&Expr::new_add(
         q,
         Expr::new_mul(
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
             Expr::new_mul(
                 r.clone(),
                 y1.clone(),
@@ -2096,7 +2096,7 @@ pub fn solve_riccati_ode(
         simplify(&Expr::new_add(
             y1.clone(),
             Expr::new_div(
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
                 v_sol,
             ),
         ));
@@ -2178,7 +2178,7 @@ pub fn solve_cauchy_euler_ode(
 
     let x_sq = Expr::new_pow(
         x.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let a = simplify(&Expr::new_div(
@@ -2213,7 +2213,7 @@ pub fn solve_cauchy_euler_ode(
             a,
             Expr::new_pow(
                 m.clone(),
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
             ),
         ),
         Expr::new_add(
@@ -2360,7 +2360,7 @@ pub fn solve_by_reduction_of_order(
 
     let y1_sq = Expr::new_pow(
         y1.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let integrand = simplify(
@@ -2575,7 +2575,7 @@ pub fn solve_ode_by_series(
         .get(&highest_order)?;
 
     let mut other_terms =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     for (o, c) in parsed.coeffs {
 
@@ -2665,7 +2665,7 @@ pub fn solve_ode_by_series(
     }
 
     let mut series_sum =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     for n in 0 ..= order {
 
@@ -2681,7 +2681,7 @@ pub fn solve_ode_by_series(
             let coeff_term = simplify(
                 &Expr::new_div(
                     y_n_val.clone(),
-                    Expr::Constant(
+                    Expr::new_constant(
                         n_factorial,
                     ),
                 ),
@@ -2692,7 +2692,7 @@ pub fn solve_ode_by_series(
                     Expr::Variable(var.to_string()),
                     x0.clone(),
                 ),
-                Expr::Constant(f64::from(n)),
+                Expr::new_constant(f64::from(n)),
             );
 
             series_sum = simplify(
@@ -2746,7 +2746,7 @@ pub fn solve_ode_by_fourier(
         );
 
     let mut algebraic_lhs =
-        Expr::Constant(0.0);
+        Expr::new_constant(0.0);
 
     let y_w =
         Expr::Variable("Y".to_string());

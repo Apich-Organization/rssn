@@ -30,7 +30,7 @@ fn test_simplex_symbolic_boundary() {
 
     assert_eq!(
         coeffs[0],
-        Expr::BigInt(BigInt::from(1))
+        Expr::new_bigint(BigInt::from(1))
     );
 
     assert_eq!(
@@ -43,7 +43,7 @@ fn test_simplex_symbolic_boundary() {
 
     assert_eq!(
         coeffs[1],
-        Expr::BigInt(BigInt::from(-1))
+        Expr::new_bigint(BigInt::from(-1))
     );
 }
 

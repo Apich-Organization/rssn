@@ -51,12 +51,12 @@ pub fn general_log(
     let pi = Expr::Pi;
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let term_2_pi_k = Expr::new_mul(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
         Expr::new_mul(pi, k.clone()),
     );
 
@@ -94,8 +94,8 @@ pub fn general_sqrt(
     let pi = Expr::Pi;
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let magnitude_sqrt =
@@ -105,14 +105,14 @@ pub fn general_sqrt(
         Expr::new_add(
             arg(z),
             Expr::new_mul(
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
                 Expr::new_mul(
                     pi,
                     k.clone(),
                 ),
             ),
         ),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let result = Expr::new_mul(
@@ -174,14 +174,14 @@ pub fn general_nth_root(
     let pi = Expr::Pi;
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let magnitude_root = Expr::new_pow(
         abs(z),
         Expr::new_div(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             n.clone(),
         ),
     );
@@ -190,7 +190,7 @@ pub fn general_nth_root(
         Expr::new_add(
             arg(z),
             Expr::new_mul(
-                Expr::Constant(2.0),
+                Expr::new_constant(2.0),
                 Expr::new_mul(
                     pi,
                     k.clone(),
@@ -238,7 +238,7 @@ pub fn general_arcsin(
 
     let term2 = Expr::new_mul(
         Expr::new_pow(
-            Expr::Constant(-1.0),
+            Expr::new_constant(-1.0),
             k.clone(),
         ),
         principal_arcsin,
@@ -275,7 +275,7 @@ pub fn general_arccos(
         Expr::new_arccos(z.clone());
 
     let term1 = Expr::new_mul(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
         Expr::new_mul(k.clone(), pi),
     );
 
@@ -341,17 +341,17 @@ pub fn general_arcsinh(
 
     let z_squared = Expr::new_pow(
         z.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let inner = Expr::new_add(
         z_squared,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let sqrt_part = general_sqrt(
         &inner,
-        &Expr::Constant(0.0),
+        &Expr::new_constant(0.0),
     ); // Use principal sqrt
     let arg = Expr::new_add(
         z.clone(),
@@ -381,17 +381,17 @@ pub fn general_arccosh(
 
     let z_squared = Expr::new_pow(
         z.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let inner = Expr::new_sub(
         z_squared,
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let sqrt_part = general_sqrt(
         &inner,
-        &Expr::Constant(0.0),
+        &Expr::new_constant(0.0),
     ); // Use principal sqrt
     let arg = Expr::new_add(
         z.clone(),
@@ -420,12 +420,12 @@ pub fn general_arctanh(
 ) -> Expr {
 
     let numerator = Expr::new_add(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         z.clone(),
     );
 
     let denominator = Expr::new_sub(
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         z.clone(),
     );
 
@@ -438,7 +438,7 @@ pub fn general_arctanh(
         general_log(&ratio, k);
 
     simplify(&Expr::new_mul(
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
         log_part,
     ))
 }

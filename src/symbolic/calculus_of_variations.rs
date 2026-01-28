@@ -56,12 +56,12 @@ use crate::symbolic::simplify_dag::simplify;
 /// // L = 1/2 * m * (x')^2
 /// let lagrangian = Expr::new_mul(
 ///     Expr::new_mul(
-///         Expr::Constant(0.5),
+///         Expr::new_constant(0.5),
 ///         m,
 ///     ),
 ///     Expr::new_pow(
 ///         &x_prime,
-///         Expr::Constant(2.0),
+///         Expr::new_constant(2.0),
 ///     ),
 /// );
 ///
@@ -164,7 +164,7 @@ pub fn solve_euler_lagrange(
 
     let ode_to_solve = Expr::Eq(
         Arc::new(el_equation),
-        Arc::new(Expr::Constant(0.0)),
+        Arc::new(Expr::new_constant(0.0)),
     );
 
     solve_ode(

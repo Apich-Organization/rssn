@@ -9,13 +9,13 @@ fn eval_expr_to_f64(
 
     // println!("Evaluating: {:?}", expr);
     match expr {
-        | Expr::Constant(val) => {
+        | Expr::new_constant(val) => {
             Some(*val)
         },
-        | Expr::BigInt(val) => {
+        | Expr::new_bigint(val) => {
             val.to_f64()
         },
-        | Expr::Rational(val) => {
+        | Expr::new_rational(val) => {
             val.to_f64()
         },
         | Expr::Pi => {
@@ -158,8 +158,8 @@ fn test_inner_product() {
     // Space L^2([0, 1])
     let space = HilbertSpace::new(
         "x",
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     // f(x) = x, g(x) = x^2
@@ -170,7 +170,7 @@ fn test_inner_product() {
 
     let g = Expr::new_pow(
         x.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     // <f, g> = int_0^1 x * x^2 dx = int_0^1 x^3 dx = 1/4
@@ -194,12 +194,12 @@ fn test_norm() {
     // Space L^2([0, 1])
     let space = HilbertSpace::new(
         "x",
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     // f(x) = 1
-    let f = Expr::Constant(1.0);
+    let f = Expr::new_constant(1.0);
 
     // ||f|| = 1
     let result = norm(&space, &f);
@@ -221,15 +221,15 @@ fn test_orthogonality() {
     // Space L^2([-1, 1])
     let space = HilbertSpace::new(
         "x",
-        Expr::Constant(-1.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(-1.0),
+        Expr::new_constant(1.0),
     );
 
     // f(x) = 1, g(x) = x
     let x =
         Expr::Variable("x".to_string());
 
-    let f = Expr::Constant(1.0);
+    let f = Expr::new_constant(1.0);
 
     let g = x.clone();
 
@@ -255,8 +255,8 @@ fn test_gram_schmidt() {
     // Space L^2([-1, 1])
     let space = HilbertSpace::new(
         "x",
-        Expr::Constant(-1.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(-1.0),
+        Expr::new_constant(1.0),
     );
 
     // Basis {1, x, x^2}
@@ -264,11 +264,11 @@ fn test_gram_schmidt() {
         Expr::Variable("x".to_string());
 
     let basis = vec![
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
         x.clone(),
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     ];
 

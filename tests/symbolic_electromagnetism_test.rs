@@ -62,22 +62,22 @@ fn test_maxwell_equations_gauss() {
     let ex = Expr::new_variable("x"); // E = [x, 0, 0] -> div E = 1
     let e_field = Vector::new(
         ex,
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let b_field = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let rho = Expr::new_variable("rho");
 
     let j_field = Vector::new(
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let maxwell = MaxwellEquations::new(
@@ -110,14 +110,14 @@ fn test_energy_density() {
 
     let e_field = Vector::new(
         Expr::new_variable("Ex"),
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let b_field = Vector::new(
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
         Expr::new_variable("By"),
-        Expr::Constant(0.0),
+        Expr::new_constant(0.0),
     );
 
     let u = energy_density(

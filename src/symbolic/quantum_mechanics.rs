@@ -194,7 +194,7 @@ pub fn uncertainty(
     let op_sq = Operator {
         op: Expr::new_pow(
             op.op.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     };
 
@@ -206,7 +206,7 @@ pub fn uncertainty(
 
     let exp_a_whole_sq = Expr::new_pow(
         exp_a,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     simplify(&Expr::new_sqrt(
@@ -228,7 +228,7 @@ pub fn probability_density(
         Expr::new_abs(
             psi.state.clone(),
         ),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     ))
 }
 
@@ -244,11 +244,11 @@ pub fn hamiltonian_free_particle(
 
     let hbar_sq = Expr::new_pow(
         hbar,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let two_m = Expr::new_mul(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
         m.clone(),
     );
 
@@ -278,18 +278,18 @@ pub fn hamiltonian_harmonic_oscillator(
     let free_h =
         hamiltonian_free_particle(m);
 
-    let half = Expr::Constant(0.5);
+    let half = Expr::new_constant(0.5);
 
     let omega_sq = Expr::new_pow(
         omega.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let x = Expr::new_variable("x");
 
     let x_sq = Expr::new_pow(
         x,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let potential = Expr::new_mul(
@@ -318,8 +318,8 @@ pub fn angular_momentum_z() -> Operator
 {
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let hbar =
@@ -346,13 +346,13 @@ pub fn angular_momentum_z() -> Operator
 pub fn pauli_matrices()
 -> (Expr, Expr, Expr) {
 
-    let zero = Expr::Constant(0.0);
+    let zero = Expr::new_constant(0.0);
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let neg_i =
@@ -378,7 +378,7 @@ pub fn pauli_matrices()
         vec![one, zero.clone()],
         vec![
             zero,
-            Expr::Constant(-1.0),
+            Expr::new_constant(-1.0),
         ],
     ]);
 
@@ -400,7 +400,7 @@ pub fn spin_operator(
         Expr::new_variable("hbar");
 
     let half_hbar = Expr::new_mul(
-        Expr::Constant(0.5),
+        Expr::new_constant(0.5),
         hbar,
     );
 
@@ -462,8 +462,8 @@ pub fn time_dependent_schrodinger_equation(
 ) -> Expr {
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let hbar = Expr::Variable(
@@ -498,8 +498,8 @@ pub fn dirac_equation(
 ) -> Expr {
 
     let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
+        Expr::new_constant(0.0),
+        Expr::new_constant(1.0),
     );
 
     let hbar =
@@ -560,7 +560,7 @@ pub fn klein_gordon_equation(
 
     let mass_term = Expr::new_pow(
         mc_hbar,
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let kg_op = Expr::new_add(

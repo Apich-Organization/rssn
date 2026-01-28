@@ -180,12 +180,12 @@ fn main() {
 
     terms1.insert(
         Monomial(mono_x1),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     terms1.insert(
         Monomial(BTreeMap::new()),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let mut terms2 = BTreeMap::new();
@@ -196,12 +196,12 @@ fn main() {
 
     terms2.insert(
         Monomial(mono_x2),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     terms2.insert(
         Monomial(BTreeMap::new()),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let p1 = SparsePolynomial {

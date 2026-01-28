@@ -76,18 +76,18 @@ pub fn evaluate_complex(
                     ),
             )
         },
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
             Some(Complex64::new(
                 *c, 0.0,
             ))
         },
-        | Expr::BigInt(i) => {
+        | Expr::new_bigint(i) => {
             Some(Complex64::new(
                 i.to_f64()?,
                 0.0,
             ))
         },
-        | Expr::Rational(r) => {
+        | Expr::new_rational(r) => {
             Some(Complex64::new(
                 r.to_f64()?,
                 0.0,

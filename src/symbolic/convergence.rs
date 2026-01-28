@@ -115,7 +115,7 @@ pub(crate) fn is_positive(
 ) -> bool {
 
     let large_n =
-        Expr::Constant(1000.0);
+        Expr::new_constant(1000.0);
 
     let val_at_large_n = simplify(
         &substitute(f_n, n, &large_n),
@@ -147,7 +147,7 @@ pub(crate) fn is_eventually_decreasing(
         differentiate(f_n, n);
 
     let large_n =
-        Expr::Constant(1000.0);
+        Expr::new_constant(1000.0);
 
     let deriv_at_large_n =
         simplify(&substitute(
@@ -241,10 +241,10 @@ pub fn analyze_convergence(
 
         // Check if numerator is 1 (either as BigInt or Constant)
         let is_one = match &**one {
-            | Expr::BigInt(b) => {
+            | Expr::new_bigint(b) => {
                 b.is_one()
             },
-            | Expr::Constant(c) => {
+            | Expr::new_constant(c) => {
                 (*c - 1.0).abs()
                     < f64::EPSILON
             },
@@ -317,7 +317,7 @@ pub fn analyze_convergence(
             &**factor1
         {
 
-            if let Expr::BigInt(base) =
+            if let Expr::new_bigint(base) =
                 &**neg_one
             {
 
@@ -347,7 +347,7 @@ pub fn analyze_convergence(
 
     let n_plus_1 = Expr::new_add(
         Expr::Variable(n.to_string()),
-        Expr::BigInt(BigInt::one()),
+        Expr::new_bigint(BigInt::one()),
     );
 
     let a_n_plus_1 =
@@ -385,7 +385,7 @@ pub fn analyze_convergence(
         simplify(&Expr::new_pow(
             Expr::new_abs(a_n.clone()),
             Expr::new_div(
-                Expr::BigInt(
+                Expr::new_bigint(
                     BigInt::one(),
                 ),
                 Expr::Variable(

@@ -170,7 +170,7 @@ impl Multivector {
                     );
 
                 let signed_coeff = simplify(&Expr::new_mul(
-                    Expr::Constant(sign),
+                    Expr::new_constant(sign),
                     new_coeff,
                 ));
 
@@ -217,16 +217,16 @@ impl Multivector {
             .retain(|_, coeff| {
 
                 match coeff {
-                    | Expr::Constant(c) => c.abs() > f64::EPSILON,
-                    | Expr::BigInt(b) => !b.is_zero(),
-                    | Expr::Rational(r) => !r.is_zero(),
+                    | Expr::new_constant(c) => c.abs() > f64::EPSILON,
+                    | Expr::new_bigint(b) => !b.is_zero(),
+                    | Expr::new_rational(r) => !r.is_zero(),
                     | Expr::Dag(node) => {
                         node.to_expr().map_or(
                             true,
                             |expr| match expr {
-                                Expr::Constant(c) => c.abs() > f64::EPSILON,
-                                Expr::BigInt(b) => !b.is_zero(),
-                                Expr::Rational(r) => !r.is_zero(),
+                                Expr::new_constant(c) => c.abs() > f64::EPSILON,
+                                Expr::new_bigint(b) => !b.is_zero(),
+                                Expr::new_rational(r) => !r.is_zero(),
                                 _ => true,
                             },
                         )
@@ -269,7 +269,7 @@ impl Multivector {
         let common_blades = b1 & b2;
 
         let mut metric_scalar =
-            Expr::BigInt(BigInt::one());
+            Expr::new_bigint(BigInt::one());
 
         for i in 0 .. 32 {
 
@@ -293,7 +293,7 @@ impl Multivector {
 
                 metric_scalar = simplify(&Expr::new_mul(
                     metric_scalar,
-                    Expr::BigInt(BigInt::from(metric)),
+                    Expr::new_bigint(BigInt::from(metric)),
                 ));
             }
         }
@@ -485,7 +485,7 @@ impl Multivector {
             result.terms.insert(
                 *blade,
                 simplify(&Expr::new_mul(
-                    Expr::BigInt(BigInt::from(sign)),
+                    Expr::new_bigint(BigInt::from(sign)),
                     coeff.clone(),
                 )),
             );
@@ -514,7 +514,7 @@ impl Multivector {
             product.grade_projection(0);
 
         scalar_part.terms.get(&0).map_or_else(
-            || Expr::Constant(0.0),
+            || Expr::new_constant(0.0),
             |scalar_coeff| {
                 simplify(&Expr::new_sqrt(scalar_coeff.clone()))
             },
@@ -547,7 +547,7 @@ impl Multivector {
             .terms
             .insert(
                 pseudoscalar_blade,
-                Expr::Constant(1.0),
+                Expr::new_constant(1.0),
             );
 
         // Compute dual as M * I^(-1)
@@ -568,7 +568,7 @@ impl Multivector {
         let mag = self.magnitude();
 
         let inv_mag = Expr::new_div(
-            Expr::Constant(1.0),
+            Expr::new_constant(1.0),
             mag,
         );
 

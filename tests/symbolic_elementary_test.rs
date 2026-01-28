@@ -90,7 +90,7 @@ fn test_exp_and_log() {
 
     // Test log_base
     let log_2_x = log_base(
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
         x.clone(),
     );
 
@@ -279,9 +279,9 @@ fn test_expand_mul() {
     let y =
         Expr::Variable("y".to_string());
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
-    let two = Expr::Constant(2.0);
+    let two = Expr::new_constant(2.0);
 
     let x_plus_1 = Expr::Add(
         Arc::new(x.clone()),
@@ -319,10 +319,10 @@ fn test_expand_power() {
     let x =
         Expr::Variable("x".to_string());
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     let two =
-        Expr::BigInt(BigInt::from(2));
+        Expr::new_bigint(BigInt::from(2));
 
     let x_plus_1 = Expr::Add(
         Arc::new(x.clone()),

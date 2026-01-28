@@ -97,9 +97,9 @@ fn test_symbolic_rref() {
             );
 
         assert!(
-            matches!(val_0_0, Expr::Constant(v) if (v - 1.0).abs() < 1e-9)
-                || matches!(val_0_0, Expr::BigInt(ref v) if v.is_one())
-                || matches!(val_0_0, Expr::Rational(ref r) if r.is_one())
+            matches!(val_0_0, Expr::new_constant(v) if (v - 1.0).abs() < 1e-9)
+                || matches!(val_0_0, Expr::new_bigint(ref v) if v.is_one())
+                || matches!(val_0_0, Expr::new_rational(ref r) if r.is_one())
         );
 
         // Check [0][1] == 0 (This is the crucial symbolic elimination)
@@ -113,8 +113,8 @@ fn test_symbolic_rref() {
 
         // We expect the simplifier to have reduced "a - a" to 0.
         // If not, we might need to improve simplify or the test expectation.
-        let is_zero = matches!(val_0_1, Expr::Constant(v) if v.abs() < 1e-9)
-            || matches!(val_0_1, Expr::BigInt(v) if v.is_zero());
+        let is_zero = matches!(val_0_1, Expr::new_constant(v) if v.abs() < 1e-9)
+            || matches!(val_0_1, Expr::new_bigint(v) if v.is_zero());
 
         if !is_zero {
 

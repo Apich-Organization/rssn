@@ -59,7 +59,7 @@ fn test_submit_direct() {
     let engine = ComputeEngine::new();
 
     let expr =
-        Arc::new(Expr::Constant(42.0));
+        Arc::new(Expr::new_constant(42.0));
 
     let id = engine.submit(expr);
 

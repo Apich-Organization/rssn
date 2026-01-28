@@ -18,14 +18,14 @@ fn test_cad_simple_1d() {
 
     terms.insert(
         Monomial(vars_map),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let vars_map_0 = BTreeMap::new();
 
     terms.insert(
         Monomial(vars_map_0),
-        Expr::Constant(-1.0),
+        Expr::new_constant(-1.0),
     );
 
     let p = SparsePolynomial {
@@ -92,7 +92,7 @@ fn test_cad_simple_2d() {
 
     terms.insert(
         Monomial(vars_x2),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let mut vars_y2 = BTreeMap::new();
@@ -101,14 +101,14 @@ fn test_cad_simple_2d() {
 
     terms.insert(
         Monomial(vars_y2),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let vars_0 = BTreeMap::new();
 
     terms.insert(
         Monomial(vars_0),
-        Expr::Constant(-1.0),
+        Expr::new_constant(-1.0),
     );
 
     let p = SparsePolynomial {
@@ -152,7 +152,7 @@ fn test_cad_serialization() {
 
     terms.insert(
         Monomial(vars_x),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     );
 
     let p = SparsePolynomial {

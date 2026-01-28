@@ -766,7 +766,7 @@ mod tests {
             "x".to_string(),
         );
 
-        let two = Expr::Constant(2.0);
+        let two = Expr::new_constant(2.0);
 
         let expr =
             Expr::new_add(x, two);
@@ -828,12 +828,12 @@ mod tests {
         let expr =
             Expr::new_matrix(vec![
                 vec![
-                    Expr::Constant(1.0),
-                    Expr::Constant(2.0),
+                    Expr::new_constant(1.0),
+                    Expr::new_constant(2.0),
                 ],
                 vec![
-                    Expr::Constant(3.0),
-                    Expr::Constant(4.0),
+                    Expr::new_constant(3.0),
+                    Expr::new_constant(4.0),
                 ],
             ]);
 
@@ -860,7 +860,7 @@ mod tests {
                 std::sync::Arc::new(
                     Expr::new_pow(
                         x.clone(),
-                        Expr::Constant(
+                        Expr::new_constant(
                             2.0,
                         ),
                     ),
@@ -870,11 +870,11 @@ mod tests {
             ),
             lower_bound:
                 std::sync::Arc::new(
-                    Expr::Constant(0.0),
+                    Expr::new_constant(0.0),
                 ),
             upper_bound:
                 std::sync::Arc::new(
-                    Expr::Constant(1.0),
+                    Expr::new_constant(1.0),
                 ),
         };
 
@@ -926,14 +926,14 @@ mod tests {
             // We'll generate a few representative expressions to ensure no panics
             let x = Expr::Variable("x".to_string());
             let y = Expr::Variable("y".to_string());
-            let base_exprs = vec![x, y, Expr::Constant(1.0), Expr::Pi];
+            let base_exprs = vec![x, y, Expr::new_constant(1.0), Expr::Pi];
 
             // Just a sampling of possible structures
             let mut expr = base_exprs[0].clone();
             for _ in 0..depth {
                 expr = Expr::new_add(expr, base_exprs[1].clone());
-                expr = Expr::new_div(expr, Expr::Constant(2.0));
-                expr = Expr::new_pow(expr, Expr::Constant(0.5));
+                expr = Expr::new_div(expr, Expr::new_constant(2.0));
+                expr = Expr::new_pow(expr, Expr::new_constant(0.5));
             }
 
             let output = pretty_print(&expr);

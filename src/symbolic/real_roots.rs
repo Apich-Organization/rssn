@@ -419,8 +419,8 @@ pub fn eval_expr<
                 vars,
             )
         },
-        | Expr::Constant(c) => *c,
-        | Expr::BigInt(i) => {
+        | Expr::new_constant(c) => *c,
+        | Expr::new_bigint(i) => {
             i.to_f64()
                 .unwrap_or(0.0)
         },

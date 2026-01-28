@@ -546,7 +546,7 @@ pub(crate) fn apply_rules_csc(
     // csc(x) -> 1/sin(x)
 
     match DAG_MANAGER.get_or_create(
-        &Expr::Constant(1.0),
+        &Expr::new_constant(1.0),
     ) {
         | Ok(one) => {
 
@@ -592,7 +592,7 @@ pub(crate) fn apply_rules_sec(
     // sec(x) -> 1/cos(x)
 
     match DAG_MANAGER.get_or_create(
-        &Expr::Constant(1.0),
+        &Expr::new_constant(1.0),
     ) {
         | Ok(one) => {
 
@@ -639,7 +639,7 @@ pub(crate) fn apply_rules_tan(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(0.0),
+                &Expr::new_constant(0.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -701,7 +701,7 @@ pub(crate) fn apply_rules_cos(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(1.0),
+                &Expr::new_constant(1.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -714,7 +714,7 @@ pub(crate) fn apply_rules_cos(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(-1.0),
+                &Expr::new_constant(-1.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -876,7 +876,7 @@ pub(crate) fn apply_rules_sin(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(0.0),
+                &Expr::new_constant(0.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -889,7 +889,7 @@ pub(crate) fn apply_rules_sin(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(0.0),
+                &Expr::new_constant(0.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -1065,7 +1065,7 @@ pub(crate) fn apply_rules_exp(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(1.0),
+                &Expr::new_constant(1.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -1114,7 +1114,7 @@ pub(crate) fn apply_rules_logbase(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(1.0),
+                &Expr::new_constant(1.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -1174,7 +1174,7 @@ pub(crate) fn apply_rules_log(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(0.0),
+                &Expr::new_constant(0.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -1187,7 +1187,7 @@ pub(crate) fn apply_rules_log(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(1.0),
+                &Expr::new_constant(1.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -1326,7 +1326,7 @@ pub(crate) fn apply_rules_power(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(1.0),
+                &Expr::new_constant(1.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -1344,7 +1344,7 @@ pub(crate) fn apply_rules_power(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(1.0),
+                &Expr::new_constant(1.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -1390,7 +1390,7 @@ pub(crate) fn apply_rules_power(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(-1.0),
+                &Expr::new_constant(-1.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(),
@@ -1520,7 +1520,7 @@ pub(crate) fn apply_rules_div(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(1.0),
+                &Expr::new_constant(1.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -1540,7 +1540,7 @@ pub(crate) fn apply_rules_div(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(0.0),
+                &Expr::new_constant(0.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(),
@@ -1548,7 +1548,7 @@ pub(crate) fn apply_rules_div(
     }
 
     match DAG_MANAGER.get_or_create(
-        &Expr::BigInt(BigInt::from(-1)),
+        &Expr::new_bigint(BigInt::from(-1)),
     ) {
         | Ok(neg_one) => {
 
@@ -1616,7 +1616,7 @@ pub(crate) fn apply_rules_mul(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(0.0),
+                &Expr::new_constant(0.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(),
@@ -1632,7 +1632,7 @@ pub(crate) fn apply_rules_mul(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(0.0),
+                &Expr::new_constant(0.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(),
@@ -1670,7 +1670,7 @@ pub(crate) fn apply_rules_mul(
     if lhs.hash == rhs.hash {
 
         match DAG_MANAGER.get_or_create(
-            &Expr::Constant(2.0),
+            &Expr::new_constant(2.0),
         ) {
             | Ok(two) => {
 
@@ -1826,7 +1826,7 @@ pub(crate) fn apply_rules_sub(
 
         return Some(match DAG_MANAGER
             .get_or_create(
-                &Expr::Constant(0.0),
+                &Expr::new_constant(0.0),
             ) {
             | Ok(node) => node,
             | Err(_) => node.clone(), /* Return original if creation fails */
@@ -1962,7 +1962,7 @@ pub(crate) fn apply_rules_add(
     if lhs.hash == rhs.hash {
 
         match DAG_MANAGER.get_or_create(
-            &Expr::Constant(2.0),
+            &Expr::new_constant(2.0),
         ) {
             | Ok(two) => {
 
@@ -2092,7 +2092,7 @@ pub(crate) fn apply_rules_add(
             return Some(
                 match DAG_MANAGER
                     .get_or_create(
-                        &Expr::Constant(
+                        &Expr::new_constant(
                             1.0,
                         ),
                     ) {
@@ -2131,7 +2131,7 @@ pub(crate) fn apply_rules_add(
             return Some(
                 match DAG_MANAGER
                     .get_or_create(
-                        &Expr::Constant(
+                        &Expr::new_constant(
                             1.0,
                         ),
                     ) {
@@ -2185,11 +2185,11 @@ pub(crate) fn fold_constants(
             | (
                 DagOp::Power,
                 [
-                    Expr::Constant(a),
-                    Expr::Constant(b),
+                    Expr::new_constant(a),
+                    Expr::new_constant(b),
                 ],
             ) => {
-                Some(Expr::Constant(
+                Some(Expr::new_constant(
                     a.powf(*b),
                 ))
             },
@@ -2216,7 +2216,7 @@ pub(crate) fn fold_constants(
                             < 1e-12
                         {
 
-                            Some(Expr::Constant(
+                            Some(Expr::new_constant(
                                 root.round(),
                             ))
                         } else {
@@ -2256,17 +2256,17 @@ pub(crate) fn get_numeric_value(
 
     match &node.op {
         | DagOp::Constant(c) => {
-            Some(Expr::Constant(
+            Some(Expr::new_constant(
                 c.into_inner(),
             ))
         },
         | DagOp::BigInt(i) => {
-            Some(Expr::BigInt(
+            Some(Expr::new_bigint(
                 i.clone(),
             ))
         },
         | DagOp::Rational(r) => {
-            Some(Expr::Rational(
+            Some(Expr::new_rational(
                 r.clone(),
             ))
         },
@@ -2283,8 +2283,8 @@ pub(crate) fn add_em(
 
     match (a, b) {
         | (
-            Expr::Constant(va),
-            Expr::Constant(vb),
+            Expr::new_constant(va),
+            Expr::new_constant(vb),
         ) => {
 
             let result = va + vb;
@@ -2294,20 +2294,20 @@ pub(crate) fn add_em(
             {
 
                 // Handle overflow/invalid results gracefully
-                Expr::Constant(*va) // Return a as a fallback
+                Expr::new_constant(*va) // Return a as a fallback
             } else {
 
-                Expr::Constant(result)
+                Expr::new_constant(result)
             }
         },
         | (
-            Expr::BigInt(ia),
-            Expr::BigInt(ib),
-        ) => Expr::BigInt(ia + ib),
+            Expr::new_bigint(ia),
+            Expr::new_bigint(ib),
+        ) => Expr::new_bigint(ia + ib),
         | (
-            Expr::Rational(ra),
-            Expr::Rational(rb),
-        ) => Expr::Rational(ra + rb),
+            Expr::new_rational(ra),
+            Expr::new_rational(rb),
+        ) => Expr::new_rational(ra + rb),
         // Promote to Rational or Constant - with error handling
         | _ => {
 
@@ -2334,7 +2334,7 @@ pub(crate) fn add_em(
                         ) // Return original expression if result is invalid
                     } else {
 
-                        Expr::Constant(
+                        Expr::new_constant(
                             result,
                         )
                     }
@@ -2356,8 +2356,8 @@ pub(crate) fn sub_em(
 
     match (a, b) {
         | (
-            Expr::Constant(va),
-            Expr::Constant(vb),
+            Expr::new_constant(va),
+            Expr::new_constant(vb),
         ) => {
 
             let result = va - vb;
@@ -2367,20 +2367,20 @@ pub(crate) fn sub_em(
             {
 
                 // Handle overflow/invalid results gracefully
-                Expr::Constant(*va) // Return a as a fallback
+                Expr::new_constant(*va) // Return a as a fallback
             } else {
 
-                Expr::Constant(result)
+                Expr::new_constant(result)
             }
         },
         | (
-            Expr::BigInt(ia),
-            Expr::BigInt(ib),
-        ) => Expr::BigInt(ia - ib),
+            Expr::new_bigint(ia),
+            Expr::new_bigint(ib),
+        ) => Expr::new_bigint(ia - ib),
         | (
-            Expr::Rational(ra),
-            Expr::Rational(rb),
-        ) => Expr::Rational(ra - rb),
+            Expr::new_rational(ra),
+            Expr::new_rational(rb),
+        ) => Expr::new_rational(ra - rb),
         | _ => {
 
             match (
@@ -2406,7 +2406,7 @@ pub(crate) fn sub_em(
                         ) // Return original expression if result is invalid
                     } else {
 
-                        Expr::Constant(
+                        Expr::new_constant(
                             result,
                         )
                     }
@@ -2428,8 +2428,8 @@ pub(crate) fn mul_em(
 
     match (a, b) {
         | (
-            Expr::Constant(va),
-            Expr::Constant(vb),
+            Expr::new_constant(va),
+            Expr::new_constant(vb),
         ) => {
 
             let result = va * vb;
@@ -2448,24 +2448,24 @@ pub(crate) fn mul_em(
                         ))
                 {
 
-                    Expr::Constant(0.0) // 0 * inf = 0 (though mathematically indeterminate, for calculation purposes)
+                    Expr::new_constant(0.0) // 0 * inf = 0 (though mathematically indeterminate, for calculation purposes)
                 } else {
 
-                    Expr::Constant(*va) // Return a as a fallback
+                    Expr::new_constant(*va) // Return a as a fallback
                 }
             } else {
 
-                Expr::Constant(result)
+                Expr::new_constant(result)
             }
         },
         | (
-            Expr::BigInt(ia),
-            Expr::BigInt(ib),
-        ) => Expr::BigInt(ia * ib),
+            Expr::new_bigint(ia),
+            Expr::new_bigint(ib),
+        ) => Expr::new_bigint(ia * ib),
         | (
-            Expr::Rational(ra),
-            Expr::Rational(rb),
-        ) => Expr::Rational(ra * rb),
+            Expr::new_rational(ra),
+            Expr::new_rational(rb),
+        ) => Expr::new_rational(ra * rb),
         | _ => {
 
             match (
@@ -2491,7 +2491,7 @@ pub(crate) fn mul_em(
                         ) // Return original expression if result is invalid
                     } else {
 
-                        Expr::Constant(
+                        Expr::new_constant(
                             result,
                         )
                     }
@@ -2526,8 +2526,8 @@ pub(crate) fn div_em(
 
     match (a, b) {
         | (
-            Expr::Constant(va),
-            Expr::Constant(vb),
+            Expr::new_constant(va),
+            Expr::new_constant(vb),
         ) => {
 
             let result = va / vb;
@@ -2540,17 +2540,17 @@ pub(crate) fn div_em(
                 None // Undefined result like 0/0
             } else {
 
-                Some(Expr::Constant(
+                Some(Expr::new_constant(
                     result,
                 ))
             }
         },
         // For integers, create a rational
         | (
-            Expr::BigInt(ia),
-            Expr::BigInt(ib),
+            Expr::new_bigint(ia),
+            Expr::new_bigint(ib),
         ) => {
-            Some(Expr::Rational(
+            Some(Expr::new_rational(
                 BigRational::new(
                     ia.clone(),
                     ib.clone(),
@@ -2558,10 +2558,10 @@ pub(crate) fn div_em(
             ))
         },
         | (
-            Expr::Rational(ra),
-            Expr::Rational(rb),
+            Expr::new_rational(ra),
+            Expr::new_rational(rb),
         ) => {
-            Some(Expr::Rational(
+            Some(Expr::new_rational(
                 ra / rb,
             ))
         },
@@ -2592,7 +2592,7 @@ pub(crate) fn div_em(
                         None // Undefined result like 0/0
                     } else {
 
-                        Some(Expr::Constant(
+                        Some(Expr::new_constant(
                             result,
                         ))
                     }
@@ -2612,14 +2612,14 @@ pub(crate) fn div_em(
 pub(crate) fn neg_em(a: &Expr) -> Expr {
 
     match a {
-        | Expr::Constant(v) => {
-            Expr::Constant(-v)
+        | Expr::new_constant(v) => {
+            Expr::new_constant(-v)
         },
-        | Expr::BigInt(i) => {
-            Expr::BigInt(-i)
+        | Expr::new_bigint(i) => {
+            Expr::new_bigint(-i)
         },
-        | Expr::Rational(r) => {
-            Expr::Rational(-r)
+        | Expr::new_rational(r) => {
+            Expr::new_rational(-r)
         },
         | _ => unreachable!(),
     }
@@ -2648,17 +2648,17 @@ pub(crate) fn is_zero_expr(
 ) -> bool {
 
     match expr {
-        | Expr::Constant(c)
+        | Expr::new_constant(c)
             if *c == 0.0 =>
         {
             true
         },
-        | Expr::BigInt(i)
+        | Expr::new_bigint(i)
             if i.is_zero() =>
         {
             true
         },
-        | Expr::Rational(r)
+        | Expr::new_rational(r)
             if r.is_zero() =>
         {
             true
@@ -2674,18 +2674,18 @@ pub(crate) fn is_one_expr(
 ) -> bool {
 
     match expr {
-        | Expr::Constant(c)
+        | Expr::new_constant(c)
             if (*c - 1.0).abs()
                 < f64::EPSILON =>
         {
             true
         },
-        | Expr::BigInt(i)
+        | Expr::new_bigint(i)
             if i.is_one() =>
         {
             true
         },
-        | Expr::Rational(r)
+        | Expr::new_rational(r)
             if r.is_one() =>
         {
             true
@@ -2700,14 +2700,14 @@ pub(crate) fn zero_node() -> Arc<DagNode>
 {
 
     match DAG_MANAGER.get_or_create(
-        &Expr::BigInt(BigInt::zero()),
+        &Expr::new_bigint(BigInt::zero()),
     ) {
         | Ok(node) => node,
         | Err(_) => {
 
             // Fallback: create a constant 0 node if BigInt creation fails
             DAG_MANAGER
-                .get_or_create(&Expr::Constant(0.0))
+                .get_or_create(&Expr::new_constant(0.0))
                 .unwrap_or_else(|_| panic!("Failed to create zero node"))
         },
     }
@@ -2720,14 +2720,14 @@ pub(crate) fn one_node() -> Arc<DagNode>
 {
 
     match DAG_MANAGER.get_or_create(
-        &Expr::BigInt(BigInt::one()),
+        &Expr::new_bigint(BigInt::one()),
     ) {
         | Ok(node) => node,
         | Err(_) => {
 
             // Fallback: create a constant 1 node if BigInt creation fails
             DAG_MANAGER
-                .get_or_create(&Expr::Constant(1.0))
+                .get_or_create(&Expr::new_constant(1.0))
                 .unwrap_or_else(|_| panic!("Failed to create one node"))
         },
     }
@@ -2881,7 +2881,7 @@ pub(crate) fn simplify_mul(
         Expr,
     > = BTreeMap::new(); // base_node -> total_exponent_expr
     let mut constant =
-        Expr::BigInt(BigInt::one());
+        Expr::new_bigint(BigInt::one());
 
     for factor in factors {
 
@@ -2916,7 +2916,7 @@ pub(crate) fn simplify_mul(
                 factor.children[0].clone(),
                 factor.children[1]
                     .to_expr()
-                    .unwrap_or(Expr::BigInt(
+                    .unwrap_or(Expr::new_bigint(
                         BigInt::one(),
                     )),
             )
@@ -2925,7 +2925,7 @@ pub(crate) fn simplify_mul(
                 // Factor is a variable or other expression, treat as factor^1
                 (
                     factor.clone(),
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::one(),
                     ),
                 )
@@ -2933,7 +2933,7 @@ pub(crate) fn simplify_mul(
 
         let entry = exponents
             .entry(base_node)
-            .or_insert(Expr::BigInt(
+            .or_insert(Expr::new_bigint(
                 BigInt::zero(),
             ));
 
@@ -3122,7 +3122,7 @@ pub(crate) fn simplify_add(
         Expr,
     > = BTreeMap::new(); // base_node -> total_coeff_expr
     let mut constant =
-        Expr::BigInt(BigInt::zero());
+        Expr::new_bigint(BigInt::zero());
 
     for term in terms {
 
@@ -3161,7 +3161,7 @@ pub(crate) fn simplify_add(
                 {
 
                     (
-                        Expr::BigInt(
+                        Expr::new_bigint(
                             BigInt::one(
                             ),
                         ),
@@ -3193,20 +3193,20 @@ pub(crate) fn simplify_add(
                         if is_numeric_node(c) {
 
                         get_numeric_value(c).map_or_else(
-                            || (Expr::Constant(-1.0), child.clone()),
+                            || (Expr::new_constant(-1.0), child.clone()),
                             |val| (neg_em(&val), b.clone()),
                         )
                     } else {
 
                         (
-                            Expr::Constant(-1.0),
+                            Expr::new_constant(-1.0),
                             child.clone(),
                         )
                     }
                     } else {
 
                         (
-                        Expr::Constant(-1.0),
+                        Expr::new_constant(-1.0),
                         child.clone(),
                     )
                     }
@@ -3223,7 +3223,7 @@ pub(crate) fn simplify_add(
                 {
 
                     (
-                        Expr::BigInt(
+                        Expr::new_bigint(
                             BigInt::one(
                             ),
                         ),
@@ -3239,19 +3239,19 @@ pub(crate) fn simplify_add(
                     if is_numeric_node(c) {
 
                     get_numeric_value(c).map_or_else(
-                        || (Expr::BigInt(BigInt::one()), simplified_term.clone()),
+                        || (Expr::new_bigint(BigInt::one()), simplified_term.clone()),
                         |val| (val, b.clone()),
                     )
                 } else if is_numeric_node(b) {
 
                     get_numeric_value(b).map_or_else(
-                        || (Expr::BigInt(BigInt::one()), simplified_term.clone()),
+                        || (Expr::new_bigint(BigInt::one()), simplified_term.clone()),
                         |val| (val, c.clone()),
                     )
                 } else {
 
                     (
-                        Expr::BigInt(BigInt::one()),
+                        Expr::new_bigint(BigInt::one()),
                         simplified_term.clone(),
                     )
                 }
@@ -3259,7 +3259,7 @@ pub(crate) fn simplify_add(
             } else {
 
                 (
-                    Expr::BigInt(
+                    Expr::new_bigint(
                         BigInt::one(),
                     ),
                     simplified_term
@@ -3269,7 +3269,7 @@ pub(crate) fn simplify_add(
 
         let entry = coeffs
             .entry(base_node)
-            .or_insert(Expr::BigInt(
+            .or_insert(Expr::new_bigint(
                 BigInt::zero(),
             ));
 
@@ -3383,7 +3383,7 @@ pub(crate) fn simplify_add(
 // if matches!(&node.op, DagOp::Neg) {
 // if node.children.is_empty() {
 // Malformed Neg node.
-// return (Expr::BigInt(BigInt::one()), node.clone());
+// return (Expr::new_bigint(BigInt::one()), node.clone());
 // }
 //
 // let negated_child = &node.children[0];
@@ -3409,11 +3409,11 @@ pub(crate) fn simplify_add(
 //
 // Fallback: It's a Mul with no constant or a complex Mul, treat as Neg(X)
 // Coeff: -1, Base: the Mul node
-// return (Expr::Constant(-1.0), negated_child.clone());
+// return (Expr::new_constant(-1.0), negated_child.clone());
 //
 // } else {
 // Standard Neg(x) -> Coeff: -1, Base: x
-// return (Expr::Constant(-1.0), negated_child.clone());
+// return (Expr::new_constant(-1.0), negated_child.clone());
 // }
 // }
 //
@@ -3421,7 +3421,7 @@ pub(crate) fn simplify_add(
 // else if matches!(&node.op, DagOp::Mul) {
 // if node.children.len() < 2 {
 // Malformed Mul node, treat as is
-// return (Expr::BigInt(BigInt::one()), node.clone());
+// return (Expr::new_bigint(BigInt::one()), node.clone());
 // }
 //
 // let c = &node.children[0]; // Child 0
@@ -3441,7 +3441,7 @@ pub(crate) fn simplify_add(
 //
 // 3. Default Case: Term is a plain variable (X, sin(y), exp(x)*cos(y), etc.)
 // Coeff: 1, Base: the node itself (already canonicalized by caller)
-// (Expr::BigInt(BigInt::one()), node.clone())
+// (Expr::new_bigint(BigInt::one()), node.clone())
 // }
 //
 // Simplifies an Add operation by flattening, collecting coefficients, and rebuilding.
@@ -3452,7 +3452,7 @@ pub(crate) fn simplify_add(
 //
 // 2. Collect coefficients and constants
 // let mut coeffs: BTreeMap<u64, (Arc<DagNode>, Expr)> = BTreeMap::new(); // base_hash -> (base_node, total_coeff_expr)
-// let mut constant = Expr::BigInt(BigInt::zero());
+// let mut constant = Expr::new_bigint(BigInt::zero());
 //
 // for term in terms {
 // if let Some(val) = get_numeric_value(&term) {
@@ -3472,7 +3472,7 @@ pub(crate) fn simplify_add(
 //
 // let entry = coeffs
 // .entry(base_node.hash)
-// .or_insert((base_node, Expr::BigInt(BigInt::zero())));
+// .or_insert((base_node, Expr::new_bigint(BigInt::zero())));
 // entry.1 = add_em(&entry.1, &coeff_expr);
 // }
 //

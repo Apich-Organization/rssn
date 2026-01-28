@@ -7,15 +7,15 @@ use rssn::symbolic::simplify_dag::simplify;
 fn test_permutations() {
 
     // P(5, 2) = 5! / 3! = 120 / 6 = 20
-    let n = Expr::Constant(5.0);
+    let n = Expr::new_constant(5.0);
 
-    let k = Expr::Constant(2.0);
+    let k = Expr::new_constant(2.0);
 
     let p = permutations(n, k);
 
     let simplified = simplify(&p);
 
-    if let Expr::Constant(val) =
+    if let Expr::new_constant(val) =
         simplified
     {
 
@@ -35,15 +35,15 @@ fn test_permutations() {
 fn test_combinations() {
 
     // C(5, 2) = 5! / (2! * 3!) = 120 / (2 * 6) = 10
-    let n = Expr::Constant(5.0);
+    let n = Expr::new_constant(5.0);
 
-    let k = Expr::Constant(2.0);
+    let k = Expr::new_constant(2.0);
 
     let c = combinations(&n, k);
 
     let simplified = simplify(&c);
 
-    if let Expr::Constant(val) =
+    if let Expr::new_constant(val) =
         simplified
     {
 
@@ -65,7 +65,7 @@ fn test_catalan_number() {
     let c0 =
         simplify(&catalan_number(0));
 
-    if let Expr::Constant(val) = c0 {
+    if let Expr::new_constant(val) = c0 {
 
         assert!(
             (val - 1.0).abs() < 1e-10
@@ -75,7 +75,7 @@ fn test_catalan_number() {
     let c1 =
         simplify(&catalan_number(1));
 
-    if let Expr::Constant(val) = c1 {
+    if let Expr::new_constant(val) = c1 {
 
         assert!(
             (val - 1.0).abs() < 1e-10
@@ -85,7 +85,7 @@ fn test_catalan_number() {
     let c2 =
         simplify(&catalan_number(2));
 
-    if let Expr::Constant(val) = c2 {
+    if let Expr::new_constant(val) = c2 {
 
         assert!(
             (val - 2.0).abs() < 1e-10
@@ -95,7 +95,7 @@ fn test_catalan_number() {
     let c3 =
         simplify(&catalan_number(3));
 
-    if let Expr::Constant(val) = c3 {
+    if let Expr::new_constant(val) = c3 {
 
         assert!(
             (val - 5.0).abs() < 1e-10
@@ -116,7 +116,7 @@ fn test_stirling_number_second_kind() {
         ),
     );
 
-    if let Expr::Constant(val) = s32 {
+    if let Expr::new_constant(val) = s32 {
 
         assert!(
             (val - 3.0).abs() < 1e-10
@@ -129,7 +129,7 @@ fn test_stirling_number_second_kind() {
         ),
     );
 
-    if let Expr::Constant(val) = s42 {
+    if let Expr::new_constant(val) = s42 {
 
         assert!(
             (val - 7.0).abs() < 1e-10
@@ -149,7 +149,7 @@ fn test_bell_number() {
 
     let b0 = simplify(&bell_number(0));
 
-    if let Expr::Constant(val) = b0 {
+    if let Expr::new_constant(val) = b0 {
 
         assert!(
             (val - 1.0).abs() < 1e-10
@@ -158,7 +158,7 @@ fn test_bell_number() {
 
     let b1 = simplify(&bell_number(1));
 
-    if let Expr::Constant(val) = b1 {
+    if let Expr::new_constant(val) = b1 {
 
         assert!(
             (val - 1.0).abs() < 1e-10
@@ -167,7 +167,7 @@ fn test_bell_number() {
 
     let b2 = simplify(&bell_number(2));
 
-    if let Expr::Constant(val) = b2 {
+    if let Expr::new_constant(val) = b2 {
 
         assert!(
             (val - 2.0).abs() < 1e-10
@@ -176,7 +176,7 @@ fn test_bell_number() {
 
     let b3 = simplify(&bell_number(3));
 
-    if let Expr::Constant(val) = b3 {
+    if let Expr::new_constant(val) = b3 {
 
         assert!(
             (val - 5.0).abs() < 1e-10
@@ -185,7 +185,7 @@ fn test_bell_number() {
 
     let b4 = simplify(&bell_number(4));
 
-    if let Expr::Constant(val) = b4 {
+    if let Expr::new_constant(val) = b4 {
 
         assert!(
             (val - 15.0).abs() < 1e-10
@@ -207,7 +207,7 @@ fn test_expand_binomial() {
 
     let expr = Expr::new_pow(
         Expr::new_add(a, b),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let expanded =
@@ -252,7 +252,7 @@ fn test_expand_binomial3() {
 
     let expr = Expr::new_pow(
         Expr::new_add(a, b),
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     let expanded =

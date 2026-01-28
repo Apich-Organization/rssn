@@ -7,12 +7,12 @@ fn main() {
 
     let a2 = Expr::new_pow(
         a.clone(),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let a3 = Expr::new_pow(
         a.clone(),
-        Expr::Constant(3.0),
+        Expr::new_constant(3.0),
     );
 
     let div = Expr::new_div(a2, a3);

@@ -13,14 +13,14 @@ fn test_expand() {
     // (x + 1)^2 -> should expand to something containing x^2, x, and 1
     let x = Expr::new_variable("x");
 
-    let one = Expr::Constant(1.0);
+    let one = Expr::new_constant(1.0);
 
     let expr = Expr::new_pow(
         Expr::new_add(
             x.clone(),
             one.clone(),
         ),
-        Expr::Constant(2.0),
+        Expr::new_constant(2.0),
     );
 
     let expanded = expand(expr);
@@ -56,7 +56,7 @@ fn test_factorize() {
     let expr = Expr::new_add(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         x.clone(),
     );
@@ -131,17 +131,17 @@ fn test_simplify_with_relations() {
     let expr = Expr::new_add(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
         Expr::new_pow(
             y.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
     );
 
     let relation = Expr::new_sub(
         expr.clone(),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     ); // x^2 + y^2 - 1
     let result = simplify_with_relations(
         &expr,
@@ -184,7 +184,7 @@ fn test_simplify_with_relations_complex()
     let expr = Expr::new_sub(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(3.0),
+            Expr::new_constant(3.0),
         ),
         x.clone(),
     );
@@ -192,9 +192,9 @@ fn test_simplify_with_relations_complex()
     let relation = Expr::new_sub(
         Expr::new_pow(
             x.clone(),
-            Expr::Constant(2.0),
+            Expr::new_constant(2.0),
         ),
-        Expr::Constant(1.0),
+        Expr::new_constant(1.0),
     ); // x^2 - 1
 
     let result = simplify_with_relations(
@@ -211,11 +211,11 @@ fn test_simplify_with_relations_complex()
 
     // Should be 0
     match result {
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
 
             assert!(c.abs() < 1e-9)
         },
-        | Expr::BigInt(ref i) => {
+        | Expr::new_bigint(ref i) => {
 
             assert_eq!(
                 i.to_string(),

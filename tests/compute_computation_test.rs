@@ -14,7 +14,7 @@ use rssn::symbolic::core::Expr;
 fn test_computation_creation() {
 
     let expr =
-        Arc::new(Expr::Constant(1.0));
+        Arc::new(Expr::new_constant(1.0));
 
     let computation = Computation {
         id: "test_id".to_string(),
@@ -60,7 +60,7 @@ fn test_computation_creation() {
 fn test_computation_serialization() {
 
     let expr =
-        Arc::new(Expr::Constant(1.0));
+        Arc::new(Expr::new_constant(1.0));
 
     let computation = Computation {
         id: "test_id".to_string(),

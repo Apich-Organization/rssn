@@ -45,7 +45,7 @@ pub fn simplify_radicals(
                 simplify_radicals(exp);
 
             // Check if this is a square root (power of 1/2)
-            if let Expr::Constant(c) =
+            if let Expr::new_constant(c) =
                 &simplified_exp
             {
 
@@ -388,7 +388,7 @@ pub(crate) fn is_perfect_square(
         };
 
     match expr {
-        | Expr::Constant(c) => {
+        | Expr::new_constant(c) => {
 
             if c >= 0.0 {
 
@@ -400,14 +400,14 @@ pub(crate) fn is_perfect_square(
                 {
 
                     return Some(
-                        Expr::Constant(
+                        Expr::new_constant(
                             root,
                         ),
                     );
                 }
             }
         },
-        | Expr::BigInt(n) => {
+        | Expr::new_bigint(n) => {
 
             use num_traits::ToPrimitive;
 
@@ -424,7 +424,7 @@ pub(crate) fn is_perfect_square(
                         < f64::EPSILON
                     {
 
-                        return Some(Expr::Constant(root));
+                        return Some(Expr::new_constant(root));
                     }
                 }
             }

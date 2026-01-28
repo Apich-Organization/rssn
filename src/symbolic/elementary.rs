@@ -473,7 +473,7 @@ pub(crate) fn expand_power(
                 )),
             )
         },
-        | (Expr::Add(a, b), Expr::BigInt(n)) => {
+        | (Expr::Add(a, b), Expr::new_bigint(n)) => {
             if let Some(n_usize) = n.to_usize() {
 
                 expand_binomial(&a, &b, n_usize)
@@ -481,11 +481,11 @@ pub(crate) fn expand_power(
 
                 Expr::Power(
                     Arc::new(Expr::Add(a, b)),
-                    Arc::new(Expr::BigInt(n)),
+                    Arc::new(Expr::new_bigint(n)),
                 )
             }
         },
-        | (Expr::Add(a, b), Expr::Constant(c)) if c.fract() == 0.0 && c >= 0.0 => {
+        | (Expr::Add(a, b), Expr::new_constant(c)) if c.fract() == 0.0 && c >= 0.0 => {
 
             let n_usize = (c as i64).try_into().unwrap_or(0);
 
@@ -507,24 +507,24 @@ fn expand_binomial(
 ) -> Expr {
 
     let mut sum =
-        Expr::BigInt(BigInt::zero());
+        Expr::new_bigint(BigInt::zero());
 
     for k in 0 ..= n {
 
-        let bin_coeff = Expr::BigInt(
+        let bin_coeff = Expr::new_bigint(
             binomial_coefficient(n, k),
         );
 
         let term1 = Expr::Power(
             a.clone(),
-            Arc::new(Expr::BigInt(
+            Arc::new(Expr::new_bigint(
                 BigInt::from(k),
             )),
         );
 
         let term2 = Expr::Power(
             b.clone(),
-            Arc::new(Expr::BigInt(
+            Arc::new(Expr::new_bigint(
                 BigInt::from(n - k),
             )),
         );
