@@ -36,8 +36,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use rand::Rng;
-use rand::thread_rng;
+use rand_v10::rng;
+use rand_v10::RngExt;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -338,7 +338,7 @@ pub fn simulate_ising_model(
     steps: usize,
 ) -> Vec<Vec<i8>> {
 
-    let mut rng = thread_rng();
+    let mut rng = rng();
 
     let mut lattice =
         vec![vec![0i8; size]; size];
@@ -348,7 +348,7 @@ pub fn simulate_ising_model(
         for j in 0 .. size {
 
             lattice[i][j] = if rng
-                .r#gen::<bool>()
+                .random::<bool>()
             {
 
                 1
@@ -362,10 +362,10 @@ pub fn simulate_ising_model(
     for _ in 0 .. steps {
 
         let i =
-            rng.gen_range(0 .. size);
+            rng.random_range(0 .. size);
 
         let j =
-            rng.gen_range(0 .. size);
+            rng.random_range(0 .. size);
 
         let top = lattice
             [(i + size - 1) % size][j];
@@ -387,7 +387,7 @@ pub fn simulate_ising_model(
             * f64::from(neighbor_sum);
 
         if delta_e < 0.0
-            || rng.r#gen::<f64>()
+            || rng.random::<f64>()
                 < (-delta_e
                     / temperature)
                     .exp()
