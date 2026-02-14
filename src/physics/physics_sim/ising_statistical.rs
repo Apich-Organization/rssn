@@ -23,8 +23,8 @@ use std::fs::File;
 use std::io::Write;
 
 use ndarray::Array2;
-use rand::Rng;
-use rand::thread_rng;
+use rand_v10::rng;
+use rand_v10::prelude::*;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -55,13 +55,13 @@ pub fn run_ising_simulation(
     params: &IsingParameters
 ) -> (Vec<i8>, f64) {
 
-    let mut rng = thread_rng();
+    let mut local_rng = rng();
 
     let mut grid: Vec<i8> = (0
         .. params.width
             * params.height)
         .map(|_| {
-            if rng.r#gen::<bool>() {
+            if local_rng.random::<bool>() {
 
                 1
             } else {
@@ -92,7 +92,7 @@ pub fn run_ising_simulation(
             .into_par_iter()
             .for_each(|i| {
 
-                let mut local_rng = thread_rng();
+                let mut local_rng = rng();
 
                 for j in 0 .. width {
 
@@ -116,7 +116,7 @@ pub fn run_ising_simulation(
 
                             let delta_e = 2.0 * f64::from(*g.add(idx)) * sum_neighbors;
 
-                            if delta_e < 0.0 || local_rng.r#gen::<f64>() < (-delta_e * b).exp() {
+                            if delta_e < 0.0 || local_rng.random::<f64>() < (-delta_e * b).exp() {
 
                                 *g.add(idx) *= -1;
                             }
@@ -130,7 +130,7 @@ pub fn run_ising_simulation(
             .into_par_iter()
             .for_each(|i| {
 
-                let mut local_rng = thread_rng();
+                let mut local_rng = rng();
 
                 for j in 0 .. width {
 
@@ -154,7 +154,7 @@ pub fn run_ising_simulation(
 
                             let delta_e = 2.0 * f64::from(*g.add(idx)) * sum_neighbors;
 
-                            if delta_e < 0.0 || local_rng.r#gen::<f64>() < (-delta_e * b).exp() {
+                            if delta_e < 0.0 || local_rng.random::<f64>() < (-delta_e * b).exp() {
 
                                 *g.add(idx) *= -1;
                             }
