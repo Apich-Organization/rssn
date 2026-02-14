@@ -12,7 +12,7 @@ use num_bigint::BigInt;
 use num_traits::One;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
-use rand;
+use rand_v10 as rand;
 
 use crate::numerical::matrix::Matrix;
 use crate::symbolic::finite_field::FiniteFieldPolynomial;

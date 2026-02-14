@@ -7,8 +7,8 @@
 
 use std::collections::HashMap;
 
-use rand::Rng;
-use rand::thread_rng;
+use rand_v10::RngExt;
+use rand_v10::rng;
 
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::integrate::QuadratureMethod;
@@ -59,7 +59,7 @@ pub fn verify_equation_solution<
     free_vars: &[&str],
 ) -> bool {
 
-    let mut rng = thread_rng();
+    let mut rng = rng();
 
     for eq in equations {
 
@@ -92,7 +92,7 @@ pub fn verify_equation_solution<
 
                 current_vars.insert(
                     (*var).to_string(),
-                    rng.gen_range(
+                    rng.random_range(
                         -10.0 .. 10.0,
                     ),
                 );
@@ -176,7 +176,7 @@ pub fn verify_indefinite_integral(
             derivative_of_result,
         ));
 
-    let mut rng = thread_rng();
+    let mut rng = rng();
 
     let mut success_count = 0;
 
@@ -190,7 +190,7 @@ pub fn verify_indefinite_integral(
         let mut vars = HashMap::new();
 
         let x_val = rng
-            .gen_range(-10.0 .. 10.0);
+            .random_range(-10.0 .. 10.0);
 
         vars.insert(
             var.to_string(),
@@ -273,12 +273,12 @@ pub fn verify_ode_solution(
             unwrapped_ode
         };
 
-    let mut rng = thread_rng();
+    let mut rng = rng();
 
     for _ in 0 .. NUM_SAMPLES {
 
         let x_val = rng
-            .gen_range(-10.0 .. 10.0);
+            .random_range(-10.0 .. 10.0);
 
         let mut vars = HashMap::new();
 
@@ -426,12 +426,12 @@ pub fn verify_derivative(
     var: &str,
 ) -> bool {
 
-    let mut rng = thread_rng();
+    let mut rng = rng();
 
     for _ in 0 .. NUM_SAMPLES {
 
         let x_val = rng
-            .gen_range(-10.0 .. 10.0);
+            .random_range(-10.0 .. 10.0);
 
         let mut vars_map =
             HashMap::new();
