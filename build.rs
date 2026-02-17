@@ -14,6 +14,8 @@ fn main() -> Result<
 
     const ENV_VAR_NAME: &str = "DEV";
 
+    println!("cargo:rustc-env=VERGEN_SYSINFO_KERNEL_VERSION=unknown");
+
     let mut emitter =
         Emitter::default();
 
@@ -25,9 +27,12 @@ fn main() -> Result<
         &CargoBuilder::all_cargo()?,
     )?;
 
-    emitter.add_instructions(
-        &GitclBuilder::all_git()?,
-    )?;
+    let git = GitclBuilder::default()
+        .all()
+        .dirty(true)
+        .build()?;
+
+    emitter.add_instructions(&git)?;
 
     emitter.add_instructions(
         &RustcBuilder::all_rustc()?,

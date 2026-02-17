@@ -1539,6 +1539,7 @@ impl DagNode {
                 op,
                 children: safe_children,
                 hash,
+                id: 0,
             });
         }
 
@@ -1554,6 +1555,7 @@ impl DagNode {
             op,
             children,
             hash,
+            id: 0,
         })
     }
 }

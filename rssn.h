@@ -11936,6 +11936,30 @@ const char *rssn_get_last_error(void)
 ;
 
 /*
+ Returns the long version string as a C string.
+ The caller must free the returned string using `rssn_free_string`.
+ */
+rssn_
+char *rssn_get_long_version(void)
+;
+
+/*
+ Returns the long version string as a `bincode_next` buffer.
+ The caller must free the returned buffer using `rssn_free_bincode_buffer`.
+ */
+rssn_
+struct rssn_BincodeBuffer rssn_get_long_version_bincode(void)
+;
+
+/*
+ Returns the long version string as a JSON string.
+ The caller must free the returned string using `rssn_free_string`.
+ */
+rssn_
+char *rssn_get_long_version_json(void)
+;
+
+/*
  Gets real and imaginary parts of an expression.
 
  Returns a pointer to a tuple (Expr, Expr) - represented as `Vec<Expr>` of size 2 for simplicity?

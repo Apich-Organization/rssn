@@ -293,9 +293,9 @@ dependencies = [
 
 [[package]]
 name = "bincode-next"
-version = "2.0.5"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c64454fed20d99f3275208b6df761f27bcf790d502ec5ec039c8d12c71911ad"
+checksum = "dbe9e7e6d14aeb39557f226bff158a30e367fac279d0e69b8b42fb41999f9a86"
 dependencies = [
  "bincode_derive-next",
  "serde",
@@ -304,9 +304,9 @@ dependencies = [
 
 [[package]]
 name = "bincode_derive-next"
-version = "2.0.5"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc34a0c3deac416617fb017fdc1cb4b5733fcd56362c3b5b2777b4fd2ad6f516"
+checksum = "2af389a025376dbbe728c43dfa5c08f866116c0b62627787c21ca1c69e2b8dec"
 dependencies = [
  "virtue-next",
 ]
@@ -3081,7 +3081,7 @@ dependencies = [
 
 [[package]]
 name = "rssn"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "abi_stable",
  "ahash",
@@ -3470,9 +3470,9 @@ dependencies = [
 
 [[package]]
 name = "target-lexicon"
-version = "0.13.4"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1dd07eb858a2067e2f3c7155d54e929265c264e6f37efe3ee7a8d1b5a1dd0ba"
+checksum = "adb6935a6f5c20170eeceb1a3835a49e12e19d792f6dd344ccc76a985ca5a6ca"
 
 [[package]]
 name = "tempfile"
@@ -3742,21 +3742,21 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
 name = "unty-next"
-version = "0.0.6"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "169ea32c8f5801e4b397f08d2b5d3d0d3675d11c241aad7338b601beed52a291"
+checksum = "6bce2adbe4c8e63c3e7f79e9249b5409fb3c9bce989dd44337493cf1c8d7dea0"
 
 [[package]]
 name = "uom"
-version = "0.37.0"
+version = "0.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd5cfe7d84f6774726717f358a37f5bca8fca273bed4de40604ad129d1107b49"
+checksum = "a739f83872836c82a4f2527d4e54b37007b3de68cafe7edde95fd695968bf4b9"
 dependencies = [
  "num-bigint",
  "num-complex 0.4.6",
  "num-rational",
  "num-traits",
- "serde",
+ "serde_core",
  "typenum",
 ]
 
@@ -3833,9 +3833,9 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "virtue-next"
-version = "0.0.20"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4daab4b8a8c3c1408ea5e60a5d380790ff15d0cfe0333c14ce98210c1339fd8"
+checksum = "507787017685ff1c8dadaab8ca717bc1145b99163bddc0cbbbd210c3d76cb8b0"
 
 [[package]]
 name = "wait-timeout"

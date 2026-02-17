@@ -94,6 +94,23 @@ pub extern "C" fn rssn_get_system_info()
     }
 }
 
+/// Returns the long version string as a C string.
+/// The caller must free the returned string using `rssn_free_string`.
+#[unsafe(no_mangle)]
+
+pub extern "C" fn rssn_get_long_version()
+-> *mut c_char {
+
+    let version = crate::constant::get_long_version();
+
+    match CString::new(version) {
+        | Ok(c_str) => c_str.into_raw(),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
+    }
+}
+
 macro_rules! gen_ffi_handle {
     ($ffi_name:ident, $internal_getter:path) => {
 /// Generates an `FFI` function that retrieves a constant value.

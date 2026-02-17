@@ -69,6 +69,26 @@ pub extern "C" fn rssn_get_commit_sha_bincode()
     }
 }
 
+/// Returns the long version string as a `bincode_next` buffer.
+/// The caller must free the returned buffer using `rssn_free_bincode_buffer`.
+#[unsafe(no_mangle)]
+
+pub extern "C" fn rssn_get_long_version_bincode()
+-> BincodeBuffer {
+
+    let version =
+        crate::constant::get_long_version(
+        );
+
+    match bincode_next::serde::encode_to_vec(
+        version,
+        bincode_next::config::standard(),
+    ) {
+        | Ok(bytes) => BincodeBuffer::from_vec(bytes),
+        | Err(_) => BincodeBuffer::empty(),
+    }
+}
+
 macro_rules! gen_ffi_bincode {
     ($ffi_name:ident, $internal_getter:path) => {
 /// Generates a FFI function that retrieves a constant value,

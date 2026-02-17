@@ -88,6 +88,25 @@ pub extern "C" fn rssn_get_commit_sha_json()
     }
 }
 
+/// Returns the long version string as a JSON string.
+/// The caller must free the returned string using `rssn_free_string`.
+#[unsafe(no_mangle)]
+
+pub extern "C" fn rssn_get_long_version_json()
+-> *mut c_char {
+
+    let version =
+        crate::constant::get_long_version(
+        );
+
+    match serde_json::to_string(&version) {
+        | Ok(json) => to_c_string(json),
+        | Err(_) => {
+            std::ptr::null_mut()
+        },
+    }
+}
+
 macro_rules! gen_ffi_json {
     (
         $ffi_name:ident,

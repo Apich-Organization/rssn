@@ -1,6 +1,6 @@
 [package]
 name = "rssn"
-version = "0.2.6"
+version = "0.2.7"
 edition = "2024"
 rust-version = "1.90.0"
 authors = ["The rssn developers"]
@@ -77,7 +77,7 @@ interp = "2.1"
 itertools = "0.14"
 rustfft = "6.4"
 sprs-rssn = "0.11"
-uom = { version = "0.37", features = [
+uom = { version = "0.38", features = [
     "use_serde",
     "num-bigint",
     "std",
@@ -90,7 +90,7 @@ errorfunctions = "0.2"
 # Not upgrading because of argmin requires ndarray 0.16
 ndarray-npy = { version = "0.9", optional = true }
 rayon = "1.11"
-bincode-next = { version = "2.0", features = ["serde"] }
+bincode-next = { version = "2.1", features = ["serde"] }
 # NOTE: Both rand 0.8.5 and 0.9.2 are required.
 # `rand` 0.8.5 is used for compatibility with existing dependencies and safe upgrade path.
 # `rand_v09` (rand 0.9.2) is needed by INSERT DEPENDENCY.

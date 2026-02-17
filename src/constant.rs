@@ -23,6 +23,42 @@ pub const CARGO_TARGET_TRIPLE: &str =
 pub const SYSTEM_INFO: &str =
     env!("VERGEN_SYSINFO_OS_VERSION");
 
+/// The long version string, including Git information.
+
+pub const LONG_VERSION: &str = concat!(
+    "\nRSSN Build Information\n",
+    "==================================================\n",
+    "SOFTWARE INFO\n",
+    "  Version:          ", env!("CARGO_PKG_VERSION"), "\n",
+    "  Authors:          ", env!("CARGO_PKG_AUTHORS"), "\n",
+    "  Repository:       ", env!("VERGEN_GIT_DESCRIBE"), "\n",
+    "\n",
+    "BUILD METADATA\n",
+    "  Built At:         ", env!("VERGEN_BUILD_TIMESTAMP"), "\n",
+    "  Optimization:     Level ", env!("VERGEN_CARGO_OPT_LEVEL"), "\n",
+    "  Debug Symbols:    ", env!("VERGEN_CARGO_DEBUG"), "\n",
+    "  Target Triple:    ", env!("VERGEN_CARGO_TARGET_TRIPLE"), "\n",
+    "\n",
+    "GIT TELEMETRY\n",
+    "  Branch:           ", env!("VERGEN_GIT_BRANCH"), "\n",
+    "  Commit SHA:       ", env!("VERGEN_GIT_SHA"), "\n",
+    "  Author:           ", env!("VERGEN_GIT_COMMIT_AUTHOR_NAME"), " <", env!("VERGEN_GIT_COMMIT_AUTHOR_EMAIL"), ">\n",
+    "  Commit Msg:       ", env!("VERGEN_GIT_COMMIT_MESSAGE"), "\n",
+    "\n",
+    "COMPILER INFO\n",
+    "  Rustc Version:    ", env!("VERGEN_RUSTC_SEMVER"), "\n",
+    "  LLVM Version:     ", env!("VERGEN_RUSTC_LLVM_VERSION"), "\n",
+    "  Host Triple:      ", env!("VERGEN_RUSTC_HOST_TRIPLE"), "\n",
+    "\n",
+    "BUILD HOST SPECS\n",
+    "  OS:               ", env!("VERGEN_SYSINFO_NAME"), " (", env!("VERGEN_SYSINFO_OS_VERSION"), ")\n",
+    "  Kernel:           ", env!("VERGEN_SYSINFO_KERNEL_VERSION"), "\n",
+    "  CPU:              ", env!("VERGEN_SYSINFO_CPU_BRAND"), "\n",
+    "  Cores:            ", env!("VERGEN_SYSINFO_CPU_CORE_COUNT"), "\n",
+    "  Total Memory:     ", env!("VERGEN_SYSINFO_TOTAL_MEMORY"), "\n",
+    "=================================================="
+);
+
 // --- Getter functions ---
 
 /// Returns the build date (e.g., "2023-10-24").
@@ -128,6 +164,27 @@ pub const fn get_system_info()
 -> &'static str {
 
     SYSTEM_INFO
+}
+
+/// Returns the long version string, including Git information.
+///
+/// # Examples
+///
+/// ```
+/// 
+/// use rssn::constant::get_long_version;
+///
+/// let version = get_long_version();
+///
+/// assert!(!version.is_empty());
+/// ```
+#[must_use]
+#[inline(always)]
+
+pub const fn get_long_version()
+-> &'static str {
+
+    LONG_VERSION
 }
 
 // --- Math & Physics Constants ---
