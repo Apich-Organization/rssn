@@ -304,9 +304,9 @@ dependencies = [
 
 [[package]]
 name = "bincode_derive-next"
-version = "2.0.5"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc34a0c3deac416617fb017fdc1cb4b5733fcd56362c3b5b2777b4fd2ad6f516"
+checksum = "2af389a025376dbbe728c43dfa5c08f866116c0b62627787c21ca1c69e2b8dec"
 dependencies = [
  "virtue-next",
 ]
@@ -3833,9 +3833,9 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "virtue-next"
-version = "0.0.20"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4daab4b8a8c3c1408ea5e60a5d380790ff15d0cfe0333c14ce98210c1339fd8"
+checksum = "507787017685ff1c8dadaab8ca717bc1145b99163bddc0cbbbd210c3d76cb8b0"
 
 [[package]]
 name = "wait-timeout"
