@@ -82,14 +82,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## Maintainers & Contributors
 
-* **Author**: [Pana Yang](https://github.com/panayang) (ORCID: 0009-0007-2600-0948, email: [Pana.Yang@hotmail.com](mailto:Pana.Yang@hotmail.com))
+* **Author**: [Pana Yang](https://github.com/panayang) (ORCID: 0009-0007-2600-0948, email: [Xinyu.Yang@apich.org](mailto:Xinyu.Yang@apich.org))
 * **Consultants**:
   * X. Zhang (Algorithm & Informatics, [@RheaCherry](https://github.com/RheaCherry), [3248998213@qq.com](mailto:3248998213@qq.com))
   * Z. Wang (Mathematics)
   * Y. Li (Physics) ([xian1360685019@qq.com](mailto:xian1360685019@qq.com))
 * **Project Reviewer**: Z. Li
 * **Outside Collaborator**: Chahat Patel ([@chahat-101](https://github.com/chahat-101))
-* **Contributors**: Owen Yang ([yangguangyong@gmail.com](mailto:yangguangyong@gmail.com))
+* **Contributors**: Owen Yang ([Owen.Yang@apich.org](mailto:Owen.Yang@apich.org))
 
 ---
 
