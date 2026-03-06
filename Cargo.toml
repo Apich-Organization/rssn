@@ -1,8 +1,8 @@
 [package]
 name = "rssn"
-version = "0.2.7"
+version = "0.2.8"
 edition = "2024"
-rust-version = "1.90.0"
+rust-version = "1.91.0"
 authors = ["The rssn developers"]
 description = "A comprehensive scientific computing library for Rust, aiming for feature parity with NumPy and SymPy."
 license = "Apache-2.0"
@@ -48,6 +48,7 @@ crate-type = ["cdylib", "rlib", "staticlib"]
 lto = false
 opt-level = 0
 debug = true
+incremental = true
 
 [profile.release]
 lto = true
@@ -85,7 +86,7 @@ uom = { version = "0.38", features = [
     "si",
 ] }
 bigdecimal = { version = "0.4", features = ["serde"] }
-special = "0.12"
+special = "0.13"
 errorfunctions = "0.2"
 # Not upgrading because of argmin requires ndarray 0.16
 ndarray-npy = { version = "0.9", optional = true }
@@ -123,11 +124,11 @@ ahash = { version = "0.8", features = ["serde"] }
 abi_stable = { version = "0.11", optional = true }
 instability = "0.3"
 faer = "0.24"
-cranelift-frontend = { version = "0.128", optional = true }
-cranelift-native = { version = "0.128", optional = true }
-cranelift-codegen = { version = "0.128", optional = true }
-cranelift-module = { version = "0.128", optional = true }
-cranelift-jit = { version = "0.128", optional = true }
+cranelift-frontend = { version = "0.129", optional = true }
+cranelift-native = { version = "0.129", optional = true }
+cranelift-codegen = { version = "0.129", optional = true }
+cranelift-module = { version = "0.129", optional = true }
+cranelift-jit = { version = "0.129", optional = true }
 pulp = { version = "0.22", features = [
     "macro",
     "x86-v4",
