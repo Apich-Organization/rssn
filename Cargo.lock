@@ -3086,7 +3086,7 @@ dependencies = [
 
 [[package]]
 name = "rssn"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "abi_stable",
  "ahash",

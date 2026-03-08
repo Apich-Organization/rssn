@@ -107,5 +107,7 @@ fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("cargo:rerun-if-changed=cbindgen.toml");
 
+    println!("cargo:rerun-if-changed=Cargo.toml");
+
     Ok(())
 }

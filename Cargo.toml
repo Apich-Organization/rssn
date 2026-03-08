@@ -9,6 +9,7 @@ license = "Apache-2.0"
 repository = "https://github.com/Apich-Organization/rssn"
 homepage = "https://github.com/Apich-Organization/rssn"
 readme = "README.md"
+
 keywords = [
     "scientific-computing",
     "symbolic-math",

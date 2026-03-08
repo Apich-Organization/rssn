@@ -650,6 +650,7 @@ extern "C" {
  Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
  and a raw pointer to an `Expr` for the singularity.
  Returns a raw pointer to an `Expr` representing the residue.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -657,6 +658,7 @@ extern "C" {
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -674,6 +676,7 @@ struct rssn_Expr *calculate_residue(const struct rssn_Expr *aFunc,
  Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
  and a bincode-serialized `Expr` for the singularity.
  Returns a bincode-serialized `Expr` representing the residue.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -681,6 +684,7 @@ struct rssn_Expr *calculate_residue(const struct rssn_Expr *aFunc,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -698,6 +702,7 @@ struct rssn_BincodeBuffer calculate_residue_bincode(struct rssn_BincodeBuffer aF
  Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
  and a JSON-serialized `Expr` for the singularity.
  Returns a JSON-serialized `Expr` representing the residue.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -705,6 +710,7 @@ struct rssn_BincodeBuffer calculate_residue_bincode(struct rssn_BincodeBuffer aF
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -722,6 +728,7 @@ char *calculate_residue_json(const char *aFuncJson,
  Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
  a raw pointer to an `Expr` for the point `z0`, and an integer `n` for the order of the derivative.
  Returns a raw pointer to an `Expr` representing the nth derivative of the function at `z0`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -729,6 +736,7 @@ char *calculate_residue_json(const char *aFuncJson,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -747,6 +755,7 @@ struct rssn_Expr *cauchy_derivative_formula(const struct rssn_Expr *aFunc,
  Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
  a bincode-serialized `Expr` for the point `z0`, and an integer `n` for the order of the derivative.
  Returns a bincode-serialized `Expr` representing the nth derivative of the function at `z0`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -754,6 +763,7 @@ struct rssn_Expr *cauchy_derivative_formula(const struct rssn_Expr *aFunc,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -772,6 +782,7 @@ struct rssn_BincodeBuffer cauchy_derivative_formula_bincode(struct rssn_BincodeB
  Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
  a JSON-serialized `Expr` for the point `z0`, and an integer `n` for the order of the derivative.
  Returns a JSON-serialized `Expr` representing the nth derivative.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -779,6 +790,7 @@ struct rssn_BincodeBuffer cauchy_derivative_formula_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -797,6 +809,7 @@ char *cauchy_derivative_formula_json(const char *aFuncJson,
  Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
  and a raw pointer to an `Expr` for the point `z0`.
  Returns a raw pointer to an `Expr` representing the value of the function at `z0`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -804,6 +817,7 @@ char *cauchy_derivative_formula_json(const char *aFuncJson,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -821,6 +835,7 @@ struct rssn_Expr *cauchy_integral_formula(const struct rssn_Expr *aFunc,
  Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
  and a bincode-serialized `Expr` for the point `z0`.
  Returns a bincode-serialized `Expr` representing the value of the function at `z0`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -828,6 +843,7 @@ struct rssn_Expr *cauchy_integral_formula(const struct rssn_Expr *aFunc,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -845,6 +861,7 @@ struct rssn_BincodeBuffer cauchy_integral_formula_bincode(struct rssn_BincodeBuf
  Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
  and a JSON-serialized `Expr` for the point `z0`.
  Returns a JSON-serialized `Expr` representing the result of the integral.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -852,6 +869,7 @@ struct rssn_BincodeBuffer cauchy_integral_formula_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -869,6 +887,7 @@ char *cauchy_integral_formula_json(const char *aFuncJson,
  Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
  a raw pointer to an `Expr` for the singularity point, and an integer for the order.
  Returns a raw pointer to a `SingularityType` enum.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -876,6 +895,7 @@ char *cauchy_integral_formula_json(const char *aFuncJson,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -894,6 +914,7 @@ struct rssn_SingularityType *classify_singularity(const struct rssn_Expr *aFunc,
  Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
  a bincode-serialized `Expr` for the singularity point, and an integer for the order.
  Returns a bincode-serialized `SingularityType` enum.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -901,6 +922,7 @@ struct rssn_SingularityType *classify_singularity(const struct rssn_Expr *aFunc,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -919,6 +941,7 @@ struct rssn_BincodeBuffer classify_singularity_bincode(struct rssn_BincodeBuffer
  Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
  a JSON-serialized `Expr` for the singularity point, and an integer for the order.
  Returns a JSON-serialized `SingularityType` enum.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -926,6 +949,7 @@ struct rssn_BincodeBuffer classify_singularity_bincode(struct rssn_BincodeBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -940,9 +964,9 @@ char *classify_singularity_json(const char *aFuncJson,
 
 /*
  Computes the argument of a complex number `arg(z)`.
-
  Takes a raw pointer to an `Expr` representing `z`.
  Returns a raw pointer to an `Expr` representing `arg(z)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -957,9 +981,9 @@ struct rssn_Expr *complex_arg(const struct rssn_Expr *aZ)
 
 /*
  Computes the argument of a complex number `arg(z)`.
-
  Takes a bincode-serialized `Expr` representing `z`.
  Returns a bincode-serialized `Expr` representing `arg(z)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -974,9 +998,9 @@ struct rssn_BincodeBuffer complex_arg_bincode(struct rssn_BincodeBuffer aZBincod
 
 /*
  Computes the argument (phase angle) of a given complex number.
-
  Takes a JSON-serialized `Expr` representing the complex number `z`.
  Returns a JSON-serialized `Expr` representing the argument of `z`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -991,9 +1015,9 @@ char *complex_arg_json(const char *aZJson)
 
 /*
  Calculates the distance between two complex numbers.
-
  Takes two raw pointers to `Expr` representing the complex numbers.
  Returns an `f64` representing the distance.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1009,9 +1033,9 @@ double complex_distance(const struct rssn_Expr *aP1,
 
 /*
  Calculates the distance between two complex numbers.
-
  Takes two bincode-serialized `Expr` representing the complex numbers.
  Returns an `f64` representing the distance.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1027,9 +1051,9 @@ double complex_distance_bincode(struct rssn_BincodeBuffer aP1Bincode,
 
 /*
  Calculates the distance between two complex numbers.
-
  Takes two JSON-serialized `Expr` representing the complex numbers.
  Returns an `f64` representing the distance.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1045,9 +1069,9 @@ double complex_distance_json(const char *aP1Json,
 
 /*
  Computes the complex exponential `e^z`.
-
  Takes a raw pointer to an `Expr` representing `z`.
  Returns a raw pointer to an `Expr` representing `e^z`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1062,9 +1086,9 @@ struct rssn_Expr *complex_exp(const struct rssn_Expr *aZ)
 
 /*
  Computes the complex exponential `e^z`.
-
  Takes a bincode-serialized `Expr` representing `z`.
  Returns a bincode-serialized `Expr` representing `e^z`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1079,9 +1103,9 @@ struct rssn_BincodeBuffer complex_exp_bincode(struct rssn_BincodeBuffer aZBincod
 
 /*
  Computes the complex exponential of a given complex number.
-
  Takes a JSON-serialized `Expr` representing the complex number `z`.
  Returns a JSON-serialized `Expr` representing `e^z`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1096,9 +1120,9 @@ char *complex_exp_json(const char *aZJson)
 
 /*
  Computes the complex logarithm `log(z)`.
-
  Takes a raw pointer to an `Expr` representing `z`.
  Returns a raw pointer to an `Expr` representing `log(z)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1113,9 +1137,9 @@ struct rssn_Expr *complex_log(const struct rssn_Expr *aZ)
 
 /*
  Computes the complex logarithm `log(z)`.
-
  Takes a bincode-serialized `Expr` representing `z`.
  Returns a bincode-serialized `Expr` representing `log(z)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1130,9 +1154,9 @@ struct rssn_BincodeBuffer complex_log_bincode(struct rssn_BincodeBuffer aZBincod
 
 /*
  Computes the complex natural logarithm of a given complex number.
-
  Takes a JSON-serialized `Expr` representing the complex number `z`.
  Returns a JSON-serialized `Expr` representing `ln(z)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1147,9 +1171,9 @@ char *complex_log_json(const char *aZJson)
 
 /*
  Computes the modulus of a complex number `|z|`.
-
  Takes a raw pointer to an `Expr` representing `z`.
  Returns a raw pointer to an `Expr` representing `|z|`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1177,6 +1201,7 @@ struct rssn_Expr *complex_modulus(const struct rssn_Expr *aZ)
 
  This function is unsafe because it dereferences a bincode buffer that must contain
  a valid serialized `Expr`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1191,9 +1216,9 @@ struct rssn_BincodeBuffer complex_modulus_bincode(struct rssn_BincodeBuffer aZBi
 
 /*
  Computes the modulus (magnitude) of a given complex number.
-
  Takes a JSON-serialized `Expr` representing the complex number `z`.
  Returns a JSON-serialized `Expr` representing the modulus of `z`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1212,6 +1237,7 @@ char *complex_modulus_json(const char *aZJson)
  Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
  a raw pointer to an array of `Expr` for the singularities, and the length of the array.
  Returns a raw pointer to an `Expr` representing the result of the integral.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1219,6 +1245,7 @@ char *complex_modulus_json(const char *aZJson)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -1237,6 +1264,7 @@ struct rssn_Expr *contour_integral_residue_theorem(const struct rssn_Expr *aFunc
  Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
  and a bincode-serialized `Vec<Expr>` for the singularities.
  Returns a bincode-serialized `Expr` representing the result of the integral.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1244,6 +1272,7 @@ struct rssn_Expr *contour_integral_residue_theorem(const struct rssn_Expr *aFunc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -1261,6 +1290,7 @@ struct rssn_BincodeBuffer contour_integral_residue_theorem_bincode(struct rssn_B
  Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
  and a JSON-serialized `Vec<Expr>` for the singularities.
  Returns a JSON string representing the `Expr` of the integral.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1268,6 +1298,7 @@ struct rssn_BincodeBuffer contour_integral_residue_theorem_bincode(struct rssn_B
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -1285,6 +1316,7 @@ char *contour_integral_residue_theorem_json(const char *aFuncJson,
  Takes a raw pointer to an `Expr` (the series), a C-style string for the variable,
  a raw pointer to an `Expr` for the center, and an integer for the order.
  Returns an `f64` representing the estimated radius of convergence.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1292,6 +1324,7 @@ char *contour_integral_residue_theorem_json(const char *aFuncJson,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -1310,6 +1343,7 @@ double estimate_radius_of_convergence(const struct rssn_Expr *aSeriesExpr,
  Takes a bincode-serialized `Expr` (the series), a C-style string for the variable,
  a bincode-serialized `Expr` for the center, and an integer for the order.
  Returns an `f64` representing the estimated radius of convergence.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1317,6 +1351,7 @@ double estimate_radius_of_convergence(const struct rssn_Expr *aSeriesExpr,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -1335,6 +1370,7 @@ double estimate_radius_of_convergence_bincode(struct rssn_BincodeBuffer aSeriesE
  Takes a JSON-serialized `Expr` (the series), a C-style string for the variable,
  a JSON-serialized `Expr` for the center, and an integer for the order.
  Returns an `f64` representing the estimated radius of convergence.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1342,6 +1378,7 @@ double estimate_radius_of_convergence_bincode(struct rssn_BincodeBuffer aSeriesE
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -1544,6 +1581,7 @@ char *expr_unify_expression(struct rssn_Expr *aHandle)
 
 /*
  Frees a C string that was allocated by this library.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1592,6 +1630,7 @@ char *interpolate_lagrange(const char *aJsonPtr)
  Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
  a raw pointer to an `Expr` for the center, and an integer for the order.
  Returns a raw pointer to an `Expr` representing the Laurent series.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1599,6 +1638,7 @@ char *interpolate_lagrange(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -1617,6 +1657,7 @@ struct rssn_Expr *laurent_series(const struct rssn_Expr *aFunc,
  Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
  a bincode-serialized `Expr` for the center, and an integer for the order.
  Returns a bincode-serialized `Expr` representing the Laurent series.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1624,6 +1665,7 @@ struct rssn_Expr *laurent_series(const struct rssn_Expr *aFunc,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -1642,6 +1684,7 @@ struct rssn_BincodeBuffer laurent_series_bincode(struct rssn_BincodeBuffer aFunc
  Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
  a JSON-serialized `Expr` for the center, and an integer for the order.
  Returns a JSON-serialized `Expr` representing the Laurent series.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1649,6 +1692,7 @@ struct rssn_BincodeBuffer laurent_series_bincode(struct rssn_BincodeBuffer aFunc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -1881,6 +1925,7 @@ struct rssn_Expr *matrix_transpose(struct rssn_Expr *aHandle)
 
  Takes a raw pointer to a `MobiusTransformation` object and a raw pointer to an `Expr` (complex number).
  Returns a raw pointer to an `Expr` representing the result.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1899,6 +1944,7 @@ struct rssn_Expr *mobius_transformation_apply(const struct rssn_MobiusTransforma
 
  Takes a bincode-serialized `MobiusTransformation` object and a bincode-serialized `Expr` (complex number).
  Returns a bincode-serialized `Expr` representing the result.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1917,6 +1963,7 @@ struct rssn_BincodeBuffer mobius_transformation_apply_bincode(struct rssn_Bincod
 
  Takes a JSON-serialized `MobiusTransformation` object and a JSON-serialized `Expr` representing the complex number `z`.
  Returns a JSON-serialized `Expr` representing the result of the transformation.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1932,9 +1979,9 @@ char *mobius_transformation_apply_json(const char *aMobiusJson,
 
 /*
  Composes two Mobius transformations.
-
  Takes two raw pointers to `MobiusTransformation` objects.
  Returns a raw pointer to a `MobiusTransformation` representing their composition.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1950,9 +1997,9 @@ struct rssn_MobiusTransformation *mobius_transformation_compose(const struct rss
 
 /*
  Composes two Mobius transformations.
-
  Takes two bincode-serialized `MobiusTransformation` objects.
  Returns a bincode-serialized `MobiusTransformation` representing their composition.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1968,9 +2015,9 @@ struct rssn_BincodeBuffer mobius_transformation_compose_bincode(struct rssn_Binc
 
 /*
  Composes two Mobius Transformations.
-
  Takes two JSON-serialized `MobiusTransformation` objects.
  Returns a JSON-serialized `MobiusTransformation` object representing their composition.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1986,7 +2033,6 @@ char *mobius_transformation_compose_json(const char *aMobius1Json,
 
 /*
  Creates an identity Mobius transformation.
-
  Takes no arguments and returns a raw pointer to a `MobiusTransformation` object.
  */
 rssn_
@@ -1995,7 +2041,6 @@ struct rssn_MobiusTransformation *mobius_transformation_identity(void)
 
 /*
  Creates an identity Mobius transformation.
-
  Takes no arguments and returns a bincode-serialized `MobiusTransformation` object.
  */
 rssn_
@@ -2004,7 +2049,6 @@ struct rssn_BincodeBuffer mobius_transformation_identity_bincode(void)
 
 /*
  Creates an identity `MobiusTransformation` object.
-
  Returns a JSON-serialized identity `MobiusTransformation` object.
  */
 rssn_
@@ -2013,9 +2057,9 @@ char *mobius_transformation_identity_json(void)
 
 /*
  Computes the inverse of a Mobius transformation.
-
  Takes a raw pointer to a `MobiusTransformation` object.
  Returns a raw pointer to a `MobiusTransformation` representing its inverse.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2030,9 +2074,9 @@ struct rssn_MobiusTransformation *mobius_transformation_inverse(const struct rss
 
 /*
  Computes the inverse of a Mobius transformation.
-
  Takes a bincode-serialized `MobiusTransformation` object.
  Returns a bincode-serialized `MobiusTransformation` representing its inverse.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2047,9 +2091,9 @@ struct rssn_BincodeBuffer mobius_transformation_inverse_bincode(struct rssn_Binc
 
 /*
  Computes the inverse of a Mobius Transformation.
-
  Takes a JSON-serialized `MobiusTransformation` object.
  Returns a JSON-serialized `MobiusTransformation` object representing the inverse.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2064,9 +2108,9 @@ char *mobius_transformation_inverse_json(const char *aMobiusJson)
 
 /*
  Creates a new Mobius transformation.
-
  Takes four raw pointers to `Expr` representing the parameters a, b, c, and d.
  Returns a raw pointer to a new `MobiusTransformation` object.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2084,9 +2128,9 @@ struct rssn_MobiusTransformation *mobius_transformation_new(const struct rssn_Ex
 
 /*
  Creates a new Mobius transformation.
-
  Takes four bincode-serialized `Expr` representing the parameters a, b, c, and d.
  Returns a bincode-serialized `MobiusTransformation` object.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2107,6 +2151,7 @@ struct rssn_BincodeBuffer mobius_transformation_new_bincode(struct rssn_BincodeB
 
  Takes JSON-serialized `Expr` for coefficients `a`, `b`, `c`, and `d`.
  Returns a JSON-serialized `MobiusTransformation` object.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2160,6 +2205,7 @@ char *nt_mod_pow(const char *aJsonPtr)
  Computes the numerical gradient of an expression.
 
  This function is deprecated.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2177,6 +2223,7 @@ char *numerical_gradient(const char *aJsonPtr)
  Performs numerical integration of an expression.
 
  This function is deprecated.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2311,6 +2358,7 @@ size_t numerical_optimize_get_result_param_len_handle(const struct rssn_FfiOptim
  A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
  or null if the input is invalid or optimization fails. The caller must free
  the result using `numerical_optimize_drop_result_handle`.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2345,6 +2393,7 @@ struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_bfgs_handle(dou
  A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
  or null if the input is invalid or optimization fails. The caller must free
  the result using `numerical_optimize_drop_result_handle`.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2389,6 +2438,7 @@ struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_gd_handle(doubl
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2396,6 +2446,7 @@ struct rssn_FfiOptimizationResult *numerical_optimize_rosenbrock_gd_handle(doubl
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2433,6 +2484,7 @@ struct rssn_BincodeBuffer numerical_optimize_solve_bincode(struct rssn_BincodeBu
 
  The caller must free the returned string using `numerical_optimize_free_json`.
  Returns null if the input pointer is invalid.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2460,6 +2512,7 @@ char *numerical_optimize_solve_json(const char *aJsonPtr)
  A raw pointer to `FfiOptimizationResult` containing the optimization outcome,
  or null if the input is invalid or optimization fails. The caller must free
  the result using `numerical_optimize_drop_result_handle`.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2478,6 +2531,7 @@ struct rssn_FfiOptimizationResult *numerical_optimize_sphere_gd_handle(const dou
  Takes a raw mutable pointer to a `PathContinuation` object, a raw pointer to an array of `Expr` (path points),
  and the length of the array.
  Returns a C-style string "OK" on success, or an error message on failure.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2497,6 +2551,7 @@ char *path_continuation_continue_along_path(struct rssn_PathContinuation *aPc,
 
  Takes a bincode-serialized `PathContinuation` object and a bincode-serialized `Vec<Expr>` representing the path points.
  Returns a bincode-serialized string "OK" on success, or an error message on failure.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2515,6 +2570,7 @@ struct rssn_BincodeBuffer path_continuation_continue_along_path_bincode(struct r
 
  Takes a JSON-serialized `PathContinuation` object and a JSON-serialized `Vec<Expr>` representing the path points.
  Returns a C-style string "OK" on success, or an error message on failure.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2530,9 +2586,9 @@ char *path_continuation_continue_along_path_json(const char *aPcJson,
 
 /*
  Gets the final expression after analytic continuation.
-
  Takes a raw pointer to a `PathContinuation` object.
  Returns a raw pointer to an `Expr` representing the final expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2547,9 +2603,9 @@ struct rssn_Expr *path_continuation_get_final_expression(const struct rssn_PathC
 
 /*
  Gets the final expression after analytic continuation.
-
  Takes a bincode-serialized `PathContinuation` object.
  Returns a bincode-serialized `Expr` representing the final expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2564,9 +2620,9 @@ struct rssn_BincodeBuffer path_continuation_get_final_expression_bincode(struct 
 
 /*
  Gets the final expression after analytic continuation.
-
  Takes a JSON-serialized `PathContinuation` object.
  Returns a JSON-serialized `Expr` representing the final expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2585,6 +2641,7 @@ char *path_continuation_get_final_expression_json(const char *aPcJson)
  Takes a raw pointer to an `Expr` (the function), a C-style string for the variable,
  a raw pointer to an `Expr` for the start point, and a `usize` for the order.
  Returns a raw pointer to a new `PathContinuation` object.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2592,6 +2649,7 @@ char *path_continuation_get_final_expression_json(const char *aPcJson)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2625,6 +2683,7 @@ struct rssn_PathContinuation *path_continuation_new(const struct rssn_Expr *aFun
 
  This function is unsafe because it dereferences a raw C string pointer and expects
  valid bincode-encoded `Expr` values.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2632,6 +2691,7 @@ struct rssn_PathContinuation *path_continuation_new(const struct rssn_Expr *aFun
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2646,9 +2706,9 @@ struct rssn_BincodeBuffer path_continuation_new_bincode(struct rssn_BincodeBuffe
 
 /*
  Creates a new `PathContinuation` object.
-
  Takes JSON-serialized inputs for the function, variable, start point, and order.
  Returns a JSON-serialized `PathContinuation` object.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2656,6 +2716,7 @@ struct rssn_BincodeBuffer path_continuation_new_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2672,6 +2733,7 @@ char *path_continuation_new_json(const char *aFuncJson,
  Solves the 1D advection-diffusion equation.
 
  This function is deprecated.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2790,6 +2852,7 @@ char *poly_to_coeffs_vec(const char *aJsonPtr)
 
 /*
  Checks if an expression contains a variable (handle-based)
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2802,6 +2865,7 @@ bool polynomial_contains_var_handle(const struct rssn_Expr *aExprHandle,
 
 /*
  Computes the degree of a polynomial (handle-based)
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2821,6 +2885,7 @@ void polynomial_free_expr_handle(struct rssn_Expr *aExprHandle)
 
 /*
  Checks if an expression is a polynomial in the given variable (handle-based)
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2833,6 +2898,7 @@ bool polynomial_is_polynomial_handle(const struct rssn_Expr *aExprHandle,
 
 /*
  Finds the leading coefficient of a polynomial (handle-based)
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2845,6 +2911,7 @@ struct rssn_Expr *polynomial_leading_coefficient_handle(const struct rssn_Expr *
 
 /*
  Performs polynomial long division (handle-based)
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -2885,6 +2952,7 @@ struct rssn_Expr *rssn_abs_handle(const struct rssn_Expr *aZ)
 
  This function is unsafe because it dereferences raw pointers and returns
  ownership of a heap-allocated `Expr` that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2918,6 +2986,7 @@ struct rssn_Expr *rssn_adjoint_representation_algebra(const struct rssn_Expr *aX
 
  This function is unsafe because it dereferences raw pointers and returns
  ownership of a heap-allocated `Expr` that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -2972,6 +3041,7 @@ struct rssn_Expr *rssn_analyze_stability(const struct rssn_Expr *aMapPtr,
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer and `rules` is a valid array.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3021,6 +3091,7 @@ int rssn_are_isomorphic_heuristic(const struct rssn_RssnGraph *aG1,
 
  # Returns
  `true` if orthogonal, `false` otherwise.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3065,6 +3136,7 @@ struct rssn_Expr *rssn_asymptotic_expansion_handle(const struct rssn_Expr *aExpr
 
  # Returns
  A raw pointer to the symbolic expression representing the norm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3089,6 +3161,7 @@ struct rssn_Expr *rssn_banach_norm(const struct rssn_BanachSpace *aSpace,
 
  # Returns
  A raw pointer to the newly created `BanachSpace`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3096,6 +3169,7 @@ struct rssn_Expr *rssn_banach_norm(const struct rssn_BanachSpace *aSpace,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -3113,6 +3187,7 @@ struct rssn_BanachSpace *rssn_banach_space_create(const char *aVar,
 
  # Arguments
  * `ptr` - Pointer to the `BanachSpace` to free.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3142,6 +3217,7 @@ void rssn_banach_space_free(struct rssn_BanachSpace *aPtr)
 
  This function is unsafe because it is exposed as an FFI entry point and returns
  ownership of a heap-allocated `Expr` to the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3156,6 +3232,7 @@ struct rssn_Expr *rssn_bell_number(size_t aN)
 
 /*
  Constructs Bessel's differential equation: x²y'' + xy' + (x² - n²)y = 0.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3172,6 +3249,7 @@ struct rssn_Expr *rssn_bessel_differential_equation(const struct rssn_Expr *aY,
 
 /*
  Computes the symbolic modified Bessel function of the first kind `I_n(x)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3201,6 +3279,7 @@ double rssn_bessel_i1(double aX)
 
 /*
  Computes the symbolic Bessel function of the first kind `J_n(x)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3230,6 +3309,7 @@ double rssn_bessel_j1(double aX)
 
 /*
  Computes the symbolic modified Bessel function of the second kind `K_n(x)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3259,6 +3339,7 @@ double rssn_bessel_k1(double aX)
 
 /*
  Computes the symbolic Bessel function of the second kind `Y_n(x)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3288,6 +3369,7 @@ double rssn_bessel_y1(double aX)
 
 /*
  Computes the symbolic Beta function B(a, b).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3311,6 +3393,7 @@ double rssn_beta_numerical(double aA,
 
 /*
  Computes the derivative (tangent) of a Bezier curve at parameter t.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3326,6 +3409,7 @@ rssn_Vector *rssn_bezier_curve_derivative(const struct rssn_BezierCurve *aCurve,
 
 /*
  Evaluates a Bezier curve at parameter t.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3341,6 +3425,7 @@ rssn_Vector *rssn_bezier_curve_evaluate(const struct rssn_BezierCurve *aCurve,
 
 /*
  Frees a Bezier curve.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3355,6 +3440,7 @@ void rssn_bezier_curve_free(struct rssn_BezierCurve *aCurve)
 
 /*
  Creates a new Bezier curve from control points.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3371,6 +3457,7 @@ struct rssn_BezierCurve *rssn_bezier_curve_new(const rssn_Vector *aPoints,
 /*
  Splits a Bezier curve at parameter t into two curves.
  Returns left curve. Use `rssn_bezier_curve_split_right` for the right curve.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3387,6 +3474,7 @@ struct rssn_BezierCurve *rssn_bezier_curve_split_left(const struct rssn_BezierCu
 /*
  Splits a Bezier curve at parameter t into two curves.
  Returns right curve.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3428,6 +3516,7 @@ struct rssn_BincodeBuffer rssn_bincode_abs(struct rssn_BincodeBuffer aZBuf)
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3461,6 +3550,7 @@ struct rssn_BincodeBuffer rssn_bincode_adjoint_representation_algebra(struct rss
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3503,6 +3593,7 @@ struct rssn_BincodeBuffer rssn_bincode_analyze_convergence(struct rssn_BincodeBu
 
 /*
  Analyzes stability of a fixed point (Bincode)
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -3516,6 +3607,7 @@ struct rssn_BincodeBuffer rssn_bincode_analyze_stability(struct rssn_BincodeBuff
 
 /*
  Checks if two graphs are isomorphic.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3566,6 +3658,7 @@ struct rssn_BincodeBuffer rssn_bincode_asymptotic_expansion(struct rssn_BincodeB
 
  This function is unsafe because it is exposed as an FFI entry point, but it does
  not dereference raw pointers.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3580,7 +3673,6 @@ struct rssn_BincodeBuffer rssn_bincode_bell_number(size_t aN)
 
 /*
  Computes the Bessel differential equation.
-
  Takes bincode-serialized `Expr` representing `y`, `x`, and `n` as inputs,
  and returns a bincode-serialized `Expr` representing the equation.
  */
@@ -3592,7 +3684,6 @@ struct rssn_BincodeBuffer rssn_bincode_bessel_differential_equation(struct rssn_
 
 /*
  Computes the modified Bessel function of the first kind `I_n(x)`.
-
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
  and returns a bincode-serialized `Expr` representing `I_n(x)`.
  */
@@ -3617,7 +3708,6 @@ struct rssn_BincodeBuffer rssn_bincode_bessel_i1(struct rssn_BincodeBuffer aValB
 
 /*
  Computes the Bessel function of the first kind `J_n(x)`.
-
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
  and returns a bincode-serialized `Expr` representing `J_n(x)`.
  */
@@ -3642,7 +3732,6 @@ struct rssn_BincodeBuffer rssn_bincode_bessel_j1(struct rssn_BincodeBuffer aValB
 
 /*
  Computes the modified Bessel function of the second kind `K_n(x)`.
-
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
  and returns a bincode-serialized `Expr` representing `K_n(x)`.
  */
@@ -3667,7 +3756,6 @@ struct rssn_BincodeBuffer rssn_bincode_bessel_k1(struct rssn_BincodeBuffer aValB
 
 /*
  Computes the Bessel function of the second kind `Y_n(x)`.
-
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
  and returns a bincode-serialized `Expr` representing `Y_n(x)`.
  */
@@ -3692,7 +3780,6 @@ struct rssn_BincodeBuffer rssn_bincode_bessel_y1(struct rssn_BincodeBuffer aValB
 
 /*
  Computes the beta function B(a, b).
-
  Takes bincode-serialized `Expr` representing `a` and `b` as inputs,
  and returns a bincode-serialized `Expr` representing B(a, b).
  */
@@ -3794,6 +3881,7 @@ struct rssn_BincodeBuffer rssn_bincode_calculate_residue(struct rssn_BincodeBuff
 
  This function is unsafe because it is exposed as an FFI entry point, but it does
  not dereference raw pointers.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3825,6 +3913,7 @@ struct rssn_BincodeBuffer rssn_bincode_catalan_number(size_t aN)
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3839,7 +3928,6 @@ struct rssn_BincodeBuffer rssn_bincode_character(struct rssn_BincodeBuffer aRepB
 
 /*
  Computes the Chebyshev differential equation.
-
  Takes bincode-serialized `Expr` representing `y`, `x`, and `n` as inputs,
  and returns a bincode-serialized `Expr` representing the equation.
  */
@@ -3851,7 +3939,6 @@ struct rssn_BincodeBuffer rssn_bincode_chebyshev_differential_equation(struct rs
 
 /*
  Computes the Chebyshev polynomial of the first kind `T_n(x)`.
-
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
  and returns a bincode-serialized `Expr` representing `T_n(x)`.
  */
@@ -3862,7 +3949,6 @@ struct rssn_BincodeBuffer rssn_bincode_chebyshev_t(struct rssn_BincodeBuffer aNB
 
 /*
  Computes the Chebyshev polynomial of the second kind `U_n(x)`.
-
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
  and returns a bincode-serialized `Expr` representing `U_n(x)`.
  */
@@ -3898,6 +3984,7 @@ bool rssn_bincode_check_analytic(struct rssn_BincodeBuffer aExprBuf,
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must ensure the buffer encodes a valid `LieAlgebra`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3912,7 +3999,6 @@ bool rssn_bincode_check_jacobi_identity(struct rssn_BincodeBuffer aAlgebraBuf)
 
 /*
  Solves the Chinese Remainder Theorem.
-
  Takes a bincode-serialized vector of congruences (`(remainder, modulus)`),
  and returns a bincode-serialized `Expr` representing the solution.
  */
@@ -3922,6 +4008,7 @@ struct rssn_BincodeBuffer rssn_bincode_chinese_remainder(struct rssn_BincodeBuff
 
 /*
  Exact chromatic number.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3962,6 +4049,7 @@ struct rssn_BincodeBuffer rssn_bincode_classify_pde(struct rssn_BincodeBuffer aE
 
  This function is unsafe because it dereferences raw bincode buffers that must
  contain valid serialized `Expr` values.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -3992,6 +4080,7 @@ struct rssn_BincodeBuffer rssn_bincode_combinations(struct rssn_BincodeBuffer aN
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -4215,6 +4304,7 @@ struct rssn_BincodeBuffer rssn_bincode_curve_scalar_mult(struct rssn_BincodeBuff
 
  # Returns
  A `BincodeBuffer` containing the serialized representation of the group.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -4263,7 +4353,6 @@ struct rssn_BincodeBuffer rssn_bincode_differentiate(struct rssn_BincodeBuffer a
 
 /*
  Computes the digamma function ψ(z).
-
  Takes a bincode-serialized `Expr` representing `z` as input,
  and returns a bincode-serialized `Expr` representing ψ(z).
  */
@@ -4286,6 +4375,7 @@ struct rssn_BincodeBuffer rssn_bincode_digamma_numerical(struct rssn_BincodeBuff
 
  # Returns
  A `BincodeBuffer` containing the serialized representation of the group.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -4300,7 +4390,6 @@ struct rssn_BincodeBuffer rssn_bincode_dihedral_group_create(size_t aN)
 
 /*
  Creates a Bernoulli distribution.
-
  Takes a bincode-serialized `Expr` representing `p` (probability of success).
  Returns a bincode-serialized `Expr` representing the Bernoulli distribution.
  */
@@ -4310,7 +4399,6 @@ struct rssn_BincodeBuffer rssn_bincode_dist_bernoulli(struct rssn_BincodeBuffer 
 
 /*
  Creates a beta distribution.
-
  Takes bincode-serialized `Expr` representing the alpha and beta parameters.
  Returns a bincode-serialized `Expr` representing the beta distribution.
  */
@@ -4343,7 +4431,6 @@ struct rssn_BincodeBuffer rssn_bincode_dist_cdf(struct rssn_BincodeBuffer aDistB
 
 /*
  Computes the expectation (mean) of a distribution.
-
  Takes a bincode-serialized `Expr` representing the distribution.
  Returns a bincode-serialized `Expr` representing the expectation.
  */
@@ -4353,7 +4440,6 @@ struct rssn_BincodeBuffer rssn_bincode_dist_expectation(struct rssn_BincodeBuffe
 
 /*
  Creates an exponential distribution.
-
  Takes a bincode-serialized `Expr` representing the rate parameter (λ).
  Returns a bincode-serialized `Expr` representing the exponential distribution.
  */
@@ -4363,7 +4449,6 @@ struct rssn_BincodeBuffer rssn_bincode_dist_exponential(struct rssn_BincodeBuffe
 
 /*
  Creates a gamma distribution.
-
  Takes bincode-serialized `Expr` representing the shape and rate parameters.
  Returns a bincode-serialized `Expr` representing the gamma distribution.
  */
@@ -4385,7 +4470,6 @@ struct rssn_BincodeBuffer rssn_bincode_dist_mgf(struct rssn_BincodeBuffer aDistB
 
 /*
  Creates a normal distribution.
-
  Takes bincode-serialized `Expr` representing the mean and standard deviation.
  Returns a bincode-serialized `Expr` representing the normal distribution.
  */
@@ -4407,7 +4491,6 @@ struct rssn_BincodeBuffer rssn_bincode_dist_pdf(struct rssn_BincodeBuffer aDistB
 
 /*
  Creates a Poisson distribution.
-
  Takes a bincode-serialized `Expr` representing the rate parameter (λ).
  Returns a bincode-serialized `Expr` representing the Poisson distribution.
  */
@@ -4417,7 +4500,6 @@ struct rssn_BincodeBuffer rssn_bincode_dist_poisson(struct rssn_BincodeBuffer aR
 
 /*
  Creates a Student's t-distribution.
-
  Takes a bincode-serialized `Expr` representing the degrees of freedom (ν).
  Returns a bincode-serialized `Expr` representing the Student's t-distribution.
  */
@@ -4427,7 +4509,6 @@ struct rssn_BincodeBuffer rssn_bincode_dist_student_t(struct rssn_BincodeBuffer 
 
 /*
  Creates a uniform distribution.
-
  Takes bincode-serialized `Expr` representing the minimum and maximum values.
  Returns a bincode-serialized `Expr` representing the uniform distribution.
  */
@@ -4438,7 +4519,6 @@ struct rssn_BincodeBuffer rssn_bincode_dist_uniform(struct rssn_BincodeBuffer aM
 
 /*
  Computes the variance of a distribution.
-
  Takes a bincode-serialized `Expr` representing the distribution.
  Returns a bincode-serialized `Expr` representing the variance.
  */
@@ -4505,7 +4585,6 @@ struct rssn_BincodeBuffer rssn_bincode_elliptic_curve_new(struct rssn_BincodeBuf
 
 /*
  Computes the error function erf(z).
-
  Takes a bincode-serialized `Expr` representing `z` as input,
  and returns a bincode-serialized `Expr` representing erf(z).
  */
@@ -4522,7 +4601,6 @@ struct rssn_BincodeBuffer rssn_bincode_erf_numerical(struct rssn_BincodeBuffer a
 
 /*
  Computes the complementary error function erfc(z).
-
  Takes a bincode-serialized `Expr` representing `z` as input,
  and returns a bincode-serialized `Expr` representing erfc(z).
  */
@@ -4539,7 +4617,6 @@ struct rssn_BincodeBuffer rssn_bincode_erfc_numerical(struct rssn_BincodeBuffer 
 
 /*
  Computes the imaginary error function erfi(z).
-
  Takes a bincode-serialized `Expr` representing `z` as input,
  and returns a bincode-serialized `Expr` representing erfi(z).
  */
@@ -4577,7 +4654,6 @@ struct rssn_BincodeBuffer rssn_bincode_evaluate_at_point(struct rssn_BincodeBuff
 
 /*
  Numerically evaluates a symbolic expression.
-
  Takes a bincode-serialized `Expr` as input,
  and returns a bincode-serialized numerical evaluation of that expression.
  */
@@ -4613,6 +4689,7 @@ struct rssn_BincodeBuffer rssn_bincode_expectation_value(struct rssn_BincodeBuff
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -4695,6 +4772,7 @@ struct rssn_BincodeBuffer rssn_bincode_find_extrema(struct rssn_BincodeBuffer aE
 
 /*
  Finds fixed points of a 1D map (Bincode)
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -4823,7 +4901,6 @@ struct rssn_BincodeBuffer rssn_bincode_fourier_transform(struct rssn_BincodeBuff
 
 /*
  Computes the gamma function Γ(z).
-
  Takes a bincode-serialized `Expr` representing `z` as input,
  and returns a bincode-serialized `Expr` representing Γ(z).
  */
@@ -4907,7 +4984,6 @@ struct rssn_BincodeBuffer rssn_bincode_general_sqrt(struct rssn_BincodeBuffer aZ
 
 /*
  Computes the generalized Laguerre polynomial `L_n^α(x)`.
-
  Takes bincode-serialized `Expr` representing `n`, `alpha`, and `x` as inputs,
  and returns a bincode-serialized `Expr` representing `L_n^α(x)`.
  */
@@ -4984,7 +5060,6 @@ struct rssn_BincodeBuffer rssn_bincode_gibbs_free_energy(struct rssn_BincodeBuff
 
 /*
  Computes the Gini impurity of a probability distribution.
-
  Takes a bincode-serialized `Vec<Expr>` representing the probabilities.
  Returns a bincode-serialized `Expr` representing the Gini impurity.
  */
@@ -5012,6 +5087,7 @@ struct rssn_BincodeBuffer rssn_bincode_gini_impurity(struct rssn_BincodeBuffer a
 
  This function is unsafe because it is exposed as an FFI entry point; the caller
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5027,6 +5103,7 @@ struct rssn_BincodeBuffer rssn_bincode_gram_schmidt(struct rssn_BincodeBuffer aS
 
 /*
  Adds an edge to the graph.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5041,6 +5118,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_add_edge(struct rssn_BincodeBuffer 
 
 /*
  Adds a node to the graph.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5055,6 +5133,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_add_node(struct rssn_BincodeBuffer 
 
 /*
  Gets the adjacency matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5069,6 +5148,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_adjacency_matrix(struct rssn_Bincod
 
 /*
  Performs BFS traversal.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5083,6 +5163,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_bfs(struct rssn_BincodeBuffer aInpu
 
 /*
  Performs BFS traversal.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5097,6 +5178,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_bfs_api(struct rssn_BincodeBuffer a
 
 /*
  Finds maximum matching in bipartite graph.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5111,6 +5193,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_bipartite_maximum_matching(struct r
 
 /*
  Finds bridges and articulation points.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5125,6 +5208,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_bridges_and_articulation_points(str
 
 /*
  Computes the Cartesian product of two graphs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5139,6 +5223,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_cartesian_product(struct rssn_Binco
 
 /*
  Computes the complement of a graph.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5153,6 +5238,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_complement(struct rssn_BincodeBuffe
 
 /*
  Finds connected components.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5167,6 +5253,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_connected_components(struct rssn_Bi
 
 /*
  Finds connected components.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5181,6 +5268,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_connected_components_api(struct rss
 
 /*
  Performs DFS traversal.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5195,6 +5283,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_dfs(struct rssn_BincodeBuffer aInpu
 
 /*
  Performs DFS traversal.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5209,6 +5298,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_dfs_api(struct rssn_BincodeBuffer a
 
 /*
  Computes maximum flow using Dinic's algorithm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5223,6 +5313,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_dinic_max_flow(struct rssn_BincodeB
 
 /*
  Computes the disjoint union of two graphs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5237,6 +5328,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_disjoint_union(struct rssn_BincodeB
 
 /*
  Computes maximum flow using Edmonds-Karp.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5251,6 +5343,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_edmonds_karp_max_flow(struct rssn_B
 
 /*
  Checks if graph has a cycle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5265,6 +5358,7 @@ bool rssn_bincode_graph_has_cycle(struct rssn_BincodeBuffer aGraphBuf)
 
 /*
  Checks if graph has a cycle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5279,6 +5373,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_has_cycle_api(struct rssn_BincodeBu
 
 /*
  Creates an induced subgraph.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5293,6 +5388,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_induced_subgraph(struct rssn_Bincod
 
 /*
  Computes the intersection of two graphs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5307,6 +5403,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_intersection(struct rssn_BincodeBuf
 
 /*
  Checks if graph is bipartite.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5321,6 +5418,7 @@ bool rssn_bincode_graph_is_bipartite(struct rssn_BincodeBuffer aGraphBuf)
 
 /*
  Checks if graph is bipartite.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5335,6 +5433,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_is_bipartite_api(struct rssn_Bincod
 
 /*
  Checks if graph is connected.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5349,6 +5448,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_is_connected(struct rssn_BincodeBuf
 
 /*
  Computes the join of two graphs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5363,6 +5463,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_join(struct rssn_BincodeBuffer aInp
 
 /*
  Computes MST using Kruskal's algorithm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5377,6 +5478,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_kruskal_mst(struct rssn_BincodeBuff
 
 /*
  Computes MST using Kruskal's algorithm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5391,6 +5493,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_kruskal_mst_api(struct rssn_Bincode
 
 /*
  Gets the Laplacian matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5405,6 +5508,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_laplacian_matrix(struct rssn_Bincod
 
 /*
  Computes maximum flow.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5419,6 +5523,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_max_flow(struct rssn_BincodeBuffer 
 
 /*
  Creates a new graph from bincode specification.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5433,6 +5538,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_new(struct rssn_BincodeBuffer aSpec
 
 /*
  Finds strongly connected components.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5447,6 +5553,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_strongly_connected_components(struc
 
 /*
  Computes the Tensor product of two graphs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5461,6 +5568,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_tensor_product(struct rssn_BincodeB
 
 /*
  Performs topological sort.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5475,6 +5583,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_topological_sort(struct rssn_Bincod
 
 /*
  Computes the union of two graphs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5489,6 +5598,7 @@ struct rssn_BincodeBuffer rssn_bincode_graph_union(struct rssn_BincodeBuffer aIn
 
 /*
  Greedy coloring.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5529,6 +5639,7 @@ struct rssn_BincodeBuffer rssn_bincode_greens_theorem(struct rssn_BincodeBuffer 
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5560,6 +5671,7 @@ struct rssn_BincodeBuffer rssn_bincode_group_center(struct rssn_BincodeBuffer aG
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5591,6 +5703,7 @@ struct rssn_BincodeBuffer rssn_bincode_group_conjugacy_classes(struct rssn_Binco
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5623,6 +5736,7 @@ struct rssn_BincodeBuffer rssn_bincode_group_create(struct rssn_BincodeBuffer aB
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must ensure the buffers encode a compatible group and element.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5653,6 +5767,7 @@ size_t rssn_bincode_group_element_order(struct rssn_BincodeBuffer aGroupBuf,
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5685,6 +5800,7 @@ struct rssn_BincodeBuffer rssn_bincode_group_inverse(struct rssn_BincodeBuffer a
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must ensure the buffer is a valid encoding of a `Group`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5718,6 +5834,7 @@ bool rssn_bincode_group_is_abelian(struct rssn_BincodeBuffer aGroupBuf)
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5786,7 +5903,6 @@ struct rssn_BincodeBuffer rssn_bincode_hamming_weight(struct rssn_BincodeBuffer 
 
 /*
  Computes the Hermite differential equation.
-
  Takes bincode-serialized `Expr` representing `y`, `x`, and `n` as inputs,
  and returns a bincode-serialized `Expr` representing the equation.
  */
@@ -5798,7 +5914,6 @@ struct rssn_BincodeBuffer rssn_bincode_hermite_differential_equation(struct rssn
 
 /*
  Computes the Hermite polynomial `H_n(x)`.
-
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
  and returns a bincode-serialized `Expr` representing `H_n(x)`.
  */
@@ -5809,7 +5924,6 @@ struct rssn_BincodeBuffer rssn_bincode_hermite_h(struct rssn_BincodeBuffer aDegr
 
 /*
  Computes the Rodrigues' formula for Hermite polynomials.
-
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
  and returns a bincode-serialized `Expr` representing the formula.
  */
@@ -5853,6 +5967,7 @@ struct rssn_BincodeBuffer rssn_bincode_heuristic_simplify(struct rssn_BincodeBuf
 
  This function is unsafe because it is exposed as an FFI entry point; the caller
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5914,6 +6029,7 @@ struct rssn_BincodeBuffer rssn_bincode_ifs_similarity_dimension(struct rssn_Binc
 
  This function is unsafe because it is exposed as an FFI entry point; the caller
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -5996,7 +6112,6 @@ struct rssn_BincodeBuffer rssn_bincode_inverse_z_transform(struct rssn_BincodeBu
 
 /*
  Checks if a number is prime.
-
  Takes a bincode-serialized `Expr` representing a number,
  and returns a bincode-serialized boolean indicating whether the number is prime.
  */
@@ -6059,6 +6174,7 @@ struct rssn_BincodeBuffer rssn_bincode_kl_divergence(struct rssn_BincodeBuffer a
 
  # Returns
  A `BincodeBuffer` containing the serialized representation of the group.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -6073,7 +6189,6 @@ struct rssn_BincodeBuffer rssn_bincode_klein_four_group_create(void)
 
 /*
  Computes the Laguerre differential equation.
-
  Takes bincode-serialized `Expr` representing `y`, `x`, and `n` as inputs,
  and returns a bincode-serialized `Expr` representing the equation.
  */
@@ -6085,7 +6200,6 @@ struct rssn_BincodeBuffer rssn_bincode_laguerre_differential_equation(struct rss
 
 /*
  Computes the Laguerre polynomial `L_n(x)`.
-
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
  and returns a bincode-serialized `Expr` representing `L_n(x)`.
  */
@@ -6185,7 +6299,6 @@ struct rssn_BincodeBuffer rssn_bincode_laurent_series(struct rssn_BincodeBuffer 
 
 /*
  Computes the Legendre differential equation.
-
  Takes bincode-serialized `Expr` representing `y`, `x`, and `n` as inputs,
  and returns a bincode-serialized `Expr` representing the equation.
  */
@@ -6197,7 +6310,6 @@ struct rssn_BincodeBuffer rssn_bincode_legendre_differential_equation(struct rss
 
 /*
  Computes the Legendre polynomial `P_n(x)`.
-
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
  and returns a bincode-serialized `Expr` representing `P_n(x)`.
  */
@@ -6208,7 +6320,6 @@ struct rssn_BincodeBuffer rssn_bincode_legendre_p(struct rssn_BincodeBuffer aDeg
 
 /*
  Computes the Rodrigues' formula for Legendre polynomials.
-
  Takes bincode-serialized `Expr` representing `n` and `x` as inputs,
  and returns a bincode-serialized `Expr` representing the formula.
  */
@@ -6235,6 +6346,7 @@ struct rssn_BincodeBuffer rssn_bincode_legendre_rodrigues_formula(struct rssn_Bi
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -6265,6 +6377,7 @@ struct rssn_BincodeBuffer rssn_bincode_lie_algebra_so3(void)
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -6294,6 +6407,7 @@ struct rssn_BincodeBuffer rssn_bincode_lie_algebra_su2(void)
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -6333,7 +6447,6 @@ struct rssn_BincodeBuffer rssn_bincode_ln_factorial(struct rssn_BincodeBuffer aN
 
 /*
  Computes the log-gamma function ln(Γ(z)).
-
  Takes a bincode-serialized `Expr` representing `z` as input,
  and returns a bincode-serialized `Expr` representing ln(Γ(z)).
  */
@@ -6374,6 +6487,7 @@ struct rssn_BincodeBuffer rssn_bincode_lorenz_system(void)
 
 /*
  Calculates Lyapunov exponent (Bincode)
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -6395,7 +6509,6 @@ struct rssn_BincodeBuffer rssn_bincode_mass_energy_equivalence(struct rssn_Binco
 
 /*
  Performs matrix addition.
-
  Takes two bincode-serialized `Expr` representing matrices,
  and returns a bincode-serialized `Expr` representing their sum.
  */
@@ -6406,7 +6519,6 @@ struct rssn_BincodeBuffer rssn_bincode_matrix_add(struct rssn_BincodeBuffer aM1B
 
 /*
  Computes the determinant of a matrix.
-
  Takes a bincode-serialized `Expr` representing a matrix,
  and returns a bincode-serialized `Expr` representing its determinant.
  */
@@ -6416,7 +6528,6 @@ struct rssn_BincodeBuffer rssn_bincode_matrix_determinant(struct rssn_BincodeBuf
 
 /*
  Computes the inverse of a matrix.
-
  Takes a bincode-serialized `Expr` representing a matrix,
  and returns a bincode-serialized `Expr` representing its inverse.
  */
@@ -6426,7 +6537,6 @@ struct rssn_BincodeBuffer rssn_bincode_matrix_inverse(struct rssn_BincodeBuffer 
 
 /*
  Performs matrix multiplication.
-
  Takes two bincode-serialized `Expr` representing matrices,
  and returns a bincode-serialized `Expr` representing their product.
  */
@@ -6437,7 +6547,6 @@ struct rssn_BincodeBuffer rssn_bincode_matrix_mul(struct rssn_BincodeBuffer aM1B
 
 /*
  Solves a linear system of equations AX = B.
-
  Takes two bincode-serialized `Expr` representing matrix A and vector B,
  and returns a bincode-serialized `Expr` representing the solution vector X.
  */
@@ -6448,7 +6557,6 @@ struct rssn_BincodeBuffer rssn_bincode_matrix_solve_linear_system(struct rssn_Bi
 
 /*
  Performs matrix transposition.
-
  Takes a bincode-serialized `Expr` representing a matrix,
  and returns a bincode-serialized `Expr` representing its transpose.
  */
@@ -6563,6 +6671,7 @@ struct rssn_BincodeBuffer rssn_bincode_nonlinear_regression(struct rssn_BincodeB
 
  This function is unsafe because it is exposed as an FFI entry point; the caller
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -6578,7 +6687,6 @@ struct rssn_BincodeBuffer rssn_bincode_norm(struct rssn_BincodeBuffer aSpaceBuf,
 
 /*
  Performs a one-sample t-test.
-
  Takes bincode-serialized `Vec<Expr>` (data) and `Expr` (target mean).
  Returns a bincode-serialized `HypothesisTest` representing the test result.
  */
@@ -6626,6 +6734,7 @@ struct rssn_BincodeBuffer rssn_bincode_path_integrate(struct rssn_BincodeBuffer 
 
  This function is unsafe because it dereferences raw bincode buffers that must
  contain valid serialized `Expr` values.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -6741,7 +6850,6 @@ struct rssn_BincodeBuffer rssn_bincode_poly_mul_gf256(struct rssn_BincodeBuffer 
 
 /*
  Computes the polygamma function ψ⁽ⁿ⁾(z).
-
  Takes bincode-serialized `Expr` representing `n` and `z` as inputs,
  and returns a bincode-serialized `Expr` representing ψ⁽ⁿ⁾(z).
  */
@@ -6874,6 +6982,7 @@ struct rssn_BincodeBuffer rssn_bincode_product(struct rssn_BincodeBuffer aExprBu
 
 /*
  Computes a propagator using Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -6948,6 +7057,7 @@ struct rssn_BincodeBuffer rssn_bincode_regularized_incomplete_beta(struct rssn_B
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -6980,6 +7090,7 @@ struct rssn_BincodeBuffer rssn_bincode_representation_create(struct rssn_Bincode
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must ensure the buffers encode compatible objects.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -7085,6 +7196,7 @@ struct rssn_BincodeBuffer rssn_bincode_rs_error_count(struct rssn_BincodeBuffer 
 
 /*
  Lagrangian density for a scalar field using Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -7124,7 +7236,6 @@ struct rssn_BincodeBuffer rssn_bincode_schwarzschild_radius(struct rssn_BincodeB
 
 /*
  Computes the Shannon entropy of a probability distribution.
-
  Takes a bincode-serialized `Vec<Expr>` representing the probabilities.
  Returns a bincode-serialized `Expr` representing the entropy.
  */
@@ -7246,6 +7357,7 @@ struct rssn_BincodeBuffer rssn_bincode_sinc(struct rssn_BincodeBuffer aValBuf)
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -7260,7 +7372,6 @@ struct rssn_BincodeBuffer rssn_bincode_so3_generators(void)
 
 /*
  Solves an equation for a given variable.
-
  Takes bincode-serialized `Expr` (equation) and `String` (variable).
  Returns a bincode-serialized `Expr` representing the solution.
  */
@@ -7299,7 +7410,6 @@ struct rssn_BincodeBuffer rssn_bincode_solve_cauchy_euler_ode(struct rssn_Bincod
 
 /*
  Solves a Diophantine equation.
-
  Takes bincode-serialized `Expr` representing the equation and `Vec<String>`
  representing variables. Returns a bincode-serialized `Vec<Expr>` of solutions.
  */
@@ -7355,7 +7465,6 @@ struct rssn_BincodeBuffer rssn_bincode_solve_laplace_equation_2d(struct rssn_Bin
 
 /*
  Solves a linear system of equations.
-
  Takes bincode-serialized `Expr` (system) and `Vec<String>` (variables).
  Returns a bincode-serialized `Expr` representing the solution.
  */
@@ -7412,7 +7521,6 @@ struct rssn_BincodeBuffer rssn_bincode_solve_separable_ode(struct rssn_BincodeBu
 
 /*
  Solves a system of equations for given variables.
-
  Takes bincode-serialized `Vec<Expr>` (equations) and `Vec<String>` (variables).
  Returns a bincode-serialized `Expr` representing the solution.
  */
@@ -7463,6 +7571,7 @@ struct rssn_BincodeBuffer rssn_bincode_std_dev(struct rssn_BincodeBuffer aDataBu
 
  This function is unsafe because it is exposed as an FFI entry point, but it does
  not dereference raw pointers.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -7508,6 +7617,7 @@ struct rssn_BincodeBuffer rssn_bincode_sturm_sequence(struct rssn_BincodeBuffer 
 
  This function is unsafe because it is exposed as an FFI entry point; callers
  must treat the returned buffer as opaque and only pass it to compatible APIs.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -7567,6 +7677,7 @@ struct rssn_BincodeBuffer rssn_bincode_symbolic_chain_create(size_t aDimension)
 
  # Returns
  A `BincodeBuffer` containing the serialized representation of the group, or an empty buffer if `n` is invalid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -7595,7 +7706,6 @@ struct rssn_BincodeBuffer rssn_bincode_taylor_series(struct rssn_BincodeBuffer a
 
 /*
  Performs tensor addition.
-
  Takes two bincode-serialized `Tensor` objects as input,
  and returns a bincode-serialized `Tensor` representing their sum.
  */
@@ -7606,7 +7716,6 @@ struct rssn_BincodeBuffer rssn_bincode_tensor_add(struct rssn_BincodeBuffer aT1B
 
 /*
  Computes the outer product of two tensors.
-
  Takes two bincode-serialized `Tensor` objects as input,
  and returns a bincode-serialized `Tensor` representing their outer product.
  */
@@ -7617,7 +7726,6 @@ struct rssn_BincodeBuffer rssn_bincode_tensor_outer_product(struct rssn_BincodeB
 
 /*
  Performs scalar multiplication on a tensor.
-
  Takes a bincode-serialized `Tensor` and a bincode-serialized `Expr` (scalar).
  Returns a bincode-serialized `Tensor` representing the result.
  */
@@ -7767,7 +7875,6 @@ struct rssn_BincodeBuffer rssn_bincode_uncertainty(struct rssn_BincodeBuffer aOp
 
 /*
  Unifies the units in a symbolic expression.
-
  Takes a bincode-serialized `Expr` as input,
  and returns a bincode-serialized `Expr` representing the expression with unified units.
  */
@@ -7784,7 +7891,6 @@ struct rssn_BincodeBuffer rssn_bincode_variance(struct rssn_BincodeBuffer aDataB
 
 /*
  Computes the cross product of two vectors.
-
  Takes two bincode-serialized `Vector` objects as input.
  Returns a bincode-serialized `Vector` representing their cross product.
  */
@@ -7795,7 +7901,6 @@ struct rssn_BincodeBuffer rssn_bincode_vector_cross(struct rssn_BincodeBuffer aV
 
 /*
  Computes the dot product of two vectors.
-
  Takes two bincode-serialized `Vector` objects as input.
  Returns a bincode-serialized `Expr` representing their dot product.
  */
@@ -7806,7 +7911,6 @@ struct rssn_BincodeBuffer rssn_bincode_vector_dot(struct rssn_BincodeBuffer aV1B
 
 /*
  Computes the magnitude of a vector.
-
  Takes a bincode-serialized `Vector` as input.
  Returns a bincode-serialized `Expr` representing its magnitude.
  */
@@ -7816,7 +7920,6 @@ struct rssn_BincodeBuffer rssn_bincode_vector_magnitude(struct rssn_BincodeBuffe
 
 /*
  Normalizes a vector.
-
  Takes a bincode-serialized `Vector` as input.
  Returns a bincode-serialized `Vector` representing the normalized vector.
  */
@@ -7826,6 +7929,7 @@ struct rssn_BincodeBuffer rssn_bincode_vector_normalize(struct rssn_BincodeBuffe
 
 /*
  Verifies an equation solution using Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -7842,6 +7946,7 @@ bool rssn_bincode_verify_equation_solution(struct rssn_BincodeBuffer aEquationsB
 
 /*
  Verifies an indefinite integral using Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -7927,7 +8032,6 @@ struct rssn_BincodeBuffer rssn_bincode_z_transform(struct rssn_BincodeBuffer aEx
 
 /*
  Computes the Riemann zeta function ζ(s).
-
  Takes a bincode-serialized `Expr` representing `s` as input,
  and returns a bincode-serialized `Expr` representing ζ(s).
  */
@@ -7968,6 +8072,7 @@ char *rssn_binomial_coefficient_json(size_t aN,
 
 /*
  Calculates Boltzmann Distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -7991,6 +8096,7 @@ struct rssn_Expr *rssn_boundary_handle(const struct rssn_Expr *aDomainPtr)
 
 /*
  Frees a Bra.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8005,6 +8111,7 @@ void rssn_bra_free(struct rssn_Bra *aBra)
 
 /*
  Computes the inner product <Bra|Ket>.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8020,6 +8127,7 @@ struct rssn_Expr *rssn_bra_ket(const struct rssn_Bra *aBra,
 
 /*
  Creates a new Bra from a state expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8077,6 +8185,7 @@ struct rssn_Cad *rssn_cad_handle(const struct rssn_Expr *const *aPolys,
 
 /*
  Calculates the residue of a complex function at a given pole.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8097,6 +8206,7 @@ struct rssn_Expr *rssn_calculate_residue(const struct rssn_Expr *aExpr,
  # Safety
  * `var` must be a valid null-terminated C string.
  * `result_h` must be a valid pointer to store the resulting handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8104,6 +8214,7 @@ struct rssn_Expr *rssn_calculate_residue(const struct rssn_Expr *aExpr,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -8124,6 +8235,7 @@ int32_t rssn_calculus_definite_integrate(size_t aExprH,
  # Safety
  * `var` must be a valid null-terminated C string.
  * `result_h` must be a valid pointer to store the resulting handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8131,6 +8243,7 @@ int32_t rssn_calculus_definite_integrate(size_t aExprH,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -8149,6 +8262,7 @@ int32_t rssn_calculus_differentiate(size_t aExprH,
  # Safety
  * `var` must be a valid null-terminated C string.
  * `result_h` must be a valid pointer to store the resulting handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8156,6 +8270,7 @@ int32_t rssn_calculus_differentiate(size_t aExprH,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -8174,6 +8289,7 @@ int32_t rssn_calculus_integrate(size_t aExprH,
  # Safety
  * `var` must be a valid null-terminated C string.
  * `result_h` must be a valid pointer to store the resulting handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8181,6 +8297,7 @@ int32_t rssn_calculus_integrate(size_t aExprH,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -8200,6 +8317,7 @@ int32_t rssn_calculus_limit(size_t aExprH,
  # Safety
  * `var` must be a valid null-terminated C string.
  * `result_h` must be a valid pointer to store the resulting handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8207,6 +8325,7 @@ int32_t rssn_calculus_limit(size_t aExprH,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -8222,6 +8341,7 @@ int32_t rssn_calculus_substitute(size_t aExprH,
 
 /*
  Calculates Carnot Efficiency: 1 - Tc/Th.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8240,6 +8360,7 @@ struct rssn_Expr *rssn_carnot_efficiency(const struct rssn_Expr *aTc,
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8271,6 +8392,7 @@ char *rssn_cas_expand_json(const char *aJsonStr)
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8302,6 +8424,7 @@ char *rssn_cas_factorize_json(const char *aJsonStr)
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8341,6 +8464,7 @@ char *rssn_cas_normalize_json(const char *aJsonStr)
 
  # Safety
  The caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8390,6 +8514,7 @@ char *rssn_cas_simplify_with_relations_json(const char *aJsonStr)
 
  This function is unsafe because it is exposed as an FFI entry point and returns
  ownership of a heap-allocated `Expr` to the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8427,6 +8552,7 @@ struct rssn_Expr *rssn_catalan_number(size_t aN)
  This function is unsafe because it dereferences raw pointers and returns
  ownership of heap-allocated arrays of `Expr`. The caller must ensure all input
  pointers are valid and is responsible for freeing the returned memory.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8444,6 +8570,7 @@ void rssn_character(const struct rssn_Representation *aRep,
 
 /*
  Constructs Chebyshev's differential equation: (1-x²)y'' - xy' + n²y = 0.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8460,6 +8587,7 @@ struct rssn_Expr *rssn_chebyshev_differential_equation(const struct rssn_Expr *a
 
 /*
  Computes the symbolic Chebyshev polynomial of the first kind `T_n(x)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8475,6 +8603,7 @@ struct rssn_Expr *rssn_chebyshev_t(const struct rssn_Expr *aN,
 
 /*
  Computes the symbolic Chebyshev polynomial of the second kind `U_n(x)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8493,6 +8622,7 @@ struct rssn_Expr *rssn_chebyshev_u(const struct rssn_Expr *aN,
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8525,6 +8655,7 @@ bool rssn_check_analytic(const struct rssn_Expr *aExpr,
 
  This function is unsafe because it dereferences a raw pointer; the caller must
  ensure `algebra` points to a valid `LieAlgebra`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8657,6 +8788,7 @@ int32_t rssn_comb_permutations(uint64_t aN,
 
  This function is unsafe because it dereferences raw `Expr` pointers and returns
  ownership of a heap-allocated `Expr` to the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8672,6 +8804,7 @@ struct rssn_Expr *rssn_combinations(const struct rssn_Expr *aN,
 
 /*
  Computes the commutator [A, B] acting on a Ket.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8706,6 +8839,7 @@ struct rssn_Expr *rssn_commutator(const struct rssn_Operator *aA,
  This function is unsafe because it dereferences raw pointers and returns
  ownership of heap-allocated memory. The caller must ensure all pointers are
  valid and must correctly free the returned expressions and array.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8831,6 +8965,7 @@ void rssn_computation_result_cache_set_json(struct rssn_ComputationResultCache *
 
  Takes a raw pointer to an `Expr` representing the joint probability distribution.
  Returns a raw pointer to an `Expr` representing the conditional entropy.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8852,6 +8987,7 @@ struct rssn_Expr *rssn_conditional_entropy(const struct rssn_Expr *aJointProbs)
 
  # Returns
  A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8867,6 +9003,7 @@ struct rssn_Vec_f64 *rssn_convergence_aitken(const double *aData,
 
 /*
  Bincode FFI for Aitken acceleration.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8881,6 +9018,7 @@ struct rssn_BincodeBuffer rssn_convergence_aitken_bincode(struct rssn_BincodeBuf
 
 /*
  JSON FFI for Aitken acceleration.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8888,6 +9026,7 @@ struct rssn_BincodeBuffer rssn_convergence_aitken_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -8899,6 +9038,7 @@ char *rssn_convergence_aitken_json(const char *aJsonPtr)
 
 /*
  Frees a generic `Vec<f64>` pointer created by convergence functions.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8914,6 +9054,7 @@ void rssn_convergence_free_vec(struct rssn_Vec_f64 *aVec)
 /*
  Copies the vector data into a provided buffer.
  buffer must have size at least `len * sizeof(f64)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8929,6 +9070,7 @@ void rssn_convergence_get_vec_data(const struct rssn_Vec_f64 *aVec,
 
 /*
  Returns the length of the vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8950,6 +9092,7 @@ size_t rssn_convergence_get_vec_len(const struct rssn_Vec_f64 *aVec)
 
  # Returns
  A pointer to a new `Vec<f64>` containing the extrapolated sequence, or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8965,6 +9108,7 @@ struct rssn_Vec_f64 *rssn_convergence_richardson(const double *aData,
 
 /*
  Bincode FFI for Richardson extrapolation.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8979,6 +9123,7 @@ struct rssn_BincodeBuffer rssn_convergence_richardson_bincode(struct rssn_Bincod
 
 /*
  JSON FFI for Richardson extrapolation.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -8986,6 +9131,7 @@ struct rssn_BincodeBuffer rssn_convergence_richardson_bincode(struct rssn_Bincod
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -9004,6 +9150,7 @@ char *rssn_convergence_richardson_json(const char *aJsonPtr)
 
  # Returns
  A pointer to a new `Vec<f64>` containing the accelerated sequence, or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9019,6 +9166,7 @@ struct rssn_Vec_f64 *rssn_convergence_wynn(const double *aData,
 
 /*
  Bincode FFI for Wynn's epsilon algorithm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9033,6 +9181,7 @@ struct rssn_BincodeBuffer rssn_convergence_wynn_bincode(struct rssn_BincodeBuffe
 
 /*
  JSON FFI for Wynn's epsilon algorithm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9040,6 +9189,7 @@ struct rssn_BincodeBuffer rssn_convergence_wynn_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -9055,6 +9205,7 @@ char *rssn_convergence_wynn_json(const char *aJsonPtr)
  # Safety
  Caller must ensure `f` and `g` are valid pointers to an `Expr`.
  `in_var` and `out_var` must be valid C strings or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9076,6 +9227,7 @@ struct rssn_Expr *rssn_convolution_fourier(const struct rssn_Expr *aF,
  # Safety
  Caller must ensure `f` and `g` are valid pointers to an `Expr`.
  `in_var` and `out_var` must be valid C strings or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9116,6 +9268,7 @@ struct rssn_Expr *rssn_coordinates_get_metric_tensor_handle(enum rssn_Coordinate
 
 /*
  Creates a constant expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9130,6 +9283,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_constant(double aVal)
 
 /*
  Creates a new derivative expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9145,6 +9299,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_derivative(struct rssn_Bincod
 
 /*
  Creates a new higher-order derivative expression (derivativen).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9161,6 +9316,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_derivativen(struct rssn_Binco
 
 /*
  Creates an E expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9175,6 +9331,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_e(void)
 
 /*
  Creates a new Exists quantifier expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9190,6 +9347,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_exists(const char *aVar,
 
 /*
  Creates a new ForAll quantifier expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9205,6 +9363,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_forall(const char *aVar,
 
 /*
  Creates an Infinity expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9219,6 +9378,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_infinity(void)
 
 /*
  Creates a new Interval expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9236,6 +9396,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_interval(struct rssn_BincodeB
 
 /*
  Creates a new Matrix expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9250,6 +9411,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_matrix(struct rssn_BincodeBuf
 
 /*
  Creates a NegativeInfinity expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9264,6 +9426,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_negative_infinity(void)
 
 /*
  Creates a Pi expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9278,6 +9441,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_pi(void)
 
 /*
  Creates a new Predicate expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9293,6 +9457,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_predicate(const char *aName,
 
 /*
  Creates a new SparsePolynomial expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9307,6 +9472,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_sparse_polynomial(struct rssn
 
 /*
  Creates a variable expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9321,6 +9487,7 @@ struct rssn_BincodeBuffer rssn_core_bincode_create_variable(const char *aName)
 
 /*
  Creates a new symbolic constant (f64).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9335,6 +9502,7 @@ struct rssn_Expr *rssn_core_create_constant(double aVal)
 
 /*
  Creates a new derivative expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9346,6 +9514,7 @@ struct rssn_Expr *rssn_core_create_derivative(const struct rssn_Expr *aExpr,
 
 /*
  Creates a new higher-order derivative expression (derivativen).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9362,6 +9531,7 @@ struct rssn_Expr *rssn_core_create_derivativen(const struct rssn_Expr *aFunction
 
 /*
  Creates a new E expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9376,6 +9546,7 @@ struct rssn_Expr *rssn_core_create_e(void)
 
 /*
  Creates a new Exists quantifier expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9387,6 +9558,7 @@ struct rssn_Expr *rssn_core_create_exists(const char *aVar,
 
 /*
  Creates a new ForAll quantifier expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9398,6 +9570,7 @@ struct rssn_Expr *rssn_core_create_forall(const char *aVar,
 
 /*
  Creates a new Infinity expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9412,6 +9585,7 @@ struct rssn_Expr *rssn_core_create_infinity(void)
 
 /*
  Creates a new Interval expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9430,6 +9604,7 @@ struct rssn_Expr *rssn_core_create_interval(const struct rssn_Expr *aLower,
 /*
  Creates a new Matrix expression from a flat array of elements.
  Elements should be in row-major order.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9446,6 +9621,7 @@ struct rssn_Expr *rssn_core_create_matrix(const struct rssn_Expr *const *aElemen
 
 /*
  Creates a new NegativeInfinity expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9460,6 +9636,7 @@ struct rssn_Expr *rssn_core_create_negative_infinity(void)
 
 /*
  Creates a new Pi expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9474,6 +9651,7 @@ struct rssn_Expr *rssn_core_create_pi(void)
 
 /*
  Creates a new Predicate expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9490,6 +9668,7 @@ struct rssn_Expr *rssn_core_create_predicate(const char *aName,
 
 /*
  Creates a new variable expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9504,6 +9683,7 @@ struct rssn_Expr *rssn_core_create_variable(const char *aName)
 
 /*
  Frees a symbolic expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9518,6 +9698,7 @@ void rssn_core_free_expr(struct rssn_Expr *aExpr)
 
 /*
  Frees a C string returned by `rssn_core_to_string`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9532,6 +9713,7 @@ void rssn_core_free_string(char *aS)
 
 /*
  Creates a constant expression using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9546,6 +9728,7 @@ char *rssn_core_json_create_constant(double aVal)
 
 /*
  Creates a new higher-order derivative expression (derivativen).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9562,6 +9745,7 @@ char *rssn_core_json_create_derivativen(const char *aFunctionJson,
 
 /*
  Creates an E expression using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9576,6 +9760,7 @@ char *rssn_core_json_create_e(void)
 
 /*
  Creates an Infinity expression using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9590,6 +9775,7 @@ char *rssn_core_json_create_infinity(void)
 
 /*
  Creates a new Interval expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9607,6 +9793,7 @@ char *rssn_core_json_create_interval(const char *aLowerJson,
 
 /*
  Creates a new Matrix expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9621,6 +9808,7 @@ char *rssn_core_json_create_matrix(const char *aElementsJson)
 
 /*
  Creates a NegativeInfinity expression using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9635,6 +9823,7 @@ char *rssn_core_json_create_negative_infinity(void)
 
 /*
  Creates a Pi expression using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9649,6 +9838,7 @@ char *rssn_core_json_create_pi(void)
 
 /*
  Creates a new Predicate expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9664,6 +9854,7 @@ char *rssn_core_json_create_predicate(const char *aName,
 
 /*
  Creates a new SparsePolynomial expression using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9678,6 +9869,7 @@ char *rssn_core_json_create_sparse_polynomial(const char *aPolyJson)
 
 /*
  Creates a variable expression using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9693,6 +9885,7 @@ char *rssn_core_json_create_variable(const char *aName)
 /*
  Returns the string representation of an expression.
  The caller is responsible for freeing the returned string using `rssn_core_free_string`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9710,6 +9903,7 @@ char *rssn_core_to_string(const struct rssn_Expr *aExpr)
 
  # Safety
  The caller must ensure `data1` and `data2` are valid pointers to arrays of `Expr` pointers.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9727,6 +9921,7 @@ struct rssn_Expr *rssn_correlation(const struct rssn_Expr *const *aData1,
 
 /*
  Creates a cosine expression: cos(expr).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9748,6 +9943,7 @@ struct rssn_BincodeBuffer rssn_cos_bincode(struct rssn_BincodeBuffer aExprBuffer
 
 /*
  Creates a cosine expression from JSON: cos(expr).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9762,6 +9958,7 @@ char *rssn_cos_json(const char *aJsonExpr)
 
 /*
  Calculates Coulomb's Law field.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9790,6 +9987,7 @@ int64_t rssn_count_real_roots_in_interval_handle(const struct rssn_Expr *aExprPt
 
  # Safety
  The caller must ensure `data1` and `data2` are valid pointers to arrays of `Expr` pointers.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9810,6 +10008,7 @@ struct rssn_Expr *rssn_covariance(const struct rssn_Expr *const *aData1,
 
  # Safety
  Caller must ensure `data` points to `len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9836,6 +10035,7 @@ uint32_t rssn_crc32_finalize(uint32_t aCrc)
  # Safety
  Caller must ensure `data` points to `len` bytes.
  Use 0xFFFFFFFF as initial crc for first call.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9856,6 +10056,7 @@ uint32_t rssn_crc32_update(uint32_t aCrc,
  # Safety
  Caller must ensure `data` points to `len` bytes.
  Returns 1 if valid, 0 if invalid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9891,6 +10092,7 @@ struct rssn_SimplicialComplex *rssn_create_torus_complex(size_t aM,
 
  Takes raw pointers to two arrays of `Expr` (probabilities) and their lengths.
  Returns a raw pointer to an `Expr` representing the cross-entropy.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9908,6 +10110,7 @@ struct rssn_Expr *rssn_cross_entropy(const struct rssn_Expr *const *aPProbs,
 
 /*
  Frees a `CrystalLattice`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9922,6 +10125,7 @@ void rssn_crystal_lattice_free(struct rssn_CrystalLattice *aPtr)
 
 /*
  Creates a new `CrystalLattice`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9938,6 +10142,7 @@ struct rssn_CrystalLattice *rssn_crystal_lattice_new(const rssn_Vector *aA1,
 
 /*
  Computes reciprocal lattice vectors.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9955,6 +10160,7 @@ void rssn_crystal_lattice_reciprocal_vectors(const struct rssn_CrystalLattice *a
 
 /*
  Computes the volume of the unit cell.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -9977,6 +10183,7 @@ struct rssn_Expr *rssn_crystal_lattice_volume(const struct rssn_CrystalLattice *
 
  # Returns
  A handle to the resulting point, or NULL on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10000,6 +10207,7 @@ struct rssn_CurvePoint *rssn_curve_add(const struct rssn_EllipticCurve *aCurve,
 
  # Returns
  A handle to the doubled point, or NULL on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10022,6 +10230,7 @@ struct rssn_CurvePoint *rssn_curve_double(const struct rssn_EllipticCurve *aCurv
 
  # Returns
  `true` if the point is on the curve, `false` otherwise.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10044,6 +10253,7 @@ bool rssn_curve_is_on_curve(const struct rssn_EllipticCurve *aCurve,
 
  # Returns
  A handle to the negated point, or NULL on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10059,6 +10269,7 @@ struct rssn_CurvePoint *rssn_curve_negate(const struct rssn_EllipticCurve *aCurv
 
 /*
  Creates an affine curve point from decimal strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10075,6 +10286,7 @@ struct rssn_CurvePoint *rssn_curve_point_affine(const char *aXStr,
 
 /*
  Frees a curve point handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10089,6 +10301,7 @@ void rssn_curve_point_free(struct rssn_CurvePoint *aPoint)
 
 /*
  Gets the x-coordinate of an affine point as a string. Returns NULL if infinity.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10103,6 +10316,7 @@ char *rssn_curve_point_get_x(const struct rssn_CurvePoint *aPoint)
 
 /*
  Gets the y-coordinate of an affine point as a string. Returns NULL if infinity.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10124,6 +10338,7 @@ struct rssn_CurvePoint *rssn_curve_point_infinity(void)
 
 /*
  Checks if a point is the point at infinity.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10138,6 +10353,7 @@ bool rssn_curve_point_is_infinity(const struct rssn_CurvePoint *aPoint)
 
 /*
  Scalar multiplication. k is a string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10160,6 +10376,7 @@ struct rssn_CurvePoint *rssn_curve_scalar_mult(const struct rssn_EllipticCurve *
 
  # Returns
  A raw pointer (`*mut Group`) to the newly created group.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10174,6 +10391,7 @@ struct rssn_Group *rssn_cyclic_group_create(size_t aN)
 
 /*
  Computes the definite integral of an expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10198,6 +10416,7 @@ struct rssn_Expr *rssn_denest_sqrt_handle(const struct rssn_Expr *aExpr)
 
 /*
  Computes the density of states for a 3D electron gas.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10217,6 +10436,7 @@ struct rssn_Expr *rssn_density_of_states_3d(const struct rssn_Expr *aEnergy,
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10232,6 +10452,7 @@ struct rssn_Expr *rssn_differentiate(const struct rssn_Expr *aExpr,
 
 /*
  Computes the symbolic Digamma function ψ(z).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10259,6 +10480,7 @@ double rssn_digamma_numerical(double aX)
 
  # Returns
  A raw pointer (`*mut Group`) to the newly created group.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10273,6 +10495,7 @@ struct rssn_Group *rssn_dihedral_group_create(size_t aN)
 
 /*
  Computes the Dirac adjoint of a fermion field.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10287,6 +10510,7 @@ struct rssn_Expr *rssn_dirac_adjoint(const struct rssn_Expr *aPsi)
 
 /*
  Dirac equation for a free particle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10302,9 +10526,9 @@ struct rssn_Expr *rssn_dirac_equation(const struct rssn_Expr *aPsi,
 
 /*
  Creates a Bernoulli distribution.
-
  Takes a raw pointer to an `Expr` representing `p` (probability of success).
  Returns a raw pointer to an `Expr` representing the Bernoulli distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10319,9 +10543,9 @@ struct rssn_Expr *rssn_dist_bernoulli(const struct rssn_Expr *aP)
 
 /*
  Creates a beta distribution.
-
  Takes raw pointers to `Expr` representing the alpha and beta parameters.
  Returns a raw pointer to an `Expr` representing the beta distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10340,6 +10564,7 @@ struct rssn_Expr *rssn_dist_beta(const struct rssn_Expr *aAlpha,
 
  Takes raw pointers to `Expr` representing `n` (number of trials) and `p` (probability of success).
  Returns a raw pointer to an `Expr` representing the binomial distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10358,6 +10583,7 @@ struct rssn_Expr *rssn_dist_binomial(const struct rssn_Expr *aN,
 
  Takes raw pointers to `Expr` representing the distribution and the value `x`.
  Returns a raw pointer to an `Expr` representing the CDF at `x`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10373,9 +10599,9 @@ struct rssn_Expr *rssn_dist_cdf(const struct rssn_Expr *aDist,
 
 /*
  Computes the expectation (mean) of a distribution.
-
  Takes a raw pointer to an `Expr` representing the distribution.
  Returns a raw pointer to an `Expr` representing the expectation.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10390,9 +10616,9 @@ struct rssn_Expr *rssn_dist_expectation(const struct rssn_Expr *aDist)
 
 /*
  Creates an exponential distribution.
-
  Takes a raw pointer to an `Expr` representing the rate parameter (λ).
  Returns a raw pointer to an `Expr` representing the exponential distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10407,9 +10633,9 @@ struct rssn_Expr *rssn_dist_exponential(const struct rssn_Expr *aRate)
 
 /*
  Creates a gamma distribution.
-
  Takes raw pointers to `Expr` representing the shape and rate parameters.
  Returns a raw pointer to an `Expr` representing the gamma distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10428,6 +10654,7 @@ struct rssn_Expr *rssn_dist_gamma(const struct rssn_Expr *aShape,
 
  Takes raw pointers to `Expr` representing the distribution and the variable `t`.
  Returns a raw pointer to an `Expr` representing the MGF.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10443,9 +10670,9 @@ struct rssn_Expr *rssn_dist_mgf(const struct rssn_Expr *aDist,
 
 /*
  Creates a normal distribution.
-
  Takes raw pointers to `Expr` representing the mean and standard deviation.
  Returns a raw pointer to an `Expr` representing the normal distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10464,6 +10691,7 @@ struct rssn_Expr *rssn_dist_normal(const struct rssn_Expr *aMean,
 
  Takes raw pointers to `Expr` representing the distribution and the value `x`.
  Returns a raw pointer to an `Expr` representing the PDF at `x`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10479,9 +10707,9 @@ struct rssn_Expr *rssn_dist_pdf(const struct rssn_Expr *aDist,
 
 /*
  Creates a Poisson distribution.
-
  Takes a raw pointer to an `Expr` representing the rate parameter (λ).
  Returns a raw pointer to an `Expr` representing the Poisson distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10496,9 +10724,9 @@ struct rssn_Expr *rssn_dist_poisson(const struct rssn_Expr *aRate)
 
 /*
  Creates a Student's t-distribution.
-
  Takes a raw pointer to an `Expr` representing the degrees of freedom (ν).
  Returns a raw pointer to an `Expr` representing the Student's t-distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10513,9 +10741,9 @@ struct rssn_Expr *rssn_dist_student_t(const struct rssn_Expr *aNu)
 
 /*
  Creates a uniform distribution.
-
  Takes raw pointers to `Expr` representing the minimum and maximum values.
  Returns a raw pointer to an `Expr` representing the uniform distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10531,9 +10759,9 @@ struct rssn_Expr *rssn_dist_uniform(const struct rssn_Expr *aMin,
 
 /*
  Computes the variance of a distribution.
-
  Takes a raw pointer to an `Expr` representing the distribution.
  Returns a raw pointer to an `Expr` representing the variance.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10555,6 +10783,7 @@ uint64_t rssn_double_factorial(uint64_t aN)
 
 /*
  Computes Drude conductivity.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10601,6 +10830,7 @@ rssn_ char *rssn_e_json(void) ;
 
  # Returns
  A handle to the ECDSA signature, or NULL on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10622,6 +10852,7 @@ struct rssn_EcdsaSignature *rssn_ecdsa_sign(const char *aMessageHashStr,
 
  # Arguments
  * `sig` - Handle to the signature to free.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10642,6 +10873,7 @@ void rssn_ecdsa_signature_free(struct rssn_EcdsaSignature *aSig)
 
  # Returns
  A decimal string representing 'r', or NULL on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10662,6 +10894,7 @@ char *rssn_ecdsa_signature_get_r(const struct rssn_EcdsaSignature *aSig)
 
  # Returns
  A decimal string representing 's', or NULL on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10687,6 +10920,7 @@ char *rssn_ecdsa_signature_get_s(const struct rssn_EcdsaSignature *aSig)
 
  # Returns
  `true` if the signature is valid, `false` otherwise.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10706,6 +10940,7 @@ bool rssn_ecdsa_verify(const char *aMessageHashStr,
 
 /*
  Computes electric field from scalar and vector potentials.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10725,6 +10960,7 @@ rssn_Vector *rssn_electric_field_from_potentials(const struct rssn_Expr *aV,
 
 /*
  Calculates energy density.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10740,6 +10976,7 @@ struct rssn_Expr *rssn_electromagnetic_energy_density(const rssn_Vector *aEField
 
 /*
  Frees an elliptic curve handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10754,6 +10991,7 @@ void rssn_elliptic_curve_free(struct rssn_EllipticCurve *aCurve)
 
 /*
  Creates a new elliptic curve from decimal strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10770,6 +11008,7 @@ struct rssn_EllipticCurve *rssn_elliptic_curve_new(const char *aAStr,
 
 /*
  Calculates enthalpy: U + PV.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10786,6 +11025,7 @@ struct rssn_Expr *rssn_enthalpy(const struct rssn_Expr *aU,
 
 /*
  Computes the symbolic error function erf(z).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10807,6 +11047,7 @@ double rssn_erf_numerical(double aX)
 
 /*
  Computes the symbolic complementary error function erfc(z).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10828,6 +11069,7 @@ double rssn_erfc_numerical(double aX)
 
 /*
  Computes the symbolic imaginary error function erfi(z).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10845,6 +11087,7 @@ struct rssn_Expr *rssn_erfi(const struct rssn_Expr *aArg)
 
  # Safety
  The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10861,6 +11104,7 @@ struct rssn_Expr *rssn_euler_lagrange(const struct rssn_Expr *aLagrangian,
 
 /*
  Computes Euler-Lagrange equation.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10878,6 +11122,7 @@ struct rssn_Expr *rssn_euler_lagrange_equation(const struct rssn_Expr *aLagrangi
 
 /*
  Evaluates an expression at a given point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10894,7 +11139,6 @@ struct rssn_Expr *rssn_evaluate_at_point(const struct rssn_Expr *aExpr,
 
 /*
  Numerically evaluates a symbolic expression.
-
  Takes a raw pointer to an `Expr` as input,
  and returns an `f64` representing the numerical evaluation of that expression.
  */
@@ -10904,6 +11148,7 @@ double rssn_evaluate_numerical_handle(const struct rssn_Expr *aExpr)
 
 /*
  Creates an exponential expression: e^(expr).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10925,6 +11170,7 @@ struct rssn_BincodeBuffer rssn_exp_bincode(struct rssn_BincodeBuffer aExprBuffer
 
 /*
  Creates an exponential expression from JSON: e^(expr).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10942,6 +11188,7 @@ char *rssn_exp_json(const char *aJsonExpr)
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10963,6 +11210,7 @@ struct rssn_BincodeBuffer rssn_expand_bincode(struct rssn_BincodeBuffer aExprBuf
 
 /*
  Expands a symbolic expression from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -10977,6 +11225,7 @@ char *rssn_expand_json(const char *aJsonExpr)
 
 /*
  Computes the expectation value `<A>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11009,6 +11258,7 @@ struct rssn_Expr *rssn_expectation_value(const struct rssn_Operator *aOp,
 
  This function is unsafe because it dereferences a raw pointer and returns
  ownership of a heap-allocated `Expr` that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11056,8 +11306,8 @@ void rssn_expr_free(size_t aHandle)
 
 /*
  Frees the memory allocated for an `ExprList`.
-
  Takes a raw mutable pointer to an `ExprList`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11072,9 +11322,9 @@ void rssn_expr_list_free(struct rssn_ExprList *aList)
 
 /*
  Returns a specific element from an `ExprList`.
-
  Takes a raw pointer to an `ExprList` and a `usize` index.
  Returns a raw pointer to an `Expr` at that index.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11090,9 +11340,9 @@ struct rssn_Expr *rssn_expr_list_get(const struct rssn_ExprList *aList,
 
 /*
  Returns the length of an `ExprList`.
-
  Takes a raw pointer to an `ExprList`.
  Returns a `usize` representing its length.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11166,6 +11416,7 @@ double rssn_falling_factorial(double aX,
 
 /*
  Computes Fermi energy for a 3D electron gas.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11181,6 +11432,7 @@ struct rssn_Expr *rssn_fermi_energy_3d(const struct rssn_Expr *aConcentration,
 
 /*
  Feynman propagator in position space.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11197,6 +11449,7 @@ struct rssn_Expr *rssn_feynman_propagator_position_space(const struct rssn_Expr 
 
 /*
  Computes the Feynman slash notation.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11255,6 +11508,7 @@ struct rssn_Expr **rssn_find_fixed_points(const struct rssn_Expr *aMapPtr,
 
 /*
  Finds the order of a pole.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11271,6 +11525,7 @@ size_t rssn_find_pole_order(const struct rssn_Expr *aExpr,
 
 /*
  Finds poles of an expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11289,6 +11544,7 @@ struct rssn_Vec_Expr *rssn_find_poles(const struct rssn_Expr *aExpr,
 
  # Safety
  Caller must ensure `field` is a valid pointer returned by `rssn_finite_field_new`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11312,6 +11568,7 @@ struct rssn_Arc_FiniteField *rssn_finite_field_new(int64_t aModulus)
 
 /*
  First-order energy correction.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11331,6 +11588,7 @@ struct rssn_Expr *rssn_first_order_energy_correction(const struct rssn_Operator 
  # Safety
  Caller must ensure `f_omega` is a valid pointer to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11350,6 +11608,7 @@ struct rssn_Expr *rssn_fourier_differentiation(const struct rssn_Expr *aFOmega,
  # Safety
  Caller must ensure `f_omega` and `a` are valid pointers to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11370,6 +11629,7 @@ struct rssn_Expr *rssn_fourier_frequency_shift(const struct rssn_Expr *aFOmega,
  # Safety
  Caller must ensure `f_omega` and `a` are valid pointers to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11404,6 +11664,7 @@ struct rssn_Expr *rssn_fourier_series_handle(const struct rssn_Expr *aExpr,
  # Safety
  Caller must ensure `f_omega` and `a` are valid pointers to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11424,6 +11685,7 @@ struct rssn_Expr *rssn_fourier_time_shift(const struct rssn_Expr *aFOmega,
  # Safety
  Caller must ensure `expr` is a valid pointer to an `Expr`.
  `in_var` and `out_var` must be valid C strings or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11545,6 +11807,7 @@ void rssn_free_differential_form_handle(struct rssn_DifferentialForm *aPtr)
 
  # Safety
  The caller must ensure `expr` was created by this module and hasn't been freed yet.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11566,6 +11829,7 @@ void rssn_free_expr_vec_handle(struct rssn_Vec_Expr *aPtr)
 
 /*
  Frees a float64 array allocated by the FEM FFI.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11581,6 +11845,7 @@ void rssn_free_f64_array(double *aPtr,
 
 /*
  Frees a float64 array allocated by the CNM FFI.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11596,6 +11861,7 @@ void rssn_free_f64_cnm_array(double *aPtr,
 
 /*
  Frees a float64 array allocated by the MTM FFI.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11632,6 +11898,7 @@ void rssn_free_multivector_handle(struct rssn_Multivector *aPtr)
  This function is unsafe because it takes ownership of a raw pointer and frees the
  underlying allocation. The pointer must have been created by this library and must
  not be used after this call.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11688,6 +11955,7 @@ void rssn_free_string_constant(char *aPtr)
 
 /*
  Computes the symbolic Gamma function Γ(z).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11776,6 +12044,7 @@ struct rssn_Expr *rssn_general_sqrt_handle(const struct rssn_Expr *aZ,
 
 /*
  Computes the symbolic Generalized Laguerre polynomial `L_n^α(x)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11809,6 +12078,7 @@ struct rssn_Expr *rssn_generalized_stokes_theorem_handle(const struct rssn_Diffe
 
  # Returns
  A handle to the generated key pair, or NULL on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11832,6 +12102,7 @@ struct rssn_EcdhKeyPair *rssn_generate_keypair(const struct rssn_EllipticCurve *
 
  # Returns
  A handle to the shared secret point, or NULL on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11923,6 +12194,7 @@ char *rssn_get_commit_sha_json(void)
 
  The returned pointer is valid until the next call to an FFI function on the same thread.
  The caller should not free this pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -11965,6 +12237,7 @@ char *rssn_get_long_version_json(void)
  Returns a pointer to a tuple (Expr, Expr) - represented as `Vec<Expr>` of size 2 for simplicity?
  Or return two out pointers?
  I'll return a `Vec<Expr>` of size 2.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12051,6 +12324,7 @@ uint8_t rssn_gf256_pow(uint8_t aA,
 
 /*
  Calculates Gibbs Free Energy: H - TS.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12067,9 +12341,9 @@ struct rssn_Expr *rssn_gibbs_free_energy(const struct rssn_Expr *aH,
 
 /*
  Computes the Gini impurity of a probability distribution.
-
  Takes a raw pointer to an array of `Expr` (probabilities) and its length.
  Returns a raw pointer to an `Expr` representing the Gini impurity.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12094,6 +12368,7 @@ struct rssn_Expr *rssn_gini_impurity(const struct rssn_Expr *const *aProbs,
 
  # Returns
  A raw pointer to an array of handles to the orthogonalized basis expressions.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12137,6 +12412,7 @@ struct rssn_Expr *rssn_graph_adjacency_matrix(const struct rssn_RssnGraph *aPtr)
 /*
  Performs BFS traversal from a start node.
  Returns a JSON string containing the node IDs in visit order.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12150,6 +12426,7 @@ char *rssn_graph_bfs(const struct rssn_RssnGraph *aPtr,
 /*
  Performs BFS traversal starting from a given node.
  Returns a JSON array of node indices in visit order.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12164,6 +12441,7 @@ char *rssn_graph_bfs_api(const struct rssn_RssnGraph *aGraph,
  Finds maximum matching in a bipartite graph.
  `partition_json` should be a JSON array of 0s and 1s indicating the partition.
  Returns a JSON array of [u, v] pairs representing the matching.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12177,6 +12455,7 @@ char *rssn_graph_bipartite_maximum_matching(const struct rssn_RssnGraph *aGraph,
 /*
  Finds bridges and articulation points.
  Returns a JSON object with "bridges" and "`articulation_points`" fields.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12204,6 +12483,7 @@ struct rssn_RssnGraph *rssn_graph_complement(const struct rssn_RssnGraph *aPtr)
 /*
  Finds connected components.
  Returns a JSON string containing the components.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12216,6 +12496,7 @@ char *rssn_graph_connected_components(const struct rssn_RssnGraph *aPtr)
 /*
  Finds all connected components in an undirected graph.
  Returns a JSON array of arrays, where each inner array is a component.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12228,6 +12509,7 @@ char *rssn_graph_connected_components_api(const struct rssn_RssnGraph *aGraph)
 /*
  Performs DFS traversal from a start node.
  Returns a JSON string containing the node IDs in visit order.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12241,6 +12523,7 @@ char *rssn_graph_dfs(const struct rssn_RssnGraph *aPtr,
 /*
  Performs DFS traversal starting from a given node.
  Returns a JSON array of node indices in visit order.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12333,6 +12616,7 @@ int rssn_graph_is_bipartite(const struct rssn_RssnGraph *aPtr)
 /*
  Checks if a graph is bipartite.
  Returns a JSON array of partition assignments (0 or 1 for each node), or null if not bipartite.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12360,6 +12644,7 @@ struct rssn_RssnGraph *rssn_graph_join(const struct rssn_RssnGraph *aPtr1,
 /*
  Computes minimum spanning tree using Kruskal's algorithm.
  Returns a JSON string containing the MST edges.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12410,6 +12695,7 @@ size_t rssn_graph_node_count(const struct rssn_RssnGraph *aPtr)
 /*
  Finds all strongly connected components in a directed graph.
  Returns a JSON array of arrays.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12430,6 +12716,7 @@ struct rssn_RssnGraph *rssn_graph_tensor_product(const struct rssn_RssnGraph *aP
 /*
  Performs topological sort on a DAG.
  Returns a JSON array of node indices in topological order, or null if the graph has a cycle.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12450,6 +12737,7 @@ struct rssn_RssnGraph *rssn_graph_union(const struct rssn_RssnGraph *aPtr1,
 /*
  Finds a valid vertex coloring using greedy heuristic.
  Returns a JSON object mapping node IDs to colors.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -12489,6 +12777,7 @@ struct rssn_Expr *rssn_greens_theorem_handle(const struct rssn_Expr *aPPtr,
  This function is unsafe because it dereferences raw pointers and returns
  ownership of heap-allocated memory. The caller must ensure `group` and
  `out_len` are valid pointers and must correctly manage the returned memory.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12527,6 +12816,7 @@ struct rssn_Expr **rssn_group_center(const struct rssn_Group *aGroup,
  This function is unsafe because it dereferences multiple raw pointers and assumes
  they form consistent arrays of valid `Expr` objects. The returned `Group` must be
  freed with [`rssn_group_free`].
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12564,6 +12854,7 @@ struct rssn_Group *rssn_group_create(const struct rssn_Expr *const *aElementsPtr
 
  This function is unsafe because it dereferences raw pointers; the caller must
  ensure they point to a valid group and element.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12593,6 +12884,7 @@ size_t rssn_group_element_order(const struct rssn_Group *aGroup,
  This function is unsafe because it takes ownership of a raw pointer. The pointer
  must either be null or have been allocated by `rssn_group_create`, and must not
  be used after this call.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12622,6 +12914,7 @@ void rssn_group_free(struct rssn_Group *aPtr)
 
  This function is unsafe because it dereferences raw pointers and returns
  ownership of a heap-allocated `Expr` that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12652,6 +12945,7 @@ struct rssn_Expr *rssn_group_inverse(const struct rssn_Group *aGroup,
 
  This function is unsafe because it dereferences a raw pointer; the caller must
  ensure `group` points to a valid [`Group`].
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12682,6 +12976,7 @@ bool rssn_group_is_abelian(const struct rssn_Group *aGroup)
 
  This function is unsafe because it dereferences raw pointers and returns
  ownership of a heap-allocated `Expr` that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12698,6 +12993,7 @@ struct rssn_Expr *rssn_group_multiply(const struct rssn_Group *aGroup,
 
 /*
  Computes Hall coefficient.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12713,6 +13009,7 @@ struct rssn_Expr *rssn_hall_coefficient(const struct rssn_Expr *aN,
 
 /*
  Calculates Hamiltonian: T + V.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12728,6 +13025,7 @@ struct rssn_Expr *rssn_hamiltonian(const struct rssn_Expr *aT,
 
 /*
  Hamiltonian for a free particle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12742,6 +13040,7 @@ struct rssn_Operator *rssn_hamiltonian_free_particle(const struct rssn_Expr *aM)
 
 /*
  Hamiltonian for a harmonic oscillator.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12760,6 +13059,7 @@ struct rssn_Operator *rssn_hamiltonian_harmonic_oscillator(const struct rssn_Exp
 
  # Safety
  The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12780,6 +13080,7 @@ struct rssn_Expr *rssn_hamiltons_principle(const struct rssn_Expr *aLagrangian,
  # Safety
  Caller must ensure `codeword` points to 7 bytes.
  Returns 1 if valid, 0 if invalid, -1 on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12798,6 +13099,7 @@ int32_t rssn_hamming_check(const uint8_t *aCodeword)
  # Safety
  Caller must ensure `codeword` points to 7 bytes and `data_out` points to 4 bytes.
  `error_pos` will receive the 1-based error position or 0 if no error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12818,6 +13120,7 @@ int32_t rssn_hamming_decode(const uint8_t *aCodeword,
  # Safety
  Caller must ensure `a` and `b` point to `len` bytes each.
  Returns -1 on error (null pointers or different lengths).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12838,6 +13141,7 @@ int32_t rssn_hamming_distance(const uint8_t *aA,
 
  # Safety
  Caller must ensure `data` points to 4 bytes and `out` points to 7 bytes of allocated memory.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12856,6 +13160,7 @@ int32_t rssn_hamming_encode(const uint8_t *aData,
 
  # Safety
  Caller must ensure `data` points to `len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -12999,6 +13304,7 @@ char *rssn_handle_free_json(const char *aJsonStr)
 
  # Safety
  The caller must ensure the returned pointer is freed using `rssn_free_expr`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13052,6 +13358,7 @@ char *rssn_handle_get_json(const char *aJsonStr)
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13104,6 +13411,7 @@ char *rssn_handle_to_string(size_t aHandle)
 
 /*
  Constructs Hermite's differential equation: y'' - 2xy' + 2ny = 0.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13120,6 +13428,7 @@ struct rssn_Expr *rssn_hermite_differential_equation(const struct rssn_Expr *aY,
 
 /*
  Computes the symbolic Hermite polynomial `H_n(x)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13135,6 +13444,7 @@ struct rssn_Expr *rssn_hermite_h(const struct rssn_Expr *aDegree,
 
 /*
  Constructs Rodrigues' formula for Hermite polynomials.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13162,6 +13472,7 @@ struct rssn_Expr *rssn_hessian_matrix_handle(const struct rssn_Expr *aExprPtr,
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13184,6 +13495,7 @@ struct rssn_Expr *rssn_heuristic_simplify(const struct rssn_Expr *aExpr)
 
  # Returns
  A raw pointer to the newly created `HilbertSpace`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13191,6 +13503,7 @@ struct rssn_Expr *rssn_heuristic_simplify(const struct rssn_Expr *aExpr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -13207,6 +13520,7 @@ struct rssn_HilbertSpace *rssn_hilbert_space_create(const char *aVar,
 
  # Arguments
  * `ptr` - Pointer to the `HilbertSpace` to free.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13221,6 +13535,7 @@ void rssn_hilbert_space_free(struct rssn_HilbertSpace *aPtr)
 
 /*
  Calculates ideal gas Law expression: PV - nRT.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13298,6 +13613,7 @@ struct rssn_Expr *rssn_ifs_similarity_dimension(struct rssn_Expr *const *aScalin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -13318,6 +13634,7 @@ int32_t rssn_init_plugin_manager(const char *aPluginDirPtr)
 
  # Returns
  A raw pointer to the symbolic expression representing the inner product.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13337,6 +13654,7 @@ struct rssn_Expr *rssn_inner_product(const struct rssn_HilbertSpace *aSpace,
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer and `var` is a valid C string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13414,6 +13732,7 @@ double rssn_inverse_erfc(double aX)
  # Safety
  Caller must ensure `expr` is a valid pointer to an `Expr`.
  `in_var` and `out_var` must be valid C strings or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13434,6 +13753,7 @@ struct rssn_Expr *rssn_inverse_fourier_transform(const struct rssn_Expr *aExpr,
  # Safety
  Caller must ensure `expr` is a valid pointer to an `Expr`.
  `in_var` and `out_var` must be valid C strings or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13454,6 +13774,7 @@ struct rssn_Expr *rssn_inverse_laplace_transform(const struct rssn_Expr *aExpr,
  # Safety
  Caller must ensure `expr` is a valid pointer to an `Expr`.
  `in_var` and `out_var` must be valid C strings or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13494,8 +13815,24 @@ int32_t rssn_is_satisfiable_handle(const struct rssn_Expr *aExpr)
 ;
 
 /*
+ Appends a function pointer to the list of allowed JIT calls.
+ */
+rssn_
+void rssn_jit_allow_call_target(struct rssn_JitEngine *aEngine,
+                                const uint8_t *aFuncPtr)
+;
+
+/*
+ Clears all registered memory regions.
+ */
+rssn_
+void rssn_jit_clear_memory_regions(struct rssn_JitEngine *aEngine)
+;
+
+/*
  Compiles a sequence of instructions provided as JSON.
  Returns a JSON result containing the address (as usize) of the compiled function.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13503,6 +13840,7 @@ int32_t rssn_is_satisfiable_handle(const struct rssn_Expr *aExpr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -13511,6 +13849,15 @@ int32_t rssn_is_satisfiable_handle(const struct rssn_Expr *aExpr)
 rssn_
 char *rssn_jit_compile_json(struct rssn_JitEngine *aEngine,
                             const char *aJsonPtr)
+;
+
+/*
+ Configures the sandbox via JSON.
+ Returns a JSON result containing a boolean indicating success.
+ */
+rssn_
+char *rssn_jit_configure_sandbox_json(struct rssn_JitEngine *aEngine,
+                                      const char *aJsonPtr)
 ;
 
 /*
@@ -13526,6 +13873,7 @@ struct rssn_JitEngine *rssn_jit_create(void)
  # Safety
  The function pointer must be a valid pointer returned by `rssn_jit_compile_*`.
  It assumes the function signature is `fn() -> f64`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13535,11 +13883,13 @@ struct rssn_JitEngine *rssn_jit_create(void)
  3. Any pointers returned by this function are managed according to the API's ownership rules.
  */
 rssn_
-double rssn_jit_execute(const uint8_t *aFuncPtr)
+double rssn_jit_execute(struct rssn_JitEngine *aEngine,
+                        const uint8_t *aFuncPtr)
 ;
 
 /*
  Frees a JIT Engine instance.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13558,6 +13908,7 @@ void rssn_jit_free(struct rssn_JitEngine *aEngine)
  `opcode`: The exact u32 opcode found in `Instruction::Custom`.
  `func_ptr`: Pointer to the C function to call. Signature must be `fn(i64, ...) -> i64` where `i64` represents a stack value.
  `arg_count`: Number of arguments the function expects (popped from stack).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13574,10 +13925,20 @@ void rssn_jit_register_custom_op(struct rssn_JitEngine *aEngine,
 ;
 
 /*
+ Registers a memory region to the sandbox, returning the region ID.
+ */
+rssn_
+uint16_t rssn_jit_register_memory_region(struct rssn_JitEngine *aEngine,
+                                         uint8_t *aBase,
+                                         size_t aSize)
+;
+
+/*
  Computes the joint entropy of a joint probability distribution.
 
  Takes a raw pointer to an `Expr` representing the joint probability distribution.
  Returns a raw pointer to an `Expr` representing the joint entropy.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13618,6 +13979,7 @@ char *rssn_json_abs(const char *aZJson)
 
  This function is unsafe because it dereferences raw C string pointers and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13652,6 +14014,7 @@ char *rssn_json_adjoint_representation_algebra(const char *aXJson,
 
  This function is unsafe because it dereferences raw C string pointers and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13694,6 +14057,7 @@ char *rssn_json_analyze_convergence(const char *aTermJson,
 
 /*
  Analyzes stability of a fixed point (JSON)
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -13709,6 +14073,7 @@ char *rssn_json_analyze_stability(const char *aMapJson,
  Checks if two graphs are isomorphic.
  Input: {"g1": Graph, "g2": Graph}
  Output: bool
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13759,6 +14124,7 @@ char *rssn_json_asymptotic_expansion(const char *aExprJson,
 
  This function is unsafe because it is exposed as an FFI entry point and returns
  ownership of a heap-allocated C string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13773,6 +14139,7 @@ char *rssn_json_bell_number(size_t aN)
 
 /*
  Constructs Bessel's differential equation via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13789,6 +14156,7 @@ char *rssn_json_bessel_differential_equation(const char *aYJson,
 
 /*
  Computes the symbolic modified Bessel function `I_n(x)` via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13804,6 +14172,7 @@ char *rssn_json_bessel_i(const char *aOrderJson,
 
 /*
  Computes I₀(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13818,6 +14187,7 @@ char *rssn_json_bessel_i0(const char *aXJson)
 
 /*
  Computes I₁(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13832,6 +14202,7 @@ char *rssn_json_bessel_i1(const char *aXJson)
 
 /*
  Computes the symbolic Bessel function `J_n(x)` via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13847,6 +14218,7 @@ char *rssn_json_bessel_j(const char *aOrderJson,
 
 /*
  Computes J₀(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13861,6 +14233,7 @@ char *rssn_json_bessel_j0(const char *aXJson)
 
 /*
  Computes J₁(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13875,6 +14248,7 @@ char *rssn_json_bessel_j1(const char *aXJson)
 
 /*
  Computes the symbolic modified Bessel function `K_n(x)` via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13890,6 +14264,7 @@ char *rssn_json_bessel_k(const char *aOrderJson,
 
 /*
  Computes K₀(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13904,6 +14279,7 @@ char *rssn_json_bessel_k0(const char *aXJson)
 
 /*
  Computes K₁(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13918,6 +14294,7 @@ char *rssn_json_bessel_k1(const char *aXJson)
 
 /*
  Computes the symbolic Bessel function `Y_n(x)` via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13933,6 +14310,7 @@ char *rssn_json_bessel_y(const char *aOrderJson,
 
 /*
  Computes Y₀(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13947,6 +14325,7 @@ char *rssn_json_bessel_y0(const char *aXJson)
 
 /*
  Computes Y₁(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13961,6 +14340,7 @@ char *rssn_json_bessel_y1(const char *aXJson)
 
 /*
  Computes the symbolic Beta function B(a, b) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13976,6 +14356,7 @@ char *rssn_json_beta(const char *aAJson,
 
 /*
  Computes B(a, b) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -13991,6 +14372,7 @@ char *rssn_json_beta_numerical(const char *aAJson,
 
 /*
  Computes C(n, k) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14046,6 +14428,7 @@ char *rssn_json_buchberger(const char *aBasisJson,
  Computes CAD for a set of polynomials via JSON interface.
 
  Input JSON should be an object: `{"polys": [Expr, ...], "vars": ["x", "y", ...]}`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14085,6 +14468,7 @@ char *rssn_json_calculate_residue(const char *aExprJson,
 
  This function is unsafe because it is exposed as an FFI entry point and returns
  ownership of a heap-allocated C string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14116,6 +14500,7 @@ char *rssn_json_catalan_number(size_t aN)
 
  This function is unsafe because it dereferences a raw C string pointer and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14130,6 +14515,7 @@ char *rssn_json_character(const char *aRepJson)
 
 /*
  Constructs Chebyshev's differential equation via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14146,6 +14532,7 @@ char *rssn_json_chebyshev_differential_equation(const char *aYJson,
 
 /*
  Computes the symbolic Chebyshev polynomial `T_n(x)` via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14161,6 +14548,7 @@ char *rssn_json_chebyshev_t(const char *aNJson,
 
 /*
  Computes the symbolic Chebyshev polynomial `U_n(x)` via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14201,6 +14589,7 @@ bool rssn_json_check_analytic(const char *aExprJson,
 
  This function is unsafe because it dereferences a raw C string pointer; the
  caller must ensure it points to a valid JSON string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14215,7 +14604,6 @@ bool rssn_json_check_jacobi_identity(const char *aAlgebraJson)
 
 /*
  Solves the Chinese Remainder Theorem.
-
  Takes a JSON string representing a vector of congruences (`(remainder, modulus)`),
  and returns a JSON string representing the `Expr` solution.
  */
@@ -14227,6 +14615,7 @@ char *rssn_json_chinese_remainder(const char *aCongruencesJson)
  Exact chromatic number.
  Input: Graph
  Output: usize
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14268,6 +14657,7 @@ char *rssn_json_classify_pde(const char *aEquationJson,
 
  This function is unsafe because it dereferences raw C string pointers and returns
  ownership of a heap-allocated C string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14298,6 +14688,7 @@ char *rssn_json_combinations(const char *aNJson,
 
  This function is unsafe because it dereferences a raw C string pointer and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14337,6 +14728,7 @@ char *rssn_json_complex_system_new_mandelbrot(const char *aCJson)
 
  Takes a JSON string representing an `Expr` (joint probability distribution).
  Returns a JSON string representing the `Expr` of the conditional entropy.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14355,6 +14747,7 @@ char *rssn_json_conditional_entropy(const char *aJointProbsJson)
  Takes JSON strings representing `Expr` (two functions `f` and `g`),
  and `String` (input variable), `String` (output variable).
  Returns a JSON string representing the `Expr` of the convolution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14376,6 +14769,7 @@ char *rssn_json_convolution_fourier(const char *aFJson,
  Takes JSON strings representing `Expr` (two functions `f` and `g`),
  and `String` (input variable), `String` (output variable).
  Returns a JSON string representing the `Expr` of the convolution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14441,6 +14835,7 @@ char *rssn_json_covariance(const char *aData1Json,
  Computes CRC-32 checksum via JSON interface.
  Input: \[bytes\]
  Returns: u32 checksum
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14457,6 +14852,7 @@ char *rssn_json_crc32_compute(const char *aDataJson)
  Finalizes CRC-32 computation via JSON interface.
  Input: running crc as u32
  Returns: final crc as u32
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14473,6 +14869,7 @@ char *rssn_json_crc32_finalize(const char *aCrcJson)
  Updates CRC-32 incrementally via JSON interface.
  Input: current crc as u32, data as \[bytes\]
  Returns: updated crc as u32
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14490,6 +14887,7 @@ char *rssn_json_crc32_update(const char *aCrcJson,
  Verifies CRC-32 checksum via JSON interface.
  Input: data as \[bytes\], `expected_crc` as u32
  Returns: boolean
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14508,6 +14906,7 @@ char *rssn_json_crc32_verify(const char *aDataJson,
 
  Takes two JSON strings representing `Vec<Expr>` (probability distributions `p` and `q`).
  Returns a JSON string representing the `Expr` of the cross-entropy.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14523,6 +14922,7 @@ char *rssn_json_cross_entropy(const char *aPProbsJson,
 
 /*
  Adds two points.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14539,6 +14939,7 @@ char *rssn_json_curve_add(const char *aCurveJson,
 
 /*
  Doubles a point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14554,6 +14955,7 @@ char *rssn_json_curve_double(const char *aCurveJson,
 
 /*
  Checks if a point is on the curve.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14569,6 +14971,7 @@ char *rssn_json_curve_is_on_curve(const char *aCurveJson,
 
 /*
  Negates a point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14585,6 +14988,7 @@ char *rssn_json_curve_negate(const char *aCurveJson,
 /*
  Creates an affine curve point.
  Arguments: x (str), y (str), modulus (str)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14601,6 +15005,7 @@ char *rssn_json_curve_point_affine(const char *aXJson,
 
 /*
  Creates a point at infinity.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14615,6 +15020,7 @@ char *rssn_json_curve_point_infinity(void)
 
 /*
  Scalar multiplication.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14637,6 +15043,7 @@ char *rssn_json_curve_scalar_mult(const char *aCurveJson,
 
  # Returns
  A raw pointer to a JSON string representing the group.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14685,6 +15092,7 @@ char *rssn_json_differentiate(const char *aExprJson,
 
 /*
  Computes the symbolic Digamma function ψ(z) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14699,6 +15107,7 @@ char *rssn_json_digamma(const char *aArgJson)
 
 /*
  Computes the digamma function ψ(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14719,6 +15128,7 @@ char *rssn_json_digamma_numerical(const char *aXJson)
 
  # Returns
  A raw pointer to a JSON string representing the group.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14733,6 +15143,7 @@ char *rssn_json_dihedral_group_create(size_t aN)
 
 /*
  Computes the Dirac adjoint using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14747,9 +15158,9 @@ char *rssn_json_dirac_adjoint(const char *aPsiJson)
 
 /*
  Creates a Bernoulli distribution.
-
  Takes a JSON string representing `Expr` (probability of success).
  Returns a JSON string representing the `Expr` of the Bernoulli distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14764,9 +15175,9 @@ char *rssn_json_dist_bernoulli(const char *aPJson)
 
 /*
  Creates a beta distribution.
-
  Takes JSON strings representing `Expr` (alpha parameter) and `Expr` (beta parameter).
  Returns a JSON string representing the `Expr` of the beta distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14785,6 +15196,7 @@ char *rssn_json_dist_beta(const char *aAlphaJson,
 
  Takes JSON strings representing `Expr` (number of trials) and `Expr` (probability of success).
  Returns a JSON string representing the `Expr` of the binomial distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14803,6 +15215,7 @@ char *rssn_json_dist_binomial(const char *aNJson,
 
  Takes JSON strings representing `Expr` (distribution) and `Expr` (value `x`).
  Returns a JSON string representing the `Expr` of the CDF at `x`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14818,9 +15231,9 @@ char *rssn_json_dist_cdf(const char *aDistJson,
 
 /*
  Computes the expectation (mean) of a distribution.
-
  Takes a JSON string representing `Expr` (distribution).
  Returns a JSON string representing the `Expr` of the expectation.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14835,9 +15248,9 @@ char *rssn_json_dist_expectation(const char *aDistJson)
 
 /*
  Creates an exponential distribution.
-
  Takes a JSON string representing `Expr` (rate parameter λ).
  Returns a JSON string representing the `Expr` of the exponential distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14852,9 +15265,9 @@ char *rssn_json_dist_exponential(const char *aRateJson)
 
 /*
  Creates a gamma distribution.
-
  Takes JSON strings representing `Expr` (shape parameter) and `Expr` (rate parameter).
  Returns a JSON string representing the `Expr` of the gamma distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14873,6 +15286,7 @@ char *rssn_json_dist_gamma(const char *aShapeJson,
 
  Takes JSON strings representing `Expr` (distribution) and `Expr` (variable `t`).
  Returns a JSON string representing the `Expr` of the MGF.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14888,9 +15302,9 @@ char *rssn_json_dist_mgf(const char *aDistJson,
 
 /*
  Creates a normal distribution.
-
  Takes JSON strings representing `Expr` (mean) and `Expr` (standard deviation).
  Returns a JSON string representing the `Expr` of the normal distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14909,6 +15323,7 @@ char *rssn_json_dist_normal(const char *aMeanJson,
 
  Takes JSON strings representing `Expr` (distribution) and `Expr` (value `x`).
  Returns a JSON string representing the `Expr` of the PDF at `x`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14924,9 +15339,9 @@ char *rssn_json_dist_pdf(const char *aDistJson,
 
 /*
  Creates a Poisson distribution.
-
  Takes a JSON string representing `Expr` (rate parameter λ).
  Returns a JSON string representing the `Expr` of the Poisson distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14941,9 +15356,9 @@ char *rssn_json_dist_poisson(const char *aRateJson)
 
 /*
  Creates a Student's t-distribution.
-
  Takes a JSON string representing `Expr` (degrees of freedom ν).
  Returns a JSON string representing the `Expr` of the Student's t-distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14958,9 +15373,9 @@ char *rssn_json_dist_student_t(const char *aNuJson)
 
 /*
  Creates a uniform distribution.
-
  Takes JSON strings representing `Expr` (minimum value) and `Expr` (maximum value).
  Returns a JSON string representing the `Expr` of the uniform distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14976,9 +15391,9 @@ char *rssn_json_dist_uniform(const char *aMinJson,
 
 /*
  Computes the variance of a distribution.
-
  Takes a JSON string representing `Expr` (distribution).
  Returns a JSON string representing the `Expr` of the variance.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14993,6 +15408,7 @@ char *rssn_json_dist_variance(const char *aDistJson)
 
 /*
  Computes n!! via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15017,6 +15433,7 @@ char *rssn_json_drude_conductivity(const char *aNJson,
 
 /*
  Signs a message.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15035,6 +15452,7 @@ char *rssn_json_ecdsa_sign(const char *aMessageHashJson,
 
 /*
  Verifies a signature.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15063,6 +15481,7 @@ char *rssn_json_electromagnetic_energy_density(const char *aEFieldJson,
 /*
  Creates a new elliptic curve.
  Arguments: a (str), b (str), modulus (str)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15079,6 +15498,7 @@ char *rssn_json_elliptic_curve_new(const char *aAJson,
 
 /*
  Computes the symbolic error function erf(z) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15093,6 +15513,7 @@ char *rssn_json_erf(const char *aArgJson)
 
 /*
  Computes erf(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15107,6 +15528,7 @@ char *rssn_json_erf_numerical(const char *aXJson)
 
 /*
  Computes the symbolic complementary error function erfc(z) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15121,6 +15543,7 @@ char *rssn_json_erfc(const char *aArgJson)
 
 /*
  Computes erfc(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15135,6 +15558,7 @@ char *rssn_json_erfc_numerical(const char *aXJson)
 
 /*
  Computes the symbolic imaginary error function erfi(z) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15177,7 +15601,6 @@ char *rssn_json_evaluate_at_point(const char *aExprJson,
 
 /*
  Numerically evaluates a symbolic expression.
-
  Takes a JSON string representing an `Expr` as input,
  and returns a JSON string representing the numerical evaluation of that expression.
  */
@@ -15212,6 +15635,7 @@ char *rssn_json_expectation_value(const char *aOpJson,
 
  This function is unsafe because it dereferences raw C string pointers and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15254,6 +15678,7 @@ char *rssn_json_factor_gf(const char *aPolyJson)
 
 /*
  Computes n! via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15268,6 +15693,7 @@ char *rssn_json_factorial(const char *aNJson)
 
 /*
  Computes the falling factorial (x)₍ₙ₎ via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15291,6 +15717,7 @@ char *rssn_json_fermi_energy_3d(const char *aConcentrationJson,
 
 /*
  Computes the Feynman slash using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15322,6 +15749,7 @@ char *rssn_json_find_extrema(const char *aExprJson,
 
 /*
  Finds fixed points of a 1D map (JSON)
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -15377,6 +15805,7 @@ char *rssn_json_finite_field_polynomial_new(const char *aCoeffsJson,
 
  Takes JSON strings representing `Expr` (frequency domain expression) and `String` (output variable).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15396,6 +15825,7 @@ char *rssn_json_fourier_differentiation(const char *aFOmegaJson,
  Takes JSON strings representing `Expr` (frequency domain expression), `Expr` (frequency shift amount `a`),
  and `String` (output variable).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15416,6 +15846,7 @@ char *rssn_json_fourier_frequency_shift(const char *aFOmegaJson,
  Takes JSON strings representing `Expr` (frequency domain expression), `Expr` (scaling factor `a`),
  and `String` (output variable).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15450,6 +15881,7 @@ char *rssn_json_fourier_series(const char *aExprJson,
  Takes JSON strings representing `Expr` (frequency domain expression), `Expr` (time shift amount `a`),
  and `String` (output variable).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15469,6 +15901,7 @@ char *rssn_json_fourier_time_shift(const char *aFOmegaJson,
 
  Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
  Returns a JSON string representing the `Expr` of the Fourier transform.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15485,6 +15918,7 @@ char *rssn_json_fourier_transform(const char *aExprJson,
 
 /*
  Computes the symbolic Gamma function Γ(z) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15499,6 +15933,7 @@ char *rssn_json_gamma(const char *aArgJson)
 
 /*
  Computes the gamma function Γ(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15580,6 +16015,7 @@ char *rssn_json_general_sqrt(const char *aZJson,
 
 /*
  Computes the symbolic Generalized Laguerre polynomial `L_n^α(x)` via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15605,6 +16041,7 @@ char *rssn_json_generalized_stokes_theorem(const char *aOmegaJson,
 
 /*
  Generates a key pair.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15620,6 +16057,7 @@ char *rssn_json_generate_keypair(const char *aCurveJson,
 
 /*
  Generates a shared secret.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15643,6 +16081,7 @@ char *rssn_json_get_real_imag_parts(const char *aExprJson)
 
 /*
  Performs addition in GF(2^8) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15658,6 +16097,7 @@ char *rssn_json_gf256_add(const char *aAJson,
 
 /*
  Computes inverse in GF(2^8) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15672,6 +16112,7 @@ char *rssn_json_gf256_inv(const char *aAJson)
 
 /*
  Performs multiplication in GF(2^8) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15696,9 +16137,9 @@ char *rssn_json_gibbs_free_energy(const char *aHJson,
 
 /*
  Computes the Gini impurity of a probability distribution.
-
  Takes a JSON string representing a `Vec<Expr>` (probabilities).
  Returns a JSON string representing the `Expr` of the Gini impurity.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15731,6 +16172,7 @@ char *rssn_json_gini_impurity(const char *aProbsJson)
 
  This function is unsafe because it dereferences raw C string pointers and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15782,6 +16224,7 @@ char *rssn_json_graph_bfs(const char *aJson)
  Performs BFS traversal.
  Input: {"graph": Graph, "`start_node"`: usize}
  Output: [usize]
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15798,6 +16241,7 @@ char *rssn_json_graph_bfs_api(const char *aJson)
  Finds maximum matching in bipartite graph.
  Input: {"graph": Graph, "partition": [i8]}
  Output: [(usize, usize)]
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15814,6 +16258,7 @@ char *rssn_json_graph_bipartite_maximum_matching(const char *aJson)
  Finds bridges and articulation points.
  Input: Graph
  Output: {"bridges": [(usize, usize)], "`articulation_points"`: [usize]}
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15851,6 +16296,7 @@ char *rssn_json_graph_connected_components(const char *aJson)
  Finds connected components.
  Input: Graph
  Output: [[usize]] (array of arrays)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15874,6 +16320,7 @@ char *rssn_json_graph_dfs(const char *aJson)
  Performs DFS traversal.
  Input: {"graph": Graph, "`start_node"`: usize}
  Output: [usize] (array of node indices)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15890,6 +16337,7 @@ char *rssn_json_graph_dfs_api(const char *aJson)
  Computes maximum flow using Dinic's algorithm.
  Input: {"graph": Graph, "source": usize, "sink": usize}
  Output: f64
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15913,6 +16361,7 @@ char *rssn_json_graph_disjoint_union(const char *aJson)
  Computes maximum flow using Edmonds-Karp.
  Input: {"graph": Graph, "source": usize, "sink": usize}
  Output: f64
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15936,6 +16385,7 @@ char *rssn_json_graph_has_cycle(const char *aJson)
  Checks if graph has a cycle.
  Input: Graph
  Output: bool
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15977,6 +16427,7 @@ char *rssn_json_graph_is_bipartite(const char *aJson)
  Checks if graph is bipartite.
  Input: Graph
  Output: [i8] or null
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15993,6 +16444,7 @@ char *rssn_json_graph_is_bipartite_api(const char *aJson)
  Checks if graph is connected.
  Input: Graph
  Output: bool
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16023,6 +16475,7 @@ char *rssn_json_graph_kruskal_mst(const char *aJson)
  Computes MST using Kruskal's algorithm.
  Input: Graph
  Output: Graph (MST)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16062,6 +16515,7 @@ char *rssn_json_graph_new(const char *aJson)
  Finds strongly connected components.
  Input: Graph
  Output: [[usize]]
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16085,6 +16539,7 @@ char *rssn_json_graph_tensor_product(const char *aJson)
  Performs topological sort.
  Input: Graph
  Output: [usize] or null
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16109,6 +16564,7 @@ char *rssn_json_graph_union(const char *aJson)
  Greedy coloring.
  Input: Graph
  Output: {`node_id`: `color_id`}
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16148,6 +16604,7 @@ char *rssn_json_greens_theorem(const char *aPJson,
 
  This function is unsafe because it dereferences a raw C string pointer and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16179,6 +16636,7 @@ char *rssn_json_group_center(const char *aGroupJson)
 
  This function is unsafe because it dereferences a raw C string pointer and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16210,6 +16668,7 @@ char *rssn_json_group_conjugacy_classes(const char *aGroupJson)
 
  This function is unsafe because it dereferences a raw C string pointer and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16242,6 +16701,7 @@ char *rssn_json_group_create(const char *aJsonStr)
 
  This function is unsafe because it dereferences raw C string pointers; the
  caller must ensure they point to valid JSON strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16272,6 +16732,7 @@ size_t rssn_json_group_element_order(const char *aGroupJson,
 
  This function is unsafe because it dereferences raw C string pointers and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16302,6 +16763,7 @@ char *rssn_json_group_inverse(const char *aGroupJson,
 
  This function is unsafe because it dereferences a raw C string pointer; the
  caller must ensure it points to a valid JSON string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16332,6 +16794,7 @@ bool rssn_json_group_is_abelian(const char *aGroupJson)
 
  This function is unsafe because it dereferences raw C string pointers and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16359,6 +16822,7 @@ char *rssn_json_hamiltons_principle(const char *aLagrangianJson,
  Checks if a Hamming(7,4) codeword is valid via JSON interface.
  Input: [7 bytes]
  Returns: boolean
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16374,6 +16838,7 @@ char *rssn_json_hamming_check(const char *aCodewordJson)
 /*
  Decodes a 7-bit Hamming(7,4) codeword via JSON interface.
  Returns JSON object with "data" and "`error_pos`" fields.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16390,6 +16855,7 @@ char *rssn_json_hamming_decode(const char *aCodewordJson)
  Computes Hamming distance between two byte slices via JSON interface.
  Input: {"a": \[bytes\], "b": \[bytes\]}
  Returns: distance as integer, or null on error
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16405,6 +16871,7 @@ char *rssn_json_hamming_distance(const char *aAJson,
 
 /*
  Encodes 4 data bits into a 7-bit Hamming(7,4) codeword via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16421,6 +16888,7 @@ char *rssn_json_hamming_encode(const char *aDataJson)
  Computes Hamming weight of a byte slice via JSON interface.
  Input: \[bytes\]
  Returns: weight as integer
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16435,6 +16903,7 @@ char *rssn_json_hamming_weight(const char *aDataJson)
 
 /*
  Constructs Hermite's differential equation via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16451,6 +16920,7 @@ char *rssn_json_hermite_differential_equation(const char *aYJson,
 
 /*
  Computes the symbolic Hermite polynomial `H_n(x)` via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16466,6 +16936,7 @@ char *rssn_json_hermite_h(const char *aDegreeJson,
 
 /*
  Constructs Rodrigues' formula for Hermite polynomials via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16514,6 +16985,7 @@ char *rssn_json_heuristic_simplify(const char *aExprJson)
 
  This function is unsafe because it dereferences a raw C string pointer and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16575,6 +17047,7 @@ char *rssn_json_ifs_similarity_dimension(const char *aScalingFactorsJson)
 
  This function is unsafe because it dereferences raw C string pointers and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16607,6 +17080,7 @@ char *rssn_json_integrate_rational_function(const char *aExprJson,
 
 /*
  Computes erf⁻¹(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16621,6 +17095,7 @@ char *rssn_json_inverse_erf(const char *aXJson)
 
 /*
  Computes erfc⁻¹(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16638,6 +17113,7 @@ char *rssn_json_inverse_erfc(const char *aXJson)
 
  Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
  Returns a JSON string representing the `Expr` of the inverse Fourier transform.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16657,6 +17133,7 @@ char *rssn_json_inverse_fourier_transform(const char *aExprJson,
 
  Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
  Returns a JSON string representing the `Expr` of the inverse Laplace transform.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16676,6 +17153,7 @@ char *rssn_json_inverse_laplace_transform(const char *aExprJson,
 
  Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
  Returns a JSON string representing the `Expr` of the inverse Z-transform.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16692,7 +17170,6 @@ char *rssn_json_inverse_z_transform(const char *aExprJson,
 
 /*
  Checks if a number is prime.
-
  Takes a JSON string representing an `Expr` (number),
  and returns a JSON string representing a boolean indicating whether the number is prime.
  */
@@ -16726,6 +17203,7 @@ char *rssn_json_isolate_real_roots(const char *aExprJson,
 
  Takes a JSON string representing an `Expr` (joint probability distribution).
  Returns a JSON string representing the `Expr` of the joint entropy.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16751,6 +17229,7 @@ char *rssn_json_kinetic_energy(const char *aMassJson,
 
  Takes JSON strings representing two `Vec<Expr>` (probability distributions `p` and `q`).
  Returns a JSON string representing the `Expr` of the KL divergence.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16769,6 +17248,7 @@ char *rssn_json_kl_divergence(const char *aPProbsJson,
 
  # Returns
  A raw pointer to a JSON string representing the group.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16783,6 +17263,7 @@ char *rssn_json_klein_four_group_create(void)
 
 /*
  Constructs Laguerre's differential equation via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16799,6 +17280,7 @@ char *rssn_json_laguerre_differential_equation(const char *aYJson,
 
 /*
  Computes the symbolic Laguerre polynomial `L_n(x)` via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16818,6 +17300,7 @@ char *rssn_json_laguerre_l(const char *aDegreeJson,
  Takes JSON strings representing `Expr` (s-domain expression), `String` (output variable),
  and `Expr` (`f(0)` - initial condition).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16838,6 +17321,7 @@ char *rssn_json_laplace_differentiation(const char *aFSJson,
  Takes JSON strings representing `Expr` (s-domain expression), `Expr` (frequency shift amount `a`),
  and `String` (output variable).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16857,6 +17341,7 @@ char *rssn_json_laplace_frequency_shift(const char *aFSJson,
 
  Takes JSON strings representing `Expr` (s-domain expression) and `String` (output variable).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16876,6 +17361,7 @@ char *rssn_json_laplace_integration(const char *aFSJson,
  Takes JSON strings representing `Expr` (s-domain expression), `Expr` (scaling factor `a`),
  and `String` (output variable).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16896,6 +17382,7 @@ char *rssn_json_laplace_scaling(const char *aFSJson,
  Takes JSON strings representing `Expr` (s-domain expression), `Expr` (time shift amount `a`),
  and `String` (output variable).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16915,6 +17402,7 @@ char *rssn_json_laplace_time_shift(const char *aFSJson,
 
  Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
  Returns a JSON string representing the `Expr` of the Laplace transform.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16945,6 +17433,7 @@ char *rssn_json_laurent_series(const char *aExprJson,
 
 /*
  Constructs Legendre's differential equation via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16961,6 +17450,7 @@ char *rssn_json_legendre_differential_equation(const char *aYJson,
 
 /*
  Computes the symbolic Legendre polynomial `P_n(x)` via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16976,6 +17466,7 @@ char *rssn_json_legendre_p(const char *aDegreeJson,
 
 /*
  Constructs Rodrigues' formula for Legendre polynomials via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17008,6 +17499,7 @@ char *rssn_json_legendre_rodrigues_formula(const char *aNJson,
 
  This function is unsafe because it returns ownership of a heap-allocated C
  string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17039,6 +17531,7 @@ char *rssn_json_lie_algebra_so3(void)
 
  This function is unsafe because it returns ownership of a heap-allocated C
  string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17068,6 +17561,7 @@ char *rssn_json_lie_algebra_su2(void)
 
  This function is unsafe because it dereferences raw C string pointers and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17092,6 +17586,7 @@ char *rssn_json_limit(const char *aExprJson,
 
 /*
  Computes ln(B(a, b)) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17107,6 +17602,7 @@ char *rssn_json_ln_beta_numerical(const char *aAJson,
 
 /*
  Computes ln(n!) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17121,6 +17617,7 @@ char *rssn_json_ln_factorial(const char *aNJson)
 
 /*
  Computes the symbolic log-gamma function ln(Γ(z)) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17135,6 +17632,7 @@ char *rssn_json_ln_gamma(const char *aArgJson)
 
 /*
  Computes ln(Γ(x)) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17173,6 +17671,7 @@ char *rssn_json_lorenz_system(void)
 
 /*
  Calculates Lyapunov exponent (JSON)
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -17194,7 +17693,6 @@ char *rssn_json_mass_energy_equivalence(const char *aMassJson)
 
 /*
  Performs matrix addition.
-
  Takes two JSON strings representing `Expr` (matrices) as input,
  and returns a JSON string representing their sum.
  */
@@ -17205,7 +17703,6 @@ char *rssn_json_matrix_add(const char *aM1Json,
 
 /*
  Computes the determinant of a matrix.
-
  Takes a JSON string representing an `Expr` (matrix) as input,
  and returns a JSON string representing its determinant.
  */
@@ -17215,7 +17712,6 @@ char *rssn_json_matrix_determinant(const char *aMatrixJson)
 
 /*
  Computes the inverse of a matrix.
-
  Takes a JSON string representing an `Expr` (matrix) as input,
  and returns a JSON string representing its inverse.
  */
@@ -17225,7 +17721,6 @@ char *rssn_json_matrix_inverse(const char *aMatrixJson)
 
 /*
  Performs matrix multiplication.
-
  Takes two JSON strings representing `Expr` (matrices) as input,
  and returns a JSON string representing their product.
  */
@@ -17236,7 +17731,6 @@ char *rssn_json_matrix_mul(const char *aM1Json,
 
 /*
  Solves a linear system of equations AX = B.
-
  Takes two JSON strings representing `Expr` (matrix A and vector B) as input,
  and returns a JSON string representing the solution vector X.
  */
@@ -17247,7 +17741,6 @@ char *rssn_json_matrix_solve_linear_system(const char *aAJson,
 
 /*
  Performs matrix transposition.
-
  Takes a JSON string representing an `Expr` (matrix) as input,
  and returns a JSON string representing its transpose.
  */
@@ -17323,6 +17816,7 @@ char *rssn_json_multivector_scalar(uint32_t aP,
 
  Takes a JSON string representing an `Expr` (joint probability distribution).
  Returns a JSON string representing the `Expr` of the mutual information.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17341,6 +17835,7 @@ char *rssn_json_mutual_information(const char *aJointProbsJson)
  Takes JSON strings representing `Vec<(Expr, Expr)>` (data points), `Expr` (model),
  `Vec<String>` (variables), and `Vec<String>` (parameters).
  Returns a JSON string representing `Vec<(Expr, Expr)>` (optimized parameter values).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17376,6 +17871,7 @@ char *rssn_json_nonlinear_regression(const char *aDataJson,
 
  This function is unsafe because it dereferences raw C string pointers and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17391,9 +17887,9 @@ char *rssn_json_norm(const char *aSpaceJson,
 
 /*
  Performs a one-sample t-test.
-
  Takes JSON strings representing `Vec<Expr>` (data) and `Expr` (target mean).
  Returns a JSON string representing the `HypothesisTest` result.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17412,6 +17908,7 @@ char *rssn_json_one_sample_t_test(const char *aDataJson,
 
  Takes JSON strings representing `Expr` (expression) and `String` (variable).
  Returns a JSON string representing `Vec<Expr>` (partial fraction decomposition).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17454,6 +17951,7 @@ char *rssn_json_path_integrate(const char *aExprJson,
 
  This function is unsafe because it dereferences raw C string pointers and returns
  ownership of a heap-allocated C string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17469,6 +17967,7 @@ char *rssn_json_permutations(const char *aNJson,
 
 /*
  Compresses a point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17483,6 +17982,7 @@ char *rssn_json_point_compress(const char *aPointJson)
 
 /*
  Decompresses a point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17499,6 +17999,7 @@ char *rssn_json_point_decompress(const char *aXJson,
 
 /*
  Adds two polynomials over a general finite field via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17515,6 +18016,7 @@ char *rssn_json_poly_add_gf(const char *aP1Json,
 
 /*
  Adds two polynomials over GF(2^8) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17564,6 +18066,7 @@ char *rssn_json_poly_division_multivariate(const char *aDividendJson,
 
 /*
  Evaluates a polynomial over GF(2^8) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17587,6 +18090,7 @@ char *rssn_json_poly_gcd_gf(const char *aAJson,
 
 /*
  Multiplies two polynomials over a general finite field via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17603,6 +18107,7 @@ char *rssn_json_poly_mul_gf(const char *aP1Json,
 
 /*
  Multiplies two polynomials over GF(2^8) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17618,6 +18123,7 @@ char *rssn_json_poly_mul_gf256(const char *aP1Json,
 
 /*
  Computes the symbolic Polygamma function ψ⁽ⁿ⁾(z) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17677,6 +18183,7 @@ char *rssn_json_polynomial_long_division(const char *aDividendJson,
 
  Takes a JSON string representing `Vec<(Expr, Expr)>` (data points) and a `usize` (degree).
  Returns a JSON string representing a `Vec<Expr>` containing the coefficients of the polynomial.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17761,6 +18268,7 @@ char *rssn_json_product(const char *aExprJson,
 
 /*
  Lagrangian density for QCD using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17779,6 +18287,7 @@ char *rssn_json_qcd_lagrangian(const char *aPsiBarJson,
 
 /*
  Lagrangian density for QED using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17797,6 +18306,7 @@ char *rssn_json_qed_lagrangian(const char *aPsiBarJson,
 
 /*
  Computes a propagator using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17813,6 +18323,7 @@ char *rssn_json_qft_propagator(const char *aPJson,
 
 /*
  Generates a 3x3 2D reflection matrix via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17827,6 +18338,7 @@ char *rssn_json_reflection_2d(const char *aAngleJson)
 
 /*
  Generates a 4x4 3D reflection matrix via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17843,6 +18355,7 @@ char *rssn_json_reflection_3d(const char *aNxJson,
 
 /*
  Computes P(a, x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17858,6 +18371,7 @@ char *rssn_json_regularized_gamma_p(const char *aAJson,
 
 /*
  Computes Q(a, x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17873,6 +18387,7 @@ char *rssn_json_regularized_gamma_q(const char *aAJson,
 
 /*
  Computes the regularized incomplete beta Iₓ(a, b) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17906,6 +18421,7 @@ char *rssn_json_regularized_incomplete_beta(const char *aAJson,
 
  This function is unsafe because it dereferences a raw C string pointer and
  returns ownership of a heap-allocated C string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17938,6 +18454,7 @@ char *rssn_json_representation_create(const char *aJsonStr)
 
  This function is unsafe because it dereferences raw C string pointers; the
  caller must ensure they point to valid JSON strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17961,6 +18478,7 @@ char *rssn_json_risch_norman_integrate(const char *aExprJson,
 
 /*
  Computes the rising factorial (x)ₙ via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17976,6 +18494,7 @@ char *rssn_json_rising_factorial(const char *aXJson,
 
 /*
  Generates a 3x3 2D rotation matrix via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17990,6 +18509,7 @@ char *rssn_json_rotation_2d(const char *aAngleJson)
 
 /*
  Generates a 4x4 3D rotation matrix around X-axis via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18004,6 +18524,7 @@ char *rssn_json_rotation_3d_x(const char *aAngleJson)
 
 /*
  Generates a 4x4 3D rotation matrix around Y-axis via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18018,6 +18539,7 @@ char *rssn_json_rotation_3d_y(const char *aAngleJson)
 
 /*
  Generates a 4x4 3D rotation matrix around Z-axis via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18032,6 +18554,7 @@ char *rssn_json_rotation_3d_z(const char *aAngleJson)
 
 /*
  Generates a 4x4 3D rotation around arbitrary axis via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18050,6 +18573,7 @@ char *rssn_json_rotation_axis_angle(const char *aAxisXJson,
 /*
  Checks if a Reed-Solomon codeword is valid via JSON interface.
  Returns: boolean
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18065,6 +18589,7 @@ char *rssn_json_rs_check(const char *aCodewordJson,
 
 /*
  Decodes a Reed-Solomon codeword via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18081,6 +18606,7 @@ char *rssn_json_rs_decode(const char *aCodewordJson,
 /*
  Encodes data using Reed-Solomon code via JSON interface.
  Input: {"data": \[bytes\], "`n_sym"`: number}
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18097,6 +18623,7 @@ char *rssn_json_rs_encode(const char *aDataJson,
 /*
  Estimates error count in a Reed-Solomon codeword via JSON interface.
  Returns: error count as integer
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18112,6 +18639,7 @@ char *rssn_json_rs_error_count(const char *aCodewordJson,
 
 /*
  Lagrangian density for a scalar field using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18127,6 +18655,7 @@ char *rssn_json_scalar_field_lagrangian(const char *aPhiJson,
 
 /*
  Generates a 3x3 2D scaling matrix via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18142,6 +18671,7 @@ char *rssn_json_scaling_2d(const char *aSxJson,
 
 /*
  Generates a 4x4 3D scaling matrix via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18165,9 +18695,9 @@ char *rssn_json_schwarzschild_radius(const char *aMassJson)
 
 /*
  Computes the Shannon entropy of a probability distribution.
-
  Takes a JSON string representing a `Vec<Expr>` (probabilities).
  Returns a JSON string representing the `Expr` of the entropy.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18182,6 +18712,7 @@ char *rssn_json_shannon_entropy(const char *aProbsJson)
 
 /*
  Generates a 3x3 2D shear matrix via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18200,6 +18731,7 @@ char *rssn_json_shear_2d(const char *aShxJson,
 
  Takes a JSON string representing `Vec<(Expr, Expr)>` (data points).
  Returns a JSON string representing a `Vec<Expr>` containing the intercept and slope coefficients.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18287,6 +18819,7 @@ char *rssn_json_simplify_radicals(const char *aExprJson)
 
 /*
  Computes sinc(x) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18315,6 +18848,7 @@ char *rssn_json_sinc(const char *aXJson)
 
  This function is unsafe because it returns ownership of a heap-allocated C
  string that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18329,7 +18863,6 @@ char *rssn_json_so3_generators(void)
 
 /*
  Solves an equation for a given variable.
-
  Takes JSON strings representing `Expr` (equation) and `String` (variable).
  Returns a JSON string representing the `Expr` of the solution.
  */
@@ -18368,7 +18901,6 @@ char *rssn_json_solve_cauchy_euler_ode(const char *aEquationJson,
 
 /*
  Solves a Diophantine equation.
-
  Takes JSON strings representing the equation (`Expr`) and variables (`Vec<String>`),
  and returns a JSON string representing the `Vec<Expr>` of solutions.
  */
@@ -18424,7 +18956,6 @@ char *rssn_json_solve_laplace_equation_2d(const char *aEquationJson,
 
 /*
  Solves a linear system of equations.
-
  Takes JSON strings representing `Expr` (system) and `Vec<String>` (variables).
  Returns a JSON string representing the `Expr` of the solution.
  */
@@ -18490,7 +19021,6 @@ char *rssn_json_solve_separable_ode(const char *aEquationJson,
 
 /*
  Solves a system of equations for given variables.
-
  Takes JSON strings representing `Vec<Expr>` (equations) and `Vec<String>` (variables).
  Returns a JSON string representing the `Expr` of the solution.
  */
@@ -18541,6 +19071,7 @@ char *rssn_json_std_dev(const char *aDataJson)
 
  This function is unsafe because it is exposed as an FFI entry point and returns
  ownership of a heap-allocated C string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18572,6 +19103,7 @@ char *rssn_json_sturm_sequence(const char *aExprJson,
 
 /*
  Returns the SU(2) Lie algebra generators as a JSON string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18631,6 +19163,7 @@ char *rssn_json_symbolic_chain_create(size_t aDimension)
 
  # Returns
  A raw pointer to a JSON string representing the group, or NULL if `n` is invalid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18659,7 +19192,6 @@ char *rssn_json_taylor_series(const char *aExprJson,
 
 /*
  Performs tensor addition.
-
  Takes two JSON strings representing `Tensor` objects as input,
  and returns a JSON string representing their sum.
  */
@@ -18670,7 +19202,6 @@ char *rssn_json_tensor_add(const char *aT1Json,
 
 /*
  Performs tensor contraction.
-
  Takes a JSON string representing a `Tensor`, and two `usize` values representing the axes to contract.
  Returns a JSON string representing the contracted `Tensor`.
  */
@@ -18682,7 +19213,6 @@ char *rssn_json_tensor_contract(const char *aTJson,
 
 /*
  Computes the outer product of two tensors.
-
  Takes two JSON strings representing `Tensor` objects as input,
  and returns a JSON string representing their outer product.
  */
@@ -18693,7 +19223,6 @@ char *rssn_json_tensor_outer_product(const char *aT1Json,
 
 /*
  Performs scalar multiplication on a tensor.
-
  Takes a JSON string representing a `Tensor` and a JSON string representing an `Expr` (scalar).
  Returns a JSON string representing the resulting `Tensor`.
  */
@@ -18895,6 +19424,7 @@ char *rssn_json_transform_point(const char *aPointJson,
 
 /*
  Generates a 3x3 2D translation matrix via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18910,6 +19440,7 @@ char *rssn_json_translation_2d(const char *aTxJson,
 
 /*
  Generates a 4x4 3D translation matrix via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18929,6 +19460,7 @@ char *rssn_json_translation_3d(const char *aTxJson,
 
  Takes JSON strings representing `Vec<Expr>` (two data sets) and `Expr` (hypothesized difference in means).
  Returns a JSON string representing the `HypothesisTest` result.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -18953,7 +19485,6 @@ char *rssn_json_uncertainty(const char *aOpJson,
 
 /*
  Unifies the units in a symbolic expression.
-
  Takes a JSON string representing an `Expr` as input,
  and returns a JSON string representing the expression with unified units.
  */
@@ -18970,7 +19501,6 @@ char *rssn_json_variance(const char *aDataJson)
 
 /*
  Computes the cross product of two vectors.
-
  Takes two JSON strings representing `Vector` objects.
  Returns a JSON string representing the `Vector` of their cross product.
  */
@@ -19007,7 +19537,6 @@ char *rssn_json_vector_divergence(const char *aVJson,
 
 /*
  Computes the dot product of two vectors.
-
  Takes two JSON strings representing `Vector` objects.
  Returns a JSON string representing the `Expr` of their dot product.
  */
@@ -19022,7 +19551,6 @@ char *rssn_json_vector_dot(const char *aV1Json,
  Takes a JSON string representing an `Expr` (scalar field) and three C-style strings for the variable names (x, y, z).
  Returns a JSON string representing the `Vector` of the gradient.
  Computes the gradient of a scalar field.
-
  Takes a JSON string representing an `Expr` (scalar field) and three C-style strings for the variable names (x, y, z).
  Returns a JSON string representing the `Vector` of the gradient.
  */
@@ -19035,7 +19563,6 @@ char *rssn_json_vector_gradient(const char *aScalarFieldJson,
 
 /*
  Computes the magnitude of a vector.
-
  Takes a JSON string representing a `Vector`.
  Returns a JSON string representing the `Expr` of its magnitude.
  */
@@ -19045,7 +19572,6 @@ char *rssn_json_vector_magnitude(const char *aVJson)
 
 /*
  Normalizes a vector.
-
  Takes a JSON string representing a `Vector`.
  Returns a JSON string representing the normalized `Vector`.
  */
@@ -19055,6 +19581,7 @@ char *rssn_json_vector_normalize(const char *aVJson)
 
 /*
  Verifies an equation solution using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19071,6 +19598,7 @@ bool rssn_json_verify_equation_solution(const char *aEquationsJson,
 
 /*
  Verifies an indefinite integral using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19087,6 +19615,7 @@ bool rssn_json_verify_indefinite_integral(const char *aIntegrandJson,
 
 /*
  Verifies a matrix inverse using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19113,6 +19642,7 @@ char *rssn_json_wedge_product(const char *aForm1Json,
 
  Takes JSON strings representing `Expr` (z-domain expression) and `String` (output variable).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19132,6 +19662,7 @@ char *rssn_json_z_differentiation(const char *aFZJson,
  Takes JSON strings representing `Expr` (z-domain expression), `Expr` (scaling factor `a`),
  and `String` (output variable).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19151,6 +19682,7 @@ char *rssn_json_z_scaling(const char *aFZJson,
 
  Takes JSON strings representing `Vec<Expr>` (data), `Expr` (target mean), and `Expr` (population standard deviation).
  Returns a JSON string representing the `HypothesisTest` result.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19171,6 +19703,7 @@ char *rssn_json_z_test(const char *aDataJson,
  Takes JSON strings representing `Expr` (z-domain expression), `Expr` (time shift amount `k`),
  and `String` (output variable).
  Returns a JSON string representing the `Expr` of the transformed expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19190,6 +19723,7 @@ char *rssn_json_z_time_shift(const char *aFZJson,
 
  Takes JSON strings representing `Expr` (expression), `String` (input variable), and `String` (output variable).
  Returns a JSON string representing the `Expr` of the Z-transform.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19206,6 +19740,7 @@ char *rssn_json_z_transform(const char *aExprJson,
 
 /*
  Computes the symbolic Riemann zeta function ζ(s) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19220,6 +19755,7 @@ char *rssn_json_zeta(const char *aArgJson)
 
 /*
  Computes ζ(s) via JSON interface.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19234,6 +19770,7 @@ char *rssn_json_zeta_numerical(const char *aSJson)
 
 /*
  Frees a Ket.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19248,6 +19785,7 @@ void rssn_ket_free(struct rssn_Ket *aKet)
 
 /*
  Creates a new Ket from a state expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19265,6 +19803,7 @@ struct rssn_Ket *rssn_ket_new(const struct rssn_Expr *aState)
 
  # Arguments
  * `keypair` - Handle to the key pair to free.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19285,6 +19824,7 @@ void rssn_keypair_free(struct rssn_EcdhKeyPair *aKeypair)
 
  # Returns
  A decimal string representing the private key, or NULL on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19299,6 +19839,7 @@ char *rssn_keypair_get_private_key(const struct rssn_EcdhKeyPair *aKp)
 
 /*
  Returns a NEW handle to the public key point (must be freed).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19313,6 +19854,7 @@ struct rssn_CurvePoint *rssn_keypair_get_public_key(const struct rssn_EcdhKeyPai
 
 /*
  Calculates kinetic energy: 1/2 * m * v^2.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19331,6 +19873,7 @@ struct rssn_Expr *rssn_kinetic_energy(const struct rssn_Expr *aMass,
 
  Takes raw pointers to two arrays of `Expr` (probabilities) and their lengths.
  Returns a raw pointer to an `Expr` representing the KL divergence.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19351,6 +19894,7 @@ struct rssn_Expr *rssn_kl_divergence(const struct rssn_Expr *const *aPProbs,
 
  # Returns
  A raw pointer (`*mut Group`) to the newly created group.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19365,6 +19909,7 @@ struct rssn_Group *rssn_klein_four_group_create(void)
 
 /*
  Klein-Gordon equation.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19385,6 +19930,7 @@ struct rssn_Expr *rssn_klein_gordon_equation(const struct rssn_Expr *aPsi,
 
  # Safety
  The caller must ensure `equations` is a valid array of Expr pointers.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19417,6 +19963,7 @@ char *rssn_knuth_bendix_json(const char *aJsonStr)
 
 /*
  Calculates Lagrangian: T - V.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19432,6 +19979,7 @@ struct rssn_Expr *rssn_lagrangian(const struct rssn_Expr *aT,
 
 /*
  Constructs Laguerre's differential equation: xy'' + (1-x)y' + ny = 0.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19448,6 +19996,7 @@ struct rssn_Expr *rssn_laguerre_differential_equation(const struct rssn_Expr *aY
 
 /*
  Computes the symbolic Laguerre polynomial `L_n(x)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19467,6 +20016,7 @@ struct rssn_Expr *rssn_laguerre_l(const struct rssn_Expr *aDegree,
  # Safety
  Caller must ensure `f_s` and `f_zero` are valid pointers to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19487,6 +20037,7 @@ struct rssn_Expr *rssn_laplace_differentiation(const struct rssn_Expr *aFS,
  # Safety
  Caller must ensure `f_s` and `a` are valid pointers to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19507,6 +20058,7 @@ struct rssn_Expr *rssn_laplace_frequency_shift(const struct rssn_Expr *aFS,
  # Safety
  Caller must ensure `f_s` is a valid pointer to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19526,6 +20078,7 @@ struct rssn_Expr *rssn_laplace_integration(const struct rssn_Expr *aFS,
  # Safety
  Caller must ensure `f_s` and `a` are valid pointers to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19546,6 +20099,7 @@ struct rssn_Expr *rssn_laplace_scaling(const struct rssn_Expr *aFS,
  # Safety
  Caller must ensure `f_s` and `a` are valid pointers to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19566,6 +20120,7 @@ struct rssn_Expr *rssn_laplace_time_shift(const struct rssn_Expr *aFS,
  # Safety
  Caller must ensure `expr` is a valid pointer to an `Expr`.
  `in_var` and `out_var` must be valid C strings or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19596,6 +20151,7 @@ struct rssn_Expr *rssn_laurent_series_handle(const struct rssn_Expr *aExpr,
 
 /*
  Constructs Legendre's differential equation: (1-x²)y'' - 2xy' + n(n+1)y = 0.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19612,6 +20168,7 @@ struct rssn_Expr *rssn_legendre_differential_equation(const struct rssn_Expr *aY
 
 /*
  Computes the symbolic Legendre polynomial `P_n(x)`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19627,6 +20184,7 @@ struct rssn_Expr *rssn_legendre_p(const struct rssn_Expr *aDegree,
 
 /*
  Constructs Rodrigues' formula for Legendre polynomials.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19657,6 +20215,7 @@ struct rssn_Expr *rssn_legendre_rodrigues_formula(const struct rssn_Expr *aN,
  This function is unsafe because it takes ownership of a raw pointer. The pointer
  must either be null or have been allocated by the corresponding constructor, and
  must not be used after this call.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19686,6 +20245,7 @@ void rssn_lie_algebra_free(struct rssn_LieAlgebra *aPtr)
 
  This function is unsafe because it dereferences a raw pointer and returns
  ownership of a heap-allocated `Expr` that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19714,6 +20274,7 @@ struct rssn_Expr *rssn_lie_algebra_get_basis_element(const struct rssn_LieAlgebr
 
  This function is unsafe because it dereferences a raw pointer; the caller must
  ensure `ptr` points to a valid `LieAlgebra`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19743,6 +20304,7 @@ size_t rssn_lie_algebra_get_dimension(const struct rssn_LieAlgebra *aPtr)
 
  This function is unsafe because it dereferences a raw pointer and returns
  ownership of a heap-allocated C string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19750,6 +20312,7 @@ size_t rssn_lie_algebra_get_dimension(const struct rssn_LieAlgebra *aPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -19777,6 +20340,7 @@ char *rssn_lie_algebra_get_name(const struct rssn_LieAlgebra *aPtr)
 
  This function is unsafe because it returns ownership of a heap-allocated
  `LieAlgebra` that must later be freed with [`rssn_lie_algebra_free`].
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19807,6 +20371,7 @@ struct rssn_LieAlgebra *rssn_lie_algebra_so3_create(void)
 
  This function is unsafe because it returns ownership of a heap-allocated
  `LieAlgebra` that must later be freed with [`rssn_lie_algebra_free`].
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19836,6 +20401,7 @@ struct rssn_LieAlgebra *rssn_lie_algebra_su2_create(void)
 
  This function is unsafe because it dereferences raw pointers and returns
  ownership of a heap-allocated `Expr` that must be freed by the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19854,6 +20420,7 @@ struct rssn_Expr *rssn_lie_bracket(const struct rssn_Expr *aX,
 
  # Safety
  The caller must ensure `expr` and `point` are valid Expr pointers and `var` is a valid C string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19925,6 +20492,7 @@ char *rssn_line_integral_vector_json(const char *aInputJson)
 
  # Returns
  A raw pointer to the resulting symbolic expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19946,6 +20514,7 @@ struct rssn_Expr *rssn_linear_operator_apply(const struct rssn_LinearOperator *a
 
  # Returns
  A raw pointer to the `LinearOperator`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19953,6 +20522,7 @@ struct rssn_Expr *rssn_linear_operator_apply(const struct rssn_LinearOperator *a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -19967,6 +20537,7 @@ struct rssn_LinearOperator *rssn_linear_operator_derivative_create(const char *a
 
  # Arguments
  * `ptr` - Pointer to the `LinearOperator` to free.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19988,6 +20559,7 @@ void rssn_linear_operator_free(struct rssn_LinearOperator *aPtr)
 
  # Returns
  A raw pointer to the `LinearOperator`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19995,6 +20567,7 @@ void rssn_linear_operator_free(struct rssn_LinearOperator *aPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -20007,6 +20580,7 @@ struct rssn_LinearOperator *rssn_linear_operator_integral_create(const struct rs
 
 /*
  Creates a natural logarithm expression: ln(expr).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20043,6 +20617,7 @@ double rssn_ln_factorial(uint64_t aN)
 
 /*
  Computes the symbolic log-gamma function ln(Γ(z)).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20064,6 +20639,7 @@ double rssn_ln_gamma_numerical(double aX)
 
 /*
  Creates a natural logarithm expression from JSON: ln(expr).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20078,6 +20654,7 @@ char *rssn_ln_json(const char *aJsonExpr)
 
 /*
  Calculates the Lorentz factor.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20092,6 +20669,7 @@ struct rssn_Expr *rssn_lorentz_factor(const struct rssn_Expr *aVelocity)
 
 /*
  Calculates the Lorentz force.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20109,6 +20687,7 @@ rssn_Vector *rssn_lorentz_force(const struct rssn_Expr *aCharge,
 
 /*
  Performs a Lorentz transformation in the x-direction.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20144,6 +20723,7 @@ struct rssn_Expr *rssn_lyapunov_exponent(const struct rssn_Expr *aMapPtr,
 
 /*
  Computes magnetic field from vector potential.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20161,6 +20741,7 @@ rssn_Vector *rssn_magnetic_field_from_vector_potential(const rssn_Vector *aA,
 
 /*
  Calculates mass-energy equivalence.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20188,7 +20769,6 @@ int32_t rssn_matrix_add(size_t aH1,
 
 /*
  Performs matrix addition using raw pointers to `Expr` objects.
-
  Takes two raw pointers to `Expr` (representing matrices) as input,
  and returns a raw pointer to a new `Expr` representing their sum.
  */
@@ -20341,6 +20921,7 @@ struct rssn_Expr *rssn_matrix_transpose_handle(const struct rssn_Expr *aMatrix)
 
  # Safety
  The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20415,6 +20996,7 @@ struct rssn_Multivector *rssn_multivector_scalar_handle(uint32_t aP,
 
  Takes a raw pointer to an `Expr` representing the joint probability distribution.
  Returns a raw pointer to an `Expr` representing the mutual information.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20434,6 +21016,7 @@ struct rssn_Expr *rssn_mutual_information(const struct rssn_Expr *aJointProbs)
  a raw pointer to an `Expr` (model), raw pointers to arrays of C-style strings (variables and parameters),
  and their respective lengths.
  Returns a raw pointer to an `Expr` representing the solutions (optimized parameter values).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20462,6 +21045,7 @@ struct rssn_Expr *rssn_nonlinear_regression(const struct rssn_Expr *const *aXDat
 
  # Returns
  A raw pointer to the symbolic expression representing the norm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20557,6 +21141,7 @@ int32_t rssn_nt_mod_pow(uint64_t aBase,
 
 /*
  Evaluates a B-spline curve at parameter t.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20578,6 +21163,7 @@ int32_t rssn_num_b_spline(const double *aControlPoints,
 
 /*
  Computes a point on a B-spline curve given control points, degree, knots, and a parameter t, using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20592,6 +21178,7 @@ struct rssn_BincodeBuffer rssn_num_b_spline_bincode(struct rssn_BincodeBuffer aB
 
 /*
  Computes a point on a B-spline curve given control points, degree, knots, and a parameter t, using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20599,6 +21186,7 @@ struct rssn_BincodeBuffer rssn_num_b_spline_bincode(struct rssn_BincodeBuffer aB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -20611,6 +21199,7 @@ char *rssn_num_b_spline_json(const char *aInputPtr)
 /*
  Evaluates a Bézier curve at parameter t.
  `control_points` is a flattened array of size `n_points` * dim.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20629,6 +21218,7 @@ int32_t rssn_num_bezier_curve(const double *aControlPoints,
 
 /*
  Computes a point on a Bezier curve given control points and a parameter t, using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20643,6 +21233,7 @@ struct rssn_BincodeBuffer rssn_num_bezier_curve_bincode(struct rssn_BincodeBuffe
 
 /*
  Computes a point on a Bezier curve given control points and a parameter t, using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20650,6 +21241,7 @@ struct rssn_BincodeBuffer rssn_num_bezier_curve_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -20662,6 +21254,7 @@ char *rssn_num_bezier_curve_json(const char *aInputPtr)
 /*
  Computes the numerical gradient of a function at a point.
  Returns a pointer to a `Vec<f64>` containing the gradient.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20680,6 +21273,7 @@ struct rssn_Vec_f64 *rssn_num_calculus_gradient(const struct rssn_Expr *aF,
 /*
  Computes the numerical Hessian matrix of a scalar function at a point.
  Returns a pointer to a `Matrix<f64>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20698,6 +21292,7 @@ struct rssn_Matrix_f64 *rssn_num_calculus_hessian(const struct rssn_Expr *aF,
 /*
  Computes the numerical Jacobian matrix of a vector-valued function at a point.
  Returns a pointer to a `Matrix<f64>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20716,6 +21311,7 @@ struct rssn_Matrix_f64 *rssn_num_calculus_jacobian(const struct rssn_Expr *const
 
 /*
  Computes the numerical partial derivative of a function with respect to a variable at a point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20764,6 +21360,7 @@ double rssn_num_cfd_air_prandtl_number(void)
  # Safety
 
  This function is unsafe because it returns a raw pointer that the caller must free.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20771,6 +21368,7 @@ double rssn_num_cfd_air_prandtl_number(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -20814,6 +21412,7 @@ double rssn_num_cfd_cfl_number(double aVelocity,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20848,6 +21447,7 @@ struct rssn_BincodeBuffer rssn_num_cfd_cfl_number_bincode(struct rssn_BincodeBuf
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20855,6 +21455,7 @@ struct rssn_BincodeBuffer rssn_num_cfd_cfl_number_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -20908,6 +21509,7 @@ double rssn_num_cfd_diffusion_number(double aAlpha,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20915,6 +21517,7 @@ double rssn_num_cfd_diffusion_number(double aAlpha,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -20973,6 +21576,7 @@ double rssn_num_cfd_reynolds_number(double aVelocity,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21007,6 +21611,7 @@ struct rssn_BincodeBuffer rssn_num_cfd_reynolds_number_bincode(struct rssn_Binco
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21014,6 +21619,7 @@ struct rssn_BincodeBuffer rssn_num_cfd_reynolds_number_bincode(struct rssn_Binco
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21050,6 +21656,7 @@ char *rssn_num_cfd_reynolds_number_json(const char *aInput)
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21086,6 +21693,7 @@ struct rssn_BincodeBuffer rssn_num_cfd_solve_advection_1d_bincode(struct rssn_Bi
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21093,6 +21701,7 @@ struct rssn_BincodeBuffer rssn_num_cfd_solve_advection_1d_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21128,6 +21737,7 @@ char *rssn_num_cfd_solve_advection_1d_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21135,6 +21745,7 @@ char *rssn_num_cfd_solve_advection_1d_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21169,6 +21780,7 @@ char *rssn_num_cfd_solve_advection_diffusion_1d_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21176,6 +21788,7 @@ char *rssn_num_cfd_solve_advection_diffusion_1d_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21209,6 +21822,7 @@ char *rssn_num_cfd_solve_burgers_1d_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21216,6 +21830,7 @@ char *rssn_num_cfd_solve_burgers_1d_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21258,6 +21873,7 @@ double rssn_num_cfd_water_prandtl_number(void)
  # Safety
 
  This function is unsafe because it returns a raw pointer that the caller must free.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21265,6 +21881,7 @@ double rssn_num_cfd_water_prandtl_number(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21276,6 +21893,7 @@ char *rssn_num_cfd_water_properties_json(const char *aInput)
 
 /*
  Computes the Bell number B(n).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21291,6 +21909,7 @@ int32_t rssn_num_comb_bell(uint64_t aN,
 
 /*
  Computes the Bell number using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21305,6 +21924,7 @@ struct rssn_BincodeBuffer rssn_num_comb_bell_bincode(struct rssn_BincodeBuffer a
 
 /*
  Computes the Bell number using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21312,6 +21932,7 @@ struct rssn_BincodeBuffer rssn_num_comb_bell_bincode(struct rssn_BincodeBuffer a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21323,6 +21944,7 @@ char *rssn_num_comb_bell_json(const char *aInputJson)
 
 /*
  Computes the Catalan number `C_n`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21338,6 +21960,7 @@ int32_t rssn_num_comb_catalan(uint64_t aN,
 
 /*
  Computes the Catalan number using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21352,6 +21975,7 @@ struct rssn_BincodeBuffer rssn_num_comb_catalan_bincode(struct rssn_BincodeBuffe
 
 /*
  Computes the Catalan number using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21359,6 +21983,7 @@ struct rssn_BincodeBuffer rssn_num_comb_catalan_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21370,6 +21995,7 @@ char *rssn_num_comb_catalan_json(const char *aInputJson)
 
 /*
  Computes the number of combinations C(n, k).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21386,6 +22012,7 @@ int32_t rssn_num_comb_combinations(uint64_t aN,
 
 /*
  Computes the number of combinations using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21400,6 +22027,7 @@ struct rssn_BincodeBuffer rssn_num_comb_combinations_bincode(struct rssn_Bincode
 
 /*
  Computes the number of combinations using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21407,6 +22035,7 @@ struct rssn_BincodeBuffer rssn_num_comb_combinations_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21418,6 +22047,7 @@ char *rssn_num_comb_combinations_json(const char *aInputJson)
 
 /*
  Computes the factorial of n.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21433,6 +22063,7 @@ int32_t rssn_num_comb_factorial(uint64_t aN,
 
 /*
  Computes the factorial of a number using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21447,6 +22078,7 @@ struct rssn_BincodeBuffer rssn_num_comb_factorial_bincode(struct rssn_BincodeBuf
 
 /*
  Computes the factorial of a number using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21454,6 +22086,7 @@ struct rssn_BincodeBuffer rssn_num_comb_factorial_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21465,6 +22098,7 @@ char *rssn_num_comb_factorial_json(const char *aInputJson)
 
 /*
  Computes the falling factorial.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21481,6 +22115,7 @@ int32_t rssn_num_comb_falling_factorial(double aX,
 
 /*
  Computes the falling factorial using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21495,6 +22130,7 @@ struct rssn_BincodeBuffer rssn_num_comb_falling_factorial_bincode(struct rssn_Bi
 
 /*
  Computes the falling factorial using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21502,6 +22138,7 @@ struct rssn_BincodeBuffer rssn_num_comb_falling_factorial_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21513,6 +22150,7 @@ char *rssn_num_comb_falling_factorial_json(const char *aInputJson)
 
 /*
  Computes the number of permutations P(n, k).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21529,6 +22167,7 @@ int32_t rssn_num_comb_permutations(uint64_t aN,
 
 /*
  Computes the number of permutations using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21543,6 +22182,7 @@ struct rssn_BincodeBuffer rssn_num_comb_permutations_bincode(struct rssn_Bincode
 
 /*
  Computes the number of permutations using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21550,6 +22190,7 @@ struct rssn_BincodeBuffer rssn_num_comb_permutations_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21561,6 +22202,7 @@ char *rssn_num_comb_permutations_json(const char *aInputJson)
 
 /*
  Computes the rising factorial.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21577,6 +22219,7 @@ int32_t rssn_num_comb_rising_factorial(double aX,
 
 /*
  Computes the rising factorial using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21591,6 +22234,7 @@ struct rssn_BincodeBuffer rssn_num_comb_rising_factorial_bincode(struct rssn_Bin
 
 /*
  Computes the rising factorial using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21598,6 +22242,7 @@ struct rssn_BincodeBuffer rssn_num_comb_rising_factorial_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21609,6 +22254,7 @@ char *rssn_num_comb_rising_factorial_json(const char *aInputJson)
 
 /*
  Solves a linear recurrence relation numerically.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21628,6 +22274,7 @@ int32_t rssn_num_comb_solve_recurrence(const double *aCoeffs,
 
 /*
  Solves a linear recurrence relation using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21642,6 +22289,7 @@ struct rssn_BincodeBuffer rssn_num_comb_solve_recurrence_bincode(struct rssn_Bin
 
 /*
  Solves a linear recurrence relation using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21649,6 +22297,7 @@ struct rssn_BincodeBuffer rssn_num_comb_solve_recurrence_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21660,6 +22309,7 @@ char *rssn_num_comb_solve_recurrence_json(const char *aInputJson)
 
 /*
  Computes the Stirling numbers of the second kind S(n, k).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21676,6 +22326,7 @@ int32_t rssn_num_comb_stirling_second(uint64_t aN,
 
 /*
  Computes the Stirling number of the second kind using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21690,6 +22341,7 @@ struct rssn_BincodeBuffer rssn_num_comb_stirling_second_bincode(struct rssn_Binc
 
 /*
  Computes the Stirling number of the second kind using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21697,6 +22349,7 @@ struct rssn_BincodeBuffer rssn_num_comb_stirling_second_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21708,6 +22361,7 @@ char *rssn_num_comb_stirling_second_json(const char *aInputJson)
 
 /*
  Computes a contour integral of a symbolic expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21728,6 +22382,7 @@ int32_t rssn_num_complex_contour_integral(const struct rssn_Expr *aExprPtr,
 
 /*
  Computes the contour integral of a complex expression using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21742,6 +22397,7 @@ struct rssn_BincodeBuffer rssn_num_complex_contour_integral_bincode(struct rssn_
 
 /*
  Computes the contour integral of a complex expression using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21749,6 +22405,7 @@ struct rssn_BincodeBuffer rssn_num_complex_contour_integral_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21760,6 +22417,7 @@ char *rssn_num_complex_contour_integral_json(const char *aInputJson)
 
 /*
  Evaluates a symbolic expression to a complex number.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21780,6 +22438,7 @@ int32_t rssn_num_complex_eval(const struct rssn_Expr *aExprPtr,
 
 /*
  Evaluates a complex expression using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21794,6 +22453,7 @@ struct rssn_BincodeBuffer rssn_num_complex_eval_bincode(struct rssn_BincodeBuffe
 
 /*
  Evaluates a complex expression using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21801,6 +22461,7 @@ struct rssn_BincodeBuffer rssn_num_complex_eval_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21812,6 +22473,7 @@ char *rssn_num_complex_eval_json(const char *aInputJson)
 
 /*
  Computes the residue of a symbolic expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21833,6 +22495,7 @@ int32_t rssn_num_complex_residue(const struct rssn_Expr *aExprPtr,
 
 /*
  Frees a pointer allocated by the coordinate transformation functions.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21849,6 +22512,7 @@ void rssn_num_coord_free(double *aPtr,
 /*
  Computes the numerical Jacobian matrix.
  Returns a pointer to a flat array of doubles (row-major).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21868,6 +22532,7 @@ double *rssn_num_coord_jacobian(enum rssn_CoordinateSystem aFrom,
 
 /*
  Transforms a point via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21883,6 +22548,7 @@ struct rssn_BincodeBuffer rssn_num_coord_transform_bincode(const uint8_t *aData,
 
 /*
  Transforms a point using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21890,6 +22556,7 @@ struct rssn_BincodeBuffer rssn_num_coord_transform_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21911,6 +22578,7 @@ char *rssn_num_coord_transform_json(const char *aJsonPtr)
 
  # Returns
  A pointer to the transformed point (array of doubles), or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21929,6 +22597,7 @@ double *rssn_num_coord_transform_point(const double *aPointPtr,
 
 /*
  Transforms a point from one coordinate system to another (pure numerical).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21947,6 +22616,7 @@ double *rssn_num_coord_transform_point_pure(const double *aPointPtr,
 
 /*
  Transforms a point (pure numerical) via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21962,6 +22632,7 @@ struct rssn_BincodeBuffer rssn_num_coord_transform_pure_bincode(const uint8_t *a
 
 /*
  Transforms a point (pure numerical) using JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21969,6 +22640,7 @@ struct rssn_BincodeBuffer rssn_num_coord_transform_pure_bincode(const uint8_t *a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -21981,6 +22653,7 @@ char *rssn_num_coord_transform_pure_json(const char *aJsonPtr)
 /*
  Computes the Euler-Lagrange expression.
  Returns a pointer to a new Expr.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21998,6 +22671,7 @@ struct rssn_Expr *rssn_num_cov_euler_lagrange(const struct rssn_Expr *aLagrangia
 
 /*
  Evaluates the action for a given path.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22019,6 +22693,7 @@ int32_t rssn_num_cov_evaluate_action(const struct rssn_Expr *aLagrangian,
 
 /*
  Evaluates the action for a given Lagrangian and path using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22033,6 +22708,7 @@ struct rssn_BincodeBuffer rssn_num_cov_evaluate_action_bincode(struct rssn_Binco
 
 /*
  Evaluates the action for a given Lagrangian and path using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22040,6 +22716,7 @@ struct rssn_BincodeBuffer rssn_num_cov_evaluate_action_bincode(struct rssn_Binco
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22051,6 +22728,7 @@ char *rssn_num_cov_evaluate_action_json(const char *aInputJson)
 
 /*
  Evaluates a cubic spline at a given x coordinate.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22066,6 +22744,7 @@ double rssn_num_cubic_spline_evaluate(const struct rssn_CubicSplineHandle *aHand
 
 /*
  Frees a cubic spline handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22080,6 +22759,7 @@ void rssn_num_cubic_spline_free(struct rssn_CubicSplineHandle *aHandle)
 
 /*
  Creates a cubic spline interpolator handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22096,6 +22776,7 @@ struct rssn_CubicSplineHandle *rssn_num_cubic_spline_interpolation(const double 
 
 /*
  Computes the cubic spline interpolation for a given set of points using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22110,6 +22791,7 @@ struct rssn_BincodeBuffer rssn_num_cubic_spline_interpolation_bincode(struct rss
 
 /*
  Computes the cubic spline interpolation for a given set of points using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22117,6 +22799,7 @@ struct rssn_BincodeBuffer rssn_num_cubic_spline_interpolation_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22129,6 +22812,7 @@ char *rssn_num_cubic_spline_interpolation_json(const char *aInputPtr)
 /*
  Computes the Christoffel symbols at a given point.
  Returns a flattened vector of size dim^3.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22145,6 +22829,7 @@ struct rssn_Vec_f64 *rssn_num_dg_christoffel_symbols(enum rssn_CoordinateSystem 
 
 /*
  Computes the Christoffel symbols at a given point using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22159,6 +22844,7 @@ struct rssn_BincodeBuffer rssn_num_dg_christoffel_symbols_bincode(struct rssn_Bi
 
 /*
  Computes the Christoffel symbols at a given point using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22166,6 +22852,7 @@ struct rssn_BincodeBuffer rssn_num_dg_christoffel_symbols_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22177,6 +22864,7 @@ char *rssn_num_dg_christoffel_symbols_json(const char *aInputJson)
 
 /*
  Computes the metric tensor at a given point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22193,6 +22881,7 @@ struct rssn_Matrix_f64 *rssn_num_dg_metric_tensor(enum rssn_CoordinateSystem aSy
 
 /*
  Computes the metric tensor at a given point using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22207,6 +22896,7 @@ struct rssn_BincodeBuffer rssn_num_dg_metric_tensor_bincode(struct rssn_BincodeB
 
 /*
  Computes the metric tensor at a given point using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22214,6 +22904,7 @@ struct rssn_BincodeBuffer rssn_num_dg_metric_tensor_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22225,6 +22916,7 @@ char *rssn_num_dg_metric_tensor_json(const char *aInputJson)
 
 /*
  Computes the Ricci scalar at a given point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22242,6 +22934,7 @@ int32_t rssn_num_dg_ricci_scalar(enum rssn_CoordinateSystem aSystem,
 
 /*
  Computes the Ricci scalar at a given point using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22256,6 +22949,7 @@ struct rssn_BincodeBuffer rssn_num_dg_ricci_scalar_bincode(struct rssn_BincodeBu
 
 /*
  Computes the Ricci scalar at a given point using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22263,6 +22957,7 @@ struct rssn_BincodeBuffer rssn_num_dg_ricci_scalar_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22274,6 +22969,7 @@ char *rssn_num_dg_ricci_scalar_json(const char *aInputJson)
 
 /*
  Computes the Ricci tensor at a given point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22290,6 +22986,7 @@ struct rssn_Matrix_f64 *rssn_num_dg_ricci_tensor(enum rssn_CoordinateSystem aSys
 
 /*
  Computes the Ricci tensor at a given point using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22304,6 +23001,7 @@ struct rssn_BincodeBuffer rssn_num_dg_ricci_tensor_bincode(struct rssn_BincodeBu
 
 /*
  Computes the Ricci tensor at a given point using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22311,6 +23009,7 @@ struct rssn_BincodeBuffer rssn_num_dg_ricci_tensor_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22329,6 +23028,7 @@ size_t rssn_num_error_correction_capability(size_t aMinDistance)
 
 /*
  Computes the error correction capability of a code given its minimum distance, using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22343,6 +23043,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_capability_bincode(struct rs
 
 /*
  Computes the error correction capability of a code given its minimum distance, using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22350,6 +23051,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_capability_bincode(struct rs
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22369,6 +23071,7 @@ double rssn_num_error_correction_code_rate(size_t aK,
 
 /*
  Computes the code rate (k/n) of a code with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22383,6 +23086,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_code_rate_bincode(struct rss
 
 /*
  Computes the code rate (k/n) of a code with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22390,6 +23094,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_code_rate_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22404,6 +23109,7 @@ char *rssn_num_error_correction_code_rate_json(const char *aInput)
 
  # Safety
  `data_ptr` must be a valid pointer to `len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22419,6 +23125,7 @@ uint16_t rssn_num_error_correction_crc16(const uint8_t *aDataPtr,
 
 /*
  Computes the CRC16 checksum of a byte vector with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22433,6 +23140,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc16_bincode(struct rssn_Bi
 
 /*
  Computes the CRC16 checksum of a byte vector with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22440,6 +23148,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc16_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22454,6 +23163,7 @@ char *rssn_num_error_correction_crc16_json(const char *aInput)
 
  # Safety
  `data_ptr` must be a valid pointer to `len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22469,6 +23179,7 @@ uint32_t rssn_num_error_correction_crc32(const uint8_t *aDataPtr,
 
 /*
  Computes the CRC32 checksum of a byte vector with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22483,6 +23194,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc32_bincode(struct rssn_Bi
 
 /*
  Computes the CRC32 checksum of a byte vector with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22490,6 +23202,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc32_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22504,6 +23217,7 @@ char *rssn_num_error_correction_crc32_json(const char *aInput)
 
  # Safety
  `data_ptr` must be a valid pointer to `len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22520,6 +23234,7 @@ int32_t rssn_num_error_correction_crc32_verify(const uint8_t *aDataPtr,
 
 /*
  Verifies the CRC32 checksum of a byte vector with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22534,6 +23249,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc32_verify_bincode(struct 
 
 /*
  Verifies the CRC32 checksum of a byte vector with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22541,6 +23257,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc32_verify_bincode(struct 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22555,6 +23272,7 @@ char *rssn_num_error_correction_crc32_verify_json(const char *aInput)
 
  # Safety
  `data_ptr` must be a valid pointer to `len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22570,6 +23288,7 @@ uint8_t rssn_num_error_correction_crc8(const uint8_t *aDataPtr,
 
 /*
  Computes the CRC8 checksum of a byte vector with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22584,6 +23303,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc8_bincode(struct rssn_Bin
 
 /*
  Computes the CRC8 checksum of a byte vector with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22591,6 +23311,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_crc8_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22606,6 +23327,7 @@ char *rssn_num_error_correction_crc8_json(const char *aInput)
  # Safety
  `data_ptr` must be a valid pointer to `len` bytes.
  `out_ptr` must be a valid pointer to at least `len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22623,6 +23345,7 @@ int32_t rssn_num_error_correction_deinterleave(const uint8_t *aDataPtr,
 
 /*
  Deinterleaves a byte vector with a given depth using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22637,6 +23360,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_deinterleave_bincode(struct 
 
 /*
  Deinterleaves a byte vector with a given depth using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22644,6 +23368,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_deinterleave_bincode(struct 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22658,6 +23383,7 @@ char *rssn_num_error_correction_deinterleave_json(const char *aInput)
 
  # Safety
  `codeword_ptr` must be a valid pointer to 7 bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22672,6 +23398,7 @@ int32_t rssn_num_error_correction_hamming_check(const uint8_t *aCodewordPtr)
 
 /*
  Checks a Hamming codeword for errors with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22686,6 +23413,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_check_bincode(struct
 
 /*
  Checks a Hamming codeword for errors with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22693,6 +23421,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_check_bincode(struct
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22709,6 +23438,7 @@ char *rssn_num_error_correction_hamming_check_json(const char *aInput)
  `codeword_ptr` must be a valid pointer to 7 bytes.
  `out_ptr` must be a valid pointer to at least 4 bytes.
  `error_pos_ptr` must be a valid pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22725,6 +23455,7 @@ int32_t rssn_num_error_correction_hamming_decode(const uint8_t *aCodewordPtr,
 
 /*
  Decodes a Hamming codeword and corrects errors with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22739,6 +23470,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_decode_bincode(struc
 
 /*
  Decodes a Hamming codeword and corrects errors with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22746,6 +23478,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_decode_bincode(struc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22760,6 +23493,7 @@ char *rssn_num_error_correction_hamming_decode_json(const char *aInput)
 
  # Safety
  `a_ptr` and `b_ptr` must be valid pointers to `len` bytes each.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22776,6 +23510,7 @@ int32_t rssn_num_error_correction_hamming_distance(const uint8_t *aAPtr,
 
 /*
  Computes the Hamming distance between two byte vectors with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22790,6 +23525,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_distance_bincode(str
 
 /*
  Computes the Hamming distance between two byte vectors with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22797,6 +23533,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_distance_bincode(str
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22812,6 +23549,7 @@ char *rssn_num_error_correction_hamming_distance_json(const char *aInput)
  # Safety
  `data_ptr` must be a valid pointer to 4 bytes.
  `out_ptr` must be a valid pointer to at least 7 bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22827,6 +23565,7 @@ int32_t rssn_num_error_correction_hamming_encode(const uint8_t *aDataPtr,
 
 /*
  Encodes a message using Hamming codes with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22841,6 +23580,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_encode_bincode(struc
 
 /*
  Encodes a message using Hamming codes with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22848,6 +23588,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_encode_bincode(struc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22862,6 +23603,7 @@ char *rssn_num_error_correction_hamming_encode_json(const char *aInput)
 
  # Safety
  `data_ptr` must be a valid pointer to `len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22877,6 +23619,7 @@ int32_t rssn_num_error_correction_hamming_weight(const uint8_t *aDataPtr,
 
 /*
  Computes the Hamming weight of a byte vector with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22891,6 +23634,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_weight_bincode(struc
 
 /*
  Computes the Hamming weight of a byte vector with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22898,6 +23642,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_hamming_weight_bincode(struc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22913,6 +23658,7 @@ char *rssn_num_error_correction_hamming_weight_json(const char *aInput)
  # Safety
  `data_ptr` must be a valid pointer to `len` bytes.
  `out_ptr` must be a valid pointer to at least `len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22930,6 +23676,7 @@ int32_t rssn_num_error_correction_interleave(const uint8_t *aDataPtr,
 
 /*
  Interleaves a byte vector with a given depth using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22944,6 +23691,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_interleave_bincode(struct rs
 
 /*
  Interleaves a byte vector with a given depth using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22951,6 +23699,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_interleave_bincode(struct rs
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -22965,6 +23714,7 @@ char *rssn_num_error_correction_interleave_json(const char *aInput)
 
  # Safety
  `codeword_ptr` must be a valid pointer to `codeword_len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22981,6 +23731,7 @@ int32_t rssn_num_error_correction_rs_check(const uint8_t *aCodewordPtr,
 
 /*
  Checks if a Reed-Solomon codeword is valid with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22995,6 +23746,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_rs_check_bincode(struct rssn
 
 /*
  Checks if a Reed-Solomon codeword is valid with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23002,6 +23754,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_rs_check_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23016,6 +23769,7 @@ char *rssn_num_error_correction_rs_check_json(const char *aInput)
 
  # Safety
  `codeword_ptr` must be a valid pointer to `codeword_len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23032,6 +23786,7 @@ int32_t rssn_num_error_correction_rs_decode(uint8_t *aCodewordPtr,
 
 /*
  Decodes a Reed-Solomon codeword with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23046,6 +23801,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_rs_decode_bincode(struct rss
 
 /*
  Decodes a Reed-Solomon codeword with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23053,6 +23809,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_rs_decode_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23067,6 +23824,7 @@ char *rssn_num_error_correction_rs_decode_json(const char *aInput)
 
  # Safety
  `message_ptr` must be a valid pointer to `message_len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23085,6 +23843,7 @@ int32_t rssn_num_error_correction_rs_encode(const uint8_t *aMessagePtr,
 
 /*
  Encodes a message using Reed-Solomon codes with bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23099,6 +23858,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_rs_encode_bincode(struct rss
 
 /*
  Encodes a message using Reed-Solomon codes with JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23106,6 +23866,7 @@ struct rssn_BincodeBuffer rssn_num_error_correction_rs_encode_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23124,6 +23885,7 @@ size_t rssn_num_error_detection_capability(size_t aMinDistance)
 
 /*
  Evaluates an expression from a Bincode buffer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23149,6 +23911,7 @@ struct rssn_BincodeBuffer rssn_num_eval_bincode(const uint8_t *aData,
 
  # Returns
  0 on success, -1 on failure.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23169,6 +23932,7 @@ int32_t rssn_num_eval_expr(const struct rssn_Expr *aExprPtr,
  Evaluates an expression from a JSON string.
 
  Input JSON format: `{"expr": <Expr>, "vars": {"x": 1.0, "y": 2.0}}`
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23176,6 +23940,7 @@ int32_t rssn_num_eval_expr(const struct rssn_Expr *aExprPtr,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23187,6 +23952,7 @@ char *rssn_num_eval_json(const char *aJsonPtr)
 
 /*
  Applies the Gram-Schmidt orthonormalization process to a set of basis functions using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23201,6 +23967,7 @@ struct rssn_BincodeBuffer rssn_num_fa_gram_schmidt_bincode(struct rssn_BincodeBu
 
 /*
  Applies the Gram-Schmidt orthonormalization process to a set of basis functions using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23208,6 +23975,7 @@ struct rssn_BincodeBuffer rssn_num_fa_gram_schmidt_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23219,6 +23987,7 @@ char *rssn_num_fa_gram_schmidt_json(const char *aInputJson)
 
 /*
  Calculates the L-infinity norm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23235,6 +24004,7 @@ double rssn_num_fa_infinity_norm(const double *aX,
 
 /*
  Calculates the inner product.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23255,6 +24025,7 @@ int32_t rssn_num_fa_inner_product(const double *aX1,
 
 /*
  Computes the inner product of two functions (represented by series of points) using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23269,6 +24040,7 @@ struct rssn_BincodeBuffer rssn_num_fa_inner_product_bincode(struct rssn_BincodeB
 
 /*
  Computes the inner product of two functions (represented by series of points) using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23276,6 +24048,7 @@ struct rssn_BincodeBuffer rssn_num_fa_inner_product_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23287,6 +24060,7 @@ char *rssn_num_fa_inner_product_json(const char *aInputJson)
 
 /*
  Calculates the L1 norm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23303,6 +24077,7 @@ double rssn_num_fa_l1_norm(const double *aX,
 
 /*
  Calculates the L2 norm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23319,6 +24094,7 @@ double rssn_num_fa_l2_norm(const double *aX,
 
 /*
  Computes the L2 norm of a function (represented by a series of points) using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23333,6 +24109,7 @@ struct rssn_BincodeBuffer rssn_num_fa_l2_norm_bincode(struct rssn_BincodeBuffer 
 
 /*
  Computes the L2 norm of a function (represented by a series of points) using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23340,6 +24117,7 @@ struct rssn_BincodeBuffer rssn_num_fa_l2_norm_bincode(struct rssn_BincodeBuffer 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23373,6 +24151,7 @@ char *rssn_num_fa_l2_norm_json(const char *aInputJson)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23380,6 +24159,7 @@ char *rssn_num_fa_l2_norm_json(const char *aInputJson)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23423,6 +24203,7 @@ double rssn_num_fea_bulk_modulus(double aYoungsModulus,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23430,6 +24211,7 @@ double rssn_num_fea_bulk_modulus(double aYoungsModulus,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23472,6 +24254,7 @@ double rssn_num_fea_linear_element_1d_stiffness(double aLength,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23506,6 +24289,7 @@ struct rssn_BincodeBuffer rssn_num_fea_linear_element_1d_stiffness_bincode(struc
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23513,6 +24297,7 @@ struct rssn_BincodeBuffer rssn_num_fea_linear_element_1d_stiffness_bincode(struc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23562,6 +24347,7 @@ double rssn_num_fea_material_copper_shear_modulus(void)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23569,6 +24355,7 @@ double rssn_num_fea_material_copper_shear_modulus(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23596,6 +24383,7 @@ char *rssn_num_fea_material_properties_json(const char *aInput)
  # Safety
 
  This function is unsafe because it returns a raw pointer that the caller must free.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23603,6 +24391,7 @@ char *rssn_num_fea_material_properties_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23633,6 +24422,7 @@ double rssn_num_fea_max_shear_stress(double aSigma1,
 
  # Safety
  Pointers must be valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23676,6 +24466,7 @@ int32_t rssn_num_fea_principal_stresses(double aSx,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23712,6 +24503,7 @@ struct rssn_BincodeBuffer rssn_num_fea_principal_stresses_bincode(struct rssn_Bi
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23719,6 +24511,7 @@ struct rssn_BincodeBuffer rssn_num_fea_principal_stresses_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23751,6 +24544,7 @@ char *rssn_num_fea_principal_stresses_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23758,6 +24552,7 @@ char *rssn_num_fea_principal_stresses_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23817,6 +24612,7 @@ double rssn_num_fea_thermal_element_1d_conductivity(double aLength,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23824,6 +24620,7 @@ double rssn_num_fea_thermal_element_1d_conductivity(double aLength,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23865,6 +24662,7 @@ double rssn_num_fea_von_mises_stress(double aSx,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23899,6 +24697,7 @@ struct rssn_BincodeBuffer rssn_num_fea_von_mises_stress_bincode(struct rssn_Binc
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23906,6 +24705,7 @@ struct rssn_BincodeBuffer rssn_num_fea_von_mises_stress_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23942,6 +24742,7 @@ uint8_t rssn_num_ff_gf256_mul(uint8_t aA,
 
 /*
  GF(2^8) multiplication from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23949,6 +24750,7 @@ uint8_t rssn_num_ff_gf256_mul(uint8_t aA,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -23960,6 +24762,7 @@ char *rssn_num_ff_gf256_mul_json(const char *aJsonPtr)
 
 /*
  Performs addition in GF(p).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23975,6 +24778,7 @@ struct rssn_PrimeFieldElement *rssn_num_ff_pfe_add(const struct rssn_PrimeFieldE
 
 /*
  GF(p) addition via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23990,6 +24794,7 @@ struct rssn_BincodeBuffer rssn_num_ff_pfe_add_bincode(const uint8_t *aData,
 
 /*
  GF(p) addition from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23997,6 +24802,7 @@ struct rssn_BincodeBuffer rssn_num_ff_pfe_add_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24008,6 +24814,7 @@ char *rssn_num_ff_pfe_add_json(const char *aJsonPtr)
 
 /*
  Frees a `PrimeFieldElement`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24022,6 +24829,7 @@ void rssn_num_ff_pfe_free(struct rssn_PrimeFieldElement *aPfe)
 
 /*
  Computes the inverse of a `PrimeFieldElement`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24036,6 +24844,7 @@ struct rssn_PrimeFieldElement *rssn_num_ff_pfe_inverse(const struct rssn_PrimeFi
 
 /*
  Performs multiplication in GF(p).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24051,6 +24860,7 @@ struct rssn_PrimeFieldElement *rssn_num_ff_pfe_mul(const struct rssn_PrimeFieldE
 
 /*
  GF(p) multiplication via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24066,6 +24876,7 @@ struct rssn_BincodeBuffer rssn_num_ff_pfe_mul_bincode(const uint8_t *aData,
 
 /*
  GF(p) multiplication from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24073,6 +24884,7 @@ struct rssn_BincodeBuffer rssn_num_ff_pfe_mul_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24092,6 +24904,7 @@ struct rssn_PrimeFieldElement *rssn_num_ff_pfe_new(uint64_t aValue,
 
 /*
  Computes (pfe^exp) mod modulus.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24126,6 +24939,7 @@ struct rssn_PrimeFieldElement *rssn_num_ff_pfe_pow(const struct rssn_PrimeFieldE
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24148,6 +24962,7 @@ struct rssn_BincodeBuffer rssn_num_fft_bincode(struct rssn_BincodeBuffer aBuffer
 
  # Returns
  0 on success, -1 on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24182,6 +24997,7 @@ int32_t rssn_num_fft_inplace(double *aReal,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24189,6 +25005,7 @@ int32_t rssn_num_fft_inplace(double *aReal,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24200,6 +25017,7 @@ char *rssn_num_fft_json(const char *aInputJson)
 
 /*
  Generates data for a bifurcation diagram of the logistic map using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24207,6 +25025,7 @@ char *rssn_num_fft_json(const char *aInputJson)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24221,6 +25040,7 @@ char *rssn_num_fractal_bifurcation_json(const char *aInput)
 
  # Safety
  `points_ptr` must be a valid pointer to `num_points * 2` f64 values.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24237,6 +25057,7 @@ double rssn_num_fractal_box_counting_dim(const double *aPointsPtr,
 
 /*
  Computes the box-counting dimension of a set of points using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24251,6 +25072,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_box_counting_dim_bincode(struct rssn_
 
 /*
  Computes the box-counting dimension of a set of points using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24258,6 +25080,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_box_counting_dim_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24272,6 +25095,7 @@ char *rssn_num_fractal_box_counting_dim_json(const char *aInput)
 
  # Safety
  `points_ptr` must be a valid pointer to `num_points * 2` f64 values.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24288,6 +25112,7 @@ double rssn_num_fractal_correlation_dim(const double *aPointsPtr,
 
 /*
  Computes the correlation dimension of a set of points using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24302,6 +25127,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_correlation_dim_bincode(struct rssn_B
 
 /*
  Computes the correlation dimension of a set of points using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24309,6 +25135,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_correlation_dim_bincode(struct rssn_B
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24323,6 +25150,7 @@ char *rssn_num_fractal_correlation_dim_json(const char *aInput)
 
  # Safety
  `out_ptr` must be a valid pointer to at least `num_steps * 2` f64 values.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24342,6 +25170,7 @@ int32_t rssn_num_fractal_henon_map(double aX0,
 
 /*
  Generates data points for the Henon map using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24356,6 +25185,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_henon_map_bincode(struct rssn_Bincode
 
 /*
  Generates data points for the Henon map using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24363,6 +25193,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_henon_map_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24385,6 +25216,7 @@ uint32_t rssn_num_fractal_julia_escape_time(double aZReal,
 
 /*
  Computes the escape time for a single point in the Julia set using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24392,6 +25224,7 @@ uint32_t rssn_num_fractal_julia_escape_time(double aZReal,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24403,6 +25236,7 @@ char *rssn_num_fractal_julia_escape_time_json(const char *aInput)
 
 /*
  Generates the Julia set as an image (iterations per pixel) using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24417,6 +25251,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_julia_set_bincode(struct rssn_Bincode
 
 /*
  Generates the Julia set as an image (iterations per pixel) using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24424,6 +25259,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_julia_set_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24438,6 +25274,7 @@ char *rssn_num_fractal_julia_set_json(const char *aInput)
 
  # Safety
  `out_ptr` must be a valid pointer to at least `num_steps + 1` f64 values.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24455,6 +25292,7 @@ int32_t rssn_num_fractal_logistic_map(double aX0,
 
 /*
  Computes iterations of the logistic map using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24469,6 +25307,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_logistic_map_bincode(struct rssn_Binc
 
 /*
  Computes iterations of the logistic map using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24476,6 +25315,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_logistic_map_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24490,6 +25330,7 @@ char *rssn_num_fractal_logistic_map_json(const char *aInput)
 
  # Safety
  `out_ptr` must be a valid pointer to at least `num_steps * 3` f64 values.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24509,6 +25350,7 @@ int32_t rssn_num_fractal_lorenz_attractor(double aX0,
 
 /*
  Generates data points for the Lorenz attractor using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24523,6 +25365,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_lorenz_attractor_bincode(struct rssn_
 
 /*
  Generates data points for the Lorenz attractor with custom parameters using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24530,6 +25373,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_lorenz_attractor_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24541,6 +25385,7 @@ char *rssn_num_fractal_lorenz_attractor_custom_json(const char *aInput)
 
 /*
  Generates data points for the Lorenz attractor using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24548,6 +25393,7 @@ char *rssn_num_fractal_lorenz_attractor_custom_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24569,6 +25415,7 @@ double rssn_num_fractal_lyapunov_logistic(double aR,
 
 /*
  Computes the Lyapunov exponent for the logistic map using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24583,6 +25430,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_lyapunov_logistic_bincode(struct rssn
 
 /*
  Computes the Lyapunov exponent for the logistic map using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24590,6 +25438,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_lyapunov_logistic_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24615,6 +25464,7 @@ double rssn_num_fractal_lyapunov_lorenz(double aX0,
 
 /*
  Computes the Lyapunov exponent for the Lorenz attractor using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24622,6 +25472,7 @@ double rssn_num_fractal_lyapunov_lorenz(double aX0,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24642,6 +25493,7 @@ uint32_t rssn_num_fractal_mandelbrot_escape_time(double aCReal,
 
 /*
  Computes the escape time for a single point in the Mandelbrot set using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24656,6 +25508,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_mandelbrot_escape_time_bincode(struct
 
 /*
  Computes the escape time for a single point in the Mandelbrot set using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24663,6 +25516,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_mandelbrot_escape_time_bincode(struct
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24674,6 +25528,7 @@ char *rssn_num_fractal_mandelbrot_escape_time_json(const char *aInput)
 
 /*
  Generates the Mandelbrot set as an image (iterations per pixel) using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24688,6 +25543,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_mandelbrot_set_bincode(struct rssn_Bi
 
 /*
  Generates the Mandelbrot set as an image (iterations per pixel) using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24695,6 +25551,7 @@ struct rssn_BincodeBuffer rssn_num_fractal_mandelbrot_set_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24706,6 +25563,7 @@ char *rssn_num_fractal_mandelbrot_set_json(const char *aInput)
 
 /*
  Generates data points for the Rossler attractor using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24713,6 +25571,7 @@ char *rssn_num_fractal_mandelbrot_set_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24724,6 +25583,7 @@ char *rssn_num_fractal_rossler_attractor_json(const char *aInput)
 
 /*
  Generates data points for the Tinkerbell map using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24731,6 +25591,7 @@ char *rssn_num_fractal_rossler_attractor_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24742,6 +25603,7 @@ char *rssn_num_fractal_tinkerbell_map_json(const char *aInput)
 
 /*
  Performs multivector addition.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24757,6 +25619,7 @@ struct rssn_Multivector3D *rssn_num_ga_add(const struct rssn_Multivector3D *aMv1
 
 /*
  Bincode FFI for `ga_add`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24771,6 +25634,7 @@ struct rssn_BincodeBuffer rssn_num_ga_add_bincode(struct rssn_BincodeBuffer aBuf
 
 /*
  JSON FFI for `ga_add`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24778,6 +25642,7 @@ struct rssn_BincodeBuffer rssn_num_ga_add_bincode(struct rssn_BincodeBuffer aBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24789,6 +25654,7 @@ char *rssn_num_ga_add_json(const char *aJsonPtr)
 
 /*
  Creates a new `Multivector3D`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24810,6 +25676,7 @@ struct rssn_Multivector3D *rssn_num_ga_create(double aS,
 
 /*
  Performs inner product.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24825,6 +25692,7 @@ struct rssn_Multivector3D *rssn_num_ga_dot(const struct rssn_Multivector3D *aMv1
 
 /*
  Bincode FFI for `ga_dot`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24839,6 +25707,7 @@ struct rssn_BincodeBuffer rssn_num_ga_dot_bincode(struct rssn_BincodeBuffer aBuf
 
 /*
  JSON FFI for `ga_dot`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24846,6 +25715,7 @@ struct rssn_BincodeBuffer rssn_num_ga_dot_bincode(struct rssn_BincodeBuffer aBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24857,6 +25727,7 @@ char *rssn_num_ga_dot_json(const char *aJsonPtr)
 
 /*
  Frees a `Multivector3D`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24871,6 +25742,7 @@ void rssn_num_ga_free(struct rssn_Multivector3D *aMv)
 
 /*
  Gets components of a `Multivector3D`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24893,6 +25765,7 @@ int32_t rssn_num_ga_get_components(const struct rssn_Multivector3D *aMv,
 
 /*
  Returns the inverse of a `Multivector3D`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24907,6 +25780,7 @@ struct rssn_Multivector3D *rssn_num_ga_inv(const struct rssn_Multivector3D *aMv)
 
 /*
  Bincode FFI for `ga_inv`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24921,6 +25795,7 @@ struct rssn_BincodeBuffer rssn_num_ga_inv_bincode(struct rssn_BincodeBuffer aBuf
 
 /*
  JSON FFI for `ga_inv`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24928,6 +25803,7 @@ struct rssn_BincodeBuffer rssn_num_ga_inv_bincode(struct rssn_BincodeBuffer aBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24939,6 +25815,7 @@ char *rssn_num_ga_inv_json(const char *aJsonPtr)
 
 /*
  Performs geometric product.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24954,6 +25831,7 @@ struct rssn_Multivector3D *rssn_num_ga_mul(const struct rssn_Multivector3D *aMv1
 
 /*
  Bincode FFI for `ga_mul`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24968,6 +25846,7 @@ struct rssn_BincodeBuffer rssn_num_ga_mul_bincode(struct rssn_BincodeBuffer aBuf
 
 /*
  JSON FFI for `ga_mul`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24975,6 +25854,7 @@ struct rssn_BincodeBuffer rssn_num_ga_mul_bincode(struct rssn_BincodeBuffer aBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -24986,6 +25866,7 @@ char *rssn_num_ga_mul_json(const char *aJsonPtr)
 
 /*
  Returns the norm of a `Multivector3D`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25000,6 +25881,7 @@ double rssn_num_ga_norm(const struct rssn_Multivector3D *aMv)
 
 /*
  Bincode FFI for `ga_norm`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25014,6 +25896,7 @@ struct rssn_BincodeBuffer rssn_num_ga_norm_bincode(struct rssn_BincodeBuffer aBu
 
 /*
  JSON FFI for `ga_norm`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25021,6 +25904,7 @@ struct rssn_BincodeBuffer rssn_num_ga_norm_bincode(struct rssn_BincodeBuffer aBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25032,6 +25916,7 @@ char *rssn_num_ga_norm_json(const char *aJsonPtr)
 
 /*
  Returns the reverse of a `Multivector3D`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25046,6 +25931,7 @@ struct rssn_Multivector3D *rssn_num_ga_reverse(const struct rssn_Multivector3D *
 
 /*
  Bincode FFI for `ga_reverse`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25060,6 +25946,7 @@ struct rssn_BincodeBuffer rssn_num_ga_reverse_bincode(struct rssn_BincodeBuffer 
 
 /*
  JSON FFI for `ga_reverse`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25067,6 +25954,7 @@ struct rssn_BincodeBuffer rssn_num_ga_reverse_bincode(struct rssn_BincodeBuffer 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25078,6 +25966,7 @@ char *rssn_num_ga_reverse_json(const char *aJsonPtr)
 
 /*
  Performs multivector subtraction.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25093,6 +25982,7 @@ struct rssn_Multivector3D *rssn_num_ga_sub(const struct rssn_Multivector3D *aMv1
 
 /*
  Bincode FFI for `ga_sub`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25107,6 +25997,7 @@ struct rssn_BincodeBuffer rssn_num_ga_sub_bincode(struct rssn_BincodeBuffer aBuf
 
 /*
  JSON FFI for `ga_sub`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25114,6 +26005,7 @@ struct rssn_BincodeBuffer rssn_num_ga_sub_bincode(struct rssn_BincodeBuffer aBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25125,6 +26017,7 @@ char *rssn_num_ga_sub_json(const char *aJsonPtr)
 
 /*
  Performs outer product.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25140,6 +26033,7 @@ struct rssn_Multivector3D *rssn_num_ga_wedge(const struct rssn_Multivector3D *aM
 
 /*
  Bincode FFI for `ga_wedge`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25154,6 +26048,7 @@ struct rssn_BincodeBuffer rssn_num_ga_wedge_bincode(struct rssn_BincodeBuffer aB
 
 /*
  JSON FFI for `ga_wedge`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25161,6 +26056,7 @@ struct rssn_BincodeBuffer rssn_num_ga_wedge_bincode(struct rssn_BincodeBuffer aB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25172,6 +26068,7 @@ char *rssn_num_ga_wedge_json(const char *aJsonPtr)
 
 /*
  Adds a directed edge.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25189,6 +26086,7 @@ void rssn_num_graph_add_edge(struct rssn_Graph *aGraph,
 
 /*
  Computes BFS.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25205,6 +26103,7 @@ int32_t rssn_num_graph_bfs(struct rssn_Graph *aGraph,
 
 /*
  Computes Breadth-First Search (BFS) on a graph using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25219,6 +26118,7 @@ struct rssn_BincodeBuffer rssn_num_graph_bfs_bincode(struct rssn_BincodeBuffer a
 
 /*
  Computes Breadth-First Search (BFS) on a graph using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25226,6 +26126,7 @@ struct rssn_BincodeBuffer rssn_num_graph_bfs_bincode(struct rssn_BincodeBuffer a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25238,6 +26139,7 @@ char *rssn_num_graph_bfs_json(const char *aInputJson)
 /*
  Computes Connected Components.
  Result array `components` must be allocated by caller with size `num_nodes`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25253,6 +26155,7 @@ int32_t rssn_num_graph_connected_components(struct rssn_Graph *aGraph,
 
 /*
  Computes the connected components of a graph using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25267,6 +26170,7 @@ struct rssn_BincodeBuffer rssn_num_graph_connected_components_bincode(struct rss
 
 /*
  Computes the connected components of a graph using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25274,6 +26178,7 @@ struct rssn_BincodeBuffer rssn_num_graph_connected_components_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25285,6 +26190,7 @@ char *rssn_num_graph_connected_components_json(const char *aInputJson)
 
 /*
  Creates a new graph.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25299,6 +26205,7 @@ struct rssn_Graph *rssn_num_graph_create(size_t aNumNodes)
 
 /*
  Computes Dijkstra's algorithm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25316,6 +26223,7 @@ int32_t rssn_num_graph_dijkstra(struct rssn_Graph *aGraph,
 
 /*
  Computes Dijkstra's shortest path algorithm on a graph using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25330,6 +26238,7 @@ struct rssn_BincodeBuffer rssn_num_graph_dijkstra_bincode(struct rssn_BincodeBuf
 
 /*
  Computes Dijkstra's shortest path algorithm on a graph using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25337,6 +26246,7 @@ struct rssn_BincodeBuffer rssn_num_graph_dijkstra_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25348,6 +26258,7 @@ char *rssn_num_graph_dijkstra_json(const char *aInputJson)
 
 /*
  Computes Floyd-Warshall.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25363,6 +26274,7 @@ int32_t rssn_num_graph_floyd_warshall(struct rssn_Graph *aGraph,
 
 /*
  Computes the Floyd-Warshall all-pairs shortest path algorithm on a graph using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25377,6 +26289,7 @@ struct rssn_BincodeBuffer rssn_num_graph_floyd_warshall_bincode(struct rssn_Binc
 
 /*
  Computes the Floyd-Warshall all-pairs shortest path algorithm on a graph using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25384,6 +26297,7 @@ struct rssn_BincodeBuffer rssn_num_graph_floyd_warshall_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25395,6 +26309,7 @@ char *rssn_num_graph_floyd_warshall_json(const char *aInputJson)
 
 /*
  Frees a graph.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25410,6 +26325,7 @@ void rssn_num_graph_free(struct rssn_Graph *aGraph)
 /*
  Computes Minimum Spanning Tree (MST).
  Returns a new Graph handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25424,6 +26340,7 @@ struct rssn_Graph *rssn_num_graph_minimum_spanning_tree(struct rssn_Graph *aGrap
 
 /*
  Computes the Minimum Spanning Tree (MST) of a graph using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25438,6 +26355,7 @@ struct rssn_BincodeBuffer rssn_num_graph_minimum_spanning_tree_bincode(struct rs
 
 /*
  Computes the Minimum Spanning Tree (MST) of a graph using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25445,6 +26363,7 @@ struct rssn_BincodeBuffer rssn_num_graph_minimum_spanning_tree_bincode(struct rs
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25456,6 +26375,7 @@ char *rssn_num_graph_minimum_spanning_tree_json(const char *aInputJson)
 
 /*
  Computes `PageRank`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25474,6 +26394,7 @@ int32_t rssn_num_graph_page_rank(struct rssn_Graph *aGraph,
 
 /*
  Computes the `PageRank` scores for nodes in a graph using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25488,6 +26409,7 @@ struct rssn_BincodeBuffer rssn_num_graph_page_rank_bincode(struct rssn_BincodeBu
 
 /*
  Computes the `PageRank` scores for nodes in a graph using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25495,6 +26417,7 @@ struct rssn_BincodeBuffer rssn_num_graph_page_rank_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25518,6 +26441,7 @@ double rssn_num_graphics_angle_between(double aX1,
 
 /*
  Computes the angle between two 3D vectors using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25525,6 +26449,7 @@ double rssn_num_graphics_angle_between(double aX1,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25539,6 +26464,7 @@ char *rssn_num_graphics_angle_between_json(const char *aInput)
 
  # Safety
  Pointers must be valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25568,6 +26494,7 @@ int32_t rssn_num_graphics_bezier_cubic(double aP0x,
 
 /*
  Computes a point on a cubic Bezier curve using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25575,6 +26502,7 @@ int32_t rssn_num_graphics_bezier_cubic(double aP0x,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25590,6 +26518,7 @@ char *rssn_num_graphics_bezier_cubic_json(const char *aInput)
 
  # Safety
  Pointers must be valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25612,6 +26541,7 @@ int32_t rssn_num_graphics_cross_product(double aX1,
 
 /*
  Computes the cross product of two 3D vectors using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25626,6 +26556,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_cross_product_bincode(struct rssn_Bi
 
 /*
  Computes the cross product of two 3D vectors using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25633,6 +26564,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_cross_product_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25663,6 +26595,7 @@ double rssn_num_graphics_dot_product(double aX1,
 
 /*
  Computes the dot product of two 3D vectors using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25677,6 +26610,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_dot_product_bincode(struct rssn_Binc
 
 /*
  Computes the dot product of two 3D vectors using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25684,6 +26618,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_dot_product_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25695,6 +26630,7 @@ char *rssn_num_graphics_dot_product_json(const char *aInput)
 
 /*
  Creates a look-at matrix using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25702,6 +26638,7 @@ char *rssn_num_graphics_dot_product_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25722,6 +26659,7 @@ double rssn_num_graphics_magnitude(double aX,
 
 /*
  Computes the magnitude of a 3D vector using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25729,6 +26667,7 @@ double rssn_num_graphics_magnitude(double aX,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25743,6 +26682,7 @@ char *rssn_num_graphics_magnitude_json(const char *aInput)
 
  # Safety
  Pointers must be valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25762,6 +26702,7 @@ int32_t rssn_num_graphics_normalize(double aX,
 
 /*
  Normalizes a 3D vector using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25776,6 +26717,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_normalize_bincode(struct rssn_Bincod
 
 /*
  Normalizes a 3D vector using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25783,6 +26725,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_normalize_bincode(struct rssn_Bincod
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25794,6 +26737,7 @@ char *rssn_num_graphics_normalize_json(const char *aInput)
 
 /*
  Creates a perspective projection matrix using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25801,6 +26745,7 @@ char *rssn_num_graphics_normalize_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25815,6 +26760,7 @@ char *rssn_num_graphics_perspective_matrix_json(const char *aInput)
 
  # Safety
  Pointers must be valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25840,6 +26786,7 @@ int32_t rssn_num_graphics_quaternion_multiply(double aW1,
 
 /*
  Multiplies two quaternions using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25854,6 +26801,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_quaternion_multiply_bincode(struct r
 
 /*
  Multiplies two quaternions using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25861,6 +26809,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_quaternion_multiply_bincode(struct r
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25872,6 +26821,7 @@ char *rssn_num_graphics_quaternion_multiply_json(const char *aInput)
 
 /*
  Computes the spherical linear interpolation (SLERP) between two quaternions using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25879,6 +26829,7 @@ char *rssn_num_graphics_quaternion_multiply_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25914,6 +26865,7 @@ double rssn_num_graphics_ray_sphere_intersection(double aRayOx,
 
 /*
  Computes the intersection of a ray with a sphere using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25921,6 +26873,7 @@ double rssn_num_graphics_ray_sphere_intersection(double aRayOx,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25935,6 +26888,7 @@ char *rssn_num_graphics_ray_sphere_intersection_json(const char *aInput)
 
  # Safety
  Pointers must be valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25957,6 +26911,7 @@ int32_t rssn_num_graphics_reflect(double aIx,
 
 /*
  Computes the reflection of an incident vector across a normal vector using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25964,6 +26919,7 @@ int32_t rssn_num_graphics_reflect(double aIx,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25975,6 +26931,7 @@ char *rssn_num_graphics_reflect_json(const char *aInput)
 
 /*
  Creates a 3D rotation matrix around an arbitrary axis using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25982,6 +26939,7 @@ char *rssn_num_graphics_reflect_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -25997,6 +26955,7 @@ char *rssn_num_graphics_rotation_matrix_axis_json(const char *aInput)
 
  # Safety
  `out_ptr` must point to at least 16 f64 values.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26012,6 +26971,7 @@ int32_t rssn_num_graphics_rotation_matrix_x(double aAngleRad,
 
 /*
  Creates a 3D rotation matrix around the X-axis using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26026,6 +26986,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_rotation_matrix_x_bincode(struct rss
 
 /*
  Creates a 3D rotation matrix around the X-axis using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26033,6 +26994,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_rotation_matrix_x_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26044,6 +27006,7 @@ char *rssn_num_graphics_rotation_matrix_x_json(const char *aInput)
 
 /*
  Creates a 3D rotation matrix around the Y-axis using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26051,6 +27014,7 @@ char *rssn_num_graphics_rotation_matrix_x_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26062,6 +27026,7 @@ char *rssn_num_graphics_rotation_matrix_y_json(const char *aInput)
 
 /*
  Creates a 3D rotation matrix around the Z-axis using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26069,6 +27034,7 @@ char *rssn_num_graphics_rotation_matrix_y_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26080,6 +27046,7 @@ char *rssn_num_graphics_rotation_matrix_z_json(const char *aInput)
 
 /*
  Creates a 3D scaling matrix using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26087,6 +27054,7 @@ char *rssn_num_graphics_rotation_matrix_z_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26098,6 +27066,7 @@ char *rssn_num_graphics_scaling_matrix_json(const char *aInput)
 
 /*
  Creates a 3D translation matrix using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26112,6 +27081,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_translation_matrix_bincode(struct rs
 
 /*
  Creates a 3D translation matrix using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26119,6 +27089,7 @@ struct rssn_BincodeBuffer rssn_num_graphics_translation_matrix_bincode(struct rs
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26149,6 +27120,7 @@ char *rssn_num_graphics_translation_matrix_json(const char *aInput)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26163,6 +27135,7 @@ struct rssn_BincodeBuffer rssn_num_ifft_bincode(struct rssn_BincodeBuffer aBuffe
 
 /*
  Computes the Inverse Fast Fourier Transform (IFFT) in-place.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26197,6 +27170,7 @@ int32_t rssn_num_ifft_inplace(double *aReal,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26204,6 +27178,7 @@ int32_t rssn_num_ifft_inplace(double *aReal,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26215,6 +27190,7 @@ char *rssn_num_ifft_json(const char *aInputJson)
 
 /*
  Computes Lagrange interpolation and returns a Polynomial pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26231,6 +27207,7 @@ struct rssn_Polynomial *rssn_num_lagrange_interpolation(const double *aXCoords,
 
 /*
  Computes the Lagrange interpolation polynomial for a given set of points using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26245,6 +27222,7 @@ struct rssn_BincodeBuffer rssn_num_lagrange_interpolation_bincode(struct rssn_Bi
 
 /*
  Computes the Lagrange interpolation polynomial for a given set of points using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26252,6 +27230,7 @@ struct rssn_BincodeBuffer rssn_num_lagrange_interpolation_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26270,6 +27249,7 @@ char *rssn_num_lagrange_interpolation_json(const char *aInputPtr)
 
  # Returns
  A handle to the resulting matrix, or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26285,6 +27265,7 @@ struct rssn_RssnMatrixHandle *rssn_num_matrix_add(const struct rssn_RssnMatrixHa
 
 /*
  Matrix addition via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26300,6 +27281,7 @@ struct rssn_BincodeBuffer rssn_num_matrix_add_bincode(const uint8_t *aData,
 
 /*
  Matrix addition via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26315,6 +27297,7 @@ struct rssn_BincodeBuffer rssn_num_matrix_add_bincode_nightly(const uint8_t *aDa
 
 /*
  Evaluates a matrix addition from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26322,6 +27305,7 @@ struct rssn_BincodeBuffer rssn_num_matrix_add_bincode_nightly(const uint8_t *aDa
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26333,6 +27317,7 @@ char *rssn_num_matrix_add_json(const char *aJsonPtr)
 
 /*
  Evaluates a matrix addition from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26340,6 +27325,7 @@ char *rssn_num_matrix_add_json(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26351,6 +27337,7 @@ char *rssn_num_matrix_add_json_nightly(const char *aJsonPtr)
 
 /*
  Adds two matrices.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26374,6 +27361,7 @@ struct rssn_RssnMatrixHandle *rssn_num_matrix_add_nightly(const struct rssn_Rssn
 
  # Returns
  A raw pointer to the Matrix object, or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26398,6 +27386,7 @@ struct rssn_RssnMatrixHandle *rssn_num_matrix_create(size_t aRows,
 
  # Returns
  A raw pointer to the Matrix object, or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26414,6 +27403,7 @@ struct rssn_RssnMatrixHandle *rssn_num_matrix_create_nightly(size_t aRows,
 
 /*
  Decomposes a matrix via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26429,6 +27419,7 @@ struct rssn_BincodeBuffer rssn_num_matrix_decompose_bincode(const uint8_t *aData
 
 /*
  Decomposes a matrix via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26444,6 +27435,7 @@ struct rssn_BincodeBuffer rssn_num_matrix_decompose_bincode_nightly(const uint8_
 
 /*
  Computes Cholesky decomposition: A = L * L^T.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26459,6 +27451,7 @@ int32_t rssn_num_matrix_decompose_cholesky(const struct rssn_RssnMatrixHandle *a
 
 /*
  Computes Cholesky decomposition: A = L * L^T.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26474,6 +27467,7 @@ int32_t rssn_num_matrix_decompose_cholesky_nightly(const struct rssn_RssnMatrixH
 
 /*
  Computes Symmetric Eigendecomposition: A = V * D * V^T.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26490,6 +27484,7 @@ int32_t rssn_num_matrix_decompose_eigen_symmetric(const struct rssn_RssnMatrixHa
 
 /*
  Computes Symmetric Eigendecomposition: A = V * D * V^T.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26506,6 +27501,7 @@ int32_t rssn_num_matrix_decompose_eigen_symmetric_nightly(const struct rssn_Rssn
 
 /*
  Decomposes a matrix from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26513,6 +27509,7 @@ int32_t rssn_num_matrix_decompose_eigen_symmetric_nightly(const struct rssn_Rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26524,6 +27521,7 @@ char *rssn_num_matrix_decompose_json(const char *aJsonPtr)
 
 /*
  Decomposes a matrix from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26531,6 +27529,7 @@ char *rssn_num_matrix_decompose_json(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26543,6 +27542,7 @@ char *rssn_num_matrix_decompose_json_nightly(const char *aJsonPtr)
 /*
  Computes SVD decomposition: A = U * S * V^T.
  Returns 0 on success, -1 on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26561,6 +27561,7 @@ int32_t rssn_num_matrix_decompose_svd(const struct rssn_RssnMatrixHandle *aMatri
 /*
  Computes SVD decomposition: A = U * S * V^T.
  Returns 0 on success, -1 on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26578,6 +27579,7 @@ int32_t rssn_num_matrix_decompose_svd_nightly(const struct rssn_RssnMatrixHandle
 
 /*
  Computes determinant from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26585,6 +27587,7 @@ int32_t rssn_num_matrix_decompose_svd_nightly(const struct rssn_RssnMatrixHandle
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26596,6 +27599,7 @@ char *rssn_num_matrix_det_json(const char *aJsonPtr)
 
 /*
  Computes determinant from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26603,6 +27607,7 @@ char *rssn_num_matrix_det_json(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26621,6 +27626,7 @@ char *rssn_num_matrix_det_json_nightly(const char *aJsonPtr)
 
  # Returns
  0 on success, -1 on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26636,6 +27642,7 @@ int32_t rssn_num_matrix_determinant(const struct rssn_RssnMatrixHandle *aMatrix,
 
 /*
  Computes the determinant of a matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26651,6 +27658,7 @@ int32_t rssn_num_matrix_determinant_nightly(const struct rssn_RssnMatrixHandle *
 
 /*
  Frees a previously allocated Matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26665,6 +27673,7 @@ void rssn_num_matrix_free(struct rssn_RssnMatrixHandle *aMatrix)
 
 /*
  Frees a previously allocated Matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26679,6 +27688,7 @@ void rssn_num_matrix_free_nightly(struct rssn_RssnMatrixHandle *aMatrix)
 
 /*
  Returns the Frobenius norm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26693,6 +27703,7 @@ double rssn_num_matrix_frobenius_norm(const struct rssn_RssnMatrixHandle *aMatri
 
 /*
  Returns the Frobenius norm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26707,6 +27718,7 @@ double rssn_num_matrix_frobenius_norm_nightly(const struct rssn_RssnMatrixHandle
 
 /*
  Returns the number of columns of a given matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26721,6 +27733,7 @@ size_t rssn_num_matrix_get_cols(const struct rssn_RssnMatrixHandle *aMatrix)
 
 /*
  Returns the number of columns of a given matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26742,6 +27755,7 @@ size_t rssn_num_matrix_get_cols_nightly(const struct rssn_RssnMatrixHandle *aMat
 
  # Returns
  0 on success, -1 on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26757,6 +27771,7 @@ int32_t rssn_num_matrix_get_data(const struct rssn_RssnMatrixHandle *aMatrix,
 
 /*
  Retrieves the raw data of a given matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26772,6 +27787,7 @@ int32_t rssn_num_matrix_get_data_nightly(const struct rssn_RssnMatrixHandle *aMa
 
 /*
  Returns the number of rows of a given matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26786,6 +27802,7 @@ size_t rssn_num_matrix_get_rows(const struct rssn_RssnMatrixHandle *aMatrix)
 
 /*
  Returns the number of rows of a given matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26800,6 +27817,7 @@ size_t rssn_num_matrix_get_rows_nightly(const struct rssn_RssnMatrixHandle *aMat
 
 /*
  Creates an identity matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26814,6 +27832,7 @@ struct rssn_RssnMatrixHandle *rssn_num_matrix_identity(size_t aSize)
 
 /*
  Creates an identity matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26834,6 +27853,7 @@ struct rssn_RssnMatrixHandle *rssn_num_matrix_identity_nightly(size_t aSize)
 
  # Returns
  A handle to the inverse matrix, or null if the matrix is singular or not square.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26848,6 +27868,7 @@ struct rssn_RssnMatrixHandle *rssn_num_matrix_inverse(const struct rssn_RssnMatr
 
 /*
  Computes the inverse of a matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26862,6 +27883,7 @@ struct rssn_RssnMatrixHandle *rssn_num_matrix_inverse_nightly(const struct rssn_
 
 /*
  Checks if it's identity.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26877,6 +27899,7 @@ int32_t rssn_num_matrix_is_identity(const struct rssn_RssnMatrixHandle *aMatrix,
 
 /*
  Checks if it's identity.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26892,6 +27915,7 @@ int32_t rssn_num_matrix_is_identity_nightly(const struct rssn_RssnMatrixHandle *
 
 /*
  Checks if it's orthogonal.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26907,6 +27931,7 @@ int32_t rssn_num_matrix_is_orthogonal(const struct rssn_RssnMatrixHandle *aMatri
 
 /*
  Checks if it's orthogonal.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26929,6 +27954,7 @@ int32_t rssn_num_matrix_is_orthogonal_nightly(const struct rssn_RssnMatrixHandle
 
  # Returns
  A handle to the resulting matrix, or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26944,6 +27970,7 @@ struct rssn_RssnMatrixHandle *rssn_num_matrix_mul(const struct rssn_RssnMatrixHa
 
 /*
  Matrix multiplication via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26959,6 +27986,7 @@ struct rssn_BincodeBuffer rssn_num_matrix_mul_bincode(const uint8_t *aData,
 
 /*
  Matrix multiplication via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26974,6 +28002,7 @@ struct rssn_BincodeBuffer rssn_num_matrix_mul_bincode_nightly(const uint8_t *aDa
 
 /*
  Evaluates a matrix multiplication from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26981,6 +28010,7 @@ struct rssn_BincodeBuffer rssn_num_matrix_mul_bincode_nightly(const uint8_t *aDa
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -26992,6 +28022,7 @@ char *rssn_num_matrix_mul_json(const char *aJsonPtr)
 
 /*
  Evaluates a matrix multiplication from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26999,6 +28030,7 @@ char *rssn_num_matrix_mul_json(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27010,6 +28042,7 @@ char *rssn_num_matrix_mul_json_nightly(const char *aJsonPtr)
 
 /*
  Multiplies two matrices.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27025,6 +28058,7 @@ struct rssn_RssnMatrixHandle *rssn_num_matrix_mul_nightly(const struct rssn_Rssn
 
 /*
  Returns the rank.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27040,6 +28074,7 @@ int32_t rssn_num_matrix_rank(const struct rssn_RssnMatrixHandle *aMatrix,
 
 /*
  Returns the rank.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27056,6 +28091,7 @@ int32_t rssn_num_matrix_rank_nightly(const struct rssn_RssnMatrixHandle *aMatrix
 /*
  Sets the backend for the matrix.
  0: Native, 1: Faer
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27071,6 +28107,7 @@ int32_t rssn_num_matrix_set_backend(struct rssn_RssnMatrixHandle *aMatrix,
 
 /*
  Sets backend for a matrix via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27086,6 +28123,7 @@ struct rssn_BincodeBuffer rssn_num_matrix_set_backend_bincode(const uint8_t *aDa
 
 /*
  Sets backend for a matrix via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27101,6 +28139,7 @@ struct rssn_BincodeBuffer rssn_num_matrix_set_backend_bincode_nightly(const uint
 
 /*
  Sets backend for a matrix (returns new matrix with backend set) from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27108,6 +28147,7 @@ struct rssn_BincodeBuffer rssn_num_matrix_set_backend_bincode_nightly(const uint
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27119,6 +28159,7 @@ char *rssn_num_matrix_set_backend_json(const char *aJsonPtr)
 
 /*
  Sets backend for a matrix (returns new matrix with backend set) from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27126,6 +28167,7 @@ char *rssn_num_matrix_set_backend_json(const char *aJsonPtr)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27138,6 +28180,7 @@ char *rssn_num_matrix_set_backend_json_nightly(const char *aJsonPtr)
 /*
  Sets the backend for the matrix.
  0: Native, 1: Faer
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27153,6 +28196,7 @@ int32_t rssn_num_matrix_set_backend_nightly(struct rssn_RssnMatrixHandle *aMatri
 
 /*
  Returns the trace.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27168,6 +28212,7 @@ int32_t rssn_num_matrix_trace(const struct rssn_RssnMatrixHandle *aMatrix,
 
 /*
  Returns the trace.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27189,6 +28234,7 @@ int32_t rssn_num_matrix_trace_nightly(const struct rssn_RssnMatrixHandle *aMatri
 
  # Returns
  A handle to the transposed matrix, or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27203,6 +28249,7 @@ struct rssn_RssnMatrixHandle *rssn_num_matrix_transpose(const struct rssn_RssnMa
 
 /*
  Transposes a matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27245,6 +28292,7 @@ double rssn_num_md_apply_pbc_1d(double aX,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27277,6 +28325,7 @@ struct rssn_BincodeBuffer rssn_num_md_apply_pbc_bincode(struct rssn_BincodeBuffe
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27284,6 +28333,7 @@ struct rssn_BincodeBuffer rssn_num_md_apply_pbc_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27338,6 +28388,7 @@ double rssn_num_md_cfl_check(double aVelocity,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27345,6 +28396,7 @@ double rssn_num_md_cfl_check(double aVelocity,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27376,6 +28428,7 @@ char *rssn_num_md_create_cubic_lattice_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27383,6 +28436,7 @@ char *rssn_num_md_create_cubic_lattice_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27418,6 +28472,7 @@ char *rssn_num_md_harmonic_json(const char *aInput)
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27452,6 +28507,7 @@ struct rssn_BincodeBuffer rssn_num_md_lennard_jones_bincode(struct rssn_BincodeB
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27459,6 +28515,7 @@ struct rssn_BincodeBuffer rssn_num_md_lennard_jones_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27497,6 +28554,7 @@ double rssn_num_md_minimum_image_1d(double aDx,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27504,6 +28562,7 @@ double rssn_num_md_minimum_image_1d(double aDx,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27536,6 +28595,7 @@ char *rssn_num_md_minimum_image_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27543,6 +28603,7 @@ char *rssn_num_md_minimum_image_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27574,6 +28635,7 @@ char *rssn_num_md_morse_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27581,6 +28643,7 @@ char *rssn_num_md_morse_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27599,6 +28662,7 @@ double rssn_num_md_temperature_unit_argon(void)
 
 /*
  Computes the k-th branch of the complex arccosine.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27618,6 +28682,7 @@ void rssn_num_mv_complex_arccos_k(double aRe,
 
 /*
  Computes the k-th branch of the complex arcsine.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27636,6 +28701,7 @@ void rssn_num_mv_complex_arcsin_k(double aRe,
 
 /*
  Computes the k-th branch of the complex arctangent.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27654,6 +28720,7 @@ void rssn_num_mv_complex_arctan_k(double aRe,
 
 /*
  Computes the k-th branch of the complex logarithm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27678,6 +28745,7 @@ void rssn_num_mv_complex_log_k(double aRe,
 
  # Returns
  Bincode-encoded `FfiResult<ComplexResult, String>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27698,6 +28766,7 @@ struct rssn_BincodeBuffer rssn_num_mv_complex_log_k_bincode(struct rssn_BincodeB
 
  # Returns
  JSON-encoded `FfiResult<ComplexResult, String>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27705,6 +28774,7 @@ struct rssn_BincodeBuffer rssn_num_mv_complex_log_k_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27716,6 +28786,7 @@ char *rssn_num_mv_complex_log_k_json(const char *aJson)
 
 /*
  Computes the k-th branch of the complex n-th root.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27735,6 +28806,7 @@ void rssn_num_mv_complex_nth_root_k(double aRe,
 
 /*
  Computes the k-th branch of the complex power z^w.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27761,6 +28833,7 @@ void rssn_num_mv_complex_pow_k(double aZRe,
 
  # Returns
  Bincode-encoded `FfiResult<ComplexResult, String>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27781,6 +28854,7 @@ struct rssn_BincodeBuffer rssn_num_mv_complex_pow_k_bincode(struct rssn_BincodeB
 
  # Returns
  JSON-encoded `FfiResult<ComplexResult, String>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27788,6 +28862,7 @@ struct rssn_BincodeBuffer rssn_num_mv_complex_pow_k_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27799,6 +28874,7 @@ char *rssn_num_mv_complex_pow_k_json(const char *aJson)
 
 /*
  Computes the k-th branch of the complex square root.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27823,6 +28899,7 @@ void rssn_num_mv_complex_sqrt_k(double aRe,
 
  # Returns
  Bincode-encoded `FfiResult<ComplexResult, String>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27843,6 +28920,7 @@ struct rssn_BincodeBuffer rssn_num_mv_complex_sqrt_k_bincode(struct rssn_Bincode
 
  # Returns
  JSON-encoded `FfiResult<ComplexResult, String>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27850,6 +28928,7 @@ struct rssn_BincodeBuffer rssn_num_mv_complex_sqrt_k_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27861,6 +28940,7 @@ char *rssn_num_mv_complex_sqrt_k_json(const char *aJson)
 
 /*
  Finds a root of a complex function using Newton's method.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27888,6 +28968,7 @@ int32_t rssn_num_mv_newton_method_complex(const struct rssn_Expr *aFPtr,
 
  # Returns
  Bincode-encoded `FfiResult<ComplexResult, String>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27908,6 +28989,7 @@ struct rssn_BincodeBuffer rssn_num_mv_newton_method_complex_bincode(struct rssn_
 
  # Returns
  JSON-encoded `FfiResult<ComplexResult, String>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27915,6 +28997,7 @@ struct rssn_BincodeBuffer rssn_num_mv_newton_method_complex_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -27927,6 +29010,7 @@ char *rssn_num_mv_newton_method_complex_json(const char *aInputJson)
 /*
  Returns the number of prime factors and writes them to `out_factors`.
  `out_factors` must be large enough.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27942,6 +29026,7 @@ size_t rssn_num_nt_factorize(uint64_t aN,
 
 /*
  Factorizes a number via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27957,6 +29042,7 @@ struct rssn_BincodeBuffer rssn_num_nt_factorize_bincode(const uint8_t *aData,
 
 /*
  Factorizes a number from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27964,6 +29050,7 @@ struct rssn_BincodeBuffer rssn_num_nt_factorize_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -28007,6 +29094,7 @@ int64_t rssn_num_nt_mod_inverse(int64_t aA,
 
 /*
  Modular inverse from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28014,6 +29102,7 @@ int64_t rssn_num_nt_mod_inverse(int64_t aA,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -28041,6 +29130,7 @@ uint64_t rssn_num_nt_phi(uint64_t aN)
 
 /*
  Solves a system of ODEs and returns the results as a Matrix handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28082,6 +29172,7 @@ struct rssn_Matrix_f64 *rssn_num_ode_solve(const struct rssn_Expr *const *aFuncs
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer is valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28117,6 +29208,7 @@ struct rssn_BincodeBuffer rssn_num_ode_solve_bincode(struct rssn_BincodeBuffer a
  This function is unsafe because it:
  - Receives a raw C string pointer that must be valid, null-terminated UTF-8
  - Returns a raw pointer that the caller must free using `rssn_free_string`
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28124,6 +29216,7 @@ struct rssn_BincodeBuffer rssn_num_ode_solve_bincode(struct rssn_BincodeBuffer a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -28172,6 +29265,7 @@ double rssn_num_physics_blackbody_power(double aArea,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28179,6 +29273,7 @@ double rssn_num_physics_blackbody_power(double aArea,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -28260,6 +29355,7 @@ double rssn_num_physics_coulomb_force(double aQ1,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28293,6 +29389,7 @@ struct rssn_BincodeBuffer rssn_num_physics_coulomb_force_bincode(struct rssn_Bin
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28300,6 +29397,7 @@ struct rssn_BincodeBuffer rssn_num_physics_coulomb_force_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -28380,6 +29478,7 @@ double rssn_num_physics_damped_harmonic_oscillator(double aAmplitude,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28387,6 +29486,7 @@ double rssn_num_physics_damped_harmonic_oscillator(double aAmplitude,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -28432,6 +29532,7 @@ double rssn_num_physics_de_broglie_wavelength(double aMomentum)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28439,6 +29540,7 @@ double rssn_num_physics_de_broglie_wavelength(double aMomentum)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -28487,6 +29589,7 @@ double rssn_num_physics_electric_field_point_charge(double aQ,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28494,6 +29597,7 @@ double rssn_num_physics_electric_field_point_charge(double aQ,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -28594,6 +29698,7 @@ double rssn_num_physics_hydrogen_energy_level(uint64_t aN)
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28625,6 +29730,7 @@ struct rssn_BincodeBuffer rssn_num_physics_hydrogen_energy_level_bincode(struct 
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28632,6 +29738,7 @@ struct rssn_BincodeBuffer rssn_num_physics_hydrogen_energy_level_bincode(struct 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -28685,6 +29792,7 @@ double rssn_num_physics_ideal_gas_pressure(double aN,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28718,6 +29826,7 @@ struct rssn_BincodeBuffer rssn_num_physics_ideal_gas_pressure_bincode(struct rss
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28725,6 +29834,7 @@ struct rssn_BincodeBuffer rssn_num_physics_ideal_gas_pressure_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -28833,6 +29943,7 @@ double rssn_num_physics_lorentz_factor(double aVelocity)
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28864,6 +29975,7 @@ struct rssn_BincodeBuffer rssn_num_physics_lorentz_factor_bincode(struct rssn_Bi
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28871,6 +29983,7 @@ struct rssn_BincodeBuffer rssn_num_physics_lorentz_factor_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -28960,6 +30073,7 @@ double rssn_num_physics_mass_energy(double aMass)
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28991,6 +30105,7 @@ struct rssn_BincodeBuffer rssn_num_physics_mass_energy_bincode(struct rssn_Binco
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28998,6 +30113,7 @@ struct rssn_BincodeBuffer rssn_num_physics_mass_energy_bincode(struct rssn_Binco
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29046,6 +30162,7 @@ double rssn_num_physics_maxwell_boltzmann_mean_speed(double aMass,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29053,6 +30170,7 @@ double rssn_num_physics_maxwell_boltzmann_mean_speed(double aMass,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29138,6 +30256,7 @@ double rssn_num_physics_photon_energy(double aWavelength)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29145,6 +30264,7 @@ double rssn_num_physics_photon_energy(double aWavelength)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29190,6 +30310,7 @@ double rssn_num_physics_photon_wavelength(double aEnergy)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29197,6 +30318,7 @@ double rssn_num_physics_photon_wavelength(double aEnergy)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29259,6 +30381,7 @@ double rssn_num_physics_quantum_harmonic_oscillator_energy(uint64_t aN,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29291,6 +30414,7 @@ struct rssn_BincodeBuffer rssn_num_physics_quantum_harmonic_oscillator_energy_bi
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29298,6 +30422,7 @@ struct rssn_BincodeBuffer rssn_num_physics_quantum_harmonic_oscillator_energy_bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29384,6 +30509,7 @@ double rssn_num_physics_relativistic_velocity_addition(double aV,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29391,6 +30517,7 @@ double rssn_num_physics_relativistic_velocity_addition(double aV,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29447,6 +30574,7 @@ double rssn_num_physics_simple_harmonic_oscillator(double aAmplitude,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29481,6 +30609,7 @@ struct rssn_BincodeBuffer rssn_num_physics_simple_harmonic_oscillator_bincode(st
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29488,6 +30617,7 @@ struct rssn_BincodeBuffer rssn_num_physics_simple_harmonic_oscillator_bincode(st
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29547,6 +30677,7 @@ double rssn_num_physics_time_dilation(double aProperTime,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29554,6 +30685,7 @@ double rssn_num_physics_time_dilation(double aProperTime,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29599,6 +30731,7 @@ double rssn_num_physics_wien_displacement_wavelength(double aTemperature)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29606,6 +30739,7 @@ double rssn_num_physics_wien_displacement_wavelength(double aTemperature)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29617,6 +30751,7 @@ char *rssn_num_physics_wien_displacement_wavelength_json(const char *aInput)
 
 /*
  Adds two polynomials.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29632,6 +30767,7 @@ struct rssn_Polynomial *rssn_num_poly_add(const struct rssn_Polynomial *aA,
 
 /*
  Adds two polynomials via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29647,6 +30783,7 @@ struct rssn_BincodeBuffer rssn_num_poly_add_bincode(const uint8_t *aData,
 
 /*
  Adds two polynomials from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29654,6 +30791,7 @@ struct rssn_BincodeBuffer rssn_num_poly_add_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29665,6 +30803,7 @@ char *rssn_num_poly_add_json(const char *aJsonPtr)
 
 /*
  Creates a new polynomial from coefficients.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29680,6 +30819,7 @@ struct rssn_Polynomial *rssn_num_poly_create(const double *aCoeffs,
 
 /*
  Returns the degree of a polynomial.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29694,6 +30834,7 @@ size_t rssn_num_poly_degree(const struct rssn_Polynomial *aPoly)
 
 /*
  Computes the derivative.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29708,6 +30849,7 @@ struct rssn_Polynomial *rssn_num_poly_derivative(const struct rssn_Polynomial *a
 
 /*
  Evaluates a polynomial at x.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29723,6 +30865,7 @@ double rssn_num_poly_eval(const struct rssn_Polynomial *aPoly,
 
 /*
  Frees a polynomial object.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29737,6 +30880,7 @@ void rssn_num_poly_free(struct rssn_Polynomial *aPoly)
 
 /*
  Computes the integral.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29751,6 +30895,7 @@ struct rssn_Polynomial *rssn_num_poly_integral(const struct rssn_Polynomial *aPo
 
 /*
  Multiplies two polynomials.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29766,6 +30911,7 @@ struct rssn_Polynomial *rssn_num_poly_mul(const struct rssn_Polynomial *aA,
 
 /*
  Multiplies two polynomials from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29773,6 +30919,7 @@ struct rssn_Polynomial *rssn_num_poly_mul(const struct rssn_Polynomial *aA,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29784,6 +30931,7 @@ char *rssn_num_poly_mul_json(const char *aJsonPtr)
 
 /*
  Subtracts two polynomials.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29907,6 +31055,7 @@ double rssn_num_pure_tanh(double aX)
 
 /*
  Computes the convolution of two sequences.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29943,6 +31092,7 @@ struct rssn_Matrix_f64 *rssn_num_signal_convolve(const double *aA,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29976,6 +31126,7 @@ struct rssn_BincodeBuffer rssn_num_signal_convolve_bincode(struct rssn_BincodeBu
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29983,6 +31134,7 @@ struct rssn_BincodeBuffer rssn_num_signal_convolve_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -29994,6 +31146,7 @@ char *rssn_num_signal_convolve_json(const char *aInputJson)
 
 /*
  Computes the cross-correlation of two sequences.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30030,6 +31183,7 @@ struct rssn_Matrix_f64 *rssn_num_signal_cross_correlation(const double *aA,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30063,6 +31217,7 @@ struct rssn_BincodeBuffer rssn_num_signal_cross_correlation_bincode(struct rssn_
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30070,6 +31225,7 @@ struct rssn_BincodeBuffer rssn_num_signal_cross_correlation_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -30081,6 +31237,7 @@ char *rssn_num_signal_cross_correlation_json(const char *aInputJson)
 
 /*
  Computes the FFT and returns a `Matrix<Complex<f64>` as a `Matrix<f64>` (real, imag interleaved).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30115,6 +31272,7 @@ struct rssn_Matrix_f64 *rssn_num_signal_fft(const double *aReal,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30147,6 +31305,7 @@ struct rssn_BincodeBuffer rssn_num_signal_fft_bincode(struct rssn_BincodeBuffer 
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30154,6 +31313,7 @@ struct rssn_BincodeBuffer rssn_num_signal_fft_bincode(struct rssn_BincodeBuffer 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -30165,6 +31325,7 @@ char *rssn_num_signal_fft_json(const char *aInputJson)
 
 /*
  Generates a Hamming window.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30179,6 +31340,7 @@ struct rssn_Matrix_f64 *rssn_num_signal_hamming_window(size_t aN)
 
 /*
  Generates a Hann window.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30193,6 +31355,7 @@ struct rssn_Matrix_f64 *rssn_num_signal_hann_window(size_t aN)
 
 /*
  Frees a `LinearSolution` object.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30211,6 +31374,7 @@ void rssn_num_solve_free_solution(struct rssn_LinearSolution *aPtr)
  # Arguments
  * `ptr` - Pointer to the `LinearSolution`.
  * `buffer` - Buffer to store the solution vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30226,6 +31390,7 @@ void rssn_num_solve_get_unique_solution(const struct rssn_LinearSolution *aPtr,
 
 /*
  Gets the length of the unique solution vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30240,6 +31405,7 @@ size_t rssn_num_solve_get_unique_solution_len(const struct rssn_LinearSolution *
 
 /*
  Checks if there is no solution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30254,6 +31420,7 @@ bool rssn_num_solve_is_no_solution(const struct rssn_LinearSolution *aPtr)
 
 /*
  Checks if the solution is unique.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30276,6 +31443,7 @@ bool rssn_num_solve_is_unique(const struct rssn_LinearSolution *aPtr)
 
  # Returns
  A pointer to a `LinearSolution` object, or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30303,6 +31471,7 @@ struct rssn_LinearSolution *rssn_num_solve_linear_system_handle(const struct rss
 
  # Returns
  A raw pointer to the `CsMat` object, or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30322,6 +31491,7 @@ rssn_CsMat<double> *rssn_num_sparse_create(size_t aRows,
 
 /*
  Frees a sparse matrix object.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30336,6 +31506,7 @@ void rssn_num_sparse_free(rssn_CsMat<double> *aMatrix)
 
 /*
  Computes the Frobenius norm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30350,6 +31521,7 @@ double rssn_num_sparse_frobenius_norm(const rssn_CsMat<double> *aMatrix)
 
 /*
  Returns the number of columns.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30364,6 +31536,7 @@ size_t rssn_num_sparse_get_cols(const rssn_CsMat<double> *aMatrix)
 
 /*
  Returns the number of non-zero elements.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30378,6 +31551,7 @@ size_t rssn_num_sparse_get_nnz(const rssn_CsMat<double> *aMatrix)
 
 /*
  Returns the number of rows.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30414,6 +31588,7 @@ size_t rssn_num_sparse_get_rows(const rssn_CsMat<double> *aMatrix)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30421,6 +31596,7 @@ size_t rssn_num_sparse_get_rows(const rssn_CsMat<double> *aMatrix)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -30434,6 +31610,7 @@ char *rssn_num_sparse_solve_cg_json(const char *aJsonPtr)
  Sparse matrix-vector multiplication.
 
  result = matrix * vector
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30451,6 +31628,7 @@ int32_t rssn_num_sparse_spmv(const rssn_CsMat<double> *aMatrix,
 
 /*
  Sparse matrix-vector multiplication via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30466,6 +31644,7 @@ struct rssn_BincodeBuffer rssn_num_sparse_spmv_bincode(const uint8_t *aData,
 
 /*
  Sparse matrix-vector multiplication from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30473,6 +31652,7 @@ struct rssn_BincodeBuffer rssn_num_sparse_spmv_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -30484,6 +31664,7 @@ char *rssn_num_sparse_spmv_json(const char *aJsonPtr)
 
 /*
  Computes the trace.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30569,6 +31750,7 @@ double rssn_num_special_bessel_j0(double aX)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30600,6 +31782,7 @@ struct rssn_BincodeBuffer rssn_num_special_bessel_j0_bincode(struct rssn_Bincode
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30607,6 +31790,7 @@ struct rssn_BincodeBuffer rssn_num_special_bessel_j0_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -30654,6 +31838,7 @@ double rssn_num_special_bessel_j1(double aX)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30685,6 +31870,7 @@ struct rssn_BincodeBuffer rssn_num_special_bessel_j1_bincode(struct rssn_Bincode
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30692,6 +31878,7 @@ struct rssn_BincodeBuffer rssn_num_special_bessel_j1_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -30774,6 +31961,7 @@ double rssn_num_special_beta(double aA,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30804,6 +31992,7 @@ struct rssn_BincodeBuffer rssn_num_special_beta_bincode(struct rssn_BincodeBuffe
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30811,6 +32000,7 @@ struct rssn_BincodeBuffer rssn_num_special_beta_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -30861,6 +32051,7 @@ double rssn_num_special_binomial(uint64_t aN,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30893,6 +32084,7 @@ struct rssn_BincodeBuffer rssn_num_special_binomial_bincode(struct rssn_BincodeB
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30900,6 +32092,7 @@ struct rssn_BincodeBuffer rssn_num_special_binomial_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -30950,6 +32143,7 @@ double rssn_num_special_chebyshev_t(uint32_t aN,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30982,6 +32176,7 @@ struct rssn_BincodeBuffer rssn_num_special_chebyshev_t_bincode(struct rssn_Binco
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30989,6 +32184,7 @@ struct rssn_BincodeBuffer rssn_num_special_chebyshev_t_bincode(struct rssn_Binco
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -31055,6 +32251,7 @@ double rssn_num_special_digamma(double aX)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31086,6 +32283,7 @@ struct rssn_BincodeBuffer rssn_num_special_digamma_bincode(struct rssn_BincodeBu
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31093,6 +32291,7 @@ struct rssn_BincodeBuffer rssn_num_special_digamma_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -31158,6 +32357,7 @@ double rssn_num_special_erf(double aX)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31189,6 +32389,7 @@ struct rssn_BincodeBuffer rssn_num_special_erf_bincode(struct rssn_BincodeBuffer
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31196,6 +32397,7 @@ struct rssn_BincodeBuffer rssn_num_special_erf_bincode(struct rssn_BincodeBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -31243,6 +32445,7 @@ double rssn_num_special_erfc(double aX)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31274,6 +32477,7 @@ struct rssn_BincodeBuffer rssn_num_special_erfc_bincode(struct rssn_BincodeBuffe
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31281,6 +32485,7 @@ struct rssn_BincodeBuffer rssn_num_special_erfc_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -31328,6 +32533,7 @@ double rssn_num_special_factorial(uint64_t aN)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31359,6 +32565,7 @@ struct rssn_BincodeBuffer rssn_num_special_factorial_bincode(struct rssn_Bincode
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31366,6 +32573,7 @@ struct rssn_BincodeBuffer rssn_num_special_factorial_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -31413,6 +32621,7 @@ double rssn_num_special_gamma(double aX)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31444,6 +32653,7 @@ struct rssn_BincodeBuffer rssn_num_special_gamma_bincode(struct rssn_BincodeBuff
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31451,6 +32661,7 @@ struct rssn_BincodeBuffer rssn_num_special_gamma_bincode(struct rssn_BincodeBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -31502,6 +32713,7 @@ double rssn_num_special_hermite_h(uint32_t aN,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31534,6 +32746,7 @@ struct rssn_BincodeBuffer rssn_num_special_hermite_h_bincode(struct rssn_Bincode
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31541,6 +32754,7 @@ struct rssn_BincodeBuffer rssn_num_special_hermite_h_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -31628,6 +32842,7 @@ double rssn_num_special_legendre_p(uint32_t aN,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31660,6 +32875,7 @@ struct rssn_BincodeBuffer rssn_num_special_legendre_p_bincode(struct rssn_Bincod
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31667,6 +32883,7 @@ struct rssn_BincodeBuffer rssn_num_special_legendre_p_bincode(struct rssn_Bincod
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -31733,6 +32950,7 @@ double rssn_num_special_ln_gamma(double aX)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31764,6 +32982,7 @@ struct rssn_BincodeBuffer rssn_num_special_ln_gamma_bincode(struct rssn_BincodeB
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31771,6 +32990,7 @@ struct rssn_BincodeBuffer rssn_num_special_ln_gamma_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -31861,6 +33081,7 @@ double rssn_num_special_regularized_beta(double aX,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31894,6 +33115,7 @@ struct rssn_BincodeBuffer rssn_num_special_regularized_beta_bincode(struct rssn_
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31901,6 +33123,7 @@ struct rssn_BincodeBuffer rssn_num_special_regularized_beta_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -31948,6 +33171,7 @@ double rssn_num_special_sigmoid(double aX)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31979,6 +33203,7 @@ struct rssn_BincodeBuffer rssn_num_special_sigmoid_bincode(struct rssn_BincodeBu
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31986,6 +33211,7 @@ struct rssn_BincodeBuffer rssn_num_special_sigmoid_bincode(struct rssn_BincodeBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32033,6 +33259,7 @@ double rssn_num_special_sinc(double aX)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32064,6 +33291,7 @@ struct rssn_BincodeBuffer rssn_num_special_sinc_bincode(struct rssn_BincodeBuffe
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32071,6 +33299,7 @@ struct rssn_BincodeBuffer rssn_num_special_sinc_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32136,6 +33365,7 @@ double rssn_num_special_zeta(double aS)
 /*
  Performs a chi-squared test.
  Returns chi-squared statistic via `out_chi` and p-value via `out_p`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32174,6 +33404,7 @@ int32_t rssn_num_stats_chi_squared_test(const double *aObserved,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32207,6 +33438,7 @@ struct rssn_BincodeBuffer rssn_num_stats_chi_squared_test_bincode(struct rssn_Bi
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32214,6 +33446,7 @@ struct rssn_BincodeBuffer rssn_num_stats_chi_squared_test_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32225,6 +33458,7 @@ char *rssn_num_stats_chi_squared_test_json(const char *aInput)
 
 /*
  Computes the Pearson correlation coefficient of two arrays.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32261,6 +33495,7 @@ double rssn_num_stats_correlation(const double *aData1,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32293,6 +33528,7 @@ struct rssn_BincodeBuffer rssn_num_stats_correlation_bincode(struct rssn_Bincode
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32300,6 +33536,7 @@ struct rssn_BincodeBuffer rssn_num_stats_correlation_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32311,6 +33548,7 @@ char *rssn_num_stats_correlation_json(const char *aInput)
 
 /*
  Computes the covariance of two arrays.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32347,6 +33585,7 @@ double rssn_num_stats_covariance(const double *aData1,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32379,6 +33618,7 @@ struct rssn_BincodeBuffer rssn_num_stats_covariance_bincode(struct rssn_BincodeB
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32386,6 +33626,7 @@ struct rssn_BincodeBuffer rssn_num_stats_covariance_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32397,6 +33638,7 @@ char *rssn_num_stats_covariance_json(const char *aInput)
 
 /*
  Computes the coefficient of variation of an array.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32412,6 +33654,7 @@ double rssn_num_stats_cv(const double *aData,
 
 /*
  Computes the geometric mean of an array.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32445,6 +33688,7 @@ double rssn_num_stats_geometric_mean(const double *aData,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32452,6 +33696,7 @@ double rssn_num_stats_geometric_mean(const double *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32463,6 +33708,7 @@ char *rssn_num_stats_geometric_mean_json(const char *aInput)
 
 /*
  Computes the harmonic mean of an array.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32496,6 +33742,7 @@ double rssn_num_stats_harmonic_mean(const double *aData,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32503,6 +33750,7 @@ double rssn_num_stats_harmonic_mean(const double *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32515,6 +33763,7 @@ char *rssn_num_stats_harmonic_mean_json(const char *aInput)
 /*
  Performs simple linear regression.
  Returns slope via `out_slope` and intercept via `out_intercept`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32552,6 +33801,7 @@ int32_t rssn_num_stats_linear_regression(const double *aX,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32584,6 +33834,7 @@ struct rssn_BincodeBuffer rssn_num_stats_linear_regression_bincode(struct rssn_B
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32591,6 +33842,7 @@ struct rssn_BincodeBuffer rssn_num_stats_linear_regression_bincode(struct rssn_B
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32602,6 +33854,7 @@ char *rssn_num_stats_linear_regression_json(const char *aInput)
 
 /*
  Computes the mean of an array.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32635,6 +33888,7 @@ double rssn_num_stats_mean(const double *aData,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32666,6 +33920,7 @@ struct rssn_BincodeBuffer rssn_num_stats_mean_bincode(struct rssn_BincodeBuffer 
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32673,6 +33928,7 @@ struct rssn_BincodeBuffer rssn_num_stats_mean_bincode(struct rssn_BincodeBuffer 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32684,6 +33940,7 @@ char *rssn_num_stats_mean_json(const char *aInput)
 
 /*
  Computes the range of an array.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32699,6 +33956,7 @@ double rssn_num_stats_range(const double *aData,
 
 /*
  Computes the Shannon entropy of a probability distribution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32733,6 +33991,7 @@ double rssn_num_stats_shannon_entropy(const double *aData,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32765,6 +34024,7 @@ struct rssn_BincodeBuffer rssn_num_stats_shannon_entropy_bincode(struct rssn_Bin
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32772,6 +34032,7 @@ struct rssn_BincodeBuffer rssn_num_stats_shannon_entropy_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32783,6 +34044,7 @@ char *rssn_num_stats_shannon_entropy_json(const char *aInput)
 
 /*
  Computes the standard error of an array.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32798,6 +34060,7 @@ double rssn_num_stats_standard_error(const double *aData,
 
 /*
  Computes the standard deviation of an array.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32831,6 +34094,7 @@ double rssn_num_stats_std_dev(const double *aData,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32862,6 +34126,7 @@ struct rssn_BincodeBuffer rssn_num_stats_std_dev_bincode(struct rssn_BincodeBuff
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32869,6 +34134,7 @@ struct rssn_BincodeBuffer rssn_num_stats_std_dev_bincode(struct rssn_BincodeBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32881,6 +34147,7 @@ char *rssn_num_stats_std_dev_json(const char *aInput)
 /*
  Performs a two-sample t-test.
  Returns t-statistic via `out_t` and p-value via `out_p`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32920,6 +34187,7 @@ int32_t rssn_num_stats_two_sample_t_test(const double *aSample1,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32953,6 +34221,7 @@ struct rssn_BincodeBuffer rssn_num_stats_two_sample_t_test_bincode(struct rssn_B
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32960,6 +34229,7 @@ struct rssn_BincodeBuffer rssn_num_stats_two_sample_t_test_bincode(struct rssn_B
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -32971,6 +34241,7 @@ char *rssn_num_stats_two_sample_t_test_json(const char *aInput)
 
 /*
  Computes the variance of an array.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33004,6 +34275,7 @@ double rssn_num_stats_variance(const double *aData,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33035,6 +34307,7 @@ struct rssn_BincodeBuffer rssn_num_stats_variance_bincode(struct rssn_BincodeBuf
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33042,6 +34315,7 @@ struct rssn_BincodeBuffer rssn_num_stats_variance_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -33054,6 +34328,7 @@ char *rssn_num_stats_variance_json(const char *aInput)
 /*
  Performs Welch's t-test.
  Returns t-statistic via `out_t` and p-value via `out_p`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33093,6 +34368,7 @@ int32_t rssn_num_stats_welch_t_test(const double *aSample1,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33126,6 +34402,7 @@ struct rssn_BincodeBuffer rssn_num_stats_welch_t_test_bincode(struct rssn_Bincod
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33133,6 +34410,7 @@ struct rssn_BincodeBuffer rssn_num_stats_welch_t_test_bincode(struct rssn_Bincod
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -33163,6 +34441,7 @@ char *rssn_num_stats_welch_t_test_json(const char *aInput)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33195,6 +34474,7 @@ struct rssn_BincodeBuffer rssn_num_stats_z_scores_bincode(struct rssn_BincodeBuf
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33202,6 +34482,7 @@ struct rssn_BincodeBuffer rssn_num_stats_z_scores_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -33213,6 +34494,7 @@ char *rssn_num_stats_z_scores_json(const char *aInput)
 
 /*
  Creates a new tensor from shape and data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33230,6 +34512,7 @@ rssn_ArrayD<double> *rssn_num_tensor_create(const size_t *aShape,
 
 /*
  Frees a tensor object.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33244,6 +34527,7 @@ void rssn_num_tensor_free(rssn_ArrayD<double> *aTensor)
 
 /*
  Returns the number of dimensions.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33258,6 +34542,7 @@ size_t rssn_num_tensor_get_ndim(const rssn_ArrayD<double> *aTensor)
 
 /*
  Returns the shape of the tensor.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33273,6 +34558,7 @@ int32_t rssn_num_tensor_get_shape(const rssn_ArrayD<double> *aTensor,
 
 /*
  Frobenius norm of a tensor.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33287,6 +34573,7 @@ double rssn_num_tensor_norm(const rssn_ArrayD<double> *aTensor)
 
 /*
  Outer product of two tensors.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33302,6 +34589,7 @@ rssn_ArrayD<double> *rssn_num_tensor_outer_product(const rssn_ArrayD<double> *aA
 
 /*
  Outer product from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33309,6 +34597,7 @@ rssn_ArrayD<double> *rssn_num_tensor_outer_product(const rssn_ArrayD<double> *aA
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -33320,6 +34609,7 @@ char *rssn_num_tensor_outer_product_json(const char *aJsonPtr)
 
 /*
  Tensor contraction (tensordot).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33339,6 +34629,7 @@ rssn_ArrayD<double> *rssn_num_tensor_tensordot(const rssn_ArrayD<double> *aA,
 
 /*
  Tensor contraction via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33354,6 +34645,7 @@ struct rssn_BincodeBuffer rssn_num_tensor_tensordot_bincode(const uint8_t *aData
 
 /*
  Tensor contraction from JSON.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33361,6 +34653,7 @@ struct rssn_BincodeBuffer rssn_num_tensor_tensordot_bincode(const uint8_t *aData
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -33372,6 +34665,7 @@ char *rssn_num_tensor_tensordot_json(const char *aJsonPtr)
 
 /*
  Computes the Betti numbers for a point cloud.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33412,6 +34706,7 @@ int32_t rssn_num_topology_betti_numbers(const double *const *aPoints,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33446,6 +34741,7 @@ struct rssn_BincodeBuffer rssn_num_topology_betti_numbers_bincode(struct rssn_Bi
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33453,6 +34749,7 @@ struct rssn_BincodeBuffer rssn_num_topology_betti_numbers_bincode(struct rssn_Bi
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -33464,6 +34761,7 @@ char *rssn_num_topology_betti_numbers_json(const char *aInputJson)
 
 /*
  Computes the Euclidean distance between two points.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33480,6 +34778,7 @@ double rssn_num_topology_euclidean_distance(const double *aP1,
 
 /*
  Finds the connected components of a graph.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33516,6 +34815,7 @@ struct rssn_Vec_Vec_usize *rssn_num_topology_find_connected_components(const str
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33551,6 +34851,7 @@ struct rssn_BincodeBuffer rssn_num_topology_persistence_bincode(struct rssn_Binc
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33558,6 +34859,7 @@ struct rssn_BincodeBuffer rssn_num_topology_persistence_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -33569,6 +34871,7 @@ char *rssn_num_topology_persistence_json(const char *aInputJson)
 
 /*
  Computes the sum of two vectors.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33584,6 +34887,7 @@ struct rssn_Vec_f64 *rssn_num_vec_add(const struct rssn_Vec_f64 *aV1,
 
 /*
  Computes the angle between two vectors.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33601,6 +34905,7 @@ int32_t rssn_num_vec_angle(const struct rssn_Vec_f64 *aV1,
 /*
  Creates a new numerical vector from a raw array of doubles.
  The caller is responsible for freeing the returned pointer using `rssn_num_vec_free`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33616,6 +34921,7 @@ struct rssn_Vec_f64 *rssn_num_vec_create(const double *aData,
 
 /*
  Computes the cross product of two 3D vectors.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33631,6 +34937,7 @@ struct rssn_Vec_f64 *rssn_num_vec_cross_product(const struct rssn_Vec_f64 *aV1,
 
 /*
  Returns a pointer to the underlying data of a numerical vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33645,6 +34952,7 @@ const double *rssn_num_vec_data(const struct rssn_Vec_f64 *aV)
 
 /*
  Computes the dot product of two vectors.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33661,6 +34969,7 @@ int32_t rssn_num_vec_dot_product(const struct rssn_Vec_f64 *aV1,
 
 /*
  Frees a numerical vector allocated by the library.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33675,6 +34984,7 @@ void rssn_num_vec_free(struct rssn_Vec_f64 *aV)
 
 /*
  Returns the length of a numerical vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33689,6 +34999,7 @@ size_t rssn_num_vec_len(const struct rssn_Vec_f64 *aV)
 
 /*
  Computes the Lp norm of a vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33705,6 +35016,7 @@ int32_t rssn_num_vec_lp_norm(const struct rssn_Vec_f64 *aV,
 
 /*
  Computes the L2 norm of a vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33720,6 +35032,7 @@ int32_t rssn_num_vec_norm(const struct rssn_Vec_f64 *aV,
 
 /*
  Normalizes a vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33734,6 +35047,7 @@ struct rssn_Vec_f64 *rssn_num_vec_normalize(const struct rssn_Vec_f64 *aV)
 
 /*
  Projects v1 onto v2.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33749,6 +35063,7 @@ struct rssn_Vec_f64 *rssn_num_vec_project(const struct rssn_Vec_f64 *aV1,
 
 /*
  Reflects v about n.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33764,6 +35079,7 @@ struct rssn_Vec_f64 *rssn_num_vec_reflect(const struct rssn_Vec_f64 *aV,
 
 /*
  Multiplies a vector by a scalar.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33779,6 +35095,7 @@ struct rssn_Vec_f64 *rssn_num_vec_scalar_mul(const struct rssn_Vec_f64 *aV,
 
 /*
  Computes the difference of two vectors.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33794,6 +35111,7 @@ struct rssn_Vec_f64 *rssn_num_vec_sub(const struct rssn_Vec_f64 *aV1,
 
 /*
  Computes the numerical curl of a 3D vector field at a point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33831,6 +35149,7 @@ struct rssn_Vec_f64 *rssn_num_vector_calculus_curl(const struct rssn_Expr *const
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33865,6 +35184,7 @@ struct rssn_BincodeBuffer rssn_num_vector_calculus_curl_bincode(struct rssn_Binc
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33872,6 +35192,7 @@ struct rssn_BincodeBuffer rssn_num_vector_calculus_curl_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -33883,6 +35204,7 @@ char *rssn_num_vector_calculus_curl_json(const char *aInputJson)
 
 /*
  Computes the numerical directional derivative of a function at a point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33902,6 +35224,7 @@ int32_t rssn_num_vector_calculus_directional_derivative(const struct rssn_Expr *
 
 /*
  Computes the numerical divergence of a vector field at a point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33942,6 +35265,7 @@ int32_t rssn_num_vector_calculus_divergence(const struct rssn_Expr *const *aFunc
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33976,6 +35300,7 @@ struct rssn_BincodeBuffer rssn_num_vector_calculus_divergence_bincode(struct rss
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33983,6 +35308,7 @@ struct rssn_BincodeBuffer rssn_num_vector_calculus_divergence_bincode(struct rss
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -33994,6 +35320,7 @@ char *rssn_num_vector_calculus_divergence_json(const char *aInputJson)
 
 /*
  Computes the numerical Laplacian of a scalar field at a point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34033,6 +35360,7 @@ int32_t rssn_num_vector_calculus_laplacian(const struct rssn_Expr *aF,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34067,6 +35395,7 @@ struct rssn_BincodeBuffer rssn_num_vector_calculus_laplacian_bincode(struct rssn
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34074,6 +35403,7 @@ struct rssn_BincodeBuffer rssn_num_vector_calculus_laplacian_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -34085,6 +35415,7 @@ char *rssn_num_vector_calculus_laplacian_json(const char *aInputJson)
 
 /*
  Evaluates a power series at a point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34106,6 +35437,7 @@ double rssn_numerical_evaluate_power_series(const struct rssn_Vec_f64 *aCoeffs,
  * `vars` must be a valid pointer to an array of `num_vars` null-terminated strings.
  * `point` must be a valid pointer to an array of `point_len` f64 elements.
  * `result_vec` must point to a buffer of size at least `point_len` f64 elements.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34126,6 +35458,7 @@ int32_t rssn_numerical_gradient(size_t aExprH,
 
 /*
  Computes the gradient of an expression at a given point using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34140,6 +35473,7 @@ struct rssn_BincodeBuffer rssn_numerical_gradient_bincode(struct rssn_BincodeBuf
 
 /*
  Computes the gradient of an expression at a given point using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34147,6 +35481,7 @@ struct rssn_BincodeBuffer rssn_numerical_gradient_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -34158,6 +35493,7 @@ char *rssn_numerical_gradient_json(const char *aInputJson)
 
 /*
  Computes the Hessian matrix of an expression at a given point using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34172,6 +35508,7 @@ struct rssn_BincodeBuffer rssn_numerical_hessian_bincode(struct rssn_BincodeBuff
 
 /*
  Computes the Hessian matrix of an expression at a given point using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34179,6 +35516,7 @@ struct rssn_BincodeBuffer rssn_numerical_hessian_bincode(struct rssn_BincodeBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -34194,6 +35532,7 @@ char *rssn_numerical_hessian_json(const char *aInputJson)
  # Safety
  * `var` must be a valid null-terminated C string.
  * `result` must be a valid pointer to store the f64 result.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34215,6 +35554,7 @@ int32_t rssn_numerical_integrate(size_t aExprH,
 
 /*
  Computes the Jacobian matrix of a set of expressions at a given point using bincode for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34229,6 +35569,7 @@ struct rssn_BincodeBuffer rssn_numerical_jacobian_bincode(struct rssn_BincodeBuf
 
 /*
  Computes the Jacobian matrix of a set of expressions at a given point using JSON for serialization.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34236,6 +35577,7 @@ struct rssn_BincodeBuffer rssn_numerical_jacobian_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -34264,6 +35606,7 @@ char *rssn_numerical_jacobian_json(const char *aInputJson)
 
  # Returns
  0 on success, -1 on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34284,6 +35627,7 @@ int32_t rssn_numerical_quadrature(const struct rssn_Expr *aExprPtr,
 
 /*
  Performs numerical integration via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34308,6 +35652,7 @@ struct rssn_BincodeBuffer rssn_numerical_quadrature_bincode(struct rssn_BincodeB
    "`n_steps"`: 100,
    "method": "Simpson"
  }
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34315,6 +35660,7 @@ struct rssn_BincodeBuffer rssn_numerical_quadrature_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -34326,6 +35672,7 @@ char *rssn_numerical_quadrature_json(const char *aJsonPtr)
 
 /*
  Computes the sum of a series.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34365,6 +35712,7 @@ int32_t rssn_numerical_sum_series(const struct rssn_Expr *aF,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34399,6 +35747,7 @@ struct rssn_BincodeBuffer rssn_numerical_sum_series_bincode(struct rssn_BincodeB
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34406,6 +35755,7 @@ struct rssn_BincodeBuffer rssn_numerical_sum_series_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -34418,6 +35768,7 @@ char *rssn_numerical_sum_series_json(const char *aInputJson)
 /*
  Computes the numerical Taylor series coefficients.
  Returns a pointer to a `Vec<f64>` containing the coefficients.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34457,6 +35808,7 @@ struct rssn_Vec_f64 *rssn_numerical_taylor_coefficients(const struct rssn_Expr *
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34492,6 +35844,7 @@ struct rssn_BincodeBuffer rssn_numerical_taylor_coefficients_bincode(struct rssn
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34499,6 +35852,7 @@ struct rssn_BincodeBuffer rssn_numerical_taylor_coefficients_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -34515,6 +35869,7 @@ char *rssn_numerical_taylor_coefficients_json(const char *aInputJson)
  and a raw pointer to an `Expr` (target mean).
  Returns a raw pointer to an `Expr` tuple containing the test statistic,
  p-value formula, and degrees of freedom.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34531,6 +35886,7 @@ struct rssn_Expr *rssn_one_sample_t_test(const struct rssn_Expr *const *aData,
 
 /*
  Frees an Operator.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34545,6 +35901,7 @@ void rssn_operator_free(struct rssn_Operator *aOpPtr)
 
 /*
  Creates a new Operator from an expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34559,6 +35916,7 @@ struct rssn_Operator *rssn_operator_new(const struct rssn_Expr *aOp)
 
 /*
  Generates a 4x4 orthographic projection matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34700,6 +36058,7 @@ void rssn_parsing_cache_set_json(struct rssn_ParsingCache *aCache,
 
  Takes a raw pointer to an `Expr` (expression) and a C-style string (variable).
  Returns a raw pointer to an `ExprList` representing the decomposition.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34715,6 +36074,7 @@ struct rssn_ExprList *rssn_partial_fraction_decomposition(const struct rssn_Expr
 
 /*
  Computes a path integral.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34731,6 +36091,7 @@ struct rssn_Expr *rssn_path_integrate(const struct rssn_Expr *aExpr,
 
 /*
  Pauli matrices `σ_x`, `σ_y`, `σ_z`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34764,6 +36125,7 @@ void rssn_pauli_matrices(struct rssn_Expr **aSigmaX,
 
  This function is unsafe because it dereferences raw `Expr` pointers and returns
  ownership of a heap-allocated `Expr` to the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34779,6 +36141,7 @@ struct rssn_Expr *rssn_permutations(const struct rssn_Expr *aN,
 
 /*
  Generates a 4x4 perspective projection matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34800,6 +36163,7 @@ struct rssn_Expr *rssn_perspective_projection(const struct rssn_Expr *aFovy,
  # Safety
  * `initial_cond` must be a valid pointer to an array of `len` f64 elements.
  * `result_ptr` must point to a buffer of size at least `len` f64 elements.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34823,8 +36187,10 @@ int32_t rssn_physics_advection_diffusion_1d(const double *aInitialCond,
 /*
  Solves a 2D Laplace problem using BEM and returns the results as a flat array.
  The `bcs_type` array should be 0 for Potential and 1 for Flux.
+
  # Safety
  This function is unsafe because it dereferences pointers.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34868,6 +36234,7 @@ int32_t rssn_physics_bem_solve_laplace_2d(const double *aPointsX,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34902,6 +36269,7 @@ struct rssn_BincodeBuffer rssn_physics_bem_solve_laplace_2d_bincode(struct rssn_
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34909,6 +36277,7 @@ struct rssn_BincodeBuffer rssn_physics_bem_solve_laplace_2d_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -34921,6 +36290,7 @@ char *rssn_physics_bem_solve_laplace_2d_json(const char *aInput)
 /*
  Solves 1D heat equation using CN and returns a flat array of doubles.
  The caller is responsible for freeing the memory using `rssn_free_f64_array`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34962,6 +36332,7 @@ double *rssn_physics_cnm_solve_heat_1d(const double *aInitialCondition,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34996,6 +36367,7 @@ struct rssn_BincodeBuffer rssn_physics_cnm_solve_heat_2d_bincode(struct rssn_Bin
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35003,6 +36375,7 @@ struct rssn_BincodeBuffer rssn_physics_cnm_solve_heat_2d_bincode(struct rssn_Bin
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35059,6 +36432,7 @@ struct rssn_Matrix_f64 *rssn_physics_em_simulate_stiff_decay_backward(void)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35096,6 +36470,7 @@ struct rssn_BincodeBuffer rssn_physics_em_solve_bincode(struct rssn_BincodeBuffe
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35103,6 +36478,7 @@ struct rssn_BincodeBuffer rssn_physics_em_solve_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35136,6 +36512,7 @@ char *rssn_physics_em_solve_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35143,6 +36520,7 @@ char *rssn_physics_em_solve_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35154,6 +36532,7 @@ char *rssn_physics_fdm_burgers_json(const char *aInput)
 
 /*
  Returns a pointer to the grid data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35168,6 +36547,7 @@ double *rssn_physics_fdm_grid_data(rssn_FdmGrid<double> *aGrid)
 
 /*
  Frees a `FdmGrid` handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35182,6 +36562,7 @@ void rssn_physics_fdm_grid_free(rssn_FdmGrid<double> *aGrid)
 
 /*
  Returns the size of the grid data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35230,6 +36611,7 @@ rssn_FdmGrid<double> *rssn_physics_fdm_grid_new(size_t aD1,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35237,6 +36619,7 @@ rssn_FdmGrid<double> *rssn_physics_fdm_grid_new(size_t aD1,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35273,6 +36656,7 @@ char *rssn_physics_fdm_heat_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35280,6 +36664,7 @@ char *rssn_physics_fdm_heat_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35330,6 +36715,7 @@ rssn_FdmGrid<double> *rssn_physics_fdm_simulate_wave_2d(void)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35368,6 +36754,7 @@ struct rssn_BincodeBuffer rssn_physics_fdm_wave_bincode(struct rssn_BincodeBuffe
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35375,6 +36762,7 @@ struct rssn_BincodeBuffer rssn_physics_fdm_wave_bincode(struct rssn_BincodeBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35416,6 +36804,7 @@ double *rssn_physics_fem_solve_poisson_1d(size_t aNElements,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35449,6 +36838,7 @@ struct rssn_BincodeBuffer rssn_physics_fem_solve_poisson_1d_bincode(struct rssn_
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35456,6 +36846,7 @@ struct rssn_BincodeBuffer rssn_physics_fem_solve_poisson_1d_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35490,6 +36881,7 @@ char *rssn_physics_fem_solve_poisson_1d_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35497,6 +36889,7 @@ char *rssn_physics_fem_solve_poisson_1d_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35508,6 +36901,7 @@ char *rssn_physics_fvm_advection_json(const char *aInput)
 
 /*
  Returns a pointer to the mesh data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35522,6 +36916,7 @@ double *rssn_physics_fvm_mesh_data(struct rssn_Mesh *aMesh)
 
 /*
  Frees a Mesh handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35575,6 +36970,7 @@ double *rssn_physics_fvm_simulate_advection_1d(void)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35612,6 +37008,7 @@ struct rssn_BincodeBuffer rssn_physics_fvm_swe_bincode(struct rssn_BincodeBuffer
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35619,6 +37016,7 @@ struct rssn_BincodeBuffer rssn_physics_fvm_swe_bincode(struct rssn_BincodeBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35650,6 +37048,7 @@ struct rssn_Matrix_f64 *rssn_physics_mm_simulate_dam_break(void)
 
  This function is unsafe because it returns a raw C string pointer that the
  caller must free.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35657,6 +37056,7 @@ struct rssn_Matrix_f64 *rssn_physics_mm_simulate_dam_break(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35668,6 +37068,7 @@ char *rssn_physics_mm_simulate_dam_break_json(void)
 
 /*
  Adds a particle to the SPH system.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35696,6 +37097,7 @@ struct rssn_SPHSystem *rssn_physics_mm_sph_create(double aH,
 
 /*
  Frees an SPH system.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35710,6 +37112,7 @@ void rssn_physics_mm_sph_free(struct rssn_SPHSystem *aSystem)
 
 /*
  Returns the number of particles in the SPH system.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35724,6 +37127,7 @@ size_t rssn_physics_mm_sph_get_particle_count(struct rssn_SPHSystem *aSystem)
 
 /*
  Gets particle positions as a Matrix (Nx2).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35738,6 +37142,7 @@ struct rssn_Matrix_f64 *rssn_physics_mm_sph_get_positions(struct rssn_SPHSystem 
 
 /*
  Updates the SPH system by one time step.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35773,6 +37178,7 @@ void rssn_physics_mm_sph_update(struct rssn_SPHSystem *aSystem,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35806,6 +37212,7 @@ struct rssn_BincodeBuffer rssn_physics_mm_sph_update_bincode(struct rssn_Bincode
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35813,6 +37220,7 @@ struct rssn_BincodeBuffer rssn_physics_mm_sph_update_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35827,6 +37235,7 @@ char *rssn_physics_mm_sph_update_json(const char *aInput)
 
  The `out_size` will be set to `n + 2` (including boundaries).
  The caller is responsible for freeing the memory using `rssn_free_f64_mtm_array`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35864,6 +37273,7 @@ double *rssn_physics_mtm_solve_poisson_1d(size_t aNInterior,
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35871,6 +37281,7 @@ double *rssn_physics_mtm_solve_poisson_1d(size_t aNInterior,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35883,6 +37294,7 @@ char *rssn_physics_mtm_solve_poisson_1d_json(const char *aInput)
 /*
  Solves 2D Poisson using Multigrid and returns a flat array of doubles.
  The `out_size` will be set to `n * n`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35921,6 +37333,7 @@ double *rssn_physics_mtm_solve_poisson_2d(size_t aN,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35955,6 +37368,7 @@ struct rssn_BincodeBuffer rssn_physics_mtm_solve_poisson_2d_bincode(struct rssn_
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35962,6 +37376,7 @@ struct rssn_BincodeBuffer rssn_physics_mtm_solve_poisson_2d_bincode(struct rssn_
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -35995,6 +37410,7 @@ char *rssn_physics_mtm_solve_poisson_2d_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36002,6 +37418,7 @@ char *rssn_physics_mtm_solve_poisson_2d_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36038,6 +37455,7 @@ char *rssn_physics_rkm_damped_oscillator_json(const char *aInput)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36076,6 +37494,7 @@ struct rssn_BincodeBuffer rssn_physics_rkm_lorenz_bincode(struct rssn_BincodeBuf
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36083,6 +37502,7 @@ struct rssn_BincodeBuffer rssn_physics_rkm_lorenz_bincode(struct rssn_BincodeBuf
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36119,6 +37539,7 @@ char *rssn_physics_rkm_lorenz_json(const char *aInput)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36126,6 +37547,7 @@ char *rssn_physics_rkm_lorenz_json(const char *aInput)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36187,6 +37609,7 @@ struct rssn_Matrix_f64 *rssn_physics_rkm_simulate_vanderpol(void)
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36194,6 +37617,7 @@ struct rssn_Matrix_f64 *rssn_physics_rkm_simulate_vanderpol(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36241,6 +37665,7 @@ struct rssn_Matrix_f64 *rssn_physics_sim_fdtd_run_2d(size_t aWidth,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36277,6 +37702,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_fdtd_run_bincode(struct rssn_BincodeB
  # Safety
 
  This function is unsafe because it dereferences a raw C string pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36284,6 +37710,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_fdtd_run_bincode(struct rssn_BincodeB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36331,6 +37758,7 @@ struct rssn_Matrix_f64 *rssn_physics_sim_geodesic_run(double aBlackHoleMass,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36367,6 +37795,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_geodesic_run_bincode(struct rssn_Binc
  # Safety
 
  This function is unsafe because it dereferences a raw C string pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36374,6 +37803,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_geodesic_run_bincode(struct rssn_Binc
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36410,6 +37840,7 @@ char *rssn_physics_sim_geodesic_run_json(const char *aInput)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36461,6 +37892,7 @@ struct rssn_Matrix_f64 *rssn_physics_sim_gpe_run_ground_state_finder(size_t aNx,
  # Safety
 
  This function is unsafe because it dereferences a raw C string pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36468,6 +37900,7 @@ struct rssn_Matrix_f64 *rssn_physics_sim_gpe_run_ground_state_finder(size_t aNx,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36479,6 +37912,7 @@ char *rssn_physics_sim_gpe_run_json(const char *aInput)
 
 /*
  Frees the Ising result handle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36527,6 +37961,7 @@ struct rssn_IsingResultHandle rssn_physics_sim_ising_run(size_t aWidth,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36562,6 +37997,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_ising_run_bincode(struct rssn_Bincode
  # Safety
 
  This function is unsafe because it dereferences a raw C string pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36569,6 +38005,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_ising_run_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36604,6 +38041,7 @@ char *rssn_physics_sim_ising_run_json(const char *aInput)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36640,6 +38078,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_linear_elasticity_run_bincode(struct 
  # Safety
 
  This function is unsafe because it dereferences a raw C string pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36647,6 +38086,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_linear_elasticity_run_bincode(struct 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36665,6 +38105,7 @@ struct rssn_Matrix_f64 *rssn_physics_sim_linear_elasticity_simulate_cantilever(v
 
 /*
  Frees the result handles.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36706,6 +38147,7 @@ void rssn_physics_sim_navier_stokes_free_results(struct rssn_NavierStokesResultH
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36744,6 +38186,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_navier_stokes_run_bincode(struct rssn
  # Safety
 
  This function is unsafe because it dereferences a raw C string pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36751,6 +38194,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_navier_stokes_run_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36774,6 +38218,7 @@ struct rssn_NavierStokesResultHandles rssn_physics_sim_navier_stokes_run_lid_dri
 
 /*
  Runs a Schrodinger simulation and returns the final probability density as a Matrix handle (`NxxNy`).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36825,6 +38270,7 @@ struct rssn_Matrix_f64 *rssn_physics_sim_schrodinger_run_2d(size_t aNx,
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36864,6 +38310,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_schrodinger_run_bincode(struct rssn_B
  # Safety
 
  This function is unsafe because it dereferences a raw C string pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36871,6 +38318,7 @@ struct rssn_BincodeBuffer rssn_physics_sim_schrodinger_run_bincode(struct rssn_B
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36919,6 +38367,7 @@ struct rssn_Matrix_f64 *rssn_physics_sm_simulate_2d_advection(void)
  # Safety
 
  This function is unsafe because it dereferences a raw C string pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36926,6 +38375,7 @@ struct rssn_Matrix_f64 *rssn_physics_sm_simulate_2d_advection(void)
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -36963,6 +38413,7 @@ char *rssn_physics_sm_solve_advection_1d_json(const char *aInput)
 
  This function is unsafe because it receives a raw bincode buffer that must be
  valid and properly encoded.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37002,6 +38453,7 @@ struct rssn_BincodeBuffer rssn_physics_sm_solve_advection_2d_bincode(struct rssn
  # Safety
 
  This function is unsafe because it dereferences a raw C string pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37009,6 +38461,7 @@ struct rssn_BincodeBuffer rssn_physics_sm_solve_advection_2d_bincode(struct rssn
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -37055,6 +38508,7 @@ rssn_ char *rssn_pi_json(void) ;
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -37077,6 +38531,7 @@ size_t rssn_plugin_execute(const char *aPluginNamePtr,
 
  # Returns
  Handle to the result expression, or 0 on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37093,6 +38548,7 @@ size_t rssn_plugins_execute(const char *aName,
 
 /*
  Executes a plugin command via Bincode.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37108,6 +38564,7 @@ struct rssn_BincodeBuffer rssn_plugins_execute_bincode(const uint8_t *aData,
 
 /*
  Executes a plugin command via JSON (args passed as JSON expr).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37115,6 +38572,7 @@ struct rssn_BincodeBuffer rssn_plugins_execute_bincode(const uint8_t *aData,
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -37141,6 +38599,7 @@ char *rssn_plugins_get_loaded(void)
 
  # Returns
  True if successful, false otherwise.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37155,6 +38614,7 @@ bool rssn_plugins_load(const char *aPath)
 
 /*
  Unloads a plugin by name.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37169,6 +38629,7 @@ bool rssn_plugins_unload(const char *aName)
 
 /*
  Compresses a point. Returns the x-coordinate string. sets *`is_odd` to the parity.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37184,6 +38645,7 @@ char *rssn_point_compress(const struct rssn_CurvePoint *aPoint,
 
 /*
  Decompresses a point.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37215,6 +38677,7 @@ struct rssn_CurvePoint *rssn_point_decompress(const char *aXStr,
 
  This function is unsafe because it dereferences a raw pointer to a `Vec<Expr>` and
  returns ownership of a heap-allocated `Expr` to the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37242,6 +38705,7 @@ struct rssn_Expr *rssn_poles_get(const struct rssn_Vec_Expr *aPoles,
  # Safety
 
  This function is unsafe because it dereferences a raw pointer to a `Vec<Expr>`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37259,6 +38723,7 @@ size_t rssn_poles_len(const struct rssn_Vec_Expr *aPoles)
 
  # Safety
  Caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37278,6 +38743,7 @@ struct rssn_Expr *rssn_poly_add_gf(const struct rssn_Expr *aP1,
 
  # Safety
  Caller must ensure pointers are valid. Result is allocated and must be freed.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37328,6 +38794,7 @@ int32_t rssn_poly_degree(size_t aExprHandle,
 
  # Safety
  Caller must ensure pointer is valid. Result is allocated and must be freed.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37354,6 +38821,7 @@ struct rssn_FiniteFieldPolynomial *rssn_poly_derivative_gf_handle(const struct r
 
  # Safety
  Caller must ensure `poly` is a valid pointer to an array of `len` bytes.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37373,6 +38841,7 @@ uint8_t rssn_poly_eval_gf256(const uint8_t *aPoly,
 
  # Safety
  Caller must ensure pointers are valid. Result is allocated and must be freed.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37464,6 +38933,7 @@ int32_t rssn_poly_long_division(size_t aNHandle,
 
  # Safety
  Caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37483,6 +38953,7 @@ struct rssn_Expr *rssn_poly_mul_gf(const struct rssn_Expr *aP1,
 
  # Safety
  Caller must ensure pointers are valid. Result is allocated and must be freed.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37504,6 +38975,7 @@ uint8_t *rssn_poly_mul_gf256(const uint8_t *aP1,
 
  # Safety
  Caller must ensure pointer is valid. Result is allocated and must be freed.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37521,6 +38993,7 @@ uint8_t *rssn_poly_scale_gf256(const uint8_t *aPoly,
 
 /*
  Computes the symbolic Polygamma function ψ⁽ⁿ⁾(z).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37536,6 +39009,7 @@ struct rssn_Expr *rssn_polygamma(const struct rssn_Expr *aN,
 
 /*
  Frees a polygon mesh.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37550,6 +39024,7 @@ void rssn_polygon_mesh_free(struct rssn_PolygonMesh *aMesh)
 
 /*
  Creates a new polygon mesh.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37565,6 +39040,7 @@ struct rssn_PolygonMesh *rssn_polygon_mesh_new(const rssn_Vector *aVertices,
 
 /*
  Triangulates a polygon mesh.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37583,6 +39059,7 @@ struct rssn_PolygonMesh *rssn_polygon_mesh_triangulate(const struct rssn_Polygon
  Takes raw pointers to arrays of `Expr` (x and y data), the length of the data,
  and the degree of the polynomial.
  Returns a raw pointer to an `Expr` (vector) containing the coefficients of the polynomial.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37600,6 +39077,7 @@ struct rssn_Expr *rssn_polynomial_regression(const struct rssn_Expr *const *aXDa
 
 /*
  Creates a power expression: base^exp.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37631,6 +39109,7 @@ struct rssn_BincodeBuffer rssn_pow_bincode(struct rssn_BincodeBuffer aBaseBuffer
  # Arguments
  * `json_base` - JSON-serialized base Expr
  * `json_exp` - JSON-serialized exponent Expr
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37646,6 +39125,7 @@ char *rssn_pow_json(const char *aJsonBase,
 
 /*
  Calculates power: F . v.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37661,6 +39141,7 @@ struct rssn_Expr *rssn_power(const rssn_Vector *aForce,
 
 /*
  Calculates the Poynting vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37715,6 +39196,7 @@ struct rssn_PrimeFieldElement *rssn_prime_field_element_new_handle(const rssn_Bi
 
 /*
  Computes the probability density |ψ(x)|^2.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37751,6 +39233,7 @@ struct rssn_Expr *rssn_product_handle(const struct rssn_Expr *aExpr,
 
  # Returns
  A raw pointer to the resulting projection expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37767,6 +39250,7 @@ struct rssn_Expr *rssn_project(const struct rssn_HilbertSpace *aSpace,
 
 /*
  Lagrangian density for QCD.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37785,6 +39269,7 @@ struct rssn_Expr *rssn_qcd_lagrangian(const struct rssn_Expr *aPsiBar,
 
 /*
  Lagrangian density for QED.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37803,6 +39288,7 @@ struct rssn_Expr *rssn_qed_lagrangian(const struct rssn_Expr *aPsiBar,
 
 /*
  Computes a propagator for a particle in QFT.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37819,6 +39305,7 @@ struct rssn_Expr *rssn_qft_propagator(const struct rssn_Expr *aP,
 
 /*
  Scattering cross-section.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37843,6 +39330,7 @@ struct rssn_Expr *rssn_qft_scattering_cross_section(const struct rssn_Expr *aMat
 
  # Returns
  A pointer to a `Vec<f64>` containing the sorted real roots, or null on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37878,6 +39366,7 @@ struct rssn_Vec_f64 *rssn_real_roots_find_roots(const double *aCoeffsPtr,
 
  This function is unsafe because it receives raw pointers through FFI.
  The caller must ensure the input buffer contains valid bincode data.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37910,6 +39399,7 @@ struct rssn_BincodeBuffer rssn_real_roots_find_roots_bincode(struct rssn_Bincode
 
  This function is unsafe because it receives a raw C string pointer that must be
  valid, null-terminated UTF-8. The caller must free the returned pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37917,6 +39407,7 @@ struct rssn_BincodeBuffer rssn_real_roots_find_roots_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -37928,6 +39419,7 @@ char *rssn_real_roots_find_roots_json(const char *aJsonPtr)
 
 /*
  Frees a roots vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37942,6 +39434,7 @@ void rssn_real_roots_free_vec(struct rssn_Vec_f64 *aPtr)
 
 /*
  Gets the data of the roots vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37957,6 +39450,7 @@ void rssn_real_roots_get_vec_data(const struct rssn_Vec_f64 *aPtr,
 
 /*
  Gets the length of the roots vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37971,6 +39465,7 @@ size_t rssn_real_roots_get_vec_len(const struct rssn_Vec_f64 *aPtr)
 
 /*
  Generates a 3x3 2D reflection matrix across a line.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37985,6 +39480,7 @@ struct rssn_Expr *rssn_reflection_2d(const struct rssn_Expr *aAngle)
 
 /*
  Generates a 4x4 3D reflection matrix across a plane.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38048,6 +39544,7 @@ double rssn_regularized_incomplete_beta(double aA,
  This function is unsafe because it dereferences multiple raw pointers and
  assumes they form consistent arrays of valid `Expr` objects. The returned
  `Representation` must be freed with [`rssn_representation_free`].
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38080,6 +39577,7 @@ struct rssn_Representation *rssn_representation_create(const struct rssn_Expr *c
  This function is unsafe because it takes ownership of a raw pointer. The pointer
  must either be null or have been allocated by `rssn_representation_create`, and
  must not be used after this call.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38111,6 +39609,7 @@ void rssn_representation_free(struct rssn_Representation *aPtr)
 
  This function is unsafe because it dereferences raw pointers; the caller must
  ensure they point to valid objects.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38129,6 +39628,7 @@ bool rssn_representation_is_valid(const struct rssn_Representation *aRep,
 
  # Safety
  The caller must ensure `rule` was created by this module and hasn't been freed yet.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38148,6 +39648,7 @@ void rssn_rewrite_rule_free(struct rssn_RewriteRule *aRule)
 
  # Safety
  The caller must ensure `rule` is a valid `RewriteRule` pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38167,6 +39668,7 @@ struct rssn_Expr *rssn_rewrite_rule_get_lhs(const struct rssn_RewriteRule *aRule
 
  # Safety
  The caller must ensure `rule` is a valid `RewriteRule` pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38184,6 +39686,7 @@ struct rssn_Expr *rssn_rewrite_rule_get_rhs(const struct rssn_RewriteRule *aRule
 
  # Safety
  The caller must ensure `lhs` and `rhs` are valid Expr pointers.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38221,6 +39724,7 @@ char *rssn_rewrite_rule_new_json(const char *aJsonStr)
 
  # Safety
  The caller must free the returned string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38268,6 +39772,7 @@ double rssn_rising_factorial(double aX,
 
 /*
  Generates a 3x3 2D rotation matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38282,6 +39787,7 @@ struct rssn_Expr *rssn_rotation_2d(const struct rssn_Expr *aAngle)
 
 /*
  Generates a 4x4 3D rotation matrix around the X-axis.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38296,6 +39802,7 @@ struct rssn_Expr *rssn_rotation_3d_x(const struct rssn_Expr *aAngle)
 
 /*
  Generates a 4x4 3D rotation matrix around the Y-axis.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38310,6 +39817,7 @@ struct rssn_Expr *rssn_rotation_3d_y(const struct rssn_Expr *aAngle)
 
 /*
  Generates a 4x4 3D rotation matrix around the Z-axis.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38324,6 +39832,7 @@ struct rssn_Expr *rssn_rotation_3d_z(const struct rssn_Expr *aAngle)
 
 /*
  Generates a 4x4 3D rotation matrix around an arbitrary axis.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38343,6 +39852,7 @@ struct rssn_Expr *rssn_rotation_axis_angle(const rssn_Vector *aAxis,
  # Safety
  Caller must ensure `codeword` points to `codeword_len` bytes.
  Returns 1 if valid, 0 if invalid, -1 on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38362,6 +39872,7 @@ int32_t rssn_rs_check(const uint8_t *aCodeword,
 
  # Safety
  Caller must ensure `codeword` is valid. Returns allocated memory that must be freed.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38382,6 +39893,7 @@ uint8_t *rssn_rs_decode(const uint8_t *aCodeword,
 
  # Safety
  Caller must ensure `data` is valid. Returns allocated memory that must be freed.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38403,6 +39915,7 @@ uint8_t *rssn_rs_encode(const uint8_t *aData,
  # Safety
  Caller must ensure `codeword` points to `codeword_len` bytes.
  Returns error count or -1 on error.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38422,6 +39935,7 @@ int32_t rssn_rs_error_count(const uint8_t *aCodeword,
 
  # Safety
  Caller must ensure `ptr` was returned by `rssn_rs_encode` or `rssn_rs_decode`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38440,6 +39954,7 @@ void rssn_rs_free(uint8_t *aPtr,
 
  # Safety
  The caller must ensure `rules` was created by this module and hasn't been freed yet.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38459,6 +39974,7 @@ void rssn_rules_vec_free(struct rssn_Vec_RewriteRule *aRules)
 
  # Safety
  The caller must ensure `rules` is a valid `Vec<RewriteRule>` pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38477,6 +39993,7 @@ struct rssn_RewriteRule *rssn_rules_vec_get(const struct rssn_Vec_RewriteRule *a
 
  # Safety
  The caller must ensure `rules` is a valid `Vec<RewriteRule>` pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38491,6 +40008,7 @@ size_t rssn_rules_vec_len(const struct rssn_Vec_RewriteRule *aRules)
 
 /*
  Lagrangian density for a free real scalar field.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38506,6 +40024,7 @@ struct rssn_Expr *rssn_scalar_field_lagrangian(const struct rssn_Expr *aPhi,
 
 /*
  Generates a 3x3 2D scaling matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38521,6 +40040,7 @@ struct rssn_Expr *rssn_scaling_2d(const struct rssn_Expr *aSx,
 
 /*
  Generates a 4x4 3D scaling matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38537,6 +40057,7 @@ struct rssn_Expr *rssn_scaling_3d(const struct rssn_Expr *aSx,
 
 /*
  Scattering amplitude.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38553,6 +40074,7 @@ struct rssn_Expr *rssn_scattering_amplitude(const struct rssn_Ket *aInitialState
 
 /*
  Calculates Schwarzschild radius.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38578,7 +40100,6 @@ enum rssn_ConvergenceResult *rssn_series_analyze_convergence_handle(const struct
 
 /*
  Analyzes the convergence of a series.
-
  Takes bincode-serialized `Expr` (series expression) and `String` (variable).
  Returns a bincode-serialized `Expr` representing the convergence analysis result.
  */
@@ -38600,9 +40121,9 @@ char *rssn_series_json_analyze_convergence(const char *aSeriesJson,
 
 /*
  Computes the Shannon entropy of a probability distribution.
-
  Takes a raw pointer to an array of `Expr` (probabilities) and its length.
  Returns a raw pointer to an `Expr` representing the entropy.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38618,6 +40139,7 @@ struct rssn_Expr *rssn_shannon_entropy(const struct rssn_Expr *const *aProbs,
 
 /*
  Generates a 3x3 2D shear matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38636,6 +40158,7 @@ struct rssn_Expr *rssn_shear_2d(const struct rssn_Expr *aShx,
 
  Takes raw pointers to arrays of `Expr` (x and y data) and the length of the data.
  Returns a raw pointer to an `Expr` (vector) containing the intercept and slope coefficients.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38730,6 +40253,7 @@ struct rssn_Expr *rssn_simplicial_complex_get_symbolic_boundary_matrix(const str
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38747,6 +40271,7 @@ struct rssn_Expr *rssn_simplify(const struct rssn_Expr *aExpr)
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38781,6 +40306,7 @@ struct rssn_Expr *rssn_simplify_radicals_handle(const struct rssn_Expr *aExpr)
 
  # Safety
  The caller must ensure `expr` is a valid Expr pointer.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38814,6 +40340,7 @@ struct rssn_BincodeBuffer rssn_sin_bincode(struct rssn_BincodeBuffer aExprBuffer
 
  # Returns
  JSON-serialized Expr or null on error
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38850,6 +40377,7 @@ double rssn_sinc(double aX)
  This function is unsafe because it dereferences a raw pointer and returns
  ownership of heap-allocated memory. The caller must ensure `out_len` is valid
  and correctly free the returned memory.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38868,6 +40396,7 @@ struct rssn_Expr **rssn_so3_generators(size_t *aOutLen)
  # Safety
  * `var` must be a valid null-terminated C string.
  * `result_h` must be a valid pointer to store the handle of the solution.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38912,6 +40441,7 @@ char *rssn_solve_airfoil_equation_json(const char *aInputJson)
 
  # Safety
  The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38931,6 +40461,7 @@ struct rssn_Expr *rssn_solve_bernoulli_ode(const struct rssn_Expr *aEquation,
 
  # Safety
  The caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38951,6 +40482,7 @@ struct rssn_Expr *rssn_solve_by_reduction_of_order(const struct rssn_Expr *aEqua
 
  # Safety
  The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -38983,6 +40515,7 @@ struct rssn_Expr *rssn_solve_diophantine_handle(const struct rssn_Expr *aEquatio
 
  # Safety
  The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39002,6 +40535,7 @@ struct rssn_Expr *rssn_solve_euler_lagrange(const struct rssn_Expr *aLagrangian,
 
  # Safety
  The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39021,6 +40555,7 @@ struct rssn_Expr *rssn_solve_exact_ode(const struct rssn_Expr *aEquation,
 
  # Safety
  The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39037,7 +40572,6 @@ struct rssn_Expr *rssn_solve_first_order_linear_ode(const struct rssn_Expr *aEqu
 
 /*
  Solves an equation for a given variable.
-
  Takes a raw pointer to `Expr` (equation) and a C-style string (variable).
  Returns a raw pointer to a `Vec<Expr>` representing the solutions.
  */
@@ -39051,6 +40585,7 @@ struct rssn_Vec_Expr *rssn_solve_handle(const struct rssn_Expr *aExpr,
 
  # Safety
  The caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39071,6 +40606,7 @@ struct rssn_Expr *rssn_solve_heat_equation_1d(const struct rssn_Expr *aEquation,
 
  # Safety
  The caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39091,6 +40627,7 @@ struct rssn_Expr *rssn_solve_helmholtz_equation(const struct rssn_Expr *aEquatio
 
  # Safety
  The caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39111,6 +40648,7 @@ struct rssn_Expr *rssn_solve_klein_gordon_equation(const struct rssn_Expr *aEqua
 
  # Safety
  The caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39128,6 +40666,7 @@ struct rssn_Expr *rssn_solve_laplace_equation_2d(const struct rssn_Expr *aEquati
 
 /*
  Bincode FFI for solving linear systems.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39142,7 +40681,6 @@ struct rssn_BincodeBuffer rssn_solve_linear_system_bincode(struct rssn_BincodeBu
 
 /*
  Solves a linear system of equations.
-
  Takes a raw pointer to `Expr` (system) and a raw pointer to `Vec<String>` (variables).
  Returns a raw pointer to a `Vec<Expr>` representing the solutions.
  */
@@ -39153,6 +40691,7 @@ struct rssn_Vec_Expr *rssn_solve_linear_system_handle(const struct rssn_Expr *aS
 
 /*
  JSON FFI for solving linear systems.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39160,6 +40699,7 @@ struct rssn_Vec_Expr *rssn_solve_linear_system_handle(const struct rssn_Expr *aS
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -39174,6 +40714,7 @@ char *rssn_solve_linear_system_json(const char *aJsonPtr)
 
  # Safety
  The caller must ensure `ode_expr` is a valid Expr pointer, and `func` and `var` are valid C strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39194,6 +40735,7 @@ struct rssn_Expr *rssn_solve_ode(const struct rssn_Expr *aOdeExpr,
  # Safety
  The caller must ensure `pde_expr` is a valid Expr pointer, `func` and `vars` are valid C strings,
  and `vars_len` accurately represents the number of variables.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39214,6 +40756,7 @@ struct rssn_Expr *rssn_solve_pde(const struct rssn_Expr *aPdeExpr,
 
  # Safety
  The caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39234,6 +40777,7 @@ struct rssn_Expr *rssn_solve_pde_by_characteristics(const struct rssn_Expr *aEqu
 
  # Safety
  The caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39254,6 +40798,7 @@ struct rssn_Expr *rssn_solve_poisson_equation_2d(const struct rssn_Expr *aEquati
 
  # Safety
  The caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39274,6 +40819,7 @@ struct rssn_Expr *rssn_solve_riccati_ode(const struct rssn_Expr *aEquation,
 
  # Safety
  The caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39294,6 +40840,7 @@ struct rssn_Expr *rssn_solve_schrodinger_equation(const struct rssn_Expr *aEquat
 
  # Safety
  The caller must ensure `equation` is a valid Expr pointer, and `func` and `var` are valid C strings.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39313,6 +40860,7 @@ struct rssn_Expr *rssn_solve_separable_ode(const struct rssn_Expr *aEquation,
 
  # Safety
  The caller must ensure all pointers are valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39330,6 +40878,7 @@ struct rssn_Expr *rssn_solve_wave_equation_1d_dalembert(const struct rssn_Expr *
 
 /*
  Spin operator S = hbar/2 * σ.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39344,6 +40893,7 @@ struct rssn_Expr *rssn_spin_operator(const struct rssn_Expr *aPauli)
 
 /*
  Creates a square root expression: sqrt(expr).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39365,6 +40915,7 @@ struct rssn_BincodeBuffer rssn_sqrt_bincode(struct rssn_BincodeBuffer aExprBuffe
 
 /*
  Creates a square root expression from JSON: sqrt(expr).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39466,6 +41017,7 @@ char *rssn_state_set_intermediate_value_json(const char *aJsonState,
  # Safety
  * `d1` and `d2` must be valid pointers to arrays of length `len`.
  * `result` must be a valid pointer to store the f64 result.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39574,6 +41126,7 @@ int32_t rssn_stats_variance(const double *aData,
 
  # Safety
  The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39606,6 +41159,7 @@ struct rssn_Expr *rssn_std_dev(const struct rssn_Expr *const *aData,
 
  This function is unsafe because it is exposed as an FFI entry point and returns
  ownership of a heap-allocated `Expr` to the caller.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39652,6 +41206,7 @@ struct rssn_Vec_Expr *rssn_sturm_sequence_handle(const struct rssn_Expr *aExprPt
  This function is unsafe because it dereferences a raw pointer and returns
  ownership of heap-allocated memory. The caller must ensure `out_len` is valid
  and correctly free the returned memory.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39666,6 +41221,7 @@ struct rssn_Expr **rssn_su2_generators(size_t *aOutLen)
 
 /*
  Substitutes a variable with an expression.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39750,6 +41306,7 @@ void rssn_symbolic_chain_free(struct rssn_SymbolicChain *aPtr)
 
  # Returns
  A raw pointer (`*mut Group`) to the newly created group, or NULL if `n` is invalid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39764,6 +41321,7 @@ struct rssn_Group *rssn_symmetric_group_create(size_t aN)
 
 /*
  Creates a tangent expression: tan(expr).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39785,6 +41343,7 @@ struct rssn_BincodeBuffer rssn_tan_bincode(struct rssn_BincodeBuffer aExprBuffer
 
 /*
  Creates a tangent expression from JSON: tan(expr).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39813,7 +41372,6 @@ struct rssn_Expr *rssn_taylor_series_handle(const struct rssn_Expr *aExpr,
 
 /*
  Performs tensor addition.
-
  Takes raw pointers to two `Tensor` objects as input,
  and returns a raw pointer to a new `Tensor` representing their sum.
  */
@@ -39824,7 +41382,6 @@ struct rssn_Tensor *rssn_tensor_add_handle(const struct rssn_Tensor *aT1,
 
 /*
  Performs tensor contraction.
-
  Takes a raw pointer to a `Tensor`, and two `usize` values representing the axes to contract.
  Returns a raw pointer to a new `Tensor` representing the contracted tensor.
  */
@@ -39836,7 +41393,6 @@ struct rssn_Tensor *rssn_tensor_contract_handle(const struct rssn_Tensor *aT,
 
 /*
  Computes the outer product of two tensors.
-
  Takes raw pointers to two `Tensor` objects as input,
  and returns a raw pointer to a new `Tensor` representing their outer product.
  */
@@ -39847,7 +41403,6 @@ struct rssn_Tensor *rssn_tensor_outer_product_handle(const struct rssn_Tensor *a
 
 /*
  Performs scalar multiplication on a tensor.
-
  Takes a raw pointer to a `Tensor` and a raw pointer to an `Expr` (scalar).
  Returns a raw pointer to a new `Tensor` representing the result.
  */
@@ -39866,6 +41421,7 @@ struct rssn_Tensor *rssn_tensor_scalar_mul_handle(const struct rssn_Tensor *aT,
     by calling `free_string` on the returned pointer.
 
  Returns a pointer to a null-terminated C string. The caller is responsible for freeing this string.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39880,6 +41436,7 @@ char *rssn_test_string_passing(void)
 
 /*
  Time-dependent Schrödinger equation.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39915,6 +41472,7 @@ struct rssn_Expr *rssn_to_dnf_handle(const struct rssn_Expr *aExpr)
 
 /*
  Calculates torque: r x F.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40124,6 +41682,7 @@ struct rssn_Vec_Expr *rssn_transform_point_handle(const struct rssn_Vec_Expr *aP
 
  # Safety
  All Expr pointers must be valid.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40139,6 +41698,7 @@ struct rssn_Expr *rssn_translation_2d(const struct rssn_Expr *aTx,
 
 /*
  Generates a 4x4 3D translation matrix.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40160,6 +41720,7 @@ struct rssn_Expr *rssn_translation_3d(const struct rssn_Expr *aTx,
  and a raw pointer to an `Expr` (hypothesized difference in means).
  Returns a raw pointer to an `Expr` tuple containing the test statistic,
  p-value formula, and degrees of freedom.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40178,6 +41739,7 @@ struct rssn_Expr *rssn_two_sample_t_test(const struct rssn_Expr *const *aData1,
 
 /*
  Computes the uncertainty ΔA.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40193,7 +41755,6 @@ struct rssn_Expr *rssn_uncertainty(const struct rssn_Operator *aOp,
 
 /*
  Unifies the units in a symbolic expression.
-
  Takes a raw pointer to an `Expr` as input,
  and returns a raw pointer to a new `Expr` representing the expression with unified units.
  */
@@ -40206,6 +41767,7 @@ struct rssn_Expr *rssn_unify_expression_handle(const struct rssn_Expr *aExpr)
 
  # Safety
  The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40221,6 +41783,7 @@ struct rssn_Expr *rssn_variance(const struct rssn_Expr *const *aData,
 
 /*
  Bincode FFI for `vec_add`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40235,6 +41798,7 @@ struct rssn_BincodeBuffer rssn_vec_add_bincode(struct rssn_BincodeBuffer aBuffer
 
 /*
  JSON FFI for `vec_add`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40242,6 +41806,7 @@ struct rssn_BincodeBuffer rssn_vec_add_bincode(struct rssn_BincodeBuffer aBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40253,6 +41818,7 @@ char *rssn_vec_add_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for angle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40267,6 +41833,7 @@ struct rssn_BincodeBuffer rssn_vec_angle_bincode(struct rssn_BincodeBuffer aBuff
 
 /*
  JSON FFI for angle.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40274,6 +41841,7 @@ struct rssn_BincodeBuffer rssn_vec_angle_bincode(struct rssn_BincodeBuffer aBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40285,6 +41853,7 @@ char *rssn_vec_angle_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for `cosine_similarity`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40299,6 +41868,7 @@ struct rssn_BincodeBuffer rssn_vec_cosine_similarity_bincode(struct rssn_Bincode
 
 /*
  JSON FFI for `cosine_similarity`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40306,6 +41876,7 @@ struct rssn_BincodeBuffer rssn_vec_cosine_similarity_bincode(struct rssn_Bincode
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40317,6 +41888,7 @@ char *rssn_vec_cosine_similarity_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for `cross_product`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40331,6 +41903,7 @@ struct rssn_BincodeBuffer rssn_vec_cross_product_bincode(struct rssn_BincodeBuff
 
 /*
  JSON FFI for `cross_product`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40338,6 +41911,7 @@ struct rssn_BincodeBuffer rssn_vec_cross_product_bincode(struct rssn_BincodeBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40349,6 +41923,7 @@ char *rssn_vec_cross_product_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for distance.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40363,6 +41938,7 @@ struct rssn_BincodeBuffer rssn_vec_distance_bincode(struct rssn_BincodeBuffer aB
 
 /*
  JSON FFI for distance.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40370,6 +41946,7 @@ struct rssn_BincodeBuffer rssn_vec_distance_bincode(struct rssn_BincodeBuffer aB
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40414,6 +41991,7 @@ int32_t rssn_vec_dot_product(const double *aD1,
 
 /*
  Bincode FFI for `dot_product`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40428,6 +42006,7 @@ struct rssn_BincodeBuffer rssn_vec_dot_product_bincode(struct rssn_BincodeBuffer
 
 /*
  JSON FFI for `dot_product`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40435,6 +42014,7 @@ struct rssn_BincodeBuffer rssn_vec_dot_product_bincode(struct rssn_BincodeBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40446,6 +42026,7 @@ char *rssn_vec_dot_product_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for `is_orthogonal`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40460,6 +42041,7 @@ struct rssn_BincodeBuffer rssn_vec_is_orthogonal_bincode(struct rssn_BincodeBuff
 
 /*
  JSON FFI for `is_orthogonal`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40467,6 +42049,7 @@ struct rssn_BincodeBuffer rssn_vec_is_orthogonal_bincode(struct rssn_BincodeBuff
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40478,6 +42061,7 @@ char *rssn_vec_is_orthogonal_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for `is_parallel`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40492,6 +42076,7 @@ struct rssn_BincodeBuffer rssn_vec_is_parallel_bincode(struct rssn_BincodeBuffer
 
 /*
  JSON FFI for `is_parallel`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40499,6 +42084,7 @@ struct rssn_BincodeBuffer rssn_vec_is_parallel_bincode(struct rssn_BincodeBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40510,6 +42096,7 @@ char *rssn_vec_is_parallel_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for lerp.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40524,6 +42111,7 @@ struct rssn_BincodeBuffer rssn_vec_lerp_bincode(struct rssn_BincodeBuffer aBuffe
 
 /*
  JSON FFI for lerp.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40531,6 +42119,7 @@ struct rssn_BincodeBuffer rssn_vec_lerp_bincode(struct rssn_BincodeBuffer aBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40542,6 +42131,7 @@ char *rssn_vec_lerp_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for `lp_norm`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40556,6 +42146,7 @@ struct rssn_BincodeBuffer rssn_vec_lp_norm_bincode(struct rssn_BincodeBuffer aBu
 
 /*
  JSON FFI for `lp_norm`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40563,6 +42154,7 @@ struct rssn_BincodeBuffer rssn_vec_lp_norm_bincode(struct rssn_BincodeBuffer aBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40603,6 +42195,7 @@ int32_t rssn_vec_norm(const double *aData,
 
 /*
  Bincode FFI for norm.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40617,6 +42210,7 @@ struct rssn_BincodeBuffer rssn_vec_norm_bincode(struct rssn_BincodeBuffer aBuffe
 
 /*
  JSON FFI for norm ($`L_2`$).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40624,6 +42218,7 @@ struct rssn_BincodeBuffer rssn_vec_norm_bincode(struct rssn_BincodeBuffer aBuffe
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40635,6 +42230,7 @@ char *rssn_vec_norm_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for normalize.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40649,6 +42245,7 @@ struct rssn_BincodeBuffer rssn_vec_normalize_bincode(struct rssn_BincodeBuffer a
 
 /*
  JSON FFI for normalize.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40656,6 +42253,7 @@ struct rssn_BincodeBuffer rssn_vec_normalize_bincode(struct rssn_BincodeBuffer a
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40667,6 +42265,7 @@ char *rssn_vec_normalize_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for project.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40681,6 +42280,7 @@ struct rssn_BincodeBuffer rssn_vec_project_bincode(struct rssn_BincodeBuffer aBu
 
 /*
  JSON FFI for project.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40688,6 +42288,7 @@ struct rssn_BincodeBuffer rssn_vec_project_bincode(struct rssn_BincodeBuffer aBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40699,6 +42300,7 @@ char *rssn_vec_project_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for reflect.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40713,6 +42315,7 @@ struct rssn_BincodeBuffer rssn_vec_reflect_bincode(struct rssn_BincodeBuffer aBu
 
 /*
  JSON FFI for reflect.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40720,6 +42323,7 @@ struct rssn_BincodeBuffer rssn_vec_reflect_bincode(struct rssn_BincodeBuffer aBu
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40731,6 +42335,7 @@ char *rssn_vec_reflect_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for `scalar_mul`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40745,6 +42350,7 @@ struct rssn_BincodeBuffer rssn_vec_scalar_mul_bincode(struct rssn_BincodeBuffer 
 
 /*
  JSON FFI for `scalar_mul`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40752,6 +42358,7 @@ struct rssn_BincodeBuffer rssn_vec_scalar_mul_bincode(struct rssn_BincodeBuffer 
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40763,6 +42370,7 @@ char *rssn_vec_scalar_mul_json(const char *aJsonPtr)
 
 /*
  Bincode FFI for `vec_sub`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40777,6 +42385,7 @@ struct rssn_BincodeBuffer rssn_vec_sub_bincode(struct rssn_BincodeBuffer aBuffer
 
 /*
  JSON FFI for `vec_sub`.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40784,6 +42393,7 @@ struct rssn_BincodeBuffer rssn_vec_sub_bincode(struct rssn_BincodeBuffer aBuffer
  1. All pointer arguments are valid and point to initialized memory.
  2. The memory layout of passed structures matches the expected C-ABI layout.
  3. Any pointers returned by this function are managed according to the API's ownership rules.
+
  # Panics
 
  This function may panic if the FFI input is malformed, null where not expected,
@@ -40795,7 +42405,6 @@ char *rssn_vec_sub_json(const char *aJsonPtr)
 
 /*
  Computes the cross product of two vectors.
-
  Takes two raw pointers to `Vector` objects as input.
  Returns a raw pointer to a new `Vector` representing their cross product.
  */
@@ -40806,7 +42415,6 @@ rssn_Vector *rssn_vector_cross_handle(const rssn_Vector *aV1,
 
 /*
  Computes the dot product of two vectors.
-
  Takes two raw pointers to `Vector` objects as input.
  Returns a raw pointer to an `Expr` representing their dot product.
  */
@@ -40817,6 +42425,7 @@ struct rssn_Expr *rssn_vector_dot_handle(const rssn_Vector *aV1,
 
 /*
  Frees a Vector.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40831,7 +42440,6 @@ void rssn_vector_free(rssn_Vector *aVec)
 
 /*
  Computes the magnitude of a vector.
-
  Takes a raw pointer to a `Vector` as input.
  Returns a raw pointer to an `Expr` representing its magnitude.
  */
@@ -40841,7 +42449,6 @@ struct rssn_Expr *rssn_vector_magnitude_handle(const rssn_Vector *aV)
 
 /*
  Normalizes a vector.
-
  Takes a raw pointer to a `Vector` as input.
  Returns a raw pointer to a new `Vector` representing the normalized vector.
  */
@@ -40851,6 +42458,7 @@ rssn_Vector *rssn_vector_normalize_handle(const rssn_Vector *aV)
 
 /*
  Verifies a definite integral (Handle)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40869,6 +42477,7 @@ bool rssn_verify_definite_integral_handle(const struct rssn_Expr *aIntegrandPtr,
 
 /*
  Verifies a derivative (Handle)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40885,6 +42494,7 @@ bool rssn_verify_derivative_handle(const struct rssn_Expr *aOriginalFuncPtr,
 
 /*
  Verifies an equation solution (Handle)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40905,6 +42515,7 @@ bool rssn_verify_equation_solution_handle(const struct rssn_Expr *const *aEquati
 
 /*
  Verifies an indefinite integral (Handle)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40921,6 +42532,7 @@ bool rssn_verify_indefinite_integral_handle(const struct rssn_Expr *aIntegrandPt
 
 /*
  Verifies a limit (Handle)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40938,6 +42550,7 @@ bool rssn_verify_limit_handle(const struct rssn_Expr *aFPtr,
 
 /*
  Verifies a matrix inverse (Handle)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40953,6 +42566,7 @@ bool rssn_verify_matrix_inverse_handle(const struct rssn_Expr *aOriginalPtr,
 
 /*
  Verifies an ODE solution (Handle)
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -41088,6 +42702,7 @@ struct rssn_DifferentialForm *rssn_wedge_product_handle(const struct rssn_Differ
 
 /*
  Calculates work done by a variable force field along a path.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -41107,6 +42722,7 @@ struct rssn_Expr *rssn_work_line_integral(const rssn_Vector *aForceField,
  # Safety
  Caller must ensure `f_z` is a valid pointer to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -41126,6 +42742,7 @@ struct rssn_Expr *rssn_z_differentiation(const struct rssn_Expr *aFZ,
  # Safety
  Caller must ensure `f_z` and `a` are valid pointers to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -41147,6 +42764,7 @@ struct rssn_Expr *rssn_z_scaling(const struct rssn_Expr *aFZ,
  a raw pointer to an `Expr` (target mean), and a raw pointer to an `Expr` (population standard deviation).
  Returns a raw pointer to an `Expr` tuple containing the test statistic,
  p-value formula, and a placeholder for degrees of freedom.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -41168,6 +42786,7 @@ struct rssn_Expr *rssn_z_test(const struct rssn_Expr *const *aData,
  # Safety
  Caller must ensure `f_z` and `k` are valid pointers to an `Expr`.
  `out_var` must be a valid C string or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -41188,6 +42807,7 @@ struct rssn_Expr *rssn_z_time_shift(const struct rssn_Expr *aFZ,
  # Safety
  Caller must ensure `expr` is a valid pointer to an `Expr`.
  `in_var` and `out_var` must be valid C strings or null (defaults apply).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -41204,6 +42824,7 @@ struct rssn_Expr *rssn_z_transform(const struct rssn_Expr *aExpr,
 
 /*
  Computes the symbolic Riemann zeta function ζ(s).
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -41291,6 +42912,7 @@ char *transforms_ifft(const char *aJsonPtr)
  Multiplies a vector by a scalar.
 
  This function is deprecated.
+
  # Safety
 
  This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
