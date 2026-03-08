@@ -6,8 +6,6 @@ use crate::symbolic::grobner::MonomialOrder;
 use crate::symbolic::grobner::buchberger;
 use crate::symbolic::grobner::poly_division_multivariate;
 
-#[unsafe(no_mangle)]
-
 /// Computes a Gröbner basis using Buchberger's algorithm and returns it via bincode serialization.
 ///
 /// Given a basis of multivariate polynomials and a monomial order, this runs
@@ -27,38 +25,25 @@ use crate::symbolic::grobner::poly_division_multivariate;
 ///
 /// This function is an FFI entry point; callers must treat the returned buffer as
 /// opaque and only pass it to compatible APIs.
-
+#[unsafe(no_mangle)]
 pub extern "C" fn rssn_bincode_buchberger(
     basis_buf: BincodeBuffer,
     order_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+    let basis: Option<Vec<SparsePolynomial>> = from_bincode_buffer(&basis_buf);
 
-    let basis: Option<
-        Vec<SparsePolynomial>,
-    > = from_bincode_buffer(&basis_buf);
-
-    let order: Option<MonomialOrder> =
-        from_bincode_buffer(&order_buf);
+    let order: Option<MonomialOrder> = from_bincode_buffer(&order_buf);
 
     match (basis, order) {
         | (Some(b), Some(o)) => {
             match buchberger(&b, o) {
-                | Ok(result) => {
-                    to_bincode_buffer(
-                        &result,
-                    )
-                },
-                | Err(_) => {
-                    BincodeBuffer::empty(
-                    )
-                },
+                | Ok(result) => to_bincode_buffer(&result),
+                | Err(_) => BincodeBuffer::empty(),
             }
         },
         | _ => BincodeBuffer::empty(),
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Divides a multivariate polynomial by a list of divisors under a given monomial order,
 /// returning the quotients and remainder via bincode serialization.
@@ -79,52 +64,25 @@ pub extern "C" fn rssn_bincode_buchberger(
 ///
 /// This function is an FFI entry point; callers must treat the returned buffer as
 /// opaque and only pass it to compatible APIs.
-
+#[unsafe(no_mangle)]
 pub extern "C" fn rssn_bincode_poly_division_multivariate(
     dividend_buf: BincodeBuffer,
     divisors_buf: BincodeBuffer,
     order_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+    let dividend: Option<SparsePolynomial> = from_bincode_buffer(&dividend_buf);
 
-    let dividend: Option<
-        SparsePolynomial,
-    > = from_bincode_buffer(
-        &dividend_buf,
-    );
+    let divisors: Option<Vec<SparsePolynomial>> = from_bincode_buffer(&divisors_buf);
 
-    let divisors: Option<
-        Vec<SparsePolynomial>,
-    > = from_bincode_buffer(
-        &divisors_buf,
-    );
+    let order: Option<MonomialOrder> = from_bincode_buffer(&order_buf);
 
-    let order: Option<MonomialOrder> =
-        from_bincode_buffer(&order_buf);
-
-    match (
-        dividend,
-        divisors,
-        order,
-    ) { (
-        Some(d),
-        Some(divs),
-        Some(o),
-    ) => {
-
-        match poly_division_multivariate(
-            &d, &divs, o,
-        ) {
-            | Ok(result) => {
-                to_bincode_buffer(
-                    &result,
-                )
-            },
-            | Err(_) => {
-                BincodeBuffer::empty()
-            },
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (dividend, divisors, order) {
+        | (Some(d), Some(divs), Some(o)) => {
+            match poly_division_multivariate(&d, &divs, o) {
+                | Ok(result) => to_bincode_buffer(&result),
+                | Err(_) => BincodeBuffer::empty(),
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

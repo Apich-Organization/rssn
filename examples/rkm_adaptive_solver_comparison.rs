@@ -11,16 +11,13 @@ use rssn::physics::physics_rkm::VanDerPolSystem;
 use rssn::physics::physics_rkm::solve_rk4;
 
 fn main() {
-
     println!(
         "Starting Runge-Kutta \
          Adaptive Solver Comparison..."
     );
 
     // Van der Pol oscillator with mu=5.0 (stiff enough to benefit from adaptation)
-    let system = VanDerPolSystem {
-        mu: 5.0,
-    };
+    let system = VanDerPolSystem { mu: 5.0 };
 
     let y0 = &[2.0, 0.0];
 
@@ -39,15 +36,9 @@ fn main() {
 
     let start_rk4 = Instant::now();
 
-    let rk4_res = solve_rk4(
-        &system,
-        y0,
-        t_span,
-        dt_initial,
-    );
+    let rk4_res = solve_rk4(&system, y0, t_span, dt_initial);
 
-    let rk4_duration =
-        start_rk4.elapsed();
+    let rk4_duration = start_rk4.elapsed();
 
     println!(
         "RK4 finished in {:?}, steps: \
@@ -57,8 +48,7 @@ fn main() {
     );
 
     // 2. Dormand-Prince 5(4) (Adaptive)
-    let solver_dp =
-        DormandPrince54::new();
+    let solver_dp = DormandPrince54::new();
 
     println!(
         "Solving with Dormand-Prince \
@@ -68,16 +58,9 @@ fn main() {
 
     let start_dp = Instant::now();
 
-    let dp_res = solver_dp.solve(
-        &system,
-        y0,
-        t_span,
-        dt_initial,
-        tolerance,
-    );
+    let dp_res = solver_dp.solve(&system, y0, t_span, dt_initial, tolerance);
 
-    let dp_duration =
-        start_dp.elapsed();
+    let dp_duration = start_dp.elapsed();
 
     println!(
         "DP 5(4) finished in {:?}, \
@@ -87,8 +70,7 @@ fn main() {
     );
 
     // 3. Cash-Karp 4(5) (Adaptive)
-    let solver_ck =
-        CashKarp45::default();
+    let solver_ck = CashKarp45::default();
 
     println!(
         "Solving with Cash-Karp 4(5) \
@@ -98,16 +80,9 @@ fn main() {
 
     let start_ck = Instant::now();
 
-    let ck_res = solver_ck.solve(
-        &system,
-        y0,
-        t_span,
-        dt_initial,
-        tolerance,
-    );
+    let ck_res = solver_ck.solve(&system, y0, t_span, dt_initial, tolerance);
 
-    let ck_duration =
-        start_ck.elapsed();
+    let ck_duration = start_ck.elapsed();
 
     println!(
         "CK 4(5) finished in {:?}, \
@@ -119,89 +94,52 @@ fn main() {
     // Results Analysis
     println!("\nPerformance Summary:");
 
-    println!(
-        "RK4: {:?} (Fixed {} steps)",
-        rk4_duration,
-        rk4_res.len()
-    );
+    println!("RK4: {:?} (Fixed {} steps)", rk4_duration, rk4_res.len());
 
-    println!(
-        "DP 5(4): {:?} ({} steps)",
-        dp_duration,
-        dp_res.len()
-    );
+    println!("DP 5(4): {:?} ({} steps)", dp_duration, dp_res.len());
 
-    println!(
-        "CK 4(5): {:?} ({} steps)",
-        ck_duration,
-        ck_res.len()
-    );
+    println!("CK 4(5): {:?} ({} steps)", ck_duration, ck_res.len());
 
     // Visualization
     #[cfg(feature = "output")]
     {
-
         println!(
             "\nGenerating comparison \
              plot..."
         );
 
         // Helper to convert solver output to (t, y) points
-        let to_points = |res: &[(
-            f64,
-            Vec<f64>,
-        )]| {
-
-            res.iter().map(|(t, y)| (*t, y[0])).collect::<Vec<(f64, f64)>>()
+        let to_points = |res: &[(f64, Vec<f64>)]| {
+            res.iter()
+                .map(|(t, y)| (*t, y[0]))
+                .collect::<Vec<(f64, f64)>>()
         };
 
         let series = vec![
-            (
-                "RK4 (Fixed)"
-                    .to_string(),
-                to_points(&rk4_res),
-            ),
-            (
-                "Dormand-Prince 5(4)"
-                    .to_string(),
-                to_points(&dp_res),
-            ),
-            (
-                "Cash-Karp 4(5)"
-                    .to_string(),
-                to_points(&ck_res),
-            ),
+            ("RK4 (Fixed)".to_string(), to_points(&rk4_res)),
+            ("Dormand-Prince 5(4)".to_string(), to_points(&dp_res)),
+            ("Cash-Karp 4(5)".to_string(), to_points(&ck_res)),
         ];
 
-        let mut plot_config =
-            PlotConfig::default();
+        let mut plot_config = PlotConfig::default();
 
-        plot_config.caption =
-            "Van der Pol Oscillator \
+        plot_config.caption = "Van der Pol Oscillator \
              (mu=5.0) Solver \
              Comparison"
-                .to_string();
+            .to_string();
 
         plot_config.width = 3840;
 
         plot_config.height = 2160;
 
-        plot_config.caption_font_size =
-            80;
+        plot_config.caption_font_size = 80;
 
-        plot_config.label_font_size =
-            40;
+        plot_config.label_font_size = 40;
 
-        let plot_path =
-            "rkm_solver_comparison.png";
+        let plot_path = "rkm_solver_comparison.png";
 
-        match plot_series_2d(
-            &series,
-            plot_path,
-            Some(plot_config),
-        ) {
+        match plot_series_2d(&series, plot_path, Some(plot_config)) {
             | Ok(_) => {
-
                 println!(
                     "Successfully \
                      saved comparison \
@@ -210,7 +148,6 @@ fn main() {
                 )
             },
             | Err(e) => {
-
                 eprintln!(
                     "Failed to save \
                      plot: {}",

@@ -5,7 +5,6 @@ use rssn::symbolic::vector::Vector;
 #[test]
 
 fn test_lorentz_force() {
-
     let q = Expr::new_variable("q");
 
     let ex = Expr::new_variable("Ex");
@@ -14,8 +13,7 @@ fn test_lorentz_force() {
 
     let ez = Expr::new_variable("Ez");
 
-    let e_field =
-        Vector::new(ex, ey, ez);
+    let e_field = Vector::new(ex, ey, ez);
 
     let vx = Expr::new_variable("vx");
 
@@ -23,8 +21,7 @@ fn test_lorentz_force() {
 
     let vz = Expr::new_variable("vz");
 
-    let velocity =
-        Vector::new(vx, vy, vz);
+    let velocity = Vector::new(vx, vy, vz);
 
     let bx = Expr::new_variable("bx");
 
@@ -32,18 +29,11 @@ fn test_lorentz_force() {
 
     let bz = Expr::new_variable("bz");
 
-    let b_field =
-        Vector::new(bx, by, bz);
+    let b_field = Vector::new(bx, by, bz);
 
-    let force = lorentz_force(
-        &q,
-        &e_field,
-        &velocity,
-        &b_field,
-    );
+    let force = lorentz_force(&q, &e_field, &velocity, &b_field);
 
-    let fx_str =
-        format!("{:?}", force.x);
+    let fx_str = format!("{:?}", force.x);
 
     // Fx = q * (Ex + vy*bz - vz*by)
     assert!(fx_str.contains("q"));
@@ -58,13 +48,8 @@ fn test_lorentz_force() {
 #[test]
 
 fn test_maxwell_equations_gauss() {
-
     let ex = Expr::new_variable("x"); // E = [x, 0, 0] -> div E = 1
-    let e_field = Vector::new(
-        ex,
-        Expr::Constant(0.0),
-        Expr::Constant(0.0),
-    );
+    let e_field = Vector::new(ex, Expr::Constant(0.0), Expr::Constant(0.0));
 
     let b_field = Vector::new(
         Expr::Constant(0.0),
@@ -80,34 +65,21 @@ fn test_maxwell_equations_gauss() {
         Expr::Constant(0.0),
     );
 
-    let maxwell = MaxwellEquations::new(
-        &e_field,
-        &b_field,
-        &rho,
-        &j_field,
-        ("x", "y", "z"),
-        "t",
-    );
+    let maxwell = MaxwellEquations::new(&e_field, &b_field, &rho, &j_field, ("x", "y", "z"), "t");
 
-    let gauss_str = format!(
-        "{:?}",
-        maxwell.gauss_law_electric
-    );
+    let gauss_str = format!("{:?}", maxwell.gauss_law_electric);
 
     // (div E - rho/epsilon_0) = (1 - rho/epsilon_0)
     assert!(gauss_str.contains("1"));
 
     assert!(gauss_str.contains("rho"));
 
-    assert!(
-        gauss_str.contains("epsilon_0")
-    );
+    assert!(gauss_str.contains("epsilon_0"));
 }
 
 #[test]
 
 fn test_energy_density() {
-
     let e_field = Vector::new(
         Expr::new_variable("Ex"),
         Expr::Constant(0.0),
@@ -120,16 +92,11 @@ fn test_energy_density() {
         Expr::Constant(0.0),
     );
 
-    let u = energy_density(
-        &e_field,
-        &b_field,
-    );
+    let u = energy_density(&e_field, &b_field);
 
     let u_str = format!("{:?}", u);
 
-    assert!(
-        u_str.contains("epsilon_0")
-    );
+    assert!(u_str.contains("epsilon_0"));
 
     assert!(u_str.contains("mu_0"));
 
@@ -141,7 +108,6 @@ fn test_energy_density() {
 #[test]
 
 fn test_coulombs_law() {
-
     let q = Expr::new_variable("Q");
 
     let rx = Expr::new_variable("rx");
@@ -160,9 +126,7 @@ fn test_coulombs_law() {
 
     assert!(ex_str.contains("rx"));
 
-    assert!(
-        ex_str.contains("epsilon_0")
-    );
+    assert!(ex_str.contains("epsilon_0"));
 
     assert!(ex_str.contains("Pi"));
 }

@@ -11,30 +11,22 @@
 //! # Examples
 //!
 //! ```
-//! 
 //! use rssn::compute::engine::ComputeEngine;
 //!
 //! let engine = ComputeEngine::new();
 //!
 //! // Submit a computation
-//! let id = engine
-//!     .parse_and_submit("2 + 2")
-//!     .unwrap();
+//! let id = engine.parse_and_submit("2 + 2").unwrap();
 //!
 //! // Check status
 //! if let Some(status) = engine.get_status(&id) {
-//!
-//!     println!(
-//!         "Status: {:?}",
-//!         status
-//!     );
+//!     println!("Status: {:?}", status);
 //! }
 //!
 //! // Get result when complete
 //! std::thread::sleep(std::time::Duration::from_secs(1));
 //!
 //! if let Some(result) = engine.get_result(&id) {
-//!
 //!     println!("Result: {}", result);
 //! }
 //! ```
@@ -80,22 +72,13 @@ use crate::symbolic::core::Expr;
 /// - **Result cache**: Stores computation results for reuse
 #[allow(dead_code)]
 #[derive(Clone)]
-
 pub struct ComputeEngine {
     /// Registry of active computations, indexed by computation ID.
-    computations: Arc<
-        RwLock<
-            HashMap<
-                String,
-                Arc<Mutex<Computation>>,
-            >,
-        >,
-    >,
+    computations: Arc<RwLock<HashMap<String, Arc<Mutex<Computation>>>>>,
     /// Cache for parsed expressions.
     parsing_cache: Arc<ParsingCache>,
     /// Cache for computation results.
-    result_cache:
-        Arc<ComputationResultCache>,
+    result_cache: Arc<ComputationResultCache>,
 }
 
 impl ComputeEngine {
@@ -104,21 +87,16 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
-    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
     /// ```
     #[must_use]
-
     pub fn new() -> Self {
-
         Self {
-            computations : Arc::new(RwLock::new(
-                HashMap::new(),
-            )),
-            parsing_cache : Arc::new(ParsingCache::new()),
-            result_cache : Arc::new(ComputationResultCache::new()),
+            computations: Arc::new(RwLock::new(HashMap::new())),
+            parsing_cache: Arc::new(ParsingCache::new()),
+            result_cache: Arc::new(ComputationResultCache::new()),
         }
     }
 
@@ -140,18 +118,13 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
-    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
     ///
     /// match engine.parse_and_submit("x + 1") {
     ///     | Ok(id) => {
-    ///
-    ///         println!(
-    ///             "Computation ID: {}",
-    ///             id
-    ///         )
+    ///         println!("Computation ID: {}", id)
     ///     },
     ///     | Err(e) => eprintln!("Parse error: {}", e),
     /// }
@@ -159,28 +132,18 @@ impl ComputeEngine {
     ///
     /// # Errors
     /// Returns an error string if the parsing fails.
-
     pub fn parse_and_submit(
         &self,
         input: &str,
     ) -> Result<String, String> {
-
-        let expr = match self
-            .parsing_cache
-            .get(input)
-        {
+        let expr = match self.parsing_cache.get(input) {
             | Some(expr) => expr,
             | None => {
                 match crate::input::parser::parse_expr(input) {
                     | Ok((_, expr)) => {
-
                         let expr = Arc::new(expr);
 
-                        self.parsing_cache
-                            .set(
-                                input.to_string(),
-                                expr.clone(),
-                            );
+                        self.parsing_cache.set(input.to_string(), expr.clone());
 
                         expr
                     },
@@ -206,54 +169,39 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
-    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
     ///
-    /// let id = engine
-    ///     .parse_and_submit("2 + 2")
-    ///     .unwrap();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
     ///
     /// if let Some(status) = engine.get_status(&id) {
-    ///
-    ///     println!(
-    ///         "Status: {:?}",
-    ///         status
-    ///     );
+    ///     println!("Status: {:?}", status);
     /// }
     /// ```
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
     #[must_use]
-
     pub fn get_status(
         &self,
         id: &str,
     ) -> Option<ComputationStatus> {
-
-        let computations = self
-            .computations
-            .read()
-            .expect(
-                "ComputeEngine \
+        let computations = self.computations.read().expect(
+            "ComputeEngine \
                  computations lock \
                  poisoned",
-            );
+        );
 
-        computations
-            .get(id)
-            .map(|comp| {
-
-                comp.lock()
-                    .expect(
-                        "Computation \
+        computations.get(id).map(|comp| {
+            comp.lock()
+                .expect(
+                    "Computation \
                          lock poisoned",
-                    )
-                    .status
-                    .clone()
-            })
+                )
+                .status
+                .clone()
+        })
     }
 
     /// Gets the current progress of a computation.
@@ -270,55 +218,39 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
-    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
     ///
-    /// let id = engine
-    ///     .parse_and_submit("2 + 2")
-    ///     .unwrap();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
     ///
     /// if let Some(progress) = engine.get_progress(&id) {
-    ///
-    ///     println!(
-    ///         "Progress: {}%",
-    ///         progress.percentage
-    ///     );
+    ///     println!("Progress: {}%", progress.percentage);
     /// }
     /// ```
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
     #[must_use]
-
     pub fn get_progress(
         &self,
         id: &str,
-    ) -> Option<ComputationProgress>
-    {
-
-        let computations = self
-            .computations
-            .read()
-            .expect(
-                "ComputeEngine \
+    ) -> Option<ComputationProgress> {
+        let computations = self.computations.read().expect(
+            "ComputeEngine \
                  computations lock \
                  poisoned",
-            );
+        );
 
-        computations
-            .get(id)
-            .map(|comp| {
-
-                comp.lock()
-                    .expect(
-                        "Computation \
+        computations.get(id).map(|comp| {
+            comp.lock()
+                .expect(
+                    "Computation \
                          lock poisoned",
-                    )
-                    .progress
-                    .clone()
-            })
+                )
+                .progress
+                .clone()
+        })
     }
 
     /// Gets the result of a completed computation.
@@ -335,20 +267,16 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
-    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
     ///
-    /// let id = engine
-    ///     .parse_and_submit("2 + 2")
-    ///     .unwrap();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
     ///
     /// // Wait for completion
     /// std::thread::sleep(std::time::Duration::from_secs(6));
     ///
     /// if let Some(result) = engine.get_result(&id) {
-    ///
     ///     println!("Result: {}", result);
     /// }
     /// ```
@@ -356,33 +284,25 @@ impl ComputeEngine {
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
     #[must_use]
-
     pub fn get_result(
         &self,
         id: &str,
     ) -> Option<Value> {
-
-        let computations = self
-            .computations
-            .read()
-            .expect(
-                "ComputeEngine \
+        let computations = self.computations.read().expect(
+            "ComputeEngine \
                  computations lock \
                  poisoned",
-            );
+        );
 
-        computations
-            .get(id)
-            .and_then(|comp| {
-
-                comp.lock()
-                    .expect(
-                        "Computation \
+        computations.get(id).and_then(|comp| {
+            comp.lock()
+                .expect(
+                    "Computation \
                          lock poisoned",
-                    )
-                    .result
-                    .clone()
-            })
+                )
+                .result
+                .clone()
+        })
     }
 
     /// Submits an expression for asynchronous computation.
@@ -402,7 +322,6 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
-    /// 
     /// use std::sync::Arc;
     ///
     /// use rssn::compute::engine::ComputeEngine;
@@ -414,98 +333,69 @@ impl ComputeEngine {
     ///
     /// let id = engine.submit(expr);
     ///
-    /// println!(
-    ///     "Submitted computation: {}",
-    ///     id
-    /// );
+    /// println!("Submitted computation: {}", id);
     /// ```
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
     #[must_use]
     #[allow(clippy::too_many_lines)]
-
     pub fn submit(
         &self,
         expr: Arc<Expr>,
     ) -> String {
+        let id = Uuid::new_v4().to_string();
 
-        let id =
-            Uuid::new_v4().to_string();
+        let pause = Arc::new((Mutex::new(false), Condvar::new()));
 
-        let pause = Arc::new((
-            Mutex::new(false),
-            Condvar::new(),
-        ));
-
-        let computation = Arc::new(Mutex::new(
-            Computation {
-                id : id.clone(),
-                expr,
-                status : ComputationStatus::Pending,
-                progress : ComputationProgress {
-                    percentage : 0.0,
-                    description : "Pending".to_string(),
-                },
-                result : None,
-                cancel_signal : Arc::new(AtomicBool::new(
-                    false,
-                )),
-                state : State {
-                    intermediate_value : String::new(),
-                },
-                pause : pause.clone(),
+        let computation = Arc::new(Mutex::new(Computation {
+            id: id.clone(),
+            expr,
+            status: ComputationStatus::Pending,
+            progress: ComputationProgress {
+                percentage: 0.0,
+                description: "Pending".to_string(),
             },
-        ));
+            result: None,
+            cancel_signal: Arc::new(AtomicBool::new(false)),
+            state: State {
+                intermediate_value: String::new(),
+            },
+            pause: pause.clone(),
+        }));
 
         {
-
-            let mut computations = self
-                .computations
-                .write()
-                .expect(
-                    "ComputeEngine \
+            let mut computations = self.computations.write().expect(
+                "ComputeEngine \
                      computations \
                      lock poisoned",
-                );
-
-            computations.insert(
-                id.clone(),
-                computation.clone(),
             );
+
+            computations.insert(id.clone(), computation.clone());
         }
 
         let _engine = self.clone();
 
-        let result_cache = self
-            .result_cache
-            .clone();
+        let result_cache = self.result_cache.clone();
 
         rayon::spawn(move || {
-
             let (lock, cvar) = &*pause;
 
-            let mut comp_guard =
-                computation
-                    .lock()
-                    .expect(
-                        "Computation \
+            let mut comp_guard = computation.lock().expect(
+                "Computation \
                          lock poisoned",
-                    );
+            );
 
             comp_guard.status = ComputationStatus::Running;
 
             // Simulate work
-            for i in 0u8 .. 100u8 {
-
-                let mut paused =
-                    lock.lock().expect(
-                        "Pause lock \
+            for i in 0u8..100u8 {
+                let mut paused = lock.lock().expect(
+                    "Pause lock \
                          poisoned",
-                    );
+                );
 
                 while *paused {
-
                     comp_guard.status = ComputationStatus::Paused;
 
                     println!(
@@ -514,9 +404,7 @@ impl ComputeEngine {
                         comp_guard.id
                     );
 
-                    paused = cvar
-                        .wait(paused)
-                        .expect("Condition variable wait failed");
+                    paused = cvar.wait(paused).expect("Condition variable wait failed");
                 }
 
                 drop(paused);
@@ -524,54 +412,31 @@ impl ComputeEngine {
                 comp_guard.status = ComputationStatus::Running;
 
                 if comp_guard.status == ComputationStatus::Failed("Cancelled".to_string()) {
-
-                    println!(
-                        "Computation {} cancelled.",
-                        comp_guard.id
-                    );
+                    println!("Computation {} cancelled.", comp_guard.id);
 
                     return;
                 }
 
                 std::thread::sleep(std::time::Duration::from_millis(50));
 
-                comp_guard
-                    .progress
-                    .percentage =
-                    f32::from(i); // i is 0..99, safe to use From for f32
+                comp_guard.progress.percentage = f32::from(i); // i is 0..99, safe to use From for f32
 
-                comp_guard
-                    .progress
-                    .description = format!(
-                    "{i}% complete"
-                );
+                comp_guard.progress.description = format!("{i}% complete");
             }
 
             comp_guard.status = ComputationStatus::Completed;
 
-            comp_guard
-                .progress
-                .percentage = 100.0;
+            comp_guard.progress.percentage = 100.0;
 
-            comp_guard
-                .progress
-                .description =
-                "Completed".to_string();
+            comp_guard.progress.description = "Completed".to_string();
 
-            let result =
-                "Result of the \
+            let result = "Result of the \
                  computation"
-                    .to_string();
+                .to_string();
 
-            comp_guard.result =
-                Some(result.clone());
+            comp_guard.result = Some(result.clone());
 
-            result_cache.set(
-                comp_guard
-                    .expr
-                    .clone(),
-                result,
-            );
+            result_cache.set(comp_guard.expr.clone(), result);
         });
 
         id
@@ -589,14 +454,11 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
-    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
     ///
-    /// let id = engine
-    ///     .parse_and_submit("2 + 2")
-    ///     .unwrap();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
     ///
     /// // Pause the computation
     /// engine.pause(&id);
@@ -604,12 +466,10 @@ impl ComputeEngine {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
-
     pub fn pause(
         &self,
         id: &str,
     ) {
-
         let computation = self
             .computations
             .read()
@@ -621,31 +481,21 @@ impl ComputeEngine {
             .get(id)
             .cloned();
 
-        if let Some(computation) =
-            computation
-        {
-
+        if let Some(computation) = computation {
             let pause = {
-
-                let comp = computation
-                    .lock()
-                    .expect(
-                        "Computation \
+                let comp = computation.lock().expect(
+                    "Computation \
                          lock poisoned",
-                    );
+                );
 
                 comp.pause.clone()
             };
 
             {
-
-                let mut paused = pause
-                    .0
-                    .lock()
-                    .expect(
-                        "Pause lock \
+                let mut paused = pause.0.lock().expect(
+                    "Pause lock \
                          poisoned",
-                    );
+                );
 
                 *paused = true;
             }
@@ -663,14 +513,11 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
-    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
     ///
-    /// let id = engine
-    ///     .parse_and_submit("2 + 2")
-    ///     .unwrap();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
     ///
     /// engine.pause(&id);
     ///
@@ -680,12 +527,10 @@ impl ComputeEngine {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
-
     pub fn resume(
         &self,
         id: &str,
     ) {
-
         let computation = self
             .computations
             .read()
@@ -697,31 +542,21 @@ impl ComputeEngine {
             .get(id)
             .cloned();
 
-        if let Some(computation) =
-            computation
-        {
-
+        if let Some(computation) = computation {
             let pause = {
-
-                let comp = computation
-                    .lock()
-                    .expect(
-                        "Computation \
+                let comp = computation.lock().expect(
+                    "Computation \
                          lock poisoned",
-                    );
+                );
 
                 comp.pause.clone()
             };
 
             {
-
-                let mut paused = pause
-                    .0
-                    .lock()
-                    .expect(
-                        "Pause lock \
+                let mut paused = pause.0.lock().expect(
+                    "Pause lock \
                          poisoned",
-                    );
+                );
 
                 *paused = false;
             }
@@ -742,14 +577,11 @@ impl ComputeEngine {
     /// # Examples
     ///
     /// ```
-    /// 
     /// use rssn::compute::engine::ComputeEngine;
     ///
     /// let engine = ComputeEngine::new();
     ///
-    /// let id = engine
-    ///     .parse_and_submit("2 + 2")
-    ///     .unwrap();
+    /// let id = engine.parse_and_submit("2 + 2").unwrap();
     ///
     /// // Cancel the computation
     /// engine.cancel(&id);
@@ -757,12 +589,10 @@ impl ComputeEngine {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
-
     pub fn cancel(
         &self,
         id: &str,
     ) {
-
         let computation = self
             .computations
             .read()
@@ -774,38 +604,23 @@ impl ComputeEngine {
             .get(id)
             .cloned();
 
-        if let Some(computation) =
-            computation
-        {
-
+        if let Some(computation) = computation {
             let pause = {
-
-                let mut comp =
-                    computation
-                        .lock()
-                        .expect(
-                        "Computation \
+                let mut comp = computation.lock().expect(
+                    "Computation \
                          lock poisoned",
-                    );
+                );
 
-                comp.status =
-                    ComputationStatus::Failed(
-                        "Cancelled"
-                            .to_string(),
-                    );
+                comp.status = ComputationStatus::Failed("Cancelled".to_string());
 
                 comp.pause.clone()
             };
 
             {
-
-                let mut paused = pause
-                    .0
-                    .lock()
-                    .expect(
-                        "Pause lock \
+                let mut paused = pause.0.lock().expect(
+                    "Pause lock \
                          poisoned",
-                    );
+                );
 
                 *paused = false;
             }
@@ -826,7 +641,6 @@ impl ComputeEngine {
 
 impl Default for ComputeEngine {
     fn default() -> Self {
-
         Self::new()
     }
 }

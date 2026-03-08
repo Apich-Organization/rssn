@@ -8,11 +8,12 @@ use std::fmt::Debug;
 use std::fmt::Write;
 use std::hash::Hash;
 use std::hash::Hasher;
-use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::Arc;
 use std::sync::LazyLock;
-use dashmap::DashMap;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering as AtomicOrdering;
 
+use dashmap::DashMap;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use ordered_float::OrderedFloat;
@@ -22,17 +23,10 @@ use super::expr::PathType;
 use super::expr::SparsePolynomial;
 
 /// Global singleton instance of the DagManager.
-
-pub static DAG_MANAGER: LazyLock<
-    DagManager,
-> = LazyLock::new(DagManager::new);
-
+pub static DAG_MANAGER: LazyLock<DagManager> = LazyLock::new(DagManager::new);
 
 /// Represents a node in a Direct Acyclic Graph (DAG) for expression deduplication.
-#[derive(
-    Debug, Clone, serde::Serialize,
-)]
-
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct DagNode {
     /// The operation performed at this node.
     pub op: DagOp,
@@ -46,42 +40,26 @@ pub struct DagNode {
     pub id: u64,
 }
 
-impl<'de> serde::Deserialize<'de>
-    for DagNode
-{
-    fn deserialize<D>(
-        deserializer: D
-    ) -> Result<Self, D::Error>
+impl<'de> serde::Deserialize<'de> for DagNode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-
-        #[derive(
-            serde::Deserialize,
-        )]
-
+        #[derive(serde::Deserialize)]
         struct DagNodeHelper {
             op: DagOp,
             children: Vec<Arc<DagNode>>,
         }
 
-        let helper =
-            DagNodeHelper::deserialize(
-                deserializer,
-            )?;
+        let helper = DagNodeHelper::deserialize(deserializer)?;
 
         // Recompute hash after deserialization
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
 
-        helper
-            .op
-            .hash(&mut hasher);
+        helper.op.hash(&mut hasher);
 
         for child in &helper.children {
-
-            child
-                .hash
-                .hash(&mut hasher);
+            child.hash.hash(&mut hasher);
         }
 
         let hash = hasher.finish();
@@ -99,19 +77,10 @@ impl<'de> serde::Deserialize<'de>
 }
 
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    PartialOrd,
-    Ord,
-    serde::Serialize,
-    serde::Deserialize,
+    Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
 )]
 
 /// Represents the different types of operations and leaf nodes in a Directed Acyclic Graph (DAG).
-
 pub enum DagOp {
     // --- Leaf Nodes ---
     /// A double-precision floating-point constant.
@@ -357,7 +326,7 @@ pub enum DagOp {
     /// Polynomial expression.
     Polynomial,
     /// Sparse polynomial.
-    SparsePolynomial(SparsePolynomial), /* Note: Storing whole struct for simplicity */
+    SparsePolynomial(SparsePolynomial), // Note: Storing whole struct for simplicity
     /// Floor function.
     Floor,
     /// Primality test.
@@ -390,7 +359,7 @@ pub enum DagOp {
     /// Tuple of expressions.
     Tuple,
     /// Probability distribution.
-    Distribution, /* Trait objects are handled separately */
+    Distribution, // Trait objects are handled separately
     /// Maximum of multiple values.
     Max,
     /// Physical quantity.
@@ -450,6 +419,7 @@ impl PartialEq for DagNode {
         }
 
         let mut stack = Vec::with_capacity(16);
+
         for (l, r) in self.children.iter().zip(other.children.iter()) {
             stack.push((l.as_ref(), r.as_ref()));
         }
@@ -458,15 +428,19 @@ impl PartialEq for DagNode {
             if std::ptr::eq(l_node, r_node) {
                 continue;
             }
+
             if l_node.id != 0 && r_node.id != 0 {
                 if l_node.id != r_node.id {
                     return false;
                 }
+
                 continue;
             }
+
             if l_node.op != r_node.op || l_node.children.len() != r_node.children.len() {
                 return false;
             }
+
             for (lc, rc) in l_node.children.iter().zip(r_node.children.iter()) {
                 stack.push((lc, rc));
             }
@@ -476,15 +450,13 @@ impl PartialEq for DagNode {
     }
 }
 
-impl Eq for DagNode {
-}
+impl Eq for DagNode {}
 
 impl PartialOrd for DagNode {
     fn partial_cmp(
         &self,
         other: &Self,
     ) -> Option<Ordering> {
-
         Some(self.cmp(other))
     }
 }
@@ -497,9 +469,10 @@ impl Ord for DagNode {
         // Use unique ID for comparison if available and we don't need structural ordering.
         // However, for canonicalization (Add/Mul sorting), we need a stable structural ordering.
         // IDs are not stable across runs/managers.
-        
+
         // Iterative structural comparison
         let mut stack = Vec::with_capacity(16);
+
         stack.push((self, other));
 
         while let Some((l, r)) = stack.pop() {
@@ -508,19 +481,20 @@ impl Ord for DagNode {
             }
 
             match l.op.cmp(&r.op) {
-                Ordering::Equal => {
+                | Ordering::Equal => {
                     match l.children.len().cmp(&r.children.len()) {
-                        Ordering::Equal => {
+                        | Ordering::Equal => {
                             for (lc, rc) in l.children.iter().zip(r.children.iter()).rev() {
                                 stack.push((lc.as_ref(), rc.as_ref()));
                             }
-                        }
-                        ord => return ord,
+                        },
+                        | ord => return ord,
                     }
-                }
-                ord => return ord,
+                },
+                | ord => return ord,
             }
         }
+
         Ordering::Equal
     }
 }
@@ -535,6 +509,7 @@ impl Hash for DagNode {
         } else {
             // Fallback for nodes without IDs
             self.op.hash(state);
+
             state.write_u64(self.hash);
         }
     }
@@ -542,12 +517,10 @@ impl Hash for DagNode {
 
 impl From<DagNode> for Expr {
     fn from(node: DagNode) -> Self {
-
-        node.to_expr()
-            .expect(
-                "Cannot convert \
+        node.to_expr().expect(
+            "Cannot convert \
                  DagNode to Expr.",
-            )
+        )
     }
 }
 
@@ -555,7 +528,6 @@ impl From<DagNode> for Expr {
 ///
 /// This manager maintains a cache of `DagNode` instances to ensure that
 /// identical expressions are represented by the same shared memory.
-
 pub struct DagManager {
     nodes: DashMap<u64, Vec<Arc<DagNode>>>,
     next_id: AtomicU64,
@@ -563,19 +535,15 @@ pub struct DagManager {
 
 impl Default for DagManager {
     fn default() -> Self {
-
         Self::new()
     }
 }
-
 
 impl DagManager {
     /// Creates a new `DagManager`.
     #[inline]
     #[must_use]
-
     pub fn new() -> Self {
-
         Self {
             nodes: DashMap::new(),
             next_id: AtomicU64::new(1),
@@ -595,25 +563,18 @@ impl DagManager {
     /// # Errors
     /// Returns an error if the number of children exceeds the safety limit.
     #[inline]
-
     pub fn get_or_create_normalized(
         &self,
         op: DagOp,
         mut children: Vec<Arc<DagNode>>,
-    ) -> Result<Arc<DagNode>, String>
-    {
-
+    ) -> Result<Arc<DagNode>, String> {
         // Safety check: limit number of children to prevent excessive memory usage
-        const MAX_CHILDREN: usize =
-            10000;
+        const MAX_CHILDREN: usize = 10000;
 
         // Prevent excessive memory usage by limiting bucket size
-        const MAX_BUCKET_SIZE: usize =
-            1000;
+        const MAX_BUCKET_SIZE: usize = 1000;
 
-        if children.len() > MAX_CHILDREN
-        {
-
+        if children.len() > MAX_CHILDREN {
             return Err(format!(
                 "Too many children in \
                  node ({}), exceeds \
@@ -624,9 +585,7 @@ impl DagManager {
         }
 
         match op {
-            | DagOp::Add
-            | DagOp::Mul => {
-
+            | DagOp::Add | DagOp::Mul => {
                 // Use stable sort to ensure deterministic ordering across test runs.
                 // This is critical for reproducible hashing and test stability.
                 children.sort();
@@ -635,35 +594,33 @@ impl DagManager {
         }
 
         // Compute 64-bit hash key
-        let mut hasher =
-            ahash::AHasher::default();
+        let mut hasher = ahash::AHasher::default();
 
         op.hash(&mut hasher);
 
         for c in &children {
-
             // Use stored hash if present to avoid recursing
-            Self::c_hash_for_hasher(
-                c,
-                &mut hasher,
-            );
+            Self::c_hash_for_hasher(c, &mut hasher);
         }
 
         let hash = hasher.finish();
 
         // Use DashMap entry API for sharded, thread-safe access
-        let mut entry = self.nodes.entry(hash).or_insert_with(Vec::new);
+        let mut entry = self.nodes.entry(hash).or_default();
+
         let bucket = entry.value_mut();
 
         // Check bucket size to prevent excessive memory usage
         if bucket.len() > MAX_BUCKET_SIZE {
             let id = self.next_id.fetch_add(1, AtomicOrdering::Relaxed);
+
             let node = Arc::new(DagNode {
                 op,
                 children,
                 hash,
                 id,
             });
+
             return Ok(node);
         }
 
@@ -676,6 +633,7 @@ impl DagManager {
 
         // No structural match found in bucket: create new node and push.
         let id = self.next_id.fetch_add(1, AtomicOrdering::Relaxed);
+
         let node = Arc::new(DagNode {
             op,
             children,
@@ -684,46 +642,34 @@ impl DagManager {
         });
 
         bucket.push(node.clone());
+
         Ok(node)
     }
 
     /// Helper: compare candidate node with the provided op + children for structural equality.
     /// Uses hash + op + child count + child hashes to decide equality (cheap check),
     /// and falls back to recursive compare of children ops if necessary.
-
     pub(crate) fn dag_nodes_structurally_equal(
         cand: &Arc<DagNode>,
         op: &DagOp,
         children: &Vec<Arc<DagNode>>,
     ) -> bool {
-
         // Quick checks: hash, op discrimination, length
         if cand.hash != Self::compute_op_children_hash(op, children) {
-
             return false;
         }
 
         if &cand.op != op {
-
             return false;
         }
 
-        if cand.children.len()
-            != children.len()
-        {
-
+        if cand.children.len() != children.len() {
             return false;
         }
 
         // Compare children's hashes to avoid deep recursion in most cases.
-        for (a, b) in cand
-            .children
-            .iter()
-            .zip(children.iter())
-        {
-
+        for (a, b) in cand.children.iter().zip(children.iter()) {
             if a.hash != b.hash {
-
                 return false;
             }
         }
@@ -735,35 +681,26 @@ impl DagManager {
     }
 
     /// Compute the same hash that we use as bucket key for an op+children.
-
     pub(crate) fn compute_op_children_hash(
         op: &DagOp,
         children: &Vec<Arc<DagNode>>,
     ) -> u64 {
-
-        let mut hasher =
-            ahash::AHasher::default();
+        let mut hasher = ahash::AHasher::default();
 
         op.hash(&mut hasher);
 
         for c in children {
-
-            Self::c_hash_for_hasher(
-                c,
-                &mut hasher,
-            );
+            Self::c_hash_for_hasher(c, &mut hasher);
         }
 
         hasher.finish()
     }
 
     /// Helper to feed a child's hash into hasher; uses stored hash field if available.
-
     pub(crate) fn c_hash_for_hasher(
         c: &Arc<DagNode>,
         hasher: &mut ahash::AHasher,
     ) {
-
         // Use the child's precomputed hash to avoid deep recursion.
         hasher.write_u64(c.hash);
     }
@@ -786,48 +723,57 @@ impl DagManager {
     /// # Errors
     /// Returns an error if conversion from AST to DAG fails.
     #[inline]
-
     pub fn get_or_create(
         &self,
         expr: &Expr,
-    ) -> Result<Arc<DagNode>, String>
-    {
+    ) -> Result<Arc<DagNode>, String> {
         if let Expr::Dag(node) = expr {
             return Ok(node.clone());
         }
 
         // Iterative post-order traversal using two stacks
         let mut stack = vec![(expr.clone(), false)];
+
         let mut result_stack: Vec<Arc<DagNode>> = Vec::new();
 
         while let Some((curr_expr, visited)) = stack.pop() {
             if let Expr::Dag(node) = &curr_expr {
                 result_stack.push(node.clone());
+
                 continue;
             }
 
             if visited {
                 let op = curr_expr.to_dag_op_internal()?;
+
                 let children_exprs = curr_expr.get_children_internal();
+
                 let children_count = children_exprs.len();
-                
+
                 let mut children_nodes = Vec::with_capacity(children_count);
+
                 for _ in 0..children_count {
                     children_nodes.push(result_stack.pop().ok_or("Result stack underflow")?);
                 }
+
                 children_nodes.reverse();
-                
+
                 let node = self.get_or_create_normalized(op, children_nodes)?;
+
                 result_stack.push(node);
             } else {
                 let children = curr_expr.get_children_internal();
+
                 if children.is_empty() {
                     // Optimized path: process leaf nodes immediately without extra stack cycles
                     let op = curr_expr.to_dag_op_internal()?;
+
                     let node = self.get_or_create_normalized(op, Vec::new())?;
+
                     result_stack.push(node);
                 } else {
                     stack.push((curr_expr, true));
+
                     for child in children.into_iter().rev() {
                         stack.push((child, false));
                     }
@@ -835,6 +781,8 @@ impl DagManager {
             }
         }
 
-        result_stack.pop().ok_or_else(|| "Root node not found".to_string())
+        result_stack
+            .pop()
+            .ok_or_else(|| "Root node not found".to_string())
     }
 }

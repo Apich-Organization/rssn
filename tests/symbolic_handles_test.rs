@@ -4,31 +4,22 @@ use std::sync::Mutex;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::handles::HANDLE_MANAGER;
 
-static TEST_MUTEX: LazyLock<Mutex<()>> =
-    LazyLock::new(|| Mutex::new(()));
+static TEST_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 #[test]
 
 fn test_handle_insert_and_get() {
-
-    let _lock = TEST_MUTEX
-        .lock()
-        .unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap();
 
     HANDLE_MANAGER.clear();
 
     let expr = Expr::new_variable("x");
 
-    let handle = HANDLE_MANAGER
-        .insert(expr.clone());
+    let handle = HANDLE_MANAGER.insert(expr.clone());
 
-    assert!(
-        handle > 0,
-        "Handle should be non-zero"
-    );
+    assert!(handle > 0, "Handle should be non-zero");
 
-    let retrieved =
-        HANDLE_MANAGER.get(handle);
+    let retrieved = HANDLE_MANAGER.get(handle);
 
     assert!(
         retrieved.is_some(),
@@ -37,33 +28,22 @@ fn test_handle_insert_and_get() {
     );
 
     if let Some(arc_expr) = retrieved {
-
-        assert_eq!(
-            format!("{}", arc_expr),
-            "x"
-        );
+        assert_eq!(format!("{}", arc_expr), "x");
     }
 }
 
 #[test]
 
 fn test_handle_exists() {
-
-    let _lock = TEST_MUTEX
-        .lock()
-        .unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap();
 
     HANDLE_MANAGER.clear();
 
     let expr = Expr::new_constant(42.0);
 
-    let handle =
-        HANDLE_MANAGER.insert(expr);
+    let handle = HANDLE_MANAGER.insert(expr);
 
-    assert!(
-        HANDLE_MANAGER.exists(handle),
-        "Handle should exist"
-    );
+    assert!(HANDLE_MANAGER.exists(handle), "Handle should exist");
 
     assert!(
         !HANDLE_MANAGER.exists(99999),
@@ -75,17 +55,13 @@ fn test_handle_exists() {
 #[test]
 
 fn test_handle_free() {
-
-    let _lock = TEST_MUTEX
-        .lock()
-        .unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap();
 
     HANDLE_MANAGER.clear();
 
     let expr = Expr::new_variable("y");
 
-    let handle =
-        HANDLE_MANAGER.insert(expr);
+    let handle = HANDLE_MANAGER.insert(expr);
 
     assert!(
         HANDLE_MANAGER.exists(handle),
@@ -93,8 +69,7 @@ fn test_handle_free() {
          free"
     );
 
-    let freed =
-        HANDLE_MANAGER.free(handle);
+    let freed = HANDLE_MANAGER.free(handle);
 
     assert!(
         freed.is_some(),
@@ -109,9 +84,7 @@ fn test_handle_free() {
     );
 
     assert!(
-        HANDLE_MANAGER
-            .get(handle)
-            .is_none(),
+        HANDLE_MANAGER.get(handle).is_none(),
         "Get should return None after \
          free"
     );
@@ -120,15 +93,11 @@ fn test_handle_free() {
 #[test]
 
 fn test_handle_count() {
-
-    let _lock = TEST_MUTEX
-        .lock()
-        .unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap();
 
     HANDLE_MANAGER.clear();
 
-    let initial_count =
-        HANDLE_MANAGER.count();
+    let initial_count = HANDLE_MANAGER.count();
 
     assert_eq!(
         initial_count, 0,
@@ -136,72 +105,41 @@ fn test_handle_count() {
          after clear"
     );
 
-    let h1 = HANDLE_MANAGER.insert(
-        Expr::new_constant(1.0),
-    );
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
 
-    assert_eq!(
-        HANDLE_MANAGER.count(),
-        initial_count + 1
-    );
+    assert_eq!(HANDLE_MANAGER.count(), initial_count + 1);
 
-    let h2 = HANDLE_MANAGER.insert(
-        Expr::new_constant(2.0),
-    );
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(2.0));
 
-    assert_eq!(
-        HANDLE_MANAGER.count(),
-        initial_count + 2
-    );
+    assert_eq!(HANDLE_MANAGER.count(), initial_count + 2);
 
     HANDLE_MANAGER.free(h1);
 
-    assert_eq!(
-        HANDLE_MANAGER.count(),
-        initial_count + 1
-    );
+    assert_eq!(HANDLE_MANAGER.count(), initial_count + 1);
 
     HANDLE_MANAGER.free(h2);
 
-    assert_eq!(
-        HANDLE_MANAGER.count(),
-        initial_count
-    );
+    assert_eq!(HANDLE_MANAGER.count(), initial_count);
 }
 
 #[test]
 
 fn test_handle_clear() {
-
-    let _lock = TEST_MUTEX
-        .lock()
-        .unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap();
 
     HANDLE_MANAGER.clear();
 
-    let h1 = HANDLE_MANAGER.insert(
-        Expr::new_constant(1.0),
-    );
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
 
-    let h2 = HANDLE_MANAGER.insert(
-        Expr::new_constant(2.0),
-    );
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(2.0));
 
-    let h3 = HANDLE_MANAGER.insert(
-        Expr::new_constant(3.0),
-    );
+    let h3 = HANDLE_MANAGER.insert(Expr::new_constant(3.0));
 
-    assert_eq!(
-        HANDLE_MANAGER.count(),
-        3
-    );
+    assert_eq!(HANDLE_MANAGER.count(), 3);
 
     HANDLE_MANAGER.clear();
 
-    assert_eq!(
-        HANDLE_MANAGER.count(),
-        0
-    );
+    assert_eq!(HANDLE_MANAGER.count(), 0);
 
     assert!(!HANDLE_MANAGER.exists(h1));
 
@@ -213,66 +151,39 @@ fn test_handle_clear() {
 #[test]
 
 fn test_handle_clone_expr() {
-
-    let _lock = TEST_MUTEX
-        .lock()
-        .unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap();
 
     HANDLE_MANAGER.clear();
 
-    let expr = Expr::new_add(
-        Expr::new_variable("x"),
-        Expr::new_constant(5.0),
-    );
+    let expr = Expr::new_add(Expr::new_variable("x"), Expr::new_constant(5.0));
 
-    let handle =
-        HANDLE_MANAGER.insert(expr);
+    let handle = HANDLE_MANAGER.insert(expr);
 
-    let cloned = HANDLE_MANAGER
-        .clone_expr(handle);
+    let cloned = HANDLE_MANAGER.clone_expr(handle);
 
-    assert!(
-        cloned.is_some(),
-        "Should clone expression"
-    );
+    assert!(cloned.is_some(), "Should clone expression");
 
     if let Some(cloned_expr) = cloned {
+        let original = HANDLE_MANAGER.get(handle).unwrap();
 
-        let original = HANDLE_MANAGER
-            .get(handle)
-            .unwrap();
-
-        assert_eq!(
-            format!("{}", cloned_expr),
-            format!("{}", original)
-        );
+        assert_eq!(format!("{}", cloned_expr), format!("{}", original));
     }
 }
 
 #[test]
 
 fn test_handle_get_all_handles() {
-
-    let _lock = TEST_MUTEX
-        .lock()
-        .unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap();
 
     HANDLE_MANAGER.clear();
 
-    let h1 = HANDLE_MANAGER.insert(
-        Expr::new_constant(1.0),
-    );
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
 
-    let h2 = HANDLE_MANAGER.insert(
-        Expr::new_constant(2.0),
-    );
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(2.0));
 
-    let h3 = HANDLE_MANAGER.insert(
-        Expr::new_constant(3.0),
-    );
+    let h3 = HANDLE_MANAGER.insert(Expr::new_constant(3.0));
 
-    let all_handles = HANDLE_MANAGER
-        .get_all_handles();
+    let all_handles = HANDLE_MANAGER.get_all_handles();
 
     assert_eq!(all_handles.len(), 3);
 
@@ -286,20 +197,13 @@ fn test_handle_get_all_handles() {
 #[test]
 
 fn test_handle_unique_ids() {
-
-    let _lock = TEST_MUTEX
-        .lock()
-        .unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap();
 
     HANDLE_MANAGER.clear();
 
-    let h1 = HANDLE_MANAGER.insert(
-        Expr::new_constant(1.0),
-    );
+    let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
 
-    let h2 = HANDLE_MANAGER.insert(
-        Expr::new_constant(1.0),
-    ); // Same expression
+    let h2 = HANDLE_MANAGER.insert(Expr::new_constant(1.0)); // Same expression
 
     assert_ne!(
         h1, h2,
@@ -312,62 +216,38 @@ fn test_handle_unique_ids() {
 #[test]
 
 fn test_handle_thread_safety() {
-
     use std::sync::Arc;
     use std::thread;
 
-    let _lock = TEST_MUTEX
-        .lock()
-        .unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap();
 
     HANDLE_MANAGER.clear();
 
-    let handles = Arc::new(
-        std::sync::Mutex::new(
-            Vec::new(),
-        ),
-    );
+    let handles = Arc::new(std::sync::Mutex::new(Vec::new()));
 
     let mut threads = vec![];
 
     // Spawn multiple threads inserting expressions
-    for i in 0 .. 10 {
+    for i in 0..10 {
+        let handles_clone = Arc::clone(&handles);
 
-        let handles_clone =
-            Arc::clone(&handles);
+        let thread = thread::spawn(move || {
+            let expr = Expr::new_constant(i as f64);
 
-        let thread =
-            thread::spawn(move || {
+            let handle = HANDLE_MANAGER.insert(expr);
 
-                let expr =
-                    Expr::new_constant(
-                        i as f64,
-                    );
-
-                let handle =
-                    HANDLE_MANAGER
-                        .insert(expr);
-
-                handles_clone
-                    .lock()
-                    .unwrap()
-                    .push(handle);
-            });
+            handles_clone.lock().unwrap().push(handle);
+        });
 
         threads.push(thread);
     }
 
     // Wait for all threads to complete
     for thread in threads {
-
-        thread
-            .join()
-            .unwrap();
+        thread.join().unwrap();
     }
 
-    let handles = handles
-        .lock()
-        .unwrap();
+    let handles = handles.lock().unwrap();
 
     assert_eq!(
         handles.len(),
@@ -377,25 +257,18 @@ fn test_handle_thread_safety() {
     );
 
     // Verify all handles are unique
-    let mut sorted_handles =
-        handles.clone();
+    let mut sorted_handles = handles.clone();
 
     sorted_handles.sort();
 
     sorted_handles.dedup();
 
-    assert_eq!(
-        sorted_handles.len(),
-        10,
-        "All handles should be unique"
-    );
+    assert_eq!(sorted_handles.len(), 10, "All handles should be unique");
 
     // Verify all handles still exist
     for &handle in handles.iter() {
-
         assert!(
-            HANDLE_MANAGER
-                .exists(handle),
+            HANDLE_MANAGER.exists(handle),
             "Handle {} should exist",
             handle
         );
@@ -405,10 +278,7 @@ fn test_handle_thread_safety() {
 #[test]
 
 fn test_handle_complex_expression() {
-
-    let _lock = TEST_MUTEX
-        .lock()
-        .unwrap();
+    let _lock = TEST_MUTEX.lock().unwrap();
 
     HANDLE_MANAGER.clear();
 
@@ -419,31 +289,22 @@ fn test_handle_complex_expression() {
 
     let z = Expr::new_variable("z");
 
-    let x_squared = Expr::new_pow(
-        x,
-        Expr::new_constant(2.0),
-    );
+    let x_squared = Expr::new_pow(x, Expr::new_constant(2.0));
 
-    let sum =
-        Expr::new_add(x_squared, y);
+    let sum = Expr::new_add(x_squared, y);
 
     let sin_z = Expr::new_sin(z);
 
-    let complex_expr =
-        Expr::new_mul(sum, sin_z);
+    let complex_expr = Expr::new_mul(sum, sin_z);
 
-    let handle = HANDLE_MANAGER
-        .insert(complex_expr);
+    let handle = HANDLE_MANAGER.insert(complex_expr);
 
-    let retrieved =
-        HANDLE_MANAGER.get(handle);
+    let retrieved = HANDLE_MANAGER.get(handle);
 
     assert!(retrieved.is_some());
 
     if let Some(arc_expr) = retrieved {
-
-        let expr_str =
-            format!("{}", arc_expr);
+        let expr_str = format!("{}", arc_expr);
 
         assert!(expr_str.contains("x"));
 
@@ -451,20 +312,14 @@ fn test_handle_complex_expression() {
 
         assert!(expr_str.contains("z"));
 
-        assert!(
-            expr_str.contains("sin")
-        );
+        assert!(expr_str.contains("sin"));
     }
 }
 
 #[test]
 
-fn test_handle_persistence_across_operations()
- {
-
-    let _lock = TEST_MUTEX
-        .lock()
-        .unwrap();
+fn test_handle_persistence_across_operations() {
+    let _lock = TEST_MUTEX.lock().unwrap();
 
     HANDLE_MANAGER.clear();
 
@@ -474,23 +329,17 @@ fn test_handle_persistence_across_operations()
 
     let expr3 = Expr::new_variable("c");
 
-    let h1 =
-        HANDLE_MANAGER.insert(expr1);
+    let h1 = HANDLE_MANAGER.insert(expr1);
 
-    let h2 =
-        HANDLE_MANAGER.insert(expr2);
+    let h2 = HANDLE_MANAGER.insert(expr2);
 
-    let h3 =
-        HANDLE_MANAGER.insert(expr3);
+    let h3 = HANDLE_MANAGER.insert(expr3);
 
     // Free middle handle
     HANDLE_MANAGER.free(h2);
 
     // Other handles should still work
-    assert!(
-        HANDLE_MANAGER.exists(h1),
-        "Handle h1 should exist"
-    );
+    assert!(HANDLE_MANAGER.exists(h1), "Handle h1 should exist");
 
     assert!(
         !HANDLE_MANAGER.exists(h2),
@@ -498,41 +347,22 @@ fn test_handle_persistence_across_operations()
          after free"
     );
 
-    assert!(
-        HANDLE_MANAGER.exists(h3),
-        "Handle h3 should exist"
-    );
+    assert!(HANDLE_MANAGER.exists(h3), "Handle h3 should exist");
 
     // Verify we can still get the expressions
-    let retrieved_h1 =
-        HANDLE_MANAGER.get(h1);
+    let retrieved_h1 = HANDLE_MANAGER.get(h1);
 
-    assert!(
-        retrieved_h1.is_some(),
-        "Should be able to get h1"
-    );
+    assert!(retrieved_h1.is_some(), "Should be able to get h1");
 
     if let Some(expr) = retrieved_h1 {
-
-        assert_eq!(
-            format!("{}", expr),
-            "a"
-        );
+        assert_eq!(format!("{}", expr), "a");
     }
 
-    let retrieved_h3 =
-        HANDLE_MANAGER.get(h3);
+    let retrieved_h3 = HANDLE_MANAGER.get(h3);
 
-    assert!(
-        retrieved_h3.is_some(),
-        "Should be able to get h3"
-    );
+    assert!(retrieved_h3.is_some(), "Should be able to get h3");
 
     if let Some(expr) = retrieved_h3 {
-
-        assert_eq!(
-            format!("{}", expr),
-            "c"
-        );
+        assert_eq!(format!("{}", expr), "c");
     }
 }

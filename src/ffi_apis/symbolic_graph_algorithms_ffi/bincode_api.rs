@@ -17,8 +17,7 @@ use crate::symbolic::graph_algorithms::strongly_connected_components;
 use crate::symbolic::graph_algorithms::topological_sort;
 
 /// Performs DFS traversal.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -26,34 +25,26 @@ use crate::symbolic::graph_algorithms::topological_sort;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_graph_dfs_api(
-    input_buf: BincodeBuffer
-) -> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_graph_dfs_api(input_buf: BincodeBuffer) -> BincodeBuffer {
     #[derive(serde::Deserialize)]
-
     struct Input {
         graph: Graph<String>,
         start_node: usize,
     }
 
-    let input : Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf) {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = dfs(
-        &input.graph,
-        input.start_node,
-    );
+    let result = dfs(&input.graph, input.start_node);
 
     to_bincode_buffer(&result)
 }
 
 /// Performs BFS traversal.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -61,34 +52,26 @@ pub unsafe extern "C" fn rssn_bincode_graph_dfs_api(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_graph_bfs_api(
-    input_buf: BincodeBuffer
-) -> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_graph_bfs_api(input_buf: BincodeBuffer) -> BincodeBuffer {
     #[derive(serde::Deserialize)]
-
     struct Input {
         graph: Graph<String>,
         start_node: usize,
     }
 
-    let input : Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf) {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = bfs(
-        &input.graph,
-        input.start_node,
-    );
+    let result = bfs(&input.graph, input.start_node);
 
     to_bincode_buffer(&result)
 }
 
 /// Finds connected components.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -96,25 +79,22 @@ pub unsafe extern "C" fn rssn_bincode_graph_bfs_api(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_graph_connected_components_api(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let graph : Graph<String> = match from_bincode_buffer(&graph_buf) {
+    let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result =
-        connected_components(&graph);
+    let result = connected_components(&graph);
 
     to_bincode_buffer(&result)
 }
 
 /// Checks if graph is connected.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -122,12 +102,11 @@ pub unsafe extern "C" fn rssn_bincode_graph_connected_components_api(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_graph_is_connected(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let graph : Graph<String> = match from_bincode_buffer(&graph_buf) {
+    let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
@@ -138,8 +117,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_connected(
 }
 
 /// Finds strongly connected components.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -147,27 +125,22 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_connected(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_graph_strongly_connected_components(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let graph : Graph<String> = match from_bincode_buffer(&graph_buf) {
+    let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result =
-        strongly_connected_components(
-            &graph,
-        );
+    let result = strongly_connected_components(&graph);
 
     to_bincode_buffer(&result)
 }
 
 /// Checks if graph has a cycle.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -175,12 +148,11 @@ pub unsafe extern "C" fn rssn_bincode_graph_strongly_connected_components(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_graph_has_cycle_api(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let graph : Graph<String> = match from_bincode_buffer(&graph_buf) {
+    let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
@@ -191,8 +163,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_has_cycle_api(
 }
 
 /// Finds bridges and articulation points.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -200,19 +171,17 @@ pub unsafe extern "C" fn rssn_bincode_graph_has_cycle_api(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
     #[derive(serde::Serialize)]
-
     struct BridgesResult {
         bridges: Vec<(usize, usize)>,
         articulation_points: Vec<usize>,
     }
 
-    let graph : Graph<String> = match from_bincode_buffer(&graph_buf) {
+    let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
@@ -228,8 +197,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
 }
 
 /// Computes MST using Kruskal's algorithm.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -237,42 +205,32 @@ pub unsafe extern "C" fn rssn_bincode_graph_bridges_and_articulation_points(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst_api(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let graph : Graph<String> = match from_bincode_buffer(&graph_buf) {
+    let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
 
     let mst_edges = kruskal_mst(&graph);
 
-    let mut mst_graph =
-        Graph::new(graph.is_directed);
+    let mut mst_graph = Graph::new(graph.is_directed);
 
     for node in &graph.nodes {
-
-        mst_graph
-            .add_node(node.clone());
+        mst_graph.add_node(node.clone());
     }
 
     for (u, v, weight) in mst_edges {
-
-        mst_graph.add_edge(
-            &graph.nodes[u],
-            &graph.nodes[v],
-            weight,
-        );
+        mst_graph.add_edge(&graph.nodes[u], &graph.nodes[v], weight);
     }
 
     to_bincode_buffer(&mst_graph)
 }
 
 /// Computes maximum flow using Edmonds-Karp.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -280,36 +238,29 @@ pub unsafe extern "C" fn rssn_bincode_graph_kruskal_mst_api(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_graph_edmonds_karp_max_flow(
     input_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
     #[derive(serde::Deserialize)]
-
     struct Input {
         graph: Graph<String>,
         source: usize,
         sink: usize,
     }
 
-    let input : Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf) {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = edmonds_karp_max_flow(
-        &input.graph,
-        input.source,
-        input.sink,
-    );
+    let result = edmonds_karp_max_flow(&input.graph, input.source, input.sink);
 
     to_bincode_buffer(&result)
 }
 
 /// Computes maximum flow using Dinic's algorithm.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -317,36 +268,29 @@ pub unsafe extern "C" fn rssn_bincode_graph_edmonds_karp_max_flow(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_graph_dinic_max_flow(
     input_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
     #[derive(serde::Deserialize)]
-
     struct Input {
         graph: Graph<String>,
         source: usize,
         sink: usize,
     }
 
-    let input : Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf) {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result = dinic_max_flow(
-        &input.graph,
-        input.source,
-        input.sink,
-    );
+    let result = dinic_max_flow(&input.graph, input.source, input.sink);
 
     to_bincode_buffer(&result)
 }
 
 /// Checks if graph is bipartite.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -354,12 +298,11 @@ pub unsafe extern "C" fn rssn_bincode_graph_dinic_max_flow(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite_api(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let graph : Graph<String> = match from_bincode_buffer(&graph_buf) {
+    let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
@@ -370,8 +313,7 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite_api(
 }
 
 /// Finds maximum matching in bipartite graph.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -379,35 +321,28 @@ pub unsafe extern "C" fn rssn_bincode_graph_is_bipartite_api(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_graph_bipartite_maximum_matching(
     input_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
     #[derive(serde::Deserialize)]
-
     struct Input {
         graph: Graph<String>,
         partition: Vec<i8>,
     }
 
-    let input : Input = match from_bincode_buffer(&input_buf) {
+    let input: Input = match from_bincode_buffer(&input_buf) {
         | Some(i) => i,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result =
-        bipartite_maximum_matching(
-            &input.graph,
-            &input.partition,
-        );
+    let result = bipartite_maximum_matching(&input.graph, &input.partition);
 
     to_bincode_buffer(&result)
 }
 
 /// Performs topological sort.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -415,18 +350,16 @@ pub unsafe extern "C" fn rssn_bincode_graph_bipartite_maximum_matching(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_graph_topological_sort(
     graph_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let graph : Graph<String> = match from_bincode_buffer(&graph_buf) {
+    let graph: Graph<String> = match from_bincode_buffer(&graph_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result =
-        topological_sort(&graph);
+    let result = topological_sort(&graph);
 
     to_bincode_buffer(&result)
 }

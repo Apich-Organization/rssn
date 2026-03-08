@@ -16,31 +16,23 @@ use num_complex::Complex;
 ///
 /// # Arguments
 /// * `data` - A mutable slice of `Complex<f64>` representing the input sequence.
-
-pub(crate) fn fft_cooley_tukey_in_place(
-    data: &mut [Complex<f64>]
-) {
-
+pub(crate) fn fft_cooley_tukey_in_place(data: &mut [Complex<f64>]) {
     let n = data.len();
 
     if n <= 1 {
-
         return;
     }
 
     let mut j = 0;
 
-    for i in 0 .. n {
-
+    for i in 0..n {
         if i < j {
-
             data.swap(i, j);
         }
 
         let mut bit = n >> 1;
 
         while j & bit != 0 {
-
             j ^= bit;
 
             bit >>= 1;
@@ -52,28 +44,19 @@ pub(crate) fn fft_cooley_tukey_in_place(
     let mut len = 2;
 
     while len <= n {
-
         let half_len = len / 2;
 
-        let w_m = Complex::from_polar(
-            1.0,
-            -2.0 * PI / (len as f64),
-        );
+        let w_m = Complex::from_polar(1.0, -2.0 * PI / (len as f64));
 
-        for i in (0 .. n).step_by(len) {
+        for i in (0..n).step_by(len) {
+            let mut w = Complex::new(1.0, 0.0);
 
-            let mut w =
-                Complex::new(1.0, 0.0);
-
-            for k in 0 .. half_len {
-
+            for k in 0..half_len {
                 let even_idx = i + k;
 
-                let odd_idx =
-                    i + k + half_len;
+                let odd_idx = i + k + half_len;
 
-                let t =
-                    w * data[odd_idx];
+                let t = w * data[odd_idx];
 
                 let u = data[even_idx];
 
@@ -99,7 +82,6 @@ pub(crate) fn fft_cooley_tukey_in_place(
 ///
 /// # Example
 /// ```rust
-/// 
 /// use num_complex::Complex;
 /// use rssn::numerical::transforms::fft;
 ///
@@ -114,27 +96,17 @@ pub(crate) fn fft_cooley_tukey_in_place(
 ///
 /// assert!((data[0].re - 4.0).abs() < 1e-9);
 /// ```
-
-pub fn fft(
-    data: &mut Vec<Complex<f64>>
-) {
-
+pub fn fft(data: &mut Vec<Complex<f64>>) {
     let n = data.len();
 
     if n <= 1 {
-
         return;
     }
 
-    let next_pow_of_2 =
-        n.next_power_of_two();
+    let next_pow_of_2 = n.next_power_of_two();
 
     if n != next_pow_of_2 {
-
-        data.resize(
-            next_pow_of_2,
-            Complex::new(0.0, 0.0),
-        );
+        data.resize(next_pow_of_2, Complex::new(0.0, 0.0));
     }
 
     fft_cooley_tukey_in_place(data);
@@ -150,14 +122,11 @@ pub fn fft(
 ///
 /// # Example
 /// ```rust
-/// 
 /// use num_complex::Complex;
-/// use rssn::numerical::transforms::{fft, ifft};
+/// use rssn::numerical::transforms::fft;
+/// use rssn::numerical::transforms::ifft;
 ///
-/// let mut data = vec![
-///     Complex::new(1.0, 2.0),
-///     Complex::new(3.0, 4.0),
-/// ];
+/// let mut data = vec![Complex::new(1.0, 2.0), Complex::new(3.0, 4.0)];
 ///
 /// let original = data.clone();
 ///
@@ -170,31 +139,20 @@ pub fn fft(
 ///
 /// assert!((data[0].im - original[0].im).abs() < 1e-9);
 /// ```
-
-pub fn ifft(
-    data: &mut Vec<Complex<f64>>
-) {
-
+pub fn ifft(data: &mut Vec<Complex<f64>>) {
     let n = data.len();
 
     if n <= 1 {
-
         return;
     }
 
-    let next_pow_of_2 =
-        n.next_power_of_two();
+    let next_pow_of_2 = n.next_power_of_two();
 
     if n != next_pow_of_2 {
-
-        data.resize(
-            next_pow_of_2,
-            Complex::new(0.0, 0.0),
-        );
+        data.resize(next_pow_of_2, Complex::new(0.0, 0.0));
     }
 
     for val in data.iter_mut() {
-
         *val = val.conj();
     }
 
@@ -203,7 +161,6 @@ pub fn ifft(
     let n_f64 = data.len() as f64;
 
     for val in data.iter_mut() {
-
         *val = val.conj() / n_f64;
     }
 }
@@ -218,7 +175,6 @@ pub fn ifft(
 ///
 /// # Example
 /// ```rust
-/// 
 /// use num_complex::Complex;
 /// use rssn::numerical::transforms::fft_slice;
 ///
@@ -233,11 +189,7 @@ pub fn ifft(
 ///
 /// assert!((data[0].re - 2.0).abs() < 1e-9);
 /// ```
-
-pub fn fft_slice(
-    data: &mut [Complex<f64>]
-) {
-
+pub fn fft_slice(data: &mut [Complex<f64>]) {
     fft_cooley_tukey_in_place(data);
 }
 
@@ -251,15 +203,11 @@ pub fn fft_slice(
 ///
 /// # Example
 /// ```rust
-/// 
 /// use num_complex::Complex;
 /// use rssn::numerical::transforms::fft_slice;
 /// use rssn::numerical::transforms::ifft_slice;
 ///
-/// let mut data = vec![
-///     Complex::new(1.0, 0.0),
-///     Complex::new(0.0, 0.0),
-/// ];
+/// let mut data = vec![Complex::new(1.0, 0.0), Complex::new(0.0, 0.0)];
 ///
 /// let original = data.clone();
 ///
@@ -269,20 +217,14 @@ pub fn fft_slice(
 ///
 /// assert!((data[0].re - original[0].re).abs() < 1e-9);
 /// ```
-
-pub fn ifft_slice(
-    data: &mut [Complex<f64>]
-) {
-
+pub fn ifft_slice(data: &mut [Complex<f64>]) {
     let n = data.len();
 
     if n <= 1 {
-
         return;
     }
 
     for val in data.iter_mut() {
-
         *val = val.conj();
     }
 
@@ -291,7 +233,6 @@ pub fn ifft_slice(
     let n_f64 = n as f64;
 
     for val in data.iter_mut() {
-
         *val = val.conj() / n_f64;
     }
 }

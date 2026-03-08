@@ -4,15 +4,14 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::integral_equations::solve_airfoil_equation;
 use crate::symbolic::integral_equations::FredholmEquation;
 use crate::symbolic::integral_equations::FredholmEquationParams;
 use crate::symbolic::integral_equations::VolterraEquation;
 use crate::symbolic::integral_equations::VolterraEquationParams;
+use crate::symbolic::integral_equations::solve_airfoil_equation;
 
 /// Creates a new Fredholm integral equation.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_fredholm_new(
     y_x: *const Expr,
     f_x: *const Expr,
@@ -23,9 +22,7 @@ pub extern "C" fn rssn_fredholm_new(
     var_x: *const c_char,
     var_t: *const c_char,
 ) -> *mut FredholmEquation {
-
     unsafe {
-
         if y_x.is_null()
             || f_x.is_null()
             || lambda.is_null()
@@ -35,9 +32,7 @@ pub extern "C" fn rssn_fredholm_new(
             || var_x.is_null()
             || var_t.is_null()
         {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         let var_x_str = match CStr::from_ptr(var_x).to_str() {
@@ -50,27 +45,18 @@ pub extern "C" fn rssn_fredholm_new(
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let params =
-            FredholmEquationParams {
-                y_x: (*y_x).clone(),
-                f_x: (*f_x).clone(),
-                lambda: (*lambda)
-                    .clone(),
-                kernel: (*kernel)
-                    .clone(),
-                lower_bound:
-                    (*lower_bound)
-                        .clone(),
-                upper_bound:
-                    (*upper_bound)
-                        .clone(),
-                var_x: var_x_str,
-                var_t: var_t_str,
-            };
+        let params = FredholmEquationParams {
+            y_x: (*y_x).clone(),
+            f_x: (*f_x).clone(),
+            lambda: (*lambda).clone(),
+            kernel: (*kernel).clone(),
+            lower_bound: (*lower_bound).clone(),
+            upper_bound: (*upper_bound).clone(),
+            var_x: var_x_str,
+            var_t: var_t_str,
+        };
 
-        let eq = FredholmEquation::new(
-            params,
-        );
+        let eq = FredholmEquation::new(params);
 
         Box::into_raw(Box::new(eq))
     }
@@ -78,15 +64,9 @@ pub extern "C" fn rssn_fredholm_new(
 
 /// Frees a Fredholm integral equation.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_fredholm_free(
-    ptr: *mut FredholmEquation
-) {
-
+pub extern "C" fn rssn_fredholm_free(ptr: *mut FredholmEquation) {
     if !ptr.is_null() {
-
         unsafe {
-
             let _ = Box::from_raw(ptr);
         }
     }
@@ -94,24 +74,16 @@ pub extern "C" fn rssn_fredholm_free(
 
 /// Solves a Fredholm equation using the Neumann series method.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_fredholm_solve_neumann(
     eq: *const FredholmEquation,
     iterations: usize,
 ) -> *mut Expr {
-
     unsafe {
-
         if eq.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        let result = (*eq)
-            .solve_neumann_series(
-                iterations,
-            );
+        let result = (*eq).solve_neumann_series(iterations);
 
         Box::into_raw(Box::new(result))
     }
@@ -119,7 +91,6 @@ pub extern "C" fn rssn_fredholm_solve_neumann(
 
 /// Solves a Fredholm equation with a separable kernel.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_fredholm_solve_separable(
     eq: *const FredholmEquation,
     a_funcs: *const *const Expr,
@@ -127,76 +98,44 @@ pub extern "C" fn rssn_fredholm_solve_separable(
     b_funcs: *const *const Expr,
     b_len: usize,
 ) -> *mut Expr {
-
     unsafe {
-
-        if eq.is_null()
-            || a_funcs.is_null()
-            || b_funcs.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if eq.is_null() || a_funcs.is_null() || b_funcs.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let a_slice =
-            std::slice::from_raw_parts(
-                a_funcs,
-                a_len,
-            );
+        let a_slice = std::slice::from_raw_parts(a_funcs, a_len);
 
-        let b_slice =
-            std::slice::from_raw_parts(
-                b_funcs,
-                b_len,
-            );
+        let b_slice = std::slice::from_raw_parts(b_funcs, b_len);
 
-        let mut a_vec =
-            Vec::with_capacity(a_len);
+        let mut a_vec = Vec::with_capacity(a_len);
 
         for &ptr in a_slice {
-
             if ptr.is_null() {
-
                 return std::ptr::null_mut();
             }
 
             a_vec.push((*ptr).clone());
         }
 
-        let mut b_vec =
-            Vec::with_capacity(b_len);
+        let mut b_vec = Vec::with_capacity(b_len);
 
         for &ptr in b_slice {
-
             if ptr.is_null() {
-
                 return std::ptr::null_mut();
             }
 
             b_vec.push((*ptr).clone());
         }
 
-        match (*eq)
-            .solve_separable_kernel(
-                &a_vec,
-                &b_vec,
-            ) {
-            | Ok(result) => {
-                Box::into_raw(Box::new(
-                    result,
-                ))
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+        match (*eq).solve_separable_kernel(&a_vec, &b_vec) {
+            | Ok(result) => Box::into_raw(Box::new(result)),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }
 
 /// Creates a new Volterra integral equation.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_volterra_new(
     y_x: *const Expr,
     f_x: *const Expr,
@@ -206,9 +145,7 @@ pub extern "C" fn rssn_volterra_new(
     var_x: *const c_char,
     var_t: *const c_char,
 ) -> *mut VolterraEquation {
-
     unsafe {
-
         if y_x.is_null()
             || f_x.is_null()
             || lambda.is_null()
@@ -217,9 +154,7 @@ pub extern "C" fn rssn_volterra_new(
             || var_x.is_null()
             || var_t.is_null()
         {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         let var_x_str = match CStr::from_ptr(var_x).to_str() {
@@ -232,24 +167,17 @@ pub extern "C" fn rssn_volterra_new(
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let params =
-            VolterraEquationParams {
-                y_x: (*y_x).clone(),
-                f_x: (*f_x).clone(),
-                lambda: (*lambda)
-                    .clone(),
-                kernel: (*kernel)
-                    .clone(),
-                lower_bound:
-                    (*lower_bound)
-                        .clone(),
-                var_x: var_x_str,
-                var_t: var_t_str,
-            };
+        let params = VolterraEquationParams {
+            y_x: (*y_x).clone(),
+            f_x: (*f_x).clone(),
+            lambda: (*lambda).clone(),
+            kernel: (*kernel).clone(),
+            lower_bound: (*lower_bound).clone(),
+            var_x: var_x_str,
+            var_t: var_t_str,
+        };
 
-        let eq = VolterraEquation::new(
-            params,
-        );
+        let eq = VolterraEquation::new(params);
 
         Box::into_raw(Box::new(eq))
     }
@@ -257,15 +185,9 @@ pub extern "C" fn rssn_volterra_new(
 
 /// Frees a Volterra integral equation.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_volterra_free(
-    ptr: *mut VolterraEquation
-) {
-
+pub extern "C" fn rssn_volterra_free(ptr: *mut VolterraEquation) {
     if !ptr.is_null() {
-
         unsafe {
-
             let _ = Box::from_raw(ptr);
         }
     }
@@ -273,18 +195,13 @@ pub extern "C" fn rssn_volterra_free(
 
 /// Solves a Volterra equation using successive approximations.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_volterra_solve_successive(
     eq: *const VolterraEquation,
     iterations: usize,
 ) -> *mut Expr {
-
     unsafe {
-
         if eq.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         let result = (*eq).solve_successive_approximations(iterations);
@@ -295,52 +212,29 @@ pub extern "C" fn rssn_volterra_solve_successive(
 
 /// Solves a Volterra equation by differentiation.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_volterra_solve_by_differentiation(
-    eq: *const VolterraEquation
-) -> *mut Expr {
-
+pub extern "C" fn rssn_volterra_solve_by_differentiation(eq: *const VolterraEquation) -> *mut Expr {
     unsafe {
-
         if eq.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        match (*eq)
-            .solve_by_differentiation()
-        {
-            | Ok(result) => {
-                Box::into_raw(Box::new(
-                    result,
-                ))
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+        match (*eq).solve_by_differentiation() {
+            | Ok(result) => Box::into_raw(Box::new(result)),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }
 
 /// Solves the airfoil singular integral equation.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_solve_airfoil_equation(
     f_x: *const Expr,
     var_x: *const c_char,
     var_t: *const c_char,
 ) -> *mut Expr {
-
     unsafe {
-
-        if f_x.is_null()
-            || var_x.is_null()
-            || var_t.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if f_x.is_null() || var_x.is_null() || var_t.is_null() {
+            return std::ptr::null_mut();
         }
 
         let var_x_str = match CStr::from_ptr(var_x).to_str() {
@@ -353,12 +247,7 @@ pub extern "C" fn rssn_solve_airfoil_equation(
             | Err(_) => return std::ptr::null_mut(),
         };
 
-        let result =
-            solve_airfoil_equation(
-                &(*f_x),
-                var_x_str,
-                var_t_str,
-            );
+        let result = solve_airfoil_equation(&(*f_x), var_x_str, var_t_str);
 
         Box::into_raw(Box::new(result))
     }

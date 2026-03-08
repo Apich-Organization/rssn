@@ -6,8 +6,7 @@ use crate::numerical::graph::Graph;
 use crate::numerical::topology;
 
 /// Finds the connected components of a graph.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15,15 +14,12 @@ use crate::numerical::topology;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_topology_find_connected_components(
     graph_ptr: *const Graph
 ) -> *mut Vec<Vec<usize>> {
-
     unsafe {
-
         if graph_ptr.is_null() {
-
             return ptr::null_mut();
         }
 
@@ -31,15 +27,12 @@ pub unsafe extern "C" fn rssn_num_topology_find_connected_components(
 
         let components = topology::find_connected_components(graph);
 
-        Box::into_raw(Box::new(
-            components,
-        ))
+        Box::into_raw(Box::new(components))
     }
 }
 
 /// Computes the Betti numbers for a point cloud.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -47,7 +40,7 @@ pub unsafe extern "C" fn rssn_num_topology_find_connected_components(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_topology_betti_numbers(
     points: *const *const f64,
     n_points: usize,
@@ -56,52 +49,29 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers(
     max_dim: usize,
     result: *mut usize,
 ) -> i32 {
-
     unsafe {
-
-        if points.is_null()
-            || result.is_null()
-        {
-
+        if points.is_null() || result.is_null() {
             return -1;
         }
 
-        let mut pt_slices =
-            Vec::with_capacity(
-                n_points,
-            );
+        let mut pt_slices = Vec::with_capacity(n_points);
 
-        for i in 0 .. n_points {
-
-            pt_slices.push(
-            std::slice::from_raw_parts(
-                *points.add(i),
-                dim,
-            ),
-        );
+        for i in 0..n_points {
+            pt_slices.push(std::slice::from_raw_parts(*points.add(i), dim));
         }
 
-        let betti = topology::betti_numbers_at_radius(
-        &pt_slices,
-        epsilon,
-        max_dim,
-    );
+        let betti = topology::betti_numbers_at_radius(&pt_slices, epsilon, max_dim);
 
         let n_betti = betti.len();
 
-        std::ptr::copy_nonoverlapping(
-            betti.as_ptr(),
-            result,
-            n_betti,
-        );
+        std::ptr::copy_nonoverlapping(betti.as_ptr(), result, n_betti);
 
         0
     }
 }
 
 /// Computes the Euclidean distance between two points.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -109,33 +79,21 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_topology_euclidean_distance(
     p1: *const f64,
     p2: *const f64,
     dim: usize,
 ) -> f64 {
-
     unsafe {
-
-        if p1.is_null() || p2.is_null()
-        {
-
+        if p1.is_null() || p2.is_null() {
             return f64::NAN;
         }
 
-        let s1 =
-            std::slice::from_raw_parts(
-                p1, dim,
-            );
+        let s1 = std::slice::from_raw_parts(p1, dim);
 
-        let s2 =
-            std::slice::from_raw_parts(
-                p2, dim,
-            );
+        let s2 = std::slice::from_raw_parts(p2, dim);
 
-        topology::euclidean_distance(
-            s1, s2,
-        )
+        topology::euclidean_distance(s1, s2)
     }
 }

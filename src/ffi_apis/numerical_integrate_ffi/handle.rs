@@ -1,9 +1,7 @@
 //! Handle-based FFI API for numerical integration.
 
 // In this module, some of our docs need these kind of styles.
-#![allow(
-    clippy::doc_overindented_list_items
-)]
+#![allow(clippy::doc_overindented_list_items)]
 
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -33,8 +31,7 @@ use crate::symbolic::core::Expr;
 ///
 /// # Returns
 /// 0 on success, -1 on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -42,7 +39,7 @@ use crate::symbolic::core::Expr;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_numerical_quadrature(
     expr_ptr: *const Expr,
     var_ptr: *const c_char,
@@ -52,76 +49,51 @@ pub unsafe extern "C" fn rssn_numerical_quadrature(
     method: i32,
     result: *mut f64,
 ) -> i32 {
-
     unsafe {
-
-        if expr_ptr.is_null()
-            || var_ptr.is_null()
-            || result.is_null()
-        {
-
+        if expr_ptr.is_null() || var_ptr.is_null() || result.is_null() {
             update_last_error(
-            "Null pointer passed to \
+                "Null pointer passed to \
              rssn_numerical_quadrature"
-                .to_string(),
-        );
+                    .to_string(),
+            );
 
             return -1;
         }
 
         let expr = &*expr_ptr;
 
-        let var_str =
-            match CStr::from_ptr(
-                var_ptr,
-            )
-            .to_str()
-            {
-                | Ok(s) => s,
-                | Err(e) => {
-
-                    update_last_error(
-                        format!(
-                "Invalid UTF-8 in \
+        let var_str = match CStr::from_ptr(var_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(e) => {
+                update_last_error(format!(
+                    "Invalid UTF-8 in \
                  variable name: {e}"
-            ),
-                    );
+                ));
 
-                    return -1;
-                },
-            };
+                return -1;
+            },
+        };
 
         let q_method = match method {
-        | 0 => QuadratureMethod::Trapezoidal,
-        | 1 => QuadratureMethod::Simpson,
-        | 2 => QuadratureMethod::Adaptive,
-        | 3 => QuadratureMethod::Romberg,
-        | 4 => QuadratureMethod::GaussLegendre,
-        | _ => {
+            | 0 => QuadratureMethod::Trapezoidal,
+            | 1 => QuadratureMethod::Simpson,
+            | 2 => QuadratureMethod::Adaptive,
+            | 3 => QuadratureMethod::Romberg,
+            | 4 => QuadratureMethod::GaussLegendre,
+            | _ => {
+                update_last_error(format!("Invalid quadrature method: {method}"));
 
-            update_last_error(format!(
-                "Invalid quadrature method: {method}"
-            ));
+                return -1;
+            },
+        };
 
-            return -1;
-        },
-    };
-
-        match integrate::quadrature(
-            expr,
-            var_str,
-            (a, b),
-            n_steps,
-            &q_method,
-        ) {
+        match integrate::quadrature(expr, var_str, (a, b), n_steps, &q_method) {
             | Ok(val) => {
-
                 *result = val;
 
                 0
             },
             | Err(e) => {
-
                 update_last_error(e);
 
                 -1

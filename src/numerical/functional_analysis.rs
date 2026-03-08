@@ -15,23 +15,15 @@
 /// # Returns
 /// The numerical value of the L1 norm.
 #[must_use]
-
-pub fn l1_norm(
-    points: &[(f64, f64)]
-) -> f64 {
-
+pub fn l1_norm(points: &[(f64, f64)]) -> f64 {
     points
         .windows(2)
         .map(|w| {
-
             let (x1, y1) = w[0];
 
             let (x2, y2) = w[1];
 
-            f64::midpoint(
-                y1.abs(),
-                y2.abs(),
-            ) * (x2 - x1)
+            f64::midpoint(y1.abs(), y2.abs()) * (x2 - x1)
         })
         .sum()
 }
@@ -47,22 +39,15 @@ pub fn l1_norm(
 /// # Returns
 /// The numerical value of the L2 norm.
 #[must_use]
-
-pub fn l2_norm(
-    points: &[(f64, f64)]
-) -> f64 {
-
+pub fn l2_norm(points: &[(f64, f64)]) -> f64 {
     let integral_sq: f64 = points
         .windows(2)
         .map(|w| {
-
             let (x1, y1) = w[0];
 
             let (x2, y2) = w[1];
 
-            y2.mul_add(y2, y1 * y1)
-                / 2.0
-                * (x2 - x1)
+            y2.mul_add(y2, y1 * y1) / 2.0 * (x2 - x1)
         })
         .sum();
 
@@ -79,15 +64,8 @@ pub fn l2_norm(
 ///
 /// # Returns
 /// The numerical value of the L-infinity norm.
-
-pub fn infinity_norm(
-    points: &[(f64, f64)]
-) -> f64 {
-
-    points
-        .iter()
-        .map(|(_, y)| y.abs())
-        .fold(0.0, f64::max)
+pub fn infinity_norm(points: &[(f64, f64)]) -> f64 {
+    points.iter().map(|(_, y)| y.abs()).fold(0.0, f64::max)
 }
 
 /// Calculates the inner product of two functions, `<f, g> = ∫f(x)g(x)dx`.
@@ -104,15 +82,11 @@ pub fn infinity_norm(
 ///
 /// # Errors
 /// Returns an error if the input functions have different numbers of sample points.
-
 pub fn inner_product(
     f_points: &[(f64, f64)],
     g_points: &[(f64, f64)],
 ) -> Result<f64, String> {
-
-    if f_points.len() != g_points.len()
-    {
-
+    if f_points.len() != g_points.len() {
         return Err("Input functions \
                     must have the \
                     same number of \
@@ -124,33 +98,19 @@ pub fn inner_product(
         .windows(2)
         .enumerate()
         .map(|(i, w)| {
-
             let (x1, y1_f) = w[0];
 
             let (x2, y2_f) = w[1];
 
             let (_, y1_g) = g_points[i];
 
-            let (_, y2_g) =
-                g_points[i + 1];
+            let (_, y2_g) = g_points[i + 1];
 
-            if (x1 - g_points[i].0)
-                .abs()
-                > 1e-9
-                || (x2
-                    - g_points[i + 1].0)
-                    .abs()
-                    > 1e-9
-            {
-
+            if (x1 - g_points[i].0).abs() > 1e-9 || (x2 - g_points[i + 1].0).abs() > 1e-9 {
                 return 0.0;
             }
 
-            y1_f.mul_add(
-                y1_g,
-                y2_f * y2_g,
-            ) / 2.0
-                * (x2 - x1)
+            y1_f.mul_add(y1_g, y2_f * y2_g) / 2.0 * (x2 - x1)
         })
         .sum();
 
@@ -162,57 +122,33 @@ pub fn inner_product(
 ///
 /// # Errors
 /// Returns an error if the input functions have different numbers or inconsistent sample points.
-
 pub fn project(
     f_points: &[(f64, f64)],
     g_points: &[(f64, f64)],
 ) -> Result<Vec<(f64, f64)>, String> {
+    let ip_fg = inner_product(f_points, g_points)?;
 
-    let ip_fg = inner_product(
-        f_points,
-        g_points,
-    )?;
-
-    let ip_gg = inner_product(
-        g_points,
-        g_points,
-    )?;
+    let ip_gg = inner_product(g_points, g_points)?;
 
     if ip_gg.abs() < 1e-15 {
-
-        return Ok(g_points
-            .iter()
-            .map(|&(x, _)| (x, 0.0))
-            .collect());
+        return Ok(g_points.iter().map(|&(x, _)| (x, 0.0)).collect());
     }
 
     let coeff = ip_fg / ip_gg;
 
-    Ok(g_points
-        .iter()
-        .map(|&(x, y)| (x, y * coeff))
-        .collect())
+    Ok(g_points.iter().map(|&(x, y)| (x, y * coeff)).collect())
 }
 
 /// Normalizes a function relative to its L2 norm.
-
 #[must_use]
-
-pub fn normalize(
-    points: &[(f64, f64)]
-) -> Vec<(f64, f64)> {
-
+pub fn normalize(points: &[(f64, f64)]) -> Vec<(f64, f64)> {
     let n = l2_norm(points);
 
     if n.abs() < 1e-15 {
-
         return points.to_vec();
     }
 
-    points
-        .iter()
-        .map(|&(x, y)| (x, y / n))
-        .collect()
+    points.iter().map(|&(x, y)| (x, y / n)).collect()
 }
 
 /// Performs the Gram-Schmidt process to orthogonalize a set of functions.
@@ -220,29 +156,16 @@ pub fn normalize(
 ///
 /// # Errors
 /// Returns an error if any pair of input functions has mismatched sample points.
-
-pub fn gram_schmidt(
-    basis: &[Vec<(f64, f64)>]
-) -> Result<Vec<Vec<(f64, f64)>>, String>
-{
-
-    let mut orthogonal_basis: Vec<
-        Vec<(f64, f64)>,
-    > = Vec::new();
+pub fn gram_schmidt(basis: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, String> {
+    let mut orthogonal_basis: Vec<Vec<(f64, f64)>> = Vec::new();
 
     for b in basis {
-
         let mut v = b.clone();
 
         for u in &orthogonal_basis {
-
             let proj = project(b, u)?;
 
-            for (j, (_, py)) in proj
-                .into_iter()
-                .enumerate()
-            {
-
+            for (j, (_, py)) in proj.into_iter().enumerate() {
                 v[j].1 -= py;
             }
         }
@@ -257,14 +180,8 @@ pub fn gram_schmidt(
 ///
 /// # Errors
 /// Returns an error if any pair of input functions has mismatched sample points.
-
-pub fn gram_schmidt_orthonormal(
-    basis: &[Vec<(f64, f64)>]
-) -> Result<Vec<Vec<(f64, f64)>>, String>
-{
-
-    let orthogonal_basis =
-        gram_schmidt(basis)?;
+pub fn gram_schmidt_orthonormal(basis: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, String> {
+    let orthogonal_basis = gram_schmidt(basis)?;
 
     Ok(orthogonal_basis
         .into_iter()

@@ -5,41 +5,24 @@ use rssn::symbolic::core::Expr;
 #[test]
 
 fn test_lim_sinc_only() {
-
     let x = Expr::new_variable("x");
 
     let zero = Expr::new_constant(0.0);
 
-    let sin_x =
-        Expr::new_sin(x.clone());
+    let sin_x = Expr::new_sin(x.clone());
 
-    let sin_x_over_x =
-        Expr::new_div(sin_x, x.clone());
+    let sin_x_over_x = Expr::new_div(sin_x, x.clone());
 
-    println!(
-        "Expr: {}",
-        sin_x_over_x
-    );
+    println!("Expr: {}", sin_x_over_x);
 
-    let lim_sinc = limit(
-        &sin_x_over_x,
-        "x",
-        &zero,
-    );
+    let lim_sinc = limit(&sin_x_over_x, "x", &zero);
 
-    println!(
-        "Limit result variant: {:?}",
-        lim_sinc
-    );
+    println!("Limit result variant: {:?}", lim_sinc);
 
-    println!(
-        "Limit result display: {}",
-        lim_sinc
-    );
+    println!("Limit result display: {}", lim_sinc);
 
     match &lim_sinc {
         | Expr::BigInt(i) => {
-
             println!(
                 "DEBUG: lim_sinc is \
                  BigInt({})",
@@ -47,7 +30,6 @@ fn test_lim_sinc_only() {
             )
         },
         | Expr::Constant(c) => {
-
             println!(
                 "DEBUG: lim_sinc is \
                  Constant({})",
@@ -55,14 +37,12 @@ fn test_lim_sinc_only() {
             )
         },
         | Expr::Dag(_) => {
-
             println!(
                 "DEBUG: lim_sinc is \
                  Dag"
             )
         },
         | _ => {
-
             println!(
                 "DEBUG: lim_sinc is \
                  {:?}",
@@ -71,8 +51,5 @@ fn test_lim_sinc_only() {
         },
     }
 
-    assert_eq!(
-        lim_sinc,
-        Expr::new_constant(1.0)
-    );
+    assert_eq!(lim_sinc, Expr::new_constant(1.0));
 }

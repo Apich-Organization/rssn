@@ -33,8 +33,7 @@ use crate::physics::physics_sim::linear_elasticity::{
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw C string pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -42,53 +41,33 @@ use crate::physics::physics_sim::linear_elasticity::{
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_sim_linear_elasticity_run_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let params : ElasticityParameters = match from_json_string(input) {
+    let params: ElasticityParameters = match from_json_string(input) {
         | Some(p) => p,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
     match linear_elasticity::run_elasticity_simulation(&params) {
         | Ok(res) => {
-            to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::ok(
-                    res
-                ))
-                .unwrap(),
-            )
+            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
         },
         | Err(e) => {
-            to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
-                    e
-                ))
-                .unwrap(),
-            )
+            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(e)).unwrap())
         },
     }
 }

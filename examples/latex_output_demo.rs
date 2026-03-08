@@ -10,7 +10,6 @@ use rssn::output::latex::to_latex;
 use rssn::symbolic::core::Expr;
 
 fn main() {
-
     println!(
         "=== LaTeX Output Generation \
          Example ===\n"
@@ -22,54 +21,35 @@ fn main() {
 
     let integrand_str = "x^2 * sin(x)";
 
-    let integrand =
-        match parse_expr(integrand_str)
-        {
-            | Ok(("", expr)) => expr,
-            | Ok((rem, _)) => {
-
-                panic!(
-                    "Unparsed input: \
+    let integrand = match parse_expr(integrand_str) {
+        | Ok(("", expr)) => expr,
+        | Ok((rem, _)) => {
+            panic!(
+                "Unparsed input: \
                      '{}'",
-                    rem
-                )
-            },
-            | Err(e) => {
-
-                panic!(
-                    "Failed to parse \
+                rem
+            )
+        },
+        | Err(e) => {
+            panic!(
+                "Failed to parse \
                      '{}': {:?}",
-                    integrand_str, e
-                )
-            },
-        };
+                integrand_str, e
+            )
+        },
+    };
 
-    let integral_expr =
-        Expr::Integral {
-            integrand: Arc::new(
-                integrand,
-            ),
-            var: Arc::new(
-                Expr::Variable(
-                    "x".to_string(),
-                ),
-            ),
-            lower_bound: Arc::new(
-                Expr::Constant(0.0),
-            ),
-            upper_bound: Arc::new(
-                Expr::Pi,
-            ),
-        };
+    let integral_expr = Expr::Integral {
+        integrand: Arc::new(integrand),
+        var: Arc::new(Expr::Variable("x".to_string())),
+        lower_bound: Arc::new(Expr::Constant(0.0)),
+        upper_bound: Arc::new(Expr::Pi),
+    };
 
-    println!(
-        "Symbolic Expression: \n  {}\n",
-        integral_expr
-    );
+    println!("Symbolic Expression: \n  {}\n", integral_expr);
 
     // 2. Convert the expression to a LaTeX string.
-    let latex_string =
-        to_latex(&integral_expr);
+    let latex_string = to_latex(&integral_expr);
 
     // 3. Print the LaTeX string.
     println!(
@@ -87,14 +67,9 @@ fn main() {
 
     println!("  \\begin{{equation}}");
 
-    println!(
-        "    {}",
-        latex_string
-    );
+    println!("    {}", latex_string);
 
     println!("  \\end{{equation}}");
 
-    println!(
-        "\n=== Example Complete ==="
-    );
+    println!("\n=== Example Complete ===");
 }

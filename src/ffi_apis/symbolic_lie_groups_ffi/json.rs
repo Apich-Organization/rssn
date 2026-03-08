@@ -1,12 +1,21 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{to_json_string, from_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
-use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponential_map, adjoint_representation_group, adjoint_representation_algebra, LieAlgebra, commutator_table, check_jacobi_identity, so3_generators, su2_generators};
+use crate::symbolic::lie_groups_and_algebras::LieAlgebra;
+use crate::symbolic::lie_groups_and_algebras::adjoint_representation_algebra;
+use crate::symbolic::lie_groups_and_algebras::adjoint_representation_group;
+use crate::symbolic::lie_groups_and_algebras::check_jacobi_identity;
+use crate::symbolic::lie_groups_and_algebras::commutator_table;
+use crate::symbolic::lie_groups_and_algebras::exponential_map;
+use crate::symbolic::lie_groups_and_algebras::lie_bracket;
+use crate::symbolic::lie_groups_and_algebras::so3;
+use crate::symbolic::lie_groups_and_algebras::so3_generators;
+use crate::symbolic::lie_groups_and_algebras::su2;
+use crate::symbolic::lie_groups_and_algebras::su2_generators;
 
 // --- LieAlgebra Creation ---
-
-#[unsafe(no_mangle)]
 
 /// Constructs the Lie algebra \(\mathfrak{so}(3)\) and returns it as JSON.
 ///
@@ -26,7 +35,7 @@ use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponentia
 ///
 /// This function is unsafe because it returns ownership of a heap-allocated C
 /// string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34,16 +43,12 @@ use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponentia
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_lie_algebra_so3()
--> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_lie_algebra_so3() -> *mut c_char {
     let algebra = so3();
 
     to_json_string(&algebra)
 }
-
-#[unsafe(no_mangle)]
 
 /// Constructs the Lie algebra \(\mathfrak{su}(2)\) and returns it as JSON.
 ///
@@ -63,7 +68,7 @@ pub unsafe extern "C" fn rssn_json_lie_algebra_so3()
 ///
 /// This function is unsafe because it returns ownership of a heap-allocated C
 /// string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -71,18 +76,14 @@ pub unsafe extern "C" fn rssn_json_lie_algebra_so3()
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_lie_algebra_su2()
--> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_lie_algebra_su2() -> *mut c_char {
     let algebra = su2();
 
     to_json_string(&algebra)
 }
 
 // --- Lie Bracket ---
-
-#[unsafe(no_mangle)]
 
 /// Computes the Lie bracket of two elements of a Lie algebra using JSON serialization.
 ///
@@ -100,7 +101,7 @@ pub unsafe extern "C" fn rssn_json_lie_algebra_su2()
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -108,47 +109,32 @@ pub unsafe extern "C" fn rssn_json_lie_algebra_su2()
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_lie_bracket(
     x_json: *const c_char,
     y_json: *const c_char,
 ) -> *mut c_char {
-
-    let x: Expr = match from_json_string(
-        x_json,
-    ) {
+    let x: Expr = match from_json_string(x_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let y: Expr = match from_json_string(
-        y_json,
-    ) {
+    let y: Expr = match from_json_string(y_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
     match lie_bracket(&x, &y) {
-        | Ok(result) => {
-            to_json_string(&result)
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Ok(result) => to_json_string(&result),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
 // --- Exponential Map ---
-
-#[unsafe(no_mangle)]
 
 /// Applies the exponential map to a Lie algebra element using JSON serialization.
 ///
@@ -168,7 +154,7 @@ pub unsafe extern "C" fn rssn_json_lie_bracket(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -176,36 +162,25 @@ pub unsafe extern "C" fn rssn_json_lie_bracket(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_exponential_map(
     x_json: *const c_char,
     order: usize,
 ) -> *mut c_char {
-
-    let x: Expr = match from_json_string(
-        x_json,
-    ) {
+    let x: Expr = match from_json_string(x_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
     match exponential_map(&x, order) {
-        | Ok(result) => {
-            to_json_string(&result)
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Ok(result) => to_json_string(&result),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
 // --- Adjoint Representations ---
-
-#[unsafe(no_mangle)]
 
 /// Applies the adjoint representation of a Lie group element to a Lie algebra element using JSON.
 ///
@@ -227,7 +202,7 @@ pub unsafe extern "C" fn rssn_json_exponential_map(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -235,47 +210,30 @@ pub unsafe extern "C" fn rssn_json_exponential_map(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
     g_json: *const c_char,
     x_json: *const c_char,
 ) -> *mut c_char {
-
-    let g: Expr = match from_json_string(
-        g_json,
-    ) {
+    let g: Expr = match from_json_string(g_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let x: Expr = match from_json_string(
-        x_json,
-    ) {
+    let x: Expr = match from_json_string(x_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    match adjoint_representation_group(
-        &g, &x,
-    ) {
-        | Ok(result) => {
-            to_json_string(&result)
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+    match adjoint_representation_group(&g, &x) {
+        | Ok(result) => to_json_string(&result),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Applies the adjoint representation of a Lie algebra element to another element using JSON.
 ///
@@ -297,7 +255,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -305,49 +263,32 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_group(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
     x_json: *const c_char,
     y_json: *const c_char,
 ) -> *mut c_char {
-
-    let x: Expr = match from_json_string(
-        x_json,
-    ) {
+    let x: Expr = match from_json_string(x_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let y: Expr = match from_json_string(
-        y_json,
-    ) {
+    let y: Expr = match from_json_string(y_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    match adjoint_representation_algebra(
-        &x, &y,
-    ) {
-        | Ok(result) => {
-            to_json_string(&result)
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+    match adjoint_representation_algebra(&x, &y) {
+        | Ok(result) => to_json_string(&result),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
 // --- Commutator Table ---
-
-#[unsafe(no_mangle)]
 
 /// Computes the commutator table of a Lie algebra using JSON serialization.
 ///
@@ -365,7 +306,7 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -373,29 +314,20 @@ pub unsafe extern "C" fn rssn_json_adjoint_representation_algebra(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_commutator_table(
-    algebra_json: *const c_char
-) -> *mut c_char {
-
-    let algebra : LieAlgebra = match from_json_string(algebra_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_commutator_table(algebra_json: *const c_char) -> *mut c_char {
+    let algebra: LieAlgebra = match from_json_string(algebra_json) {
         | Some(a) => a,
         | None => return std::ptr::null_mut(),
     };
 
     match commutator_table(&algebra) {
-        | Ok(table) => {
-            to_json_string(&table)
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Ok(table) => to_json_string(&table),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
 // --- Jacobi Identity Check ---
-
-#[unsafe(no_mangle)]
 
 /// Checks whether a Lie algebra satisfies the Jacobi identity using JSON serialization.
 ///
@@ -415,7 +347,7 @@ pub unsafe extern "C" fn rssn_json_commutator_table(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer; the
 /// caller must ensure it points to a valid JSON string.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -423,30 +355,20 @@ pub unsafe extern "C" fn rssn_json_commutator_table(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_check_jacobi_identity(algebra_json: *const c_char) -> bool {
+    let algebra: LieAlgebra = match from_json_string(algebra_json) {
+        | Some(a) => a,
+        | None => return false,
+    };
 
-pub unsafe extern "C" fn rssn_json_check_jacobi_identity(
-    algebra_json: *const c_char
-) -> bool {
-
-    let algebra: LieAlgebra =
-        match from_json_string(
-            algebra_json,
-        ) {
-            | Some(a) => a,
-            | None => return false,
-        };
-
-    match check_jacobi_identity(
-        &algebra,
-    ) {
+    match check_jacobi_identity(&algebra) {
         | Ok(result) => result,
         | Err(_) => false,
     }
 }
 
 // --- Generators ---
-
-#[unsafe(no_mangle)]
 
 /// Returns the standard generators of \(\mathfrak{so}(3)\) as a JSON-encoded list of expressions.
 ///
@@ -463,7 +385,7 @@ pub unsafe extern "C" fn rssn_json_check_jacobi_identity(
 ///
 /// This function is unsafe because it returns ownership of a heap-allocated C
 /// string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -471,24 +393,17 @@ pub unsafe extern "C" fn rssn_json_check_jacobi_identity(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_so3_generators()
--> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_so3_generators() -> *mut c_char {
     let generators = so3_generators();
 
-    let exprs: Vec<Expr> = generators
-        .into_iter()
-        .map(|g| g.0)
-        .collect();
+    let exprs: Vec<Expr> = generators.into_iter().map(|g| g.0).collect();
 
     to_json_string(&exprs)
 }
 
 /// Returns the SU(2) Lie algebra generators as a JSON string.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -496,16 +411,11 @@ pub unsafe extern "C" fn rssn_json_so3_generators()
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_su2_generators()
--> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_su2_generators() -> *mut c_char {
     let generators = su2_generators();
 
-    let exprs: Vec<Expr> = generators
-        .into_iter()
-        .map(|g| g.0)
-        .collect();
+    let exprs: Vec<Expr> = generators.into_iter().map(|g| g.0).collect();
 
     to_json_string(&exprs)
 }

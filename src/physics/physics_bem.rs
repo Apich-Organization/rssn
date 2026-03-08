@@ -10,16 +10,8 @@ use crate::numerical::matrix::Matrix;
 use crate::numerical::solve::LinearSolution;
 use crate::numerical::solve::solve_linear_system;
 
-#[derive(
-    Clone,
-    Copy,
-    Default,
-    Debug,
-    Serialize,
-    Deserialize,
-)]
 /// A 2D vector.
-
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 pub struct Vector2D {
     /// The x component of the vector.
     pub x: f64,
@@ -29,26 +21,17 @@ pub struct Vector2D {
 
 impl Vector2D {
     /// Creates a new 2D vector.
-
     #[must_use]
-
     pub const fn new(
         x: f64,
         y: f64,
     ) -> Self {
-
-        Self {
-            x,
-            y,
-        }
+        Self { x, y }
     }
 
     /// Calculates the norm of the vector.
-
     #[must_use]
-
     pub fn norm(&self) -> f64 {
-
         self.x.hypot(self.y)
     }
 }
@@ -60,7 +43,6 @@ impl Add for Vector2D {
         self,
         rhs: Self,
     ) -> Self {
-
         Self {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
@@ -75,7 +57,6 @@ impl Mul<f64> for Vector2D {
         self,
         rhs: f64,
     ) -> Self {
-
         Self {
             x: self.x * rhs,
             y: self.y * rhs,
@@ -90,7 +71,6 @@ impl Sub for Vector2D {
         self,
         rhs: Self,
     ) -> Self {
-
         Self {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
@@ -98,16 +78,8 @@ impl Sub for Vector2D {
     }
 }
 
-#[derive(
-    Clone,
-    Copy,
-    Default,
-    Debug,
-    Serialize,
-    Deserialize,
-)]
 /// A 3D vector.
-
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 pub struct Vector3D {
     /// The x component of the vector.
     pub x: f64,
@@ -118,39 +90,23 @@ pub struct Vector3D {
 }
 
 impl Vector3D {
-    #[allow(dead_code)]
     /// Creates a new 3D vector.
-
+    #[allow(dead_code)]
     #[must_use]
-
     pub const fn new(
         x: f64,
         y: f64,
         z: f64,
     ) -> Self {
-
-        Self {
-            x,
-            y,
-            z,
-        }
+        Self { x, y, z }
     }
 
-    #[allow(dead_code)]
     /// Calculates the norm of the vector.
-
+    #[allow(dead_code)]
     #[must_use]
-
     pub fn norm(&self) -> f64 {
-
         self.z
-            .mul_add(
-                self.z,
-                self.x.mul_add(
-                    self.x,
-                    self.y * self.y,
-                ),
-            )
+            .mul_add(self.z, self.x.mul_add(self.x, self.y * self.y))
             .sqrt()
     }
 }
@@ -162,7 +118,6 @@ impl Sub for Vector3D {
         self,
         rhs: Self,
     ) -> Self {
-
         Self {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
@@ -172,14 +127,7 @@ impl Sub for Vector3D {
 }
 
 /// Specifies the type of boundary condition on an element.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Serialize,
-    Deserialize,
-)]
-
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum BoundaryCondition<T> {
     /// A known potential value.
     Potential(T),
@@ -187,16 +135,9 @@ pub enum BoundaryCondition<T> {
     Flux(T),
 }
 
-#[allow(dead_code)]
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Serialize,
-    Deserialize,
-)]
 /// A 2D boundary element.
-
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Element2D {
     /// The first point of the element.
     pub p1: Vector2D,
@@ -212,27 +153,18 @@ pub struct Element2D {
 
 impl Element2D {
     /// Creates a new 2D boundary element.
-
     #[must_use]
-
     pub fn new(
         p1: Vector2D,
         p2: Vector2D,
     ) -> Self {
-
         let diff = p2 - p1;
 
         let length = diff.norm();
 
-        let normal = Vector2D::new(
-            diff.y / length,
-            -diff.x / length,
-        );
+        let normal = Vector2D::new(diff.y / length, -diff.x / length);
 
-        let midpoint = Vector2D::new(
-            f64::midpoint(p1.x, p2.x),
-            f64::midpoint(p1.y, p2.y),
-        );
+        let midpoint = Vector2D::new(f64::midpoint(p1.x, p2.x), f64::midpoint(p1.y, p2.y));
 
         Self {
             p1,
@@ -263,39 +195,24 @@ impl Element2D {
 ///
 /// This function will return an error if the number of points and boundary conditions
 /// do not match, or if the BEM system has no unique solution.
-
 pub fn solve_laplace_bem_2d(
     points: &[(f64, f64)],
     bcs: &[BoundaryCondition<f64>],
-) -> Result<(Vec<f64>, Vec<f64>), String>
-{
-
+) -> Result<(Vec<f64>, Vec<f64>), String> {
     let n = points.len();
 
     if n != bcs.len() {
-
-        return Err(
-            "Number of points and \
+        return Err("Number of points and \
              boundary conditions must \
              match."
-                .to_string(),
-        );
+            .to_string());
     }
 
-    let elements: Vec<_> = (0 .. n)
+    let elements: Vec<_> = (0..n)
         .map(|i| {
-
             Element2D::new(
-                Vector2D::new(
-                    points[i].0,
-                    points[i].1,
-                ),
-                Vector2D::new(
-                    points[(i + 1) % n]
-                        .0,
-                    points[(i + 1) % n]
-                        .1,
-                ),
+                Vector2D::new(points[i].0, points[i].1),
+                Vector2D::new(points[(i + 1) % n].0, points[(i + 1) % n].1),
             )
         })
         .collect();
@@ -305,45 +222,31 @@ pub fn solve_laplace_bem_2d(
     let mut g_mat = Matrix::zeros(n, n);
 
     // Parallel matrix assembly
-    let matrices_data : Vec<
-        Vec<(
-            usize,
-            usize,
-            f64,
-            f64,
-        )>,
-    > = (0 .. n)
+    let matrices_data: Vec<Vec<(usize, usize, f64, f64)>> = (0..n)
         .into_par_iter()
         .map(|i| {
-
             let mut row = Vec::with_capacity(n);
 
-            for j in 0 .. n {
-
+            for j in 0..n {
                 if i == j {
-
                     let g_ii = elements[i].length / (2.0 * std::f64::consts::PI)
                         * (1.0 - (elements[i].length / 2.0).ln());
 
                     row.push((i, j, 0.0, g_ii)); // Diagonal H will be set later via rigid body motion trick
                 } else {
-
                     let r_vec = elements[j].midpoint - elements[i].midpoint;
 
                     let r = r_vec.norm();
 
-                    let dot = r_vec.x.mul_add(elements[j].normal.x, r_vec.y * elements[j].normal.y);
+                    let dot = r_vec
+                        .x
+                        .mul_add(elements[j].normal.x, r_vec.y * elements[j].normal.y);
 
                     let h_ij = -dot / (2.0 * std::f64::consts::PI * r * r);
 
                     let g_ij = -1.0 / (2.0 * std::f64::consts::PI) * r.ln();
 
-                    row.push((
-                        i,
-                        j,
-                        h_ij * elements[j].length,
-                        g_ij * elements[j].length,
-                    ));
+                    row.push((i, j, h_ij * elements[j].length, g_ij * elements[j].length));
                 }
             }
 
@@ -352,9 +255,7 @@ pub fn solve_laplace_bem_2d(
         .collect();
 
     for row in matrices_data {
-
         for (i, j, h, g) in row {
-
             *h_mat.get_mut(i, j) = h;
 
             *g_mat.get_mut(i, j) = g;
@@ -363,16 +264,12 @@ pub fn solve_laplace_bem_2d(
 
     // Rigid body motion trick: sum of row H_ij = 0
     // So H_ii = -sum_{j!=i} H_ij
-    for i in 0 .. n {
-
+    for i in 0..n {
         let mut row_sum = 0.0;
 
-        for j in 0 .. n {
-
+        for j in 0..n {
             if i != j {
-
-                row_sum +=
-                    *h_mat.get(i, j);
+                row_sum += *h_mat.get(i, j);
             }
         }
 
@@ -383,20 +280,11 @@ pub fn solve_laplace_bem_2d(
 
     let mut b_vec = vec![0.0; n];
 
-    for (i, b_val) in b_vec
-        .iter_mut()
-        .enumerate()
-    {
-
-        for (j, bc) in bcs
-            .iter()
-            .enumerate()
-        {
-
+    for (i, b_val) in b_vec.iter_mut().enumerate() {
+        for (j, bc) in bcs.iter().enumerate() {
             match bc {
                 // Unknown depends on element j's BC type
                 | BoundaryCondition::Potential(u_val) => {
-
                     // Unknown is flux q_j. Equation side: -G_ij * q_j
                     *a_mat.get_mut(i, j) = -*g_mat.get(i, j);
 
@@ -404,7 +292,6 @@ pub fn solve_laplace_bem_2d(
                     *b_val -= *h_mat.get(i, j) * u_val;
                 },
                 | BoundaryCondition::Flux(q_val) => {
-
                     // Unknown is potential u_j. Equation side: H_ij * u_j
                     *a_mat.get_mut(i, j) = *h_mat.get(i, j);
 
@@ -426,11 +313,9 @@ pub fn solve_laplace_bem_2d(
 
     let mut sol_idx = 0;
 
-    for i in 0 .. n {
-
+    for i in 0..n {
         match bcs[i] {
             | BoundaryCondition::Potential(u_val) => {
-
                 u[i] = u_val;
 
                 q[i] = solution[sol_idx];
@@ -438,7 +323,6 @@ pub fn solve_laplace_bem_2d(
                 sol_idx += 1;
             },
             | BoundaryCondition::Flux(q_val) => {
-
                 q[i] = q_val;
 
                 u[i] = solution[sol_idx];
@@ -465,11 +349,7 @@ pub fn solve_laplace_bem_2d(
 ///
 /// This function will return an error if the underlying `solve_laplace_bem_2d`
 /// function encounters an error.
-
-pub fn simulate_2d_cylinder_scenario()
--> Result<(Vec<f64>, Vec<f64>), String>
-{
-
+pub fn simulate_2d_cylinder_scenario() -> Result<(Vec<f64>, Vec<f64>), String> {
     let n_points = 40;
 
     let radius = 1.0;
@@ -478,17 +358,10 @@ pub fn simulate_2d_cylinder_scenario()
 
     let mut bcs = Vec::new();
 
-    for i in 0 .. n_points {
+    for i in 0..n_points {
+        let angle = 2.0 * std::f64::consts::PI * (f64::from(i)) / (f64::from(n_points));
 
-        let angle = 2.0
-            * std::f64::consts::PI
-            * (f64::from(i))
-            / (f64::from(n_points));
-
-        let (x, y) = (
-            radius * angle.cos(),
-            radius * angle.sin(),
-        );
+        let (x, y) = (radius * angle.cos(), radius * angle.sin());
 
         points.push((x, y));
 
@@ -505,54 +378,31 @@ pub fn simulate_2d_cylinder_scenario()
 /// * `elements` - The boundary elements.
 /// * `u` - The solved boundary potentials.
 /// * `q` - The solved boundary fluxes.
-
 #[must_use]
-
 pub fn evaluate_potential_2d(
     point: (f64, f64),
     elements: &[Element2D],
     u: &[f64],
     q: &[f64],
 ) -> f64 {
-
-    let p =
-        Vector2D::new(point.0, point.1);
+    let p = Vector2D::new(point.0, point.1);
 
     let mut result = 0.0;
 
-    for i in 0 .. elements.len() {
-
-        let r_vec =
-            elements[i].midpoint - p;
+    for i in 0..elements.len() {
+        let r_vec = elements[i].midpoint - p;
 
         let r = r_vec.norm();
 
-        let dot = r_vec.x.mul_add(
-            elements[i].normal.x,
-            r_vec.y
-                * elements[i].normal.y,
-        );
+        let dot = r_vec
+            .x
+            .mul_add(elements[i].normal.x, r_vec.y * elements[i].normal.y);
 
-        let h_ij = -dot
-            / (2.0
-                * std::f64::consts::PI
-                * r
-                * r);
+        let h_ij = -dot / (2.0 * std::f64::consts::PI * r * r);
 
-        let g_ij = -1.0
-            / (2.0
-                * std::f64::consts::PI)
-            * r.ln();
+        let g_ij = -1.0 / (2.0 * std::f64::consts::PI) * r.ln();
 
-        result += (g_ij
-            * elements[i].length)
-            .mul_add(
-                q[i],
-                -(h_ij
-                    * elements[i]
-                        .length
-                    * u[i]),
-            );
+        result += (g_ij * elements[i].length).mul_add(q[i], -(h_ij * elements[i].length * u[i]));
     }
 
     result
@@ -564,10 +414,7 @@ pub fn evaluate_potential_2d(
 ///
 /// This is currently a placeholder function and will always succeed, but in a full
 /// implementation, it would return an error if the 3D BEM system cannot be solved.
-
-pub fn solve_laplace_bem_3d()
--> Result<(), String> {
-
+pub fn solve_laplace_bem_3d() -> Result<(), String> {
     println!(
         "3D BEM is a complex topic \
          requiring a dedicated \

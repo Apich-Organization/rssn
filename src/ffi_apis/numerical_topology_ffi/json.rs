@@ -13,7 +13,6 @@ use crate::numerical::topology::{
 };
 
 #[derive(Deserialize)]
-
 struct BettiInput {
     points: Vec<Vec<f64>>,
     epsilon: f64,
@@ -41,8 +40,7 @@ struct BettiInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -50,56 +48,41 @@ struct BettiInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_topology_betti_numbers_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : BettiInput = match from_json_string(input_json) {
+    let input: BettiInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<usize>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<usize>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let pt_slices: Vec<&[f64]> = input
-        .points
-        .iter()
-        .map(std::vec::Vec::as_slice)
-        .collect();
+    let pt_slices: Vec<&[f64]> = input.points.iter().map(std::vec::Vec::as_slice).collect();
 
-    let res = topology::betti_numbers_at_radius(
-        &pt_slices,
-        input.epsilon,
-        input.max_dim,
-    );
+    let res = topology::betti_numbers_at_radius(&pt_slices, input.epsilon, input.max_dim);
 
     let ffi_res = FfiResult {
         ok: Some(res),
         err: None::<String>,
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 #[derive(Deserialize)]
-
 struct PersistenceInput {
     points: Vec<Vec<f64>>,
     max_epsilon: f64,
@@ -129,8 +112,7 @@ struct PersistenceInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -138,46 +120,35 @@ struct PersistenceInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_topology_persistence_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : PersistenceInput = match from_json_string(input_json) {
+    let input: PersistenceInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<PersistenceDiagram>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<PersistenceDiagram>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
     let res =
-        topology::compute_persistence(
-            &input.points,
-            input.max_epsilon,
-            input.steps,
-            input.max_dim,
-        );
+        topology::compute_persistence(&input.points, input.max_epsilon, input.steps, input.max_dim);
 
     let ffi_res = FfiResult {
         ok: Some(res),
         err: None::<String>,
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

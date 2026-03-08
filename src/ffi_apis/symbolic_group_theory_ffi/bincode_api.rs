@@ -6,8 +6,6 @@ use crate::symbolic::group_theory::GroupElement;
 use crate::symbolic::group_theory::Representation;
 use crate::symbolic::group_theory::character;
 
-#[unsafe(no_mangle)]
-
 /// Creates a group from a bincode-encoded description.
 ///
 /// The input buffer encodes a [`Group`] (e.g., its underlying set and operation),
@@ -26,7 +24,7 @@ use crate::symbolic::group_theory::character;
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -34,20 +32,15 @@ use crate::symbolic::group_theory::character;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_group_create(
-    buf: BincodeBuffer
-) -> BincodeBuffer {
-
-    let group : Group = match from_bincode_buffer(&buf) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_group_create(buf: BincodeBuffer) -> BincodeBuffer {
+    let group: Group = match from_bincode_buffer(&buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&group)
 }
-
-#[unsafe(no_mangle)]
 
 /// Multiplies two group elements using a bincode-encoded group.
 ///
@@ -69,7 +62,7 @@ pub unsafe extern "C" fn rssn_bincode_group_create(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -77,24 +70,23 @@ pub unsafe extern "C" fn rssn_bincode_group_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_group_multiply(
     group_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
     b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let group : Group = match from_bincode_buffer(&group_buf) {
+    let group: Group = match from_bincode_buffer(&group_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
 
-    let a : GroupElement = match from_bincode_buffer(&a_buf) {
+    let a: GroupElement = match from_bincode_buffer(&a_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let b : GroupElement = match from_bincode_buffer(&b_buf) {
+    let b: GroupElement = match from_bincode_buffer(&b_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -103,8 +95,6 @@ pub unsafe extern "C" fn rssn_bincode_group_multiply(
 
     to_bincode_buffer(&result)
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the inverse of a group element using a bincode-encoded group.
 ///
@@ -122,7 +112,7 @@ pub unsafe extern "C" fn rssn_bincode_group_multiply(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -130,18 +120,17 @@ pub unsafe extern "C" fn rssn_bincode_group_multiply(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_group_inverse(
     group_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let group : Group = match from_bincode_buffer(&group_buf) {
+    let group: Group = match from_bincode_buffer(&group_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
 
-    let a : GroupElement = match from_bincode_buffer(&a_buf) {
+    let a: GroupElement = match from_bincode_buffer(&a_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -150,8 +139,6 @@ pub unsafe extern "C" fn rssn_bincode_group_inverse(
 
     to_bincode_buffer(&result)
 }
-
-#[unsafe(no_mangle)]
 
 /// Tests whether a bincode-encoded group is Abelian.
 ///
@@ -171,7 +158,7 @@ pub unsafe extern "C" fn rssn_bincode_group_inverse(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must ensure the buffer is a valid encoding of a `Group`.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -179,23 +166,15 @@ pub unsafe extern "C" fn rssn_bincode_group_inverse(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_group_is_abelian(
-    group_buf: BincodeBuffer
-) -> bool {
-
-    let group: Group =
-        match from_bincode_buffer(
-            &group_buf,
-        ) {
-            | Some(g) => g,
-            | None => return false,
-        };
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_group_is_abelian(group_buf: BincodeBuffer) -> bool {
+    let group: Group = match from_bincode_buffer(&group_buf) {
+        | Some(g) => g,
+        | None => return false,
+    };
 
     group.is_abelian()
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the order of a group element using a bincode-encoded group.
 ///
@@ -216,7 +195,7 @@ pub unsafe extern "C" fn rssn_bincode_group_is_abelian(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must ensure the buffers encode a compatible group and element.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -224,34 +203,23 @@ pub unsafe extern "C" fn rssn_bincode_group_is_abelian(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_group_element_order(
     group_buf: BincodeBuffer,
     a_buf: BincodeBuffer,
 ) -> usize {
+    let group: Group = match from_bincode_buffer(&group_buf) {
+        | Some(g) => g,
+        | None => return 0,
+    };
 
-    let group: Group =
-        match from_bincode_buffer(
-            &group_buf,
-        ) {
-            | Some(g) => g,
-            | None => return 0,
-        };
+    let a: GroupElement = match from_bincode_buffer(&a_buf) {
+        | Some(e) => e,
+        | None => return 0,
+    };
 
-    let a: GroupElement =
-        match from_bincode_buffer(
-            &a_buf,
-        ) {
-            | Some(e) => e,
-            | None => return 0,
-        };
-
-    group
-        .element_order(&a)
-        .unwrap_or(0)
+    group.element_order(&a).unwrap_or(0)
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the conjugacy classes of a bincode-encoded group.
 ///
@@ -271,7 +239,7 @@ pub unsafe extern "C" fn rssn_bincode_group_element_order(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -279,23 +247,19 @@ pub unsafe extern "C" fn rssn_bincode_group_element_order(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
     group_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let group : Group = match from_bincode_buffer(&group_buf) {
+    let group: Group = match from_bincode_buffer(&group_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
 
-    let classes =
-        group.conjugacy_classes();
+    let classes = group.conjugacy_classes();
 
     to_bincode_buffer(&classes)
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the center of a bincode-encoded group.
 ///
@@ -315,7 +279,7 @@ pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -323,12 +287,9 @@ pub unsafe extern "C" fn rssn_bincode_group_conjugacy_classes(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_group_center(
-    group_buf: BincodeBuffer
-) -> BincodeBuffer {
-
-    let group : Group = match from_bincode_buffer(&group_buf) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_group_center(group_buf: BincodeBuffer) -> BincodeBuffer {
+    let group: Group = match from_bincode_buffer(&group_buf) {
         | Some(g) => g,
         | None => return BincodeBuffer::empty(),
     };
@@ -337,8 +298,6 @@ pub unsafe extern "C" fn rssn_bincode_group_center(
 
     to_bincode_buffer(&center)
 }
-
-#[unsafe(no_mangle)]
 
 /// Creates a group representation from a bincode-encoded description.
 ///
@@ -358,7 +317,7 @@ pub unsafe extern "C" fn rssn_bincode_group_center(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -366,20 +325,15 @@ pub unsafe extern "C" fn rssn_bincode_group_center(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_representation_create(
-    buf: BincodeBuffer
-) -> BincodeBuffer {
-
-    let rep : Representation = match from_bincode_buffer(&buf) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_representation_create(buf: BincodeBuffer) -> BincodeBuffer {
+    let rep: Representation = match from_bincode_buffer(&buf) {
         | Some(r) => r,
         | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&rep)
 }
-
-#[unsafe(no_mangle)]
 
 /// Checks whether a representation is valid for a given group using bincode serialization.
 ///
@@ -400,7 +354,7 @@ pub unsafe extern "C" fn rssn_bincode_representation_create(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must ensure the buffers encode compatible objects.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -408,32 +362,23 @@ pub unsafe extern "C" fn rssn_bincode_representation_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
     rep_buf: BincodeBuffer,
     group_buf: BincodeBuffer,
 ) -> bool {
+    let rep: Representation = match from_bincode_buffer(&rep_buf) {
+        | Some(r) => r,
+        | None => return false,
+    };
 
-    let rep: Representation =
-        match from_bincode_buffer(
-            &rep_buf,
-        ) {
-            | Some(r) => r,
-            | None => return false,
-        };
-
-    let group: Group =
-        match from_bincode_buffer(
-            &group_buf,
-        ) {
-            | Some(g) => g,
-            | None => return false,
-        };
+    let group: Group = match from_bincode_buffer(&group_buf) {
+        | Some(g) => g,
+        | None => return false,
+    };
 
     rep.is_valid(&group)
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the character of a representation using bincode serialization.
 ///
@@ -453,7 +398,7 @@ pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -461,12 +406,9 @@ pub unsafe extern "C" fn rssn_bincode_representation_is_valid(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_character(
-    rep_buf: BincodeBuffer
-) -> BincodeBuffer {
-
-    let rep : Representation = match from_bincode_buffer(&rep_buf) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_character(rep_buf: BincodeBuffer) -> BincodeBuffer {
+    let rep: Representation = match from_bincode_buffer(&rep_buf) {
         | Some(r) => r,
         | None => return BincodeBuffer::empty(),
     };

@@ -11,7 +11,6 @@ use crate::physics::physics_rkm::DampedOscillatorSystem;
 use crate::physics::physics_rkm::LorenzSystem;
 
 #[derive(Deserialize)]
-
 struct EulerInput {
     system_type: String,
     params_bincode: Vec<u8>,
@@ -46,8 +45,7 @@ struct EulerInput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -55,112 +53,68 @@ struct EulerInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_physics_em_solve_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : EulerInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_em_solve_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: EulerInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(&FfiResult::<
-                Vec<(f64, Vec<f64>)>,
-                String,
-            >::err(
+            return to_bincode_buffer(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
                 "Invalid Bincode".to_string(),
-            ))
+            ));
         },
     };
 
-    let res = match input
-        .system_type
-        .as_str()
-    {
+    let res = match input.system_type.as_str() {
         | "lorenz" => {
-
-            let (sys, _) : (LorenzSystem, usize) = match bincode_next::serde::decode_from_slice(
+            let (sys, _): (LorenzSystem, usize) = match bincode_next::serde::decode_from_slice(
                 &input.params_bincode,
                 bincode_next::config::standard(),
             ) {
                 | Ok(s) => s,
                 | Err(e) => {
-                    return to_bincode_buffer(&FfiResult::<
-                        Vec<(f64, Vec<f64>)>,
-                        String,
-                    >::err(
-                        e.to_string()
-                    ))
+                    return to_bincode_buffer(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+                        e.to_string(),
+                    ));
                 },
             };
 
-            solve_with_method(
-                &sys,
-                &input.y0,
-                input.t_span,
-                input.dt,
-                &input.method,
-            )
+            solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
         },
         | "oscillator" => {
+            let (sys, _): (DampedOscillatorSystem, usize) =
+                match bincode_next::serde::decode_from_slice(
+                    &input.params_bincode,
+                    bincode_next::config::standard(),
+                ) {
+                    | Ok(s) => s,
+                    | Err(e) => {
+                        return to_bincode_buffer(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+                            e.to_string(),
+                        ));
+                    },
+                };
 
-            let (sys, _) : (
-                DampedOscillatorSystem,
-                usize,
-            ) = match bincode_next::serde::decode_from_slice(
-                &input.params_bincode,
-                bincode_next::config::standard(),
-            ) {
-                | Ok(s) => s,
-                | Err(e) => {
-                    return to_bincode_buffer(&FfiResult::<
-                        Vec<(f64, Vec<f64>)>,
-                        String,
-                    >::err(
-                        e.to_string()
-                    ))
-                },
-            };
-
-            solve_with_method(
-                &sys,
-                &input.y0,
-                input.t_span,
-                input.dt,
-                &input.method,
-            )
+            solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
         },
         | _ => {
-
-            return to_bincode_buffer(
-                &FfiResult::<
-                    Vec<(
-                        f64,
-                        Vec<f64>,
-                    )>,
-                    String,
-                >::err(
-                    "Unknown system \
+            return to_bincode_buffer(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+                "Unknown system \
                      type"
-                        .to_string(),
-                ),
-            );
+                    .to_string(),
+            ));
         },
     };
 
-    to_bincode_buffer(&FfiResult::<
-        Vec<(f64, Vec<f64>)>,
-        String,
-    >::ok(res))
+    to_bincode_buffer(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::ok(res))
 }
 
-pub(crate) fn solve_with_method<S : crate::physics::physics_rkm::OdeSystem>(
-    sys : &S,
-    y0 : &[f64],
-    t_span : (f64, f64),
-    dt : f64,
-    method : &str,
-) -> Vec<(f64, Vec<f64>)>{
-
+pub(crate) fn solve_with_method<S: crate::physics::physics_rkm::OdeSystem>(
+    sys: &S,
+    y0: &[f64],
+    t_span: (f64, f64),
+    dt: f64,
+    method: &str,
+) -> Vec<(f64, Vec<f64>)> {
     match method {
         | "midpoint" => physics_em::solve_midpoint_euler(sys, y0, t_span, dt),
         | "heun" => physics_em::solve_heun_euler(sys, y0, t_span, dt),

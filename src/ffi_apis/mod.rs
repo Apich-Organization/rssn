@@ -4,39 +4,34 @@
 //! with the core data structures and functions of the `rssn` library.
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
-#![allow(
-    clippy::no_mangle_with_rust_abi
-)]
+#![allow(clippy::no_mangle_with_rust_abi)]
 // In ffi_apis, we use raw pointers to pass data to and from Rust and C.
 // clippy::not_unsafe_ptr_arg_deref is triggered by this.
-#![allow(
-    clippy::not_unsafe_ptr_arg_deref
-)]
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 // This is enforced by clippy::nursery. It has too high false positive rate.
 #![allow(clippy::option_if_let_else)]
 
-#[macro_use]
 /// FFI macros.
-
+#[macro_use]
 pub mod macros;
 
 /// Common FFI utilities.
 pub mod common;
-#[cfg(feature = "compute")]
 /// FFI for compute cache.
-pub mod compute_cache_ffi;
 #[cfg(feature = "compute")]
+pub mod compute_cache_ffi;
 /// FFI for compute state.
+#[cfg(feature = "compute")]
 pub mod compute_state_ffi;
 /// FFI for constants.
 pub mod constant_ffi;
 /// General FFI API (deprecated).
 pub mod ffi_api;
-#[cfg(feature = "jit")]
 /// FFI for JIT compilation.
+#[cfg(feature = "jit")]
 pub mod jit_ffi;
-#[cfg(feature = "nightly")]
 /// FFI for nightly features.
+#[cfg(feature = "nightly")]
 pub mod nightly_ffi;
 /// FFI for numerical calculus.
 pub mod numerical_calculus_ffi;
@@ -116,59 +111,59 @@ pub mod numerical_transforms_ffi;
 pub mod numerical_vector_calculus_ffi;
 /// FFI for numerical vector operations.
 pub mod numerical_vector_ffi;
-#[cfg(feature = "physics")]
 /// FFI for BEM physics simulations.
+#[cfg(feature = "physics")]
 pub mod physics_bem_ffi;
-#[cfg(feature = "physics")]
 /// FFI for CNM physics simulations.
+#[cfg(feature = "physics")]
 pub mod physics_cnm_ffi;
-#[cfg(feature = "physics")]
 /// FFI for EM physics simulations.
+#[cfg(feature = "physics")]
 pub mod physics_em_ffi;
-#[cfg(feature = "physics")]
 /// FFI for FDM physics simulations.
+#[cfg(feature = "physics")]
 pub mod physics_fdm_ffi;
-#[cfg(feature = "physics")]
 /// FFI for FEM physics simulations.
+#[cfg(feature = "physics")]
 pub mod physics_fem_ffi;
-#[cfg(feature = "physics")]
 /// FFI for FVM physics simulations.
+#[cfg(feature = "physics")]
 pub mod physics_fvm_ffi;
-#[cfg(feature = "physics")]
 /// FFI for MM physics simulations.
+#[cfg(feature = "physics")]
 pub mod physics_mm_ffi;
-#[cfg(feature = "physics")]
 /// FFI for MTM physics simulations.
+#[cfg(feature = "physics")]
 pub mod physics_mtm_ffi;
-#[cfg(feature = "physics")]
 /// FFI for RKM physics simulations.
+#[cfg(feature = "physics")]
 pub mod physics_rkm_ffi;
-#[cfg(feature = "physics")]
 /// FFI for FDTD physics simulations.
+#[cfg(feature = "physics")]
 pub mod physics_sim_fdtd_ffi;
-#[cfg(feature = "physics")]
 /// FFI for geodesic relativity simulations.
+#[cfg(feature = "physics")]
 pub mod physics_sim_geodesic_ffi;
-#[cfg(feature = "physics")]
 /// FFI for GPE superfluidity simulations.
+#[cfg(feature = "physics")]
 pub mod physics_sim_gpe_ffi;
-#[cfg(feature = "physics")]
 /// FFI for Ising statistical simulations.
+#[cfg(feature = "physics")]
 pub mod physics_sim_ising_ffi;
-#[cfg(feature = "physics")]
 /// FFI for linear elasticity simulations.
+#[cfg(feature = "physics")]
 pub mod physics_sim_linear_elasticity_ffi;
-#[cfg(feature = "physics")]
 /// FFI for Navier-Stokes fluid simulations.
+#[cfg(feature = "physics")]
 pub mod physics_sim_navier_stokes_ffi;
-#[cfg(feature = "physics")]
 /// FFI for Schrodinger quantum simulations.
-pub mod physics_sim_schrodinger_ffi;
 #[cfg(feature = "physics")]
+pub mod physics_sim_schrodinger_ffi;
 /// FFI for SM physics simulations.
+#[cfg(feature = "physics")]
 pub mod physics_sm_ffi;
-#[cfg(feature = "plugins")]
 /// FFI for plugins.
+#[cfg(feature = "plugins")]
 pub mod plugins_ffi;
 /// FFI for symbolic CAD operations.
 pub mod symbolic_cad_ffi;

@@ -10,7 +10,6 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::fractal_geometry_and_chaos;
 
 #[derive(Deserialize)]
-
 struct MandelbrotSetInput {
     width: usize,
     height: usize,
@@ -20,7 +19,6 @@ struct MandelbrotSetInput {
 }
 
 #[derive(Deserialize)]
-
 struct MandelbrotPointInput {
     c_real: f64,
     c_imag: f64,
@@ -28,7 +26,6 @@ struct MandelbrotPointInput {
 }
 
 #[derive(Deserialize)]
-
 struct JuliaSetInput {
     width: usize,
     height: usize,
@@ -39,7 +36,6 @@ struct JuliaSetInput {
 }
 
 #[derive(Deserialize)]
-
 struct JuliaPointInput {
     z_real: f64,
     z_imag: f64,
@@ -49,7 +45,6 @@ struct JuliaPointInput {
 }
 
 #[derive(Deserialize)]
-
 struct LorenzInput {
     start_point: (f64, f64, f64),
     dt: f64,
@@ -57,7 +52,6 @@ struct LorenzInput {
 }
 
 #[derive(Deserialize)]
-
 struct LorenzCustomInput {
     start_point: (f64, f64, f64),
     dt: f64,
@@ -68,7 +62,6 @@ struct LorenzCustomInput {
 }
 
 #[derive(Deserialize)]
-
 struct RosslerInput {
     start_point: (f64, f64, f64),
     dt: f64,
@@ -79,7 +72,6 @@ struct RosslerInput {
 }
 
 #[derive(Deserialize)]
-
 struct HenonInput {
     start_point: (f64, f64),
     num_steps: usize,
@@ -88,7 +80,6 @@ struct HenonInput {
 }
 
 #[derive(Deserialize)]
-
 struct TinkerbellInput {
     start_point: (f64, f64),
     num_steps: usize,
@@ -99,7 +90,6 @@ struct TinkerbellInput {
 }
 
 #[derive(Deserialize)]
-
 struct LogisticMapInput {
     x0: f64,
     r: f64,
@@ -107,7 +97,6 @@ struct LogisticMapInput {
 }
 
 #[derive(Deserialize)]
-
 struct BifurcationInput {
     r_range: (f64, f64),
     num_r_values: usize,
@@ -117,7 +106,6 @@ struct BifurcationInput {
 }
 
 #[derive(Deserialize)]
-
 struct LyapunovLogisticInput {
     r: f64,
     x0: f64,
@@ -126,7 +114,6 @@ struct LyapunovLogisticInput {
 }
 
 #[derive(Deserialize)]
-
 struct LyapunovLorenzInput {
     start_point: (f64, f64, f64),
     dt: f64,
@@ -137,7 +124,6 @@ struct LyapunovLorenzInput {
 }
 
 #[derive(Deserialize)]
-
 struct DimensionInput {
     points: Vec<(f64, f64)>,
     num_scales: usize,
@@ -145,8 +131,7 @@ struct DimensionInput {
 
 // Mandelbrot set
 /// Generates the Mandelbrot set as an image (iterations per pixel) using JSON for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -154,28 +139,23 @@ struct DimensionInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : MandelbrotSetInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(input: *const c_char) -> *mut c_char {
+    let input: MandelbrotSetInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<u32>>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<Vec<u32>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -188,20 +168,16 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the escape time for a single point in the Mandelbrot set using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -209,28 +185,25 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : MandelbrotPointInput = match from_json_string(input) {
+    let input: MandelbrotPointInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<u32, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<u32, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -241,20 +214,17 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 // Julia set
 /// Generates the Julia set as an image (iterations per pixel) using JSON for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -262,28 +232,23 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : JuliaSetInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(input: *const c_char) -> *mut c_char {
+    let input: JuliaSetInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<u32>>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<Vec<u32>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -297,20 +262,16 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the escape time for a single point in the Julia set using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -318,28 +279,25 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : JuliaPointInput = match from_json_string(input) {
+    let input: JuliaPointInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<u32, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<u32, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -352,20 +310,17 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 // Lorenz attractor
 /// Generates data points for the Lorenz attractor using JSON for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -373,28 +328,25 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_escape_time_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : LorenzInput = match from_json_string(input) {
+    let input: LorenzInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64, f64)>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<(f64, f64, f64)>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -405,20 +357,16 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Generates data points for the Lorenz attractor with custom parameters using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -426,28 +374,25 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : LorenzCustomInput = match from_json_string(input) {
+    let input: LorenzCustomInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64, f64)>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<(f64, f64, f64)>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -461,20 +406,17 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 // Rossler attractor
 /// Generates data points for the Rossler attractor using JSON for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -482,28 +424,25 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_custom_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : RosslerInput = match from_json_string(input) {
+    let input: RosslerInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64, f64)>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<(f64, f64, f64)>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -517,20 +456,17 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 // Henon map
 /// Generates data points for the Henon map using JSON for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -538,28 +474,23 @@ pub unsafe extern "C" fn rssn_num_fractal_rossler_attractor_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : HenonInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(input: *const c_char) -> *mut c_char {
+    let input: HenonInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64)>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<(f64, f64)>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -571,20 +502,17 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 // Tinkerbell map
 /// Generates data points for the Tinkerbell map using JSON for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -592,28 +520,23 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : TinkerbellInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(input: *const c_char) -> *mut c_char {
+    let input: TinkerbellInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64)>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<(f64, f64)>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -627,20 +550,17 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 // Logistic map
 /// Computes iterations of the logistic map using JSON for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -648,52 +568,41 @@ pub unsafe extern "C" fn rssn_num_fractal_tinkerbell_map_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : LogisticMapInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(input: *const c_char) -> *mut c_char {
+    let input: LogisticMapInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<f64>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let result = fractal_geometry_and_chaos::logistic_map_iterate(
-        input.x0,
-        input.r,
-        input.num_steps,
-    );
+    let result =
+        fractal_geometry_and_chaos::logistic_map_iterate(input.x0, input.r, input.num_steps);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 // Bifurcation diagram
 /// Generates data for a bifurcation diagram of the logistic map using JSON for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -701,28 +610,23 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : BifurcationInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(input: *const c_char) -> *mut c_char {
+    let input: BifurcationInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<(f64, f64)>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<(f64, f64)>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -735,20 +639,17 @@ pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 // Lyapunov exponents
 /// Computes the Lyapunov exponent for the logistic map using JSON for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -756,28 +657,25 @@ pub unsafe extern "C" fn rssn_num_fractal_bifurcation_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : LyapunovLogisticInput = match from_json_string(input) {
+    let input: LyapunovLogisticInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -789,20 +687,16 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the Lyapunov exponent for the Lorenz attractor using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -810,28 +704,25 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : LyapunovLorenzInput = match from_json_string(input) {
+    let input: LyapunovLorenzInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -845,20 +736,17 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 // Dimension estimation
 /// Computes the box-counting dimension of a set of points using JSON for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -866,51 +754,42 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_lorenz_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : DimensionInput = match from_json_string(input) {
+    let input: DimensionInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let result = fractal_geometry_and_chaos::box_counting_dimension(
-        &input.points,
-        input.num_scales,
-    );
+    let result =
+        fractal_geometry_and_chaos::box_counting_dimension(&input.points, input.num_scales);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the correlation dimension of a set of points using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -918,43 +797,35 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : DimensionInput = match from_json_string(input) {
+    let input: DimensionInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let result = fractal_geometry_and_chaos::correlation_dimension(
-        &input.points,
-        input.num_scales,
-    );
+    let result = fractal_geometry_and_chaos::correlation_dimension(&input.points, input.num_scales);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }

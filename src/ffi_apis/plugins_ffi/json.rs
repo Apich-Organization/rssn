@@ -11,7 +11,6 @@ use crate::plugins::manager::GLOBAL_PLUGIN_MANAGER;
 use crate::symbolic::core::Expr;
 
 #[derive(Deserialize)]
-
 struct PluginExecutionRequest {
     plugin_name: String,
     command: String,
@@ -19,8 +18,7 @@ struct PluginExecutionRequest {
 }
 
 /// Executes a plugin command via JSON (args passed as JSON expr).
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -28,125 +26,71 @@ struct PluginExecutionRequest {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_plugins_execute_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_plugins_execute_json(json_ptr: *const c_char) -> *mut c_char {
     unsafe {
-
         if json_ptr.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        let json_str = match CStr::from_ptr(
-        json_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
-    };
+        let json_str = match CStr::from_ptr(json_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        let req: PluginExecutionRequest =
-        match serde_json::from_str(
-            json_str,
-        ) {
+        let req: PluginExecutionRequest = match serde_json::from_str(json_str) {
             | Ok(r) => r,
             | Err(e) => {
-
-                let res: FfiResult<
-                    Expr,
-                    String,
-                > = FfiResult {
+                let res: FfiResult<Expr, String> = FfiResult {
                     ok: None,
-                    err: Some(
-                        e.to_string(),
-                    ),
+                    err: Some(e.to_string()),
                 };
 
-                return CString::new(serde_json::to_string(&res).unwrap()).unwrap().into_raw();
+                return CString::new(serde_json::to_string(&res).unwrap())
+                    .unwrap()
+                    .into_raw();
             },
         };
 
-        let manager =
-            match GLOBAL_PLUGIN_MANAGER
-                .read()
-            {
-                | Ok(m) => m,
-                | Err(_) => {
-
-                    let res: FfiResult<
-                    Expr,
-                    String,
-                > = FfiResult {
+        let manager = match GLOBAL_PLUGIN_MANAGER.read() {
+            | Ok(m) => m,
+            | Err(_) => {
+                let res: FfiResult<Expr, String> = FfiResult {
                     ok: None,
-                    err: Some(
-                        "Lock poison"
-                            .to_string(
-                            ),
-                    ),
+                    err: Some("Lock poison".to_string()),
                 };
 
-                    return CString::new(serde_json::to_string(&res).unwrap()).unwrap().into_raw();
-                },
-            };
+                return CString::new(serde_json::to_string(&res).unwrap())
+                    .unwrap()
+                    .into_raw();
+            },
+        };
 
-        match manager.execute_plugin(
-            &req.plugin_name,
-            &req.command,
-            &req.args,
-        ) {
+        match manager.execute_plugin(&req.plugin_name, &req.command, &req.args) {
             | Ok(result_expr) => {
-
-                let res: FfiResult<
-                    Expr,
-                    String,
-                > = FfiResult {
-                    ok: Some(
-                        result_expr,
-                    ),
+                let res: FfiResult<Expr, String> = FfiResult {
+                    ok: Some(result_expr),
                     err: None,
                 };
 
-                CString::new(
-                serde_json::to_string(
-                    &res,
-                )
-                .unwrap(),
-            )
-            .unwrap()
-            .into_raw()
+                CString::new(serde_json::to_string(&res).unwrap())
+                    .unwrap()
+                    .into_raw()
             },
             | Err(e) => {
-
-                let res: FfiResult<
-                    Expr,
-                    String,
-                > = FfiResult {
+                let res: FfiResult<Expr, String> = FfiResult {
                     ok: None,
-                    err: Some(
-                        e.to_string(),
-                    ),
+                    err: Some(e.to_string()),
                 };
 
-                CString::new(
-                serde_json::to_string(
-                    &res,
-                )
-                .unwrap(),
-            )
-            .unwrap()
-            .into_raw()
+                CString::new(serde_json::to_string(&res).unwrap())
+                    .unwrap()
+                    .into_raw()
             },
         }
     }

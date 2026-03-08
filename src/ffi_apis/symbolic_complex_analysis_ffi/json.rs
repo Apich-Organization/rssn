@@ -8,15 +8,9 @@ use crate::symbolic::complex_analysis::PathContinuation;
 use crate::symbolic::core::Expr;
 
 /// Creates a new `PathContinuation` object.
-
-///
-
 /// Takes JSON-serialized inputs for the function, variable, start point, and order.
-
 /// Returns a JSON-serialized `PathContinuation` object.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24,62 +18,42 @@ use crate::symbolic::core::Expr;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn path_continuation_new_json(
     func_json: *const c_char,
     var: *const c_char,
     start_point_json: *const c_char,
     order: usize,
 ) -> *mut c_char {
-
     unsafe {
+        let func: Expr = match from_json_string(func_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let func : Expr = match from_json_string(func_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
+        let start_point: Expr = match from_json_string(start_point_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let start_point : Expr = match from_json_string(start_point_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+        let path_continuation = PathContinuation::new(&func, var_str, &start_point, order);
 
-        let path_continuation =
-            PathContinuation::new(
-                &func,
-                var_str,
-                &start_point,
-                order,
-            );
-
-        to_json_string(
-            &path_continuation,
-        )
+        to_json_string(&path_continuation)
     }
 }
 
 /// Continues the analytic continuation along a given path.
-
 ///
-
 /// Takes a JSON-serialized `PathContinuation` object and a JSON-serialized `Vec<Expr>` representing the path points.
-
 /// Returns a C-style string "OK" on success, or an error message on failure.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -87,44 +61,31 @@ pub unsafe extern "C" fn path_continuation_new_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn path_continuation_continue_along_path_json(
     pc_json: *const c_char,
     path_points_json: *const c_char,
 ) -> *mut c_char {
-
-    let mut pc : PathContinuation = match from_json_string(pc_json) {
+    let mut pc: PathContinuation = match from_json_string(pc_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let path_points : Vec<Expr> = match from_json_string(path_points_json) {
+    let path_points: Vec<Expr> = match from_json_string(path_points_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    match pc.continue_along_path(
-        &path_points,
-    ) {
-        | Ok(()) => {
-            to_c_string(
-                "OK".to_string(),
-            )
-        },
+    match pc.continue_along_path(&path_points) {
+        | Ok(()) => to_c_string("OK".to_string()),
         | Err(e) => to_c_string(e),
     }
 }
 
 /// Gets the final expression after analytic continuation.
-
-///
-
 /// Takes a JSON-serialized `PathContinuation` object.
-
 /// Returns a JSON-serialized `Expr` representing the final expression.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -132,33 +93,24 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn path_continuation_get_final_expression_json(
     pc_json: *const c_char
 ) -> *mut c_char {
-
-    let pc : PathContinuation = match from_json_string(pc_json) {
+    let pc: PathContinuation = match from_json_string(pc_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    to_json_string(
-        &pc.get_final_expression(),
-    )
+    to_json_string(&pc.get_final_expression())
 }
 
 /// Estimates the radius of convergence of a series.
-
 ///
-
 /// Takes a JSON-serialized `Expr` (the series), a C-style string for the variable,
-
 /// a JSON-serialized `Expr` for the center, and an integer for the order.
-
 /// Returns an `f64` representing the estimated radius of convergence.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -166,64 +118,45 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn estimate_radius_of_convergence_json(
     series_expr_json: *const c_char,
     var: *const c_char,
     center_json: *const c_char,
     order: usize,
 ) -> f64 {
-
     unsafe {
+        let series_expr: Expr = match from_json_string(series_expr_json) {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
-        let series_expr: Expr =
-            match from_json_string(
-                series_expr_json,
-            ) {
-                | Some(e) => e,
-                | None => return 0.0,
-            };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
-
-        let center: Expr =
-            match from_json_string(
-                center_json,
-            ) {
-                | Some(e) => e,
-                | None => return 0.0,
-            };
+        let center: Expr = match from_json_string(center_json) {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
         crate::symbolic::complex_analysis::estimate_radius_of_convergence(
-        &series_expr,
-        var_str,
-        &center,
-        order,
-    )
-    .unwrap_or(0.0)
+            &series_expr,
+            var_str,
+            &center,
+            order,
+        )
+        .unwrap_or(0.0)
     }
 }
 
 /// Calculates the distance between two complex numbers.
-
-///
-
 /// Takes two JSON-serialized `Expr` representing the complex numbers.
-
 /// Returns an `f64` representing the distance.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -231,41 +164,30 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn complex_distance_json(
     p1_json: *const c_char,
     p2_json: *const c_char,
 ) -> f64 {
+    let p1: Expr = match from_json_string(p1_json) {
+        | Some(e) => e,
+        | None => return 0.0,
+    };
 
-    let p1: Expr =
-        match from_json_string(p1_json)
-        {
-            | Some(e) => e,
-            | None => return 0.0,
-        };
-
-    let p2: Expr =
-        match from_json_string(p2_json)
-        {
-            | Some(e) => e,
-            | None => return 0.0,
-        };
+    let p2: Expr = match from_json_string(p2_json) {
+        | Some(e) => e,
+        | None => return 0.0,
+    };
 
     crate::symbolic::complex_analysis::complex_distance(&p1, &p2).unwrap_or(0.0)
 }
 
 /// Classifies the singularity of a function at a given point.
-
 ///
-
 /// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
-
 /// a JSON-serialized `Expr` for the singularity point, and an integer for the order.
-
 /// Returns a JSON-serialized `SingularityType` enum.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -273,63 +195,48 @@ pub unsafe extern "C" fn complex_distance_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn classify_singularity_json(
     func_json: *const c_char,
     var: *const c_char,
     singularity_json: *const c_char,
     order: usize,
 ) -> *mut c_char {
-
     unsafe {
+        let func: Expr = match from_json_string(func_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let func : Expr = match from_json_string(func_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
-
-        let singularity : Expr = match from_json_string(singularity_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+        let singularity: Expr = match from_json_string(singularity_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
         let singularity_type = crate::symbolic::complex_analysis::classify_singularity(
-        &func,
-        var_str,
-        &singularity,
-        order,
-    );
+            &func,
+            var_str,
+            &singularity,
+            order,
+        );
 
-        to_json_string(
-            &singularity_type,
-        )
+        to_json_string(&singularity_type)
     }
 }
 
 /// Computes the Laurent series of a function.
-
 ///
-
 /// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
-
 /// a JSON-serialized `Expr` for the center, and an integer for the order.
-
 /// Returns a JSON-serialized `Expr` representing the Laurent series.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -337,61 +244,44 @@ pub unsafe extern "C" fn classify_singularity_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn laurent_series_json(
     func_json: *const c_char,
     var: *const c_char,
     center_json: *const c_char,
     order: usize,
 ) -> *mut c_char {
-
     unsafe {
+        let func: Expr = match from_json_string(func_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let func : Expr = match from_json_string(func_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
+        let center: Expr = match from_json_string(center_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let center : Expr = match from_json_string(center_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
-
-        let series = crate::symbolic::complex_analysis::laurent_series(
-        &func,
-        var_str,
-        &center,
-        order,
-    );
+        let series =
+            crate::symbolic::complex_analysis::laurent_series(&func, var_str, &center, order);
 
         to_json_string(&series)
     }
 }
 
 /// Calculates the residue of a function at a given singularity.
-
 ///
-
 /// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
-
 /// and a JSON-serialized `Expr` for the singularity.
-
 /// Returns a JSON-serialized `Expr` representing the residue.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -399,59 +289,43 @@ pub unsafe extern "C" fn laurent_series_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn calculate_residue_json(
     func_json: *const c_char,
     var: *const c_char,
     singularity_json: *const c_char,
 ) -> *mut c_char {
-
     unsafe {
+        let func: Expr = match from_json_string(func_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let func : Expr = match from_json_string(func_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
+        let singularity: Expr = match from_json_string(singularity_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let singularity : Expr = match from_json_string(singularity_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
-
-        let residue = crate::symbolic::complex_analysis::calculate_residue(
-        &func,
-        var_str,
-        &singularity,
-    );
+        let residue =
+            crate::symbolic::complex_analysis::calculate_residue(&func, var_str, &singularity);
 
         to_json_string(&residue)
     }
 }
 
 /// Calculates a contour integral using the residue theorem.
-
 ///
-
 /// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
-
 /// and a JSON-serialized `Vec<Expr>` for the singularities.
-
 /// Returns a JSON string representing the `Expr` of the integral.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -459,57 +333,45 @@ pub unsafe extern "C" fn calculate_residue_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn contour_integral_residue_theorem_json(
     func_json: *const c_char,
     var: *const c_char,
     singularities_json: *const c_char,
 ) -> *mut c_char {
-
     unsafe {
+        let func: Expr = match from_json_string(func_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let func : Expr = match from_json_string(func_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
-
-        let singularities : Vec<Expr> = match from_json_string(singularities_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+        let singularities: Vec<Expr> = match from_json_string(singularities_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
         let result = crate::symbolic::complex_analysis::contour_integral_residue_theorem(
-        &func,
-        var_str,
-        &singularities,
-    );
+            &func,
+            var_str,
+            &singularities,
+        );
 
         to_json_string(&result)
     }
 }
 
 /// Creates a new `MobiusTransformation` object from JSON-serialized coefficients.
-
 ///
-
 /// Takes JSON-serialized `Expr` for coefficients `a`, `b`, `c`, and `d`.
-
 /// Returns a JSON-serialized `MobiusTransformation` object.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -517,7 +379,7 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn mobius_transformation_new_json(
     a_json: *const c_char,
 
@@ -527,87 +389,53 @@ pub unsafe extern "C" fn mobius_transformation_new_json(
 
     d_json: *const c_char,
 ) -> *mut c_char {
-
-    let a: Expr = match from_json_string(
-        a_json,
-    ) {
+    let a: Expr = match from_json_string(a_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let b: Expr = match from_json_string(
-        b_json,
-    ) {
+    let b: Expr = match from_json_string(b_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let c: Expr = match from_json_string(
-        c_json,
-    ) {
+    let c: Expr = match from_json_string(c_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let d: Expr = match from_json_string(
-        d_json,
-    ) {
+    let d: Expr = match from_json_string(d_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let mobius =
-        MobiusTransformation::new(
-            a, b, c, d,
-        );
+    let mobius = MobiusTransformation::new(a, b, c, d);
 
     to_json_string(&mobius)
 }
 
 /// Creates an identity `MobiusTransformation` object.
-
-///
-
 /// Returns a JSON-serialized identity `MobiusTransformation` object.
-
 #[unsafe(no_mangle)]
-
-pub extern "C" fn mobius_transformation_identity_json()
--> *mut c_char {
-
-    let mobius =
-        MobiusTransformation::identity(
-        );
+pub extern "C" fn mobius_transformation_identity_json() -> *mut c_char {
+    let mobius = MobiusTransformation::identity();
 
     to_json_string(&mobius)
 }
 
 /// Applies a Mobius Transformation to a complex number.
-
 ///
-
 /// Takes a JSON-serialized `MobiusTransformation` object and a JSON-serialized `Expr` representing the complex number `z`.
-
 /// Returns a JSON-serialized `Expr` representing the result of the transformation.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -615,26 +443,21 @@ pub extern "C" fn mobius_transformation_identity_json()
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn mobius_transformation_apply_json(
     mobius_json: *const c_char,
 
     z_json: *const c_char,
 ) -> *mut c_char {
-
-    let mobius : MobiusTransformation = match from_json_string(mobius_json) {
+    let mobius: MobiusTransformation = match from_json_string(mobius_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let z: Expr = match from_json_string(
-        z_json,
-    ) {
+    let z: Expr = match from_json_string(z_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
@@ -644,15 +467,9 @@ pub unsafe extern "C" fn mobius_transformation_apply_json(
 }
 
 /// Composes two Mobius Transformations.
-
-///
-
 /// Takes two JSON-serialized `MobiusTransformation` objects.
-
 /// Returns a JSON-serialized `MobiusTransformation` object representing their composition.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -660,39 +477,31 @@ pub unsafe extern "C" fn mobius_transformation_apply_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn mobius_transformation_compose_json(
     mobius1_json: *const c_char,
 
     mobius2_json: *const c_char,
 ) -> *mut c_char {
-
-    let mobius1 : MobiusTransformation = match from_json_string(mobius1_json) {
+    let mobius1: MobiusTransformation = match from_json_string(mobius1_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let mobius2 : MobiusTransformation = match from_json_string(mobius2_json) {
+    let mobius2: MobiusTransformation = match from_json_string(mobius2_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        mobius1.compose(&mobius2);
+    let result = mobius1.compose(&mobius2);
 
     to_json_string(&result)
 }
 
 /// Computes the inverse of a Mobius Transformation.
-
-///
-
 /// Takes a JSON-serialized `MobiusTransformation` object.
-
 /// Returns a JSON-serialized `MobiusTransformation` object representing the inverse.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -700,12 +509,11 @@ pub unsafe extern "C" fn mobius_transformation_compose_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn mobius_transformation_inverse_json(
     mobius_json: *const c_char
 ) -> *mut c_char {
-
-    let mobius : MobiusTransformation = match from_json_string(mobius_json) {
+    let mobius: MobiusTransformation = match from_json_string(mobius_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
@@ -716,17 +524,11 @@ pub unsafe extern "C" fn mobius_transformation_inverse_json(
 }
 
 /// Applies Cauchy's Integral Formula to a function at a given point.
-
 ///
-
 /// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
-
 /// and a JSON-serialized `Expr` for the point `z0`.
-
 /// Returns a JSON-serialized `Expr` representing the result of the integral.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -734,12 +536,12 @@ pub unsafe extern "C" fn mobius_transformation_inverse_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn cauchy_integral_formula_json(
     func_json: *const c_char,
 
@@ -747,44 +549,32 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
 
     z0_json: *const c_char,
 ) -> *mut c_char {
-
     unsafe {
+        let func: Expr = match from_json_string(func_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let func : Expr = match from_json_string(func_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
+        let z0: Expr = match from_json_string(z0_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let z0 : Expr = match from_json_string(z0_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
-
-        let result = crate::symbolic::complex_analysis::cauchy_integral_formula(&func, var_str, &z0);
+        let result =
+            crate::symbolic::complex_analysis::cauchy_integral_formula(&func, var_str, &z0);
 
         to_json_string(&result)
     }
 }
 
 /// Applies Cauchy's Derivative Formula to compute the nth derivative of a function at a given point.
-
 ///
-
 /// Takes a JSON-serialized `Expr` (the function), a C-style string for the variable,
-
 /// a JSON-serialized `Expr` for the point `z0`, and an integer `n` for the order of the derivative.
-
 /// Returns a JSON-serialized `Expr` representing the nth derivative.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -792,12 +582,12 @@ pub unsafe extern "C" fn cauchy_integral_formula_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn cauchy_derivative_formula_json(
     func_json: *const c_char,
 
@@ -807,47 +597,30 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
 
     n: usize,
 ) -> *mut c_char {
-
     unsafe {
+        let func: Expr = match from_json_string(func_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let func : Expr = match from_json_string(func_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
+        let z0: Expr = match from_json_string(z0_json) {
+            | Some(e) => e,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let z0 : Expr = match from_json_string(z0_json) {
-        | Some(e) => e,
-        | None => return std::ptr::null_mut(),
-    };
-
-        let result = crate::symbolic::complex_analysis::cauchy_derivative_formula(
-        &func,
-        var_str,
-        &z0,
-        n,
-    );
+        let result =
+            crate::symbolic::complex_analysis::cauchy_derivative_formula(&func, var_str, &z0, n);
 
         to_json_string(&result)
     }
 }
 
 /// Computes the complex exponential of a given complex number.
-
-///
-
 /// Takes a JSON-serialized `Expr` representing the complex number `z`.
-
 /// Returns a JSON-serialized `Expr` representing `e^z`.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -855,19 +628,12 @@ pub unsafe extern "C" fn cauchy_derivative_formula_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn complex_exp_json(
-    z_json: *const c_char
-) -> *mut c_char {
-
-    let z: Expr = match from_json_string(
-        z_json,
-    ) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn complex_exp_json(z_json: *const c_char) -> *mut c_char {
+    let z: Expr = match from_json_string(z_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
@@ -877,15 +643,9 @@ pub unsafe extern "C" fn complex_exp_json(
 }
 
 /// Computes the complex natural logarithm of a given complex number.
-
-///
-
 /// Takes a JSON-serialized `Expr` representing the complex number `z`.
-
 /// Returns a JSON-serialized `Expr` representing `ln(z)`.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -893,19 +653,12 @@ pub unsafe extern "C" fn complex_exp_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn complex_log_json(
-    z_json: *const c_char
-) -> *mut c_char {
-
-    let z: Expr = match from_json_string(
-        z_json,
-    ) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn complex_log_json(z_json: *const c_char) -> *mut c_char {
+    let z: Expr = match from_json_string(z_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
@@ -915,15 +668,9 @@ pub unsafe extern "C" fn complex_log_json(
 }
 
 /// Computes the argument (phase angle) of a given complex number.
-
-///
-
 /// Takes a JSON-serialized `Expr` representing the complex number `z`.
-
 /// Returns a JSON-serialized `Expr` representing the argument of `z`.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -931,19 +678,12 @@ pub unsafe extern "C" fn complex_log_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn complex_arg_json(
-    z_json: *const c_char
-) -> *mut c_char {
-
-    let z: Expr = match from_json_string(
-        z_json,
-    ) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn complex_arg_json(z_json: *const c_char) -> *mut c_char {
+    let z: Expr = match from_json_string(z_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
@@ -953,15 +693,9 @@ pub unsafe extern "C" fn complex_arg_json(
 }
 
 /// Computes the modulus (magnitude) of a given complex number.
-
-///
-
 /// Takes a JSON-serialized `Expr` representing the complex number `z`.
-
 /// Returns a JSON-serialized `Expr` representing the modulus of `z`.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -969,19 +703,12 @@ pub unsafe extern "C" fn complex_arg_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn complex_modulus_json(
-    z_json: *const c_char
-) -> *mut c_char {
-
-    let z: Expr = match from_json_string(
-        z_json,
-    ) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn complex_modulus_json(z_json: *const c_char) -> *mut c_char {
+    let z: Expr = match from_json_string(z_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 

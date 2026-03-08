@@ -2,9 +2,7 @@
 //! Responsible for loading, managing, and interacting with plugins.
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
-#![allow(
-    clippy::no_mangle_with_rust_abi
-)]
+#![allow(clippy::no_mangle_with_rust_abi)]
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -22,15 +20,8 @@ use libloading::Library;
 use libloading::Symbol;
 
 /// Global instance of the PluginManager for FFI access.
-
-pub static GLOBAL_PLUGIN_MANAGER:
-    LazyLock<RwLock<PluginManager>> =
-    LazyLock::new(|| {
-
-        RwLock::new(
-            PluginManager::empty(),
-        )
-    });
+pub static GLOBAL_PLUGIN_MANAGER: LazyLock<RwLock<PluginManager>> =
+    LazyLock::new(|| RwLock::new(PluginManager::empty()));
 
 use crate::plugins::plugin_c::Plugin;
 use crate::plugins::plugin_c::PluginError;
@@ -42,11 +33,7 @@ use crate::symbolic::core::Expr;
 ///
 /// Each plugin library must export a C-compatible function named `_plugin_create`
 /// with this signature, returning a pointer to a Box containing the plugin trait object.
-
-type PluginCreate =
-    unsafe extern "C" fn() -> *mut Box<
-        dyn Plugin,
-    >;
+type PluginCreate = unsafe extern "C" fn() -> *mut Box<dyn Plugin>;
 
 use abi_stable::std_types::RBox;
 
@@ -56,7 +43,6 @@ use crate::plugins::stable_abi::StablePlugin_TO;
 use crate::plugins::stable_abi::StablePluginModule;
 
 /// Holds the plugin instance and its current health state.
-
 pub struct ManagedPlugin {
     /// The plugin instance
     pub plugin: Box<dyn Plugin>,
@@ -65,41 +51,21 @@ pub struct ManagedPlugin {
 }
 
 /// A plugin that is managed by the plugin manager.
-
 pub struct ManagedStablePlugin {
     /// The plugin instance.
-    pub plugin: StablePlugin_TO<
-        'static,
-        RBox<()>,
-    >,
+    pub plugin: StablePlugin_TO<'static, RBox<()>>,
     /// The plugin's health status.
     pub health: RwLock<PluginHealth>,
 }
 
 /// Manages the lifecycle of all loaded plugins.
-
 pub struct PluginManager {
     /// A map of plugin names to their managed instances.
-    pub plugins: Arc<
-        RwLock<
-            HashMap<
-                String,
-                ManagedPlugin,
-            >,
-        >,
-    >,
+    pub plugins: Arc<RwLock<HashMap<String, ManagedPlugin>>>,
     /// A map of stable plugin names to their managed instances.
-    pub stable_plugins: Arc<
-        RwLock<
-            HashMap<
-                String,
-                ManagedStablePlugin,
-            >,
-        >,
-    >,
+    pub stable_plugins: Arc<RwLock<HashMap<String, ManagedStablePlugin>>>,
     /// The handle to the health check thread.
-    pub health_check_thread:
-        Option<thread::JoinHandle<()>>,
+    pub health_check_thread: Option<thread::JoinHandle<()>>,
     /// A signal to stop the health check thread.
     pub stop_signal: Arc<AtomicBool>,
     /// A list of loaded libraries.
@@ -108,26 +74,13 @@ pub struct PluginManager {
 
 impl PluginManager {
     /// Creates a new `PluginManager` without loading any plugins.
-
     #[must_use]
-
     pub fn empty() -> Self {
-
         Self {
-            plugins: Arc::new(
-                RwLock::new(
-                    HashMap::new(),
-                ),
-            ),
-            stable_plugins: Arc::new(
-                RwLock::new(
-                    HashMap::new(),
-                ),
-            ),
+            plugins: Arc::new(RwLock::new(HashMap::new())),
+            stable_plugins: Arc::new(RwLock::new(HashMap::new())),
             health_check_thread: None,
-            stop_signal: Arc::new(
-                AtomicBool::new(false),
-            ),
+            stop_signal: Arc::new(AtomicBool::new(false)),
             libraries: Vec::new(),
         }
     }
@@ -138,36 +91,18 @@ impl PluginManager {
     ///
     /// This function will return an error if it fails to load plugins from the
     /// specified directory.
-
-    pub fn new(
-        plugin_dir: &str
-    ) -> Result<Self, Box<dyn Error>>
-    {
-
+    pub fn new(plugin_dir: &str) -> Result<Self, Box<dyn Error>> {
         let mut manager = Self {
-            plugins: Arc::new(
-                RwLock::new(
-                    HashMap::new(),
-                ),
-            ),
-            stable_plugins: Arc::new(
-                RwLock::new(
-                    HashMap::new(),
-                ),
-            ),
+            plugins: Arc::new(RwLock::new(HashMap::new())),
+            stable_plugins: Arc::new(RwLock::new(HashMap::new())),
             health_check_thread: None,
-            stop_signal: Arc::new(
-                AtomicBool::new(false),
-            ),
+            stop_signal: Arc::new(AtomicBool::new(false)),
             libraries: Vec::new(),
         };
 
-        manager
-            .load_plugins(plugin_dir)?;
+        manager.load_plugins(plugin_dir)?;
 
-        manager.start_health_checks(
-            Duration::from_secs(30),
-        );
+        manager.start_health_checks(Duration::from_secs(30));
 
         Ok(manager)
     }
@@ -193,23 +128,19 @@ impl PluginManager {
     ///
     /// This function may panic if the internal `RwLock` protecting the plugin maps
     /// is poisoned (e.g., a thread holding the lock has panicked).
-
     pub fn execute_plugin(
         &self,
         plugin_name: &str,
         command: &str,
         args: &Expr,
     ) -> Result<Expr, PluginError> {
-
-        if let Some(managed_plugin) =
-            self.stable_plugins
-                .read()
-                .expect("Lock poisoned")
-                .get(plugin_name)
+        if let Some(managed_plugin) = self
+            .stable_plugins
+            .read()
+            .expect("Lock poisoned")
+            .get(plugin_name)
         {
-
-            let config =
-                config::standard();
+            let config = config::standard();
 
             let args_vec = serde::encode_to_vec(args, config).map_err(|e| {
                 PluginError::new(PluginErrorKind::SerializationError, &e.to_string())
@@ -221,25 +152,15 @@ impl PluginManager {
                 .into_result()
                 .map_err(|e| PluginError::new(PluginErrorKind::ExecutionFailed, &e.to_string()))?;
 
-            let (result_expr, _) = serde::decode_from_slice(&result_vec, config)
-                .map_err(|e| PluginError::new(PluginErrorKind::SerializationError, &e.to_string()))?;
+            let (result_expr, _) = serde::decode_from_slice(&result_vec, config).map_err(|e| {
+                PluginError::new(PluginErrorKind::SerializationError, &e.to_string())
+            })?;
 
             return Ok(result_expr);
         }
 
-        if let Some(managed_plugin) =
-            self.plugins
-                .read()
-                .expect("Lock poisoned")
-                .get(plugin_name)
-        {
-
-            return managed_plugin
-                .plugin
-                .execute(
-                    command,
-                    args,
-                );
+        if let Some(managed_plugin) = self.plugins.read().expect("Lock poisoned").get(plugin_name) {
+            return managed_plugin.plugin.execute(command, args);
         }
 
         Err(PluginError::new(
@@ -253,28 +174,19 @@ impl PluginManager {
     /// # Panics
     ///
     /// Panics if the internal `RwLock` for plugins is poisoned.
-
     pub fn register_plugin(
         &self,
         plugin: Box<dyn Plugin>,
     ) {
+        let name = plugin.name().to_string();
 
-        let name = plugin
-            .name()
-            .to_string();
-
-        let mut plugins_map = self
-            .plugins
-            .write()
-            .expect("Lock poisoned");
+        let mut plugins_map = self.plugins.write().expect("Lock poisoned");
 
         plugins_map.insert(
             name,
             ManagedPlugin {
                 plugin,
-                health: RwLock::new(
-                    PluginHealth::Ok,
-                ),
+                health: RwLock::new(PluginHealth::Ok),
             },
         );
     }
@@ -285,20 +197,10 @@ impl PluginManager {
     ///
     /// Panics if the internal `RwLock` for plugins or stable plugins is poisoned.
     #[must_use]
-
-    pub fn get_loaded_plugin_names(
-        &self
-    ) -> Vec<String> {
-
+    pub fn get_loaded_plugin_names(&self) -> Vec<String> {
         let mut names = Vec::new();
 
-        names.extend(
-            self.plugins
-                .read()
-                .expect("Lock poisoned")
-                .keys()
-                .cloned(),
-        );
+        names.extend(self.plugins.read().expect("Lock poisoned").keys().cloned());
 
         names.extend(
             self.stable_plugins
@@ -317,12 +219,10 @@ impl PluginManager {
     ///
     /// Panics if the internal `RwLock` for plugins or stable plugins is poisoned.
     #[must_use]
-
     pub fn unload_plugin(
         &self,
         name: &str,
     ) -> bool {
-
         if self
             .plugins
             .write()
@@ -330,7 +230,6 @@ impl PluginManager {
             .remove(name)
             .is_some()
         {
-
             return true;
         }
 
@@ -347,36 +246,14 @@ impl PluginManager {
     ///
     /// Panics if the internal `RwLock` for plugins is poisoned.
     #[must_use]
-
-    pub fn get_plugin_metadata(
-        &self
-    ) -> HashMap<
-        String,
-        HashMap<String, String>,
-    > {
-
-        let mut all_metadata =
-            HashMap::new();
+    pub fn get_plugin_metadata(&self) -> HashMap<String, HashMap<String, String>> {
+        let mut all_metadata = HashMap::new();
 
         {
+            let plugins_map = self.plugins.read().expect("Lock poisoned");
 
-            let plugins_map = self
-                .plugins
-                .read()
-                .expect(
-                    "Lock poisoned",
-                );
-
-            for (name, managed) in
-                plugins_map.iter()
-            {
-
-                all_metadata.insert(
-                    name.clone(),
-                    managed
-                        .plugin
-                        .metadata(),
-                );
+            for (name, managed) in plugins_map.iter() {
+                all_metadata.insert(name.clone(), managed.plugin.metadata());
             }
         }
 
@@ -384,17 +261,11 @@ impl PluginManager {
     }
 
     /// Scans a directory for dynamic libraries and attempts to load them as plugins.
-
     pub(crate) fn load_plugins(
         &mut self,
         directory: &str,
-    ) -> Result<(), Box<dyn Error>>
-    {
-
-        for entry in std::fs::read_dir(
-            directory,
-        )? {
-
+    ) -> Result<(), Box<dyn Error>> {
+        for entry in std::fs::read_dir(directory)? {
             let entry = entry?;
 
             let path = entry.path();
@@ -404,19 +275,10 @@ impl PluginManager {
                     .extension()
                     .is_some_and(|ext| ext == std::env::consts::DLL_EXTENSION)
             {
-
-                println!(
-                    "Attempting to load plugin: {:?}",
-                    path.display()
-                );
+                println!("Attempting to load plugin: {:?}", path.display());
 
                 unsafe {
-
-                    if self
-                        .load_stable_plugin(&path)
-                        .is_err()
-                    {
-
+                    if self.load_stable_plugin(&path).is_err() {
                         self.load_plugin(&path)?;
                     }
                 }
@@ -441,113 +303,68 @@ impl PluginManager {
     /// This function will panic if:
     /// - `self.libraries.last()` returns `None`, indicating an internal logic error where a library was added but not found.
     /// - The `RwLock` for `self.stable_plugins` is poisoned.
-
     unsafe fn load_stable_plugin(
         &mut self,
         library_path: &std::path::Path,
-    ) -> Result<(), Box<dyn Error>>
-    {
-
+    ) -> Result<(), Box<dyn Error>> {
         unsafe {
+            let library = Library::new(library_path)?;
 
-            let library = Library::new(
-                library_path,
-            )?;
+            self.libraries.push(library);
 
-            self.libraries
-                .push(library);
+            let library = self.libraries.last().expect("Library invalid");
 
-            let library = self
-                .libraries
-                .last()
-                .expect(
-                    "Library invalid",
-                );
-
-            let module: Symbol<
-            '_,
-            *const StablePluginModule,
-        > = library.get(
-            b"STABLE_PLUGIN_MODULE",
-        )?;
+            let module: Symbol<'_, *const StablePluginModule> =
+                library.get(b"STABLE_PLUGIN_MODULE")?;
 
             let module = &**module;
 
             let plugin = (module.new)();
 
-            let plugin_name =
-                (module.name)();
+            let plugin_name = (module.name)();
 
-            let plugin_api_version =
-                (module.version)();
+            let plugin_api_version = (module.version)();
 
-            let crate_version = env!(
-                "CARGO_PKG_VERSION"
-            );
+            let crate_version = env!("CARGO_PKG_VERSION");
 
-            let (p_major, p_minor) =
-                parse_version(
-                    &plugin_api_version,
-                )?;
+            let (p_major, p_minor) = parse_version(&plugin_api_version)?;
 
-            let (c_major, c_minor) =
-                parse_version(
-                    crate_version,
-                )?;
+            let (c_major, c_minor) = parse_version(crate_version)?;
 
-            if p_major != c_major
-                || p_minor != c_minor
-            {
-
+            if p_major != c_major || p_minor != c_minor {
                 return Err(format!(
-                "Plugin '{plugin_name}' has \
+                    "Plugin '{plugin_name}' has \
                  incompatible API \
                  version {plugin_api_version}. Expected \
                  a version compatible \
                  with {crate_version}."
-            )
-            .into());
+                )
+                .into());
             }
 
             println!(
-            "Successfully loaded \
+                "Successfully loaded \
              stable plugin: {plugin_name} (API \
              version: {plugin_api_version})"
-        );
+            );
 
-            plugin
-                .on_load()
-                .into_result()
-                .map_err(|e| {
+            plugin.on_load().into_result().map_err(|e| e.to_string())?;
 
-                    e.to_string()
-                })?;
-
-            let managed_plugin =
-            ManagedStablePlugin {
+            let managed_plugin = ManagedStablePlugin {
                 plugin,
-                health: RwLock::new(
-                    PluginHealth::Ok,
-                ),
+                health: RwLock::new(PluginHealth::Ok),
             };
 
             self.stable_plugins
                 .write()
-                .expect(
-                    "Unexpected Error",
-                )
-                .insert(
-                    plugin_name
-                        .to_string(),
-                    managed_plugin,
-                );
+                .expect("Unexpected Error")
+                .insert(plugin_name.to_string(), managed_plugin);
 
             Ok(())
         }
     }
 
     /// Loads a single plugin from a dynamic library file.
-
     /// Loads a standard plugin from a dynamic library file.
     ///
     /// # Errors
@@ -563,77 +380,44 @@ impl PluginManager {
     /// This function will panic if:
     /// - `self.libraries.last()` returns `None`, indicating an internal logic error where a library was added but not found.
     /// - The `RwLock` for `self.plugins` is poisoned.
-
     unsafe fn load_plugin(
         &mut self,
         library_path: &std::path::Path,
-    ) -> Result<(), Box<dyn Error>>
-    {
-
+    ) -> Result<(), Box<dyn Error>> {
         unsafe {
+            let library = Library::new(library_path)?;
 
-            let library = Library::new(
-                library_path,
-            )?;
+            self.libraries.push(library);
 
-            self.libraries
-                .push(library);
+            let library = self.libraries.last().expect("Library invalid");
 
-            let library = self
-                .libraries
-                .last()
-                .expect(
-                    "Library invalid",
-                );
+            let constructor: Symbol<'_, PluginCreate> = library.get(b"_plugin_create")?;
 
-            let constructor: Symbol<
-                '_,
-                PluginCreate,
-            > = library.get(
-                b"_plugin_create",
-            )?;
+            let plugin_box_ptr = constructor();
 
-            let plugin_box_ptr =
-                constructor();
-
-            let plugin_box =
-                Box::from_raw(
-                    plugin_box_ptr,
-                );
+            let plugin_box = Box::from_raw(plugin_box_ptr);
 
             let plugin = *plugin_box;
 
-            let plugin_api_version =
-                plugin.api_version();
+            let plugin_api_version = plugin.api_version();
 
-            let crate_version = env!(
-                "CARGO_PKG_VERSION"
-            );
+            let crate_version = env!("CARGO_PKG_VERSION");
 
-            let (p_major, p_minor) =
-                parse_version(
-                    plugin_api_version,
-                )?;
+            let (p_major, p_minor) = parse_version(plugin_api_version)?;
 
-            let (c_major, c_minor) =
-                parse_version(
-                    crate_version,
-                )?;
+            let (c_major, c_minor) = parse_version(crate_version)?;
 
-            if p_major != c_major
-                || p_minor != c_minor
-            {
-
+            if p_major != c_major || p_minor != c_minor {
                 return Err(format!(
-                "Plugin '{}' has \
+                    "Plugin '{}' has \
                  incompatible API \
                  version {}. Expected \
                  a version compatible \
                  with {}.",
-                plugin.name(),
-                plugin_api_version,
-                crate_version
-            )
+                    plugin.name(),
+                    plugin_api_version,
+                    crate_version
+                )
                 .into());
             }
 
@@ -647,67 +431,39 @@ impl PluginManager {
 
             plugin.on_load()?;
 
-            let managed_plugin =
-            ManagedPlugin {
+            let managed_plugin = ManagedPlugin {
                 plugin,
-                health: RwLock::new(
-                    PluginHealth::Ok,
-                ),
+                health: RwLock::new(PluginHealth::Ok),
             };
 
             self.plugins
                 .write()
-                .expect(
-                    "Unexpected Error",
-                )
-                .insert(
-                    managed_plugin
-                        .plugin
-                        .name()
-                        .to_string(),
-                    managed_plugin,
-                );
+                .expect("Unexpected Error")
+                .insert(managed_plugin.plugin.name().to_string(), managed_plugin);
 
             Ok(())
         }
     }
 
     /// Spawns a background thread to periodically perform health checks on all plugins.
-
     pub(crate) fn start_health_checks(
         &mut self,
         interval: Duration,
     ) {
+        let plugins_clone = Arc::clone(&self.plugins);
 
-        let plugins_clone =
-            Arc::clone(&self.plugins);
+        let stable_plugins_clone = Arc::clone(&self.stable_plugins);
 
-        let stable_plugins_clone =
-            Arc::clone(
-                &self.stable_plugins,
-            );
+        let stop_signal_clone = Arc::clone(&self.stop_signal);
 
-        let stop_signal_clone =
-            Arc::clone(
-                &self.stop_signal,
-            );
-
-        let handle = thread::spawn(
-            move || {
-
-                while !stop_signal_clone.load(Ordering::SeqCst) {
-
+        let handle = thread::spawn(move || {
+            while !stop_signal_clone.load(Ordering::SeqCst) {
                 println!("Running plugin health checks...");
 
-                let plugins_map = plugins_clone
-                    .read()
-                    .expect("No data was found.");
+                let plugins_map = plugins_clone.read().expect("No data was found.");
 
                 for (_name, managed_plugin) in plugins_map.iter() {
-
-                    let new_health = managed_plugin
-                        .plugin
-                        .health_check();
+                    let new_health = managed_plugin.plugin.health_check();
 
                     let mut health_writer = managed_plugin
                         .health
@@ -719,20 +475,15 @@ impl PluginManager {
 
                 drop(plugins_map);
 
-                let stable_plugins_map = stable_plugins_clone
-                    .read()
-                    .expect("No data was found.");
+                let stable_plugins_map = stable_plugins_clone.read().expect("No data was found.");
 
                 for (_name, managed_plugin) in stable_plugins_map.iter() {
-
                     let new_health = managed_plugin
                         .plugin
                         .health_check()
                         .into_result()
                         .unwrap_or(PluginHealth::Error(
-                            "Health check failed"
-                                .to_string()
-                                .into(),
+                            "Health check failed".to_string().into(),
                         ));
 
                     let mut health_writer = managed_plugin
@@ -748,74 +499,50 @@ impl PluginManager {
                 thread::sleep(interval);
             }
 
-                println!(
-                    "Plugin health \
+            println!(
+                "Plugin health \
                      check thread \
                      shutting down."
-                );
-            },
-        );
+            );
+        });
 
-        self.health_check_thread =
-            Some(handle);
+        self.health_check_thread = Some(handle);
     }
 }
 
 impl Drop for PluginManager {
     fn drop(&mut self) {
-
         println!(
             "Shutting down plugin \
              manager..."
         );
 
-        self.stop_signal
-            .store(
-                true,
-                Ordering::SeqCst,
-            );
+        self.stop_signal.store(true, Ordering::SeqCst);
 
-        if let Some(handle) = self
-            .health_check_thread
-            .take()
-        {
-
-            handle
-                .join()
-                .expect(
-                    "Failed to join \
+        if let Some(handle) = self.health_check_thread.take() {
+            handle.join().expect(
+                "Failed to join \
                      health check \
                      thread",
-                );
+            );
         }
 
-        println!(
-            "Plugin manager shut down."
-        );
+        println!("Plugin manager shut down.");
     }
 }
 
 /// A helper to parse a semantic version string into (major, minor) components.
-
-pub(crate) fn parse_version(
-    version: &str
-) -> Result<(u32, u32), Box<dyn Error>>
-{
-
+pub(crate) fn parse_version(version: &str) -> Result<(u32, u32), Box<dyn Error>> {
     let mut parts = version.split('.');
 
     let major = parts
         .next()
-        .ok_or(
-            "Invalid version string",
-        )?
+        .ok_or("Invalid version string")?
         .parse::<u32>()?;
 
     let minor = parts
         .next()
-        .ok_or(
-            "Invalid version string",
-        )?
+        .ok_or("Invalid version string")?
         .parse::<u32>()?;
 
     Ok((major, minor))

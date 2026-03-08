@@ -9,108 +9,69 @@ use crate::numerical::transforms::ifft;
 use crate::numerical::transforms::ifft_slice;
 
 /// Transposes a 2D matrix represented as a flat Vec.
-
-pub(crate) fn transpose<
-    T: Clone + Default + Send + Sync,
->(
+pub(crate) fn transpose<T: Clone + Default + Send + Sync>(
     data: &[T],
     width: usize,
     height: usize,
 ) -> Vec<T> {
-
-    let mut transposed = vec![
-            T::default();
-            width * height
-        ];
+    let mut transposed = vec![T::default(); width * height];
 
     transposed
         .par_iter_mut()
         .enumerate()
         .for_each(|(idx, val)| {
-
             let i = idx / height;
 
             let j = idx % height;
 
             // transposed[i * height + j] comes from data[j * width + i]
-            *val = data[j * width + i]
-                .clone();
+            *val = data[j * width + i].clone();
         });
 
     transposed
 }
 
 /// Performs a 2D FFT by applying 1D FFT along rows and then columns.
-
 pub fn fft2d(
     data: &mut Vec<Complex<f64>>,
     width: usize,
     height: usize,
 ) {
+    data.par_chunks_mut(width).for_each(fft_slice);
 
-    data.par_chunks_mut(width)
-        .for_each(fft_slice);
+    let mut transposed = transpose(data, width, height);
 
-    let mut transposed =
-        transpose(data, width, height);
+    transposed.par_chunks_mut(height).for_each(fft_slice);
 
-    transposed
-        .par_chunks_mut(height)
-        .for_each(fft_slice);
-
-    *data = transpose(
-        &transposed,
-        height,
-        width,
-    );
+    *data = transpose(&transposed, height, width);
 }
 
 /// Performs a 2D IFFT.
-
 pub fn ifft2d(
     data: &mut Vec<Complex<f64>>,
     width: usize,
     height: usize,
 ) {
+    data.par_chunks_mut(width).for_each(ifft_slice);
 
-    data.par_chunks_mut(width)
-        .for_each(ifft_slice);
+    let mut transposed = transpose(data, width, height);
 
-    let mut transposed =
-        transpose(data, width, height);
+    transposed.par_chunks_mut(height).for_each(ifft_slice);
 
-    transposed
-        .par_chunks_mut(height)
-        .for_each(ifft_slice);
-
-    *data = transpose(
-        &transposed,
-        height,
-        width,
-    );
+    *data = transpose(&transposed, height, width);
 }
 
 /// Creates a 1D wavenumber grid for FFT.
-
 pub(crate) fn create_k_grid(
     n: usize,
     dx: f64,
 ) -> Vec<f64> {
+    let dk = 2.0 * std::f64::consts::PI / (n as f64 * dx);
 
-    let dk = 2.0 * std::f64::consts::PI
-        / (n as f64 * dx);
+    let mut k: Vec<f64> = (0..n / 2).map(|i| i as f64 * dk).collect();
 
-    let mut k: Vec<f64> = (0 .. n / 2)
-        .map(|i| i as f64 * dk)
-        .collect();
-
-    let mut k_neg: Vec<f64> = (0 .. n
-        / 2)
-        .map(|i| {
-
-            -(n as f64 / 2.0 - i as f64)
-                * dk
-        })
+    let mut k_neg: Vec<f64> = (0..n / 2)
+        .map(|i| -(n as f64 / 2.0 - i as f64) * dk)
         .collect();
 
     k.append(&mut k_neg);
@@ -119,9 +80,7 @@ pub(crate) fn create_k_grid(
 }
 
 /// Solves the 1D advection-diffusion equation (`u_t` + c*`u_x` = D*`u_xx`) using a Fourier spectral method.
-
 #[must_use]
-
 pub fn solve_advection_diffusion_1d(
     initial_condition: &[f64],
     dx: f64,
@@ -130,92 +89,57 @@ pub fn solve_advection_diffusion_1d(
     dt: f64,
     steps: usize,
 ) -> Vec<f64> {
-
     let n = initial_condition.len();
 
     let k = create_k_grid(n, dx);
 
-    let mut u_hat: Vec<Complex<f64>> =
-        initial_condition
-            .iter()
-            .map(|&v| {
-
-                Complex::new(v, 0.0)
-            })
-            .collect();
+    let mut u_hat: Vec<Complex<f64>> = initial_condition
+        .iter()
+        .map(|&v| Complex::new(v, 0.0))
+        .collect();
 
     fft(&mut u_hat);
 
-    for _ in 0 .. steps {
+    for _ in 0..steps {
+        u_hat.par_iter_mut().enumerate().for_each(|(i, val)| {
+            let ki = k[i];
 
-        u_hat
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, val)| {
+            let advection_term = Complex::new(0.0, -c * ki);
 
-                let ki = k[i];
+            let diffusion_term = Complex::new(-d * ki * ki, 0.0);
 
-                let advection_term = Complex::new(0.0, -c * ki);
+            let rhs = (advection_term + diffusion_term) * *val;
 
-                let diffusion_term = Complex::new(-d * ki * ki, 0.0);
-
-                let rhs = (advection_term + diffusion_term) * *val;
-
-                *val += rhs * dt;
-            });
+            *val += rhs * dt;
+        });
     }
 
     ifft(&mut u_hat);
 
-    u_hat
-        .into_iter()
-        .map(|v| v.re)
-        .collect()
+    u_hat.into_iter().map(|v| v.re).collect()
 }
 
 /// Example scenario for the 1D spectral solver.
-
 #[must_use]
-
-pub fn simulate_1d_advection_diffusion_scenario()
--> Vec<f64> {
-
+pub fn simulate_1d_advection_diffusion_scenario() -> Vec<f64> {
     const N: usize = 128;
 
-    const L: f64 =
-        2.0 * std::f64::consts::PI;
+    const L: f64 = 2.0 * std::f64::consts::PI;
 
     let dx = L / N as f64;
 
-    let x: Vec<f64> = (0 .. N)
-        .map(|i| i as f64 * dx)
-        .collect();
+    let x: Vec<f64> = (0..N).map(|i| i as f64 * dx).collect();
 
     let initial_condition: Vec<f64> = x
         .iter()
-        .map(|&v| {
-
-            (-(v - L / 2.0).powi(2)
-                / 0.5)
-                .exp()
-        })
+        .map(|&v| (-(v - L / 2.0).powi(2) / 0.5).exp())
         .collect();
 
-    solve_advection_diffusion_1d(
-        &initial_condition,
-        dx,
-        1.0,
-        0.01,
-        0.01,
-        200,
-    )
+    solve_advection_diffusion_1d(&initial_condition, dx, 1.0, 0.01, 0.01, 200)
 }
 
 /// Configuration for 2D advection-diffusion simulation.
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
-
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AdvectionDiffusionConfig {
     /// Number of grid points along the x-axis.
     pub width: usize,
@@ -236,95 +160,55 @@ pub struct AdvectionDiffusionConfig {
 }
 
 /// Solves the 2D advection-diffusion equation using a Fourier spectral method.
-
 #[must_use]
-
 pub fn solve_advection_diffusion_2d(
     initial_condition: &[f64],
     config: &AdvectionDiffusionConfig,
 ) -> Vec<f64> {
+    let kx = create_k_grid(config.width, config.dx);
 
-    let kx = create_k_grid(
-        config.width,
-        config.dx,
-    );
+    let ky = create_k_grid(config.height, config.dy);
 
-    let ky = create_k_grid(
-        config.height,
-        config.dy,
-    );
+    let mut u_hat: Vec<Complex<f64>> = initial_condition
+        .iter()
+        .map(|&v| Complex::new(v, 0.0))
+        .collect();
 
-    let mut u_hat: Vec<Complex<f64>> =
-        initial_condition
-            .iter()
-            .map(|&v| {
+    fft2d(&mut u_hat, config.width, config.height);
 
-                Complex::new(v, 0.0)
-            })
-            .collect();
+    for _ in 0..config.steps {
+        u_hat.par_iter_mut().enumerate().for_each(|(idx, val)| {
+            let i = idx % config.width;
 
-    fft2d(
-        &mut u_hat,
-        config.width,
-        config.height,
-    );
+            let j = idx / config.width;
 
-    for _ in 0 .. config.steps {
+            let kxi = kx[i];
 
-        u_hat
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(idx, val)| {
+            let kyj = ky[j];
 
-                let i = idx % config.width;
+            let advection_term = Complex::new(0.0, (-config.c.0).mul_add(kxi, -(config.c.1 * kyj)));
 
-                let j = idx / config.width;
+            let diffusion_term = Complex::new(-config.d * kxi.mul_add(kxi, kyj * kyj), 0.0);
 
-                let kxi = kx[i];
+            let rhs = (advection_term + diffusion_term) * *val;
 
-                let kyj = ky[j];
-
-                let advection_term = Complex::new(
-                    0.0,
-                    (-config.c.0).mul_add(kxi, -(config.c.1 * kyj)),
-                );
-
-                let diffusion_term = Complex::new(
-                    -config.d * kxi.mul_add(kxi, kyj * kyj),
-                    0.0,
-                );
-
-                let rhs = (advection_term + diffusion_term) * *val;
-
-                *val += rhs * config.dt;
-            });
+            *val += rhs * config.dt;
+        });
     }
 
-    ifft2d(
-        &mut u_hat,
-        config.width,
-        config.height,
-    );
+    ifft2d(&mut u_hat, config.width, config.height);
 
-    u_hat
-        .into_iter()
-        .map(|v| v.re)
-        .collect()
+    u_hat.into_iter().map(|v| v.re).collect()
 }
 
 /// Example scenario for the 2D spectrclsal solver.
-
 #[must_use]
-
-pub fn simulate_2d_advection_diffusion_scenario()
--> Vec<f64> {
-
+pub fn simulate_2d_advection_diffusion_scenario() -> Vec<f64> {
     const WIDTH: usize = 64;
 
     const HEIGHT: usize = 64;
 
-    const L: f64 =
-        2.0 * std::f64::consts::PI;
+    const L: f64 = 2.0 * std::f64::consts::PI;
 
     const NU: f64 = 0.01;
 
@@ -340,115 +224,65 @@ pub fn simulate_2d_advection_diffusion_scenario()
 
     let dy = L / HEIGHT as f64;
 
-    let config =
-        AdvectionDiffusionConfig {
-            width: WIDTH,
-            height: HEIGHT,
-            dx,
-            dy,
-            c: (U, V),
-            d: NU,
-            dt: DT,
-            steps: STEPS,
-        };
+    let config = AdvectionDiffusionConfig {
+        width: WIDTH,
+        height: HEIGHT,
+        dx,
+        dy,
+        c: (U, V),
+        d: NU,
+        dt: DT,
+        steps: STEPS,
+    };
 
-    let mut initial_condition =
-        vec![0.0; WIDTH * HEIGHT];
+    let mut initial_condition = vec![0.0; WIDTH * HEIGHT];
 
-    for j in 0 .. HEIGHT {
-
-        for i in 0 .. WIDTH {
-
+    for j in 0..HEIGHT {
+        for i in 0..WIDTH {
             let x = i as f64 * dx;
 
             let y = j as f64 * dy;
 
-            let val = (-(y - L / 2.0)
-                .mul_add(
-                    y - L / 2.0,
-                    (x - L / 2.0)
-                        .powi(2),
-                )
-                / 0.5)
-                .exp();
+            let val = (-(y - L / 2.0).mul_add(y - L / 2.0, (x - L / 2.0).powi(2)) / 0.5).exp();
 
-            initial_condition
-                [j * WIDTH + i] = val;
+            initial_condition[j * WIDTH + i] = val;
         }
     }
 
-    solve_advection_diffusion_2d(
-        &initial_condition,
-        &config,
-    )
+    solve_advection_diffusion_2d(&initial_condition, &config)
 }
 
 /// Performs a 3D FFT.
-
 pub fn fft3d(
     data: &mut Vec<Complex<f64>>,
     width: usize,
     height: usize,
     depth: usize,
 ) {
-
     let plane_size = width * height;
 
-    data.par_chunks_mut(width)
-        .for_each(fft_slice);
+    data.par_chunks_mut(width).for_each(fft_slice);
 
-    let mut transposed_xy = vec![
-            Complex::default();
-            data.len()
-        ];
+    let mut transposed_xy = vec![Complex::default(); data.len()];
 
-    for k in 0 .. depth {
+    for k in 0..depth {
+        let plane_slice = &data[k * plane_size..(k + 1) * plane_size];
 
-        let plane_slice = &data[k
-            * plane_size
-            .. (k + 1) * plane_size];
+        let mut transposed_plane = transpose(plane_slice, width, height);
 
-        let mut transposed_plane =
-            transpose(
-                plane_slice,
-                width,
-                height,
-            );
+        transposed_plane.par_chunks_mut(height).for_each(fft_slice);
 
-        transposed_plane
-            .par_chunks_mut(height)
-            .for_each(fft_slice);
+        let retransposed_plane = transpose(&transposed_plane, height, width);
 
-        let retransposed_plane =
-            transpose(
-                &transposed_plane,
-                height,
-                width,
-            );
-
-        transposed_xy[k * plane_size
-            .. (k + 1) * plane_size]
-            .copy_from_slice(
-                &retransposed_plane,
-            );
+        transposed_xy[k * plane_size..(k + 1) * plane_size].copy_from_slice(&retransposed_plane);
     }
 
     *data = transposed_xy;
 
-    let transposed_z: Vec<
-        Complex<f64>,
-    > = (0 .. plane_size)
+    let transposed_z: Vec<Complex<f64>> = (0..plane_size)
         .into_par_iter()
         .flat_map(|i| {
-
-            let mut z_col: Vec<_> = (0
-                .. depth)
-                .map(|k| {
-
-                    data[k * plane_size
-                        + i]
-                })
-                .collect();
+            let mut z_col: Vec<_> = (0..depth).map(|k| data[k * plane_size + i]).collect();
 
             fft(&mut z_col);
 
@@ -460,30 +294,18 @@ pub fn fft3d(
 }
 
 /// Performs a 3D IFFT.
-
 pub fn ifft3d(
     data: &mut Vec<Complex<f64>>,
     width: usize,
     height: usize,
     depth: usize,
 ) {
-
     let plane_size = width * height;
 
-    let transposed_z: Vec<
-        Complex<f64>,
-    > = (0 .. plane_size)
+    let transposed_z: Vec<Complex<f64>> = (0..plane_size)
         .into_par_iter()
         .flat_map(|i| {
-
-            let mut z_col: Vec<_> = (0
-                .. depth)
-                .map(|k| {
-
-                    data[k * plane_size
-                        + i]
-                })
-                .collect();
+            let mut z_col: Vec<_> = (0..depth).map(|k| data[k * plane_size + i]).collect();
 
             ifft(&mut z_col);
 
@@ -493,53 +315,27 @@ pub fn ifft3d(
 
     *data = transposed_z;
 
-    let mut transposed_xy = vec![
-            Complex::default();
-            data.len()
-        ];
+    let mut transposed_xy = vec![Complex::default(); data.len()];
 
-    for k in 0 .. depth {
+    for k in 0..depth {
+        let plane_slice = &data[k * plane_size..(k + 1) * plane_size];
 
-        let plane_slice = &data[k
-            * plane_size
-            .. (k + 1) * plane_size];
+        let mut transposed_plane = transpose(plane_slice, width, height);
 
-        let mut transposed_plane =
-            transpose(
-                plane_slice,
-                width,
-                height,
-            );
+        transposed_plane.par_chunks_mut(height).for_each(ifft_slice);
 
-        transposed_plane
-            .par_chunks_mut(height)
-            .for_each(ifft_slice);
+        let retransposed_plane = transpose(&transposed_plane, height, width);
 
-        let retransposed_plane =
-            transpose(
-                &transposed_plane,
-                height,
-                width,
-            );
-
-        transposed_xy[k * plane_size
-            .. (k + 1) * plane_size]
-            .copy_from_slice(
-                &retransposed_plane,
-            );
+        transposed_xy[k * plane_size..(k + 1) * plane_size].copy_from_slice(&retransposed_plane);
     }
 
     *data = transposed_xy;
 
-    data.par_chunks_mut(width)
-        .for_each(ifft_slice);
+    data.par_chunks_mut(width).for_each(ifft_slice);
 }
 
 /// Configuration for 3D advection-diffusion simulation.
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
-
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AdvectionDiffusionConfig3d {
     /// Number of grid points along the x-axis.
     pub width: usize,
@@ -564,166 +360,107 @@ pub struct AdvectionDiffusionConfig3d {
 }
 
 /// Solves the 3D advection-diffusion equation.
-
 #[must_use]
-
 pub fn solve_advection_diffusion_3d(
     initial_condition: &[f64],
     config: &AdvectionDiffusionConfig3d,
 ) -> Vec<f64> {
+    let kx = create_k_grid(config.width, config.dx);
 
-    let kx = create_k_grid(
-        config.width,
-        config.dx,
-    );
+    let ky = create_k_grid(config.height, config.dy);
 
-    let ky = create_k_grid(
-        config.height,
-        config.dy,
-    );
+    let kz = create_k_grid(config.depth, config.dz);
 
-    let kz = create_k_grid(
-        config.depth,
-        config.dz,
-    );
+    let mut u_hat: Vec<Complex<f64>> = initial_condition
+        .iter()
+        .map(|&v| Complex::new(v, 0.0))
+        .collect();
 
-    let mut u_hat: Vec<Complex<f64>> =
-        initial_condition
-            .iter()
-            .map(|&v| {
+    fft3d(&mut u_hat, config.width, config.height, config.depth);
 
-                Complex::new(v, 0.0)
-            })
-            .collect();
+    let plane_size = config.width * config.height;
 
-    fft3d(
-        &mut u_hat,
-        config.width,
-        config.height,
-        config.depth,
-    );
+    for _ in 0..config.steps {
+        u_hat.par_iter_mut().enumerate().for_each(|(idx, val)| {
+            let i = idx % config.width;
 
-    let plane_size =
-        config.width * config.height;
+            let j = (idx / config.width) % config.height;
 
-    for _ in 0 .. config.steps {
+            let k = idx / plane_size;
 
-        u_hat
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(idx, val)| {
+            let kxi = kx[i];
 
-                let i = idx % config.width;
+            let kyj = ky[j];
 
-                let j = (idx / config.width) % config.height;
+            let kzk = kz[k];
 
-                let k = idx / plane_size;
+            let advection = Complex::new(
+                0.0,
+                config
+                    .c
+                    .2
+                    .mul_add(-kzk, (-config.c.0).mul_add(kxi, -(config.c.1 * kyj))),
+            );
 
-                let kxi = kx[i];
+            let diffusion = Complex::new(
+                -config.d * kzk.mul_add(kzk, kyj.mul_add(kyj, kxi.powi(2))),
+                0.0,
+            );
 
-                let kyj = ky[j];
+            let rhs = (advection + diffusion) * *val;
 
-                let kzk = kz[k];
-
-                let advection = Complex::new(
-                    0.0,
-                    config.c.2.mul_add(-kzk, (-config.c.0).mul_add(kxi, -(config.c.1 * kyj))),
-                );
-
-                let diffusion = Complex::new(
-                    -config.d * kzk.mul_add(kzk, kyj.mul_add(kyj, kxi.powi(2))),
-                    0.0,
-                );
-
-                let rhs = (advection + diffusion) * *val;
-
-                *val += rhs * config.dt;
-            });
+            *val += rhs * config.dt;
+        });
     }
 
-    ifft3d(
-        &mut u_hat,
-        config.width,
-        config.height,
-        config.depth,
-    );
+    ifft3d(&mut u_hat, config.width, config.height, config.depth);
 
-    u_hat
-        .into_iter()
-        .map(|v| v.re)
-        .collect()
+    u_hat.into_iter().map(|v| v.re).collect()
 }
 
 /// Example scenario for the 3D spectral solver.
-
 #[must_use]
-
-pub fn simulate_3d_advection_diffusion_scenario()
--> Vec<f64> {
-
+pub fn simulate_3d_advection_diffusion_scenario() -> Vec<f64> {
     const N: usize = 16;
 
-    const L: f64 =
-        2.0 * std::f64::consts::PI;
+    const L: f64 = 2.0 * std::f64::consts::PI;
 
     let d = L / N as f64;
 
-    let config =
-        AdvectionDiffusionConfig3d {
-            width: N,
-            height: N,
-            depth: N,
-            dx: d,
-            dy: d,
-            dz: d,
-            c: (1.0, 0.5, 0.2),
-            d: 0.01,
-            dt: 0.005,
-            steps: 200,
-        };
+    let config = AdvectionDiffusionConfig3d {
+        width: N,
+        height: N,
+        depth: N,
+        dx: d,
+        dy: d,
+        dz: d,
+        c: (1.0, 0.5, 0.2),
+        d: 0.01,
+        dt: 0.005,
+        steps: 200,
+    };
 
-    let mut initial_condition =
-        vec![0.0; N * N * N];
+    let mut initial_condition = vec![0.0; N * N * N];
 
-    for k in 0 .. N {
-
-        for j in 0 .. N {
-
-            for i in 0 .. N {
-
+    for k in 0..N {
+        for j in 0..N {
+            for i in 0..N {
                 let x = i as f64 * d;
 
                 let y = j as f64 * d;
 
                 let z = k as f64 * d;
 
-                let val =
-                    (-(z - L / 2.0)
-                        .mul_add(
-                        z - L / 2.0,
-                        (y - L / 2.0)
-                            .mul_add(
-                            y - L / 2.0,
-                            (x - L
-                                / 2.0)
-                                .powi(
-                                    2,
-                                ),
-                        ),
-                    ) / 0.5)
-                        .exp();
+                let val = (-(z - L / 2.0).mul_add(
+                    z - L / 2.0,
+                    (y - L / 2.0).mul_add(y - L / 2.0, (x - L / 2.0).powi(2)),
+                ) / 0.5)
+                    .exp();
 
-                initial_condition[(k
-                    * N
-                    + j)
-                    * N
-                    + i] = val;
+                initial_condition[(k * N + j) * N + i] = val;
             }
         }
     }
 
-    solve_advection_diffusion_3d(
-        &initial_condition,
-        &config,
-    )
+    solve_advection_diffusion_3d(&initial_condition, &config)
 }

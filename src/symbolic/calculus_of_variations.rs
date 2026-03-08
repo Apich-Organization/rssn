@@ -40,7 +40,6 @@ use crate::symbolic::simplify_dag::simplify;
 /// ## Example: Free Particle
 /// The Lagrangian for a free particle of mass $m$ is $L = \frac{1}{2} m \dot{x}^2$.
 /// ```rust
-/// 
 /// use rssn::symbolic::calculus_of_variations::euler_lagrange;
 /// use rssn::symbolic::core::Expr;
 /// use std::sync::Arc;
@@ -55,83 +54,44 @@ use crate::symbolic::simplify_dag::simplify;
 ///
 /// // L = 1/2 * m * (x')^2
 /// let lagrangian = Expr::new_mul(
-///     Expr::new_mul(
-///         Expr::Constant(0.5),
-///         m,
-///     ),
-///     Expr::new_pow(
-///         &x_prime,
-///         Expr::Constant(2.0),
-///     ),
+///     Expr::new_mul(Expr::Constant(0.5), m),
+///     Expr::new_pow(&x_prime, Expr::Constant(2.0)),
 /// );
 ///
-/// let eq = euler_lagrange(
-///     &lagrangian,
-///     "x",
-///     "t",
-/// );
+/// let eq = euler_lagrange(&lagrangian, "x", "t");
 /// // Result should be simplified to: m * d^2x/dt^2
 /// ```
 #[must_use]
-
 pub fn euler_lagrange(
     lagrangian: &Expr,
     func: &str,
     var: &str,
 ) -> Expr {
+    let q = Expr::Variable(func.to_string());
 
-    let q = Expr::Variable(
-        func.to_string(),
-    );
+    let q_prime_str = format!("{func}__prime");
 
-    let q_prime_str =
-        format!("{func}__prime");
-
-    let q_prime_var = Expr::Variable(
-        q_prime_str.clone(),
-    );
+    let q_prime_var = Expr::Variable(q_prime_str.clone());
 
     // We need to substitute q' (which appears as Derivative(q, var) in the expression)
     // with a temporary variable q_prime_var to perform partial differentiation.
-    let q_prime_expr = Expr::Derivative(
-        Arc::new(q),
-        var.to_string(),
-    );
+    let q_prime_expr = Expr::Derivative(Arc::new(q), var.to_string());
 
-    let lagrangian_sub = crate::symbolic::calculus::substitute_expr(
-        lagrangian,
-        &q_prime_expr,
-        &q_prime_var,
-    );
+    let lagrangian_sub =
+        crate::symbolic::calculus::substitute_expr(lagrangian, &q_prime_expr, &q_prime_var);
 
-    let dl_dq = differentiate(
-        &lagrangian_sub,
-        func,
-    );
+    let dl_dq = differentiate(&lagrangian_sub, func);
 
-    let dl_dq_prime = differentiate(
-        &lagrangian_sub,
-        &q_prime_str,
-    );
+    let dl_dq_prime = differentiate(&lagrangian_sub, &q_prime_str);
 
     // Substitute q' back into the partial derivative result
-    let dl_dq_prime_full = crate::symbolic::calculus::substitute_expr(
-        &dl_dq_prime,
-        &q_prime_var,
-        &q_prime_expr,
-    );
+    let dl_dq_prime_full =
+        crate::symbolic::calculus::substitute_expr(&dl_dq_prime, &q_prime_var, &q_prime_expr);
 
     // Now take the total time derivative: d/dt (dl/dq')
-    let d_dt_dl_dq_prime =
-        differentiate(
-            &dl_dq_prime_full,
-            var,
-        );
+    let d_dt_dl_dq_prime = differentiate(&dl_dq_prime_full, var);
 
-    simplify(&Expr::new_sub(
-        d_dt_dl_dq_prime,
-        dl_dq,
-    ))
+    simplify(&Expr::new_sub(d_dt_dl_dq_prime, dl_dq))
 }
 
 /// # Solve Euler-Lagrange Equation
@@ -149,30 +109,16 @@ pub fn euler_lagrange(
 /// ## Returns
 /// An [`Expr`] representing the general or particular solution to the system's motion.
 #[must_use]
-
 pub fn solve_euler_lagrange(
     lagrangian: &Expr,
     func: &str,
     var: &str,
 ) -> Expr {
+    let el_equation = euler_lagrange(lagrangian, func, var);
 
-    let el_equation = euler_lagrange(
-        lagrangian,
-        func,
-        var,
-    );
+    let ode_to_solve = Expr::Eq(Arc::new(el_equation), Arc::new(Expr::Constant(0.0)));
 
-    let ode_to_solve = Expr::Eq(
-        Arc::new(el_equation),
-        Arc::new(Expr::Constant(0.0)),
-    );
-
-    solve_ode(
-        &ode_to_solve,
-        func,
-        var,
-        None,
-    )
+    solve_ode(&ode_to_solve, func, var, None)
 }
 
 /// # Hamilton's Principle (Least Action)
@@ -189,16 +135,10 @@ pub fn solve_euler_lagrange(
 /// * `func` - The generalized coordinate $q$.
 /// * `var` - The time variable $t$.
 #[must_use]
-
 pub fn hamiltons_principle(
     lagrangian: &Expr,
     func: &str,
     var: &str,
 ) -> Expr {
-
-    euler_lagrange(
-        lagrangian,
-        func,
-        var,
-    )
+    euler_lagrange(lagrangian, func, var)
 }

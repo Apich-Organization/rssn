@@ -12,9 +12,7 @@ use rssn::symbolic::coordinates::CoordinateSystem;
 #[test]
 
 fn test_dg_handle_ffi() {
-
     unsafe {
-
         let point = vec![1.0, 2.0, 3.0];
 
         let mut result = 0.0;
@@ -28,17 +26,10 @@ fn test_dg_handle_ffi() {
 
         assert_eq!(status, 0);
 
-        assert_approx_eq!(
-            result,
-            0.0,
-            1e-9
-        );
+        assert_approx_eq!(result, 0.0, 1e-9);
 
-        let g_ptr = handle::rssn_num_dg_metric_tensor(
-            CoordinateSystem::Cartesian,
-            point.as_ptr(),
-            3,
-        );
+        let g_ptr =
+            handle::rssn_num_dg_metric_tensor(CoordinateSystem::Cartesian, point.as_ptr(), 3);
 
         assert!(!g_ptr.is_null());
 
@@ -53,46 +44,25 @@ fn test_dg_handle_ffi() {
 #[test]
 
 fn test_dg_json_ffi() {
-
     unsafe {
-
-        let _point = vec![
-            2.0,
-            0.0,
-            std::f64::consts::PI / 2.0,
-        ];
+        let _point = vec![2.0, 0.0, std::f64::consts::PI / 2.0];
 
         let json_input = format!(
             r#"{{"system": "Spherical", "point": [2.0, 0.0, {}]}}"#,
             std::f64::consts::PI / 2.0
         );
 
-        let c_json =
-            CString::new(json_input)
-                .unwrap();
+        let c_json = CString::new(json_input).unwrap();
 
         let res_ptr = json::rssn_num_dg_ricci_scalar_json(c_json.as_ptr());
 
         assert!(!res_ptr.is_null());
 
-        let res_str =
-            CStr::from_ptr(res_ptr)
-                .to_str()
-                .unwrap();
+        let res_str = CStr::from_ptr(res_ptr).to_str().unwrap();
 
-        let v: serde_json::Value =
-            serde_json::from_str(
-                res_str,
-            )
-            .unwrap();
+        let v: serde_json::Value = serde_json::from_str(res_str).unwrap();
 
-        assert_approx_eq!(
-            v["ok"]
-                .as_f64()
-                .unwrap(),
-            0.0,
-            1e-9
-        );
+        assert_approx_eq!(v["ok"].as_f64().unwrap(), 0.0, 1e-9);
 
         rssn_free_string(res_ptr);
     }
@@ -101,9 +71,7 @@ fn test_dg_json_ffi() {
 #[test]
 
 fn test_dg_bincode_ffi() {
-
     unsafe {
-
         use rssn::ffi_apis::common::from_bincode_buffer;
         use rssn::ffi_apis::common::to_bincode_buffer;
         use serde::Deserialize;
@@ -117,16 +85,11 @@ fn test_dg_bincode_ffi() {
         }
 
         let input = DgInput {
-            system : CoordinateSystem::Spherical,
-            point : vec![
-                1.0,
-                0.0,
-                std::f64::consts::PI / 2.0,
-            ],
+            system: CoordinateSystem::Spherical,
+            point: vec![1.0, 0.0, std::f64::consts::PI / 2.0],
         };
 
-        let buffer =
-            to_bincode_buffer(&input);
+        let buffer = to_bincode_buffer(&input);
 
         let res_buffer = bincode_api::rssn_num_dg_ricci_scalar_bincode(buffer);
 
@@ -140,26 +103,12 @@ fn test_dg_bincode_ffi() {
             err: Option<E>,
         }
 
-        let res: FfiResult<
-            f64,
-            String,
-        > = from_bincode_buffer(
-            &res_buffer,
-        )
-        .unwrap();
+        let res: FfiResult<f64, String> = from_bincode_buffer(&res_buffer).unwrap();
 
-        assert_approx_eq!(
-            res.ok.unwrap(),
-            0.0,
-            1e-9
-        );
+        assert_approx_eq!(res.ok.unwrap(), 0.0, 1e-9);
 
-        rssn_free_bincode_buffer(
-            res_buffer,
-        );
+        rssn_free_bincode_buffer(res_buffer);
 
-        rssn_free_bincode_buffer(
-            buffer,
-        );
+        rssn_free_bincode_buffer(buffer);
     }
 }

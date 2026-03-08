@@ -14,7 +14,6 @@ use crate::numerical::integrate::{
 use crate::symbolic::core::Expr;
 
 #[derive(Deserialize)]
-
 struct QuadratureInput {
     expr: Expr,
     var: String,
@@ -35,8 +34,7 @@ struct QuadratureInput {
 ///   "`n_steps"`: 100,
 ///   "method": "Simpson"
 /// }
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -44,63 +42,44 @@ struct QuadratureInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_numerical_quadrature_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_numerical_quadrature_json(json_ptr: *const c_char) -> *mut c_char {
     unsafe {
-
         if json_ptr.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        let json_str = match CStr::from_ptr(
-        json_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
-    };
+        let json_str = match CStr::from_ptr(json_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        let input: QuadratureInput =
-            match serde_json::from_str(
-                json_str,
-            ) {
-                | Ok(v) => v,
-                | Err(e) => {
+        let input: QuadratureInput = match serde_json::from_str(json_str) {
+            | Ok(v) => v,
+            | Err(e) => {
+                let res: FfiResult<f64, String> = FfiResult {
+                    ok: None,
+                    err: Some(format!("JSON deserialization error: {e}")),
+                };
 
-                    let res : FfiResult<f64, String> = FfiResult {
-                ok : None,
-                err : Some(format!(
-                    "JSON deserialization error: {e}"
-                )),
-            };
+                return CString::new(serde_json::to_string(&res).unwrap())
+                    .unwrap()
+                    .into_raw();
+            },
+        };
 
-                    return CString::new(serde_json::to_string(&res).unwrap())
-                .unwrap()
-                .into_raw();
-                },
-            };
-
-        let result =
-            integrate::quadrature(
-                &input.expr,
-                &input.var,
-                (input.a, input.b),
-                input.n_steps,
-                &input.method,
-            );
+        let result = integrate::quadrature(
+            &input.expr,
+            &input.var,
+            (input.a, input.b),
+            input.n_steps,
+            &input.method,
+        );
 
         let res = match result {
             | Ok(val) => {
@@ -117,11 +96,8 @@ pub unsafe extern "C" fn rssn_numerical_quadrature_json(
             },
         };
 
-        CString::new(
-            serde_json::to_string(&res)
-                .unwrap(),
-        )
-        .unwrap()
-        .into_raw()
+        CString::new(serde_json::to_string(&res).unwrap())
+            .unwrap()
+            .into_raw()
     }
 }

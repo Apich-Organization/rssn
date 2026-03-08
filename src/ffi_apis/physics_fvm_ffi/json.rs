@@ -14,7 +14,6 @@ use crate::physics::physics_fvm::{
 };
 
 #[derive(Deserialize)]
-
 struct AdvectionInput {
     num_cells: usize,
     domain_size: f64,
@@ -25,7 +24,6 @@ struct AdvectionInput {
 }
 
 #[derive(Deserialize)]
-
 struct SweInput {
     h: Vec<f64>,
     hu: Vec<f64>,
@@ -59,8 +57,7 @@ struct SweInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -68,67 +65,39 @@ struct SweInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_fvm_advection_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : AdvectionInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_fvm_advection_json(input: *const c_char) -> *mut c_char {
+    let input: AdvectionInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let mut mesh = Mesh::new(
-        input.num_cells,
-        input.domain_size,
-        |_| 0.0,
-    );
+    let mut mesh = Mesh::new(input.num_cells, input.domain_size, |_| 0.0);
 
-    for (i, &val) in input
-        .initial_values
-        .iter()
-        .enumerate()
-    {
-
+    for (i, &val) in input.initial_values.iter().enumerate() {
         if i < mesh.cells.len() {
-
             mesh.cells[i].value = val;
         }
     }
 
     let result =
-        physics_fvm::solve_advection_1d(
-            &mut mesh,
-            input.velocity,
-            input.dt,
-            input.steps,
-            || (0.0, 0.0),
-        );
+        physics_fvm::solve_advection_1d(&mut mesh, input.velocity, input.dt, input.steps, || {
+            (0.0, 0.0)
+        });
 
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(result),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(result)).unwrap())
 }
 
 /// Solves the 1D shallow water equations using Finite Volume Method (FVM) via JSON serialization.
@@ -155,8 +124,7 @@ pub unsafe extern "C" fn rssn_physics_fvm_advection_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -164,28 +132,22 @@ pub unsafe extern "C" fn rssn_physics_fvm_advection_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_fvm_swe_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : SweInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_fvm_swe_json(input: *const c_char) -> *mut c_char {
+    let input: SweInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<SweState>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<SweState>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -198,13 +160,5 @@ pub unsafe extern "C" fn rssn_physics_fvm_swe_json(
         input.g,
     );
 
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                Vec<SweState>,
-                String,
-            >::ok(result),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<Vec<SweState>, String>::ok(result)).unwrap())
 }

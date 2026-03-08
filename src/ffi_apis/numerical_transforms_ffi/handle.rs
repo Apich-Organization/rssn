@@ -1,6 +1,5 @@
 //! Handle-based FFI API for numerical transforms (FFT/IFFT).
 
-
 use num_complex::Complex;
 
 use crate::ffi_apis::ffi_api::update_last_error;
@@ -15,8 +14,7 @@ use crate::numerical::transforms;
 ///
 /// # Returns
 /// 0 on success, -1 on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24,30 +22,24 @@ use crate::numerical::transforms;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fft_inplace(
     real: *mut f64,
     imag: *mut f64,
     len: usize,
 ) -> i32 {
-
     unsafe {
-
-        if real.is_null()
-            || imag.is_null()
-        {
-
+        if real.is_null() || imag.is_null() {
             update_last_error(
-            "Null pointer passed to \
+                "Null pointer passed to \
              rssn_num_fft_inplace"
-                .to_string(),
-        );
+                    .to_string(),
+            );
 
             return -1;
         }
 
         if !len.is_power_of_two() {
-
             update_last_error(
                 "FFT length must be a \
                  power of two for \
@@ -58,27 +50,13 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
             return -1;
         }
 
-        let mut data: Vec<
-            Complex<f64>,
-        > = (0 .. len)
-            .map(|i| {
-
-                Complex::new(
-                    *real.add(i),
-                    *imag.add(i),
-                )
-            })
+        let mut data: Vec<Complex<f64>> = (0..len)
+            .map(|i| Complex::new(*real.add(i), *imag.add(i)))
             .collect();
 
-        transforms::fft_slice(
-            &mut data,
-        );
+        transforms::fft_slice(&mut data);
 
-        for (i, c) in data
-            .iter()
-            .enumerate()
-        {
-
+        for (i, c) in data.iter().enumerate() {
             *real.add(i) = c.re;
 
             *imag.add(i) = c.im;
@@ -89,8 +67,7 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
 }
 
 /// Computes the Inverse Fast Fourier Transform (IFFT) in-place.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -98,30 +75,24 @@ pub unsafe extern "C" fn rssn_num_fft_inplace(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_ifft_inplace(
     real: *mut f64,
     imag: *mut f64,
     len: usize,
 ) -> i32 {
-
     unsafe {
-
-        if real.is_null()
-            || imag.is_null()
-        {
-
+        if real.is_null() || imag.is_null() {
             update_last_error(
-            "Null pointer passed to \
+                "Null pointer passed to \
              rssn_num_ifft_inplace"
-                .to_string(),
-        );
+                    .to_string(),
+            );
 
             return -1;
         }
 
         if !len.is_power_of_two() {
-
             update_last_error(
                 "IFFT length must be \
                  a power of two for \
@@ -132,27 +103,13 @@ pub unsafe extern "C" fn rssn_num_ifft_inplace(
             return -1;
         }
 
-        let mut data: Vec<
-            Complex<f64>,
-        > = (0 .. len)
-            .map(|i| {
-
-                Complex::new(
-                    *real.add(i),
-                    *imag.add(i),
-                )
-            })
+        let mut data: Vec<Complex<f64>> = (0..len)
+            .map(|i| Complex::new(*real.add(i), *imag.add(i)))
             .collect();
 
-        transforms::ifft_slice(
-            &mut data,
-        );
+        transforms::ifft_slice(&mut data);
 
-        for (i, c) in data
-            .iter()
-            .enumerate()
-        {
-
+        for (i, c) in data.iter().enumerate() {
             *real.add(i) = c.re;
 
             *imag.add(i) = c.im;

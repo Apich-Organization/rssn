@@ -6,9 +6,7 @@ use rssn::physics::physics_sm::*;
 
 #[test]
 
-fn test_solve_advection_diffusion_1d_basic()
- {
-
+fn test_solve_advection_diffusion_1d_basic() {
     let result = simulate_1d_advection_diffusion_scenario();
 
     // Check if the Gaussian pulse has shifted or diffused
@@ -22,15 +20,10 @@ fn test_solve_advection_diffusion_1d_basic()
 
 #[test]
 
-fn test_solve_advection_diffusion_2d_basic()
- {
-
+fn test_solve_advection_diffusion_2d_basic() {
     let result = simulate_2d_advection_diffusion_scenario();
 
-    assert_eq!(
-        result.len(),
-        64 * 64
-    );
+    assert_eq!(result.len(), 64 * 64);
 
     let sum: f64 = result.iter().sum();
 

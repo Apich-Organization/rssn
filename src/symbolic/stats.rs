@@ -18,31 +18,20 @@ use crate::symbolic::simplify_dag::simplify;
 /// # Returns
 /// An `Expr` representing the symbolic mean.
 #[must_use]
-
 pub fn mean(data: &[Expr]) -> Expr {
-
     let n = data.len();
 
     if n == 0 {
-
         return Expr::Constant(0.0);
     }
 
     let sum = data
         .iter()
         .cloned()
-        .reduce(|acc, e| {
-
-            simplify(&Expr::new_add(
-                acc, e,
-            ))
-        })
+        .reduce(|acc, e| simplify(&Expr::new_add(acc, e)))
         .unwrap_or(Expr::Constant(0.0));
 
-    simplify(&Expr::new_div(
-        sum,
-        Expr::Constant(n as f64),
-    ))
+    simplify(&Expr::new_div(sum, Expr::Constant(n as f64)))
 }
 
 /// Computes the symbolic variance of a set of expressions.
@@ -56,13 +45,10 @@ pub fn mean(data: &[Expr]) -> Expr {
 /// # Returns
 /// An `Expr` representing the symbolic variance.
 #[must_use]
-
 pub fn variance(data: &[Expr]) -> Expr {
-
     let n = data.len();
 
     if n == 0 {
-
         return Expr::Constant(0.0);
     }
 
@@ -71,29 +57,14 @@ pub fn variance(data: &[Expr]) -> Expr {
     let squared_diffs = data
         .iter()
         .map(|x_i| {
+            let diff = Expr::new_sub(x_i.clone(), mu.clone());
 
-            let diff = Expr::new_sub(
-                x_i.clone(),
-                mu.clone(),
-            );
-
-            Expr::new_pow(
-                diff,
-                Expr::Constant(2.0),
-            )
+            Expr::new_pow(diff, Expr::Constant(2.0))
         })
-        .reduce(|acc, e| {
-
-            simplify(&Expr::new_add(
-                acc, e,
-            ))
-        })
+        .reduce(|acc, e| simplify(&Expr::new_add(acc, e)))
         .unwrap_or(Expr::Constant(0.0));
 
-    simplify(&Expr::new_div(
-        squared_diffs,
-        Expr::Constant(n as f64),
-    ))
+    simplify(&Expr::new_div(squared_diffs, Expr::Constant(n as f64)))
 }
 
 /// Computes the symbolic standard deviation of a set of expressions.
@@ -107,12 +78,8 @@ pub fn variance(data: &[Expr]) -> Expr {
 /// # Returns
 /// An `Expr` representing the symbolic standard deviation.
 #[must_use]
-
 pub fn std_dev(data: &[Expr]) -> Expr {
-
-    simplify(&Expr::new_sqrt(
-        variance(data),
-    ))
+    simplify(&Expr::new_sqrt(variance(data)))
 }
 
 /// Computes the symbolic covariance of two sets of expressions.
@@ -128,16 +95,11 @@ pub fn std_dev(data: &[Expr]) -> Expr {
 /// # Returns
 /// An `Expr` representing the symbolic covariance.
 #[must_use]
-
 pub fn covariance(
     data1: &[Expr],
     data2: &[Expr],
 ) -> Expr {
-
-    if data1.len() != data2.len()
-        || data1.is_empty()
-    {
-
+    if data1.len() != data2.len() || data1.is_empty() {
         return Expr::Constant(0.0);
     }
 
@@ -151,34 +113,16 @@ pub fn covariance(
         .iter()
         .zip(data2.iter())
         .map(|(x_i, y_i)| {
+            let diff_x = Expr::new_sub(x_i.clone(), mu_x.clone());
 
-            let diff_x = Expr::new_sub(
-                x_i.clone(),
-                mu_x.clone(),
-            );
+            let diff_y = Expr::new_sub(y_i.clone(), mu_y.clone());
 
-            let diff_y = Expr::new_sub(
-                y_i.clone(),
-                mu_y.clone(),
-            );
-
-            Expr::new_mul(
-                diff_x,
-                diff_y,
-            )
+            Expr::new_mul(diff_x, diff_y)
         })
-        .reduce(|acc, e| {
-
-            simplify(&Expr::new_add(
-                acc, e,
-            ))
-        })
+        .reduce(|acc, e| simplify(&Expr::new_add(acc, e)))
         .unwrap_or(Expr::Constant(0.0));
 
-    simplify(&Expr::new_div(
-        sum_of_products,
-        Expr::Constant(n as f64),
-    ))
+    simplify(&Expr::new_div(sum_of_products, Expr::Constant(n as f64)))
 }
 
 /// Computes the symbolic Pearson correlation coefficient.
@@ -194,24 +138,15 @@ pub fn covariance(
 /// # Returns
 /// An `Expr` representing the symbolic Pearson correlation coefficient.
 #[must_use]
-
 pub fn correlation(
     data1: &[Expr],
     data2: &[Expr],
 ) -> Expr {
-
-    let cov_xy =
-        covariance(data1, data2);
+    let cov_xy = covariance(data1, data2);
 
     let std_dev_x = std_dev(data1);
 
     let std_dev_y = std_dev(data2);
 
-    simplify(&Expr::new_div(
-        cov_xy,
-        Expr::new_mul(
-            std_dev_x,
-            std_dev_y,
-        ),
-    ))
+    simplify(&Expr::new_div(cov_xy, Expr::new_mul(std_dev_x, std_dev_y)))
 }

@@ -1,8 +1,12 @@
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
-use crate::symbolic::functional_analysis::{HilbertSpace, inner_product, norm, gram_schmidt};
+use crate::symbolic::functional_analysis::HilbertSpace;
+use crate::symbolic::functional_analysis::gram_schmidt;
+use crate::symbolic::functional_analysis::inner_product;
+use crate::symbolic::functional_analysis::norm;
 
 /// Constructs a Hilbert space from a JSON-encoded description.
 ///
@@ -23,8 +27,7 @@ use crate::symbolic::functional_analysis::{HilbertSpace, inner_product, norm, gr
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32,12 +35,9 @@ use crate::symbolic::functional_analysis::{HilbertSpace, inner_product, norm, gr
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_hilbert_space_create(
-    json_str: *const c_char
-) -> *mut c_char {
-
-    let space : HilbertSpace = match from_json_string(json_str) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_hilbert_space_create(json_str: *const c_char) -> *mut c_char {
+    let space: HilbertSpace = match from_json_string(json_str) {
         | Some(s) => s,
         | None => return std::ptr::null_mut(),
     };
@@ -66,8 +66,7 @@ pub unsafe extern "C" fn rssn_json_hilbert_space_create(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -75,42 +74,32 @@ pub unsafe extern "C" fn rssn_json_hilbert_space_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_inner_product(
     space_json: *const c_char,
     f_json: *const c_char,
     g_json: *const c_char,
 ) -> *mut c_char {
-
-    let space : HilbertSpace = match from_json_string(space_json) {
+    let space: HilbertSpace = match from_json_string(space_json) {
         | Some(s) => s,
         | None => return std::ptr::null_mut(),
     };
 
-    let f: Expr = match from_json_string(
-        f_json,
-    ) {
+    let f: Expr = match from_json_string(f_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let g: Expr = match from_json_string(
-        g_json,
-    ) {
+    let g: Expr = match from_json_string(g_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let result =
-        inner_product(&space, &f, &g);
+    let result = inner_product(&space, &f, &g);
 
     to_json_string(&result)
 }
@@ -134,8 +123,7 @@ pub unsafe extern "C" fn rssn_json_inner_product(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -143,25 +131,20 @@ pub unsafe extern "C" fn rssn_json_inner_product(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_norm(
     space_json: *const c_char,
     f_json: *const c_char,
 ) -> *mut c_char {
-
-    let space : HilbertSpace = match from_json_string(space_json) {
+    let space: HilbertSpace = match from_json_string(space_json) {
         | Some(s) => s,
         | None => return std::ptr::null_mut(),
     };
 
-    let f: Expr = match from_json_string(
-        f_json,
-    ) {
+    let f: Expr = match from_json_string(f_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
@@ -189,8 +172,7 @@ pub unsafe extern "C" fn rssn_json_norm(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -198,24 +180,22 @@ pub unsafe extern "C" fn rssn_json_norm(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_gram_schmidt(
     space_json: *const c_char,
     basis_json: *const c_char,
 ) -> *mut c_char {
-
-    let space : HilbertSpace = match from_json_string(space_json) {
+    let space: HilbertSpace = match from_json_string(space_json) {
         | Some(s) => s,
         | None => return std::ptr::null_mut(),
     };
 
-    let basis : Vec<Expr> = match from_json_string(basis_json) {
+    let basis: Vec<Expr> = match from_json_string(basis_json) {
         | Some(b) => b,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        gram_schmidt(&space, &basis);
+    let result = gram_schmidt(&space, &basis);
 
     to_json_string(&result)
 }

@@ -16,7 +16,6 @@ use rssn::symbolic::polynomial::expr_to_sparse_poly;
 use rssn::symbolic::polynomial::sparse_poly_to_expr;
 
 fn main() {
-
     println!(
         "=== Grobner Basis \
          Computation Example ===\n"
@@ -28,74 +27,55 @@ fn main() {
     let input2 = "x^2 - 2*x + y^2";
 
     // Parse the strings into expressions
-    let f1_expr =
-        match parse_expr(input1) {
-            | Ok(("", expr)) => expr,
-            | Ok((rem, _)) => {
-
-                panic!(
-                    "Unparsed input: \
+    let f1_expr = match parse_expr(input1) {
+        | Ok(("", expr)) => expr,
+        | Ok((rem, _)) => {
+            panic!(
+                "Unparsed input: \
                      '{}'",
-                    rem
-                )
-            },
-            | Err(e) => {
-
-                panic!(
-                    "Failed to parse \
+                rem
+            )
+        },
+        | Err(e) => {
+            panic!(
+                "Failed to parse \
                      expression '{}': \
                      {:?}",
-                    input1, e
-                )
-            },
-        };
+                input1, e
+            )
+        },
+    };
 
-    let f2_expr =
-        match parse_expr(input2) {
-            | Ok(("", expr)) => expr,
-            | Ok((rem, _)) => {
-
-                panic!(
-                    "Unparsed input: \
+    let f2_expr = match parse_expr(input2) {
+        | Ok(("", expr)) => expr,
+        | Ok((rem, _)) => {
+            panic!(
+                "Unparsed input: \
                      '{}'",
-                    rem
-                )
-            },
-            | Err(e) => {
-
-                panic!(
-                    "Failed to parse \
+                rem
+            )
+        },
+        | Err(e) => {
+            panic!(
+                "Failed to parse \
                      expression '{}': \
                      {:?}",
-                    input2, e
-                )
-            },
-        };
+                input2, e
+            )
+        },
+    };
 
-    println!(
-        "Polynomial 1 (f1): {}",
-        f1_expr
-    );
+    println!("Polynomial 1 (f1): {}", f1_expr);
 
-    println!(
-        "Polynomial 2 (f2): {}\n",
-        f2_expr
-    );
+    println!("Polynomial 2 (f2): {}\n", f2_expr);
 
     // Convert expressions to SparsePolynomial
-    let f1_sparse = expr_to_sparse_poly(
-        &f1_expr,
-        &["x", "y"],
-    );
+    let f1_sparse = expr_to_sparse_poly(&f1_expr, &["x", "y"]);
 
-    let f2_sparse = expr_to_sparse_poly(
-        &f2_expr,
-        &["x", "y"],
-    );
+    let f2_sparse = expr_to_sparse_poly(&f2_expr, &["x", "y"]);
 
     // Create the basis for Buchberger's algorithm
-    let basis =
-        vec![f1_sparse, f2_sparse];
+    let basis = vec![f1_sparse, f2_sparse];
 
     println!(
         "Computing Grobner basis \
@@ -104,31 +84,15 @@ fn main() {
     );
 
     // Compute the Grobner basis
-    match buchberger(
-        &basis,
-        MonomialOrder::Lexicographical,
-    ) {
+    match buchberger(&basis, MonomialOrder::Lexicographical) {
         | Ok(grobner_basis) => {
-
             println!("Grobner Basis:");
 
-            for (i, poly) in
-                grobner_basis
-                    .iter()
-                    .enumerate()
-            {
-
-                println!(
-                    "  g{}: {}",
-                    i + 1,
-                    sparse_poly_to_expr(
-                        poly
-                    )
-                );
+            for (i, poly) in grobner_basis.iter().enumerate() {
+                println!("  g{}: {}", i + 1, sparse_poly_to_expr(poly));
             }
         },
         | Err(e) => {
-
             eprintln!(
                 "Error computing \
                  Grobner basis: {}",
@@ -137,7 +101,5 @@ fn main() {
         },
     }
 
-    println!(
-        "\n=== Example Complete ==="
-    );
+    println!("\n=== Example Complete ===");
 }

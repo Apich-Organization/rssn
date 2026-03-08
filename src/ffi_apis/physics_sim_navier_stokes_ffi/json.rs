@@ -14,7 +14,6 @@ use crate::physics::physics_sim::navier_stokes_fluid::{
 };
 
 #[derive(Serialize)]
-
 struct NavierStokesOutputData {
     pub u: Array2<f64>,
     pub v: Array2<f64>,
@@ -46,8 +45,7 @@ struct NavierStokesOutputData {
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw C string pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -55,59 +53,40 @@ struct NavierStokesOutputData {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let params : NavierStokesParameters = match from_json_string(input) {
+    let params: NavierStokesParameters = match from_json_string(input) {
         | Some(p) => p,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    NavierStokesOutputData,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<NavierStokesOutputData, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
     match navier_stokes_fluid::run_lid_driven_cavity(&params) {
         | Ok((u, v, p)) => {
-
-            let out = NavierStokesOutputData {
-                u,
-                v,
-                p,
-            };
+            let out = NavierStokesOutputData { u, v, p };
 
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    NavierStokesOutputData,
-                    String,
-                >::ok(
-                    out
-                ))
-                .unwrap(),
+                serde_json::to_string(&FfiResult::<NavierStokesOutputData, String>::ok(out))
+                    .unwrap(),
             )
         },
         | Err(e) => {
             to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    NavierStokesOutputData,
-                    String,
-                >::err(
-                    e
-                ))
-                .unwrap(),
+                serde_json::to_string(&FfiResult::<NavierStokesOutputData, String>::err(e))
+                    .unwrap(),
             )
         },
     }

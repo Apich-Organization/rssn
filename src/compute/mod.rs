@@ -33,31 +33,23 @@
 //! ## Basic Computation
 //!
 //! ```
-//! 
 //! use rssn::compute::engine::ComputeEngine;
 //!
 //! // Create an engine
 //! let engine = ComputeEngine::new();
 //!
 //! // Submit a computation
-//! let id = engine
-//!     .parse_and_submit("2 + 2")
-//!     .unwrap();
+//! let id = engine.parse_and_submit("2 + 2").unwrap();
 //!
 //! // Check status
 //! if let Some(status) = engine.get_status(&id) {
-//!
-//!     println!(
-//!         "Status: {:?}",
-//!         status
-//!     );
+//!     println!("Status: {:?}", status);
 //! }
 //!
 //! // Wait for result
 //! std::thread::sleep(std::time::Duration::from_secs(6));
 //!
 //! if let Some(result) = engine.get_result(&id) {
-//!
 //!     println!("Result: {}", result);
 //! }
 //! ```
@@ -65,14 +57,11 @@
 //! ## Advanced: Pause/Resume/Cancel
 //!
 //! ```
-//! 
 //! use rssn::compute::engine::ComputeEngine;
 //!
 //! let engine = ComputeEngine::new();
 //!
-//! let id = engine
-//!     .parse_and_submit("complex_calculation")
-//!     .unwrap();
+//! let id = engine.parse_and_submit("complex_calculation").unwrap();
 //!
 //! // Pause the computation
 //! engine.pause(&id);
@@ -89,7 +78,6 @@
 //! ## Using Caches
 //!
 //! ```
-//! 
 //! use std::sync::Arc;
 //!
 //! use rssn::compute::cache::ComputationResultCache;
@@ -101,25 +89,17 @@
 //!
 //! let expr = Arc::new(Expr::Constant(42.0));
 //!
-//! parsing_cache.set(
-//!     "my_expr".to_string(),
-//!     expr.clone(),
-//! );
+//! parsing_cache.set("my_expr".to_string(), expr.clone());
 //!
 //! // Later...
-//! if let Some(cached_expr) = parsing_cache.get("my_expr")
-//! {
-//!
+//! if let Some(cached_expr) = parsing_cache.get("my_expr") {
 //!     println!("Found cached expression");
 //! }
 //!
 //! // Result cache
 //! let result_cache = ComputationResultCache::new();
 //!
-//! result_cache.set(
-//!     expr.clone(),
-//!     "42".to_string(),
-//! );
+//! result_cache.set(expr.clone(), "42".to_string());
 //! ```
 //!
 //! # Thread Safety

@@ -48,17 +48,13 @@
 //!
 //! ### Gamma Function
 //! ```
-//! 
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::special_functions::gamma;
 //!
 //! // Γ(5) = 4! = 24
 //! let g = gamma(&Expr::Constant(5.0));
 //!
-//! assert_eq!(
-//!     g,
-//!     Expr::Constant(24.0)
-//! );
+//! assert_eq!(g, Expr::Constant(24.0));
 //!
 //! // Γ(0.5) = √π
 //! let g_half = gamma(&Expr::Constant(0.5));
@@ -67,32 +63,19 @@
 //!
 //! ### Orthogonal Polynomials
 //! ```
-//! 
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::special_functions::hermite_h;
 //! use rssn::symbolic::special_functions::legendre_p;
 //!
 //! // P₀(x) = 1
-//! let p0 = legendre_p(
-//!     &Expr::Constant(0.0),
-//!     Expr::Variable("x".to_string()),
-//! );
+//! let p0 = legendre_p(&Expr::Constant(0.0), Expr::Variable("x".to_string()));
 //!
-//! assert_eq!(
-//!     p0,
-//!     Expr::Constant(1.0)
-//! );
+//! assert_eq!(p0, Expr::Constant(1.0));
 //!
 //! // H₀(x) = 1, H₁(x) = 2x
-//! let h0 = hermite_h(
-//!     &Expr::Constant(0.0),
-//!     Expr::Variable("x".to_string()),
-//! );
+//! let h0 = hermite_h(&Expr::Constant(0.0), Expr::Variable("x".to_string()));
 //!
-//! assert_eq!(
-//!     h0,
-//!     Expr::Constant(1.0)
-//! );
+//! assert_eq!(h0, Expr::Constant(1.0));
 //! ```
 
 use std::sync::Arc;
@@ -121,76 +104,39 @@ use crate::symbolic::simplify_dag::simplify;
 ///
 /// # Examples
 /// ```
-/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::special_functions::gamma;
 ///
 /// // Γ(5) = 4! = 24
 /// let g = gamma(&Expr::Constant(5.0));
 ///
-/// assert_eq!(
-///     g,
-///     Expr::Constant(24.0)
-/// );
+/// assert_eq!(g, Expr::Constant(24.0));
 /// ```
 #[must_use]
-
 pub fn gamma(arg: &Expr) -> Expr {
-
     let s_arg = simplify(arg);
 
     if let Some(n) = s_arg.to_f64() {
-
         if n > 0.0 && n.fract() == 0.0 {
-
-            return Expr::Constant(
-                factorial(
-                    ((n - 1.0) as i64)
-                        .try_into()
-                        .unwrap_or(0),
-                ),
-            );
+            return Expr::Constant(factorial(((n - 1.0) as i64).try_into().unwrap_or(0)));
         }
 
         if (n - 0.5).abs() < 1e-9 {
-
-            return Expr::new_sqrt(
-                Expr::Pi,
-            );
+            return Expr::new_sqrt(Expr::Pi);
         }
     }
 
     if s_arg == Expr::Constant(1.0) {
-
         return Expr::Constant(1.0);
     }
 
     if let Expr::Add(a, b) = &s_arg {
-
         if **b == Expr::Constant(1.0) {
-
-            return simplify(
-                &Expr::new_mul(
-                    a.clone(),
-                    gamma(
-                        &a.as_ref()
-                            .clone(),
-                    ),
-                ),
-            );
+            return simplify(&Expr::new_mul(a.clone(), gamma(&a.as_ref().clone())));
         }
 
         if **a == Expr::Constant(1.0) {
-
-            return simplify(
-                &Expr::new_mul(
-                    b.clone(),
-                    gamma(
-                        &b.as_ref()
-                            .clone(),
-                    ),
-                ),
-            );
+            return simplify(&Expr::new_mul(b.clone(), gamma(&b.as_ref().clone())));
         }
     }
 
@@ -208,19 +154,13 @@ pub fn gamma(arg: &Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `ln(Γ(z))`.
 #[must_use]
-
 pub fn ln_gamma(arg: &Expr) -> Expr {
-
     let g = gamma(arg);
 
     // If gamma simplified to a constant, compute the log
     if let Expr::Constant(v) = &g {
-
         if *v > 0.0 {
-
-            return Expr::Constant(
-                v.ln(),
-            );
+            return Expr::Constant(v.ln());
         }
     }
 
@@ -241,35 +181,24 @@ pub fn ln_gamma(arg: &Expr) -> Expr {
 ///
 /// # Examples
 /// ```
-/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::special_functions::beta;
 ///
 /// // B(1, 1) = 1
-/// let b = beta(
-///     Expr::Constant(1.0),
-///     Expr::Constant(1.0),
-/// );
+/// let b = beta(Expr::Constant(1.0), Expr::Constant(1.0));
 ///
-/// assert_eq!(
-///     b,
-///     Expr::Constant(1.0)
-/// );
+/// assert_eq!(b, Expr::Constant(1.0));
 /// ```
 #[must_use]
-
 pub fn beta(
     a: Expr,
     b: Expr,
 ) -> Expr {
-
     let gamma_a = gamma(&a);
 
     let gamma_b = gamma(&b);
 
-    let gamma_a_plus_b = gamma(
-        &simplify(&Expr::new_add(a, b)),
-    );
+    let gamma_a_plus_b = gamma(&simplify(&Expr::new_add(a, b)));
 
     simplify(&Expr::new_div(
         Expr::new_mul(gamma_a, gamma_b),
@@ -289,57 +218,28 @@ pub fn beta(
 /// # Returns
 /// An `Expr` representing `ψ(z)`.
 #[must_use]
-
 pub fn digamma(arg: &Expr) -> Expr {
-
     let s_arg = simplify(arg);
 
     if let Some(n) = s_arg.to_f64() {
-
         if (n - 1.0).abs() < 1e-9 {
-
-            return Expr::Variable(
-                "-gamma".to_string(),
-            );
+            return Expr::Variable("-gamma".to_string());
         }
     }
 
     if let Expr::Add(a, b) = &s_arg {
-
         if **b == Expr::Constant(1.0) {
-
-            return simplify(
-                &Expr::new_add(
-                    digamma(
-                        &a.as_ref()
-                            .clone(),
-                    ),
-                    Expr::new_div(
-                        Expr::Constant(
-                            1.0,
-                        ),
-                        a.clone(),
-                    ),
-                ),
-            );
+            return simplify(&Expr::new_add(
+                digamma(&a.as_ref().clone()),
+                Expr::new_div(Expr::Constant(1.0), a.clone()),
+            ));
         }
 
         if **a == Expr::Constant(1.0) {
-
-            return simplify(
-                &Expr::new_add(
-                    digamma(
-                        &b.as_ref()
-                            .clone(),
-                    ),
-                    Expr::new_div(
-                        Expr::Constant(
-                            1.0,
-                        ),
-                        b.clone(),
-                    ),
-                ),
-            );
+            return simplify(&Expr::new_add(
+                digamma(&b.as_ref().clone()),
+                Expr::new_div(Expr::Constant(1.0), b.clone()),
+            ));
         }
     }
 
@@ -360,31 +260,23 @@ pub fn digamma(arg: &Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `ψ⁽ⁿ⁾(z)`.
 #[must_use]
-
 pub fn polygamma(
     n: &Expr,
     z: &Expr,
 ) -> Expr {
-
     let s_n = simplify(n);
 
     let s_z = simplify(z);
 
     // ψ⁽⁰⁾(z) = ψ(z)
     if let Some(order) = s_n.to_f64() {
-
         if order.abs() < 1e-9 {
-
             return digamma(&s_z);
         }
     }
 
     // Use BinaryList for polygamma as it's not in the core constructors
-    Expr::BinaryList(
-        "polygamma".to_string(),
-        Arc::new(s_n),
-        Arc::new(s_z),
-    )
+    Expr::BinaryList("polygamma".to_string(), Arc::new(s_n), Arc::new(s_z))
 }
 
 // ============================================================================
@@ -405,34 +297,24 @@ pub fn polygamma(
 ///
 /// # Examples
 /// ```
-/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::special_functions::erf;
 ///
 /// // erf(0) = 0
 /// let e = erf(&Expr::Constant(0.0));
 ///
-/// assert_eq!(
-///     e,
-///     Expr::Constant(0.0)
-/// );
+/// assert_eq!(e, Expr::Constant(0.0));
 /// ```
 #[must_use]
-
 pub fn erf(arg: &Expr) -> Expr {
-
     let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
-
         return Expr::Constant(0.0);
     }
 
     if let Expr::Neg(inner) = s_arg {
-
-        return Expr::new_neg(erf(
-            &(*inner).clone(),
-        ));
+        return Expr::new_neg(erf(&(*inner).clone()));
     }
 
     Expr::new_erf(s_arg)
@@ -448,13 +330,8 @@ pub fn erf(arg: &Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `erfc(z)`.
 #[must_use]
-
 pub fn erfc(arg: &Expr) -> Expr {
-
-    simplify(&Expr::new_sub(
-        Expr::Constant(1.0),
-        erf(arg),
-    ))
+    simplify(&Expr::new_sub(Expr::Constant(1.0), erf(arg)))
 }
 
 /// Symbolic representation and smart constructor for the Imaginary Error Function, `erfi(z)`.
@@ -467,19 +344,12 @@ pub fn erfc(arg: &Expr) -> Expr {
 /// # Returns
 /// An `Expr` representing `erfi(z)`.
 #[must_use]
-
 pub fn erfi(arg: Expr) -> Expr {
-
-    let i = Expr::new_complex(
-        Expr::Constant(0.0),
-        Expr::Constant(1.0),
-    );
+    let i = Expr::new_complex(Expr::Constant(0.0), Expr::Constant(1.0));
 
     simplify(&Expr::new_mul(
         Expr::new_neg(i.clone()),
-        erf(&Expr::new_mul(
-            i, arg,
-        )),
+        erf(&Expr::new_mul(i, arg)),
     ))
 }
 
@@ -501,71 +371,46 @@ pub fn erfi(arg: Expr) -> Expr {
 ///
 /// # Examples
 /// ```
-/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::special_functions::zeta;
 ///
 /// // ζ(0) = -1/2
 /// let z0 = zeta(&Expr::Constant(0.0));
 ///
-/// assert_eq!(
-///     z0,
-///     Expr::Constant(-0.5)
-/// );
+/// assert_eq!(z0, Expr::Constant(-0.5));
 /// ```
 #[must_use]
-
 pub fn zeta(arg: &Expr) -> Expr {
-
     let s_arg = simplify(arg);
 
     if let Some(n) = s_arg.to_f64() {
-
         if n.fract() == 0.0 {
-
             let n_int = n as i32;
 
             if n_int == 0 {
-
-                return Expr::Constant(
-                    -0.5,
-                );
+                return Expr::Constant(-0.5);
             }
 
             if n_int == 1 {
-
                 return Expr::Infinity;
             }
 
             if n_int == 2 {
-
                 return simplify(&Expr::new_div(
-                    Expr::new_pow(
-                        Expr::Pi,
-                        Expr::Constant(2.0),
-                    ),
+                    Expr::new_pow(Expr::Pi, Expr::Constant(2.0)),
                     Expr::Constant(6.0),
                 ));
             }
 
             if n_int == 4 {
-
                 return simplify(&Expr::new_div(
-                    Expr::new_pow(
-                        Expr::Pi,
-                        Expr::Constant(4.0),
-                    ),
+                    Expr::new_pow(Expr::Pi, Expr::Constant(4.0)),
                     Expr::Constant(90.0),
                 ));
             }
 
-            if n_int < 0
-                && n_int % 2 == 0
-            {
-
-                return Expr::Constant(
-                    0.0,
-                );
+            if n_int < 0 && n_int % 2 == 0 {
+                return Expr::Constant(0.0);
             }
         }
     }
@@ -592,87 +437,44 @@ pub fn zeta(arg: &Expr) -> Expr {
 ///
 /// # Examples
 /// ```
-/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::special_functions::bessel_j;
 ///
 /// // J_0(0) = 1
-/// let j0 = bessel_j(
-///     &Expr::Constant(0.0),
-///     &Expr::Constant(0.0),
-/// );
+/// let j0 = bessel_j(&Expr::Constant(0.0), &Expr::Constant(0.0));
 ///
-/// assert_eq!(
-///     j0,
-///     Expr::Constant(1.0)
-/// );
+/// assert_eq!(j0, Expr::Constant(1.0));
 /// ```
 #[must_use]
-
 pub fn bessel_j(
     order: &Expr,
     arg: &Expr,
 ) -> Expr {
-
     let s_order = simplify(order);
 
     let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
-
-        if let Some(n) =
-            s_order.to_f64()
-        {
-
+        if let Some(n) = s_order.to_f64() {
             if n == 0.0 {
-
-                return Expr::Constant(
-                    1.0,
-                );
+                return Expr::Constant(1.0);
             }
 
             if n > 0.0 {
-
-                return Expr::Constant(
-                    0.0,
-                );
+                return Expr::Constant(0.0);
             }
         }
     }
 
-    if let Expr::Neg(inner_order) =
-        &s_order
-    {
-
-        if let Some(n) =
-            inner_order.to_f64()
-        {
-
+    if let Expr::Neg(inner_order) = &s_order {
+        if let Some(n) = inner_order.to_f64() {
             if n.fract() == 0.0 {
+                let factor = Expr::new_pow(Expr::Constant(-1.0), Expr::Constant(n));
 
-                let factor =
-                    Expr::new_pow(
-                        Expr::Constant(
-                            -1.0,
-                        ),
-                        Expr::Constant(
-                            n,
-                        ),
-                    );
-
-                return simplify(
-                    &Expr::new_mul(
-                        factor,
-                        bessel_j(
-                            &inner_order
-                                .as_ref(
-                                )
-                                .clone(
-                                ),
-                            &s_arg,
-                        ),
-                    ),
-                );
+                return simplify(&Expr::new_mul(
+                    factor,
+                    bessel_j(&inner_order.as_ref().clone(), &s_arg),
+                ));
             }
         }
     }
@@ -692,18 +494,15 @@ pub fn bessel_j(
 /// # Returns
 /// An `Expr` representing `Y_n(x)`.
 #[must_use]
-
 pub fn bessel_y(
     order: &Expr,
     arg: &Expr,
 ) -> Expr {
-
     let s_order = simplify(order);
 
     let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
-
         return Expr::NegativeInfinity;
     }
 
@@ -722,44 +521,28 @@ pub fn bessel_y(
 /// # Returns
 /// An `Expr` representing `I_n(x)`.
 #[must_use]
-
 pub fn bessel_i(
     order: &Expr,
     arg: &Expr,
 ) -> Expr {
-
     let s_order = simplify(order);
 
     let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
-
-        if let Some(n) =
-            s_order.to_f64()
-        {
-
+        if let Some(n) = s_order.to_f64() {
             if n == 0.0 {
-
-                return Expr::Constant(
-                    1.0,
-                );
+                return Expr::Constant(1.0);
             }
 
             if n > 0.0 {
-
-                return Expr::Constant(
-                    0.0,
-                );
+                return Expr::Constant(0.0);
             }
         }
     }
 
     // Use BinaryList for bessel_i as it's not in the core constructors
-    Expr::BinaryList(
-        "bessel_i".to_string(),
-        Arc::new(s_order),
-        Arc::new(s_arg),
-    )
+    Expr::BinaryList("bessel_i".to_string(), Arc::new(s_order), Arc::new(s_arg))
 }
 
 /// Symbolic representation for the Modified Bessel function of the second kind, `K_n(x)`.
@@ -773,27 +556,20 @@ pub fn bessel_i(
 /// # Returns
 /// An `Expr` representing `K_n(x)`.
 #[must_use]
-
 pub fn bessel_k(
     order: &Expr,
     arg: &Expr,
 ) -> Expr {
-
     let s_order = simplify(order);
 
     let s_arg = simplify(arg);
 
     if is_zero(&s_arg) {
-
         return Expr::Infinity;
     }
 
     // Use BinaryList for bessel_k as it's not in the core constructors
-    Expr::BinaryList(
-        "bessel_k".to_string(),
-        Arc::new(s_order),
-        Arc::new(s_arg),
-    )
+    Expr::BinaryList("bessel_k".to_string(), Arc::new(s_order), Arc::new(s_arg))
 }
 
 // ============================================================================
@@ -815,91 +591,50 @@ pub fn bessel_k(
 ///
 /// # Examples
 /// ```
-/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::special_functions::legendre_p;
 ///
 /// // P_0(x) = 1
-/// let p0 = legendre_p(
-///     &Expr::Constant(0.0),
-///     Expr::Variable("x".to_string()),
-/// );
+/// let p0 = legendre_p(&Expr::Constant(0.0), Expr::Variable("x".to_string()));
 ///
-/// assert_eq!(
-///     p0,
-///     Expr::Constant(1.0)
-/// );
+/// assert_eq!(p0, Expr::Constant(1.0));
 /// ```
 #[must_use]
-
 pub fn legendre_p(
     degree: &Expr,
     arg: Expr,
 ) -> Expr {
-
     let s_degree = simplify(degree);
 
     if let Some(n) = s_degree.to_f64() {
-
         let n_int = n as i32;
 
-        if n >= 0.0 && n.fract() == 0.0
-        {
-
+        if n >= 0.0 && n.fract() == 0.0 {
             if n_int == 0 {
-
-                return Expr::Constant(
-                    1.0,
-                );
+                return Expr::Constant(1.0);
             }
 
             if n_int == 1 {
-
                 return arg;
             }
 
             // Use recurrence for small n only to avoid stack overflow
             if n_int <= 10 {
+                let p_n = legendre_p(&Expr::Constant(n - 1.0), arg.clone());
 
-                let p_n = legendre_p(
-                    &Expr::Constant(
-                        n - 1.0,
-                    ),
-                    arg.clone(),
-                );
-
-                let p_n_minus_1 =
-                    legendre_p(
-                        &Expr::Constant(
-                            n - 2.0,
-                        ),
-                        arg.clone(),
-                    );
+                let p_n_minus_1 = legendre_p(&Expr::Constant(n - 2.0), arg.clone());
 
                 let term1 = Expr::new_mul(
                     Expr::Constant(2.0f64.mul_add(n, -1.0)),
                     Expr::new_mul(arg, p_n),
                 );
 
-                let term2 =
-                    Expr::new_mul(
-                        Expr::Constant(
-                            n - 1.0,
-                        ),
-                        p_n_minus_1,
-                    );
+                let term2 = Expr::new_mul(Expr::Constant(n - 1.0), p_n_minus_1);
 
-                return simplify(
-                    &Expr::new_div(
-                        Expr::new_sub(
-                            term1,
-                            term2,
-                        ),
-                        Expr::Constant(
-                            n,
-                        ),
-                    ),
-                );
+                return simplify(&Expr::new_div(
+                    Expr::new_sub(term1, term2),
+                    Expr::Constant(n),
+                ));
             }
         }
     }
@@ -920,88 +655,41 @@ pub fn legendre_p(
 /// # Returns
 /// An `Expr` representing `L_n(x)`.
 #[must_use]
-
 pub fn laguerre_l(
     degree: &Expr,
     arg: Expr,
 ) -> Expr {
-
     let s_degree = simplify(degree);
 
     if let Some(n) = s_degree.to_f64() {
-
         let n_int = n as i32;
 
-        if n >= 0.0 && n.fract() == 0.0
-        {
-
+        if n >= 0.0 && n.fract() == 0.0 {
             if n_int == 0 {
-
-                return Expr::Constant(
-                    1.0,
-                );
+                return Expr::Constant(1.0);
             }
 
             if n_int == 1 {
-
-                return simplify(
-                    &Expr::new_sub(
-                        Expr::Constant(
-                            1.0,
-                        ),
-                        arg,
-                    ),
-                );
+                return simplify(&Expr::new_sub(Expr::Constant(1.0), arg));
             }
 
             // Use recurrence for small n only
             if n_int <= 10 {
+                let l_n = laguerre_l(&Expr::Constant(n - 1.0), arg.clone());
 
-                let l_n = laguerre_l(
-                    &Expr::Constant(
-                        n - 1.0,
-                    ),
-                    arg.clone(),
-                );
+                let l_n_minus_1 = laguerre_l(&Expr::Constant(n - 2.0), arg.clone());
 
-                let l_n_minus_1 =
-                    laguerre_l(
-                        &Expr::Constant(
-                            n - 2.0,
-                        ),
-                        arg.clone(),
-                    );
+                let term1_factor =
+                    simplify(&Expr::new_sub(Expr::Constant(2.0f64.mul_add(n, -1.0)), arg));
 
-                let term1_factor = simplify(&Expr::new_sub(
-                    Expr::Constant(2.0f64.mul_add(n, -1.0)),
-                    arg,
+                let term1 = Expr::new_mul(term1_factor, l_n);
+
+                let term2 = Expr::new_mul(Expr::Constant(n - 1.0), l_n_minus_1);
+
+                return simplify(&Expr::new_div(
+                    Expr::new_sub(term1, term2),
+                    Expr::Constant(n),
                 ));
-
-                let term1 =
-                    Expr::new_mul(
-                        term1_factor,
-                        l_n,
-                    );
-
-                let term2 =
-                    Expr::new_mul(
-                        Expr::Constant(
-                            n - 1.0,
-                        ),
-                        l_n_minus_1,
-                    );
-
-                return simplify(
-                    &Expr::new_div(
-                        Expr::new_sub(
-                            term1,
-                            term2,
-                        ),
-                        Expr::Constant(
-                            n,
-                        ),
-                    ),
-                );
             }
         }
     }
@@ -1022,13 +710,11 @@ pub fn laguerre_l(
 /// # Returns
 /// An `Expr` representing `L_n^α(x)`.
 #[must_use]
-
 pub fn generalized_laguerre(
     n: &Expr,
     alpha: &Expr,
     x: &Expr,
 ) -> Expr {
-
     let s_n = simplify(n);
 
     let s_alpha = simplify(alpha);
@@ -1037,30 +723,20 @@ pub fn generalized_laguerre(
 
     // L_n^0(x) = L_n(x)
     if let Some(a) = s_alpha.to_f64() {
-
         if a.abs() < 1e-9 {
-
-            return laguerre_l(
-                &s_n, s_x,
-            );
+            return laguerre_l(&s_n, s_x);
         }
     }
 
     // L_0^α(x) = 1
     if let Some(n_val) = s_n.to_f64() {
-
         if n_val.abs() < 1e-9 {
-
             return Expr::Constant(1.0);
         }
     }
 
     // Use NaryList for generalized_laguerre
-    Expr::NaryList(
-        "generalized_laguerre"
-            .to_string(),
-        vec![s_n, s_alpha, s_x],
-    )
+    Expr::NaryList("generalized_laguerre".to_string(), vec![s_n, s_alpha, s_x])
 }
 
 /// Symbolic representation and smart constructor for the Hermite Polynomials, `H_n(x)`.
@@ -1078,98 +754,44 @@ pub fn generalized_laguerre(
 ///
 /// # Examples
 /// ```
-/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::special_functions::hermite_h;
 ///
 /// // H_0(x) = 1
-/// let h0 = hermite_h(
-///     &Expr::Constant(0.0),
-///     Expr::Variable("x".to_string()),
-/// );
+/// let h0 = hermite_h(&Expr::Constant(0.0), Expr::Variable("x".to_string()));
 ///
-/// assert_eq!(
-///     h0,
-///     Expr::Constant(1.0)
-/// );
+/// assert_eq!(h0, Expr::Constant(1.0));
 /// ```
 #[must_use]
-
 pub fn hermite_h(
     degree: &Expr,
     arg: Expr,
 ) -> Expr {
-
     let s_degree = simplify(degree);
 
     if let Some(n) = s_degree.to_f64() {
-
         let n_int = n as i32;
 
-        if n >= 0.0 && n.fract() == 0.0
-        {
-
+        if n >= 0.0 && n.fract() == 0.0 {
             if n_int == 0 {
-
-                return Expr::Constant(
-                    1.0,
-                );
+                return Expr::Constant(1.0);
             }
 
             if n_int == 1 {
-
-                return simplify(
-                    &Expr::new_mul(
-                        Expr::Constant(
-                            2.0,
-                        ),
-                        arg,
-                    ),
-                );
+                return simplify(&Expr::new_mul(Expr::Constant(2.0), arg));
             }
 
             // Use recurrence for small n only
             if n_int <= 10 {
+                let h_n = hermite_h(&Expr::Constant(n - 1.0), arg.clone());
 
-                let h_n = hermite_h(
-                    &Expr::Constant(
-                        n - 1.0,
-                    ),
-                    arg.clone(),
-                );
+                let h_n_minus_1 = hermite_h(&Expr::Constant(n - 2.0), arg.clone());
 
-                let h_n_minus_1 =
-                    hermite_h(
-                        &Expr::Constant(
-                            n - 2.0,
-                        ),
-                        arg.clone(),
-                    );
+                let term1 = Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(arg, h_n));
 
-                let term1 =
-                    Expr::new_mul(
-                        Expr::Constant(
-                            2.0,
-                        ),
-                        Expr::new_mul(
-                            arg, h_n,
-                        ),
-                    );
+                let term2 = Expr::new_mul(Expr::Constant(2.0 * (n - 1.0)), h_n_minus_1);
 
-                let term2 =
-                    Expr::new_mul(
-                        Expr::Constant(
-                            2.0 * (n
-                                - 1.0),
-                        ),
-                        h_n_minus_1,
-                    );
-
-                return simplify(
-                    &Expr::new_sub(
-                        term1, term2,
-                    ),
-                );
+                return simplify(&Expr::new_sub(term1, term2));
             }
         }
     }
@@ -1191,74 +813,43 @@ pub fn hermite_h(
 ///
 /// # Examples
 /// ```
-/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::special_functions::chebyshev_t;
 ///
 /// // T_0(x) = 1, T_1(x) = x
-/// let t0 = chebyshev_t(
-///     &Expr::Constant(0.0),
-///     &Expr::Variable("x".to_string()),
-/// );
+/// let t0 = chebyshev_t(&Expr::Constant(0.0), &Expr::Variable("x".to_string()));
 ///
-/// assert_eq!(
-///     t0,
-///     Expr::Constant(1.0)
-/// );
+/// assert_eq!(t0, Expr::Constant(1.0));
 /// ```
 #[must_use]
-
 pub fn chebyshev_t(
     n: &Expr,
     x: &Expr,
 ) -> Expr {
-
     let s_n = simplify(n);
 
     let s_x = simplify(x);
 
     if let Some(n_val) = s_n.to_f64() {
-
         let n_int = n_val as i32;
 
-        if n_val >= 0.0
-            && n_val.fract() == 0.0
-        {
-
+        if n_val >= 0.0 && n_val.fract() == 0.0 {
             if n_int == 0 {
-
-                return Expr::Constant(
-                    1.0,
-                );
+                return Expr::Constant(1.0);
             }
 
             if n_int == 1 {
-
                 return s_x;
             }
 
             // Recurrence: T_n(x) = 2x*T_{n-1}(x) - T_{n-2}(x)
             if n_int <= 10 {
+                let t_n1 = chebyshev_t(&Expr::Constant(n_val - 1.0), &s_x);
 
-                let t_n1 = chebyshev_t(
-                    &Expr::Constant(
-                        n_val - 1.0,
-                    ),
-                    &s_x,
-                );
-
-                let t_n2 = chebyshev_t(
-                    &Expr::Constant(
-                        n_val - 2.0,
-                    ),
-                    &s_x,
-                );
+                let t_n2 = chebyshev_t(&Expr::Constant(n_val - 2.0), &s_x);
 
                 return simplify(&Expr::new_sub(
-                    Expr::new_mul(
-                        Expr::Constant(2.0),
-                        Expr::new_mul(s_x, t_n1),
-                    ),
+                    Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(s_x, t_n1)),
                     t_n2,
                 ));
             }
@@ -1266,11 +857,7 @@ pub fn chebyshev_t(
     }
 
     // Use BinaryList for chebyshev_t
-    Expr::BinaryList(
-        "chebyshev_t".to_string(),
-        Arc::new(s_n),
-        Arc::new(s_x),
-    )
+    Expr::BinaryList("chebyshev_t".to_string(), Arc::new(s_n), Arc::new(s_x))
 }
 
 /// Symbolic representation for the Chebyshev Polynomial of the second kind, `U_n(x)`.
@@ -1284,65 +871,34 @@ pub fn chebyshev_t(
 /// # Returns
 /// An `Expr` representing `U_n(x)`.
 #[must_use]
-
 pub fn chebyshev_u(
     n: &Expr,
     x: &Expr,
 ) -> Expr {
-
     let s_n = simplify(n);
 
     let s_x = simplify(x);
 
     if let Some(n_val) = s_n.to_f64() {
-
         let n_int = n_val as i32;
 
-        if n_val >= 0.0
-            && n_val.fract() == 0.0
-        {
-
+        if n_val >= 0.0 && n_val.fract() == 0.0 {
             if n_int == 0 {
-
-                return Expr::Constant(
-                    1.0,
-                );
+                return Expr::Constant(1.0);
             }
 
             if n_int == 1 {
-
-                return simplify(
-                    &Expr::new_mul(
-                        Expr::Constant(
-                            2.0,
-                        ),
-                        s_x,
-                    ),
-                );
+                return simplify(&Expr::new_mul(Expr::Constant(2.0), s_x));
             }
 
             // Recurrence: U_n(x) = 2x*U_{n-1}(x) - U_{n-2}(x)
             if n_int <= 10 {
+                let u_n1 = chebyshev_u(&Expr::Constant(n_val - 1.0), &s_x);
 
-                let u_n1 = chebyshev_u(
-                    &Expr::Constant(
-                        n_val - 1.0,
-                    ),
-                    &s_x,
-                );
-
-                let u_n2 = chebyshev_u(
-                    &Expr::Constant(
-                        n_val - 2.0,
-                    ),
-                    &s_x,
-                );
+                let u_n2 = chebyshev_u(&Expr::Constant(n_val - 2.0), &s_x);
 
                 return simplify(&Expr::new_sub(
-                    Expr::new_mul(
-                        Expr::Constant(2.0),
-                        Expr::new_mul(s_x, u_n1),
-                    ),
+                    Expr::new_mul(Expr::Constant(2.0), Expr::new_mul(s_x, u_n1)),
                     u_n2,
                 ));
             }
@@ -1350,11 +906,7 @@ pub fn chebyshev_u(
     }
 
     // Use BinaryList for chebyshev_u
-    Expr::BinaryList(
-        "chebyshev_u".to_string(),
-        Arc::new(s_n),
-        Arc::new(s_x),
-    )
+    Expr::BinaryList("chebyshev_u".to_string(), Arc::new(s_n), Arc::new(s_x))
 }
 
 // ============================================================================
@@ -1375,50 +927,32 @@ pub fn chebyshev_u(
 /// # Returns
 /// An `Expr::Eq` representing Bessel's differential equation.
 #[must_use]
-
 pub fn bessel_differential_equation(
     y: &Expr,
     x: &Expr,
     n: &Expr,
 ) -> Expr {
-
     let y_prime = differentiate(y, "x");
 
-    let y_double_prime =
-        differentiate(&y_prime, "x");
+    let y_double_prime = differentiate(&y_prime, "x");
 
     let term1 = Expr::new_mul(
-        Expr::new_pow(
-            x.clone(),
-            Expr::Constant(2.0),
-        ),
+        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
         y_double_prime,
     );
 
-    let term2 = Expr::new_mul(
-        x.clone(),
-        y_prime,
-    );
+    let term2 = Expr::new_mul(x.clone(), y_prime);
 
     let term3 = Expr::new_mul(
         Expr::new_sub(
-            Expr::new_pow(
-                x.clone(),
-                Expr::Constant(2.0),
-            ),
-            Expr::new_pow(
-                n.clone(),
-                Expr::Constant(2.0),
-            ),
+            Expr::new_pow(x.clone(), Expr::Constant(2.0)),
+            Expr::new_pow(n.clone(), Expr::Constant(2.0)),
         ),
         y.clone(),
     );
 
     Expr::Eq(
-        Arc::new(Expr::new_add(
-            term1,
-            Expr::new_add(term2, term3),
-        )),
+        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
         Arc::new(Expr::Constant(0.0)),
     )
 }
@@ -1436,53 +970,32 @@ pub fn bessel_differential_equation(
 /// # Returns
 /// An `Expr::Eq` representing Legendre's differential equation.
 #[must_use]
-
 pub fn legendre_differential_equation(
     y: &Expr,
     x: &Expr,
     n: &Expr,
 ) -> Expr {
-
     let y_prime = differentiate(y, "x");
 
-    let y_double_prime =
-        differentiate(&y_prime, "x");
+    let y_double_prime = differentiate(&y_prime, "x");
 
     let term1 = Expr::new_mul(
         Expr::new_sub(
             Expr::Constant(1.0),
-            Expr::new_pow(
-                x.clone(),
-                Expr::Constant(2.0),
-            ),
+            Expr::new_pow(x.clone(), Expr::Constant(2.0)),
         ),
         y_double_prime,
     );
 
-    let term2 = Expr::new_mul(
-        Expr::Constant(-2.0),
-        Expr::new_mul(
-            x.clone(),
-            y_prime,
-        ),
-    );
+    let term2 = Expr::new_mul(Expr::Constant(-2.0), Expr::new_mul(x.clone(), y_prime));
 
     let term3 = Expr::new_mul(
-        Expr::new_mul(
-            n.clone(),
-            Expr::new_add(
-                n.clone(),
-                Expr::Constant(1.0),
-            ),
-        ),
+        Expr::new_mul(n.clone(), Expr::new_add(n.clone(), Expr::Constant(1.0))),
         y.clone(),
     );
 
     Expr::Eq(
-        Arc::new(Expr::new_add(
-            term1,
-            Expr::new_add(term2, term3),
-        )),
+        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
         Arc::new(Expr::Constant(0.0)),
     )
 }
@@ -1499,63 +1012,33 @@ pub fn legendre_differential_equation(
 /// # Returns
 /// An `Expr::Eq` representing Rodrigues' formula.
 #[must_use]
-
 pub fn legendre_rodrigues_formula(
     n: &Expr,
     x: &Expr,
 ) -> Expr {
-
-    let n_f64 = if let Expr::Constant(
-        val,
-    ) = n
-    {
-
+    let n_f64 = if let Expr::Constant(val) = n {
         *val
     } else {
-
-        return Expr::new_legendre_p(
-            n.clone(),
-            x.clone(),
-        );
+        return Expr::new_legendre_p(n.clone(), x.clone());
     };
 
-    let n_factorial = Expr::Constant(
-        if n_f64 >= 0.0 {
-
-            factorial(
-                (n_f64 as i64)
-                    .try_into()
-                    .unwrap_or(0),
-            )
-        } else {
-
-            f64::NAN
-        },
-    );
+    let n_factorial = Expr::Constant(if n_f64 >= 0.0 {
+        factorial((n_f64 as i64).try_into().unwrap_or(0))
+    } else {
+        f64::NAN
+    });
 
     Expr::Eq(
-        Arc::new(legendre_p(
-            &n.clone(),
-            x.clone(),
-        )),
+        Arc::new(legendre_p(&n.clone(), x.clone())),
         Arc::new(Expr::new_mul(
             Expr::new_div(
                 Expr::Constant(1.0),
-                Expr::new_mul(
-                    Expr::new_pow(
-                        Expr::Constant(2.0),
-                        n.clone(),
-                    ),
-                    n_factorial,
-                ),
+                Expr::new_mul(Expr::new_pow(Expr::Constant(2.0), n.clone()), n_factorial),
             ),
             Expr::DerivativeN(
                 Arc::new(Expr::new_pow(
                     Expr::new_sub(
-                        Expr::new_pow(
-                            x.clone(),
-                            Expr::Constant(2.0),
-                        ),
+                        Expr::new_pow(x.clone(), Expr::Constant(2.0)),
                         Expr::Constant(1.0),
                     ),
                     n.clone(),
@@ -1580,41 +1063,23 @@ pub fn legendre_rodrigues_formula(
 /// # Returns
 /// An `Expr::Eq` representing Laguerre's differential equation.
 #[must_use]
-
 pub fn laguerre_differential_equation(
     y: &Expr,
     x: &Expr,
     n: &Expr,
 ) -> Expr {
-
     let y_prime = differentiate(y, "x");
 
-    let y_double_prime =
-        differentiate(&y_prime, "x");
+    let y_double_prime = differentiate(&y_prime, "x");
 
-    let term1 = Expr::new_mul(
-        x.clone(),
-        y_double_prime,
-    );
+    let term1 = Expr::new_mul(x.clone(), y_double_prime);
 
-    let term2 = Expr::new_mul(
-        Expr::new_sub(
-            Expr::Constant(1.0),
-            x.clone(),
-        ),
-        y_prime,
-    );
+    let term2 = Expr::new_mul(Expr::new_sub(Expr::Constant(1.0), x.clone()), y_prime);
 
-    let term3 = Expr::new_mul(
-        n.clone(),
-        y.clone(),
-    );
+    let term3 = Expr::new_mul(n.clone(), y.clone());
 
     Expr::Eq(
-        Arc::new(Expr::new_add(
-            term1,
-            Expr::new_add(term2, term3),
-        )),
+        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
         Arc::new(Expr::Constant(0.0)),
     )
 }
@@ -1632,41 +1097,23 @@ pub fn laguerre_differential_equation(
 /// # Returns
 /// An `Expr::Eq` representing Hermite's differential equation.
 #[must_use]
-
 pub fn hermite_differential_equation(
     y: &Expr,
     x: &Expr,
     n: &Expr,
 ) -> Expr {
-
     let y_prime = differentiate(y, "x");
 
-    let y_double_prime =
-        differentiate(&y_prime, "x");
+    let y_double_prime = differentiate(&y_prime, "x");
 
     let term1 = y_double_prime;
 
-    let term2 = Expr::new_mul(
-        Expr::Constant(-2.0),
-        Expr::new_mul(
-            x.clone(),
-            y_prime,
-        ),
-    );
+    let term2 = Expr::new_mul(Expr::Constant(-2.0), Expr::new_mul(x.clone(), y_prime));
 
-    let term3 = Expr::new_mul(
-        Expr::new_mul(
-            Expr::Constant(2.0),
-            n.clone(),
-        ),
-        y.clone(),
-    );
+    let term3 = Expr::new_mul(Expr::new_mul(Expr::Constant(2.0), n.clone()), y.clone());
 
     Expr::Eq(
-        Arc::new(Expr::new_add(
-            term1,
-            Expr::new_add(term2, term3),
-        )),
+        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
         Arc::new(Expr::Constant(0.0)),
     )
 }
@@ -1683,34 +1130,21 @@ pub fn hermite_differential_equation(
 /// # Returns
 /// An `Expr::Eq` representing Rodrigues' formula.
 #[must_use]
-
 pub fn hermite_rodrigues_formula(
     n: &Expr,
     x: &Expr,
 ) -> Expr {
-
     Expr::Eq(
-        Arc::new(hermite_h(
-            &n.clone(),
-            x.clone(),
-        )),
+        Arc::new(hermite_h(&n.clone(), x.clone())),
         Arc::new(Expr::new_mul(
-            Expr::new_pow(
-                Expr::Constant(-1.0),
-                n.clone(),
-            ),
+            Expr::new_pow(Expr::Constant(-1.0), n.clone()),
             Expr::new_mul(
-                Expr::new_exp(Expr::new_pow(
-                    x.clone(),
-                    Expr::Constant(2.0),
-                )),
+                Expr::new_exp(Expr::new_pow(x.clone(), Expr::Constant(2.0))),
                 Expr::DerivativeN(
-                    Arc::new(Expr::new_exp(
-                        Expr::new_neg(Expr::new_pow(
-                            x.clone(),
-                            Expr::Constant(2.0),
-                        )),
-                    )),
+                    Arc::new(Expr::new_exp(Expr::new_neg(Expr::new_pow(
+                        x.clone(),
+                        Expr::Constant(2.0),
+                    )))),
                     "x".to_string(),
                     Arc::new(n.clone()),
                 ),
@@ -1731,48 +1165,29 @@ pub fn hermite_rodrigues_formula(
 /// # Returns
 /// An `Expr::Eq` representing Chebyshev's differential equation.
 #[must_use]
-
 pub fn chebyshev_differential_equation(
     y: &Expr,
     x: &Expr,
     n: &Expr,
 ) -> Expr {
-
     let y_prime = differentiate(y, "x");
 
-    let y_double_prime =
-        differentiate(&y_prime, "x");
+    let y_double_prime = differentiate(&y_prime, "x");
 
     let term1 = Expr::new_mul(
         Expr::new_sub(
             Expr::Constant(1.0),
-            Expr::new_pow(
-                x.clone(),
-                Expr::Constant(2.0),
-            ),
+            Expr::new_pow(x.clone(), Expr::Constant(2.0)),
         ),
         y_double_prime,
     );
 
-    let term2 =
-        Expr::new_neg(Expr::new_mul(
-            x.clone(),
-            y_prime,
-        ));
+    let term2 = Expr::new_neg(Expr::new_mul(x.clone(), y_prime));
 
-    let term3 = Expr::new_mul(
-        Expr::new_pow(
-            n.clone(),
-            Expr::Constant(2.0),
-        ),
-        y.clone(),
-    );
+    let term3 = Expr::new_mul(Expr::new_pow(n.clone(), Expr::Constant(2.0)), y.clone());
 
     Expr::Eq(
-        Arc::new(Expr::new_add(
-            term1,
-            Expr::new_add(term2, term3),
-        )),
+        Arc::new(Expr::new_add(term1, Expr::new_add(term2, term3))),
         Arc::new(Expr::Constant(0.0)),
     )
 }

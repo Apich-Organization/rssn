@@ -12,7 +12,6 @@ use crate::numerical::multi_valued;
 use crate::symbolic::core::Expr;
 
 #[derive(Deserialize)]
-
 struct NewtonInput {
     f: Expr,
     f_prime: Expr,
@@ -23,7 +22,6 @@ struct NewtonInput {
 }
 
 #[derive(Serialize)]
-
 struct ComplexResult {
     re: f64,
     im: f64,
@@ -36,8 +34,7 @@ struct ComplexResult {
 ///
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -45,27 +42,21 @@ struct ComplexResult {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : NewtonInput = match from_bincode_buffer(&buffer) {
+    let input: NewtonInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<ComplexResult, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<ComplexResult, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let start_point = Complex::new(
-        input.start_re,
-        input.start_im,
-    );
+    let start_point = Complex::new(input.start_re, input.start_im);
 
     match multi_valued::newton_method_complex(
         &input.f,
@@ -75,30 +66,26 @@ pub unsafe extern "C" fn rssn_num_mv_newton_method_complex_bincode(
         input.max_iter,
     ) {
         | Some(root) => {
-
             let res = ComplexResult {
-                re : root.re,
-                im : root.im,
+                re: root.re,
+                im: root.im,
             };
 
             to_bincode_buffer(&FfiResult {
-                ok : Some(res),
-                err : None::<String>,
+                ok: Some(res),
+                err: None::<String>,
             })
         },
         | None => {
-            to_bincode_buffer(
-                &FfiResult::<ComplexResult, String> {
-                    ok : None,
-                    err : Some("Newton's method failed to converge".to_string()),
-                },
-            )
+            to_bincode_buffer(&FfiResult::<ComplexResult, String> {
+                ok: None,
+                err: Some("Newton's method failed to converge".to_string()),
+            })
         },
     }
 }
 
 #[derive(Deserialize)]
-
 struct LogSqrtInput {
     re: f64,
     im: f64,
@@ -112,8 +99,7 @@ struct LogSqrtInput {
 ///
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -121,33 +107,21 @@ struct LogSqrtInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : LogSqrtInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: LogSqrtInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<ComplexResult, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<ComplexResult, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let z = Complex::new(
-        input.re,
-        input.im,
-    );
+    let z = Complex::new(input.re, input.im);
 
-    let res =
-        multi_valued::complex_log_k(
-            z,
-            input.k,
-        );
+    let res = multi_valued::complex_log_k(z, input.k);
 
     let out = ComplexResult {
         re: res.re,
@@ -167,8 +141,7 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(
 ///
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -176,33 +149,23 @@ pub unsafe extern "C" fn rssn_num_mv_complex_log_k_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : LogSqrtInput = match from_bincode_buffer(&buffer) {
+    let input: LogSqrtInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<ComplexResult, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<ComplexResult, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let z = Complex::new(
-        input.re,
-        input.im,
-    );
+    let z = Complex::new(input.re, input.im);
 
-    let res =
-        multi_valued::complex_sqrt_k(
-            z,
-            input.k,
-        );
+    let res = multi_valued::complex_sqrt_k(z, input.k);
 
     let out = ComplexResult {
         re: res.re,
@@ -216,7 +179,6 @@ pub unsafe extern "C" fn rssn_num_mv_complex_sqrt_k_bincode(
 }
 
 #[derive(Deserialize)]
-
 struct PowInput {
     z_re: f64,
     z_im: f64,
@@ -232,8 +194,7 @@ struct PowInput {
 ///
 /// # Returns
 /// Bincode-encoded `FfiResult<ComplexResult, String>`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -241,39 +202,23 @@ struct PowInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : PowInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_mv_complex_pow_k_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: PowInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<ComplexResult, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<ComplexResult, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let z = Complex::new(
-        input.z_re,
-        input.z_im,
-    );
+    let z = Complex::new(input.z_re, input.z_im);
 
-    let w = Complex::new(
-        input.w_re,
-        input.w_im,
-    );
+    let w = Complex::new(input.w_re, input.w_im);
 
-    let res =
-        multi_valued::complex_pow_k(
-            z,
-            w,
-            input.k,
-        );
+    let res = multi_valued::complex_pow_k(z, w, input.k);
 
     let out = ComplexResult {
         re: res.re,

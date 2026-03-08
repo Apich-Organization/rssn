@@ -11,7 +11,6 @@ use crate::numerical::calculus;
 use crate::symbolic::core::Expr;
 
 #[derive(Deserialize)]
-
 struct GradientInput {
     expr: Expr,
     vars: Vec<String>,
@@ -19,7 +18,6 @@ struct GradientInput {
 }
 
 #[derive(Deserialize)]
-
 struct JacobianInput {
     funcs: Vec<Expr>,
     vars: Vec<String>,
@@ -27,7 +25,6 @@ struct JacobianInput {
 }
 
 #[derive(Deserialize)]
-
 struct HessianInput {
     expr: Expr,
     vars: Vec<String>,
@@ -35,9 +32,7 @@ struct HessianInput {
 }
 
 /// Computes the gradient of an expression at a given point using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -45,44 +40,29 @@ struct HessianInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_numerical_gradient_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : GradientInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_numerical_gradient_json(input_json: *const c_char) -> *mut c_char {
+    let input: GradientInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<f64>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let vars_refs: Vec<&str> = input
-        .vars
-        .iter()
-        .map(
-            std::string::String::as_str,
-        )
-        .collect();
+    let vars_refs: Vec<&str> = input.vars.iter().map(std::string::String::as_str).collect();
 
-    let res = calculus::gradient(
-        &input.expr,
-        &vars_refs,
-        &input.point,
-    );
+    let res = calculus::gradient(&input.expr, &vars_refs, &input.point);
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -99,16 +79,11 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 /// Computes the Jacobian matrix of a set of expressions at a given point using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -116,44 +91,29 @@ pub unsafe extern "C" fn rssn_numerical_gradient_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_numerical_jacobian_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : JacobianInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_numerical_jacobian_json(input_json: *const c_char) -> *mut c_char {
+    let input: JacobianInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let vars_refs: Vec<&str> = input
-        .vars
-        .iter()
-        .map(
-            std::string::String::as_str,
-        )
-        .collect();
+    let vars_refs: Vec<&str> = input.vars.iter().map(std::string::String::as_str).collect();
 
-    let res = calculus::jacobian(
-        &input.funcs,
-        &vars_refs,
-        &input.point,
-    );
+    let res = calculus::jacobian(&input.funcs, &vars_refs, &input.point);
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -170,16 +130,11 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 /// Computes the Hessian matrix of an expression at a given point using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -187,44 +142,29 @@ pub unsafe extern "C" fn rssn_numerical_jacobian_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_numerical_hessian_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : HessianInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_numerical_hessian_json(input_json: *const c_char) -> *mut c_char {
+    let input: HessianInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let vars_refs: Vec<&str> = input
-        .vars
-        .iter()
-        .map(
-            std::string::String::as_str,
-        )
-        .collect();
+    let vars_refs: Vec<&str> = input.vars.iter().map(std::string::String::as_str).collect();
 
-    let res = calculus::hessian(
-        &input.expr,
-        &vars_refs,
-        &input.point,
-    );
+    let res = calculus::hessian(&input.expr, &vars_refs, &input.point);
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -241,8 +181,5 @@ pub unsafe extern "C" fn rssn_numerical_hessian_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

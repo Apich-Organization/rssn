@@ -10,36 +10,20 @@ use crate::symbolic::matrix::solve_linear_system;
 use crate::symbolic::matrix::transpose_matrix;
 
 /// Performs matrix addition.
-
-///
-
 /// Takes two bincode-serialized `Expr` representing matrices,
-
 /// and returns a bincode-serialized `Expr` representing their sum.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_matrix_add(
     m1_buf: BincodeBuffer,
     m2_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+    let m1: Option<Expr> = from_bincode_buffer(&m1_buf);
 
-    let m1: Option<Expr> =
-        from_bincode_buffer(&m1_buf);
-
-    let m2: Option<Expr> =
-        from_bincode_buffer(&m2_buf);
+    let m2: Option<Expr> = from_bincode_buffer(&m2_buf);
 
     match (m1, m2) {
-        | (
-            Some(matrix1),
-            Some(matrix2),
-        ) => {
-
-            let result = add_matrices(
-                &matrix1,
-                &matrix2,
-            );
+        | (Some(matrix1), Some(matrix2)) => {
+            let result = add_matrices(&matrix1, &matrix2);
 
             to_bincode_buffer(&result)
         },
@@ -48,36 +32,20 @@ pub extern "C" fn rssn_bincode_matrix_add(
 }
 
 /// Performs matrix multiplication.
-
-///
-
 /// Takes two bincode-serialized `Expr` representing matrices,
-
 /// and returns a bincode-serialized `Expr` representing their product.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_matrix_mul(
     m1_buf: BincodeBuffer,
     m2_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+    let m1: Option<Expr> = from_bincode_buffer(&m1_buf);
 
-    let m1: Option<Expr> =
-        from_bincode_buffer(&m1_buf);
-
-    let m2: Option<Expr> =
-        from_bincode_buffer(&m2_buf);
+    let m2: Option<Expr> = from_bincode_buffer(&m2_buf);
 
     match (m1, m2) {
-        | (
-            Some(matrix1),
-            Some(matrix2),
-        ) => {
-
-            let result = mul_matrices(
-                &matrix1,
-                &matrix2,
-            );
+        | (Some(matrix1), Some(matrix2)) => {
+            let result = mul_matrices(&matrix1, &matrix2);
 
             to_bincode_buffer(&result)
         },
@@ -86,136 +54,70 @@ pub extern "C" fn rssn_bincode_matrix_mul(
 }
 
 /// Performs matrix transposition.
-
-///
-
 /// Takes a bincode-serialized `Expr` representing a matrix,
-
 /// and returns a bincode-serialized `Expr` representing its transpose.
-
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_bincode_matrix_transpose(
-    matrix_buf: BincodeBuffer
-) -> BincodeBuffer {
-
-    let matrix: Option<Expr> =
-        from_bincode_buffer(
-            &matrix_buf,
-        );
+pub extern "C" fn rssn_bincode_matrix_transpose(matrix_buf: BincodeBuffer) -> BincodeBuffer {
+    let matrix: Option<Expr> = from_bincode_buffer(&matrix_buf);
 
     if let Some(m) = matrix {
-
-        let result =
-            transpose_matrix(&m);
+        let result = transpose_matrix(&m);
 
         to_bincode_buffer(&result)
     } else {
-
         BincodeBuffer::empty()
     }
 }
 
 /// Computes the determinant of a matrix.
-
-///
-
 /// Takes a bincode-serialized `Expr` representing a matrix,
-
 /// and returns a bincode-serialized `Expr` representing its determinant.
-
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_bincode_matrix_determinant(
-    matrix_buf: BincodeBuffer
-) -> BincodeBuffer {
-
-    let matrix: Option<Expr> =
-        from_bincode_buffer(
-            &matrix_buf,
-        );
+pub extern "C" fn rssn_bincode_matrix_determinant(matrix_buf: BincodeBuffer) -> BincodeBuffer {
+    let matrix: Option<Expr> = from_bincode_buffer(&matrix_buf);
 
     if let Some(m) = matrix {
-
         let result = determinant(&m);
 
         to_bincode_buffer(&result)
     } else {
-
         BincodeBuffer::empty()
     }
 }
 
 /// Computes the inverse of a matrix.
-
-///
-
 /// Takes a bincode-serialized `Expr` representing a matrix,
-
 /// and returns a bincode-serialized `Expr` representing its inverse.
-
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_bincode_matrix_inverse(
-    matrix_buf: BincodeBuffer
-) -> BincodeBuffer {
-
-    let matrix: Option<Expr> =
-        from_bincode_buffer(
-            &matrix_buf,
-        );
+pub extern "C" fn rssn_bincode_matrix_inverse(matrix_buf: BincodeBuffer) -> BincodeBuffer {
+    let matrix: Option<Expr> = from_bincode_buffer(&matrix_buf);
 
     if let Some(m) = matrix {
-
         let result = inverse_matrix(&m);
 
         to_bincode_buffer(&result)
     } else {
-
         BincodeBuffer::empty()
     }
 }
 
 /// Solves a linear system of equations AX = B.
-
-///
-
 /// Takes two bincode-serialized `Expr` representing matrix A and vector B,
-
 /// and returns a bincode-serialized `Expr` representing the solution vector X.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_matrix_solve_linear_system(
     a_buf: BincodeBuffer,
     b_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+    let a: Option<Expr> = from_bincode_buffer(&a_buf);
 
-    let a: Option<Expr> =
-        from_bincode_buffer(&a_buf);
-
-    let b: Option<Expr> =
-        from_bincode_buffer(&b_buf);
+    let b: Option<Expr> = from_bincode_buffer(&b_buf);
 
     match (a, b) {
-        | (
-            Some(matrix_a),
-            Some(vector_b),
-        ) => {
-
-            match solve_linear_system(
-                &matrix_a,
-                &vector_b,
-            ) {
-                | Ok(result) => {
-                    to_bincode_buffer(
-                        &result,
-                    )
-                },
-                | Err(_) => {
-                    BincodeBuffer::empty(
-                    )
-                },
+        | (Some(matrix_a), Some(vector_b)) => {
+            match solve_linear_system(&matrix_a, &vector_b) {
+                | Ok(result) => to_bincode_buffer(&result),
+                | Err(_) => BincodeBuffer::empty(),
             }
         },
         | _ => BincodeBuffer::empty(),

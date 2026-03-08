@@ -2,9 +2,9 @@
 
 use ndarray::Array2;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_sim::fdtd_electrodynamics::FdtdParameters;
 use crate::physics::physics_sim::fdtd_electrodynamics::{
@@ -36,8 +36,7 @@ use crate::physics::physics_sim::fdtd_electrodynamics::{
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -45,41 +44,23 @@ use crate::physics::physics_sim::fdtd_electrodynamics::{
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let params : FdtdParameters = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let params: FdtdParameters = match from_bincode_buffer(&buffer) {
         | Some(p) => p,
         | None => {
-            return to_bincode_buffer(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
+            return to_bincode_buffer(&FfiResult::<Vec<f64>, String>::err(
                 "Invalid Bincode".to_string(),
-            ))
+            ));
         },
     };
 
     let snapshots = fdtd_electrodynamics::run_fdtd_simulation(&params);
 
-    if let Some(final_ez) =
-        snapshots.last()
-    {
-
-        to_bincode_buffer(&FfiResult::<
-            Array2<f64>,
-            String,
-        >::ok(
-            final_ez.clone(),
-        ))
+    if let Some(final_ez) = snapshots.last() {
+        to_bincode_buffer(&FfiResult::<Array2<f64>, String>::ok(final_ez.clone()))
     } else {
-
-        to_bincode_buffer(&FfiResult::<
-            Array2<f64>,
-            String,
-        >::err(
+        to_bincode_buffer(&FfiResult::<Array2<f64>, String>::err(
             "No snapshots".to_string(),
         ))
     }

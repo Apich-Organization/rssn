@@ -20,45 +20,28 @@ use rssn::symbolic::grobner::buchberger;
 use rssn::symbolic::polynomial::sparse_poly_to_expr;
 
 // Helper function to create a SparsePolynomial from a single variable.
-fn var_poly(
-    name: &str
-) -> SparsePolynomial {
-
+fn var_poly(name: &str) -> SparsePolynomial {
     let mut terms = BTreeMap::new();
 
     let mut mono = BTreeMap::new();
 
     mono.insert(name.to_string(), 1);
 
-    terms.insert(
-        Monomial(mono),
-        Expr::Constant(1.0),
-    );
+    terms.insert(Monomial(mono), Expr::Constant(1.0));
 
-    SparsePolynomial {
-        terms,
-    }
+    SparsePolynomial { terms }
 }
 
 // Helper function to create a SparsePolynomial from a constant.
-fn const_poly(
-    value: f64
-) -> SparsePolynomial {
-
+fn const_poly(value: f64) -> SparsePolynomial {
     let mut terms = BTreeMap::new();
 
-    terms.insert(
-        Monomial(BTreeMap::new()),
-        Expr::Constant(value),
-    );
+    terms.insert(Monomial(BTreeMap::new()), Expr::Constant(value));
 
-    SparsePolynomial {
-        terms,
-    }
+    SparsePolynomial { terms }
 }
 
 fn main() {
-
     println!(
         "=== Grobner Basis \
          Computation Example ===\n"
@@ -74,30 +57,21 @@ fn main() {
     let two = const_poly(2.0);
 
     // Equation 1: x^2 + y^2 - 1 = 0
-    let f1_sparse = (x.clone()
-        * x.clone())
-    .add(y.clone() * y.clone())
-    .sub(one.clone());
+    let f1_sparse = (x.clone() * x.clone())
+        .add(y.clone() * y.clone())
+        .sub(one.clone());
 
-    println!(
-        "Polynomial 1 (f1): {}",
-        sparse_poly_to_expr(&f1_sparse)
-    );
+    println!("Polynomial 1 (f1): {}", sparse_poly_to_expr(&f1_sparse));
 
     // Equation 2: x^2 - 2x + y^2 = 0
-    let f2_sparse = (x.clone()
-        * x.clone())
-    .sub(two.clone() * x.clone())
-    .add(y.clone() * y.clone());
+    let f2_sparse = (x.clone() * x.clone())
+        .sub(two.clone() * x.clone())
+        .add(y.clone() * y.clone());
 
-    println!(
-        "Polynomial 2 (f2): {}\n",
-        sparse_poly_to_expr(&f2_sparse)
-    );
+    println!("Polynomial 2 (f2): {}\n", sparse_poly_to_expr(&f2_sparse));
 
     // Create the basis for Buchberger's algorithm
-    let basis =
-        vec![f1_sparse, f2_sparse];
+    let basis = vec![f1_sparse, f2_sparse];
 
     println!(
         "Computing Grobner basis \
@@ -106,31 +80,15 @@ fn main() {
     );
 
     // Compute the Grobner basis
-    match buchberger(
-        &basis,
-        MonomialOrder::Lexicographical,
-    ) {
+    match buchberger(&basis, MonomialOrder::Lexicographical) {
         | Ok(grobner_basis) => {
-
             println!("Grobner Basis:");
 
-            for (i, poly) in
-                grobner_basis
-                    .iter()
-                    .enumerate()
-            {
-
-                println!(
-                    "  g{}: {}",
-                    i + 1,
-                    sparse_poly_to_expr(
-                        poly
-                    )
-                );
+            for (i, poly) in grobner_basis.iter().enumerate() {
+                println!("  g{}: {}", i + 1, sparse_poly_to_expr(poly));
             }
         },
         | Err(e) => {
-
             eprintln!(
                 "Error computing \
                  Grobner basis: {}",
@@ -139,7 +97,5 @@ fn main() {
         },
     }
 
-    println!(
-        "\n=== Example Complete ==="
-    );
+    println!("\n=== Example Complete ===");
 }

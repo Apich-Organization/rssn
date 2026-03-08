@@ -4,22 +4,13 @@ use num_bigint::BigInt;
 use rssn::symbolic::finite_field::*;
 
 fn main() {
-
-    let field = PrimeField::new(
-        BigInt::from(5),
-    );
+    let field = PrimeField::new(BigInt::from(5));
 
     // p1 = x + 2
     let p1 = FiniteFieldPolynomial::new(
         &[
-            PrimeFieldElement::new(
-                BigInt::from(1),
-                field.clone(),
-            ),
-            PrimeFieldElement::new(
-                BigInt::from(2),
-                field.clone(),
-            ),
+            PrimeFieldElement::new(BigInt::from(1), field.clone()),
+            PrimeFieldElement::new(BigInt::from(2), field.clone()),
         ],
         field.clone(),
     );
@@ -27,14 +18,8 @@ fn main() {
     // p2 = 2x + 3
     let p2 = FiniteFieldPolynomial::new(
         &[
-            PrimeFieldElement::new(
-                BigInt::from(2),
-                field.clone(),
-            ),
-            PrimeFieldElement::new(
-                BigInt::from(3),
-                field.clone(),
-            ),
+            PrimeFieldElement::new(BigInt::from(2), field.clone()),
+            PrimeFieldElement::new(BigInt::from(3), field.clone()),
         ],
         field.clone(),
     );
@@ -46,61 +31,35 @@ fn main() {
         "Addition result: degree={}, \
          coeffs={:?}",
         result.degree(),
-        result
-            .coeffs
-            .iter()
-            .map(|c| &c.value)
-            .collect::<Vec<_>>()
+        result.coeffs.iter().map(|c| &c.value).collect::<Vec<_>>()
     );
 
     // Test division
-    let field2 = PrimeField::new(
-        BigInt::from(5),
-    );
+    let field2 = PrimeField::new(BigInt::from(5));
 
     // dividend = x^2 + 2x + 3
-    let dividend =
-        FiniteFieldPolynomial::new(
-            &[
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    field2.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(2),
-                    field2.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(3),
-                    field2.clone(),
-                ),
-            ],
-            field2.clone(),
-        );
+    let dividend = FiniteFieldPolynomial::new(
+        &[
+            PrimeFieldElement::new(BigInt::from(1), field2.clone()),
+            PrimeFieldElement::new(BigInt::from(2), field2.clone()),
+            PrimeFieldElement::new(BigInt::from(3), field2.clone()),
+        ],
+        field2.clone(),
+    );
 
     // divisor = x + 1
-    let divisor =
-        FiniteFieldPolynomial::new(
-            &[
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    field2.clone(),
-                ),
-                PrimeFieldElement::new(
-                    BigInt::from(1),
-                    field2.clone(),
-                ),
-            ],
-            field2.clone(),
-        );
+    let divisor = FiniteFieldPolynomial::new(
+        &[
+            PrimeFieldElement::new(BigInt::from(1), field2.clone()),
+            PrimeFieldElement::new(BigInt::from(1), field2.clone()),
+        ],
+        field2.clone(),
+    );
 
-    let (quotient, remainder) =
-        dividend
-            .long_division(&divisor)
-            .expect(
-                "Division should \
+    let (quotient, remainder) = dividend.long_division(&divisor).expect(
+        "Division should \
                  succeed",
-            );
+    );
 
     println!(
         "Division: quotient \
@@ -112,11 +71,7 @@ fn main() {
 
     println!(
         "Quotient coeffs: {:?}",
-        quotient
-            .coeffs
-            .iter()
-            .map(|c| &c.value)
-            .collect::<Vec<_>>()
+        quotient.coeffs.iter().map(|c| &c.value).collect::<Vec<_>>()
     );
 
     println!(

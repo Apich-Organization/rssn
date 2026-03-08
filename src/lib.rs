@@ -57,25 +57,16 @@
 //! // Expression to simplify: 2*x^2
 //! let two = Expr::new_bigint(2.into());
 //!
-//! let x_sq = Expr::new_pow(
-//!     x.clone(),
-//!     Expr::new_bigint(2.into()),
-//! );
+//! let x_sq = Expr::new_pow(x.clone(), Expr::new_bigint(2.into()));
 //!
 //! let expr_to_simplify = Expr::new_mul(two, x_sq);
 //!
 //! // Define the side-relation: x^2 + y^2 - 1 = 0
-//! let y_sq = Expr::new_pow(
-//!     y.clone(),
-//!     Expr::new_bigint(2.into()),
-//! );
+//! let y_sq = Expr::new_pow(y.clone(), Expr::new_bigint(2.into()));
 //!
 //! let one = Expr::new_bigint(1.into());
 //!
-//! let relation = Expr::new_sub(
-//!     Expr::new_add(x.clone(), y.clone()),
-//!     one,
-//! );
+//! let relation = Expr::new_sub(Expr::new_add(x.clone(), y.clone()), one);
 //!
 //! // Simplify the expression with respect to the relation
 //! let simplified_expr = simplify_with_relations(
@@ -87,15 +78,9 @@
 //!
 //! // The result will be 2 - 4y + 2y^2
 //! // Note: The exact output format and canonical form may vary between versions.
-//! println!(
-//!     "Original expression: {}",
-//!     expr_to_simplify
-//! );
+//! println!("Original expression: {}", expr_to_simplify);
 //!
-//! println!(
-//!     "Simplified expression: {}",
-//!     simplified_expr
-//! );
+//! println!("Simplified expression: {}", simplified_expr);
 //! ```
 //!
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_3d.png)
@@ -328,8 +313,8 @@
     html_favicon_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/favicon.ico"
 )]
 
-#[cfg(feature = "compute")]
 /// Computation engine and task management.
+#[cfg(feature = "compute")]
 pub mod compute;
 /// System and physical constants.
 pub mod constant;
@@ -339,28 +324,28 @@ pub mod ffi_apis;
 
 // #[instability::unstable(feature = "experimental")]
 // Disabled because it only works on nightly rust
-#[cfg(feature = "ffi_blinding")]
 /// FFI blinding and security utilities.
+#[cfg(feature = "ffi_blinding")]
 pub mod ffi_blindings;
-#[cfg(feature = "input")]
 /// Input parsing and handling.
+#[cfg(feature = "input")]
 pub mod input;
-#[cfg(feature = "jit")]
 /// Just-In-Time (JIT) compilation for expressions.
+#[cfg(feature = "jit")]
 pub mod jit;
-#[cfg(feature = "nightly")]
 /// Features requiring nightly Rust.
+#[cfg(feature = "nightly")]
 pub mod nightly;
 /// Numerical computation and optimization.
 pub mod numerical;
-#[cfg(feature = "output")]
 /// Output formatting and handling.
+#[cfg(feature = "output")]
 pub mod output;
-#[cfg(feature = "physics")]
 /// Physics-related functionality.
+#[cfg(feature = "physics")]
 pub mod physics;
-#[cfg(feature = "plugins")]
 /// Plugin system for extending functionality.
+#[cfg(feature = "plugins")]
 pub mod plugins;
 /// Prelude for common imports.
 pub mod prelude;
@@ -394,10 +379,6 @@ pub use crate::symbolic::simplify_dag::*;
 /// * `bool` - True if the Arc has exclusive ownership, false otherwise
 #[allow(clippy::inline_always)]
 #[inline(always)]
-
-pub fn is_exclusive<T>(
-    arc: &Arc<T>
-) -> bool {
-
+pub fn is_exclusive<T>(arc: &Arc<T>) -> bool {
     Arc::strong_count(arc) == 1
 }

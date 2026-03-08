@@ -14,14 +14,13 @@ use crate::physics::physics_rkm::DampedOscillatorSystem;
 use crate::physics::physics_rkm::LorenzSystem;
 
 #[derive(Deserialize)]
-
 struct EulerInput {
-    system_type: String, /* "lorenz", "oscillator", "orbital" */
+    system_type: String, // "lorenz", "oscillator", "orbital"
     params: serde_json::Value,
     y0: Vec<f64>,
     t_span: (f64, f64),
     dt: f64,
-    method: String, /* "forward", "midpoint", "heun" */
+    method: String, // "forward", "midpoint", "heun"
 }
 
 /// Solves ODE systems using Euler methods (forward, midpoint, or Heun) via JSON serialization.
@@ -48,8 +47,7 @@ struct EulerInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -57,122 +55,78 @@ struct EulerInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_em_solve_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : EulerInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_em_solve_json(input: *const c_char) -> *mut c_char {
+    let input: EulerInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<(f64, Vec<f64>)>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res = match input
-        .system_type
-        .as_str()
-    {
+    let res = match input.system_type.as_str() {
         | "lorenz" => {
-
-            let sys : LorenzSystem = match serde_json::from_value(input.params) {
+            let sys: LorenzSystem = match serde_json::from_value(input.params) {
                 | Ok(s) => s,
                 | Err(e) => {
                     return to_c_string(
-                        serde_json::to_string(&FfiResult::<
-                            Vec<(f64, Vec<f64>)>,
-                            String,
-                        >::err(
-                            e.to_string()
+                        serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+                            e.to_string(),
                         ))
                         .unwrap(),
-                    )
+                    );
                 },
             };
 
-            solve_with_method(
-                &sys,
-                &input.y0,
-                input.t_span,
-                input.dt,
-                &input.method,
-            )
+            solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
         },
         | "oscillator" => {
-
-            let sys : DampedOscillatorSystem = match serde_json::from_value(input.params) {
+            let sys: DampedOscillatorSystem = match serde_json::from_value(input.params) {
                 | Ok(s) => s,
                 | Err(e) => {
                     return to_c_string(
-                        serde_json::to_string(&FfiResult::<
-                            Vec<(f64, Vec<f64>)>,
-                            String,
-                        >::err(
-                            e.to_string()
+                        serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
+                            e.to_string(),
                         ))
                         .unwrap(),
-                    )
+                    );
                 },
             };
 
-            solve_with_method(
-                &sys,
-                &input.y0,
-                input.t_span,
-                input.dt,
-                &input.method,
-            )
+            solve_with_method(&sys, &input.y0, input.t_span, input.dt, &input.method)
         },
-        | _ => return to_c_string(
-            serde_json::to_string(
-                &FfiResult::<
-                    Vec<(
-                        f64,
-                        Vec<f64>,
-                    )>,
-                    String,
-                >::err(
+        | _ => {
+            return to_c_string(
+                serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::err(
                     "Unknown system \
                      type"
                         .to_string(),
-                ),
-            )
-            .unwrap(),
-        ),
+                ))
+                .unwrap(),
+            );
+        },
     };
 
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                Vec<(f64, Vec<f64>)>,
-                String,
-            >::ok(res),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<Vec<(f64, Vec<f64>)>, String>::ok(res)).unwrap())
 }
 
-pub(crate) fn solve_with_method<S : crate::physics::physics_rkm::OdeSystem>(
-    sys : &S,
-    y0 : &[f64],
-    t_span : (f64, f64),
-    dt : f64,
-    method : &str,
-) -> Vec<(f64, Vec<f64>)>{
-
+pub(crate) fn solve_with_method<S: crate::physics::physics_rkm::OdeSystem>(
+    sys: &S,
+    y0: &[f64],
+    t_span: (f64, f64),
+    dt: f64,
+    method: &str,
+) -> Vec<(f64, Vec<f64>)> {
     match method {
         | "midpoint" => physics_em::solve_midpoint_euler(sys, y0, t_span, dt),
         | "heun" => physics_em::solve_heun_euler(sys, y0, t_span, dt),

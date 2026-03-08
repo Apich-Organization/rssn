@@ -1,10 +1,20 @@
-use crate::ffi_apis::common::{BincodeBuffer, to_bincode_buffer, from_bincode_buffer};
+use crate::ffi_apis::common::BincodeBuffer;
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
 use crate::symbolic::core::Expr;
-use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponential_map, adjoint_representation_group, adjoint_representation_algebra, LieAlgebra, commutator_table, check_jacobi_identity, so3_generators, su2_generators};
+use crate::symbolic::lie_groups_and_algebras::LieAlgebra;
+use crate::symbolic::lie_groups_and_algebras::adjoint_representation_algebra;
+use crate::symbolic::lie_groups_and_algebras::adjoint_representation_group;
+use crate::symbolic::lie_groups_and_algebras::check_jacobi_identity;
+use crate::symbolic::lie_groups_and_algebras::commutator_table;
+use crate::symbolic::lie_groups_and_algebras::exponential_map;
+use crate::symbolic::lie_groups_and_algebras::lie_bracket;
+use crate::symbolic::lie_groups_and_algebras::so3;
+use crate::symbolic::lie_groups_and_algebras::so3_generators;
+use crate::symbolic::lie_groups_and_algebras::su2;
+use crate::symbolic::lie_groups_and_algebras::su2_generators;
 
 // --- LieAlgebra Creation ---
-
-#[unsafe(no_mangle)]
 
 /// Constructs the Lie algebra \(\mathfrak{so}(3)\) and returns it via bincode serialization.
 ///
@@ -23,7 +33,7 @@ use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponentia
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -31,16 +41,12 @@ use crate::symbolic::lie_groups_and_algebras::{so3, su2, lie_bracket, exponentia
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3()
--> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3() -> BincodeBuffer {
     let algebra = so3();
 
     to_bincode_buffer(&algebra)
 }
-
-#[unsafe(no_mangle)]
 
 /// Constructs the Lie algebra \(\mathfrak{su}(2)\) and returns it via bincode serialization.
 ///
@@ -59,7 +65,7 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3()
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -67,18 +73,14 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_so3()
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2()
--> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2() -> BincodeBuffer {
     let algebra = su2();
 
     to_bincode_buffer(&algebra)
 }
 
 // --- Lie Bracket ---
-
-#[unsafe(no_mangle)]
 
 /// Computes the Lie bracket \([x, y]\) of two elements of a Lie algebra using bincode serialization.
 ///
@@ -96,7 +98,7 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2()
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -104,35 +106,28 @@ pub unsafe extern "C" fn rssn_bincode_lie_algebra_su2()
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_lie_bracket(
     x_buf: BincodeBuffer,
     y_buf: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let x : Expr = match from_bincode_buffer(&x_buf) {
+    let x: Expr = match from_bincode_buffer(&x_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let y : Expr = match from_bincode_buffer(&y_buf) {
+    let y: Expr = match from_bincode_buffer(&y_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
     match lie_bracket(&x, &y) {
-        | Ok(result) => {
-            to_bincode_buffer(&result)
-        },
-        | Err(_) => {
-            BincodeBuffer::empty()
-        },
+        | Ok(result) => to_bincode_buffer(&result),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
 // --- Exponential Map ---
-
-#[unsafe(no_mangle)]
 
 /// Computes the exponential map from a Lie algebra element to the corresponding Lie group element.
 ///
@@ -153,7 +148,7 @@ pub unsafe extern "C" fn rssn_bincode_lie_bracket(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -161,30 +156,23 @@ pub unsafe extern "C" fn rssn_bincode_lie_bracket(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_exponential_map(
     x_buf: BincodeBuffer,
     order: usize,
 ) -> BincodeBuffer {
-
-    let x : Expr = match from_bincode_buffer(&x_buf) {
+    let x: Expr = match from_bincode_buffer(&x_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
     match exponential_map(&x, order) {
-        | Ok(result) => {
-            to_bincode_buffer(&result)
-        },
-        | Err(_) => {
-            BincodeBuffer::empty()
-        },
+        | Ok(result) => to_bincode_buffer(&result),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
 // --- Adjoint Representations ---
-
-#[unsafe(no_mangle)]
 
 /// Applies the adjoint representation of a Lie group element to a Lie algebra element.
 ///
@@ -205,7 +193,7 @@ pub unsafe extern "C" fn rssn_bincode_exponential_map(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -213,35 +201,26 @@ pub unsafe extern "C" fn rssn_bincode_exponential_map(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
     g_buf: BincodeBuffer,
     x_buf: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let g : Expr = match from_bincode_buffer(&g_buf) {
+    let g: Expr = match from_bincode_buffer(&g_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let x : Expr = match from_bincode_buffer(&x_buf) {
+    let x: Expr = match from_bincode_buffer(&x_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    match adjoint_representation_group(
-        &g, &x,
-    ) {
-        | Ok(result) => {
-            to_bincode_buffer(&result)
-        },
-        | Err(_) => {
-            BincodeBuffer::empty()
-        },
+    match adjoint_representation_group(&g, &x) {
+        | Ok(result) => to_bincode_buffer(&result),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Applies the adjoint representation of a Lie algebra element to another element.
 ///
@@ -263,7 +242,7 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -271,37 +250,28 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_group(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
     x_buf: BincodeBuffer,
     y_buf: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let x : Expr = match from_bincode_buffer(&x_buf) {
+    let x: Expr = match from_bincode_buffer(&x_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let y : Expr = match from_bincode_buffer(&y_buf) {
+    let y: Expr = match from_bincode_buffer(&y_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    match adjoint_representation_algebra(
-        &x, &y,
-    ) {
-        | Ok(result) => {
-            to_bincode_buffer(&result)
-        },
-        | Err(_) => {
-            BincodeBuffer::empty()
-        },
+    match adjoint_representation_algebra(&x, &y) {
+        | Ok(result) => to_bincode_buffer(&result),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
 // --- Commutator Table ---
-
-#[unsafe(no_mangle)]
 
 /// Computes the commutator table (structure constants) of a Lie algebra.
 ///
@@ -319,7 +289,7 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -327,29 +297,22 @@ pub unsafe extern "C" fn rssn_bincode_adjoint_representation_algebra(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_commutator_table(
     algebra_buf: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let algebra : LieAlgebra = match from_bincode_buffer(&algebra_buf) {
+    let algebra: LieAlgebra = match from_bincode_buffer(&algebra_buf) {
         | Some(a) => a,
         | None => return BincodeBuffer::empty(),
     };
 
     match commutator_table(&algebra) {
-        | Ok(table) => {
-            to_bincode_buffer(&table)
-        },
-        | Err(_) => {
-            BincodeBuffer::empty()
-        },
+        | Ok(table) => to_bincode_buffer(&table),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
 // --- Jacobi Identity Check ---
-
-#[unsafe(no_mangle)]
 
 /// Checks whether a Lie algebra satisfies the Jacobi identity.
 ///
@@ -369,7 +332,7 @@ pub unsafe extern "C" fn rssn_bincode_commutator_table(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must ensure the buffer encodes a valid `LieAlgebra`.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -377,30 +340,20 @@ pub unsafe extern "C" fn rssn_bincode_commutator_table(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(algebra_buf: BincodeBuffer) -> bool {
+    let algebra: LieAlgebra = match from_bincode_buffer(&algebra_buf) {
+        | Some(a) => a,
+        | None => return false,
+    };
 
-pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
-    algebra_buf: BincodeBuffer
-) -> bool {
-
-    let algebra: LieAlgebra =
-        match from_bincode_buffer(
-            &algebra_buf,
-        ) {
-            | Some(a) => a,
-            | None => return false,
-        };
-
-    match check_jacobi_identity(
-        &algebra,
-    ) {
+    match check_jacobi_identity(&algebra) {
         | Ok(result) => result,
         | Err(_) => false,
     }
 }
 
 // --- Generators ---
-
-#[unsafe(no_mangle)]
 
 /// Returns the standard generators of \(\mathfrak{so}(3)\) via bincode serialization.
 ///
@@ -417,7 +370,7 @@ pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -425,21 +378,14 @@ pub unsafe extern "C" fn rssn_bincode_check_jacobi_identity(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_so3_generators()
--> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_so3_generators() -> BincodeBuffer {
     let generators = so3_generators();
 
-    let exprs: Vec<Expr> = generators
-        .into_iter()
-        .map(|g| g.0)
-        .collect();
+    let exprs: Vec<Expr> = generators.into_iter().map(|g| g.0).collect();
 
     to_bincode_buffer(&exprs)
 }
-
-#[unsafe(no_mangle)]
 
 /// Returns the standard generators of \(\mathfrak{su}(2)\) via bincode serialization.
 ///
@@ -456,7 +402,7 @@ pub unsafe extern "C" fn rssn_bincode_so3_generators()
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; callers
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -464,16 +410,11 @@ pub unsafe extern "C" fn rssn_bincode_so3_generators()
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_su2_generators()
--> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_su2_generators() -> BincodeBuffer {
     let generators = su2_generators();
 
-    let exprs: Vec<Expr> = generators
-        .into_iter()
-        .map(|g| g.0)
-        .collect();
+    let exprs: Vec<Expr> = generators.into_iter().map(|g| g.0).collect();
 
     to_bincode_buffer(&exprs)
 }

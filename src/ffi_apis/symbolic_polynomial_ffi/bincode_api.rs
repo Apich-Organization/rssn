@@ -15,124 +15,72 @@ use crate::symbolic::polynomial::to_polynomial_coeffs_vec;
 
 /// Checks if an expression is a polynomial in the given variable (bincode)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_polynomial_is_polynomial(
     expr_buf: BincodeBuffer,
     var: *const c_char,
 ) -> bool {
-
-    let expr: Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str) {
-        | (Some(e), Some(v)) => {
-            is_polynomial(&e, v)
-        },
+        | (Some(e), Some(v)) => is_polynomial(&e, v),
         | _ => false,
     }
 }
 
 /// Computes the degree of a polynomial (bincode)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_polynomial_degree(
     expr_buf: BincodeBuffer,
     var: *const c_char,
 ) -> i64 {
-
-    let expr: Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str) {
-        | (Some(e), Some(v)) => {
-            polynomial_degree(&e, v)
-        },
+        | (Some(e), Some(v)) => polynomial_degree(&e, v),
         | _ => -1,
     }
 }
 
 /// Performs polynomial long division (bincode)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_polynomial_long_division(
     dividend_buf: BincodeBuffer,
     divisor_buf: BincodeBuffer,
     var: *const c_char,
 ) -> BincodeBuffer {
+    let dividend: Option<Expr> = from_bincode_buffer(&dividend_buf);
 
-    let dividend: Option<Expr> =
-        from_bincode_buffer(
-            &dividend_buf,
-        );
-
-    let divisor: Option<Expr> =
-        from_bincode_buffer(
-            &divisor_buf,
-        );
+    let divisor: Option<Expr> = from_bincode_buffer(&divisor_buf);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
-    match (
-        dividend,
-        divisor,
-        var_str,
-    ) {
-        | (
-            Some(d),
-            Some(div),
-            Some(v),
-        ) => {
+    match (dividend, divisor, var_str) {
+        | (Some(d), Some(div), Some(v)) => {
+            let (quotient, remainder) = polynomial_long_division(&d, &div, v);
 
-            let (quotient, remainder) =
-                polynomial_long_division(
-                    &d, &div, v,
-                );
-
-            let result =
-                (quotient, remainder);
+            let result = (quotient, remainder);
 
             to_bincode_buffer(&result)
         },
@@ -142,37 +90,23 @@ pub extern "C" fn rssn_bincode_polynomial_long_division(
 
 /// Finds the leading coefficient of a polynomial (bincode)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_polynomial_leading_coefficient(
     expr_buf: BincodeBuffer,
     var: *const c_char,
 ) -> BincodeBuffer {
-
-    let expr: Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str) {
         | (Some(e), Some(v)) => {
-
-            let result =
-                leading_coefficient(
-                    &e, v,
-                );
+            let result = leading_coefficient(&e, v);
 
             to_bincode_buffer(&result)
         },
@@ -182,37 +116,23 @@ pub extern "C" fn rssn_bincode_polynomial_leading_coefficient(
 
 /// Converts polynomial to coefficient vector (bincode)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_polynomial_to_coeffs_vec(
     expr_buf: BincodeBuffer,
     var: *const c_char,
 ) -> BincodeBuffer {
-
-    let expr: Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str) {
         | (Some(e), Some(v)) => {
-
-            let coeffs =
-            to_polynomial_coeffs_vec(
-                &e, v,
-            );
+            let coeffs = to_polynomial_coeffs_vec(&e, v);
 
             to_bincode_buffer(&coeffs)
         },
@@ -222,34 +142,22 @@ pub extern "C" fn rssn_bincode_polynomial_to_coeffs_vec(
 
 /// Checks if an expression contains a variable (bincode)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_polynomial_contains_var(
     expr_buf: BincodeBuffer,
     var: *const c_char,
 ) -> bool {
-
-    let expr: Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str) {
-        | (Some(e), Some(v)) => {
-            contains_var(&e, v)
-        },
+        | (Some(e), Some(v)) => contains_var(&e, v),
         | _ => false,
     }
 }

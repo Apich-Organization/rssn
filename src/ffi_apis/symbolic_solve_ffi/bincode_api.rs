@@ -7,29 +7,19 @@ use crate::symbolic::solve::solve_linear_system;
 use crate::symbolic::solve::solve_system;
 
 /// Solves an equation for a given variable.
-
-///
-
 /// Takes bincode-serialized `Expr` (equation) and `String` (variable).
-
 /// Returns a bincode-serialized `Expr` representing the solution.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_solve(
     expr_buf: BincodeBuffer,
     var_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+    let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let expr: Option<Expr> =
-        from_bincode_buffer(&expr_buf);
-
-    let var: Option<String> =
-        from_bincode_buffer(&var_buf);
+    let var: Option<String> = from_bincode_buffer(&var_buf);
 
     match (expr, var) {
         | (Some(e), Some(v)) => {
-
             let result = solve(&e, &v);
 
             to_bincode_buffer(&result)
@@ -39,49 +29,24 @@ pub extern "C" fn rssn_bincode_solve(
 }
 
 /// Solves a system of equations for given variables.
-
-///
-
 /// Takes bincode-serialized `Vec<Expr>` (equations) and `Vec<String>` (variables).
-
 /// Returns a bincode-serialized `Expr` representing the solution.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_solve_system(
     equations_buf: BincodeBuffer,
     vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+    let equations: Option<Vec<Expr>> = from_bincode_buffer(&equations_buf);
 
-    let equations: Option<Vec<Expr>> =
-        from_bincode_buffer(
-            &equations_buf,
-        );
-
-    let vars: Option<Vec<String>> =
-        from_bincode_buffer(&vars_buf);
+    let vars: Option<Vec<String>> = from_bincode_buffer(&vars_buf);
 
     match (equations, vars) {
         | (Some(eqs), Some(vs)) => {
+            let vars_str: Vec<&str> = vs.iter().map(std::string::String::as_str).collect();
 
-            let vars_str: Vec<&str> = vs
-            .iter()
-            .map(std::string::String::as_str)
-            .collect();
-
-            match solve_system(
-                &eqs,
-                &vars_str,
-            ) {
-                | Some(result) => {
-                    to_bincode_buffer(
-                        &result,
-                    )
-                },
-                | None => {
-                    BincodeBuffer::empty(
-                    )
-                },
+            match solve_system(&eqs, &vars_str) {
+                | Some(result) => to_bincode_buffer(&result),
+                | None => BincodeBuffer::empty(),
             }
         },
         | _ => BincodeBuffer::empty(),
@@ -89,42 +54,22 @@ pub extern "C" fn rssn_bincode_solve_system(
 }
 
 /// Solves a linear system of equations.
-
-///
-
 /// Takes bincode-serialized `Expr` (system) and `Vec<String>` (variables).
-
 /// Returns a bincode-serialized `Expr` representing the solution.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_solve_linear_system(
     system_buf: BincodeBuffer,
     vars_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+    let system: Option<Expr> = from_bincode_buffer(&system_buf);
 
-    let system: Option<Expr> =
-        from_bincode_buffer(
-            &system_buf,
-        );
-
-    let vars: Option<Vec<String>> =
-        from_bincode_buffer(&vars_buf);
+    let vars: Option<Vec<String>> = from_bincode_buffer(&vars_buf);
 
     match (system, vars) {
         | (Some(sys), Some(vs)) => {
-            match solve_linear_system(
-                &sys, &vs,
-            ) {
-                | Ok(result) => {
-                    to_bincode_buffer(
-                        &result,
-                    )
-                },
-                | Err(_) => {
-                    BincodeBuffer::empty(
-                    )
-                },
+            match solve_linear_system(&sys, &vs) {
+                | Ok(result) => to_bincode_buffer(&result),
+                | Err(_) => BincodeBuffer::empty(),
             }
         },
         | _ => BincodeBuffer::empty(),

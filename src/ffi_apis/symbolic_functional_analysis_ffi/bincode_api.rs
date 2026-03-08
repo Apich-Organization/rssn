@@ -1,6 +1,11 @@
-use crate::ffi_apis::common::{BincodeBuffer, from_bincode_buffer, to_bincode_buffer};
+use crate::ffi_apis::common::BincodeBuffer;
+use crate::ffi_apis::common::from_bincode_buffer;
+use crate::ffi_apis::common::to_bincode_buffer;
 use crate::symbolic::core::Expr;
-use crate::symbolic::functional_analysis::{HilbertSpace, inner_product, norm, gram_schmidt};
+use crate::symbolic::functional_analysis::HilbertSpace;
+use crate::symbolic::functional_analysis::gram_schmidt;
+use crate::symbolic::functional_analysis::inner_product;
+use crate::symbolic::functional_analysis::norm;
 
 /// Constructs a Hilbert space from a bincode-encoded description.
 ///
@@ -21,8 +26,7 @@ use crate::symbolic::functional_analysis::{HilbertSpace, inner_product, norm, gr
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; the caller
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -30,20 +34,15 @@ use crate::symbolic::functional_analysis::{HilbertSpace, inner_product, norm, gr
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(
-    buf: BincodeBuffer
-) -> BincodeBuffer {
-
-    let space : HilbertSpace = match from_bincode_buffer(&buf) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(buf: BincodeBuffer) -> BincodeBuffer {
+    let space: HilbertSpace = match from_bincode_buffer(&buf) {
         | Some(s) => s,
         | None => return BincodeBuffer::empty(),
     };
 
     to_bincode_buffer(&space)
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the inner product of two functions in a Hilbert space using bincode serialization.
 ///
@@ -66,7 +65,7 @@ pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; the caller
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -74,35 +73,31 @@ pub unsafe extern "C" fn rssn_bincode_hilbert_space_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_inner_product(
     space_buf: BincodeBuffer,
     f_buf: BincodeBuffer,
     g_buf: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let space : HilbertSpace = match from_bincode_buffer(&space_buf) {
+    let space: HilbertSpace = match from_bincode_buffer(&space_buf) {
         | Some(s) => s,
         | None => return BincodeBuffer::empty(),
     };
 
-    let f : Expr = match from_bincode_buffer(&f_buf) {
+    let f: Expr = match from_bincode_buffer(&f_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let g : Expr = match from_bincode_buffer(&g_buf) {
+    let g: Expr = match from_bincode_buffer(&g_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result =
-        inner_product(&space, &f, &g);
+    let result = inner_product(&space, &f, &g);
 
     to_bincode_buffer(&result)
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the norm of a function in a Hilbert space using bincode serialization.
 ///
@@ -123,7 +118,7 @@ pub unsafe extern "C" fn rssn_bincode_inner_product(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; the caller
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -131,18 +126,17 @@ pub unsafe extern "C" fn rssn_bincode_inner_product(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_norm(
     space_buf: BincodeBuffer,
     f_buf: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let space : HilbertSpace = match from_bincode_buffer(&space_buf) {
+    let space: HilbertSpace = match from_bincode_buffer(&space_buf) {
         | Some(s) => s,
         | None => return BincodeBuffer::empty(),
     };
 
-    let f : Expr = match from_bincode_buffer(&f_buf) {
+    let f: Expr = match from_bincode_buffer(&f_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -151,8 +145,6 @@ pub unsafe extern "C" fn rssn_bincode_norm(
 
     to_bincode_buffer(&result)
 }
-
-#[unsafe(no_mangle)]
 
 /// Applies the Gram–Schmidt process to produce an orthonormal basis in a Hilbert space.
 ///
@@ -173,7 +165,7 @@ pub unsafe extern "C" fn rssn_bincode_norm(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point; the caller
 /// must treat the returned buffer as opaque and only pass it to compatible APIs.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -181,24 +173,22 @@ pub unsafe extern "C" fn rssn_bincode_norm(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_gram_schmidt(
     space_buf: BincodeBuffer,
     basis_buf: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let space : HilbertSpace = match from_bincode_buffer(&space_buf) {
+    let space: HilbertSpace = match from_bincode_buffer(&space_buf) {
         | Some(s) => s,
         | None => return BincodeBuffer::empty(),
     };
 
-    let basis : Vec<Expr> = match from_bincode_buffer(&basis_buf) {
+    let basis: Vec<Expr> = match from_bincode_buffer(&basis_buf) {
         | Some(b) => b,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result =
-        gram_schmidt(&space, &basis);
+    let result = gram_schmidt(&space, &basis);
 
     to_bincode_buffer(&result)
 }

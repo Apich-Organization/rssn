@@ -9,109 +9,67 @@ use crate::symbolic::solid_state_physics;
 
 /// Computes the density of states for a 3D electron gas using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_density_of_states_3d(
     energy_json: *const c_char,
     mass_json: *const c_char,
     volume_json: *const c_char,
 ) -> *mut c_char {
+    let energy: Option<Expr> = from_json_string(energy_json);
 
-    let energy: Option<Expr> =
-        from_json_string(energy_json);
+    let mass: Option<Expr> = from_json_string(mass_json);
 
-    let mass: Option<Expr> =
-        from_json_string(mass_json);
+    let volume: Option<Expr> = from_json_string(volume_json);
 
-    let volume: Option<Expr> =
-        from_json_string(volume_json);
-
-    match (energy, mass, volume)
-    { (
-        Some(energy),
-        Some(mass),
-        Some(volume),
-    ) => {
-
-        to_json_string(
-            &solid_state_physics::density_of_states_3d(
-                &energy,
-                &mass,
-                &volume,
-            ),
-        )
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (energy, mass, volume) {
+        | (Some(energy), Some(mass), Some(volume)) => {
+            to_json_string(&solid_state_physics::density_of_states_3d(
+                &energy, &mass, &volume,
+            ))
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes Fermi energy for a 3D electron gas using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_fermi_energy_3d(
     concentration_json: *const c_char,
     mass_json: *const c_char,
 ) -> *mut c_char {
+    let concentration: Option<Expr> = from_json_string(concentration_json);
 
-    let concentration: Option<Expr> =
-        from_json_string(
-            concentration_json,
-        );
+    let mass: Option<Expr> = from_json_string(mass_json);
 
-    let mass: Option<Expr> =
-        from_json_string(mass_json);
-
-    match (concentration, mass)
-    { (
-        Some(concentration),
-        Some(mass),
-    ) => {
-
-        to_json_string(
-            &solid_state_physics::fermi_energy_3d(
-                &concentration,
-                &mass,
-            ),
-        )
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (concentration, mass) {
+        | (Some(concentration), Some(mass)) => {
+            to_json_string(&solid_state_physics::fermi_energy_3d(&concentration, &mass))
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }
 
 /// Computes Drude conductivity using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_drude_conductivity(
     n_json: *const c_char,
     e_json: *const c_char,
     tau_json: *const c_char,
     mass_json: *const c_char,
 ) -> *mut c_char {
+    let n: Option<Expr> = from_json_string(n_json);
 
-    let n: Option<Expr> =
-        from_json_string(n_json);
+    let e: Option<Expr> = from_json_string(e_json);
 
-    let e: Option<Expr> =
-        from_json_string(e_json);
+    let tau: Option<Expr> = from_json_string(tau_json);
 
-    let tau: Option<Expr> =
-        from_json_string(tau_json);
+    let mass: Option<Expr> = from_json_string(mass_json);
 
-    let mass: Option<Expr> =
-        from_json_string(mass_json);
-
-    match (n, e, tau, mass)
-    { (
-        Some(n),
-        Some(e),
-        Some(tau),
-        Some(mass),
-    ) => {
-
-        to_json_string(&solid_state_physics::drude_conductivity(&n, &e, &tau, &mass))
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (n, e, tau, mass) {
+        | (Some(n), Some(e), Some(tau), Some(mass)) => {
+            to_json_string(&solid_state_physics::drude_conductivity(
+                &n, &e, &tau, &mass,
+            ))
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

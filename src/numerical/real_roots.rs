@@ -12,20 +12,10 @@ use crate::numerical::polynomial::Polynomial;
 /// # Returns
 /// A `Vec<Polynomial>` representing the Sturm sequence.
 #[must_use]
-
-pub fn sturm_sequence(
-    poly: &Polynomial
-) -> Vec<Polynomial> {
-
+pub fn sturm_sequence(poly: &Polynomial) -> Vec<Polynomial> {
     let mut seq = Vec::new();
 
-    if poly
-        .coeffs
-        .is_empty()
-        || (poly.coeffs.len() == 1
-            && poly.coeffs[0] == 0.0)
-    {
-
+    if poly.coeffs.is_empty() || (poly.coeffs.len() == 1 && poly.coeffs[0] == 0.0) {
         return seq;
     }
 
@@ -33,11 +23,7 @@ pub fn sturm_sequence(
 
     let p1 = poly.derivative();
 
-    if p1.coeffs.is_empty()
-        || (p1.coeffs.len() == 1
-            && p1.coeffs[0] == 0.0)
-    {
-
+    if p1.coeffs.is_empty() || (p1.coeffs.len() == 1 && p1.coeffs[0] == 0.0) {
         return seq;
     }
 
@@ -45,36 +31,20 @@ pub fn sturm_sequence(
 
     let mut i = 1;
 
-    while seq[i].coeffs.len() > 1
-        || seq[i].coeffs[0] != 0.0
-    {
-
+    while seq[i].coeffs.len() > 1 || seq[i].coeffs[0] != 0.0 {
         let p_prev = &seq[i - 1];
 
         let p_curr = &seq[i];
 
-        let (_, mut remainder) = p_prev
-            .clone()
-            .long_division(
-                &p_curr.clone(),
-            );
+        let (_, mut remainder) = p_prev.clone().long_division(&p_curr.clone());
 
-        if remainder
-            .coeffs
-            .is_empty()
-            || (remainder
-                .coeffs
-                .len()
-                == 1
-                && remainder.coeffs[0]
-                    == 0.0)
+        if remainder.coeffs.is_empty()
+            || (remainder.coeffs.len() == 1 && remainder.coeffs[0] == 0.0)
         {
-
             break;
         }
 
         for c in &mut remainder.coeffs {
-
             *c = -*c;
         }
 
@@ -87,39 +57,28 @@ pub fn sturm_sequence(
 }
 
 /// Counts sign changes of the Sturm sequence at a point.
-
 pub(crate) fn count_sign_changes(
     sequence: &[Polynomial],
     point: f64,
 ) -> usize {
-
     let mut changes = 0;
 
-    let mut last_sign: Option<i8> =
-        None;
+    let mut last_sign: Option<i8> = None;
 
     for poly in sequence {
-
         let val = poly.eval(point);
 
         let sign = if val > 1e-9 {
-
             Some(1)
         } else if val < -1e-9 {
-
             Some(-1)
         } else {
-
             None
         };
 
         if let Some(s) = sign {
-
-            if let Some(ls) = last_sign
-            {
-
+            if let Some(ls) = last_sign {
                 if s != ls {
-
                     changes += 1;
                 }
             }
@@ -147,43 +106,27 @@ pub(crate) fn count_sign_changes(
 ///
 /// # Errors
 /// Returns an error if the leading coefficient is zero (invalid for root isolation).
-
 pub fn isolate_real_roots(
     poly: &Polynomial,
     precision: f64,
 ) -> Result<Vec<(f64, f64)>, String> {
-
     let seq = sturm_sequence(poly);
 
     let bound = root_bound(poly)?;
 
     let mut roots = Vec::new();
 
-    let mut stack =
-        vec![(-bound, bound)];
+    let mut stack = vec![(-bound, bound)];
 
-    while let Some((a, b)) = stack.pop()
-    {
-
+    while let Some((a, b)) = stack.pop() {
         if b - a < precision {
+            let changes_a = count_sign_changes(&seq, a);
 
-            let changes_a =
-                count_sign_changes(
-                    &seq, a,
-                );
+            let changes_b = count_sign_changes(&seq, b);
 
-            let changes_b =
-                count_sign_changes(
-                    &seq, b,
-                );
-
-            let num_roots = changes_a
-                .saturating_sub(
-                    changes_b,
-                );
+            let num_roots = changes_a.saturating_sub(changes_b);
 
             if num_roots >= 1 {
-
                 // Interval is small but contains roots. We can't separate further within precision.
                 // Treat as one interval.
                 roots.push((a, b));
@@ -192,25 +135,18 @@ pub fn isolate_real_roots(
             continue;
         }
 
-        let changes_a =
-            count_sign_changes(&seq, a);
+        let changes_a = count_sign_changes(&seq, a);
 
-        let changes_b =
-            count_sign_changes(&seq, b);
+        let changes_b = count_sign_changes(&seq, b);
 
-        let num_roots = changes_a
-            .saturating_sub(changes_b);
+        let num_roots = changes_a.saturating_sub(changes_b);
 
         if num_roots == 0 {
-
             continue;
         } else if num_roots == 1 {
-
             roots.push((a, b));
         } else {
-
-            let mid =
-                f64::midpoint(a, b);
+            let mid = f64::midpoint(a, b);
 
             stack.push((a, mid));
 
@@ -219,48 +155,32 @@ pub fn isolate_real_roots(
     }
 
     roots.sort_by(|a, b| {
-
-        a.0.partial_cmp(&b.0)
-            .unwrap_or_else(|| {
-                if a.0.is_nan() && !b.0.is_nan() {
-
-                    std::cmp::Ordering::Greater
-                } else if !a.0.is_nan() && b.0.is_nan() {
-
-                    std::cmp::Ordering::Less
-                } else {
-
-                    std::cmp::Ordering::Equal
-                }
-            })
+        a.0.partial_cmp(&b.0).unwrap_or_else(|| {
+            if a.0.is_nan() && !b.0.is_nan() {
+                std::cmp::Ordering::Greater
+            } else if !a.0.is_nan() && b.0.is_nan() {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Equal
+            }
+        })
     });
 
     Ok(roots)
 }
 
 /// Computes an upper bound for the absolute value of the real roots (Cauchy's bound).
-
-pub(crate) fn root_bound(
-    poly: &Polynomial
-) -> Result<f64, String> {
-
-    if poly
-        .coeffs
-        .is_empty()
-    {
-
+pub(crate) fn root_bound(poly: &Polynomial) -> Result<f64, String> {
+    if poly.coeffs.is_empty() {
         return Ok(1.0);
     }
 
     let lc = poly.coeffs[0];
 
     if lc == 0.0 {
-
-        return Err(
-            "Leading coefficient \
+        return Err("Leading coefficient \
              cannot be zero."
-                .to_string(),
-        );
+            .to_string());
     }
 
     let max_coeff = poly
@@ -282,58 +202,39 @@ pub(crate) fn root_bound(
 ///
 /// # Returns
 /// The approximated root.
-
 #[must_use]
-
 pub fn refine_root_bisection(
     poly: &Polynomial,
     interval: (f64, f64),
     tolerance: f64,
 ) -> f64 {
-
     let (mut a, mut b) = interval;
 
     let mut mid = f64::midpoint(a, b);
 
     // Check endpoints first
     if poly.eval(a).abs() < tolerance {
-
         return a;
     }
 
     if poly.eval(b).abs() < tolerance {
-
         return b;
     }
 
     loop {
-
         if (b - a).abs() <= tolerance {
-
             break;
         }
 
         mid = f64::midpoint(a, b);
 
-        if poly.eval(mid).abs()
-            < f64::EPSILON
-        {
-
+        if poly.eval(mid).abs() < f64::EPSILON {
             return mid;
         }
 
-        if poly
-            .eval(a)
-            .signum()
-            * poly
-                .eval(mid)
-                .signum()
-            < 0.0
-        {
-
+        if poly.eval(a).signum() * poly.eval(mid).signum() < 0.0 {
             b = mid;
         } else {
-
             a = mid;
         }
     }
@@ -355,12 +256,10 @@ pub fn refine_root_bisection(
 ///
 /// # Errors
 /// Returns an error if root isolation fails (e.g., if the leading coefficient is zero).
-
 pub fn find_roots(
     poly: &Polynomial,
     tolerance: f64,
 ) -> Result<Vec<f64>, String> {
-
     // Stage 1: Isolate roots. Use a coarser precision for isolation to save time,
     // but ensuring it's fine enough to separate close roots.
     // Sturm guarantees separation, so precision here just needs to be reasonable
@@ -372,35 +271,18 @@ pub fn find_roots(
     // which is practically acceptable for numerical finding.
     let isolation_precision = tolerance;
 
-    let intervals = isolate_real_roots(
-        poly,
-        isolation_precision,
-    )?;
+    let intervals = isolate_real_roots(poly, isolation_precision)?;
 
-    let mut roots = Vec::with_capacity(
-        intervals.len(),
-    );
+    let mut roots = Vec::with_capacity(intervals.len());
 
     for interval in intervals {
-
-        let root =
-            refine_root_bisection(
-                poly,
-                interval,
-                tolerance,
-            );
+        let root = refine_root_bisection(poly, interval, tolerance);
 
         roots.push(root);
     }
 
     // Sort and dedup just in case, though Sturm guarantees distinct intervals
-    roots.sort_by(|a, b| {
-
-        a.partial_cmp(b)
-            .unwrap_or(
-            std::cmp::Ordering::Equal,
-        )
-    });
+    roots.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     Ok(roots)
 }

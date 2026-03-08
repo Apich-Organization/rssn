@@ -1,7 +1,6 @@
 use rssn::symbolic::core::Expr;
 
 fn main() {
-
     println!(
         "=== Symbolic Operator \
          Overloading Demo ==="
@@ -35,29 +34,17 @@ fn main() {
     println!("-x = {}", neg);
 
     // 2. Mixing with f64
-    let expr_plus_float =
-        x.clone() + 5.0;
+    let expr_plus_float = x.clone() + 5.0;
 
-    let float_plus_expr =
-        10.0 + x.clone();
+    let float_plus_expr = 10.0 + x.clone();
 
-    let expr_times_float =
-        y.clone() * 3.14;
+    let expr_times_float = y.clone() * 3.14;
 
-    println!(
-        "x + 5.0 = {}",
-        expr_plus_float
-    );
+    println!("x + 5.0 = {}", expr_plus_float);
 
-    println!(
-        "10.0 + x = {}",
-        float_plus_expr
-    );
+    println!("10.0 + x = {}", float_plus_expr);
 
-    println!(
-        "y * 3.14 = {}",
-        expr_times_float
-    );
+    println!("y * 3.14 = {}", expr_times_float);
 
     // 3. Mathematical Methods
     let sin_x = x.sin();
@@ -84,17 +71,12 @@ fn main() {
 
     println!("ln(x) = {}", ln_x);
 
-    println!(
-        "sqrt(x) = {}",
-        sqrt_x
-    );
+    println!("sqrt(x) = {}", sqrt_x);
 
     println!("|x| = {}", abs_x);
 
     // 4. Power and Inverse Trig
-    let x_squared = x.pow(
-        Expr::new_constant(2.0),
-    );
+    let x_squared = x.pow(Expr::new_constant(2.0));
 
     let asin_x = x.asin();
 
@@ -102,25 +84,13 @@ fn main() {
 
     let atan_x = x.atan();
 
-    println!(
-        "x^2 = {}",
-        x_squared
-    );
+    println!("x^2 = {}", x_squared);
 
-    println!(
-        "asin(x) = {}",
-        asin_x
-    );
+    println!("asin(x) = {}", asin_x);
 
-    println!(
-        "acos(x) = {}",
-        acos_x
-    );
+    println!("acos(x) = {}", acos_x);
 
-    println!(
-        "atan(x) = {}",
-        atan_x
-    );
+    println!("atan(x) = {}", atan_x);
 
     // 5. Hyperbolic Functions
     let sinh_x = x.sinh();
@@ -129,34 +99,17 @@ fn main() {
 
     let tanh_x = x.tanh();
 
-    println!(
-        "sinh(x) = {}",
-        sinh_x
-    );
+    println!("sinh(x) = {}", sinh_x);
 
-    println!(
-        "cosh(x) = {}",
-        cosh_x
-    );
+    println!("cosh(x) = {}", cosh_x);
 
-    println!(
-        "tanh(x) = {}",
-        tanh_x
-    );
+    println!("tanh(x) = {}", tanh_x);
 
     // 6. Complex Expressions
     // sin(x)^2 + cos(x)^2
-    let trig_identity =
-        x.sin().pow(
-            Expr::new_constant(2.0),
-        ) + x.cos().pow(
-            Expr::new_constant(2.0),
-        );
+    let trig_identity = x.sin().pow(Expr::new_constant(2.0)) + x.cos().pow(Expr::new_constant(2.0));
 
-    println!(
-        "sin(x)^2 + cos(x)^2 = {}",
-        trig_identity
-    );
+    println!("sin(x)^2 + cos(x)^2 = {}", trig_identity);
 
     // Quadratic Formula numerator: -b + sqrt(b^2 - 4ac)
     let a = Expr::new_variable("a");
@@ -165,20 +118,12 @@ fn main() {
 
     let c = Expr::new_variable("c");
 
-    let discriminant = b.pow(
-        Expr::new_constant(2.0),
-    )
-        - Expr::new_constant(4.0)
-            * a.clone()
-            * c.clone();
+    let discriminant =
+        b.pow(Expr::new_constant(2.0)) - Expr::new_constant(4.0) * a.clone() * c.clone();
 
-    let numerator = -b.clone()
-        + discriminant.sqrt();
+    let numerator = -b.clone() + discriminant.sqrt();
 
-    println!(
-        "Quadratic numerator: {}",
-        numerator
-    );
+    println!("Quadratic numerator: {}", numerator);
 
     println!("\n=== Demo Complete ===");
 }

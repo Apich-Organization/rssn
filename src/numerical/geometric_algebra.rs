@@ -13,16 +13,7 @@ use serde::Serialize;
 
 /// Represents a multivector in 3D Geometric Algebra (`G_3`).
 /// Components are: 1 (scalar), e1, e2, e3 (vectors), e12, e23, e31 (bivectors), e123 (pseudoscalar)
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Default,
-    Serialize,
-    Deserialize,
-)]
-
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct Multivector3D {
     /// Scalar component.
     pub s: f64,
@@ -48,12 +39,10 @@ impl Add for Multivector3D {
     /// Performs multivector addition.
     ///
     /// Addition is performed component-wise.
-
     fn add(
         self,
         rhs: Self,
     ) -> Self {
-
         Self {
             s: self.s + rhs.s,
             v1: self.v1 + rhs.v1,
@@ -73,12 +62,10 @@ impl Sub for Multivector3D {
     /// Performs multivector subtraction.
     ///
     /// Subtraction is performed component-wise.
-
     fn sub(
         self,
         rhs: Self,
     ) -> Self {
-
         Self {
             s: self.s - rhs.s,
             v1: self.v1 - rhs.v1,
@@ -98,9 +85,7 @@ impl Neg for Multivector3D {
     /// Performs multivector negation.
     ///
     /// Negation is performed component-wise.
-
     fn neg(self) -> Self {
-
         Self {
             s: -self.s,
             v1: -self.v1,
@@ -120,12 +105,10 @@ impl Neg for Multivector3D {
 /// It combines the inner (dot) and outer (wedge) products.
 /// This implementation uses the full multiplication table for `G_3`,
 /// based on `e_i*e_j = -e_j*e_i` for `i != j` and `e_i*e_i = 1`.
-
 impl Multivector3D {
     /// Creates a new `Multivector3D` with all components.
     #[allow(clippy::too_many_arguments)]
     #[must_use]
-
     pub const fn new(
         s: f64,
         v1: f64,
@@ -136,7 +119,6 @@ impl Multivector3D {
         b31: f64,
         pss: f64,
     ) -> Self {
-
         Self {
             s,
             v1,
@@ -156,9 +138,7 @@ impl Multivector3D {
     /// Wait, `reverse(e_i` `e_j`) = `e_j` `e_i` = -`e_i` `e_j`. So bivectors are negated.
     /// `reverse(e_1` `e_2` `e_3`) = `e_3` `e_2` `e_1` = -`e_1` `e_2` `e_3`. So pseudoscalar is negated.
     #[must_use]
-
     pub fn reverse(self) -> Self {
-
         Self {
             s: self.s,
             v1: self.v1,
@@ -175,9 +155,7 @@ impl Multivector3D {
     ///
     /// Conjugation combines reversal and grade involution.
     #[must_use]
-
     pub fn conjugate(self) -> Self {
-
         Self {
             s: self.s,
             v1: -self.v1,
@@ -192,9 +170,7 @@ impl Multivector3D {
 
     /// Returns the squared norm of the multivector (A * reverse(A))_s.
     #[must_use]
-
     pub fn norm_sq(self) -> f64 {
-
         self.pss.mul_add(
             self.pss,
             self.b31.mul_add(
@@ -205,10 +181,8 @@ impl Multivector3D {
                         self.b12,
                         self.v3.mul_add(
                             self.v3,
-                            self.v2.mul_add(
-                                self.v2,
-                                self.s.mul_add(self.s, self.v1 * self.v1),
-                            ),
+                            self.v2
+                                .mul_add(self.v2, self.s.mul_add(self.s, self.v1 * self.v1)),
                         ),
                     ),
                 ),
@@ -218,27 +192,20 @@ impl Multivector3D {
 
     /// Returns the norm of the multivector.
     #[must_use]
-
     pub fn norm(self) -> f64 {
-
-        self.norm_sq()
-            .sqrt()
+        self.norm_sq().sqrt()
     }
 
     /// Returns the inverse of the multivector, if it exists.
     ///
     /// For simple multivectors (like vectors or blades), this is `A_rev` / |A|^2.
     #[must_use]
-
     pub fn inv(self) -> Option<Self> {
-
         let n2 = self.norm_sq();
 
         if n2.abs() < f64::EPSILON {
-
             None
         } else {
-
             let rev = self.reverse();
 
             Some(Self {
@@ -256,60 +223,31 @@ impl Multivector3D {
 
     /// Performs the outer (wedge) product.
     #[must_use]
-
     pub fn wedge(
         self,
         rhs: Self,
     ) -> Self {
-
         // The wedge product is the grade-increasing part of the geometric product.
         // A ^ B = sum_{r,s} <<a>_r <b>_s>_{r+s}
         Self {
             s: self.s * rhs.s,
-            v1: self.s.mul_add(
-                rhs.v1,
-                self.v1 * rhs.s,
-            ),
-            v2: self.s.mul_add(
-                rhs.v2,
-                self.v2 * rhs.s,
-            ),
-            v3: self.s.mul_add(
-                rhs.v3,
-                self.v3 * rhs.s,
-            ),
+            v1: self.s.mul_add(rhs.v1, self.v1 * rhs.s),
+            v2: self.s.mul_add(rhs.v2, self.v2 * rhs.s),
+            v3: self.s.mul_add(rhs.v3, self.v3 * rhs.s),
             b12: self.v2.mul_add(
                 -rhs.v1,
-                self.v1.mul_add(
-                    rhs.v2,
-                    self.s.mul_add(
-                        rhs.b12,
-                        self.b12
-                            * rhs.s,
-                    ),
-                ),
+                self.v1
+                    .mul_add(rhs.v2, self.s.mul_add(rhs.b12, self.b12 * rhs.s)),
             ),
             b23: self.v3.mul_add(
                 -rhs.v2,
-                self.v2.mul_add(
-                    rhs.v3,
-                    self.s.mul_add(
-                        rhs.b23,
-                        self.b23
-                            * rhs.s,
-                    ),
-                ),
+                self.v2
+                    .mul_add(rhs.v3, self.s.mul_add(rhs.b23, self.b23 * rhs.s)),
             ),
             b31: self.v1.mul_add(
                 -rhs.v3,
-                self.v3.mul_add(
-                    rhs.v1,
-                    self.s.mul_add(
-                        rhs.b31,
-                        self.b31
-                            * rhs.s,
-                    ),
-                ),
+                self.v3
+                    .mul_add(rhs.v1, self.s.mul_add(rhs.b31, self.b31 * rhs.s)),
             ),
             pss: self.b31.mul_add(
                 rhs.v2,
@@ -321,10 +259,8 @@ impl Multivector3D {
                             rhs.b12,
                             self.v2.mul_add(
                                 rhs.b31,
-                                self.v1.mul_add(
-                                    rhs.b23,
-                                    self.s.mul_add(rhs.pss, self.pss * rhs.s),
-                                ),
+                                self.v1
+                                    .mul_add(rhs.b23, self.s.mul_add(rhs.pss, self.pss * rhs.s)),
                             ),
                         ),
                     ),
@@ -335,12 +271,10 @@ impl Multivector3D {
 
     /// Performs the inner (dot) product.
     #[must_use]
-
     pub fn dot(
         self,
         rhs: Self,
     ) -> Self {
-
         // The inner product is the grade-decreasing part of the geometric product.
         // A . B = sum_{r,s} <<a>_r <b>_s>_{|r-s|}
         Self {
@@ -354,10 +288,8 @@ impl Multivector3D {
                             -rhs.b12,
                             self.v3.mul_add(
                                 rhs.v3,
-                                self.v2.mul_add(
-                                    rhs.v2,
-                                    self.s.mul_add(rhs.s, self.v1 * rhs.v1),
-                                ),
+                                self.v2
+                                    .mul_add(rhs.v2, self.s.mul_add(rhs.s, self.v1 * rhs.v1)),
                             ),
                         ),
                     ),
@@ -373,10 +305,8 @@ impl Multivector3D {
                             rhs.v2,
                             self.v3.mul_add(
                                 rhs.b31,
-                                self.v2.mul_add(
-                                    -rhs.b12,
-                                    self.s.mul_add(rhs.v1, self.v1 * rhs.s),
-                                ),
+                                self.v2
+                                    .mul_add(-rhs.b12, self.s.mul_add(rhs.v1, self.v1 * rhs.s)),
                             ),
                         ),
                     ),
@@ -392,10 +322,8 @@ impl Multivector3D {
                             rhs.v1,
                             self.v3.mul_add(
                                 -rhs.b23,
-                                self.v2.mul_add(
-                                    rhs.s,
-                                    self.s.mul_add(rhs.v2, self.v1 * rhs.b12),
-                                ),
+                                self.v2
+                                    .mul_add(rhs.s, self.s.mul_add(rhs.v2, self.v1 * rhs.b12)),
                             ),
                         ),
                     ),
@@ -411,13 +339,8 @@ impl Multivector3D {
                             rhs.v2,
                             self.v3.mul_add(
                                 rhs.s,
-                                self.v2.mul_add(
-                                    rhs.b23,
-                                    self.s.mul_add(
-                                        rhs.v3,
-                                        -(self.v1 * rhs.b31),
-                                    ),
-                                ),
+                                self.v2
+                                    .mul_add(rhs.b23, self.s.mul_add(rhs.v3, -(self.v1 * rhs.b31))),
                             ),
                         ),
                     ),
@@ -425,41 +348,20 @@ impl Multivector3D {
             ),
             b12: self.b31.mul_add(
                 rhs.b23,
-                self.b23.mul_add(
-                    -rhs.b31,
-                    self.s.mul_add(
-                        rhs.b12,
-                        self.b12
-                            * rhs.s,
-                    ),
-                ),
+                self.b23
+                    .mul_add(-rhs.b31, self.s.mul_add(rhs.b12, self.b12 * rhs.s)),
             ),
             b23: self.b31.mul_add(
                 -rhs.b12,
-                self.b12.mul_add(
-                    rhs.b31,
-                    self.s.mul_add(
-                        rhs.b23,
-                        self.b23
-                            * rhs.s,
-                    ),
-                ),
+                self.b12
+                    .mul_add(rhs.b31, self.s.mul_add(rhs.b23, self.b23 * rhs.s)),
             ),
             b31: self.b23.mul_add(
                 rhs.b12,
-                self.b12.mul_add(
-                    -rhs.b23,
-                    self.s.mul_add(
-                        rhs.b31,
-                        self.b31
-                            * rhs.s,
-                    ),
-                ),
+                self.b12
+                    .mul_add(-rhs.b23, self.s.mul_add(rhs.b31, self.b31 * rhs.s)),
             ),
-            pss: self.s.mul_add(
-                rhs.pss,
-                self.pss * rhs.s,
-            ),
+            pss: self.s.mul_add(rhs.pss, self.pss * rhs.s),
         }
     }
 }
@@ -471,7 +373,6 @@ impl std::ops::Mul for Multivector3D {
         self,
         rhs: Self,
     ) -> Self::Output {
-
         Self {
             s: (-self.pss).mul_add(
                 rhs.pss,
@@ -483,10 +384,8 @@ impl std::ops::Mul for Multivector3D {
                             -rhs.b12,
                             self.v3.mul_add(
                                 rhs.v3,
-                                self.v2.mul_add(
-                                    rhs.v2,
-                                    self.s.mul_add(rhs.s, self.v1 * rhs.v1),
-                                ),
+                                self.v2
+                                    .mul_add(rhs.v2, self.s.mul_add(rhs.s, self.v1 * rhs.v1)),
                             ),
                         ),
                     ),
@@ -502,10 +401,8 @@ impl std::ops::Mul for Multivector3D {
                             rhs.v2,
                             self.v3.mul_add(
                                 rhs.b31,
-                                self.v2.mul_add(
-                                    -rhs.b12,
-                                    self.s.mul_add(rhs.v1, self.v1 * rhs.s),
-                                ),
+                                self.v2
+                                    .mul_add(-rhs.b12, self.s.mul_add(rhs.v1, self.v1 * rhs.s)),
                             ),
                         ),
                     ),
@@ -521,10 +418,8 @@ impl std::ops::Mul for Multivector3D {
                             rhs.v1,
                             self.v3.mul_add(
                                 -rhs.b23,
-                                self.v1.mul_add(
-                                    rhs.b12,
-                                    self.s.mul_add(rhs.v2, self.v2 * rhs.s),
-                                ),
+                                self.v1
+                                    .mul_add(rhs.b12, self.s.mul_add(rhs.v2, self.v2 * rhs.s)),
                             ),
                         ),
                     ),
@@ -540,10 +435,8 @@ impl std::ops::Mul for Multivector3D {
                             rhs.v2,
                             self.v2.mul_add(
                                 rhs.b23,
-                                self.v1.mul_add(
-                                    -rhs.b31,
-                                    self.s.mul_add(rhs.v3, self.v3 * rhs.s),
-                                ),
+                                self.v1
+                                    .mul_add(-rhs.b31, self.s.mul_add(rhs.v3, self.v3 * rhs.s)),
                             ),
                         ),
                     ),
@@ -559,10 +452,8 @@ impl std::ops::Mul for Multivector3D {
                             rhs.pss,
                             self.v2.mul_add(
                                 -rhs.v1,
-                                self.v1.mul_add(
-                                    rhs.v2,
-                                    self.s.mul_add(rhs.b12, self.b12 * rhs.s),
-                                ),
+                                self.v1
+                                    .mul_add(rhs.v2, self.s.mul_add(rhs.b12, self.b12 * rhs.s)),
                             ),
                         ),
                     ),
@@ -578,10 +469,8 @@ impl std::ops::Mul for Multivector3D {
                             rhs.pss,
                             self.v3.mul_add(
                                 -rhs.v2,
-                                self.v2.mul_add(
-                                    rhs.v3,
-                                    self.s.mul_add(rhs.b23, self.b23 * rhs.s),
-                                ),
+                                self.v2
+                                    .mul_add(rhs.v3, self.s.mul_add(rhs.b23, self.b23 * rhs.s)),
                             ),
                         ),
                     ),
@@ -597,10 +486,8 @@ impl std::ops::Mul for Multivector3D {
                             rhs.pss,
                             self.v1.mul_add(
                                 -rhs.v3,
-                                self.v3.mul_add(
-                                    rhs.v1,
-                                    self.s.mul_add(rhs.b31, self.b31 * rhs.s),
-                                ),
+                                self.v3
+                                    .mul_add(rhs.v1, self.s.mul_add(rhs.b31, self.b31 * rhs.s)),
                             ),
                         ),
                     ),
@@ -616,10 +503,8 @@ impl std::ops::Mul for Multivector3D {
                             rhs.b12,
                             self.v2.mul_add(
                                 rhs.b31,
-                                self.v1.mul_add(
-                                    rhs.b23,
-                                    self.s.mul_add(rhs.pss, self.pss * rhs.s),
-                                ),
+                                self.v1
+                                    .mul_add(rhs.b23, self.s.mul_add(rhs.pss, self.pss * rhs.s)),
                             ),
                         ),
                     ),

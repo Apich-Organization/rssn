@@ -4,7 +4,6 @@ use rssn::symbolic::thermodynamics::*;
 #[test]
 
 fn test_ideal_gas_law() {
-
     let p = Expr::new_variable("P");
 
     let v = Expr::new_variable("V");
@@ -15,9 +14,7 @@ fn test_ideal_gas_law() {
 
     let t = Expr::new_variable("T");
 
-    let eq = ideal_gas_law(
-        &p, &v, &n, &r, &t,
-    );
+    let eq = ideal_gas_law(&p, &v, &n, &r, &t);
 
     let eq_str = format!("{:?}", eq);
 
@@ -33,13 +30,11 @@ fn test_ideal_gas_law() {
 #[test]
 
 fn test_carnot_efficiency() {
-
     let tc = Expr::new_variable("Tc");
 
     let th = Expr::new_variable("Th");
 
-    let eta =
-        carnot_efficiency(&tc, &th);
+    let eta = carnot_efficiency(&tc, &th);
 
     let eta_str = format!("{:?}", eta);
 
@@ -54,9 +49,7 @@ fn test_carnot_efficiency() {
 #[test]
 
 fn test_boltzmann_entropy() {
-
-    let omega =
-        Expr::new_variable("Omega");
+    let omega = Expr::new_variable("Omega");
 
     let s = boltzmann_entropy(&omega);
 
@@ -64,15 +57,12 @@ fn test_boltzmann_entropy() {
 
     assert!(s_str.contains("k_B"));
 
-    assert!(
-        s_str.contains("ln(Omega)")
-    );
+    assert!(s_str.contains("ln(Omega)"));
 }
 
 #[test]
 
 fn test_enthalpy_and_gibbs() {
-
     let u = Expr::new_variable("U");
 
     let p = Expr::new_variable("P");
@@ -85,8 +75,7 @@ fn test_enthalpy_and_gibbs() {
 
     let h = enthalpy(&u, &p, &v);
 
-    let g =
-        gibbs_free_energy(&h, &t, &s);
+    let g = gibbs_free_energy(&h, &t, &s);
 
     let g_str = format!("{:?}", g);
 
@@ -104,7 +93,6 @@ fn test_enthalpy_and_gibbs() {
 #[test]
 
 fn test_maxwell_relation() {
-
     // A = U - TS
     // For an ideal gas state, we might have some expression for A.
     // Let's just test the symmetry of second derivatives.
@@ -113,15 +101,9 @@ fn test_maxwell_relation() {
     let v = Expr::new_variable("V");
 
     // A(T, V) = some function
-    let a = Expr::new_mul(
-        t.clone(),
-        Expr::new_log(v.clone()),
-    );
+    let a = Expr::new_mul(t.clone(), Expr::new_log(v.clone()));
 
     let diff = verify_maxwell_relation_helmholtz(&a, "T", "V");
 
-    assert_eq!(
-        diff,
-        Expr::Constant(0.0)
-    );
+    assert_eq!(diff, Expr::Constant(0.0));
 }

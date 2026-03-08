@@ -4,15 +4,13 @@ use rssn::numerical::topology::*;
 #[test]
 
 fn test_connected_components() {
-
     let mut g = Graph::new(4);
 
     g.add_edge(0, 1, 1.0);
 
     g.add_edge(2, 3, 1.0);
 
-    let comps =
-        find_connected_components(&g);
+    let comps = find_connected_components(&g);
 
     assert_eq!(comps.len(), 2);
 }
@@ -20,27 +18,17 @@ fn test_connected_components() {
 #[test]
 
 fn test_vietoris_rips() {
-
     let p1 = [0.0, 0.0];
 
     let p2 = [0.5, 0.0];
 
     let p3 = [0.0, 0.5];
 
-    let points = vec![
-        &p1 as &[f64],
-        &p2 as &[f64],
-        &p3 as &[f64],
-    ];
+    let points = vec![&p1 as &[f64], &p2 as &[f64], &p3 as &[f64]];
 
     // With epsilon = 0.8, all points are connected to each other
     // Triangle should be formed.
-    let simplices =
-        vietoris_rips_complex(
-            &points,
-            0.8,
-            2,
-        );
+    let simplices = vietoris_rips_complex(&points, 0.8, 2);
 
     // 0-simplices: [0], [1], [2]
     // 1-simplices: [0,1], [0,2], [1,2]
@@ -52,7 +40,6 @@ fn test_vietoris_rips() {
 #[test]
 
 fn test_betti_numbers() {
-
     let p1 = [0.0, 0.0];
 
     let p2 = [1.0, 0.0];
@@ -61,12 +48,7 @@ fn test_betti_numbers() {
 
     let p4 = [1.0, 1.0];
 
-    let points = vec![
-        &p1 as &[f64],
-        &p2 as &[f64],
-        &p3 as &[f64],
-        &p4 as &[f64],
-    ];
+    let points = vec![&p1 as &[f64], &p2 as &[f64], &p3 as &[f64], &p4 as &[f64]];
 
     // epsilon = 1.1: Square shape with points connected but no middle connections.
     // Except it's a square, so it might have a hole if we don't triangulate.
@@ -80,11 +62,7 @@ fn test_betti_numbers() {
     // 2-simplices: none
     // B0 = 1 (one component)
     // B1 = 1 (one hole)
-    let betti = betti_numbers_at_radius(
-        &points,
-        1.1,
-        1,
-    );
+    let betti = betti_numbers_at_radius(&points, 1.1, 1);
 
     assert_eq!(betti[0], 1);
 
@@ -94,7 +72,6 @@ fn test_betti_numbers() {
 #[test]
 
 fn test_persistence() {
-
     let points = vec![
         vec![0.0, 0.0],
         vec![1.0, 0.0],
@@ -102,12 +79,7 @@ fn test_persistence() {
         vec![1.0, 1.0],
     ];
 
-    let diagrams = compute_persistence(
-        &points,
-        1.5,
-        15,
-        1,
-    );
+    let diagrams = compute_persistence(&points, 1.5, 15, 1);
 
     // Dimension 1 hole should be born around 1.0 and die around 1.414
     let d1 = &diagrams[1];
@@ -120,16 +92,12 @@ fn test_persistence() {
         d1.intervals
     );
 
-    let found = d1
-        .intervals
-        .iter()
-        .any(|interval| {
-
-            interval.birth >= 0.0
-                && interval.birth <= 1.2
-                && interval.death >= 1.3
-                && interval.death <= 1.6
-        });
+    let found = d1.intervals.iter().any(|interval| {
+        interval.birth >= 0.0
+            && interval.birth <= 1.2
+            && interval.death >= 1.3
+            && interval.death <= 1.6
+    });
 
     assert!(
         found,

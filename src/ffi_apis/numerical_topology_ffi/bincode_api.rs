@@ -12,7 +12,6 @@ use crate::numerical::topology::{
 };
 
 #[derive(Deserialize)]
-
 struct BettiInput {
     points: Vec<Vec<f64>>,
     epsilon: f64,
@@ -41,8 +40,7 @@ struct BettiInput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -50,34 +48,23 @@ struct BettiInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : BettiInput = match from_bincode_buffer(&buffer) {
+    let input: BettiInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<usize>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<usize>, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let pt_slices: Vec<&[f64]> = input
-        .points
-        .iter()
-        .map(std::vec::Vec::as_slice)
-        .collect();
+    let pt_slices: Vec<&[f64]> = input.points.iter().map(std::vec::Vec::as_slice).collect();
 
-    let res = topology::betti_numbers_at_radius(
-        &pt_slices,
-        input.epsilon,
-        input.max_dim,
-    );
+    let res = topology::betti_numbers_at_radius(&pt_slices, input.epsilon, input.max_dim);
 
     let ffi_res = FfiResult {
         ok: Some(res),
@@ -88,7 +75,6 @@ pub unsafe extern "C" fn rssn_num_topology_betti_numbers_bincode(
 }
 
 #[derive(Deserialize)]
-
 struct PersistenceInput {
     points: Vec<Vec<f64>>,
     max_epsilon: f64,
@@ -119,8 +105,7 @@ struct PersistenceInput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -128,30 +113,22 @@ struct PersistenceInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_topology_persistence_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : PersistenceInput = match from_bincode_buffer(&buffer) {
+    let input: PersistenceInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<PersistenceDiagram>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<PersistenceDiagram>, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
     let res =
-        topology::compute_persistence(
-            &input.points,
-            input.max_epsilon,
-            input.steps,
-            input.max_dim,
-        );
+        topology::compute_persistence(&input.points, input.max_epsilon, input.steps, input.max_dim);
 
     let ffi_res = FfiResult {
         ok: Some(res),

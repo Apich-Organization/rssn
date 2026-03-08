@@ -4,20 +4,15 @@ use rssn::prelude::numerical::*;
 #[test]
 
 fn test_aitken_acceleration() {
-
     // Sequence converging to 1: s_n = 1 + 0.5^n
     // This is linearly convergent. Aitken should capture it perfectly or very well.
     let mut seq = Vec::new();
 
-    for i in 0 .. 10 {
-
+    for i in 0..10 {
         seq.push(1.0 + 0.5f64.powi(i));
     }
 
-    let acc =
-        numerical_aitken_acceleration(
-            &seq,
-        );
+    let acc = numerical_aitken_acceleration(&seq);
 
     let last = acc.last().unwrap();
 
@@ -29,35 +24,23 @@ fn test_aitken_acceleration() {
 #[test]
 
 fn test_richardson_extrapolation() {
-
     // Derivative of e^x at x=0 is 1.
     // Central difference: (e^h - e^-h)/(2h). Error O(h^2).
     // Steps: 0.8, 0.4, 0.2, 0.1
     let f = |x: f64| x.exp();
 
-    let derivative = |h: f64| {
+    let derivative = |h: f64| (f(h) - f(-h)) / (2.0 * h);
 
-        (f(h) - f(-h)) / (2.0 * h)
-    };
+    let steps = vec![0.4, 0.2, 0.1, 0.05];
 
-    let steps =
-        vec![0.4, 0.2, 0.1, 0.05];
-
-    let approximations: Vec<f64> =
-        steps
-            .iter()
-            .map(|&h| derivative(h))
-            .collect();
+    let approximations: Vec<f64> = steps.iter().map(|&h| derivative(h)).collect();
 
     let extrapolated = numerical_richardson_extrapolation(&approximations);
 
-    let best = extrapolated
-        .last()
-        .unwrap();
+    let best = extrapolated.last().unwrap();
 
     // Normal approximation for h=0.05
-    let normal_err =
-        (derivative(0.05) - 1.0).abs();
+    let normal_err = (derivative(0.05) - 1.0).abs();
 
     // Extrapolated error should be significantly smaller
     let extrap_err = (best - 1.0).abs();
@@ -76,23 +59,14 @@ fn test_richardson_extrapolation() {
 #[test]
 
 fn test_wynn_epsilon() {
-
     // Leibniz series for pi/4: 1 - 1/3 + 1/5 - 1/7 ...
     // Converges very slowly.
     let mut seq = Vec::new();
 
     let mut sum = 0.0;
 
-    for i in 0 .. 10 {
-
-        let term = if i % 2 == 0 {
-
-            1.0
-        } else {
-
-            -1.0
-        } / (2.0 * i as f64
-            + 1.0);
+    for i in 0..10 {
+        let term = if i % 2 == 0 { 1.0 } else { -1.0 } / (2.0 * i as f64 + 1.0);
 
         sum += term;
 
@@ -100,18 +74,13 @@ fn test_wynn_epsilon() {
     }
 
     // Last term of raw sequence
-    let raw_err = (sum
-        - std::f64::consts::FRAC_PI_4)
-        .abs();
+    let raw_err = (sum - std::f64::consts::FRAC_PI_4).abs();
 
-    let acc =
-        numerical_wynn_epsilon(&seq);
+    let acc = numerical_wynn_epsilon(&seq);
 
     let best = acc.last().unwrap();
 
-    let acc_err = (best
-        - std::f64::consts::FRAC_PI_4)
-        .abs();
+    let acc_err = (best - std::f64::consts::FRAC_PI_4).abs();
 
     // Wynn epsilon is very effective for alternating series
     assert!(acc_err < raw_err);

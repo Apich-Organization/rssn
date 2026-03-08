@@ -15,7 +15,6 @@ use crate::numerical::physics_cfd;
 // ============================================================================
 
 #[derive(Deserialize)]
-
 struct FluidPropertiesInput {
     density: f64,
     dynamic_viscosity: f64,
@@ -24,7 +23,6 @@ struct FluidPropertiesInput {
 }
 
 #[derive(Serialize)]
-
 struct FluidPropertiesOutput {
     kinematic_viscosity: f64,
     thermal_diffusivity: f64,
@@ -32,7 +30,6 @@ struct FluidPropertiesOutput {
 }
 
 #[derive(Deserialize)]
-
 struct ReynoldsInput {
     velocity: f64,
     length: f64,
@@ -40,7 +37,6 @@ struct ReynoldsInput {
 }
 
 #[derive(Deserialize)]
-
 struct CflInput {
     velocity: f64,
     dt: f64,
@@ -48,7 +44,6 @@ struct CflInput {
 }
 
 #[derive(Deserialize)]
-
 struct Advection1DInput {
     u0: Vec<f64>,
     c: f64,
@@ -58,7 +53,6 @@ struct Advection1DInput {
 }
 
 #[derive(Deserialize)]
-
 struct Diffusion1DInput {
     u0: Vec<f64>,
     alpha: f64,
@@ -68,7 +62,6 @@ struct Diffusion1DInput {
 }
 
 #[derive(Deserialize)]
-
 struct AdvectionDiffusion1DInput {
     u0: Vec<f64>,
     c: f64,
@@ -79,7 +72,6 @@ struct AdvectionDiffusion1DInput {
 }
 
 #[derive(Deserialize)]
-
 struct Burgers1DInput {
     u0: Vec<f64>,
     nu: f64,
@@ -116,8 +108,7 @@ struct Burgers1DInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -125,28 +116,23 @@ struct Burgers1DInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : FluidPropertiesInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(input: *const c_char) -> *mut c_char {
+    let input: FluidPropertiesInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<FluidPropertiesOutput, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<FluidPropertiesOutput, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -157,23 +143,17 @@ pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(
         input.specific_heat,
     );
 
-    let output =
-        FluidPropertiesOutput {
-            kinematic_viscosity: fluid
-                .kinematic_viscosity(),
-            thermal_diffusivity: fluid
-                .thermal_diffusivity(),
-            prandtl_number: fluid
-                .prandtl_number(),
-        };
+    let output = FluidPropertiesOutput {
+        kinematic_viscosity: fluid.kinematic_viscosity(),
+        thermal_diffusivity: fluid.thermal_diffusivity(),
+        prandtl_number: fluid.prandtl_number(),
+    };
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(output),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(output),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -196,8 +176,7 @@ pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(
 /// # Safety
 ///
 /// This function is unsafe because it returns a raw pointer that the caller must free.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -205,35 +184,26 @@ pub unsafe extern "C" fn rssn_num_cfd_fluid_properties_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_cfd_air_properties_json(
-    _input: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_cfd_air_properties_json(_input: *const c_char) -> *mut c_char {
     let fluid = physics_cfd::FluidProperties::air();
 
-    let output =
-        FluidPropertiesOutput {
-            kinematic_viscosity: fluid
-                .kinematic_viscosity(),
-            thermal_diffusivity: fluid
-                .thermal_diffusivity(),
-            prandtl_number: fluid
-                .prandtl_number(),
-        };
+    let output = FluidPropertiesOutput {
+        kinematic_viscosity: fluid.kinematic_viscosity(),
+        thermal_diffusivity: fluid.thermal_diffusivity(),
+        prandtl_number: fluid.prandtl_number(),
+    };
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(output),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(output),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -256,8 +226,7 @@ pub unsafe extern "C" fn rssn_num_cfd_air_properties_json(
 /// # Safety
 ///
 /// This function is unsafe because it returns a raw pointer that the caller must free.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -265,35 +234,26 @@ pub unsafe extern "C" fn rssn_num_cfd_air_properties_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(
-    _input: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(_input: *const c_char) -> *mut c_char {
     let fluid = physics_cfd::FluidProperties::water();
 
-    let output =
-        FluidPropertiesOutput {
-            kinematic_viscosity: fluid
-                .kinematic_viscosity(),
-            thermal_diffusivity: fluid
-                .thermal_diffusivity(),
-            prandtl_number: fluid
-                .prandtl_number(),
-        };
+    let output = FluidPropertiesOutput {
+        kinematic_viscosity: fluid.kinematic_viscosity(),
+        thermal_diffusivity: fluid.thermal_diffusivity(),
+        prandtl_number: fluid.prandtl_number(),
+    };
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(output),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(output),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -323,8 +283,7 @@ pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -332,45 +291,33 @@ pub unsafe extern "C" fn rssn_num_cfd_water_properties_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : ReynoldsInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(input: *const c_char) -> *mut c_char {
+    let input: ReynoldsInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let re =
-        physics_cfd::reynolds_number(
-            input.velocity,
-            input.length,
-            input.kinematic_viscosity,
-        );
+    let re = physics_cfd::reynolds_number(input.velocity, input.length, input.kinematic_viscosity);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(re),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(re),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -396,8 +343,7 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -405,44 +351,33 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : CflInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(input: *const c_char) -> *mut c_char {
+    let input: CflInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let cfl = physics_cfd::cfl_number(
-        input.velocity,
-        input.dt,
-        input.dx,
-    );
+    let cfl = physics_cfd::cfl_number(input.velocity, input.dt, input.dx);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(cfl),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(cfl),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -474,8 +409,7 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -483,47 +417,34 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : Advection1DInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(input: *const c_char) -> *mut c_char {
+    let input: Advection1DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
     let results =
-        physics_cfd::solve_advection_1d(
-            &input.u0,
-            input.c,
-            input.dx,
-            input.dt,
-            input.num_steps,
-        );
+        physics_cfd::solve_advection_1d(&input.u0, input.c, input.dx, input.dt, input.num_steps);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(results),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(results),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -551,8 +472,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -560,47 +480,39 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : Diffusion1DInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(input: *const c_char) -> *mut c_char {
+    let input: Diffusion1DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let results =
-        physics_cfd::solve_diffusion_1d(
-            &input.u0,
-            input.alpha,
-            input.dx,
-            input.dt,
-            input.num_steps,
-        );
+    let results = physics_cfd::solve_diffusion_1d(
+        &input.u0,
+        input.alpha,
+        input.dx,
+        input.dt,
+        input.num_steps,
+    );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(results),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(results),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -630,8 +542,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -639,28 +550,25 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_diffusion_1d_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : AdvectionDiffusion1DInput = match from_json_string(input) {
+    let input: AdvectionDiffusion1DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -674,12 +582,10 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(results),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(results),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -708,8 +614,7 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -717,47 +622,34 @@ pub unsafe extern "C" fn rssn_num_cfd_solve_advection_diffusion_1d_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_cfd_solve_burgers_1d_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : Burgers1DInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_cfd_solve_burgers_1d_json(input: *const c_char) -> *mut c_char {
+    let input: Burgers1DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
     let results =
-        physics_cfd::solve_burgers_1d(
-            &input.u0,
-            input.nu,
-            input.dx,
-            input.dt,
-            input.num_steps,
-        );
+        physics_cfd::solve_burgers_1d(&input.u0, input.nu, input.dx, input.dt, input.num_steps);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(results),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(results),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }

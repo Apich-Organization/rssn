@@ -9,7 +9,6 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::fractal_geometry_and_chaos;
 
 #[derive(Deserialize)]
-
 struct MandelbrotSetInput {
     width: usize,
     height: usize,
@@ -19,7 +18,6 @@ struct MandelbrotSetInput {
 }
 
 #[derive(Deserialize)]
-
 struct MandelbrotPointInput {
     c_real: f64,
     c_imag: f64,
@@ -27,7 +25,6 @@ struct MandelbrotPointInput {
 }
 
 #[derive(Deserialize)]
-
 struct JuliaSetInput {
     width: usize,
     height: usize,
@@ -38,7 +35,6 @@ struct JuliaSetInput {
 }
 
 #[derive(Deserialize)]
-
 struct LorenzInput {
     start_point: (f64, f64, f64),
     dt: f64,
@@ -46,7 +42,6 @@ struct LorenzInput {
 }
 
 #[derive(Deserialize)]
-
 struct HenonInput {
     start_point: (f64, f64),
     num_steps: usize,
@@ -55,7 +50,6 @@ struct HenonInput {
 }
 
 #[derive(Deserialize)]
-
 struct LogisticMapInput {
     x0: f64,
     r: f64,
@@ -63,7 +57,6 @@ struct LogisticMapInput {
 }
 
 #[derive(Deserialize)]
-
 struct LyapunovLogisticInput {
     r: f64,
     x0: f64,
@@ -72,7 +65,6 @@ struct LyapunovLogisticInput {
 }
 
 #[derive(Deserialize)]
-
 struct DimensionInput {
     points: Vec<(f64, f64)>,
     num_scales: usize,
@@ -80,8 +72,7 @@ struct DimensionInput {
 
 // Mandelbrot set
 /// Generates the Mandelbrot set as an image (iterations per pixel) using bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -89,20 +80,17 @@ struct DimensionInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : MandelbrotSetInput = match from_bincode_buffer(&buffer) {
+    let input: MandelbrotSetInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<Vec<u32>>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<Vec<u32>>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
@@ -121,9 +109,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
 }
 
 /// Computes the escape time for a single point in the Mandelbrot set using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -131,20 +117,17 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_set_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : MandelbrotPointInput = match from_bincode_buffer(&buffer) {
+    let input: MandelbrotPointInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<u32, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<u32, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
@@ -162,8 +145,7 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
 
 // Julia set
 /// Generates the Julia set as an image (iterations per pixel) using bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -171,20 +153,17 @@ pub unsafe extern "C" fn rssn_num_fractal_mandelbrot_escape_time_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : JuliaSetInput = match from_bincode_buffer(&buffer) {
+    let input: JuliaSetInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<Vec<u32>>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<Vec<u32>>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
@@ -205,8 +184,7 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
 
 // Lorenz attractor
 /// Generates data points for the Lorenz attractor using bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -214,20 +192,17 @@ pub unsafe extern "C" fn rssn_num_fractal_julia_set_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : LorenzInput = match from_bincode_buffer(&buffer) {
+    let input: LorenzInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<(f64, f64, f64)>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<(f64, f64, f64)>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
@@ -245,8 +220,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
 
 // Henon map
 /// Generates data points for the Henon map using bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -254,20 +228,17 @@ pub unsafe extern "C" fn rssn_num_fractal_lorenz_attractor_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : HenonInput = match from_bincode_buffer(&buffer) {
+    let input: HenonInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<(f64, f64)>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<(f64, f64)>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
@@ -286,8 +257,7 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
 
 // Logistic map
 /// Computes iterations of the logistic map using bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -295,28 +265,22 @@ pub unsafe extern "C" fn rssn_num_fractal_henon_map_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : LogisticMapInput = match from_bincode_buffer(&buffer) {
+    let input: LogisticMapInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<f64>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<f64>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result = fractal_geometry_and_chaos::logistic_map_iterate(
-        input.x0,
-        input.r,
-        input.num_steps,
-    );
+    let result =
+        fractal_geometry_and_chaos::logistic_map_iterate(input.x0, input.r, input.num_steps);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -326,8 +290,7 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
 
 // Lyapunov exponent for logistic map
 /// Computes the Lyapunov exponent for the logistic map using bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -335,20 +298,17 @@ pub unsafe extern "C" fn rssn_num_fractal_logistic_map_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : LyapunovLogisticInput = match from_bincode_buffer(&buffer) {
+    let input: LyapunovLogisticInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
@@ -367,8 +327,7 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
 
 // Box-counting dimension
 /// Computes the box-counting dimension of a set of points using bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -376,27 +335,22 @@ pub unsafe extern "C" fn rssn_num_fractal_lyapunov_logistic_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : DimensionInput = match from_bincode_buffer(&buffer) {
+    let input: DimensionInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result = fractal_geometry_and_chaos::box_counting_dimension(
-        &input.points,
-        input.num_scales,
-    );
+    let result =
+        fractal_geometry_and_chaos::box_counting_dimension(&input.points, input.num_scales);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -406,8 +360,7 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
 
 // Correlation dimension
 /// Computes the correlation dimension of a set of points using bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -415,27 +368,21 @@ pub unsafe extern "C" fn rssn_num_fractal_box_counting_dim_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fractal_correlation_dim_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : DimensionInput = match from_bincode_buffer(&buffer) {
+    let input: DimensionInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result = fractal_geometry_and_chaos::correlation_dimension(
-        &input.points,
-        input.num_scales,
-    );
+    let result = fractal_geometry_and_chaos::correlation_dimension(&input.points, input.num_scales);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),

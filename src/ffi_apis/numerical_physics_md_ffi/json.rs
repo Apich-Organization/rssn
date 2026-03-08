@@ -15,7 +15,6 @@ use crate::numerical::physics_md;
 // ============================================================================
 
 #[derive(Deserialize)]
-
 struct ParticleInput {
     id: usize,
     mass: f64,
@@ -24,7 +23,6 @@ struct ParticleInput {
 }
 
 #[derive(Serialize)]
-
 struct ParticleOutput {
     id: usize,
     mass: f64,
@@ -35,7 +33,6 @@ struct ParticleOutput {
 }
 
 #[derive(Deserialize)]
-
 struct LennardJonesInput {
     p1_position: Vec<f64>,
     p2_position: Vec<f64>,
@@ -44,14 +41,12 @@ struct LennardJonesInput {
 }
 
 #[derive(Serialize)]
-
 struct InteractionOutput {
     potential: f64,
     force: Vec<f64>,
 }
 
 #[derive(Deserialize)]
-
 struct MorseInput {
     p1_position: Vec<f64>,
     p2_position: Vec<f64>,
@@ -61,7 +56,6 @@ struct MorseInput {
 }
 
 #[derive(Deserialize)]
-
 struct HarmonicInput {
     p1_position: Vec<f64>,
     p2_position: Vec<f64>,
@@ -70,13 +64,11 @@ struct HarmonicInput {
 }
 
 #[derive(Deserialize)]
-
 struct ParticleListInput {
     particles: Vec<ParticleInput>,
 }
 
 #[derive(Serialize)]
-
 struct SystemPropertiesOutput {
     kinetic_energy: f64,
     temperature: f64,
@@ -85,14 +77,12 @@ struct SystemPropertiesOutput {
 }
 
 #[derive(Deserialize)]
-
 struct PbcInput {
     position: Vec<f64>,
     box_size: Vec<f64>,
 }
 
 #[derive(Deserialize)]
-
 struct LatticeInput {
     n_per_side: usize,
     lattice_constant: f64,
@@ -124,8 +114,7 @@ struct LatticeInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -133,74 +122,48 @@ struct LatticeInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : LennardJonesInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(input: *const c_char) -> *mut c_char {
+    let input: LennardJonesInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<InteractionOutput, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<InteractionOutput, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let p1 = physics_md::Particle::new(
-        0,
-        1.0,
-        input.p1_position,
-        vec![0.0, 0.0, 0.0],
-    );
+    let p1 = physics_md::Particle::new(0, 1.0, input.p1_position, vec![0.0, 0.0, 0.0]);
 
-    let p2 = physics_md::Particle::new(
-        1,
-        1.0,
-        input.p2_position,
-        vec![0.0, 0.0, 0.0],
-    );
+    let p2 = physics_md::Particle::new(1, 1.0, input.p2_position, vec![0.0, 0.0, 0.0]);
 
-    match physics_md::lennard_jones_interaction(
-        &p1,
-        &p2,
-        input.epsilon,
-        input.sigma,
-    ) {
+    match physics_md::lennard_jones_interaction(&p1, &p2, input.epsilon, input.sigma) {
         | Ok((potential, force)) => {
-
-            let output = InteractionOutput {
-                potential,
-                force,
-            };
+            let output = InteractionOutput { potential, force };
 
             to_c_string(
                 serde_json::to_string(&FfiResult {
-                    ok : Some(output),
-                    err : None::<String>,
+                    ok: Some(output),
+                    err: None::<String>,
                 })
                 .unwrap(),
             )
         },
         | Err(e) => {
             to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<InteractionOutput, String> {
-                        ok : None,
-                        err : Some(e),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<InteractionOutput, String> {
+                    ok: None,
+                    err: Some(e),
+                })
                 .unwrap(),
             )
         },
@@ -229,8 +192,7 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -238,86 +200,51 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_md_morse_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : MorseInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_md_morse_json(input: *const c_char) -> *mut c_char {
+    let input: MorseInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<InteractionOutput, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<InteractionOutput, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let p1 = physics_md::Particle::new(
-        0,
-        1.0,
-        input.p1_position,
-        vec![0.0, 0.0, 0.0],
-    );
+    let p1 = physics_md::Particle::new(0, 1.0, input.p1_position, vec![0.0, 0.0, 0.0]);
 
-    let p2 = physics_md::Particle::new(
-        1,
-        1.0,
-        input.p2_position,
-        vec![0.0, 0.0, 0.0],
-    );
+    let p2 = physics_md::Particle::new(1, 1.0, input.p2_position, vec![0.0, 0.0, 0.0]);
 
-    match physics_md::morse_interaction(
-        &p1,
-        &p2,
-        input.de,
-        input.a,
-        input.re,
-    ) {
+    match physics_md::morse_interaction(&p1, &p2, input.de, input.a, input.re) {
         | Ok((potential, force)) => {
-
-            let output =
-                InteractionOutput {
-                    potential,
-                    force,
-                };
+            let output = InteractionOutput { potential, force };
 
             to_c_string(
-                serde_json::to_string(
-                    &FfiResult {
-                        ok: Some(
-                            output,
-                        ),
-                        err: None::<
-                            String,
-                        >,
-                    },
-                )
+                serde_json::to_string(&FfiResult {
+                    ok: Some(output),
+                    err: None::<String>,
+                })
                 .unwrap(),
             )
         },
-        | Err(e) => to_c_string(
-            serde_json::to_string(
-                &FfiResult::<
-                    InteractionOutput,
-                    String,
-                > {
+        | Err(e) => {
+            to_c_string(
+                serde_json::to_string(&FfiResult::<InteractionOutput, String> {
                     ok: None,
                     err: Some(e),
-                },
+                })
+                .unwrap(),
             )
-            .unwrap(),
-        ),
+        },
     }
 }
 
@@ -342,8 +269,7 @@ pub unsafe extern "C" fn rssn_num_md_morse_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -351,74 +277,48 @@ pub unsafe extern "C" fn rssn_num_md_morse_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_md_harmonic_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : HarmonicInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_md_harmonic_json(input: *const c_char) -> *mut c_char {
+    let input: HarmonicInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<InteractionOutput, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<InteractionOutput, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let p1 = physics_md::Particle::new(
-        0,
-        1.0,
-        input.p1_position,
-        vec![0.0, 0.0, 0.0],
-    );
+    let p1 = physics_md::Particle::new(0, 1.0, input.p1_position, vec![0.0, 0.0, 0.0]);
 
-    let p2 = physics_md::Particle::new(
-        1,
-        1.0,
-        input.p2_position,
-        vec![0.0, 0.0, 0.0],
-    );
+    let p2 = physics_md::Particle::new(1, 1.0, input.p2_position, vec![0.0, 0.0, 0.0]);
 
-    match physics_md::harmonic_interaction(
-        &p1,
-        &p2,
-        input.k,
-        input.r0,
-    ) {
+    match physics_md::harmonic_interaction(&p1, &p2, input.k, input.r0) {
         | Ok((potential, force)) => {
-
-            let output = InteractionOutput {
-                potential,
-                force,
-            };
+            let output = InteractionOutput { potential, force };
 
             to_c_string(
                 serde_json::to_string(&FfiResult {
-                    ok : Some(output),
-                    err : None::<String>,
+                    ok: Some(output),
+                    err: None::<String>,
                 })
                 .unwrap(),
             )
         },
         | Err(e) => {
             to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<InteractionOutput, String> {
-                        ok : None,
-                        err : Some(e),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<InteractionOutput, String> {
+                    ok: None,
+                    err: Some(e),
+                })
                 .unwrap(),
             )
         },
@@ -450,8 +350,7 @@ pub unsafe extern "C" fn rssn_num_md_harmonic_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -459,80 +358,52 @@ pub unsafe extern "C" fn rssn_num_md_harmonic_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_md_system_properties_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : ParticleListInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_md_system_properties_json(input: *const c_char) -> *mut c_char {
+    let input: ParticleListInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<SystemPropertiesOutput, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<SystemPropertiesOutput, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let particles: Vec<
-        physics_md::Particle,
-    > = input
+    let particles: Vec<physics_md::Particle> = input
         .particles
         .into_iter()
-        .map(|p| {
-
-            physics_md::Particle::new(
-                p.id,
-                p.mass,
-                p.position,
-                p.velocity,
-            )
-        })
+        .map(|p| physics_md::Particle::new(p.id, p.mass, p.position, p.velocity))
         .collect();
 
     let ke = physics_md::total_kinetic_energy(&particles);
 
-    let temp = physics_md::temperature(
-        &particles,
-    );
+    let temp = physics_md::temperature(&particles);
 
-    let com =
-        physics_md::center_of_mass(
-            &particles,
-        )
-        .unwrap_or_default();
+    let com = physics_md::center_of_mass(&particles).unwrap_or_default();
 
-    let momentum =
-        physics_md::total_momentum(
-            &particles,
-        )
-        .unwrap_or_default();
+    let momentum = physics_md::total_momentum(&particles).unwrap_or_default();
 
-    let output =
-        SystemPropertiesOutput {
-            kinetic_energy: ke,
-            temperature: temp,
-            center_of_mass: com,
-            total_momentum: momentum,
-        };
+    let output = SystemPropertiesOutput {
+        kinetic_energy: ke,
+        temperature: temp,
+        center_of_mass: com,
+        total_momentum: momentum,
+    };
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(output),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(output),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -562,8 +433,7 @@ pub unsafe extern "C" fn rssn_num_md_system_properties_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -571,66 +441,50 @@ pub unsafe extern "C" fn rssn_num_md_system_properties_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : LatticeInput = match from_json_string(input) {
+    let input: LatticeInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<ParticleOutput>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<ParticleOutput>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let particles = physics_md::create_cubic_lattice(
-        input.n_per_side,
-        input.lattice_constant,
-        input.mass,
-    );
+    let particles =
+        physics_md::create_cubic_lattice(input.n_per_side, input.lattice_constant, input.mass);
 
-    let output: Vec<ParticleOutput> =
-        particles
-            .iter()
-            .map(|p| {
-
-                ParticleOutput {
-                    id: p.id,
-                    mass: p.mass,
-                    position: p
-                        .position
-                        .clone(),
-                    velocity: p
-                        .velocity
-                        .clone(),
-                    kinetic_energy: p
-                        .kinetic_energy(
-                        ),
-                    speed: p.speed(),
-                }
-            })
-            .collect();
+    let output: Vec<ParticleOutput> = particles
+        .iter()
+        .map(|p| {
+            ParticleOutput {
+                id: p.id,
+                mass: p.mass,
+                position: p.position.clone(),
+                velocity: p.velocity.clone(),
+                kinetic_energy: p.kinetic_energy(),
+                speed: p.speed(),
+            }
+        })
+        .collect();
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(output),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(output),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -658,8 +512,7 @@ pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -667,43 +520,33 @@ pub unsafe extern "C" fn rssn_num_md_create_cubic_lattice_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_md_apply_pbc_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : PbcInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_md_apply_pbc_json(input: *const c_char) -> *mut c_char {
+    let input: PbcInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<f64>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let wrapped = physics_md::apply_pbc(
-        &input.position,
-        &input.box_size,
-    );
+    let wrapped = physics_md::apply_pbc(&input.position, &input.box_size);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(wrapped),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(wrapped),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -728,8 +571,7 @@ pub unsafe extern "C" fn rssn_num_md_apply_pbc_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -737,43 +579,33 @@ pub unsafe extern "C" fn rssn_num_md_apply_pbc_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_md_minimum_image_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : PbcInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_md_minimum_image_json(input: *const c_char) -> *mut c_char {
+    let input: PbcInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<f64>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let result = physics_md::minimum_image_distance(
-        &input.position,
-        &input.box_size,
-    );
+    let result = physics_md::minimum_image_distance(&input.position, &input.box_size);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(result),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(result),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }

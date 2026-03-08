@@ -10,67 +10,57 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::error_correction;
 
 #[derive(Deserialize)]
-
 struct RsEncodeInput {
     message: Vec<u8>,
     n_parity: usize,
 }
 
 #[derive(Deserialize)]
-
 struct RsDecodeInput {
     codeword: Vec<u8>,
     n_parity: usize,
 }
 
 #[derive(Deserialize)]
-
 struct HammingInput {
     data: Vec<u8>,
 }
 
 #[derive(Deserialize)]
-
 struct DistanceInput {
     a: Vec<u8>,
     b: Vec<u8>,
 }
 
 #[derive(Deserialize)]
-
 struct CrcInput {
     data: Vec<u8>,
 }
 
 #[derive(Deserialize)]
-
 struct Crc32VerifyInput {
     data: Vec<u8>,
     expected_crc: u32,
 }
 
 #[derive(Deserialize)]
-
 struct InterleaveInput {
     data: Vec<u8>,
     depth: usize,
 }
 
 #[derive(Deserialize)]
-
 struct CodeRateInput {
     k: usize,
     n: usize,
 }
 
 #[derive(Deserialize)]
-
 struct CapabilityInput {
     min_distance: usize,
 }
 
 #[derive(Serialize)]
-
 struct HammingDecodeResult {
     data: Vec<u8>,
     error_pos: Option<usize>,
@@ -78,8 +68,7 @@ struct HammingDecodeResult {
 
 // Reed-Solomon functions
 /// Encodes a message using Reed-Solomon codes with bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -87,48 +76,38 @@ struct HammingDecodeResult {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : RsEncodeInput = match from_bincode_buffer(&buffer) {
+    let input: RsEncodeInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<u8>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    match error_correction::reed_solomon_encode(
-        &input.message,
-        input.n_parity,
-    ) {
+    match error_correction::reed_solomon_encode(&input.message, input.n_parity) {
         | Ok(codeword) => {
             to_bincode_buffer(&FfiResult {
-                ok : Some(codeword),
-                err : None::<String>,
+                ok: Some(codeword),
+                err: None::<String>,
             })
         },
         | Err(e) => {
-            to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
-                    ok : None,
-                    err : Some(e),
-                },
-            )
+            to_bincode_buffer(&FfiResult::<Vec<u8>, String> {
+                ok: None,
+                err: Some(e),
+            })
         },
     }
 }
 
 /// Decodes a Reed-Solomon codeword with bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -136,50 +115,40 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : RsDecodeInput = match from_bincode_buffer(&buffer) {
+    let input: RsDecodeInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<u8>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     let mut codeword = input.codeword;
 
-    match error_correction::reed_solomon_decode(
-        &mut codeword,
-        input.n_parity,
-    ) {
+    match error_correction::reed_solomon_decode(&mut codeword, input.n_parity) {
         | Ok(()) => {
             to_bincode_buffer(&FfiResult {
-                ok : Some(codeword),
-                err : None::<String>,
+                ok: Some(codeword),
+                err: None::<String>,
             })
         },
         | Err(e) => {
-            to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
-                    ok : None,
-                    err : Some(e),
-                },
-            )
+            to_bincode_buffer(&FfiResult::<Vec<u8>, String> {
+                ok: None,
+                err: Some(e),
+            })
         },
     }
 }
 
 /// Checks if a Reed-Solomon codeword is valid with bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -187,27 +156,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_rs_check_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : RsDecodeInput = match from_bincode_buffer(&buffer) {
+    let input: RsDecodeInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<bool, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<bool, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result = error_correction::reed_solomon_check(
-        &input.codeword,
-        input.n_parity,
-    );
+    let result = error_correction::reed_solomon_check(&input.codeword, input.n_parity);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -217,8 +180,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_bincode(
 
 // Hamming functions
 /// Encodes a message using Hamming codes with bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -226,45 +188,38 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : HammingInput = match from_bincode_buffer(&buffer) {
+    let input: HammingInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<u8>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     match error_correction::hamming_encode_numerical(&input.data) {
         | Some(codeword) => {
             to_bincode_buffer(&FfiResult {
-                ok : Some(codeword),
-                err : None::<String>,
+                ok: Some(codeword),
+                err: None::<String>,
             })
         },
         | None => {
-            to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
-                    ok : None,
-                    err : Some("Input must be exactly 4 bytes".to_string()),
-                },
-            )
+            to_bincode_buffer(&FfiResult::<Vec<u8>, String> {
+                ok: None,
+                err: Some("Input must be exactly 4 bytes".to_string()),
+            })
         },
     }
 }
 
 /// Decodes a Hamming codeword and corrects errors with bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -272,50 +227,38 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : HammingInput = match from_bincode_buffer(&buffer) {
+    let input: HammingInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<HammingDecodeResult, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<HammingDecodeResult, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     match error_correction::hamming_decode_numerical(&input.data) {
         | Ok((data, error_pos)) => {
             to_bincode_buffer(&FfiResult {
-                ok : Some(
-                    HammingDecodeResult {
-                        data,
-                        error_pos,
-                    },
-                ),
-                err : None::<String>,
+                ok: Some(HammingDecodeResult { data, error_pos }),
+                err: None::<String>,
             })
         },
         | Err(e) => {
-            to_bincode_buffer(
-                &FfiResult::<HammingDecodeResult, String> {
-                    ok : None,
-                    err : Some(e),
-                },
-            )
+            to_bincode_buffer(&FfiResult::<HammingDecodeResult, String> {
+                ok: None,
+                err: Some(e),
+            })
         },
     }
 }
 
 /// Checks a Hamming codeword for errors with bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -323,20 +266,17 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : HammingInput = match from_bincode_buffer(&buffer) {
+    let input: HammingInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<bool, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<bool, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
@@ -349,9 +289,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_bincode(
 }
 
 /// Computes the Hamming distance between two byte vectors with bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -359,45 +297,38 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : DistanceInput = match from_bincode_buffer(&buffer) {
+    let input: DistanceInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<usize, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<usize, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     match error_correction::hamming_distance_numerical(&input.a, &input.b) {
         | Some(dist) => {
             to_bincode_buffer(&FfiResult {
-                ok : Some(dist),
-                err : None::<String>,
+                ok: Some(dist),
+                err: None::<String>,
             })
         },
         | None => {
-            to_bincode_buffer(
-                &FfiResult::<usize, String> {
-                    ok : None,
-                    err : Some("Vectors must have same length".to_string()),
-                },
-            )
+            to_bincode_buffer(&FfiResult::<usize, String> {
+                ok: None,
+                err: Some("Vectors must have same length".to_string()),
+            })
         },
     }
 }
 
 /// Computes the Hamming weight of a byte vector with bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -405,20 +336,17 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : HammingInput = match from_bincode_buffer(&buffer) {
+    let input: HammingInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<usize, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<usize, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
@@ -432,8 +360,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_bincode(
 
 // CRC functions
 /// Computes the CRC32 checksum of a byte vector with bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -441,20 +368,17 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : CrcInput = match from_bincode_buffer(&buffer) {
+    let input: CrcInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<u32, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<u32, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
@@ -467,9 +391,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_bincode(
 }
 
 /// Verifies the CRC32 checksum of a byte vector with bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -477,27 +399,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : Crc32VerifyInput = match from_bincode_buffer(&buffer) {
+    let input: Crc32VerifyInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<bool, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<bool, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result = error_correction::crc32_verify_numerical(
-        &input.data,
-        input.expected_crc,
-    );
+    let result = error_correction::crc32_verify_numerical(&input.data, input.expected_crc);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -506,9 +422,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_bincode(
 }
 
 /// Computes the CRC16 checksum of a byte vector with bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -516,27 +430,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_crc16_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : CrcInput = match from_bincode_buffer(&buffer) {
+    let input: CrcInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<u16, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<u16, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result =
-        error_correction::crc16_compute(
-            &input.data,
-        );
+    let result = error_correction::crc16_compute(&input.data);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -545,9 +453,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_bincode(
 }
 
 /// Computes the CRC8 checksum of a byte vector with bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -555,27 +461,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_crc8_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : CrcInput = match from_bincode_buffer(&buffer) {
+    let input: CrcInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<u8, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<u8, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result =
-        error_correction::crc8_compute(
-            &input.data,
-        );
+    let result = error_correction::crc8_compute(&input.data);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -585,8 +485,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_bincode(
 
 // Interleaving functions
 /// Interleaves a byte vector with a given depth using bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -594,28 +493,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_interleave_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : InterleaveInput = match from_bincode_buffer(&buffer) {
+    let input: InterleaveInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<u8>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result =
-        error_correction::interleave(
-            &input.data,
-            input.depth,
-        );
+    let result = error_correction::interleave(&input.data, input.depth);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -624,9 +516,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_bincode(
 }
 
 /// Deinterleaves a byte vector with a given depth using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -634,28 +524,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : InterleaveInput = match from_bincode_buffer(&buffer) {
+    let input: InterleaveInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<u8>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<u8>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result =
-        error_correction::deinterleave(
-            &input.data,
-            input.depth,
-        );
+    let result = error_correction::deinterleave(&input.data, input.depth);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -665,8 +548,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_bincode(
 
 // Code theory functions
 /// Computes the code rate (k/n) of a code with bincode for serialization.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -674,28 +556,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_code_rate_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : CodeRateInput = match from_bincode_buffer(&buffer) {
+    let input: CodeRateInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result =
-        error_correction::code_rate(
-            input.k,
-            input.n,
-        );
+    let result = error_correction::code_rate(input.k, input.n);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -704,9 +579,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_bincode(
 }
 
 /// Computes the error correction capability of a code given its minimum distance, using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -714,20 +587,17 @@ pub unsafe extern "C" fn rssn_num_error_correction_code_rate_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_capability_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : CapabilityInput = match from_bincode_buffer(&buffer) {
+    let input: CapabilityInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<usize, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<usize, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 

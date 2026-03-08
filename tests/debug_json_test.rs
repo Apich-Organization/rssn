@@ -14,26 +14,14 @@ struct EvalInput {
 #[test]
 
 fn see_json() {
-
     let mut vars = HashMap::new();
 
-    vars.insert(
-        "z".to_string(),
-        Complex::new(0.0, 1.0),
-    );
+    vars.insert("z".to_string(), Complex::new(0.0, 1.0));
 
     let input = EvalInput {
-        expr: Expr::Variable(
-            "z".to_string(),
-        ),
+        expr: Expr::Variable("z".to_string()),
         vars,
     };
 
-    println!(
-        "{}",
-        serde_json::to_string_pretty(
-            &input
-        )
-        .unwrap()
-    );
+    println!("{}", serde_json::to_string_pretty(&input).unwrap());
 }

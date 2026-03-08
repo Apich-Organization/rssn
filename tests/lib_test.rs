@@ -5,7 +5,6 @@ use rssn::is_exclusive;
 #[test]
 
 fn test_is_exclusive() {
-
     let arc = Arc::new(5);
 
     assert!(is_exclusive(&arc));

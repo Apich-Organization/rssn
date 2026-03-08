@@ -27,8 +27,7 @@ use crate::symbolic::core::Expr;
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and expects
 /// valid bincode-encoded `Expr` values.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -36,62 +35,42 @@ use crate::symbolic::core::Expr;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn path_continuation_new_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
     start_point_bincode: BincodeBuffer,
     order: usize,
 ) -> BincodeBuffer {
-
     unsafe {
+        let func: Expr = match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let func : Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
+        let start_point: Expr = match from_bincode_buffer(&start_point_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let start_point : Expr = match from_bincode_buffer(&start_point_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+        let path_continuation = PathContinuation::new(&func, var_str, &start_point, order);
 
-        let path_continuation =
-            PathContinuation::new(
-                &func,
-                var_str,
-                &start_point,
-                order,
-            );
-
-        to_bincode_buffer(
-            &path_continuation,
-        )
+        to_bincode_buffer(&path_continuation)
     }
 }
 
 /// Continues the analytic continuation along a given path.
-
 ///
-
 /// Takes a bincode-serialized `PathContinuation` object and a bincode-serialized `Vec<Expr>` representing the path points.
-
 /// Returns a bincode-serialized string "OK" on success, or an error message on failure.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -99,46 +78,31 @@ pub unsafe extern "C" fn path_continuation_new_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
     pc_bincode: BincodeBuffer,
     path_points_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let mut pc : PathContinuation = match from_bincode_buffer(&pc_bincode) {
+    let mut pc: PathContinuation = match from_bincode_buffer(&pc_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let path_points : Vec<Expr> = match from_bincode_buffer(&path_points_bincode) {
+    let path_points: Vec<Expr> = match from_bincode_buffer(&path_points_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    match pc.continue_along_path(
-        &path_points,
-    ) {
-        | Ok(()) => {
-            to_bincode_buffer(
-                &"OK".to_string(),
-            )
-        },
-        | Err(e) => {
-            to_bincode_buffer(&e)
-        },
+    match pc.continue_along_path(&path_points) {
+        | Ok(()) => to_bincode_buffer(&"OK".to_string()),
+        | Err(e) => to_bincode_buffer(&e),
     }
 }
 
 /// Gets the final expression after analytic continuation.
-
-///
-
 /// Takes a bincode-serialized `PathContinuation` object.
-
 /// Returns a bincode-serialized `Expr` representing the final expression.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -146,33 +110,24 @@ pub unsafe extern "C" fn path_continuation_continue_along_path_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
     pc_bincode: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let pc : PathContinuation = match from_bincode_buffer(&pc_bincode) {
+    let pc: PathContinuation = match from_bincode_buffer(&pc_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    to_bincode_buffer(
-        &pc.get_final_expression(),
-    )
+    to_bincode_buffer(&pc.get_final_expression())
 }
 
 /// Estimates the radius of convergence of a series.
-
 ///
-
 /// Takes a bincode-serialized `Expr` (the series), a C-style string for the variable,
-
 /// a bincode-serialized `Expr` for the center, and an integer for the order.
-
 /// Returns an `f64` representing the estimated radius of convergence.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -180,64 +135,45 @@ pub unsafe extern "C" fn path_continuation_get_final_expression_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
     series_expr_bincode: BincodeBuffer,
     var: *const c_char,
     center_bincode: BincodeBuffer,
     order: usize,
 ) -> f64 {
-
     unsafe {
+        let series_expr: Expr = match from_bincode_buffer(&series_expr_bincode) {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
-        let series_expr: Expr =
-            match from_bincode_buffer(
-                &series_expr_bincode,
-            ) {
-                | Some(e) => e,
-                | None => return 0.0,
-            };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
-
-        let center: Expr =
-            match from_bincode_buffer(
-                &center_bincode,
-            ) {
-                | Some(e) => e,
-                | None => return 0.0,
-            };
+        let center: Expr = match from_bincode_buffer(&center_bincode) {
+            | Some(e) => e,
+            | None => return 0.0,
+        };
 
         crate::symbolic::complex_analysis::estimate_radius_of_convergence(
-        &series_expr,
-        var_str,
-        &center,
-        order,
-    )
-    .unwrap_or(0.0)
+            &series_expr,
+            var_str,
+            &center,
+            order,
+        )
+        .unwrap_or(0.0)
     }
 }
 
 /// Calculates the distance between two complex numbers.
-
-///
-
 /// Takes two bincode-serialized `Expr` representing the complex numbers.
-
 /// Returns an `f64` representing the distance.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -245,43 +181,30 @@ pub unsafe extern "C" fn estimate_radius_of_convergence_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn complex_distance_bincode(
     p1_bincode: BincodeBuffer,
     p2_bincode: BincodeBuffer,
 ) -> f64 {
+    let p1: Expr = match from_bincode_buffer(&p1_bincode) {
+        | Some(e) => e,
+        | None => return 0.0,
+    };
 
-    let p1: Expr =
-        match from_bincode_buffer(
-            &p1_bincode,
-        ) {
-            | Some(e) => e,
-            | None => return 0.0,
-        };
-
-    let p2: Expr =
-        match from_bincode_buffer(
-            &p2_bincode,
-        ) {
-            | Some(e) => e,
-            | None => return 0.0,
-        };
+    let p2: Expr = match from_bincode_buffer(&p2_bincode) {
+        | Some(e) => e,
+        | None => return 0.0,
+    };
 
     crate::symbolic::complex_analysis::complex_distance(&p1, &p2).unwrap_or(0.0)
 }
 
 /// Classifies the singularity of a function at a given point.
-
 ///
-
 /// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
-
 /// a bincode-serialized `Expr` for the singularity point, and an integer for the order.
-
 /// Returns a bincode-serialized `SingularityType` enum.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -289,63 +212,48 @@ pub unsafe extern "C" fn complex_distance_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn classify_singularity_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
     singularity_bincode: BincodeBuffer,
     order: usize,
 ) -> BincodeBuffer {
-
     unsafe {
+        let func: Expr = match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let func : Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
-
-        let singularity : Expr = match from_bincode_buffer(&singularity_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+        let singularity: Expr = match from_bincode_buffer(&singularity_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
         let singularity_type = crate::symbolic::complex_analysis::classify_singularity(
-        &func,
-        var_str,
-        &singularity,
-        order,
-    );
+            &func,
+            var_str,
+            &singularity,
+            order,
+        );
 
-        to_bincode_buffer(
-            &singularity_type,
-        )
+        to_bincode_buffer(&singularity_type)
     }
 }
 
 /// Computes the Laurent series of a function.
-
 ///
-
 /// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
-
 /// a bincode-serialized `Expr` for the center, and an integer for the order.
-
 /// Returns a bincode-serialized `Expr` representing the Laurent series.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -353,61 +261,44 @@ pub unsafe extern "C" fn classify_singularity_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn laurent_series_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
     center_bincode: BincodeBuffer,
     order: usize,
 ) -> BincodeBuffer {
-
     unsafe {
+        let func: Expr = match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let func : Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
+        let center: Expr = match from_bincode_buffer(&center_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let center : Expr = match from_bincode_buffer(&center_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
-
-        let series = crate::symbolic::complex_analysis::laurent_series(
-        &func,
-        var_str,
-        &center,
-        order,
-    );
+        let series =
+            crate::symbolic::complex_analysis::laurent_series(&func, var_str, &center, order);
 
         to_bincode_buffer(&series)
     }
 }
 
 /// Calculates the residue of a function at a given singularity.
-
 ///
-
 /// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
-
 /// and a bincode-serialized `Expr` for the singularity.
-
 /// Returns a bincode-serialized `Expr` representing the residue.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -415,59 +306,43 @@ pub unsafe extern "C" fn laurent_series_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn calculate_residue_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
     singularity_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
-
     unsafe {
+        let func: Expr = match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let func : Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
+        let singularity: Expr = match from_bincode_buffer(&singularity_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let singularity : Expr = match from_bincode_buffer(&singularity_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
-
-        let residue = crate::symbolic::complex_analysis::calculate_residue(
-        &func,
-        var_str,
-        &singularity,
-    );
+        let residue =
+            crate::symbolic::complex_analysis::calculate_residue(&func, var_str, &singularity);
 
         to_bincode_buffer(&residue)
     }
 }
 
 /// Calculates a contour integral using the residue theorem.
-
 ///
-
 /// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
-
 /// and a bincode-serialized `Vec<Expr>` for the singularities.
-
 /// Returns a bincode-serialized `Expr` representing the result of the integral.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -475,57 +350,44 @@ pub unsafe extern "C" fn calculate_residue_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
-    singularities_bincode : BincodeBuffer,
+    singularities_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
-
     unsafe {
+        let func: Expr = match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let func : Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
-
-        let singularities : Vec<Expr> = match from_bincode_buffer(&singularities_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+        let singularities: Vec<Expr> = match from_bincode_buffer(&singularities_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
         let result = crate::symbolic::complex_analysis::contour_integral_residue_theorem(
-        &func,
-        var_str,
-        &singularities,
-    );
+            &func,
+            var_str,
+            &singularities,
+        );
 
         to_bincode_buffer(&result)
     }
 }
 
 /// Creates a new Mobius transformation.
-
-///
-
 /// Takes four bincode-serialized `Expr` representing the parameters a, b, c, and d.
-
 /// Returns a bincode-serialized `MobiusTransformation` object.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -533,70 +395,52 @@ pub unsafe extern "C" fn contour_integral_residue_theorem_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn mobius_transformation_new_bincode(
     a_bincode: BincodeBuffer,
     b_bincode: BincodeBuffer,
     c_bincode: BincodeBuffer,
     d_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let a : Expr = match from_bincode_buffer(&a_bincode) {
+    let a: Expr = match from_bincode_buffer(&a_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let b : Expr = match from_bincode_buffer(&b_bincode) {
+    let b: Expr = match from_bincode_buffer(&b_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let c : Expr = match from_bincode_buffer(&c_bincode) {
+    let c: Expr = match from_bincode_buffer(&c_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let d : Expr = match from_bincode_buffer(&d_bincode) {
+    let d: Expr = match from_bincode_buffer(&d_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let mobius =
-        MobiusTransformation::new(
-            a, b, c, d,
-        );
+    let mobius = MobiusTransformation::new(a, b, c, d);
 
     to_bincode_buffer(&mobius)
 }
 
 /// Creates an identity Mobius transformation.
-
-///
-
 /// Takes no arguments and returns a bincode-serialized `MobiusTransformation` object.
-
 #[unsafe(no_mangle)]
-
-pub extern "C" fn mobius_transformation_identity_bincode()
--> BincodeBuffer {
-
-    let mobius =
-        MobiusTransformation::identity(
-        );
+pub extern "C" fn mobius_transformation_identity_bincode() -> BincodeBuffer {
+    let mobius = MobiusTransformation::identity();
 
     to_bincode_buffer(&mobius)
 }
 
 /// Applies a Mobius transformation to a complex number.
-
 ///
-
 /// Takes a bincode-serialized `MobiusTransformation` object and a bincode-serialized `Expr` (complex number).
-
 /// Returns a bincode-serialized `Expr` representing the result.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -604,18 +448,17 @@ pub extern "C" fn mobius_transformation_identity_bincode()
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn mobius_transformation_apply_bincode(
     mobius_bincode: BincodeBuffer,
     z_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let mobius : MobiusTransformation = match from_bincode_buffer(&mobius_bincode) {
+    let mobius: MobiusTransformation = match from_bincode_buffer(&mobius_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let z : Expr = match from_bincode_buffer(&z_bincode) {
+    let z: Expr = match from_bincode_buffer(&z_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -626,15 +469,9 @@ pub unsafe extern "C" fn mobius_transformation_apply_bincode(
 }
 
 /// Composes two Mobius transformations.
-
-///
-
 /// Takes two bincode-serialized `MobiusTransformation` objects.
-
 /// Returns a bincode-serialized `MobiusTransformation` representing their composition.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -642,38 +479,30 @@ pub unsafe extern "C" fn mobius_transformation_apply_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn mobius_transformation_compose_bincode(
     mobius1_bincode: BincodeBuffer,
     mobius2_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let mobius1 : MobiusTransformation = match from_bincode_buffer(&mobius1_bincode) {
+    let mobius1: MobiusTransformation = match from_bincode_buffer(&mobius1_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let mobius2 : MobiusTransformation = match from_bincode_buffer(&mobius2_bincode) {
+    let mobius2: MobiusTransformation = match from_bincode_buffer(&mobius2_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let result =
-        mobius1.compose(&mobius2);
+    let result = mobius1.compose(&mobius2);
 
     to_bincode_buffer(&result)
 }
 
 /// Computes the inverse of a Mobius transformation.
-
-///
-
 /// Takes a bincode-serialized `MobiusTransformation` object.
-
 /// Returns a bincode-serialized `MobiusTransformation` representing its inverse.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -681,12 +510,11 @@ pub unsafe extern "C" fn mobius_transformation_compose_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
     mobius_bincode: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let mobius : MobiusTransformation = match from_bincode_buffer(&mobius_bincode) {
+    let mobius: MobiusTransformation = match from_bincode_buffer(&mobius_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -697,17 +525,11 @@ pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
 }
 
 /// Applies Cauchy's integral formula.
-
 ///
-
 /// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
-
 /// and a bincode-serialized `Expr` for the point `z0`.
-
 /// Returns a bincode-serialized `Expr` representing the value of the function at `z0`.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -715,55 +537,43 @@ pub unsafe extern "C" fn mobius_transformation_inverse_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn cauchy_integral_formula_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
     z0_bincode: BincodeBuffer,
 ) -> BincodeBuffer {
-
     unsafe {
+        let func: Expr = match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let func : Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
+        let z0: Expr = match from_bincode_buffer(&z0_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let z0 : Expr = match from_bincode_buffer(&z0_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
-
-        let result = crate::symbolic::complex_analysis::cauchy_integral_formula(&func, var_str, &z0);
+        let result =
+            crate::symbolic::complex_analysis::cauchy_integral_formula(&func, var_str, &z0);
 
         to_bincode_buffer(&result)
     }
 }
 
 /// Applies Cauchy's derivative formula.
-
 ///
-
 /// Takes a bincode-serialized `Expr` (the function), a C-style string for the variable,
-
 /// a bincode-serialized `Expr` for the point `z0`, and an integer `n` for the order of the derivative.
-
 /// Returns a bincode-serialized `Expr` representing the nth derivative of the function at `z0`.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -771,59 +581,42 @@ pub unsafe extern "C" fn cauchy_integral_formula_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
     func_bincode: BincodeBuffer,
     var: *const c_char,
     z0_bincode: BincodeBuffer,
     n: usize,
 ) -> BincodeBuffer {
-
     unsafe {
+        let func: Expr = match from_bincode_buffer(&func_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let func : Expr = match from_bincode_buffer(&func_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
+        let var_str = std::ffi::CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .unwrap();
+        let z0: Expr = match from_bincode_buffer(&z0_bincode) {
+            | Some(e) => e,
+            | None => return BincodeBuffer::empty(),
+        };
 
-        let z0 : Expr = match from_bincode_buffer(&z0_bincode) {
-        | Some(e) => e,
-        | None => return BincodeBuffer::empty(),
-    };
-
-        let result = crate::symbolic::complex_analysis::cauchy_derivative_formula(
-        &func,
-        var_str,
-        &z0,
-        n,
-    );
+        let result =
+            crate::symbolic::complex_analysis::cauchy_derivative_formula(&func, var_str, &z0, n);
 
         to_bincode_buffer(&result)
     }
 }
 
 /// Computes the complex exponential `e^z`.
-
-///
-
 /// Takes a bincode-serialized `Expr` representing `z`.
-
 /// Returns a bincode-serialized `Expr` representing `e^z`.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -831,12 +624,9 @@ pub unsafe extern "C" fn cauchy_derivative_formula_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn complex_exp_bincode(
-    z_bincode: BincodeBuffer
-) -> BincodeBuffer {
-
-    let z : Expr = match from_bincode_buffer(&z_bincode) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn complex_exp_bincode(z_bincode: BincodeBuffer) -> BincodeBuffer {
+    let z: Expr = match from_bincode_buffer(&z_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -847,15 +637,9 @@ pub unsafe extern "C" fn complex_exp_bincode(
 }
 
 /// Computes the complex logarithm `log(z)`.
-
-///
-
 /// Takes a bincode-serialized `Expr` representing `z`.
-
 /// Returns a bincode-serialized `Expr` representing `log(z)`.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -863,12 +647,9 @@ pub unsafe extern "C" fn complex_exp_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn complex_log_bincode(
-    z_bincode: BincodeBuffer
-) -> BincodeBuffer {
-
-    let z : Expr = match from_bincode_buffer(&z_bincode) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn complex_log_bincode(z_bincode: BincodeBuffer) -> BincodeBuffer {
+    let z: Expr = match from_bincode_buffer(&z_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -879,15 +660,9 @@ pub unsafe extern "C" fn complex_log_bincode(
 }
 
 /// Computes the argument of a complex number `arg(z)`.
-
-///
-
 /// Takes a bincode-serialized `Expr` representing `z`.
-
 /// Returns a bincode-serialized `Expr` representing `arg(z)`.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -895,12 +670,9 @@ pub unsafe extern "C" fn complex_log_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn complex_arg_bincode(
-    z_bincode: BincodeBuffer
-) -> BincodeBuffer {
-
-    let z : Expr = match from_bincode_buffer(&z_bincode) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn complex_arg_bincode(z_bincode: BincodeBuffer) -> BincodeBuffer {
+    let z: Expr = match from_bincode_buffer(&z_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -924,8 +696,7 @@ pub unsafe extern "C" fn complex_arg_bincode(
 ///
 /// This function is unsafe because it dereferences a bincode buffer that must contain
 /// a valid serialized `Expr`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -933,12 +704,9 @@ pub unsafe extern "C" fn complex_arg_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn complex_modulus_bincode(
-    z_bincode: BincodeBuffer
-) -> BincodeBuffer {
-
-    let z : Expr = match from_bincode_buffer(&z_bincode) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn complex_modulus_bincode(z_bincode: BincodeBuffer) -> BincodeBuffer {
+    let z: Expr = match from_bincode_buffer(&z_bincode) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };

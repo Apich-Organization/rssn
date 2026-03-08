@@ -15,7 +15,6 @@ use crate::numerical::physics_fea;
 // ============================================================================
 
 #[derive(Deserialize)]
-
 struct MaterialInput {
     youngs_modulus: f64,
     poissons_ratio: f64,
@@ -26,14 +25,12 @@ struct MaterialInput {
 }
 
 #[derive(Serialize)]
-
 struct MaterialOutput {
     shear_modulus: f64,
     bulk_modulus: f64,
 }
 
 #[derive(Deserialize)]
-
 struct LinearElement1DInput {
     length: f64,
     youngs_modulus: f64,
@@ -41,7 +38,6 @@ struct LinearElement1DInput {
 }
 
 #[derive(Deserialize)]
-
 struct StressInput {
     sx: f64,
     sy: f64,
@@ -49,7 +45,6 @@ struct StressInput {
 }
 
 #[derive(Serialize)]
-
 struct PrincipalStressOutput {
     sigma1: f64,
     sigma2: f64,
@@ -57,7 +52,6 @@ struct PrincipalStressOutput {
 }
 
 #[derive(Deserialize)]
-
 struct SafetyFactorInput {
     sx: f64,
     sy: f64,
@@ -66,7 +60,6 @@ struct SafetyFactorInput {
 }
 
 #[derive(Deserialize)]
-
 struct BeamElement2DInput {
     length: f64,
     youngs_modulus: f64,
@@ -76,7 +69,6 @@ struct BeamElement2DInput {
 }
 
 #[derive(Deserialize)]
-
 struct ThermalElement1DInput {
     length: f64,
     conductivity: f64,
@@ -84,7 +76,6 @@ struct ThermalElement1DInput {
 }
 
 #[derive(Deserialize)]
-
 struct MeshInput {
     width: f64,
     height: f64,
@@ -93,7 +84,6 @@ struct MeshInput {
 }
 
 #[derive(Serialize)]
-
 struct MeshOutput {
     num_nodes: usize,
     num_elements: usize,
@@ -130,8 +120,7 @@ struct MeshOutput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -139,55 +128,47 @@ struct MeshOutput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : MaterialInput = match from_json_string(input) {
+    let input: MaterialInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<MaterialOutput, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<MaterialOutput, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let mat =
-        physics_fea::Material::new(
-            input.youngs_modulus,
-            input.poissons_ratio,
-            input.density,
-            input.thermal_conductivity,
-            input.thermal_expansion,
-            input.yield_strength,
-        );
+    let mat = physics_fea::Material::new(
+        input.youngs_modulus,
+        input.poissons_ratio,
+        input.density,
+        input.thermal_conductivity,
+        input.thermal_expansion,
+        input.yield_strength,
+    );
 
     let output = MaterialOutput {
-        shear_modulus: mat
-            .shear_modulus(),
-        bulk_modulus: mat
-            .bulk_modulus(),
+        shear_modulus: mat.shear_modulus(),
+        bulk_modulus: mat.bulk_modulus(),
     };
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(output),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(output),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -209,8 +190,7 @@ pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
 /// # Safety
 ///
 /// This function is unsafe because it returns a raw pointer that the caller must free.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -218,33 +198,25 @@ pub unsafe extern "C" fn rssn_num_fea_material_properties_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_fea_material_steel_json(
-    _input: *const c_char
-) -> *mut c_char {
-
-    let mat =
-        physics_fea::Material::steel();
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_fea_material_steel_json(_input: *const c_char) -> *mut c_char {
+    let mat = physics_fea::Material::steel();
 
     let output = MaterialOutput {
-        shear_modulus: mat
-            .shear_modulus(),
-        bulk_modulus: mat
-            .bulk_modulus(),
+        shear_modulus: mat.shear_modulus(),
+        bulk_modulus: mat.bulk_modulus(),
     };
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(output),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(output),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -274,8 +246,7 @@ pub unsafe extern "C" fn rssn_num_fea_material_steel_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -283,51 +254,41 @@ pub unsafe extern "C" fn rssn_num_fea_material_steel_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : LinearElement1DInput = match from_json_string(input) {
+    let input: LinearElement1DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let element =
-        physics_fea::LinearElement1D {
-            length: input.length,
-            youngs_modulus: input
-                .youngs_modulus,
-            area: input.area,
-        };
+    let element = physics_fea::LinearElement1D {
+        length: input.length,
+        youngs_modulus: input.youngs_modulus,
+        area: input.area,
+    };
 
-    let stiffness = element
-        .youngs_modulus
-        * element.area
-        / element.length;
+    let stiffness = element.youngs_modulus * element.area / element.length;
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(stiffness),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(stiffness),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -355,8 +316,7 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -364,50 +324,43 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : BeamElement2DInput = match from_json_string(input) {
+    let input: BeamElement2DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<f64>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let beam =
-        physics_fea::BeamElement2D::new(
-            input.length,
-            input.youngs_modulus,
-            input.area,
-            input.moment_of_inertia,
-            input.angle,
-        );
+    let beam = physics_fea::BeamElement2D::new(
+        input.length,
+        input.youngs_modulus,
+        input.area,
+        input.moment_of_inertia,
+        input.angle,
+    );
 
-    let k =
-        beam.global_stiffness_matrix();
+    let k = beam.global_stiffness_matrix();
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(k.data()),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(k.data()),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -433,8 +386,7 @@ pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -442,42 +394,35 @@ pub unsafe extern "C" fn rssn_num_fea_beam_element_2d_stiffness_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : ThermalElement1DInput = match from_json_string(input) {
+    let input: ThermalElement1DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let conductivity =
-        input.conductivity * input.area
-            / input.length;
+    let conductivity = input.conductivity * input.area / input.length;
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(conductivity),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(conductivity),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -507,8 +452,7 @@ pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -516,44 +460,33 @@ pub unsafe extern "C" fn rssn_num_fea_thermal_element_1d_conductivity_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : StressInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(input: *const c_char) -> *mut c_char {
+    let input: StressInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let vm = physics_fea::TriangleElement2D::von_mises_stress(&[
-        input.sx,
-        input.sy,
-        input.txy,
-    ]);
+    let vm = physics_fea::TriangleElement2D::von_mises_stress(&[input.sx, input.sy, input.txy]);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(vm),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(vm),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -581,8 +514,7 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -590,54 +522,39 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : StressInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(input: *const c_char) -> *mut c_char {
+    let input: StressInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<PrincipalStressOutput, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<PrincipalStressOutput, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let (sigma1, sigma2, angle) =
-        physics_fea::principal_stresses(
-            &[
-                input.sx,
-                input.sy,
-                input.txy,
-            ],
-        );
+    let (sigma1, sigma2, angle) = physics_fea::principal_stresses(&[input.sx, input.sy, input.txy]);
 
-    let output =
-        PrincipalStressOutput {
-            sigma1,
-            sigma2,
-            angle,
-        };
+    let output = PrincipalStressOutput {
+        sigma1,
+        sigma2,
+        angle,
+    };
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(output),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(output),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -664,8 +581,7 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -673,47 +589,36 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : SafetyFactorInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(input: *const c_char) -> *mut c_char {
+    let input: SafetyFactorInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
     let sf = physics_fea::safety_factor_von_mises(
-        &[
-            input.sx,
-            input.sy,
-            input.txy,
-        ],
+        &[input.sx, input.sy, input.txy],
         input.yield_strength,
     );
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(sf),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(sf),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
@@ -747,8 +652,7 @@ pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -756,55 +660,43 @@ pub unsafe extern "C" fn rssn_num_fea_safety_factor_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fea_create_rectangular_mesh_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : MeshInput = match from_json_string(input) {
+    let input: MeshInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<MeshOutput, String> {
-                        ok : None,
-                        err : Some("Invalid JSON".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<MeshOutput, String> {
+                    ok: None,
+                    err: Some("Invalid JSON".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let (nodes, elements) = physics_fea::create_rectangular_mesh(
-        input.width,
-        input.height,
-        input.nx,
-        input.ny,
-    );
+    let (nodes, elements) =
+        physics_fea::create_rectangular_mesh(input.width, input.height, input.nx, input.ny);
 
     let output = MeshOutput {
         num_nodes: nodes.len(),
         num_elements: elements.len(),
-        nodes: nodes
-            .iter()
-            .map(|n| (n.x, n.y))
-            .collect(),
+        nodes: nodes.iter().map(|n| (n.x, n.y)).collect(),
         elements,
     };
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(output),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(output),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }

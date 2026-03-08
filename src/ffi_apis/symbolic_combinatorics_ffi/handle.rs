@@ -23,9 +23,7 @@ use crate::symbolic::core::Expr;
 ///
 /// This function is unsafe because it dereferences raw `Expr` pointers and returns
 /// ownership of a heap-allocated `Expr` to the caller.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33,23 +31,17 @@ use crate::symbolic::core::Expr;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_permutations(
     n: *const Expr,
     k: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
-
-        let result = permutations(
-            (*n).clone(),
-            (*k).clone(),
-        );
+        let result = permutations((*n).clone(), (*k).clone());
 
         Box::into_raw(Box::new(result))
     }
 }
-
 
 /// Computes the number of combinations symbolically as an `Expr`.
 ///
@@ -69,8 +61,7 @@ pub unsafe extern "C" fn rssn_permutations(
 ///
 /// This function is unsafe because it dereferences raw `Expr` pointers and returns
 /// ownership of a heap-allocated `Expr` to the caller.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -78,23 +69,17 @@ pub unsafe extern "C" fn rssn_permutations(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_combinations(
     n: *const Expr,
     k: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
-
-        let result = combinations(
-            &(*n),
-            (*k).clone(),
-        );
+        let result = combinations(&(*n), (*k).clone());
 
         Box::into_raw(Box::new(result))
     }
 }
-
 
 /// Computes the \(n\)-th Catalan number symbolically and returns it as an `Expr` pointer.
 ///
@@ -113,8 +98,7 @@ pub unsafe extern "C" fn rssn_combinations(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated `Expr` to the caller.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -122,16 +106,12 @@ pub unsafe extern "C" fn rssn_combinations(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_catalan_number(
-    n: usize
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_catalan_number(n: usize) -> *mut Expr {
     let result = catalan_number(n);
 
     Box::into_raw(Box::new(result))
 }
-
 
 /// Computes a Stirling number of the second kind symbolically and returns it as an `Expr` pointer.
 ///
@@ -151,8 +131,7 @@ pub unsafe extern "C" fn rssn_catalan_number(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated `Expr` to the caller.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -160,16 +139,12 @@ pub unsafe extern "C" fn rssn_catalan_number(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_stirling_number_second_kind(
     n: usize,
     k: usize,
 ) -> *mut Expr {
-
-    let result =
-        stirling_number_second_kind(
-            n, k,
-        );
+    let result = stirling_number_second_kind(n, k);
 
     Box::into_raw(Box::new(result))
 }
@@ -190,8 +165,7 @@ pub unsafe extern "C" fn rssn_stirling_number_second_kind(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated `Expr` to the caller.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -199,11 +173,8 @@ pub unsafe extern "C" fn rssn_stirling_number_second_kind(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bell_number(
-    n: usize
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bell_number(n: usize) -> *mut Expr {
     let result = bell_number(n);
 
     Box::into_raw(Box::new(result))

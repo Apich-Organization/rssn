@@ -9,23 +9,16 @@ use crate::symbolic::core::Expr;
 ///
 /// This cache stores the mapping from input strings to parsed `Expr` objects.
 /// It avoids re-parsing the same string multiple times.
-
 pub struct ParsingCache {
-    cache: Mutex<
-        HashMap<String, Arc<Expr>>,
-    >,
+    cache: Mutex<HashMap<String, Arc<Expr>>>,
 }
 
 impl ParsingCache {
     /// Creates a new, empty `ParsingCache`.
     #[must_use]
-
     pub fn new() -> Self {
-
         Self {
-            cache: Mutex::new(
-                HashMap::new(),
-            ),
+            cache: Mutex::new(HashMap::new()),
         }
     }
 
@@ -39,23 +32,16 @@ impl ParsingCache {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
-
     pub fn get(
         &self,
         input: &str,
     ) -> Option<Arc<Expr>> {
-
-        let cache = self
-            .cache
-            .lock()
-            .expect(
-                "ParsingCache lock \
+        let cache = self.cache.lock().expect(
+            "ParsingCache lock \
                  poisoned",
-            );
+        );
 
-        cache
-            .get(input)
-            .cloned()
+        cache.get(input).cloned()
     }
 
     /// Stores a parsed expression in the cache.
@@ -66,20 +52,15 @@ impl ParsingCache {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
-
     pub fn set(
         &self,
         input: String,
         expr: Arc<Expr>,
     ) {
-
-        let mut cache = self
-            .cache
-            .lock()
-            .expect(
-                "ParsingCache lock \
+        let mut cache = self.cache.lock().expect(
+            "ParsingCache lock \
                  poisoned",
-            );
+        );
 
         cache.insert(input, expr);
     }
@@ -88,16 +69,11 @@ impl ParsingCache {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
-
     pub fn clear(&self) {
-
-        let mut cache = self
-            .cache
-            .lock()
-            .expect(
-                "ParsingCache lock \
+        let mut cache = self.cache.lock().expect(
+            "ParsingCache lock \
                  poisoned",
-            );
+        );
 
         cache.clear();
     }
@@ -105,7 +81,6 @@ impl ParsingCache {
 
 impl Default for ParsingCache {
     fn default() -> Self {
-
         Self::new()
     }
 }
@@ -114,23 +89,16 @@ impl Default for ParsingCache {
 ///
 /// This cache stores the mapping from expressions to their computed values.
 /// It avoids re-computing the value of the same expression multiple times.
-
 pub struct ComputationResultCache {
-    cache: Mutex<
-        HashMap<Arc<Expr>, Value>,
-    >,
+    cache: Mutex<HashMap<Arc<Expr>, Value>>,
 }
 
 impl ComputationResultCache {
     /// Creates a new, empty `ComputationResultCache`.
     #[must_use]
-
     pub fn new() -> Self {
-
         Self {
-            cache: Mutex::new(
-                HashMap::new(),
-            ),
+            cache: Mutex::new(HashMap::new()),
         }
     }
 
@@ -144,23 +112,16 @@ impl ComputationResultCache {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
-
     pub fn get(
         &self,
         expr: &Arc<Expr>,
     ) -> Option<Value> {
-
-        let cache = self
-            .cache
-            .lock()
-            .expect(
+        let cache = self.cache.lock().expect(
             "ComputationResultCache \
              lock poisoned",
         );
 
-        cache
-            .get(expr)
-            .cloned()
+        cache.get(expr).cloned()
     }
 
     /// Stores a computed value in the cache.
@@ -171,13 +132,11 @@ impl ComputationResultCache {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
-
     pub fn set(
         &self,
         expr: Arc<Expr>,
         value: Value,
     ) {
-
         let mut cache = self
             .cache
             .lock()
@@ -190,9 +149,7 @@ impl ComputationResultCache {
     ///
     /// # Panics
     /// Panics if the internal cache lock is poisoned.
-
     pub fn clear(&self) {
-
         let mut cache = self
             .cache
             .lock()
@@ -202,11 +159,8 @@ impl ComputationResultCache {
     }
 }
 
-impl Default
-    for ComputationResultCache
-{
+impl Default for ComputationResultCache {
     fn default() -> Self {
-
         Self::new()
     }
 }

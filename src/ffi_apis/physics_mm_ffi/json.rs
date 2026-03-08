@@ -13,7 +13,6 @@ use crate::physics::physics_mm::{
 };
 
 #[derive(Deserialize)]
-
 struct SphInput {
     system: SPHSystem,
     dt: f64,
@@ -39,8 +38,7 @@ struct SphInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -48,46 +46,28 @@ struct SphInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let mut input : SphInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(input: *const c_char) -> *mut c_char {
+    let mut input: SphInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    SPHSystem,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<SPHSystem, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
-    input
-        .system
-        .update(input.dt);
+    input.system.update(input.dt);
 
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                SPHSystem,
-                String,
-            >::ok(
-                input.system
-            ),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<SPHSystem, String>::ok(input.system)).unwrap())
 }
 
 /// Simulates a 2D dam break scenario using SPH method via JSON serialization.
@@ -104,8 +84,7 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(
 ///
 /// This function is unsafe because it returns a raw C string pointer that the
 /// caller must free.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -113,24 +92,14 @@ pub unsafe extern "C" fn rssn_physics_mm_sph_update_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_mm_simulate_dam_break_json()
--> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_mm_simulate_dam_break_json() -> *mut c_char {
     let res = physics_mm::simulate_dam_break_2d_scenario();
 
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                Vec<(f64, f64)>,
-                String,
-            >::ok(res),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<Vec<(f64, f64)>, String>::ok(res)).unwrap())
 }

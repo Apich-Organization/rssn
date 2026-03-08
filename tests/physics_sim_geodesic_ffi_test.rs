@@ -6,9 +6,7 @@ use std::ffi::CString;
 #[test]
 
 fn test_geodesic_handle_ffi() {
-
     unsafe {
-
         let matrix_ptr =
             rssn::ffi_apis::physics_sim_geodesic_ffi::handle::rssn_physics_sim_geodesic_run(
                 1.0, 10.0, 0.0, 0.0, 0.035, 100.0, 0.1,
@@ -22,14 +20,15 @@ fn test_geodesic_handle_ffi() {
 
         assert_eq!(matrix.cols(), 2);
 
-        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(matrix_ptr as *mut rssn::ffi_apis::numerical_matrix_ffi::handle::RssnMatrixHandle);
+        rssn::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free(
+            matrix_ptr as *mut rssn::ffi_apis::numerical_matrix_ffi::handle::RssnMatrixHandle,
+        );
     }
 }
 
 #[test]
 
 fn test_geodesic_json_ffi() {
-
     let input = r#"{
         "black_hole_mass": 1.0,
         "initial_state": [10.0, 0.0, 0.0, 0.035],
@@ -37,11 +36,9 @@ fn test_geodesic_json_ffi() {
         "initial_dt": 0.1
     }"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
-
         let res_ptr =
             rssn::ffi_apis::physics_sim_geodesic_ffi::json::rssn_physics_sim_geodesic_run_json(
                 c_input.as_ptr(),
@@ -49,13 +46,9 @@ fn test_geodesic_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str =
-            CStr::from_ptr(res_ptr)
-                .to_string_lossy();
+        let res_str = CStr::from_ptr(res_ptr).to_string_lossy();
 
-        assert!(
-            res_str.contains("\"ok\":")
-        );
+        assert!(res_str.contains("\"ok\":"));
 
         rssn::ffi_apis::ffi_api::free_string(res_ptr);
     }

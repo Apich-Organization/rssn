@@ -7,25 +7,17 @@ use crate::symbolic::integration::risch_norman_integrate;
 
 /// Integrates an expression using the Risch-Norman algorithm (Bincode)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_risch_norman_integrate(
     expr_buf: BincodeBuffer,
     x_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+    let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let expr: Option<Expr> =
-        from_bincode_buffer(&expr_buf);
-
-    let x: Option<String> =
-        from_bincode_buffer(&x_buf);
+    let x: Option<String> = from_bincode_buffer(&x_buf);
 
     match (expr, x) {
         | (Some(e), Some(var)) => {
-
-            let result =
-                risch_norman_integrate(
-                    &e, &var,
-                );
+            let result = risch_norman_integrate(&e, &var);
 
             to_bincode_buffer(&result)
         },
@@ -35,27 +27,21 @@ pub extern "C" fn rssn_bincode_risch_norman_integrate(
 
 /// Integrates a rational function (Bincode)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_bincode_integrate_rational_function(
     expr_buf: BincodeBuffer,
     x_buf: BincodeBuffer,
 ) -> BincodeBuffer {
+    let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
-    let expr: Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+    let x: Option<String> = from_bincode_buffer(&x_buf);
 
-    let x: Option<String> =
-        from_bincode_buffer(&x_buf);
-
-    match (expr, x)
-    { (Some(e), Some(var)) => {
-
-        match integrate_rational_function_expr(&e, &var) {
-            | Ok(result) => to_bincode_buffer(&result),
-            | Err(_) => BincodeBuffer::empty(),
-        }
-    } _ => {
-
-        BincodeBuffer::empty()
-    }}
+    match (expr, x) {
+        | (Some(e), Some(var)) => {
+            match integrate_rational_function_expr(&e, &var) {
+                | Ok(result) => to_bincode_buffer(&result),
+                | Err(_) => BincodeBuffer::empty(),
+            }
+        },
+        | _ => BincodeBuffer::empty(),
+    }
 }

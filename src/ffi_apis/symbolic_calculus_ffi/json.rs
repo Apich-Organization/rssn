@@ -9,37 +9,23 @@ use crate::symbolic::core::Expr;
 
 /// Differentiates an expression using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_differentiate(
     expr_json: *const c_char,
     var: *const c_char,
 ) -> *mut c_char {
-
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
+    let expr: Option<Expr> = from_json_string(expr_json);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str) {
         | (Some(e), Some(v)) => {
-
-            let result =
-                calculus::differentiate(
-                    &e, v,
-                );
+            let result = calculus::differentiate(&e, v);
 
             to_json_string(&result)
         },
@@ -49,37 +35,23 @@ pub extern "C" fn rssn_json_differentiate(
 
 /// Integrates an expression using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_integrate(
     expr_json: *const c_char,
     var: *const c_char,
 ) -> *mut c_char {
-
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
+    let expr: Option<Expr> = from_json_string(expr_json);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str) {
         | (Some(e), Some(v)) => {
-
-            let result =
-                calculus::integrate(
-                    &e, v, None, None,
-                );
+            let result = calculus::integrate(&e, v, None, None);
 
             to_json_string(&result)
         },
@@ -89,51 +61,28 @@ pub extern "C" fn rssn_json_integrate(
 
 /// Computes definite integral using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_definite_integrate(
     expr_json: *const c_char,
     var: *const c_char,
     lower_json: *const c_char,
     upper_json: *const c_char,
 ) -> *mut c_char {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
+    let lower: Option<Expr> = from_json_string(lower_json);
 
-    let lower: Option<Expr> =
-        from_json_string(lower_json);
-
-    let upper: Option<Expr> =
-        from_json_string(upper_json);
+    let upper: Option<Expr> = from_json_string(upper_json);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
-    match (
-        expr,
-        var_str,
-        lower,
-        upper,
-    ) {
-        | (
-            Some(e),
-            Some(v),
-            Some(l),
-            Some(u),
-        ) => {
-
+    match (expr, var_str, lower, upper) {
+        | (Some(e), Some(v), Some(l), Some(u)) => {
             let result = calculus::definite_integrate(&e, v, &l, &u);
 
             to_json_string(&result)
@@ -144,81 +93,48 @@ pub extern "C" fn rssn_json_definite_integrate(
 
 /// Checks analytic using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_check_analytic(
     expr_json: *const c_char,
     var: *const c_char,
 ) -> bool {
-
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
+    let expr: Option<Expr> = from_json_string(expr_json);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str) {
-        | (Some(e), Some(v)) => {
-            calculus::check_analytic(
-                &e, v,
-            )
-        },
+        | (Some(e), Some(v)) => calculus::check_analytic(&e, v),
         | _ => false,
     }
 }
 
 /// Computes limit using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_limit(
     expr_json: *const c_char,
     var: *const c_char,
     point_json: *const c_char,
 ) -> *mut c_char {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
-
-    let point: Option<Expr> =
-        from_json_string(point_json);
+    let point: Option<Expr> = from_json_string(point_json);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str, point) {
-        | (
-            Some(e),
-            Some(v),
-            Some(p),
-        ) => {
-
-            let result =
-                calculus::limit(
-                    &e, v, &p,
-                );
+        | (Some(e), Some(v), Some(p)) => {
+            let result = calculus::limit(&e, v, &p);
 
             to_json_string(&result)
         },
@@ -228,37 +144,23 @@ pub extern "C" fn rssn_json_limit(
 
 /// Finds poles using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_find_poles(
     expr_json: *const c_char,
     var: *const c_char,
 ) -> *mut c_char {
-
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
+    let expr: Option<Expr> = from_json_string(expr_json);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str) {
         | (Some(e), Some(v)) => {
-
-            let result =
-                calculus::find_poles(
-                    &e, v,
-                );
+            let result = calculus::find_poles(&e, v);
 
             to_json_string(&result)
         },
@@ -268,45 +170,26 @@ pub extern "C" fn rssn_json_find_poles(
 
 /// Calculates residue using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_calculate_residue(
     expr_json: *const c_char,
     var: *const c_char,
     pole_json: *const c_char,
 ) -> *mut c_char {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
-
-    let pole: Option<Expr> =
-        from_json_string(pole_json);
+    let pole: Option<Expr> = from_json_string(pole_json);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str, pole) {
-        | (
-            Some(e),
-            Some(v),
-            Some(p),
-        ) => {
-
-            let result =
-            calculus::calculate_residue(
-                &e, v, &p,
-            );
+        | (Some(e), Some(v), Some(p)) => {
+            let result = calculus::calculate_residue(&e, v, &p);
 
             to_json_string(&result)
         },
@@ -316,95 +199,51 @@ pub extern "C" fn rssn_json_calculate_residue(
 
 /// Finds pole order using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_find_pole_order(
     expr_json: *const c_char,
     var: *const c_char,
     pole_json: *const c_char,
 ) -> usize {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
-
-    let pole: Option<Expr> =
-        from_json_string(pole_json);
+    let pole: Option<Expr> = from_json_string(pole_json);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str, pole) {
-        | (
-            Some(e),
-            Some(v),
-            Some(p),
-        ) => {
-            calculus::find_pole_order(
-                &e, v, &p,
-            )
-        },
+        | (Some(e), Some(v), Some(p)) => calculus::find_pole_order(&e, v, &p),
         | _ => 0,
     }
 }
 
 /// Substitutes using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_substitute(
     expr_json: *const c_char,
     var: *const c_char,
     replacement_json: *const c_char,
 ) -> *mut c_char {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
-
-    let replacement: Option<Expr> =
-        from_json_string(
-            replacement_json,
-        );
+    let replacement: Option<Expr> = from_json_string(replacement_json);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
-    match (
-        expr,
-        var_str,
-        replacement,
-    ) {
-        | (
-            Some(e),
-            Some(v),
-            Some(r),
-        ) => {
-
-            let result =
-                calculus::substitute(
-                    &e, v, &r,
-                );
+    match (expr, var_str, replacement) {
+        | (Some(e), Some(v), Some(r)) => {
+            let result = calculus::substitute(&e, v, &r);
 
             to_json_string(&result)
         },
@@ -414,70 +253,40 @@ pub extern "C" fn rssn_json_substitute(
 
 /// Gets real and imaginary parts using JSON.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_json_get_real_imag_parts(
-    expr_json: *const c_char
-) -> *mut c_char {
-
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
+pub extern "C" fn rssn_json_get_real_imag_parts(expr_json: *const c_char) -> *mut c_char {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
     if let Some(e) = expr {
-
         let (re, im) = calculus::get_real_imag_parts(&e);
 
         to_json_string(&vec![re, im])
     } else {
-
         std::ptr::null_mut()
     }
 }
 
 /// Computes path integral using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_path_integrate(
     expr_json: *const c_char,
     var: *const c_char,
     contour_json: *const c_char,
 ) -> *mut c_char {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
-
-    let contour: Option<Expr> =
-        from_json_string(contour_json);
+    let contour: Option<Expr> = from_json_string(contour_json);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
-    match (
-        expr,
-        var_str,
-        contour,
-    ) {
-        | (
-            Some(e),
-            Some(v),
-            Some(c),
-        ) => {
-
-            let result =
-            calculus::path_integrate(
-                &e, v, &c,
-            );
+    match (expr, var_str, contour) {
+        | (Some(e), Some(v), Some(c)) => {
+            let result = calculus::path_integrate(&e, v, &c);
 
             to_json_string(&result)
         },
@@ -487,45 +296,26 @@ pub extern "C" fn rssn_json_path_integrate(
 
 /// Evaluates at point using JSON.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_evaluate_at_point(
     expr_json: *const c_char,
     var: *const c_char,
     value_json: *const c_char,
 ) -> *mut c_char {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
-
-    let value: Option<Expr> =
-        from_json_string(value_json);
+    let value: Option<Expr> = from_json_string(value_json);
 
     let var_str = unsafe {
-
         if var.is_null() {
-
             None
         } else {
-
-            std::ffi::CStr::from_ptr(
-                var,
-            )
-            .to_str()
-            .ok()
+            std::ffi::CStr::from_ptr(var).to_str().ok()
         }
     };
 
     match (expr, var_str, value) {
-        | (
-            Some(e),
-            Some(v),
-            Some(val),
-        ) => {
-
-            let result =
-            calculus::evaluate_at_point(
-                &e, v, &val,
-            );
+        | (Some(e), Some(v), Some(val)) => {
+            let result = calculus::evaluate_at_point(&e, v, &val);
 
             to_json_string(&result)
         },

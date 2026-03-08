@@ -18,8 +18,7 @@ use crate::symbolic::coordinates::CoordinateSystem;
 ///
 /// # Returns
 /// A pointer to the transformed point (array of doubles), or null on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27,7 +26,7 @@ use crate::symbolic::coordinates::CoordinateSystem;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_coord_transform_point(
     point_ptr: *const c_double,
     point_len: usize,
@@ -35,45 +34,28 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
     to: CoordinateSystem,
     out_len: *mut usize,
 ) -> *mut c_double {
-
-    if point_ptr.is_null()
-        || out_len.is_null()
-    {
-
+    if point_ptr.is_null() || out_len.is_null() {
         return ptr::null_mut();
     }
 
-    let point = unsafe {
+    let point = unsafe { std::slice::from_raw_parts(point_ptr, point_len) };
 
-        std::slice::from_raw_parts(
-            point_ptr,
-            point_len,
-        )
-    };
-
-    match nc::transform_point(
-        point, from, to,
-    ) {
+    match nc::transform_point(point, from, to) {
         | Ok(res) => {
-
             unsafe {
-
                 *out_len = res.len();
             }
 
             let mut res_vec = res;
 
-            let ptr =
-                res_vec.as_mut_ptr();
+            let ptr = res_vec.as_mut_ptr();
 
             std::mem::forget(res_vec);
 
             ptr
         },
         | Err(e) => {
-
             unsafe {
-
                 update_last_error(e);
             }
 
@@ -83,8 +65,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
 }
 
 /// Transforms a point from one coordinate system to another (pure numerical).
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -92,7 +73,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
     point_ptr: *const c_double,
     point_len: usize,
@@ -100,45 +81,28 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
     to: CoordinateSystem,
     out_len: *mut usize,
 ) -> *mut c_double {
-
-    if point_ptr.is_null()
-        || out_len.is_null()
-    {
-
+    if point_ptr.is_null() || out_len.is_null() {
         return ptr::null_mut();
     }
 
-    let point = unsafe {
+    let point = unsafe { std::slice::from_raw_parts(point_ptr, point_len) };
 
-        std::slice::from_raw_parts(
-            point_ptr,
-            point_len,
-        )
-    };
-
-    match nc::transform_point_pure(
-        point, from, to,
-    ) {
+    match nc::transform_point_pure(point, from, to) {
         | Ok(res) => {
-
             unsafe {
-
                 *out_len = res.len();
             }
 
             let mut res_vec = res;
 
-            let ptr =
-                res_vec.as_mut_ptr();
+            let ptr = res_vec.as_mut_ptr();
 
             std::mem::forget(res_vec);
 
             ptr
         },
         | Err(e) => {
-
             unsafe {
-
                 update_last_error(e);
             }
 
@@ -149,8 +113,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
 
 /// Computes the numerical Jacobian matrix.
 /// Returns a pointer to a flat array of doubles (row-major).
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -158,7 +121,7 @@ pub unsafe extern "C" fn rssn_num_coord_transform_point_pure(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_coord_jacobian(
     from: CoordinateSystem,
     to: CoordinateSystem,
@@ -167,41 +130,25 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
     out_rows: *mut usize,
     out_cols: *mut usize,
 ) -> *mut c_double {
-
-    if at_point_ptr.is_null()
-        || out_rows.is_null()
-        || out_cols.is_null()
-    {
-
+    if at_point_ptr.is_null() || out_rows.is_null() || out_cols.is_null() {
         return ptr::null_mut();
     }
 
-    let point = unsafe {
+    let point = unsafe { std::slice::from_raw_parts(at_point_ptr, point_len) };
 
-        std::slice::from_raw_parts(
-            at_point_ptr,
-            point_len,
-        )
-    };
-
-    match nc::numerical_jacobian(
-        from, to, point,
-    ) {
+    match nc::numerical_jacobian(from, to, point) {
         | Ok(matrix) => {
-
             let rows = matrix.rows();
 
             let cols = matrix.cols();
 
             unsafe {
-
                 *out_rows = rows;
 
                 *out_cols = cols;
             }
 
-            let mut data =
-                matrix.into_data();
+            let mut data = matrix.into_data();
 
             let ptr = data.as_mut_ptr();
 
@@ -210,9 +157,7 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
             ptr
         },
         | Err(e) => {
-
             unsafe {
-
                 update_last_error(e);
             }
 
@@ -222,8 +167,7 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
 }
 
 /// Frees a pointer allocated by the coordinate transformation functions.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -231,19 +175,14 @@ pub unsafe extern "C" fn rssn_num_coord_jacobian(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_coord_free(
     ptr: *mut c_double,
     len: usize,
 ) {
-
     if !ptr.is_null() {
-
         unsafe {
-
-            let _ = Vec::from_raw_parts(
-                ptr, len, len,
-            );
+            let _ = Vec::from_raw_parts(ptr, len, len);
         }
     }
 }

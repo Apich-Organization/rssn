@@ -10,20 +10,17 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::combinatorics;
 
 #[derive(Deserialize)]
-
 struct NInput {
     n: u64,
 }
 
 #[derive(Deserialize)]
-
 struct NKInput {
     n: u64,
     k: u64,
 }
 
 #[derive(Deserialize)]
-
 struct RecurrenceInput {
     coeffs: Vec<f64>,
     initial_conditions: Vec<f64>,
@@ -31,9 +28,7 @@ struct RecurrenceInput {
 }
 
 /// Computes the factorial of a number using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -41,50 +36,39 @@ struct RecurrenceInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_comb_factorial_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : NInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_comb_factorial_json(input_json: *const c_char) -> *mut c_char {
+    let input: NInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res = combinatorics::factorial(
-        input.n,
-    );
+    let res = combinatorics::factorial(input.n);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(res),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the number of permutations using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -92,52 +76,39 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_comb_permutations_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : NKInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_comb_permutations_json(input_json: *const c_char) -> *mut c_char {
+    let input: NKInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res =
-        combinatorics::permutations(
-            input.n,
-            input.k,
-        );
+    let res = combinatorics::permutations(input.n, input.k);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(res),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the number of combinations using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -145,52 +116,39 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_comb_combinations_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : NKInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_comb_combinations_json(input_json: *const c_char) -> *mut c_char {
+    let input: NKInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res =
-        combinatorics::combinations(
-            input.n,
-            input.k,
-        );
+    let res = combinatorics::combinations(input.n, input.k);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(res),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Solves a linear recurrence relation using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -198,28 +156,25 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : RecurrenceInput = match from_json_string(input_json) {
+    let input: RecurrenceInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -231,20 +186,18 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
         | Ok(res) => {
             to_c_string(
                 serde_json::to_string(&FfiResult {
-                    ok : Some(res),
-                    err : None::<String>,
+                    ok: Some(res),
+                    err: None::<String>,
                 })
                 .unwrap(),
             )
         },
         | Err(e) => {
             to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some(e),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some(e),
+                })
                 .unwrap(),
             )
         },
@@ -252,16 +205,13 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_json(
 }
 
 #[derive(Deserialize)]
-
 struct XNInput {
     x: f64,
     n: u64,
 }
 
 /// Computes the Stirling number of the second kind using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -269,52 +219,41 @@ struct XNInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : NKInput = match from_json_string(input_json) {
+    let input: NKInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res =
-        combinatorics::stirling_second(
-            input.n,
-            input.k,
-        );
+    let res = combinatorics::stirling_second(input.n, input.k);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(res),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the Bell number using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -322,49 +261,39 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_comb_bell_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : NInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_comb_bell_json(input_json: *const c_char) -> *mut c_char {
+    let input: NInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res =
-        combinatorics::bell(input.n);
+    let res = combinatorics::bell(input.n);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(res),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the Catalan number using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -372,49 +301,39 @@ pub unsafe extern "C" fn rssn_num_comb_bell_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_comb_catalan_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : NInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_comb_catalan_json(input_json: *const c_char) -> *mut c_char {
+    let input: NInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res =
-        combinatorics::catalan(input.n);
+    let res = combinatorics::catalan(input.n);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(res),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the rising factorial using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -422,52 +341,41 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : XNInput = match from_json_string(input_json) {
+    let input: XNInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res =
-        combinatorics::rising_factorial(
-            input.x,
-            input.n,
-        );
+    let res = combinatorics::rising_factorial(input.x, input.n);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(res),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the falling factorial using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -475,40 +383,35 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_comb_falling_factorial_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : XNInput = match from_json_string(input_json) {
+    let input: XNInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
     let res = combinatorics::falling_factorial(input.x, input.n);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(res),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(res),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }

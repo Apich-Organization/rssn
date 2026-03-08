@@ -10,31 +10,26 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::handles::HANDLE_MANAGER;
 
 #[derive(Serialize, Deserialize)]
-
 struct HandleResponse {
     handle: usize,
 }
 
 #[derive(Serialize, Deserialize)]
-
 struct HandleRequest {
     handle: usize,
 }
 
 #[derive(Serialize, Deserialize)]
-
 struct ExistsResponse {
     exists: bool,
 }
 
 #[derive(Serialize, Deserialize)]
-
 struct FreedResponse {
     freed: bool,
 }
 
 #[derive(Serialize, Deserialize)]
-
 struct HandleListResponse {
     handles: Vec<usize>,
     count: usize,
@@ -42,132 +37,83 @@ struct HandleListResponse {
 
 /// Inserts an expression (Bincode) into the handle manager.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_insert_bincode(
-    input: BincodeBuffer
-) -> BincodeBuffer {
-
-    let expr: Option<Expr> =
-        from_bincode_buffer(&input);
+pub extern "C" fn rssn_handle_insert_bincode(input: BincodeBuffer) -> BincodeBuffer {
+    let expr: Option<Expr> = from_bincode_buffer(&input);
 
     let expr = match expr {
         | Some(e) => e,
         | None => {
-
-            return BincodeBuffer::empty(
-            );
+            return BincodeBuffer::empty();
         },
     };
 
-    let handle =
-        HANDLE_MANAGER.insert(expr);
+    let handle = HANDLE_MANAGER.insert(expr);
 
-    let response = HandleResponse {
-        handle,
-    };
+    let response = HandleResponse { handle };
 
     to_bincode_buffer(&response)
 }
 
 /// Retrieves an expression by handle (Bincode).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_get_bincode(
-    input: BincodeBuffer
-) -> BincodeBuffer {
-
-    let req: Option<HandleRequest> =
-        from_bincode_buffer(&input);
+pub extern "C" fn rssn_handle_get_bincode(input: BincodeBuffer) -> BincodeBuffer {
+    let req: Option<HandleRequest> = from_bincode_buffer(&input);
 
     let req = match req {
         | Some(r) => r,
         | None => {
-
-            return BincodeBuffer::empty(
-            );
+            return BincodeBuffer::empty();
         },
     };
 
-    match HANDLE_MANAGER.get(req.handle)
-    {
-        | Some(arc_expr) => {
-            to_bincode_buffer(
-                &*arc_expr,
-            )
-        },
-        | None => {
-            BincodeBuffer::empty()
-        },
+    match HANDLE_MANAGER.get(req.handle) {
+        | Some(arc_expr) => to_bincode_buffer(&*arc_expr),
+        | None => BincodeBuffer::empty(),
     }
 }
 
 /// Checks if a handle exists (Bincode).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_exists_bincode(
-    input: BincodeBuffer
-) -> BincodeBuffer {
-
-    let req: Option<HandleRequest> =
-        from_bincode_buffer(&input);
+pub extern "C" fn rssn_handle_exists_bincode(input: BincodeBuffer) -> BincodeBuffer {
+    let req: Option<HandleRequest> = from_bincode_buffer(&input);
 
     let req = match req {
         | Some(r) => r,
         | None => {
-
-            return BincodeBuffer::empty(
-            );
+            return BincodeBuffer::empty();
         },
     };
 
-    let exists = HANDLE_MANAGER
-        .exists(req.handle);
+    let exists = HANDLE_MANAGER.exists(req.handle);
 
-    let response = ExistsResponse {
-        exists,
-    };
+    let response = ExistsResponse { exists };
 
     to_bincode_buffer(&response)
 }
 
 /// Frees a handle (Bincode).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_free_bincode(
-    input: BincodeBuffer
-) -> BincodeBuffer {
-
-    let req: Option<HandleRequest> =
-        from_bincode_buffer(&input);
+pub extern "C" fn rssn_handle_free_bincode(input: BincodeBuffer) -> BincodeBuffer {
+    let req: Option<HandleRequest> = from_bincode_buffer(&input);
 
     let req = match req {
         | Some(r) => r,
         | None => {
-
-            return BincodeBuffer::empty(
-            );
+            return BincodeBuffer::empty();
         },
     };
 
-    let freed = HANDLE_MANAGER
-        .free(req.handle)
-        .is_some();
+    let freed = HANDLE_MANAGER.free(req.handle).is_some();
 
-    let response = FreedResponse {
-        freed,
-    };
+    let response = FreedResponse { freed };
 
     to_bincode_buffer(&response)
 }
 
 /// Returns all active handles (Bincode).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_get_all_bincode()
--> BincodeBuffer {
-
-    let handles = HANDLE_MANAGER
-        .get_all_handles();
+pub extern "C" fn rssn_handle_get_all_bincode() -> BincodeBuffer {
+    let handles = HANDLE_MANAGER.get_all_handles();
 
     let response = HandleListResponse {
         count: handles.len(),
@@ -179,10 +125,7 @@ pub extern "C" fn rssn_handle_get_all_bincode()
 
 /// Clears all handles (Bincode).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_clear_bincode()
--> BincodeBuffer {
-
+pub extern "C" fn rssn_handle_clear_bincode() -> BincodeBuffer {
     HANDLE_MANAGER.clear();
 
     let response = serde_json::json!({ "cleared": true });
@@ -192,41 +135,24 @@ pub extern "C" fn rssn_handle_clear_bincode()
 
 /// Clones a handle (Bincode).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_clone_bincode(
-    input: BincodeBuffer
-) -> BincodeBuffer {
-
-    let req: Option<HandleRequest> =
-        from_bincode_buffer(&input);
+pub extern "C" fn rssn_handle_clone_bincode(input: BincodeBuffer) -> BincodeBuffer {
+    let req: Option<HandleRequest> = from_bincode_buffer(&input);
 
     let req = match req {
         | Some(r) => r,
         | None => {
-
-            return BincodeBuffer::empty(
-            );
+            return BincodeBuffer::empty();
         },
     };
 
-    match HANDLE_MANAGER
-        .clone_expr(req.handle)
-    {
+    match HANDLE_MANAGER.clone_expr(req.handle) {
         | Some(expr) => {
+            let new_handle = HANDLE_MANAGER.insert(expr);
 
-            let new_handle =
-                HANDLE_MANAGER
-                    .insert(expr);
-
-            let response =
-                HandleResponse {
-                    handle: new_handle,
-                };
+            let response = HandleResponse { handle: new_handle };
 
             to_bincode_buffer(&response)
         },
-        | None => {
-            BincodeBuffer::empty()
-        },
+        | None => BincodeBuffer::empty(),
     }
 }

@@ -10,14 +10,12 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::number_theory as nt;
 
 #[derive(Deserialize)]
-
 struct FactorizeRequest {
     n: u64,
 }
 
 /// Factorizes a number from JSON.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -25,85 +23,58 @@ struct FactorizeRequest {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_nt_factorize_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_nt_factorize_json(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
-    let json_str = match unsafe {
-
-        CStr::from_ptr(json_ptr)
-            .to_str()
-    } {
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
         | Ok(s) => s,
         | Err(_) => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let req: FactorizeRequest =
-        match serde_json::from_str(
-            json_str,
-        ) {
-            | Ok(r) => r,
-            | Err(e) => {
+    let req: FactorizeRequest = match serde_json::from_str(json_str) {
+        | Ok(r) => r,
+        | Err(e) => {
+            let res: FfiResult<Vec<u64>, String> = FfiResult {
+                ok: None,
+                err: Some(e.to_string()),
+            };
 
-                let res: FfiResult<
-                    Vec<u64>,
-                    String,
-                > = FfiResult {
-                    ok: None,
-                    err: Some(
-                        e.to_string(),
-                    ),
-                };
-
-                return CString::new(serde_json::to_string(&res).unwrap())
+            return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-            },
-        };
+        },
+    };
 
     let factors = nt::factorize(req.n);
 
-    let ffi_res: FfiResult<
-        Vec<u64>,
-        String,
-    > = FfiResult {
+    let ffi_res: FfiResult<Vec<u64>, String> = FfiResult {
         ok: Some(factors),
         err: None,
     };
 
-    CString::new(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
+    CString::new(serde_json::to_string(&ffi_res).unwrap())
+        .unwrap()
+        .into_raw()
 }
 
 #[derive(Deserialize)]
-
 struct ModInverseRequest {
     a: i64,
     m: i64,
 }
 
 /// Modular inverse from JSON.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -111,84 +82,51 @@ struct ModInverseRequest {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
-    let json_str = match unsafe {
-
-        CStr::from_ptr(json_ptr)
-            .to_str()
-    } {
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
         | Ok(s) => s,
         | Err(_) => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let req: ModInverseRequest =
-        match serde_json::from_str(
-            json_str,
-        ) {
-            | Ok(r) => r,
-            | Err(e) => {
+    let req: ModInverseRequest = match serde_json::from_str(json_str) {
+        | Ok(r) => r,
+        | Err(e) => {
+            let res: FfiResult<i64, String> = FfiResult {
+                ok: None,
+                err: Some(e.to_string()),
+            };
 
-                let res: FfiResult<
-                    i64,
-                    String,
-                > = FfiResult {
-                    ok: None,
-                    err: Some(
-                        e.to_string(),
-                    ),
-                };
-
-                return CString::new(serde_json::to_string(&res).unwrap())
+            return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-            },
-        };
+        },
+    };
 
-    match nt::mod_inverse(req.a, req.m)
-    {
+    match nt::mod_inverse(req.a, req.m) {
         | Some(inv) => {
-
-            let ffi_res: FfiResult<
-                i64,
-                String,
-            > = FfiResult {
+            let ffi_res: FfiResult<i64, String> = FfiResult {
                 ok: Some(inv),
                 err: None,
             };
 
-            CString::new(
-                serde_json::to_string(
-                    &ffi_res,
-                )
-                .unwrap(),
-            )
-            .unwrap()
-            .into_raw()
+            CString::new(serde_json::to_string(&ffi_res).unwrap())
+                .unwrap()
+                .into_raw()
         },
         | None => {
-
-            let ffi_res: FfiResult<
-                i64,
-                String,
-            > = FfiResult {
+            let ffi_res: FfiResult<i64, String> = FfiResult {
                 ok: None,
                 err: Some(
                     "No modular \
@@ -197,14 +135,9 @@ pub unsafe extern "C" fn rssn_num_nt_mod_inverse_json(
                 ),
             };
 
-            CString::new(
-                serde_json::to_string(
-                    &ffi_res,
-                )
-                .unwrap(),
-            )
-            .unwrap()
-            .into_raw()
+            CString::new(serde_json::to_string(&ffi_res).unwrap())
+                .unwrap()
+                .into_raw()
         },
     }
 }

@@ -11,7 +11,6 @@ use rssn::symbolic::core::Expr;
 use rssn::symbolic::grobner::MonomialOrder;
 
 fn main() {
-
     println!(
         "=== Simplification with \
          Side-Relations Example ===\n"
@@ -31,36 +30,29 @@ fn main() {
     // println!("bb: {}", &bb.unwrap().1);
 
     // Parse the strings into expressions
-    let expr_to_simplify =
-        match parse_expr(input_expr_str)
-        {
-            | Ok(("", expr)) => expr,
-            | Ok((rem, _)) => {
-
-                panic!(
-                    "Unparsed input \
-                     for expression: \
-                     '{}'",
-                    rem
-                )
-            },
-            | Err(e) => {
-
-                panic!(
-                    "Failed to parse \
-                     expression '{}': \
-                     {:?}",
-                    input_expr_str, e
-                )
-            },
-        };
-
-    let relation_expr = match parse_expr(
-        relation_str,
-    ) {
+    let expr_to_simplify = match parse_expr(input_expr_str) {
         | Ok(("", expr)) => expr,
         | Ok((rem, _)) => {
+            panic!(
+                "Unparsed input \
+                     for expression: \
+                     '{}'",
+                rem
+            )
+        },
+        | Err(e) => {
+            panic!(
+                "Failed to parse \
+                     expression '{}': \
+                     {:?}",
+                input_expr_str, e
+            )
+        },
+    };
 
+    let relation_expr = match parse_expr(relation_str) {
+        | Ok(("", expr)) => expr,
+        | Ok((rem, _)) => {
             panic!(
                 "Unparsed input for \
                  relation: '{}'",
@@ -68,7 +60,6 @@ fn main() {
             )
         },
         | Err(e) => {
-
             panic!(
                 "Failed to parse \
                  relation '{}': {:?}",
@@ -77,37 +68,24 @@ fn main() {
         },
     };
 
-    println!(
-        "Original Expression: {}",
-        expr_to_simplify
-    );
+    println!("Original Expression: {}", expr_to_simplify);
 
-    println!(
-        "Side-Relation: {} = 0\n",
-        relation_expr
-    );
+    println!("Side-Relation: {} = 0\n", relation_expr);
 
     // Define the variables and monomial order
     let vars = &["x", "y"];
 
-    let order =
-        MonomialOrder::Lexicographical;
+    let order = MonomialOrder::Lexicographical;
 
     // Call the simplification function
-    let simplified_expr =
-        simplify_with_relations(
-            &expr_to_simplify,
-            &[relation_expr], /* Relations are passed as a slice of Expr */
-            vars,
-            order,
-        );
-
-    println!(
-        "Simplified Expression: {}",
-        simplified_expr
+    let simplified_expr = simplify_with_relations(
+        &expr_to_simplify,
+        &[relation_expr], // Relations are passed as a slice of Expr
+        vars,
+        order,
     );
 
-    println!(
-        "\n=== Example Complete ==="
-    );
+    println!("Simplified Expression: {}", simplified_expr);
+
+    println!("\n=== Example Complete ===");
 }

@@ -22,6 +22,7 @@ scc
 /build_artifacts_x86
 /build_artifacts
 /src/vendor
+librssn.so
 
 **/*.exe
 **/*.a
@@ -281,3 +282,9 @@ perf.data.old
 perf.data.old
 plot_orbits.py
 *.rpm
+patch_handle.py
+patch_compile.py
+patch_engine_structs.py
+fix_trap.py
+fix_brnz.py
+tidy.py

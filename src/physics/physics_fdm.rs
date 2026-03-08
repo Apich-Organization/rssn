@@ -24,15 +24,7 @@ use serde::Serialize;
 
 /// Represents the dimensions of the simulation grid.
 /// cbindgen:ignore
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-)]
-
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Dimensions {
     /// 1-dimensional grid with a given size.
     D1(usize),
@@ -45,79 +37,46 @@ pub enum Dimensions {
 /// A generic grid structure for finite difference method simulations.
 /// It can represent a 1D, 2D, or 3D grid.
 /// cbindgen:ignore
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
-
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FdmGrid<T> {
     pub(crate) data: Vec<T>,
     pub(crate) dims: Dimensions,
 }
 
-impl<T: Clone + Default + Send + Sync>
-    FdmGrid<T>
-{
+impl<T: Clone + Default + Send + Sync> FdmGrid<T> {
     /// Creates a new grid from existing data and dimensions.
-
     #[must_use]
-
     pub const fn from_data(
         data: Vec<T>,
         dims: Dimensions,
     ) -> Self {
-
-        Self {
-            data,
-            dims,
-        }
+        Self { data, dims }
     }
 
     /// Creates a new grid with the given dimensions, initialized with a default value.
-
     #[must_use]
-
-    pub fn new(
-        dims: Dimensions
-    ) -> Self {
-
+    pub fn new(dims: Dimensions) -> Self {
         let size = match dims {
             | Dimensions::D1(x) => x,
-            | Dimensions::D2(x, y) => {
-                x * y
-            },
-            | Dimensions::D3(
-                x,
-                y,
-                z,
-            ) => x * y * z,
+            | Dimensions::D2(x, y) => x * y,
+            | Dimensions::D3(x, y, z) => x * y * z,
         };
 
         Self {
-            data: vec![
-                T::default();
-                size
-            ],
+            data: vec![T::default(); size],
             dims,
         }
     }
 
     /// Creates a new grid with the given dimensions, initialized with a specified value.
-
     pub fn with_value(
         dims: Dimensions,
         value: T,
     ) -> Self {
-
         let size = match dims {
             | Dimensions::D1(x) => x,
-            | Dimensions::D2(x, y) => {
-                x * y
-            },
-            | Dimensions::D3(
-                x,
-                y,
-                z,
-            ) => x * y * z,
+            | Dimensions::D2(x, y) => x * y,
+            | Dimensions::D3(x, y, z) => x * y * z,
         };
 
         Self {
@@ -129,50 +88,32 @@ impl<T: Clone + Default + Send + Sync>
     /// Returns the dimensions of the grid.
     #[inline]
     #[must_use]
-
-    pub const fn dimensions(
-        &self
-    ) -> &Dimensions {
-
+    pub const fn dimensions(&self) -> &Dimensions {
         &self.dims
     }
 
     /// Returns a slice to the underlying data.
     #[inline]
     #[must_use]
-
     pub fn as_slice(&self) -> &[T] {
-
         &self.data
     }
 
     /// Returns a mutable slice to the underlying data.
     #[inline]
-
-    pub fn as_mut_slice(
-        &mut self
-    ) -> &mut [T] {
-
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
         &mut self.data
     }
 
     /// Size of the grid.
-
     #[must_use]
-
     pub const fn len(&self) -> usize {
-
         self.data.len()
     }
 
     /// Is the grid empty.
-
     #[must_use]
-
-    pub const fn is_empty(
-        &self
-    ) -> bool {
-
+    pub const fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 }
@@ -181,49 +122,35 @@ impl<T> Index<usize> for FdmGrid<T> {
     type Output = T;
 
     #[inline]
-
     fn index(
         &self,
         index: usize,
     ) -> &Self::Output {
-
         &self.data[index]
     }
 }
 
 impl<T> IndexMut<usize> for FdmGrid<T> {
     #[inline]
-
     fn index_mut(
         &mut self,
         index: usize,
     ) -> &mut Self::Output {
-
         &mut self.data[index]
     }
 }
 
-impl<T> Index<(usize, usize)>
-    for FdmGrid<T>
-{
+impl<T> Index<(usize, usize)> for FdmGrid<T> {
     type Output = T;
 
     #[inline]
-
     fn index(
         &self,
         (x, y): (usize, usize),
     ) -> &Self::Output {
-
-        if let Dimensions::D2(
-            width,
-            _,
-        ) = self.dims
-        {
-
+        if let Dimensions::D2(width, _) = self.dims {
             &self.data[y * width + x]
         } else {
-
             panic!(
                 "Attempted to use 2D \
                  indexing on a non-2D \
@@ -233,26 +160,15 @@ impl<T> Index<(usize, usize)>
     }
 }
 
-impl<T> IndexMut<(usize, usize)>
-    for FdmGrid<T>
-{
+impl<T> IndexMut<(usize, usize)> for FdmGrid<T> {
     #[inline]
-
     fn index_mut(
         &mut self,
         (x, y): (usize, usize),
     ) -> &mut Self::Output {
-
-        if let Dimensions::D2(
-            width,
-            _,
-        ) = self.dims
-        {
-
-            &mut self.data
-                [y * width + x]
+        if let Dimensions::D2(width, _) = self.dims {
+            &mut self.data[y * width + x]
         } else {
-
             panic!(
                 "Attempted to use 2D \
                  indexing on a non-2D \
@@ -262,36 +178,17 @@ impl<T> IndexMut<(usize, usize)>
     }
 }
 
-impl<T> Index<(usize, usize, usize)>
-    for FdmGrid<T>
-{
+impl<T> Index<(usize, usize, usize)> for FdmGrid<T> {
     type Output = T;
 
     #[inline]
-
     fn index(
         &self,
-        (x, y, z): (
-            usize,
-            usize,
-            usize,
-        ),
+        (x, y, z): (usize, usize, usize),
     ) -> &Self::Output {
-
-        if let Dimensions::D3(
-            width,
-            height,
-            _,
-        ) = self.dims
-        {
-
-            &self.data[z
-                * width
-                * height
-                + y * width
-                + x]
+        if let Dimensions::D3(width, height, _) = self.dims {
+            &self.data[z * width * height + y * width + x]
         } else {
-
             panic!(
                 "Attempted to use 3D \
                  indexing on a non-3D \
@@ -301,34 +198,15 @@ impl<T> Index<(usize, usize, usize)>
     }
 }
 
-impl<T> IndexMut<(usize, usize, usize)>
-    for FdmGrid<T>
-{
+impl<T> IndexMut<(usize, usize, usize)> for FdmGrid<T> {
     #[inline]
-
     fn index_mut(
         &mut self,
-        (x, y, z): (
-            usize,
-            usize,
-            usize,
-        ),
+        (x, y, z): (usize, usize, usize),
     ) -> &mut Self::Output {
-
-        if let Dimensions::D3(
-            width,
-            height,
-            _,
-        ) = self.dims
-        {
-
-            &mut self.data[z
-                * width
-                * height
-                + y * width
-                + x]
+        if let Dimensions::D3(width, height, _) = self.dims {
+            &mut self.data[z * width * height + y * width + x]
         } else {
-
             panic!(
                 "Attempted to use 3D \
                  indexing on a non-3D \
@@ -343,10 +221,7 @@ impl<T> IndexMut<(usize, usize, usize)>
 // ============================================================================
 
 /// Configuration for 2D FDM solvers (heat, wave equations).
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
-
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FdmSolverConfig2D {
     /// Grid width (number of points in x direction).
     pub width: usize,
@@ -363,10 +238,7 @@ pub struct FdmSolverConfig2D {
 }
 
 /// Configuration for 3D FDM solvers.
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
-
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FdmSolverConfig3D {
     /// Grid width (number of points in x direction).
     pub width: usize,
@@ -387,10 +259,7 @@ pub struct FdmSolverConfig3D {
 }
 
 /// Configuration for 2D Poisson solver.
-#[derive(
-    Clone, Debug, Serialize, Deserialize,
-)]
-
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PoissonSolverConfig2D {
     /// Grid width (number of points in x direction).
     pub width: usize,
@@ -413,7 +282,6 @@ pub struct PoissonSolverConfig2D {
 // ============================================================================
 
 /// Solves a 2D heat equation `u_t = alpha * ∇²u` using the finite difference method.
-
 pub fn solve_heat_equation_2d<F>(
     config: &FdmSolverConfig2D,
     alpha: f64,
@@ -422,7 +290,6 @@ pub fn solve_heat_equation_2d<F>(
 where
     F: Fn(usize, usize) -> f64 + Sync,
 {
-
     let width = config.width;
 
     let height = config.height;
@@ -435,8 +302,7 @@ where
 
     let steps = config.steps;
 
-    let dims =
-        Dimensions::D2(width, height);
+    let dims = Dimensions::D2(width, height);
 
     let mut grid = FdmGrid::new(dims);
 
@@ -446,91 +312,46 @@ where
         .par_iter_mut()
         .enumerate()
         .for_each(|(i, val)| {
-
             let x = i % width;
 
             let y = i / width;
 
-            *val = initial_conditions(
-                x, y,
-            );
+            *val = initial_conditions(x, y);
         });
 
     let r_x = alpha * dt / dx.powi(2);
 
     let r_y = alpha * dt / dy.powi(2);
 
-    for _ in 0 .. steps {
-
+    for _ in 0..steps {
         next_grid
             .as_mut_slice()
             .par_iter_mut()
             .enumerate()
-            .for_each(
-                |(i, next_val)| {
+            .for_each(|(i, next_val)| {
+                let x = i % width;
 
-                    let x = i % width;
+                let y = i / width;
 
-                    let y = i / width;
+                if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
+                    *next_val = grid[i]; // Boundary remains constant
+                    return;
+                }
 
-                    if x == 0
-                        || x == width
-                            - 1
-                        || y == 0
-                        || y == height
-                            - 1
-                    {
+                let lap_x = 2.0f64.mul_add(-grid[(x, y)], grid[(x + 1, y)]) + grid[(x - 1, y)];
 
-                        *next_val =
-                            grid[i]; // Boundary remains constant
-                        return;
-                    }
+                let lap_y = 2.0f64.mul_add(-grid[(x, y)], grid[(x, y + 1)]) + grid[(x, y - 1)];
 
-                    let lap_x =
-                        2.0f64.mul_add(
-                            -grid[(
-                                x, y,
-                            )],
-                            grid[(
-                                x + 1,
-                                y,
-                            )],
-                        ) + grid[(
-                            x - 1,
-                            y,
-                        )];
+                *next_val = grid[i] + r_x * lap_x + r_y * lap_y;
+            });
 
-                    let lap_y =
-                        2.0f64.mul_add(
-                            -grid[(
-                                x, y,
-                            )],
-                            grid[(
-                                x,
-                                y + 1,
-                            )],
-                        ) + grid[(
-                            x,
-                            y - 1,
-                        )];
-
-                    *next_val = grid[i]
-                        + r_x * lap_x
-                        + r_y * lap_y;
-                },
-            );
-
-        std::mem::swap(
-            &mut grid,
-            &mut next_grid,
-        );
+        std::mem::swap(&mut grid, &mut next_grid);
     }
 
     grid
 }
 
 /// Solves 2D Wave equation `u_tt = c^2 * ∇²u`.
-
 pub fn solve_wave_equation_2d<F>(
     config: &FdmSolverConfig2D,
     c: f64,
@@ -539,7 +360,6 @@ pub fn solve_wave_equation_2d<F>(
 where
     F: Fn(usize, usize) -> f64 + Sync,
 {
-
     let width = config.width;
 
     let height = config.height;
@@ -552,14 +372,11 @@ where
 
     let steps = config.steps;
 
-    let dims =
-        Dimensions::D2(width, height);
+    let dims = Dimensions::D2(width, height);
 
-    let mut u_prev =
-        FdmGrid::new(dims.clone());
+    let mut u_prev = FdmGrid::new(dims.clone());
 
-    let mut u_curr =
-        FdmGrid::new(dims.clone());
+    let mut u_curr = FdmGrid::new(dims.clone());
 
     let mut u_next = FdmGrid::new(dims);
 
@@ -568,7 +385,6 @@ where
         .par_iter_mut()
         .enumerate()
         .for_each(|(i, val)| {
-
             let x = i % width;
 
             let y = i / width;
@@ -581,100 +397,50 @@ where
 
     let s_y = (c * dt / dy).powi(2);
 
-    u_prev
-        .data
-        .copy_from_slice(&u_curr.data);
+    u_prev.data.copy_from_slice(&u_curr.data);
 
-    for _ in 0 .. steps {
-
+    for _ in 0..steps {
         u_next
             .as_mut_slice()
             .par_iter_mut()
             .enumerate()
-            .for_each(
-                |(i, next_val)| {
+            .for_each(|(i, next_val)| {
+                let x = i % width;
 
-                    let x = i % width;
+                let y = i / width;
 
-                    let y = i / width;
+                if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
+                    *next_val = 0.0;
 
-                    if x == 0
-                        || x == width
-                            - 1
-                        || y == 0
-                        || y == height
-                            - 1
-                    {
+                    return;
+                }
 
-                        *next_val = 0.0;
+                let lap_x =
+                    2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x + 1, y)]) + u_curr[(x - 1, y)];
 
-                        return;
-                    }
+                let lap_y =
+                    2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x, y + 1)]) + u_curr[(x, y - 1)];
 
-                    let lap_x =
-                        2.0f64.mul_add(
-                            -u_curr[(
-                                x, y,
-                            )],
-                            u_curr[(
-                                x + 1,
-                                y,
-                            )],
-                        ) + u_curr[(
-                            x - 1,
-                            y,
-                        )];
+                *next_val = 2.0f64.mul_add(u_curr[i], -u_prev[i]) + s_x * lap_x + s_y * lap_y;
+            });
 
-                    let lap_y =
-                        2.0f64.mul_add(
-                            -u_curr[(
-                                x, y,
-                            )],
-                            u_curr[(
-                                x,
-                                y + 1,
-                            )],
-                        ) + u_curr[(
-                            x,
-                            y - 1,
-                        )];
+        std::mem::swap(&mut u_prev, &mut u_curr);
 
-                    *next_val = 2.0f64
-                        .mul_add(
-                            u_curr[i],
-                            -u_prev[i],
-                        )
-                        + s_x * lap_x
-                        + s_y * lap_y;
-                },
-            );
-
-        std::mem::swap(
-            &mut u_prev,
-            &mut u_curr,
-        );
-
-        std::mem::swap(
-            &mut u_curr,
-            &mut u_next,
-        );
+        std::mem::swap(&mut u_curr, &mut u_next);
     }
 
     u_curr
 }
 
 /// Solves 3D Wave equation `u_tt = c^2 * ∇²u`.
-
 pub fn solve_wave_equation_3d<F>(
     config: &FdmSolverConfig3D,
     c: f64,
     initial_u: F,
 ) -> FdmGrid<f64>
 where
-    F: Fn(usize, usize, usize) -> f64
-        + Sync,
+    F: Fn(usize, usize, usize) -> f64 + Sync,
 {
-
     let width = config.width;
 
     let height = config.height;
@@ -691,17 +457,11 @@ where
 
     let steps = config.steps;
 
-    let dims = Dimensions::D3(
-        width,
-        height,
-        depth,
-    );
+    let dims = Dimensions::D3(width, height, depth);
 
-    let mut u_prev =
-        FdmGrid::new(dims.clone());
+    let mut u_prev = FdmGrid::new(dims.clone());
 
-    let mut u_curr =
-        FdmGrid::new(dims.clone());
+    let mut u_curr = FdmGrid::new(dims.clone());
 
     let mut u_next = FdmGrid::new(dims);
 
@@ -710,14 +470,11 @@ where
         .par_iter_mut()
         .enumerate()
         .for_each(|(i, val)| {
-
             let x = i % width;
 
-            let y =
-                (i / width) % height;
+            let y = (i / width) % height;
 
-            let z =
-                i / (width * height);
+            let z = i / (width * height);
 
             *val = initial_u(x, y, z);
         });
@@ -728,112 +485,43 @@ where
 
     let s_z = (c * dt / dz).powi(2);
 
-    u_prev
-        .data
-        .copy_from_slice(&u_curr.data);
+    u_prev.data.copy_from_slice(&u_curr.data);
 
-    for _ in 0 .. steps {
-
+    for _ in 0..steps {
         u_next
             .as_mut_slice()
             .par_iter_mut()
             .enumerate()
-            .for_each(
-                |(i, next_val)| {
+            .for_each(|(i, next_val)| {
+                let x = i % width;
 
-                    let x = i % width;
+                let y = (i / width) % height;
 
-                    let y = (i / width)
-                        % height;
+                let z = i / (width * height);
 
-                    let z = i
-                        / (width
-                            * height);
+                if x == 0 || x == width - 1 || y == 0 || y == height - 1 || z == 0 || z == depth - 1
+                {
+                    *next_val = 0.0;
 
-                    if x == 0
-                        || x == width
-                            - 1
-                        || y == 0
-                        || y == height
-                            - 1
-                        || z == 0
-                        || z == depth
-                            - 1
-                    {
+                    return;
+                }
 
-                        *next_val = 0.0;
+                let lap_x = 2.0f64.mul_add(-u_curr[(x, y, z)], u_curr[(x + 1, y, z)])
+                    + u_curr[(x - 1, y, z)];
 
-                        return;
-                    }
+                let lap_y = 2.0f64.mul_add(-u_curr[(x, y, z)], u_curr[(x, y + 1, z)])
+                    + u_curr[(x, y - 1, z)];
 
-                    let lap_x =
-                        2.0f64.mul_add(
-                            -u_curr[(
-                                x, y, z,
-                            )],
-                            u_curr[(
-                                x + 1,
-                                y,
-                                z,
-                            )],
-                        ) + u_curr[(
-                            x - 1,
-                            y,
-                            z,
-                        )];
+                let lap_z = 2.0f64.mul_add(-u_curr[(x, y, z)], u_curr[(x, y, z + 1)])
+                    + u_curr[(x, y, z - 1)];
 
-                    let lap_y =
-                        2.0f64.mul_add(
-                            -u_curr[(
-                                x, y, z,
-                            )],
-                            u_curr[(
-                                x,
-                                y + 1,
-                                z,
-                            )],
-                        ) + u_curr[(
-                            x,
-                            y - 1,
-                            z,
-                        )];
+                *next_val =
+                    2.0f64.mul_add(u_curr[i], -u_prev[i]) + s_x * lap_x + s_y * lap_y + s_z * lap_z;
+            });
 
-                    let lap_z =
-                        2.0f64.mul_add(
-                            -u_curr[(
-                                x, y, z,
-                            )],
-                            u_curr[(
-                                x,
-                                y,
-                                z + 1,
-                            )],
-                        ) + u_curr[(
-                            x,
-                            y,
-                            z - 1,
-                        )];
+        std::mem::swap(&mut u_prev, &mut u_curr);
 
-                    *next_val = 2.0f64
-                        .mul_add(
-                            u_curr[i],
-                            -u_prev[i],
-                        )
-                        + s_x * lap_x
-                        + s_y * lap_y
-                        + s_z * lap_z;
-                },
-            );
-
-        std::mem::swap(
-            &mut u_prev,
-            &mut u_curr,
-        );
-
-        std::mem::swap(
-            &mut u_curr,
-            &mut u_next,
-        );
+        std::mem::swap(&mut u_curr, &mut u_next);
     }
 
     u_curr
@@ -846,14 +534,11 @@ where
 /// Panics if the `source` grid's dimensions do not match the `width` and `height` provided.
 /// Panics if internal indexing operations go out of bounds due to incorrect `FdmGrid` usage,
 /// though typical usage within this function should prevent this.
-
 #[must_use]
-
 pub fn solve_poisson_2d(
     config: &PoissonSolverConfig2D,
     source: &FdmGrid<f64>,
 ) -> FdmGrid<f64> {
-
     let width = config.width;
 
     let height = config.height;
@@ -868,11 +553,9 @@ pub fn solve_poisson_2d(
 
     let tolerance = config.tolerance;
 
-    let dims =
-        Dimensions::D2(width, height);
+    let dims = Dimensions::D2(width, height);
 
-    let mut u: FdmGrid<f64> =
-        FdmGrid::new(dims);
+    let mut u: FdmGrid<f64> = FdmGrid::new(dims);
 
     let dx2 = dx * dx;
 
@@ -880,80 +563,66 @@ pub fn solve_poisson_2d(
 
     let beta = dx2 / dy2;
 
-    let factor =
-        1.0 / (2.0 * (1.0 + beta));
+    let factor = 1.0 / (2.0 * (1.0 + beta));
 
-    for _ in 0 .. max_iter {
-
+    for _ in 0..max_iter {
         let mut max_diff: f64 = 0.0;
 
-        for pass in 0 .. 2 {
+        for pass in 0..2 {
+            let u_ptr = u.as_mut_slice().as_mut_ptr() as usize;
 
-            let u_ptr = u
-                .as_mut_slice()
-                .as_mut_ptr()
-                as usize;
-
-            let diffs : Vec<f64> = u
+            let diffs: Vec<f64> = u
                 .as_mut_slice()
                 .par_iter_mut()
                 .enumerate()
                 .filter_map(|(i, val)| {
-
                     let x = i % width;
 
                     let y = i / width;
 
                     if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
-
                         return None;
                     }
 
                     if (x + y) % 2 != pass {
-
                         return None;
                     }
 
                     // Safety: In Red-Black SOR, the neighbors we read are always from the
                     // opposite color set, which is not being modified in this pass.
-                    let get_u = |nx : usize, ny : usize| unsafe {
-
+                    let get_u = |nx: usize, ny: usize| unsafe {
                         let ptr = u_ptr as *const f64;
 
                         *ptr.add(ny * width + nx)
                     };
 
-                    let old_val : f64 = *val;
+                    let old_val: f64 = *val;
 
                     let target = factor
-                        * dx2.mul_add(-source[i], beta.mul_add(get_u(x, y + 1) + get_u(x, y - 1), get_u(x + 1, y) + get_u(x - 1, y)));
+                        * dx2.mul_add(
+                            -source[i],
+                            beta.mul_add(
+                                get_u(x, y + 1) + get_u(x, y - 1),
+                                get_u(x + 1, y) + get_u(x - 1, y),
+                            ),
+                        );
 
                     *val = omega.mul_add(target - old_val, old_val);
 
-                    let diff : f64 = (*val - old_val).abs();
+                    let diff: f64 = (*val - old_val).abs();
 
                     Some(diff)
                 })
                 .collect();
 
-            if let Some(d) = diffs
-                .into_iter()
-                .max_by(|a, b| {
-
-                    a.partial_cmp(b)
-                        .unwrap()
-                })
-            {
-
+            if let Some(d) = diffs.into_iter().max_by(|a, b| a.partial_cmp(b).unwrap()) {
                 if d > max_diff {
-
                     max_diff = d;
                 }
             }
         }
 
         if max_diff < tolerance {
-
             break;
         }
     }
@@ -962,9 +631,7 @@ pub fn solve_poisson_2d(
 }
 
 /// Solves 1D Burgers' equation `u_t + u*u_x = nu*u_xx`.
-
 #[must_use]
-
 pub fn solve_burgers_1d(
     initial_u: &[f64],
     dx: f64,
@@ -972,39 +639,31 @@ pub fn solve_burgers_1d(
     dt: f64,
     steps: usize,
 ) -> Vec<f64> {
-
     let mut u = initial_u.to_vec();
 
     let n = u.len();
 
     if n < 2 {
-
         return u;
     }
 
     let mut u_next = vec![0.0; n];
 
-    for _ in 0 .. steps {
+    for _ in 0..steps {
+        u_next.par_iter_mut().enumerate().for_each(|(i, next_val)| {
+            if i == 0 || i == n - 1 {
+                *next_val = u[i];
 
-        u_next
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, next_val)| {
+                return;
+            }
 
-                if i == 0 || i == n - 1 {
+            // Central difference for convection and diffusion
+            let convection = u[i] * (u[i + 1] - u[i - 1]) / (2.0 * dx);
 
-                    *next_val = u[i];
+            let diffusion = nu * (2.0f64.mul_add(-u[i], u[i + 1]) + u[i - 1]) / dx.powi(2);
 
-                    return;
-                }
-
-                // Central difference for convection and diffusion
-                let convection = u[i] * (u[i + 1] - u[i - 1]) / (2.0 * dx);
-
-                let diffusion = nu * (2.0f64.mul_add(-u[i], u[i + 1]) + u[i - 1]) / dx.powi(2);
-
-                *next_val = dt.mul_add(diffusion - convection, u[i]);
-            });
+            *next_val = dt.mul_add(diffusion - convection, u[i]);
+        });
 
         u.copy_from_slice(&u_next);
     }
@@ -1013,9 +672,7 @@ pub fn solve_burgers_1d(
 }
 
 /// Solves a 1D advection-diffusion equation `u_t + c*u_x = d*u_xx` using FDM.
-
 #[must_use]
-
 pub fn solve_advection_diffusion_1d(
     initial_cond: &[f64],
     dx: f64,
@@ -1024,68 +681,35 @@ pub fn solve_advection_diffusion_1d(
     dt: f64,
     steps: usize,
 ) -> Vec<f64> {
-
     let mut u = initial_cond.to_vec();
 
     let n = u.len();
 
     if n < 2 {
-
         return u;
     }
 
     let mut u_next = vec![0.0; n];
 
-    for _ in 0 .. steps {
+    for _ in 0..steps {
+        u_next.par_iter_mut().enumerate().for_each(|(i, next_val)| {
+            if i == 0 || i == n - 1 {
+                *next_val = u[i];
 
-        u_next
-            .par_iter_mut()
-            .enumerate()
-            .for_each(
-                |(i, next_val)| {
+                return;
+            }
 
-                    if i == 0
-                        || i == n - 1
-                    {
+            // Upwind for advection
+            let advection = if c >= 0.0 {
+                -c * (u[i] - u[i - 1]) / dx
+            } else {
+                -c * (u[i + 1] - u[i]) / dx
+            };
 
-                        *next_val =
-                            u[i];
+            let diffusion = d * (2.0f64.mul_add(-u[i], u[i + 1]) + u[i - 1]) / dx.powi(2);
 
-                        return;
-                    }
-
-                    // Upwind for advection
-                    let advection = if c
-                        >= 0.0
-                    {
-
-                        -c * (u[i]
-                            - u[i - 1])
-                            / dx
-                    } else {
-
-                        -c * (u[i + 1]
-                            - u[i])
-                            / dx
-                    };
-
-                    let diffusion = d
-                        * (2.0f64
-                            .mul_add(
-                            -u[i],
-                            u[i + 1],
-                        ) + u
-                            [i - 1])
-                        / dx.powi(2);
-
-                    *next_val = dt
-                        .mul_add(
-                        advection
-                            + diffusion,
-                        u[i],
-                    );
-                },
-            );
+            *next_val = dt.mul_add(advection + diffusion, u[i]);
+        });
 
         u.copy_from_slice(&u_next);
     }
@@ -1098,12 +722,8 @@ pub fn solve_advection_diffusion_1d(
 // ============================================================================
 
 /// Example scenario: Simulates heat conduction on a 100x100 plate.
-
 #[must_use]
-
-pub fn simulate_2d_heat_conduction_scenario()
--> FdmGrid<f64> {
-
+pub fn simulate_2d_heat_conduction_scenario() -> FdmGrid<f64> {
     const WIDTH: usize = 100;
 
     const HEIGHT: usize = 100;
@@ -1119,39 +739,22 @@ pub fn simulate_2d_heat_conduction_scenario()
         steps: 1000,
     };
 
-    solve_heat_equation_2d(
-        &config,
-        ALPHA,
-        |x, y| {
+    solve_heat_equation_2d(&config, ALPHA, |x, y| {
+        let dx_cen = x as f64 - (WIDTH / 2) as f64;
 
-            let dx_cen = x as f64
-                - (WIDTH / 2) as f64;
+        let dy_cen = y as f64 - (HEIGHT / 2) as f64;
 
-            let dy_cen = y as f64
-                - (HEIGHT / 2) as f64;
-
-            if dy_cen.mul_add(
-                dy_cen,
-                dx_cen.powi(2),
-            ) < 25.0
-            {
-
-                100.0
-            } else {
-
-                0.0
-            }
-        },
-    )
+        if dy_cen.mul_add(dy_cen, dx_cen.powi(2)) < 25.0 {
+            100.0
+        } else {
+            0.0
+        }
+    })
 }
 
 /// Example scenario: Simulates wave propagation on a 120x120 grid.
-
 #[must_use]
-
-pub fn simulate_2d_wave_propagation_scenario()
--> FdmGrid<f64> {
-
+pub fn simulate_2d_wave_propagation_scenario() -> FdmGrid<f64> {
     const WIDTH: usize = 120;
 
     const HEIGHT: usize = 120;
@@ -1167,23 +770,13 @@ pub fn simulate_2d_wave_propagation_scenario()
         steps: 200,
     };
 
-    solve_wave_equation_2d(
-        &config,
-        C,
-        |x, y| {
+    solve_wave_equation_2d(&config, C, |x, y| {
+        let dx_cen = x as f64 - (WIDTH / 2) as f64;
 
-            let dx_cen = x as f64
-                - (WIDTH / 2) as f64;
+        let dy_cen = y as f64 - (HEIGHT / 2) as f64;
 
-            let dy_cen = y as f64
-                - (HEIGHT / 2) as f64;
+        let dist2 = dy_cen.mul_add(dy_cen, dx_cen.powi(2));
 
-            let dist2 = dy_cen.mul_add(
-                dy_cen,
-                dx_cen.powi(2),
-            );
-
-            (-dist2 / 50.0).exp() // Gaussian pulse
-        },
-    )
+        (-dist2 / 50.0).exp() // Gaussian pulse
+    })
 }

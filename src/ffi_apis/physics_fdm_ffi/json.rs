@@ -16,7 +16,6 @@ use crate::physics::physics_fdm::{
 };
 
 #[derive(Deserialize)]
-
 struct HeatEquationInput {
     width: usize,
     height: usize,
@@ -25,11 +24,10 @@ struct HeatEquationInput {
     dy: f64,
     dt: f64,
     steps: usize,
-    initial_temp: f64, /* simplified for JSON: constant initial temp except source */
+    initial_temp: f64, // simplified for JSON: constant initial temp except source
 }
 
 #[derive(Deserialize)]
-
 struct WaveEquationInput {
     width: usize,
     height: usize,
@@ -41,7 +39,6 @@ struct WaveEquationInput {
 }
 
 #[derive(Deserialize)]
-
 struct PoissonInput {
     width: usize,
     height: usize,
@@ -54,7 +51,6 @@ struct PoissonInput {
 }
 
 #[derive(Deserialize)]
-
 struct BurgersInput {
     initial_u: Vec<f64>,
     dx: f64,
@@ -89,8 +85,7 @@ struct BurgersInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -98,28 +93,22 @@ struct BurgersInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_fdm_heat_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : HeatEquationInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_fdm_heat_json(input: *const c_char) -> *mut c_char {
+    let input: HeatEquationInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    FdmGrid<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -132,33 +121,19 @@ pub unsafe extern "C" fn rssn_physics_fdm_heat_json(
         steps: input.steps,
     };
 
-    let result = physics_fdm::solve_heat_equation_2d(
-        &config,
-        input.alpha,
-        |x, y| {
-            if x > input.width / 3
-                && x < 2 * input.width / 3
-                && y > input.height / 3
-                && y < 2 * input.height / 3
-            {
+    let result = physics_fdm::solve_heat_equation_2d(&config, input.alpha, |x, y| {
+        if x > input.width / 3
+            && x < 2 * input.width / 3
+            && y > input.height / 3
+            && y < 2 * input.height / 3
+        {
+            input.initial_temp
+        } else {
+            0.0
+        }
+    });
 
-                input.initial_temp
-            } else {
-
-                0.0
-            }
-        },
-    );
-
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                FdmGrid<f64>,
-                String,
-            >::ok(result),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::ok(result)).unwrap())
 }
 
 /// Solves the 2D wave equation using Finite Difference Method (FDM) via JSON serialization.
@@ -186,8 +161,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_heat_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -195,28 +169,22 @@ pub unsafe extern "C" fn rssn_physics_fdm_heat_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_fdm_wave_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : WaveEquationInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_fdm_wave_json(input: *const c_char) -> *mut c_char {
+    let input: WaveEquationInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    FdmGrid<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -229,30 +197,17 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_json(
         steps: input.steps,
     };
 
-    let result = physics_fdm::solve_wave_equation_2d(
-        &config,
-        input.c,
-        |x, y| {
+    let result = physics_fdm::solve_wave_equation_2d(&config, input.c, |x, y| {
+        let dx_cen = x as f64 - (input.width / 2) as f64;
 
-            let dx_cen = x as f64 - (input.width / 2) as f64;
+        let dy_cen = y as f64 - (input.height / 2) as f64;
 
-            let dy_cen = y as f64 - (input.height / 2) as f64;
+        let dist2 = dy_cen.mul_add(dy_cen, dx_cen.powi(2));
 
-            let dist2 = dy_cen.mul_add(dy_cen, dx_cen.powi(2));
+        (-dist2 / 20.0).exp()
+    });
 
-            (-dist2 / 20.0).exp()
-        },
-    );
-
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                FdmGrid<f64>,
-                String,
-            >::ok(result),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::ok(result)).unwrap())
 }
 
 /// Solves the 2D Poisson equation using Finite Difference Method with SOR via JSON serialization.
@@ -281,8 +236,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -290,66 +244,40 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : PoissonInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(input: *const c_char) -> *mut c_char {
+    let input: PoissonInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    FdmGrid<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let source_grid =
-        FdmGrid::from_data(
-            input.source,
-            Dimensions::D2(
-                input.width,
-                input.height,
-            ),
-        );
+    let source_grid = FdmGrid::from_data(input.source, Dimensions::D2(input.width, input.height));
 
-    let config =
-        PoissonSolverConfig2D {
-            width: input.width,
-            height: input.height,
-            dx: input.dx,
-            dy: input.dy,
-            omega: input.omega,
-            max_iter: input.max_iter,
-            tolerance: input.tolerance,
-        };
+    let config = PoissonSolverConfig2D {
+        width: input.width,
+        height: input.height,
+        dx: input.dx,
+        dy: input.dy,
+        omega: input.omega,
+        max_iter: input.max_iter,
+        tolerance: input.tolerance,
+    };
 
-    let result =
-        physics_fdm::solve_poisson_2d(
-            &config,
-            &source_grid,
-        );
+    let result = physics_fdm::solve_poisson_2d(&config, &source_grid);
 
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                FdmGrid<f64>,
-                String,
-            >::ok(result),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<FdmGrid<f64>, String>::ok(result)).unwrap())
 }
 
 /// Solves the 1D Burgers' equation using Finite Difference Method via JSON serialization.
@@ -375,8 +303,7 @@ pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -384,47 +311,27 @@ pub unsafe extern "C" fn rssn_physics_fdm_poisson_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_fdm_burgers_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : BurgersInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_fdm_burgers_json(input: *const c_char) -> *mut c_char {
+    let input: BurgersInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
     let result =
-        physics_fdm::solve_burgers_1d(
-            &input.initial_u,
-            input.dx,
-            input.nu,
-            input.dt,
-            input.steps,
-        );
+        physics_fdm::solve_burgers_1d(&input.initial_u, input.dx, input.nu, input.dt, input.steps);
 
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(result),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(result)).unwrap())
 }

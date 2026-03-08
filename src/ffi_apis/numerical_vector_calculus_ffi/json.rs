@@ -11,7 +11,6 @@ use crate::numerical::vector_calculus;
 use crate::symbolic::core::Expr;
 
 #[derive(Deserialize)]
-
 struct DivergenceInput {
     funcs: Vec<Expr>,
     vars: Vec<String>,
@@ -19,7 +18,6 @@ struct DivergenceInput {
 }
 
 #[derive(Deserialize)]
-
 struct CurlInput {
     funcs: Vec<Expr>,
     vars: Vec<String>,
@@ -27,7 +25,6 @@ struct CurlInput {
 }
 
 #[derive(Deserialize)]
-
 struct LaplacianInput {
     f: Expr,
     vars: Vec<String>,
@@ -55,8 +52,7 @@ struct LaplacianInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -64,44 +60,31 @@ struct LaplacianInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : DivergenceInput = match from_json_string(input_json) {
+    let input: DivergenceInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let vars_refs: Vec<&str> = input
-        .vars
-        .iter()
-        .map(
-            std::string::String::as_str,
-        )
-        .collect();
+    let vars_refs: Vec<&str> = input.vars.iter().map(std::string::String::as_str).collect();
 
-    let res = vector_calculus::divergence_expr(
-        &input.funcs,
-        &vars_refs,
-        &input.point,
-    );
+    let res = vector_calculus::divergence_expr(&input.funcs, &vars_refs, &input.point);
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -118,10 +101,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 /// Computes the curl of a vector field at a point via JSON serialization.
@@ -145,8 +125,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -154,45 +133,31 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_divergence_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : CurlInput = match from_json_string(input_json) {
+    let input: CurlInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<f64>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let vars_refs: Vec<&str> = input
-        .vars
-        .iter()
-        .map(
-            std::string::String::as_str,
-        )
-        .collect();
+    let vars_refs: Vec<&str> = input.vars.iter().map(std::string::String::as_str).collect();
 
-    let res =
-        vector_calculus::curl_expr(
-            &input.funcs,
-            &vars_refs,
-            &input.point,
-        );
+    let res = vector_calculus::curl_expr(&input.funcs, &vars_refs, &input.point);
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -209,10 +174,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 /// Computes the Laplacian of a scalar field at a point via JSON serialization.
@@ -236,8 +198,7 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -245,45 +206,31 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_curl_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : LaplacianInput = match from_json_string(input_json) {
+    let input: LaplacianInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let vars_refs: Vec<&str> = input
-        .vars
-        .iter()
-        .map(
-            std::string::String::as_str,
-        )
-        .collect();
+    let vars_refs: Vec<&str> = input.vars.iter().map(std::string::String::as_str).collect();
 
-    let res =
-        vector_calculus::laplacian(
-            &input.f,
-            &vars_refs,
-            &input.point,
-        );
+    let res = vector_calculus::laplacian(&input.f, &vars_refs, &input.point);
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -300,8 +247,5 @@ pub unsafe extern "C" fn rssn_num_vector_calculus_laplacian_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

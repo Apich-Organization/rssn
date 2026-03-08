@@ -3,9 +3,9 @@
 use ndarray::Array2;
 use serde::Serialize;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_sim::navier_stokes_fluid::NavierStokesParameters;
 use crate::physics::physics_sim::navier_stokes_fluid::{
@@ -13,7 +13,6 @@ use crate::physics::physics_sim::navier_stokes_fluid::{
 };
 
 #[derive(Serialize)]
-
 struct NavierStokesOutputData {
     pub u: Array2<f64>,
     pub v: Array2<f64>,
@@ -48,8 +47,7 @@ struct NavierStokesOutputData {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -57,46 +55,25 @@ struct NavierStokesOutputData {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_sim_navier_stokes_run_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let params : NavierStokesParameters = match from_bincode_buffer(&buffer) {
+    let params: NavierStokesParameters = match from_bincode_buffer(&buffer) {
         | Some(p) => p,
         | None => {
-            return to_bincode_buffer(&FfiResult::<
-                NavierStokesOutputData,
-                String,
-            >::err(
+            return to_bincode_buffer(&FfiResult::<NavierStokesOutputData, String>::err(
                 "Invalid Bincode".to_string(),
-            ))
+            ));
         },
     };
 
     match navier_stokes_fluid::run_lid_driven_cavity(&params) {
         | Ok((u, v, p)) => {
+            let out = NavierStokesOutputData { u, v, p };
 
-            let out = NavierStokesOutputData {
-                u,
-                v,
-                p,
-            };
-
-            to_bincode_buffer(&FfiResult::<
-                NavierStokesOutputData,
-                String,
-            >::ok(
-                out
-            ))
+            to_bincode_buffer(&FfiResult::<NavierStokesOutputData, String>::ok(out))
         },
-        | Err(e) => {
-            to_bincode_buffer(&FfiResult::<
-                NavierStokesOutputData,
-                String,
-            >::err(
-                e
-            ))
-        },
+        | Err(e) => to_bincode_buffer(&FfiResult::<NavierStokesOutputData, String>::err(e)),
     }
 }

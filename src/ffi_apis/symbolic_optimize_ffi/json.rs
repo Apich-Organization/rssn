@@ -9,38 +9,21 @@ use crate::symbolic::optimize::hessian_matrix;
 
 /// Finds extrema of a function (JSON)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_find_extrema(
     expr_json: *const c_char,
     vars_json: *const c_char,
 ) -> *mut c_char {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
-
-    let vars: Option<Vec<String>> =
-        from_json_string(vars_json);
+    let vars: Option<Vec<String>> = from_json_string(vars_json);
 
     match (expr, vars) {
         | (Some(e), Some(v)) => {
+            let vars_refs: Vec<&str> = v.iter().map(std::string::String::as_str).collect();
 
-            let vars_refs: Vec<&str> = v
-            .iter()
-            .map(std::string::String::as_str)
-            .collect();
-
-            match find_extrema(
-                &e,
-                &vars_refs,
-            ) {
-                | Ok(points) => {
-                    to_json_string(
-                        &points,
-                    )
-                },
-                | Err(_) => {
-                    std::ptr::null_mut()
-                },
+            match find_extrema(&e, &vars_refs) {
+                | Ok(points) => to_json_string(&points),
+                | Err(_) => std::ptr::null_mut(),
             }
         },
         | _ => std::ptr::null_mut(),
@@ -49,31 +32,19 @@ pub extern "C" fn rssn_json_find_extrema(
 
 /// Computes Hessian matrix (JSON)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_hessian_matrix(
     expr_json: *const c_char,
     vars_json: *const c_char,
 ) -> *mut c_char {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
-
-    let vars: Option<Vec<String>> =
-        from_json_string(vars_json);
+    let vars: Option<Vec<String>> = from_json_string(vars_json);
 
     match (expr, vars) {
         | (Some(e), Some(v)) => {
+            let vars_refs: Vec<&str> = v.iter().map(std::string::String::as_str).collect();
 
-            let vars_refs: Vec<&str> = v
-            .iter()
-            .map(std::string::String::as_str)
-            .collect();
-
-            let hessian =
-                hessian_matrix(
-                    &e,
-                    &vars_refs,
-                );
+            let hessian = hessian_matrix(&e, &vars_refs);
 
             to_json_string(&hessian)
         },
@@ -83,54 +54,25 @@ pub extern "C" fn rssn_json_hessian_matrix(
 
 /// Finds constrained extrema (JSON)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_find_constrained_extrema(
     expr_json: *const c_char,
     constraints_json: *const c_char,
     vars_json: *const c_char,
 ) -> *mut c_char {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
+    let constraints: Option<Vec<Expr>> = from_json_string(constraints_json);
 
-    let constraints: Option<Vec<Expr>> =
-        from_json_string(
-            constraints_json,
-        );
+    let vars: Option<Vec<String>> = from_json_string(vars_json);
 
-    let vars: Option<Vec<String>> =
-        from_json_string(vars_json);
+    match (expr, constraints, vars) {
+        | (Some(e), Some(c), Some(v)) => {
+            let vars_refs: Vec<&str> = v.iter().map(std::string::String::as_str).collect();
 
-    match (
-        expr,
-        constraints,
-        vars,
-    ) {
-        | (
-            Some(e),
-            Some(c),
-            Some(v),
-        ) => {
-
-            let vars_refs: Vec<&str> = v
-            .iter()
-            .map(std::string::String::as_str)
-            .collect();
-
-            match find_constrained_extrema(
-            &e,
-            &c,
-            &vars_refs,
-        ) {
-            | Ok(solutions) => {
-                to_json_string(
-                    &solutions,
-                )
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
-        }
+            match find_constrained_extrema(&e, &c, &vars_refs) {
+                | Ok(solutions) => to_json_string(&solutions),
+                | Err(_) => std::ptr::null_mut(),
+            }
         },
         | _ => std::ptr::null_mut(),
     }

@@ -13,21 +13,12 @@ use crate::symbolic::core::Expr;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-unsafe fn c_str_to_str<'a>(
-    s: *const c_char
-) -> Option<&'a str> {
-
+unsafe fn c_str_to_str<'a>(s: *const c_char) -> Option<&'a str> {
     unsafe {
-
         if s.is_null() {
-
             None
         } else {
-
-            CStr::from_ptr(s)
-                .to_str()
-                .ok()
+            CStr::from_ptr(s).to_str().ok()
         }
     }
 }
@@ -36,8 +27,7 @@ unsafe fn c_str_to_str<'a>(
 ///
 /// # Safety
 /// The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -45,52 +35,34 @@ unsafe fn c_str_to_str<'a>(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_euler_lagrange(
     lagrangian: *const Expr,
     func: *const c_char,
     var: *const c_char,
 ) -> *mut Expr {
-
     unsafe {
-
-        if lagrangian.is_null()
-            || func.is_null()
-            || var.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if lagrangian.is_null() || func.is_null() || var.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let lagrangian_ref =
-            &*lagrangian;
+        let lagrangian_ref = &*lagrangian;
 
-        let func_str = match c_str_to_str(
-        func,
-    ) {
-        | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
-    };
+        let func_str = match c_str_to_str(func) {
+            | Some(s) => s,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let var_str = match c_str_to_str(
-        var,
-    ) {
-        | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
-    };
+        let var_str = match c_str_to_str(var) {
+            | Some(s) => s,
+            | None => return std::ptr::null_mut(),
+        };
 
-        Box::into_raw(Box::new(
-        calculus_of_variations::euler_lagrange(
+        Box::into_raw(Box::new(calculus_of_variations::euler_lagrange(
             lagrangian_ref,
             func_str,
             var_str,
-        ),
-    ))
+        )))
     }
 }
 
@@ -98,8 +70,7 @@ pub unsafe extern "C" fn rssn_euler_lagrange(
 ///
 /// # Safety
 /// The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -107,52 +78,34 @@ pub unsafe extern "C" fn rssn_euler_lagrange(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_solve_euler_lagrange(
     lagrangian: *const Expr,
     func: *const c_char,
     var: *const c_char,
 ) -> *mut Expr {
-
     unsafe {
-
-        if lagrangian.is_null()
-            || func.is_null()
-            || var.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if lagrangian.is_null() || func.is_null() || var.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let lagrangian_ref =
-            &*lagrangian;
+        let lagrangian_ref = &*lagrangian;
 
-        let func_str = match c_str_to_str(
-        func,
-    ) {
-        | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
-    };
+        let func_str = match c_str_to_str(func) {
+            | Some(s) => s,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let var_str = match c_str_to_str(
-        var,
-    ) {
-        | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
-    };
+        let var_str = match c_str_to_str(var) {
+            | Some(s) => s,
+            | None => return std::ptr::null_mut(),
+        };
 
-        Box::into_raw(Box::new(
-        calculus_of_variations::solve_euler_lagrange(
+        Box::into_raw(Box::new(calculus_of_variations::solve_euler_lagrange(
             lagrangian_ref,
             func_str,
             var_str,
-        ),
-    ))
+        )))
     }
 }
 
@@ -160,8 +113,7 @@ pub unsafe extern "C" fn rssn_solve_euler_lagrange(
 ///
 /// # Safety
 /// The caller must ensure `lagrangian` is a valid Expr pointer, and `func` and `var` are valid C strings.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -169,51 +121,33 @@ pub unsafe extern "C" fn rssn_solve_euler_lagrange(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_hamiltons_principle(
     lagrangian: *const Expr,
     func: *const c_char,
     var: *const c_char,
 ) -> *mut Expr {
-
     unsafe {
-
-        if lagrangian.is_null()
-            || func.is_null()
-            || var.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if lagrangian.is_null() || func.is_null() || var.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let lagrangian_ref =
-            &*lagrangian;
+        let lagrangian_ref = &*lagrangian;
 
-        let func_str = match c_str_to_str(
-        func,
-    ) {
-        | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
-    };
+        let func_str = match c_str_to_str(func) {
+            | Some(s) => s,
+            | None => return std::ptr::null_mut(),
+        };
 
-        let var_str = match c_str_to_str(
-        var,
-    ) {
-        | Some(s) => s,
-        | None => {
-            return std::ptr::null_mut()
-        },
-    };
+        let var_str = match c_str_to_str(var) {
+            | Some(s) => s,
+            | None => return std::ptr::null_mut(),
+        };
 
-        Box::into_raw(Box::new(
-        calculus_of_variations::hamiltons_principle(
+        Box::into_raw(Box::new(calculus_of_variations::hamiltons_principle(
             lagrangian_ref,
             func_str,
             var_str,
-        ),
-    ))
+        )))
     }
 }

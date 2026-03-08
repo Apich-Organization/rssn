@@ -10,7 +10,6 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_mtm;
 
 #[derive(Deserialize)]
-
 struct Multigrid1DInput {
     n_interior: usize,
     f: Vec<f64>,
@@ -18,7 +17,6 @@ struct Multigrid1DInput {
 }
 
 #[derive(Deserialize)]
-
 struct Multigrid2DInput {
     n: usize,
     f: Vec<f64>,
@@ -46,8 +44,7 @@ struct Multigrid2DInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -55,57 +52,33 @@ struct Multigrid2DInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : Multigrid1DInput = match from_json_string(input) {
+    let input: Multigrid1DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
-    match physics_mtm::solve_poisson_1d_multigrid(
-        input.n_interior,
-        &input.f,
-        input.num_cycles,
-    ) {
+    match physics_mtm::solve_poisson_1d_multigrid(input.n_interior, &input.f, input.num_cycles) {
         | Ok(res) => {
-            to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::ok(
-                    res
-                ))
-                .unwrap(),
-            )
+            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
         },
         | Err(e) => {
-            to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
-                    e
-                ))
-                .unwrap(),
-            )
+            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(e)).unwrap())
         },
     }
 }
@@ -131,8 +104,7 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -140,57 +112,33 @@ pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_1d_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : Multigrid2DInput = match from_json_string(input) {
+    let input: Multigrid2DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
-    match physics_mtm::solve_poisson_2d_multigrid(
-        input.n,
-        &input.f,
-        input.num_cycles,
-    ) {
+    match physics_mtm::solve_poisson_2d_multigrid(input.n, &input.f, input.num_cycles) {
         | Ok(res) => {
-            to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::ok(
-                    res
-                ))
-                .unwrap(),
-            )
+            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
         },
         | Err(e) => {
-            to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
-                    e
-                ))
-                .unwrap(),
-            )
+            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(e)).unwrap())
         },
     }
 }

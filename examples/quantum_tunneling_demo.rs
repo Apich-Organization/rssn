@@ -1,16 +1,18 @@
-use rssn::physics::physics_sim::schrodinger_quantum::{
-    run_schrodinger_simulation, SchrodingerParameters,
-};
 use num_complex::Complex;
+use rssn::physics::physics_sim::schrodinger_quantum::SchrodingerParameters;
+use rssn::physics::physics_sim::schrodinger_quantum::run_schrodinger_simulation;
 use std::f64::consts::PI;
 
 #[cfg(feature = "output")]
-use rssn::output::plotting::{plot_heatmap_2d, PlotConfig, plot_surface_2d};
-#[cfg(feature = "output")]
 use ndarray::Array2;
+#[cfg(feature = "output")]
+use rssn::output::plotting::PlotConfig;
+#[cfg(feature = "output")]
+use rssn::output::plotting::plot_heatmap_2d;
+#[cfg(feature = "output")]
+use rssn::output::plotting::plot_surface_2d;
 
 fn main() {
-
     println!(
         "Starting Quantum Tunneling \
          Demo..."
@@ -35,8 +37,7 @@ fn main() {
 
     // 2. Setup Potential Barrier
     // A vertical barrier in the middle of the domain
-    let mut potential =
-        vec![0.0; NX * NY];
+    let mut potential = vec![0.0; NX * NY];
 
     let barrier_x_center = NX / 2;
 
@@ -50,28 +51,19 @@ fn main() {
         barrier_height, barrier_width
     );
 
-    for j in 0 .. NY {
-
-        for i in 0 .. NX {
-
-            if i >= barrier_x_center
-                - barrier_width / 2
-                && i <= barrier_x_center
-                    + barrier_width / 2
+    for j in 0..NY {
+        for i in 0..NX {
+            if i >= barrier_x_center - barrier_width / 2
+                && i <= barrier_x_center + barrier_width / 2
             {
-
-                potential[j * NX + i] =
-                    barrier_height;
+                potential[j * NX + i] = barrier_height;
             }
         }
     }
 
     // 3. Setup Initial Wave Packet
     // Moving to the right, towards the barrier
-    let mut initial_psi = vec![
-            Complex::default();
-            NX * NY
-        ];
+    let mut initial_psi = vec![Complex::default(); NX * NY];
 
     let packet_x0 = LX / 4.0;
 
@@ -96,63 +88,43 @@ fn main() {
 
     let dy = LY / NY as f64;
 
-    for j in 0 .. NY {
-
-        for i in 0 .. NX {
-
+    for j in 0..NY {
+        for i in 0..NX {
             let x = i as f64 * dx;
 
             let y = j as f64 * dy;
 
-            let dist_sq =
-                (x - packet_x0).powi(2)
-                    + (y - packet_y0)
-                        .powi(2);
+            let dist_sq = (x - packet_x0).powi(2) + (y - packet_y0).powi(2);
 
-            let envelope = (-dist_sq
-                / (2.0
-                    * sigma
-                    * sigma))
-                .exp();
+            let envelope = (-dist_sq / (2.0 * sigma * sigma)).exp();
 
             let phase = kx * x + ky * y;
 
-            initial_psi[j * NX + i] =
-                Complex::from_polar(
-                    envelope,
-                    phase,
-                );
+            initial_psi[j * NX + i] = Complex::from_polar(envelope, phase);
         }
     }
 
     // Normalize
-    let norm_sq: f64 = initial_psi
-        .iter()
-        .map(|c| c.norm_sqr())
-        .sum();
+    let norm_sq: f64 = initial_psi.iter().map(|c| c.norm_sqr()).sum();
 
-    let norm =
-        (norm_sq * dx * dy).sqrt();
+    let norm = (norm_sq * dx * dy).sqrt();
 
     for c in initial_psi.iter_mut() {
-
         *c /= norm;
     }
 
     // 4. Run Simulation
-    let params =
-        SchrodingerParameters {
-            nx: NX,
-            ny: NY,
-            lx: LX,
-            ly: LY,
-            dt: DT,
-            time_steps: TIME_STEPS,
-            hbar: HBAR,
-            mass: MASS,
-            potential: potential
-                .clone(),
-        };
+    let params = SchrodingerParameters {
+        nx: NX,
+        ny: NY,
+        lx: LX,
+        ly: LY,
+        dt: DT,
+        time_steps: TIME_STEPS,
+        hbar: HBAR,
+        mass: MASS,
+        potential: potential.clone(),
+    };
 
     println!(
         "Running Simulation ({} \
@@ -160,12 +132,7 @@ fn main() {
         TIME_STEPS
     );
 
-    let snapshots =
-        run_schrodinger_simulation(
-            &params,
-            &mut initial_psi,
-        )
-        .unwrap();
+    let snapshots = run_schrodinger_simulation(&params, &mut initial_psi).unwrap();
 
     println!(
         "Simulation finished. \
@@ -176,30 +143,20 @@ fn main() {
     // 5. Visualization
     #[cfg(feature = "output")]
     {
+        println!("Generating frames...");
 
-        println!(
-            "Generating frames..."
-        );
-
-        let mut plot_config =
-            PlotConfig::default();
+        let mut plot_config = PlotConfig::default();
 
         plot_config.width = 1920;
 
         plot_config.height = 1080;
 
-        plot_config.label_font_size =
-            30;
+        plot_config.label_font_size = 30;
 
-        plot_config.caption_font_size =
-            60;
+        plot_config.caption_font_size = 60;
 
         // Save every snapshot
-        for (i, density) in snapshots
-            .iter()
-            .enumerate()
-        {
-
+        for (i, density) in snapshots.iter().enumerate() {
             let frame_idx = i * 10; // snapshot taken every 10 steps in lib
             let path = format!("quantum_tunneling_frame_{:03}.png", i);
 
@@ -210,63 +167,37 @@ fn main() {
             );
 
             // We can plot heatmap
-            if let Err(e) =
-                plot_heatmap_2d(
-                    density,
-                    &path,
-                    Some(
-                        plot_config
-                            .clone(),
-                    ),
-                )
-            {
-
+            if let Err(e) = plot_heatmap_2d(density, &path, Some(plot_config.clone())) {
                 eprintln!(
                     "Error saving \
                      frame {}: {}",
                     i, e
                 );
             } else {
-
-                println!(
-                    "Saved {}",
-                    path
-                );
+                println!("Saved {}", path);
             }
         }
 
         // Also save a 3D surface of the moment of impact (approx middle)
         if !snapshots.is_empty() {
+            let mid_idx = snapshots.len() / 2;
 
-            let mid_idx =
-                snapshots.len() / 2;
-
-            let path_3d =
-                "quantum_tunneling_3d.\
+            let path_3d = "quantum_tunneling_3d.\
                  png";
 
-            plot_config.caption =
-                "Wave Packet Hitting \
+            plot_config.caption = "Wave Packet Hitting \
                  Barrier (3D)"
-                    .to_string();
+                .to_string();
 
             plot_config.scale = 0.5;
 
-            if let Err(e) =
-                plot_surface_2d(
-                    &snapshots[mid_idx],
-                    path_3d,
-                    Some(plot_config),
-                )
-            {
-
+            if let Err(e) = plot_surface_2d(&snapshots[mid_idx], path_3d, Some(plot_config)) {
                 eprintln!(
                     "Error saving 3d \
                      plot: {}",
                     e
                 );
             } else {
-
                 println!("Saved 3D visualization to {}", path_3d);
             }
         }

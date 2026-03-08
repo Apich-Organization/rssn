@@ -3,17 +3,8 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-)]
 /// The type of a JIT value.
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum JitType {
     /// 8-bit integer.
     I8,
@@ -31,10 +22,7 @@ pub enum JitType {
 
 /// Basic instructions for the JIT engine.
 /// The JIT operates on a stack-based model.
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
-
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Instruction {
     /// Push a 64-bit integer constant onto the stack.
     ImmI(i64),

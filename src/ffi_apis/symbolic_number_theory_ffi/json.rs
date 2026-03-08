@@ -9,53 +9,30 @@ use crate::symbolic::number_theory::is_prime;
 use crate::symbolic::number_theory::solve_diophantine;
 
 #[derive(serde::Deserialize)]
-
 struct Congruence {
     remainder: Expr,
     modulus: Expr,
 }
 
 /// Solves a Diophantine equation.
-
-///
-
 /// Takes JSON strings representing the equation (`Expr`) and variables (`Vec<String>`),
-
 /// and returns a JSON string representing the `Vec<Expr>` of solutions.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_solve_diophantine(
     equation_json: *const c_char,
     vars_json: *const c_char,
 ) -> *mut c_char {
+    let equation: Option<Expr> = from_json_string(equation_json);
 
-    let equation: Option<Expr> =
-        from_json_string(equation_json);
-
-    let vars: Option<Vec<String>> =
-        from_json_string(vars_json);
+    let vars: Option<Vec<String>> = from_json_string(vars_json);
 
     match (equation, vars) {
         | (Some(eq), Some(v)) => {
+            let v_str: Vec<&str> = v.iter().map(std::string::String::as_str).collect();
 
-            let v_str: Vec<&str> = v
-            .iter()
-            .map(std::string::String::as_str)
-            .collect();
-
-            match solve_diophantine(
-                &eq,
-                &v_str,
-            ) {
-                | Ok(solutions) => {
-                    to_json_string(
-                        &solutions,
-                    )
-                },
-                | Err(_) => {
-                    std::ptr::null_mut()
-                },
+            match solve_diophantine(&eq, &v_str) {
+                | Ok(solutions) => to_json_string(&solutions),
+                | Err(_) => std::ptr::null_mut(),
             }
         },
         | _ => std::ptr::null_mut(),
@@ -63,39 +40,22 @@ pub extern "C" fn rssn_json_solve_diophantine(
 }
 
 /// Computes the extended greatest common divisor (GCD).
-
 ///
-
 /// Takes JSON strings representing two numbers (`a` and `b`),
-
 /// and returns a JSON string representing a tuple `(g, x, y)` where `g` is the GCD
-
 /// and `x`, `y` are coefficients such that `ax + by = g`.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_extended_gcd(
     a_json: *const c_char,
     b_json: *const c_char,
 ) -> *mut c_char {
+    let a: Option<Expr> = from_json_string(a_json);
 
-    let a: Option<Expr> =
-        from_json_string(a_json);
-
-    let b: Option<Expr> =
-        from_json_string(b_json);
+    let b: Option<Expr> = from_json_string(b_json);
 
     match (a, b) {
-        | (
-            Some(a_expr),
-            Some(b_expr),
-        ) => {
-
-            let (g, x, y) =
-                extended_gcd(
-                    &a_expr,
-                    &b_expr,
-                );
+        | (Some(a_expr), Some(b_expr)) => {
+            let (g, x, y) = extended_gcd(&a_expr, &b_expr);
 
             to_json_string(&(g, x, y))
         },
@@ -104,83 +64,39 @@ pub extern "C" fn rssn_json_extended_gcd(
 }
 
 /// Checks if a number is prime.
-
-///
-
 /// Takes a JSON string representing an `Expr` (number),
-
 /// and returns a JSON string representing a boolean indicating whether the number is prime.
-
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_json_is_prime(
-    n_json: *const c_char
-) -> *mut c_char {
-
-    let n: Option<Expr> =
-        from_json_string(n_json);
+pub extern "C" fn rssn_json_is_prime(n_json: *const c_char) -> *mut c_char {
+    let n: Option<Expr> = from_json_string(n_json);
 
     if let Some(n_expr) = n {
-
         let result = is_prime(&n_expr);
 
         to_json_string(&result)
     } else {
-
         std::ptr::null_mut()
     }
 }
 
 /// Solves the Chinese Remainder Theorem.
-
-///
-
 /// Takes a JSON string representing a vector of congruences (`(remainder, modulus)`),
-
 /// and returns a JSON string representing the `Expr` solution.
-
 #[unsafe(no_mangle)]
+pub extern "C" fn rssn_json_chinese_remainder(congruences_json: *const c_char) -> *mut c_char {
+    let congruences_input: Option<Vec<Congruence>> = from_json_string(congruences_json);
 
-pub extern "C" fn rssn_json_chinese_remainder(
-    congruences_json: *const c_char
-) -> *mut c_char {
-
-    let congruences_input: Option<
-        Vec<Congruence>,
-    > = from_json_string(
-        congruences_json,
-    );
-
-    if let Some(input) =
-        congruences_input
-    {
-
-        let congruences: Vec<(
-            Expr,
-            Expr,
-        )> = input
+    if let Some(input) = congruences_input {
+        let congruences: Vec<(Expr, Expr)> = input
             .into_iter()
-            .map(|c| {
-
-                (
-                    c.remainder,
-                    c.modulus,
-                )
-            })
+            .map(|c| (c.remainder, c.modulus))
             .collect();
 
-        match chinese_remainder(
-            &congruences,
-        ) {
-            | Some(result) => {
-                to_json_string(&result)
-            },
-            | None => {
-                std::ptr::null_mut()
-            },
+        match chinese_remainder(&congruences) {
+            | Some(result) => to_json_string(&result),
+            | None => std::ptr::null_mut(),
         }
     } else {
-
         std::ptr::null_mut()
     }
 }

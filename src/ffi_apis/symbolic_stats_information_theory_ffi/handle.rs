@@ -8,26 +8,18 @@ use crate::symbolic::stats_information_theory;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
 unsafe fn collect_exprs(
     data: *const *const Expr,
     len: usize,
 ) -> Vec<Expr> {
-
     unsafe {
+        let mut exprs = Vec::with_capacity(len);
 
-        let mut exprs =
-            Vec::with_capacity(len);
-
-        for i in 0 .. len {
-
+        for i in 0..len {
             let ptr = *data.add(i);
 
             if !ptr.is_null() {
-
-                exprs.push(
-                    (*ptr).clone(),
-                );
+                exprs.push((*ptr).clone());
             }
         }
 
@@ -36,15 +28,9 @@ unsafe fn collect_exprs(
 }
 
 /// Computes the Shannon entropy of a probability distribution.
-
-///
-
 /// Takes a raw pointer to an array of `Expr` (probabilities) and its length.
-
 /// Returns a raw pointer to an `Expr` representing the entropy.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -52,39 +38,27 @@ unsafe fn collect_exprs(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_shannon_entropy(
     probs: *const *const Expr,
     len: usize,
 ) -> *mut Expr {
-
     unsafe {
-
         if probs.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        let p =
-            collect_exprs(probs, len);
+        let p = collect_exprs(probs, len);
 
-        Box::into_raw(Box::new(
-        stats_information_theory::shannon_entropy(&p),
-    ))
+        Box::into_raw(Box::new(stats_information_theory::shannon_entropy(&p)))
     }
 }
 
 /// Computes the Kullback-Leibler divergence between two probability distributions.
-
 ///
-
 /// Takes raw pointers to two arrays of `Expr` (probabilities) and their lengths.
-
 /// Returns a raw pointer to an `Expr` representing the KL divergence.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -92,51 +66,34 @@ pub unsafe extern "C" fn rssn_shannon_entropy(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_kl_divergence(
     p_probs: *const *const Expr,
     p_len: usize,
     q_probs: *const *const Expr,
     q_len: usize,
 ) -> *mut Expr {
-
     unsafe {
-
-        if p_probs.is_null()
-            || q_probs.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if p_probs.is_null() || q_probs.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let p = collect_exprs(
-            p_probs,
-            p_len,
-        );
+        let p = collect_exprs(p_probs, p_len);
 
-        let q = collect_exprs(
-            q_probs,
-            q_len,
-        );
+        let q = collect_exprs(q_probs, q_len);
 
         match stats_information_theory::kl_divergence(&p, &q) {
-        | Ok(res) => Box::into_raw(Box::new(res)),
-        | Err(_) => std::ptr::null_mut(),
-    }
+            | Ok(res) => Box::into_raw(Box::new(res)),
+            | Err(_) => std::ptr::null_mut(),
+        }
     }
 }
 
 /// Computes the cross-entropy between two probability distributions.
-
 ///
-
 /// Takes raw pointers to two arrays of `Expr` (probabilities) and their lengths.
-
 /// Returns a raw pointer to an `Expr` representing the cross-entropy.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -144,51 +101,33 @@ pub unsafe extern "C" fn rssn_kl_divergence(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_cross_entropy(
     p_probs: *const *const Expr,
     p_len: usize,
     q_probs: *const *const Expr,
     q_len: usize,
 ) -> *mut Expr {
-
     unsafe {
-
-        if p_probs.is_null()
-            || q_probs.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if p_probs.is_null() || q_probs.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let p = collect_exprs(
-            p_probs,
-            p_len,
-        );
+        let p = collect_exprs(p_probs, p_len);
 
-        let q = collect_exprs(
-            q_probs,
-            q_len,
-        );
+        let q = collect_exprs(q_probs, q_len);
 
         match stats_information_theory::cross_entropy(&p, &q) {
-        | Ok(res) => Box::into_raw(Box::new(res)),
-        | Err(_) => std::ptr::null_mut(),
-    }
+            | Ok(res) => Box::into_raw(Box::new(res)),
+            | Err(_) => std::ptr::null_mut(),
+        }
     }
 }
 
 /// Computes the Gini impurity of a probability distribution.
-
-///
-
 /// Takes a raw pointer to an array of `Expr` (probabilities) and its length.
-
 /// Returns a raw pointer to an `Expr` representing the Gini impurity.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -196,39 +135,27 @@ pub unsafe extern "C" fn rssn_cross_entropy(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_gini_impurity(
     probs: *const *const Expr,
     len: usize,
 ) -> *mut Expr {
-
     unsafe {
-
         if probs.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        let p =
-            collect_exprs(probs, len);
+        let p = collect_exprs(probs, len);
 
-        Box::into_raw(Box::new(
-        stats_information_theory::gini_impurity(&p),
-    ))
+        Box::into_raw(Box::new(stats_information_theory::gini_impurity(&p)))
     }
 }
 
 /// Computes the joint entropy of a joint probability distribution.
-
 ///
-
 /// Takes a raw pointer to an `Expr` representing the joint probability distribution.
-
 /// Returns a raw pointer to an `Expr` representing the joint entropy.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -236,36 +163,25 @@ pub unsafe extern "C" fn rssn_gini_impurity(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_joint_entropy(
-    joint_probs: *const Expr
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_joint_entropy(joint_probs: *const Expr) -> *mut Expr {
     unsafe {
-
         if joint_probs.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         match stats_information_theory::joint_entropy(&*joint_probs) {
-        | Ok(res) => Box::into_raw(Box::new(res)),
-        | Err(_) => std::ptr::null_mut(),
-    }
+            | Ok(res) => Box::into_raw(Box::new(res)),
+            | Err(_) => std::ptr::null_mut(),
+        }
     }
 }
 
 /// Computes the conditional entropy of a joint probability distribution.
-
 ///
-
 /// Takes a raw pointer to an `Expr` representing the joint probability distribution.
-
 /// Returns a raw pointer to an `Expr` representing the conditional entropy.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -273,36 +189,25 @@ pub unsafe extern "C" fn rssn_joint_entropy(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_conditional_entropy(
-    joint_probs: *const Expr
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_conditional_entropy(joint_probs: *const Expr) -> *mut Expr {
     unsafe {
-
         if joint_probs.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         match stats_information_theory::conditional_entropy(&*joint_probs) {
-        | Ok(res) => Box::into_raw(Box::new(res)),
-        | Err(_) => std::ptr::null_mut(),
-    }
+            | Ok(res) => Box::into_raw(Box::new(res)),
+            | Err(_) => std::ptr::null_mut(),
+        }
     }
 }
 
 /// Computes the mutual information between two random variables from their joint probability distribution.
-
 ///
-
 /// Takes a raw pointer to an `Expr` representing the joint probability distribution.
-
 /// Returns a raw pointer to an `Expr` representing the mutual information.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -310,22 +215,16 @@ pub unsafe extern "C" fn rssn_conditional_entropy(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_mutual_information(
-    joint_probs: *const Expr
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_mutual_information(joint_probs: *const Expr) -> *mut Expr {
     unsafe {
-
         if joint_probs.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         match stats_information_theory::mutual_information(&*joint_probs) {
-        | Ok(res) => Box::into_raw(Box::new(res)),
-        | Err(_) => std::ptr::null_mut(),
-    }
+            | Ok(res) => Box::into_raw(Box::new(res)),
+            | Err(_) => std::ptr::null_mut(),
+        }
     }
 }

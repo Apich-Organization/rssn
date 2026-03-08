@@ -2,7 +2,6 @@ use rssn::symbolic::calculus::differentiate;
 use rssn::symbolic::core::Expr;
 
 fn main() {
-
     // Define a variable 'x'
     let x = Expr::new_variable("x");
 
@@ -10,12 +9,8 @@ fn main() {
     let expr = Expr::new_sin(x);
 
     // Differentiate with respect to 'x'
-    let derivative =
-        differentiate(&expr, "x");
+    let derivative = differentiate(&expr, "x");
 
     // The result will be cos(x)
-    println!(
-        "The derivative of {} is: {}",
-        expr, derivative
-    );
+    println!("The derivative of {} is: {}", expr, derivative);
 }

@@ -11,8 +11,7 @@ use crate::numerical::ode::{
 use crate::symbolic::core::Expr;
 
 /// Solves a system of ODEs and returns the results as a Matrix handle.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20,7 +19,7 @@ use crate::symbolic::core::Expr;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_ode_solve(
     funcs: *const *const Expr,
     n_funcs: usize,
@@ -31,13 +30,8 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
     num_steps: usize,
     method: i32,
 ) -> *mut Matrix<f64> {
-
     unsafe {
-
-        if funcs.is_null()
-            || y0.is_null()
-        {
-
+        if funcs.is_null() || y0.is_null() {
             update_last_error(
                 "Null pointer passed \
                  to rssn_num_ode_solve"
@@ -48,49 +42,37 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
         }
 
         let method_enum = match method {
-        | 0 => OdeSolverMethod::Euler,
-        | 1 => OdeSolverMethod::Heun,
-        | 2 => {
-            OdeSolverMethod::RungeKutta4
-        },
-        | _ => {
-
-            update_last_error(format!(
-                "Invalid ODE solver \
+            | 0 => OdeSolverMethod::Euler,
+            | 1 => OdeSolverMethod::Heun,
+            | 2 => OdeSolverMethod::RungeKutta4,
+            | _ => {
+                update_last_error(format!(
+                    "Invalid ODE solver \
                  method code: {method}"
-            ));
+                ));
 
-            return ptr::null_mut();
-        },
-    };
+                return ptr::null_mut();
+            },
+        };
 
-        let mut funcs_vec =
-            Vec::with_capacity(n_funcs);
+        let mut funcs_vec = Vec::with_capacity(n_funcs);
 
-        for i in 0 .. n_funcs {
-
+        for i in 0..n_funcs {
             let f_ptr = *funcs.add(i);
 
             if f_ptr.is_null() {
-
-                update_last_error(
-                    format!(
-                "Null function \
+                update_last_error(format!(
+                    "Null function \
                  pointer at index {i}"
-            ),
-                );
+                ));
 
                 return ptr::null_mut();
             }
 
-            funcs_vec
-                .push((*f_ptr).clone());
+            funcs_vec.push((*f_ptr).clone());
         }
 
-        let y0_slice =
-            std::slice::from_raw_parts(
-                y0, n_y0,
-            );
+        let y0_slice = std::slice::from_raw_parts(y0, n_y0);
 
         match ode::solve_ode_system(
             &funcs_vec,
@@ -100,39 +82,23 @@ pub unsafe extern "C" fn rssn_num_ode_solve(
             method_enum,
         ) {
             | Ok(results) => {
-
-                let rows =
-                    results.len();
+                let rows = results.len();
 
                 let cols = if rows > 0 {
-
                     results[0].len()
                 } else {
-
                     0
                 };
 
-                let mut flattened =
-                    Vec::with_capacity(
-                        rows * cols,
-                    );
+                let mut flattened = Vec::with_capacity(rows * cols);
 
                 for row in results {
-
-                    flattened
-                        .extend(row);
+                    flattened.extend(row);
                 }
 
-                Box::into_raw(Box::new(
-                    Matrix::new(
-                        rows,
-                        cols,
-                        flattened,
-                    ),
-                ))
+                Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
             },
             | Err(e) => {
-
                 update_last_error(e);
 
                 ptr::null_mut()

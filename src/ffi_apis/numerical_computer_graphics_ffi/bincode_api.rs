@@ -10,7 +10,6 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::computer_graphics;
 
 #[derive(Deserialize)]
-
 struct Vector3DInput {
     x: f64,
     y: f64,
@@ -18,14 +17,12 @@ struct Vector3DInput {
 }
 
 #[derive(Deserialize)]
-
 struct TwoVectors3DInput {
     v1: Vector3DInput,
     v2: Vector3DInput,
 }
 
 #[derive(Serialize)]
-
 struct Vector3DOutput {
     x: f64,
     y: f64,
@@ -33,13 +30,11 @@ struct Vector3DOutput {
 }
 
 #[derive(Deserialize)]
-
 struct AngleInput {
     angle: f64,
 }
 
 #[derive(Deserialize)]
-
 struct TransformInput {
     dx: f64,
     dy: f64,
@@ -47,7 +42,6 @@ struct TransformInput {
 }
 
 #[derive(Deserialize)]
-
 struct QuaternionInput {
     w: f64,
     x: f64,
@@ -56,7 +50,6 @@ struct QuaternionInput {
 }
 
 #[derive(Serialize)]
-
 struct QuaternionOutput {
     w: f64,
     x: f64,
@@ -65,16 +58,13 @@ struct QuaternionOutput {
 }
 
 #[derive(Deserialize)]
-
 struct TwoQuaternionsInput {
     q1: QuaternionInput,
     q2: QuaternionInput,
 }
 
 /// Computes the dot product of two 3D vectors using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -82,39 +72,25 @@ struct TwoQuaternionsInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : TwoVectors3DInput = match from_bincode_buffer(&buffer) {
+    let input: TwoVectors3DInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let v1 = computer_graphics::Vector3D::new(
-        input.v1.x,
-        input.v1.y,
-        input.v1.z,
-    );
+    let v1 = computer_graphics::Vector3D::new(input.v1.x, input.v1.y, input.v1.z);
 
-    let v2 = computer_graphics::Vector3D::new(
-        input.v2.x,
-        input.v2.y,
-        input.v2.z,
-    );
+    let v2 = computer_graphics::Vector3D::new(input.v2.x, input.v2.y, input.v2.z);
 
-    let result =
-        computer_graphics::dot_product(
-            &v1, &v2,
-        );
+    let result = computer_graphics::dot_product(&v1, &v2);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -123,9 +99,7 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
 }
 
 /// Computes the cross product of two 3D vectors using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -133,34 +107,23 @@ pub unsafe extern "C" fn rssn_num_graphics_dot_product_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : TwoVectors3DInput = match from_bincode_buffer(&buffer) {
+    let input: TwoVectors3DInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vector3DOutput, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vector3DOutput, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let v1 = computer_graphics::Vector3D::new(
-        input.v1.x,
-        input.v1.y,
-        input.v1.z,
-    );
+    let v1 = computer_graphics::Vector3D::new(input.v1.x, input.v1.y, input.v1.z);
 
-    let v2 = computer_graphics::Vector3D::new(
-        input.v2.x,
-        input.v2.y,
-        input.v2.z,
-    );
+    let v2 = computer_graphics::Vector3D::new(input.v2.x, input.v2.y, input.v2.z);
 
     let result = computer_graphics::cross_product(&v1, &v2);
 
@@ -175,9 +138,7 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
 }
 
 /// Normalizes a 3D vector using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -185,28 +146,21 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : Vector3DInput = match from_bincode_buffer(&buffer) {
+    let input: Vector3DInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vector3DOutput, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vector3DOutput, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let v = computer_graphics::Vector3D::new(
-        input.x,
-        input.y,
-        input.z,
-    );
+    let v = computer_graphics::Vector3D::new(input.x, input.y, input.z);
 
     let result = v.normalize();
 
@@ -221,9 +175,7 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
 }
 
 /// Creates a 3D rotation matrix around the X-axis using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -231,20 +183,17 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : AngleInput = match from_bincode_buffer(&buffer) {
+    let input: AngleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<f64>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<f64>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
@@ -257,9 +206,7 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
 }
 
 /// Creates a 3D translation matrix using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -267,28 +214,21 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : TransformInput = match from_bincode_buffer(&buffer) {
+    let input: TransformInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<f64>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<f64>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let matrix = computer_graphics::translation_matrix(
-        input.dx,
-        input.dy,
-        input.dz,
-    );
+    let matrix = computer_graphics::translation_matrix(input.dx, input.dy, input.dz);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(matrix.data()),
@@ -297,9 +237,7 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
 }
 
 /// Multiplies two quaternions using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -307,36 +245,23 @@ pub unsafe extern "C" fn rssn_num_graphics_translation_matrix_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : TwoQuaternionsInput = match from_bincode_buffer(&buffer) {
+    let input: TwoQuaternionsInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<QuaternionOutput, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<QuaternionOutput, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let q1 = computer_graphics::Quaternion::new(
-        input.q1.w,
-        input.q1.x,
-        input.q1.y,
-        input.q1.z,
-    );
+    let q1 = computer_graphics::Quaternion::new(input.q1.w, input.q1.x, input.q1.y, input.q1.z);
 
-    let q2 = computer_graphics::Quaternion::new(
-        input.q2.w,
-        input.q2.x,
-        input.q2.y,
-        input.q2.z,
-    );
+    let q2 = computer_graphics::Quaternion::new(input.q2.w, input.q2.x, input.q2.y, input.q2.z);
 
     let result = q1.multiply(&q2);
 

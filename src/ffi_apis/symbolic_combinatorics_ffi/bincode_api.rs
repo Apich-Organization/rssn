@@ -26,8 +26,7 @@ use crate::symbolic::core::Expr;
 ///
 /// This function is unsafe because it dereferences raw bincode buffers that must
 /// contain valid serialized `Expr` values.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35,18 +34,17 @@ use crate::symbolic::core::Expr;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_permutations(
     n_buf: BincodeBuffer,
     k_buf: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let n : Expr = match from_bincode_buffer(&n_buf) {
+    let n: Expr = match from_bincode_buffer(&n_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let k : Expr = match from_bincode_buffer(&k_buf) {
+    let k: Expr = match from_bincode_buffer(&k_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -74,8 +72,7 @@ pub unsafe extern "C" fn rssn_bincode_permutations(
 ///
 /// This function is unsafe because it dereferences raw bincode buffers that must
 /// contain valid serialized `Expr` values.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -83,18 +80,17 @@ pub unsafe extern "C" fn rssn_bincode_permutations(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_combinations(
     n_buf: BincodeBuffer,
     k_buf: BincodeBuffer,
 ) -> BincodeBuffer {
-
-    let n : Expr = match from_bincode_buffer(&n_buf) {
+    let n: Expr = match from_bincode_buffer(&n_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
 
-    let k : Expr = match from_bincode_buffer(&k_buf) {
+    let k: Expr = match from_bincode_buffer(&k_buf) {
         | Some(e) => e,
         | None => return BincodeBuffer::empty(),
     };
@@ -121,9 +117,7 @@ pub unsafe extern "C" fn rssn_bincode_combinations(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point, but it does
 /// not dereference raw pointers.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -131,17 +125,12 @@ pub unsafe extern "C" fn rssn_bincode_combinations(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_catalan_number(
-    n: usize
-) -> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_catalan_number(n: usize) -> BincodeBuffer {
     let result = catalan_number(n);
 
     to_bincode_buffer(&result)
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes a Stirling number of the second kind symbolically and returns it via bincode.
 ///
@@ -161,7 +150,7 @@ pub unsafe extern "C" fn rssn_bincode_catalan_number(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point, but it does
 /// not dereference raw pointers.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -169,16 +158,12 @@ pub unsafe extern "C" fn rssn_bincode_catalan_number(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(
     n: usize,
     k: usize,
 ) -> BincodeBuffer {
-
-    let result =
-        stirling_number_second_kind(
-            n, k,
-        );
+    let result = stirling_number_second_kind(n, k);
 
     to_bincode_buffer(&result)
 }
@@ -199,8 +184,7 @@ pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point, but it does
 /// not dereference raw pointers.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -208,11 +192,8 @@ pub unsafe extern "C" fn rssn_bincode_stirling_number_second_kind(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_bell_number(
-    n: usize
-) -> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_bell_number(n: usize) -> BincodeBuffer {
     let result = bell_number(n);
 
     to_bincode_buffer(&result)

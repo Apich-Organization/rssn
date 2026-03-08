@@ -18,16 +18,15 @@
 #![allow(unused_imports)]
 #![allow(ambiguous_glob_reexports)]
 
-#[cfg(feature = "ffi_api")]
-
 /// Foreign Function Interface (FFI) APIs for interacting with the library from other languages.
-
+#[cfg(feature = "ffi_api")]
 pub mod ffi_apis {
 
     pub use crate::ffi_apis::common::*;
     pub use crate::ffi_apis::compute_cache_ffi::*;
     pub use crate::ffi_apis::compute_state_ffi::*;
     pub use crate::ffi_apis::constant_ffi::*;
+    pub use crate::ffi_apis::ffi_api::FfiPoint as ffi_api_FfiPoint;
     pub use crate::ffi_apis::ffi_api::expr_definite_integrate as ffi_api_expr_definite_integrate;
     pub use crate::ffi_apis::ffi_api::expr_differentiate as ffi_api_expr_differentiate;
     pub use crate::ffi_apis::ffi_api::expr_integrate as ffi_api_expr_integrate;
@@ -116,7 +115,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::ffi_api::transforms_fft as ffi_api_transforms_fft;
     pub use crate::ffi_apis::ffi_api::transforms_ifft as ffi_api_transforms_ifft;
     pub use crate::ffi_apis::ffi_api::vector_scalar_mul as ffi_api_vector_scalar_mul;
-    pub use crate::ffi_apis::ffi_api::FfiPoint as ffi_api_FfiPoint;
+    pub use crate::ffi_apis::nightly_ffi::*;
     pub use crate::ffi_apis::numerical_calculus_ffi::*;
     pub use crate::ffi_apis::numerical_calculus_of_variations_ffi::*;
     pub use crate::ffi_apis::numerical_combinatorics_ffi::*;
@@ -147,9 +146,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::numerical_transforms_ffi::*;
     pub use crate::ffi_apis::numerical_vector_calculus_ffi::*;
     pub use crate::ffi_apis::numerical_vector_ffi::*;
-    pub use crate::ffi_apis::nightly_ffi::*;
     pub use crate::ffi_apis::symbolic_cad_ffi::*;
-    pub use crate::ffi_apis::symbolic_core_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_ffi::*;
     pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::*;
     pub use crate::ffi_apis::symbolic_cas_foundations_ffi::*;
@@ -159,6 +156,7 @@ pub mod ffi_apis {
     pub use crate::ffi_apis::symbolic_computer_graphics_ffi::*;
     pub use crate::ffi_apis::symbolic_convergence_ffi::*;
     pub use crate::ffi_apis::symbolic_coordinates_ffi::*;
+    pub use crate::ffi_apis::symbolic_core_ffi::*;
     pub use crate::ffi_apis::symbolic_cryptography_ffi::*;
     pub use crate::ffi_apis::symbolic_differential_geometry_ffi::*;
     pub use crate::ffi_apis::symbolic_discrete_groups_ffi::*;
@@ -560,239 +558,239 @@ pub mod ffi_apis {
 
     // crate::ffi_apis::numerical_coordinates_ffi::json exports:
     pub use crate::ffi_apis::numerical_coordinates_ffi::json::rssn_num_coord_transform_json;
-pub use crate::ffi_apis::numerical_coordinates_ffi::json::rssn_num_coord_transform_pure_json;
+    pub use crate::ffi_apis::numerical_coordinates_ffi::json::rssn_num_coord_transform_pure_json;
 
     // crate::ffi_apis::numerical_differential_geometry_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_differential_geometry_ffi::bincode_api::rssn_num_dg_christoffel_symbols_bincode;
-pub use crate::ffi_apis::numerical_differential_geometry_ffi::bincode_api::rssn_num_dg_metric_tensor_bincode;
-pub use crate::ffi_apis::numerical_differential_geometry_ffi::bincode_api::rssn_num_dg_ricci_scalar_bincode;
-pub use crate::ffi_apis::numerical_differential_geometry_ffi::bincode_api::rssn_num_dg_ricci_tensor_bincode;
+    pub use crate::ffi_apis::numerical_differential_geometry_ffi::bincode_api::rssn_num_dg_metric_tensor_bincode;
+    pub use crate::ffi_apis::numerical_differential_geometry_ffi::bincode_api::rssn_num_dg_ricci_scalar_bincode;
+    pub use crate::ffi_apis::numerical_differential_geometry_ffi::bincode_api::rssn_num_dg_ricci_tensor_bincode;
 
     // crate::ffi_apis::numerical_differential_geometry_ffi::handle exports:
     pub use crate::ffi_apis::numerical_differential_geometry_ffi::handle::rssn_num_dg_christoffel_symbols;
-pub use crate::ffi_apis::numerical_differential_geometry_ffi::handle::rssn_num_dg_metric_tensor;
-pub use crate::ffi_apis::numerical_differential_geometry_ffi::handle::rssn_num_dg_ricci_scalar;
-pub use crate::ffi_apis::numerical_differential_geometry_ffi::handle::rssn_num_dg_ricci_tensor;
+    pub use crate::ffi_apis::numerical_differential_geometry_ffi::handle::rssn_num_dg_metric_tensor;
+    pub use crate::ffi_apis::numerical_differential_geometry_ffi::handle::rssn_num_dg_ricci_scalar;
+    pub use crate::ffi_apis::numerical_differential_geometry_ffi::handle::rssn_num_dg_ricci_tensor;
 
     // crate::ffi_apis::numerical_differential_geometry_ffi::json exports:
     pub use crate::ffi_apis::numerical_differential_geometry_ffi::json::rssn_num_dg_christoffel_symbols_json;
-pub use crate::ffi_apis::numerical_differential_geometry_ffi::json::rssn_num_dg_metric_tensor_json;
-pub use crate::ffi_apis::numerical_differential_geometry_ffi::json::rssn_num_dg_ricci_scalar_json;
-pub use crate::ffi_apis::numerical_differential_geometry_ffi::json::rssn_num_dg_ricci_tensor_json;
+    pub use crate::ffi_apis::numerical_differential_geometry_ffi::json::rssn_num_dg_metric_tensor_json;
+    pub use crate::ffi_apis::numerical_differential_geometry_ffi::json::rssn_num_dg_ricci_scalar_json;
+    pub use crate::ffi_apis::numerical_differential_geometry_ffi::json::rssn_num_dg_ricci_tensor_json;
 
     // crate::ffi_apis::numerical_elementary_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_elementary_ffi::bincode_api::rssn_num_eval_bincode;
 
     // crate::ffi_apis::numerical_elementary_ffi::handle exports:
     pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_eval_expr;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_abs;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_acos;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_asin;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_atan2;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_atan;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_cos;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_cosh;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_exp;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_ln;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_pow;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_sin;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_sinh;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_sqrt;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_tan;
-pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_tanh;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_abs;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_acos;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_asin;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_atan;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_atan2;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_cos;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_cosh;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_exp;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_ln;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_pow;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_sin;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_sinh;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_sqrt;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_tan;
+    pub use crate::ffi_apis::numerical_elementary_ffi::handle::rssn_num_pure_tanh;
 
     // crate::ffi_apis::numerical_elementary_ffi::json exports:
     pub use crate::ffi_apis::numerical_elementary_ffi::json::rssn_num_eval_json;
 
     // crate::ffi_apis::numerical_error_correction_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_capability_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_code_rate_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_crc16_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_crc32_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_crc32_verify_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_crc8_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_deinterleave_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_hamming_check_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_hamming_decode_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_hamming_distance_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_hamming_encode_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_hamming_weight_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_interleave_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_rs_check_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_rs_decode_bincode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_rs_encode_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_code_rate_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_crc8_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_crc16_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_crc32_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_crc32_verify_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_deinterleave_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_hamming_check_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_hamming_decode_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_hamming_distance_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_hamming_encode_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_hamming_weight_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_interleave_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_rs_check_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_rs_decode_bincode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::bincode_api::rssn_num_error_correction_rs_encode_bincode;
 
     // crate::ffi_apis::numerical_error_correction_ffi::handle exports:
     pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_capability;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_code_rate;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc16;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc32;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc32_verify;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc8;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_deinterleave;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_check;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_decode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_distance;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_encode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_weight;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_interleave;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_rs_check;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_rs_decode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_rs_encode;
-pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_detection_capability;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_code_rate;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc8;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc16;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc32;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_crc32_verify;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_deinterleave;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_check;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_decode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_distance;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_encode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_hamming_weight;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_interleave;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_rs_check;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_rs_decode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_correction_rs_encode;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::handle::rssn_num_error_detection_capability;
 
     // crate::ffi_apis::numerical_error_correction_ffi::json exports:
     pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_capability_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_code_rate_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc16_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc32_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc32_verify_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc8_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_deinterleave_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_check_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_decode_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_distance_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_encode_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_weight_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_interleave_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_rs_check_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_rs_decode_json;
-pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_rs_encode_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_code_rate_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc8_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc16_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc32_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_crc32_verify_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_deinterleave_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_check_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_decode_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_distance_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_encode_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_hamming_weight_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_interleave_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_rs_check_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_rs_decode_json;
+    pub use crate::ffi_apis::numerical_error_correction_ffi::json::rssn_num_error_correction_rs_encode_json;
 
     // crate::ffi_apis::numerical_finite_field_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_finite_field_ffi::bincode_api::rssn_num_ff_pfe_add_bincode;
-pub use crate::ffi_apis::numerical_finite_field_ffi::bincode_api::rssn_num_ff_pfe_mul_bincode;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::bincode_api::rssn_num_ff_pfe_mul_bincode;
 
     // crate::ffi_apis::numerical_finite_field_ffi::handle exports:
     pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_gf256_add;
-pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_gf256_div;
-pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_gf256_mul;
-pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_add;
-pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_free;
-pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_inverse;
-pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_mul;
-pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_new;
-pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_pow;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_gf256_div;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_gf256_mul;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_add;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_free;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_inverse;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_mul;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_new;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::handle::rssn_num_ff_pfe_pow;
 
     // crate::ffi_apis::numerical_finite_field_ffi::json exports:
     pub use crate::ffi_apis::numerical_finite_field_ffi::json::rssn_num_ff_gf256_mul_json;
-pub use crate::ffi_apis::numerical_finite_field_ffi::json::rssn_num_ff_pfe_add_json;
-pub use crate::ffi_apis::numerical_finite_field_ffi::json::rssn_num_ff_pfe_mul_json;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::json::rssn_num_ff_pfe_add_json;
+    pub use crate::ffi_apis::numerical_finite_field_ffi::json::rssn_num_ff_pfe_mul_json;
 
     // crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_box_counting_dim_bincode;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_correlation_dim_bincode;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_henon_map_bincode;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_julia_set_bincode;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_logistic_map_bincode;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_lorenz_attractor_bincode;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_lyapunov_logistic_bincode;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_mandelbrot_escape_time_bincode;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_mandelbrot_set_bincode;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_correlation_dim_bincode;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_henon_map_bincode;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_julia_set_bincode;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_logistic_map_bincode;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_lorenz_attractor_bincode;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_lyapunov_logistic_bincode;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_mandelbrot_escape_time_bincode;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::bincode_api::rssn_num_fractal_mandelbrot_set_bincode;
 
     // crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle exports:
     pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_box_counting_dim;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_correlation_dim;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_henon_map;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_julia_escape_time;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_logistic_map;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_lorenz_attractor;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_lyapunov_logistic;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_lyapunov_lorenz;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_mandelbrot_escape_time;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_correlation_dim;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_henon_map;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_julia_escape_time;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_logistic_map;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_lorenz_attractor;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_lyapunov_logistic;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_lyapunov_lorenz;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::handle::rssn_num_fractal_mandelbrot_escape_time;
 
     // crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json exports:
     pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_bifurcation_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_box_counting_dim_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_correlation_dim_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_henon_map_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_julia_escape_time_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_julia_set_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_logistic_map_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_lorenz_attractor_custom_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_lorenz_attractor_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_lyapunov_logistic_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_lyapunov_lorenz_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_mandelbrot_escape_time_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_mandelbrot_set_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_rossler_attractor_json;
-pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_tinkerbell_map_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_box_counting_dim_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_correlation_dim_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_henon_map_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_julia_escape_time_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_julia_set_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_logistic_map_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_lorenz_attractor_custom_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_lorenz_attractor_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_lyapunov_logistic_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_lyapunov_lorenz_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_mandelbrot_escape_time_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_mandelbrot_set_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_rossler_attractor_json;
+    pub use crate::ffi_apis::numerical_fractal_geometry_and_chaos_ffi::json::rssn_num_fractal_tinkerbell_map_json;
 
     // crate::ffi_apis::numerical_functional_analysis_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_functional_analysis_ffi::bincode_api::rssn_num_fa_gram_schmidt_bincode;
-pub use crate::ffi_apis::numerical_functional_analysis_ffi::bincode_api::rssn_num_fa_inner_product_bincode;
-pub use crate::ffi_apis::numerical_functional_analysis_ffi::bincode_api::rssn_num_fa_l2_norm_bincode;
+    pub use crate::ffi_apis::numerical_functional_analysis_ffi::bincode_api::rssn_num_fa_inner_product_bincode;
+    pub use crate::ffi_apis::numerical_functional_analysis_ffi::bincode_api::rssn_num_fa_l2_norm_bincode;
 
     // crate::ffi_apis::numerical_functional_analysis_ffi::handle exports:
     pub use crate::ffi_apis::numerical_functional_analysis_ffi::handle::rssn_num_fa_infinity_norm;
-pub use crate::ffi_apis::numerical_functional_analysis_ffi::handle::rssn_num_fa_inner_product;
-pub use crate::ffi_apis::numerical_functional_analysis_ffi::handle::rssn_num_fa_l1_norm;
-pub use crate::ffi_apis::numerical_functional_analysis_ffi::handle::rssn_num_fa_l2_norm;
+    pub use crate::ffi_apis::numerical_functional_analysis_ffi::handle::rssn_num_fa_inner_product;
+    pub use crate::ffi_apis::numerical_functional_analysis_ffi::handle::rssn_num_fa_l1_norm;
+    pub use crate::ffi_apis::numerical_functional_analysis_ffi::handle::rssn_num_fa_l2_norm;
 
     // crate::ffi_apis::numerical_functional_analysis_ffi::json exports:
     pub use crate::ffi_apis::numerical_functional_analysis_ffi::json::rssn_num_fa_gram_schmidt_json;
-pub use crate::ffi_apis::numerical_functional_analysis_ffi::json::rssn_num_fa_inner_product_json;
-pub use crate::ffi_apis::numerical_functional_analysis_ffi::json::rssn_num_fa_l2_norm_json;
+    pub use crate::ffi_apis::numerical_functional_analysis_ffi::json::rssn_num_fa_inner_product_json;
+    pub use crate::ffi_apis::numerical_functional_analysis_ffi::json::rssn_num_fa_l2_norm_json;
 
     // crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_add_bincode;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_dot_bincode;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_inv_bincode;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_mul_bincode;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_norm_bincode;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_reverse_bincode;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_sub_bincode;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_wedge_bincode;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_dot_bincode;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_inv_bincode;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_mul_bincode;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_norm_bincode;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_reverse_bincode;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_sub_bincode;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::bincode_api::rssn_num_ga_wedge_bincode;
 
     // crate::ffi_apis::numerical_geometric_algebra_ffi::handle exports:
     pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_add;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_create;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_dot;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_free;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_get_components;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_inv;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_mul;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_norm;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_reverse;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_sub;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_wedge;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_create;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_dot;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_free;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_get_components;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_inv;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_mul;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_norm;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_reverse;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_sub;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::handle::rssn_num_ga_wedge;
 
     // crate::ffi_apis::numerical_geometric_algebra_ffi::json exports:
     pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_add_json;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_dot_json;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_inv_json;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_mul_json;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_norm_json;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_reverse_json;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_sub_json;
-pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_wedge_json;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_dot_json;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_inv_json;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_mul_json;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_norm_json;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_reverse_json;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_sub_json;
+    pub use crate::ffi_apis::numerical_geometric_algebra_ffi::json::rssn_num_ga_wedge_json;
 
     // crate::ffi_apis::numerical_graph_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_graph_ffi::bincode_api::rssn_num_graph_bfs_bincode;
-pub use crate::ffi_apis::numerical_graph_ffi::bincode_api::rssn_num_graph_connected_components_bincode;
-pub use crate::ffi_apis::numerical_graph_ffi::bincode_api::rssn_num_graph_dijkstra_bincode;
-pub use crate::ffi_apis::numerical_graph_ffi::bincode_api::rssn_num_graph_floyd_warshall_bincode;
-pub use crate::ffi_apis::numerical_graph_ffi::bincode_api::rssn_num_graph_minimum_spanning_tree_bincode;
-pub use crate::ffi_apis::numerical_graph_ffi::bincode_api::rssn_num_graph_page_rank_bincode;
+    pub use crate::ffi_apis::numerical_graph_ffi::bincode_api::rssn_num_graph_connected_components_bincode;
+    pub use crate::ffi_apis::numerical_graph_ffi::bincode_api::rssn_num_graph_dijkstra_bincode;
+    pub use crate::ffi_apis::numerical_graph_ffi::bincode_api::rssn_num_graph_floyd_warshall_bincode;
+    pub use crate::ffi_apis::numerical_graph_ffi::bincode_api::rssn_num_graph_minimum_spanning_tree_bincode;
+    pub use crate::ffi_apis::numerical_graph_ffi::bincode_api::rssn_num_graph_page_rank_bincode;
 
     // crate::ffi_apis::numerical_graph_ffi::handle exports:
     pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_add_edge;
-pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_bfs;
-pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_connected_components;
-pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_create;
-pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_dijkstra;
-pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_floyd_warshall;
-pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_free;
-pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_minimum_spanning_tree;
-pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_page_rank;
+    pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_bfs;
+    pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_connected_components;
+    pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_create;
+    pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_dijkstra;
+    pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_floyd_warshall;
+    pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_free;
+    pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_minimum_spanning_tree;
+    pub use crate::ffi_apis::numerical_graph_ffi::handle::rssn_num_graph_page_rank;
 
     // crate::ffi_apis::numerical_graph_ffi::json exports:
     pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_bfs_json;
-pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_connected_components_json;
-pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_dijkstra_json;
-pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_floyd_warshall_json;
-pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_minimum_spanning_tree_json;
-pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_page_rank_json;
+    pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_connected_components_json;
+    pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_dijkstra_json;
+    pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_floyd_warshall_json;
+    pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_minimum_spanning_tree_json;
+    pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_page_rank_json;
 
     // crate::ffi_apis::numerical_integrate_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_integrate_ffi::bincode_api::rssn_numerical_quadrature_bincode;
@@ -805,89 +803,89 @@ pub use crate::ffi_apis::numerical_graph_ffi::json::rssn_num_graph_page_rank_jso
 
     // crate::ffi_apis::numerical_interpolate_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_interpolate_ffi::bincode_api::rssn_num_b_spline_bincode;
-pub use crate::ffi_apis::numerical_interpolate_ffi::bincode_api::rssn_num_bezier_curve_bincode;
-pub use crate::ffi_apis::numerical_interpolate_ffi::bincode_api::rssn_num_cubic_spline_interpolation_bincode;
-pub use crate::ffi_apis::numerical_interpolate_ffi::bincode_api::rssn_num_lagrange_interpolation_bincode;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::bincode_api::rssn_num_bezier_curve_bincode;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::bincode_api::rssn_num_cubic_spline_interpolation_bincode;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::bincode_api::rssn_num_lagrange_interpolation_bincode;
 
     // crate::ffi_apis::numerical_interpolate_ffi::handle exports:
     pub use crate::ffi_apis::numerical_interpolate_ffi::handle::CubicSplineHandle;
-pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_b_spline;
-pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_bezier_curve;
-pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_cubic_spline_evaluate;
-pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_cubic_spline_free;
-pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_cubic_spline_interpolation;
-pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_lagrange_interpolation;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_b_spline;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_bezier_curve;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_cubic_spline_evaluate;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_cubic_spline_free;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_cubic_spline_interpolation;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::handle::rssn_num_lagrange_interpolation;
 
     // crate::ffi_apis::numerical_interpolate_ffi::json exports:
     pub use crate::ffi_apis::numerical_interpolate_ffi::json::rssn_num_b_spline_json;
-pub use crate::ffi_apis::numerical_interpolate_ffi::json::rssn_num_bezier_curve_json;
-pub use crate::ffi_apis::numerical_interpolate_ffi::json::rssn_num_cubic_spline_interpolation_json;
-pub use crate::ffi_apis::numerical_interpolate_ffi::json::rssn_num_lagrange_interpolation_json;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::json::rssn_num_bezier_curve_json;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::json::rssn_num_cubic_spline_interpolation_json;
+    pub use crate::ffi_apis::numerical_interpolate_ffi::json::rssn_num_lagrange_interpolation_json;
 
     // crate::ffi_apis::numerical_matrix_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_matrix_ffi::bincode_api::rssn_num_matrix_add_bincode;
-pub use crate::ffi_apis::numerical_matrix_ffi::bincode_api::rssn_num_matrix_mul_bincode;
+    pub use crate::ffi_apis::numerical_matrix_ffi::bincode_api::rssn_num_matrix_mul_bincode;
 
     // crate::ffi_apis::numerical_matrix_ffi::handle exports:
     pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_add;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_create;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_determinant;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_frobenius_norm;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_get_cols;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_get_data;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_get_rows;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_identity;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_inverse;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_is_identity;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_is_orthogonal;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_mul;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_rank;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_trace;
-pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_transpose;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_create;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_determinant;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_free;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_frobenius_norm;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_get_cols;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_get_data;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_get_rows;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_identity;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_inverse;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_is_identity;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_is_orthogonal;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_mul;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_rank;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_trace;
+    pub use crate::ffi_apis::numerical_matrix_ffi::handle::rssn_num_matrix_transpose;
 
     // crate::ffi_apis::numerical_matrix_ffi::json exports:
     pub use crate::ffi_apis::numerical_matrix_ffi::json::rssn_num_matrix_add_json;
-pub use crate::ffi_apis::numerical_matrix_ffi::json::rssn_num_matrix_det_json;
-pub use crate::ffi_apis::numerical_matrix_ffi::json::rssn_num_matrix_mul_json;
+    pub use crate::ffi_apis::numerical_matrix_ffi::json::rssn_num_matrix_det_json;
+    pub use crate::ffi_apis::numerical_matrix_ffi::json::rssn_num_matrix_mul_json;
 
     // crate::ffi_apis::numerical_multi_valued_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_multi_valued_ffi::bincode_api::rssn_num_mv_complex_log_k_bincode;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::bincode_api::rssn_num_mv_complex_pow_k_bincode;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::bincode_api::rssn_num_mv_complex_sqrt_k_bincode;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::bincode_api::rssn_num_mv_newton_method_complex_bincode;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::bincode_api::rssn_num_mv_complex_pow_k_bincode;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::bincode_api::rssn_num_mv_complex_sqrt_k_bincode;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::bincode_api::rssn_num_mv_newton_method_complex_bincode;
 
     // crate::ffi_apis::numerical_multi_valued_ffi::handle exports:
     pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_arccos_k;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_arcsin_k;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_arctan_k;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_log_k;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_nth_root_k;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_pow_k;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_sqrt_k;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_newton_method_complex;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_arcsin_k;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_arctan_k;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_log_k;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_nth_root_k;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_pow_k;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_complex_sqrt_k;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::handle::rssn_num_mv_newton_method_complex;
 
     // crate::ffi_apis::numerical_multi_valued_ffi::json exports:
     pub use crate::ffi_apis::numerical_multi_valued_ffi::json::rssn_num_mv_complex_log_k_json;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::json::rssn_num_mv_complex_pow_k_json;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::json::rssn_num_mv_complex_sqrt_k_json;
-pub use crate::ffi_apis::numerical_multi_valued_ffi::json::rssn_num_mv_newton_method_complex_json;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::json::rssn_num_mv_complex_pow_k_json;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::json::rssn_num_mv_complex_sqrt_k_json;
+    pub use crate::ffi_apis::numerical_multi_valued_ffi::json::rssn_num_mv_newton_method_complex_json;
 
     // crate::ffi_apis::numerical_number_theory_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_number_theory_ffi::bincode_api::rssn_num_nt_factorize_bincode;
 
     // crate::ffi_apis::numerical_number_theory_ffi::handle exports:
     pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_factorize;
-pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_gcd;
-pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_is_prime;
-pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_lcm;
-pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_mod_inverse;
-pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_mod_pow;
-pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_phi;
+    pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_gcd;
+    pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_is_prime;
+    pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_lcm;
+    pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_mod_inverse;
+    pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_mod_pow;
+    pub use crate::ffi_apis::numerical_number_theory_ffi::handle::rssn_num_nt_phi;
 
     // crate::ffi_apis::numerical_number_theory_ffi::json exports:
     pub use crate::ffi_apis::numerical_number_theory_ffi::json::rssn_num_nt_factorize_json;
-pub use crate::ffi_apis::numerical_number_theory_ffi::json::rssn_num_nt_mod_inverse_json;
+    pub use crate::ffi_apis::numerical_number_theory_ffi::json::rssn_num_nt_mod_inverse_json;
 
     // crate::ffi_apis::numerical_ode_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_ode_ffi::bincode_api::rssn_num_ode_solve_bincode;
@@ -903,232 +901,232 @@ pub use crate::ffi_apis::numerical_number_theory_ffi::json::rssn_num_nt_mod_inve
 
     // crate::ffi_apis::numerical_optimize_ffi::handle exports:
     pub use crate::ffi_apis::numerical_optimize_ffi::handle::FfiOptimizationResult;
-pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_drop_result_handle;
-pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_get_result_cost_handle;
-pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_get_result_iterations_handle;
-pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_get_result_param_handle;
-pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_get_result_param_len_handle;
-pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_rosenbrock_bfgs_handle;
-pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_rosenbrock_gd_handle;
-pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_sphere_gd_handle;
+    pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_drop_result_handle;
+    pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_get_result_cost_handle;
+    pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_get_result_iterations_handle;
+    pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_get_result_param_handle;
+    pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_get_result_param_len_handle;
+    pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_rosenbrock_bfgs_handle;
+    pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_rosenbrock_gd_handle;
+    pub use crate::ffi_apis::numerical_optimize_ffi::handle::numerical_optimize_sphere_gd_handle;
 
     // crate::ffi_apis::numerical_optimize_ffi::json exports:
     pub use crate::ffi_apis::numerical_optimize_ffi::json::numerical_optimize_free_json;
-pub use crate::ffi_apis::numerical_optimize_ffi::json::numerical_optimize_solve_json;
+    pub use crate::ffi_apis::numerical_optimize_ffi::json::numerical_optimize_solve_json;
 
     // crate::ffi_apis::numerical_physics_cfd_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_physics_cfd_ffi::bincode_api::rssn_num_cfd_cfl_number_bincode;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::bincode_api::rssn_num_cfd_reynolds_number_bincode;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::bincode_api::rssn_num_cfd_solve_advection_1d_bincode;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::bincode_api::rssn_num_cfd_reynolds_number_bincode;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::bincode_api::rssn_num_cfd_solve_advection_1d_bincode;
 
     // crate::ffi_apis::numerical_physics_cfd_ffi::handle exports:
     pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_air_kinematic_viscosity;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_air_prandtl_number;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_cfl_number;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_check_cfl_stability;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_diffusion_number;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_froude_number;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_mach_number;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_reynolds_number;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_water_kinematic_viscosity;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_water_prandtl_number;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_air_prandtl_number;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_cfl_number;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_check_cfl_stability;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_diffusion_number;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_froude_number;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_mach_number;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_reynolds_number;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_water_kinematic_viscosity;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::handle::rssn_num_cfd_water_prandtl_number;
 
     // crate::ffi_apis::numerical_physics_cfd_ffi::json exports:
     pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_air_properties_json;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_cfl_number_json;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_fluid_properties_json;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_reynolds_number_json;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_solve_advection_1d_json;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_solve_advection_diffusion_1d_json;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_solve_burgers_1d_json;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_solve_diffusion_1d_json;
-pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_water_properties_json;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_cfl_number_json;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_fluid_properties_json;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_reynolds_number_json;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_solve_advection_1d_json;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_solve_advection_diffusion_1d_json;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_solve_burgers_1d_json;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_solve_diffusion_1d_json;
+    pub use crate::ffi_apis::numerical_physics_cfd_ffi::json::rssn_num_cfd_water_properties_json;
 
     // crate::ffi_apis::numerical_physics_fea_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_physics_fea_ffi::bincode_api::rssn_num_fea_linear_element_1d_stiffness_bincode;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::bincode_api::rssn_num_fea_principal_stresses_bincode;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::bincode_api::rssn_num_fea_von_mises_stress_bincode;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::bincode_api::rssn_num_fea_principal_stresses_bincode;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::bincode_api::rssn_num_fea_von_mises_stress_bincode;
 
     // crate::ffi_apis::numerical_physics_fea_ffi::handle exports:
     pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_bulk_modulus;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_linear_element_1d_stiffness;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_material_aluminum_shear_modulus;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_material_copper_shear_modulus;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_material_steel_shear_modulus;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_max_shear_stress;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_principal_stresses;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_safety_factor_von_mises;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_shear_modulus;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_thermal_element_1d_conductivity;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_von_mises_stress;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_linear_element_1d_stiffness;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_material_aluminum_shear_modulus;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_material_copper_shear_modulus;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_material_steel_shear_modulus;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_max_shear_stress;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_principal_stresses;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_safety_factor_von_mises;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_shear_modulus;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_thermal_element_1d_conductivity;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::handle::rssn_num_fea_von_mises_stress;
 
     // crate::ffi_apis::numerical_physics_fea_ffi::json exports:
     pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_beam_element_2d_stiffness_json;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_create_rectangular_mesh_json;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_linear_element_1d_stiffness_json;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_material_properties_json;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_material_steel_json;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_principal_stresses_json;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_safety_factor_json;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_thermal_element_1d_conductivity_json;
-pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_von_mises_stress_json;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_create_rectangular_mesh_json;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_linear_element_1d_stiffness_json;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_material_properties_json;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_material_steel_json;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_principal_stresses_json;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_safety_factor_json;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_thermal_element_1d_conductivity_json;
+    pub use crate::ffi_apis::numerical_physics_fea_ffi::json::rssn_num_fea_von_mises_stress_json;
 
     // crate::ffi_apis::numerical_physics_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_coulomb_force_bincode;
-pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_hydrogen_energy_level_bincode;
-pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_ideal_gas_pressure_bincode;
-pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_lorentz_factor_bincode;
-pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_mass_energy_bincode;
-pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_quantum_harmonic_oscillator_energy_bincode;
-pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_simple_harmonic_oscillator_bincode;
+    pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_hydrogen_energy_level_bincode;
+    pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_ideal_gas_pressure_bincode;
+    pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_lorentz_factor_bincode;
+    pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_mass_energy_bincode;
+    pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_quantum_harmonic_oscillator_energy_bincode;
+    pub use crate::ffi_apis::numerical_physics_ffi::bincode_api::rssn_num_physics_simple_harmonic_oscillator_bincode;
 
     // crate::ffi_apis::numerical_physics_ffi::handle exports:
     pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_blackbody_power;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_boltzmann_constant;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_compton_wavelength;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_coulomb_force;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_cyclotron_radius;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_damped_harmonic_oscillator;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_de_broglie_wavelength;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_electric_field_point_charge;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_electric_potential_point_charge;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_electron_mass;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_elementary_charge;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_gravitational_constant;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_hydrogen_energy_level;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_ideal_gas_pressure;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_ideal_gas_temperature;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_ideal_gas_volume;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_length_contraction;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_lorentz_factor;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_lorentz_force;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_magnetic_field_infinite_wire;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_mass_energy;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_maxwell_boltzmann_mean_speed;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_maxwell_boltzmann_rms_speed;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_maxwell_boltzmann_speed_distribution;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_photon_energy;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_photon_wavelength;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_planck_constant;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_quantum_harmonic_oscillator_energy;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_relativistic_kinetic_energy;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_relativistic_momentum;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_relativistic_velocity_addition;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_simple_harmonic_oscillator;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_speed_of_light;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_time_dilation;
-pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_wien_displacement_wavelength;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_boltzmann_constant;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_compton_wavelength;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_coulomb_force;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_cyclotron_radius;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_damped_harmonic_oscillator;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_de_broglie_wavelength;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_electric_field_point_charge;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_electric_potential_point_charge;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_electron_mass;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_elementary_charge;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_gravitational_constant;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_hydrogen_energy_level;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_ideal_gas_pressure;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_ideal_gas_temperature;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_ideal_gas_volume;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_length_contraction;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_lorentz_factor;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_lorentz_force;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_magnetic_field_infinite_wire;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_mass_energy;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_maxwell_boltzmann_mean_speed;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_maxwell_boltzmann_rms_speed;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_maxwell_boltzmann_speed_distribution;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_photon_energy;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_photon_wavelength;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_planck_constant;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_quantum_harmonic_oscillator_energy;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_relativistic_kinetic_energy;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_relativistic_momentum;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_relativistic_velocity_addition;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_simple_harmonic_oscillator;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_speed_of_light;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_time_dilation;
+    pub use crate::ffi_apis::numerical_physics_ffi::handle::rssn_num_physics_wien_displacement_wavelength;
 
     // crate::ffi_apis::numerical_physics_ffi::json exports:
     pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_blackbody_power_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_coulomb_force_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_damped_harmonic_oscillator_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_de_broglie_wavelength_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_electric_field_point_charge_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_hydrogen_energy_level_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_ideal_gas_pressure_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_lorentz_factor_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_mass_energy_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_maxwell_boltzmann_mean_speed_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_photon_energy_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_photon_wavelength_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_quantum_harmonic_oscillator_energy_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_relativistic_velocity_addition_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_simple_harmonic_oscillator_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_time_dilation_json;
-pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_wien_displacement_wavelength_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_coulomb_force_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_damped_harmonic_oscillator_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_de_broglie_wavelength_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_electric_field_point_charge_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_hydrogen_energy_level_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_ideal_gas_pressure_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_lorentz_factor_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_mass_energy_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_maxwell_boltzmann_mean_speed_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_photon_energy_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_photon_wavelength_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_quantum_harmonic_oscillator_energy_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_relativistic_velocity_addition_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_simple_harmonic_oscillator_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_time_dilation_json;
+    pub use crate::ffi_apis::numerical_physics_ffi::json::rssn_num_physics_wien_displacement_wavelength_json;
 
     // crate::ffi_apis::numerical_physics_md_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_physics_md_ffi::bincode_api::rssn_num_md_apply_pbc_bincode;
-pub use crate::ffi_apis::numerical_physics_md_ffi::bincode_api::rssn_num_md_lennard_jones_bincode;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::bincode_api::rssn_num_md_lennard_jones_bincode;
 
     // crate::ffi_apis::numerical_physics_md_ffi::handle exports:
     pub use crate::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_apply_pbc_1d;
-pub use crate::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_avogadro_number;
-pub use crate::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_boltzmann_constant_si;
-pub use crate::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_cfl_check;
-pub use crate::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_minimum_image_1d;
-pub use crate::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_temperature_unit_argon;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_avogadro_number;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_boltzmann_constant_si;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_cfl_check;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_minimum_image_1d;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::handle::rssn_num_md_temperature_unit_argon;
 
     // crate::ffi_apis::numerical_physics_md_ffi::json exports:
     pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_apply_pbc_json;
-pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_create_cubic_lattice_json;
-pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_harmonic_json;
-pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_lennard_jones_json;
-pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_minimum_image_json;
-pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_morse_json;
-pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_system_properties_json;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_create_cubic_lattice_json;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_harmonic_json;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_lennard_jones_json;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_minimum_image_json;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_morse_json;
+    pub use crate::ffi_apis::numerical_physics_md_ffi::json::rssn_num_md_system_properties_json;
 
     // crate::ffi_apis::numerical_polynomial_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_polynomial_ffi::bincode_api::rssn_num_poly_add_bincode;
 
     // crate::ffi_apis::numerical_polynomial_ffi::handle exports:
     pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_add;
-pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_create;
-pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_degree;
-pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_derivative;
-pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_eval;
-pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_free;
-pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_integral;
-pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_mul;
-pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_sub;
+    pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_create;
+    pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_degree;
+    pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_derivative;
+    pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_eval;
+    pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_free;
+    pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_integral;
+    pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_mul;
+    pub use crate::ffi_apis::numerical_polynomial_ffi::handle::rssn_num_poly_sub;
 
     // crate::ffi_apis::numerical_polynomial_ffi::json exports:
     pub use crate::ffi_apis::numerical_polynomial_ffi::json::rssn_num_poly_add_json;
-pub use crate::ffi_apis::numerical_polynomial_ffi::json::rssn_num_poly_mul_json;
+    pub use crate::ffi_apis::numerical_polynomial_ffi::json::rssn_num_poly_mul_json;
 
     // crate::ffi_apis::numerical_real_roots_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_real_roots_ffi::bincode_api::rssn_real_roots_find_roots_bincode;
 
     // crate::ffi_apis::numerical_real_roots_ffi::handle exports:
     pub use crate::ffi_apis::numerical_real_roots_ffi::handle::rssn_real_roots_find_roots;
-pub use crate::ffi_apis::numerical_real_roots_ffi::handle::rssn_real_roots_free_vec;
-pub use crate::ffi_apis::numerical_real_roots_ffi::handle::rssn_real_roots_get_vec_data;
-pub use crate::ffi_apis::numerical_real_roots_ffi::handle::rssn_real_roots_get_vec_len;
+    pub use crate::ffi_apis::numerical_real_roots_ffi::handle::rssn_real_roots_free_vec;
+    pub use crate::ffi_apis::numerical_real_roots_ffi::handle::rssn_real_roots_get_vec_data;
+    pub use crate::ffi_apis::numerical_real_roots_ffi::handle::rssn_real_roots_get_vec_len;
 
     // crate::ffi_apis::numerical_real_roots_ffi::json exports:
     pub use crate::ffi_apis::numerical_real_roots_ffi::json::rssn_real_roots_find_roots_json;
 
     // crate::ffi_apis::numerical_series_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_series_ffi::bincode_api::rssn_numerical_sum_series_bincode;
-pub use crate::ffi_apis::numerical_series_ffi::bincode_api::rssn_numerical_taylor_coefficients_bincode;
+    pub use crate::ffi_apis::numerical_series_ffi::bincode_api::rssn_numerical_taylor_coefficients_bincode;
 
     // crate::ffi_apis::numerical_series_ffi::handle exports:
     pub use crate::ffi_apis::numerical_series_ffi::handle::rssn_numerical_evaluate_power_series;
-pub use crate::ffi_apis::numerical_series_ffi::handle::rssn_numerical_sum_series;
-pub use crate::ffi_apis::numerical_series_ffi::handle::rssn_numerical_taylor_coefficients;
+    pub use crate::ffi_apis::numerical_series_ffi::handle::rssn_numerical_sum_series;
+    pub use crate::ffi_apis::numerical_series_ffi::handle::rssn_numerical_taylor_coefficients;
 
     // crate::ffi_apis::numerical_series_ffi::json exports:
     pub use crate::ffi_apis::numerical_series_ffi::json::rssn_numerical_sum_series_json;
-pub use crate::ffi_apis::numerical_series_ffi::json::rssn_numerical_taylor_coefficients_json;
+    pub use crate::ffi_apis::numerical_series_ffi::json::rssn_numerical_taylor_coefficients_json;
 
     // crate::ffi_apis::numerical_signal_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_signal_ffi::bincode_api::rssn_num_signal_convolve_bincode;
-pub use crate::ffi_apis::numerical_signal_ffi::bincode_api::rssn_num_signal_cross_correlation_bincode;
-pub use crate::ffi_apis::numerical_signal_ffi::bincode_api::rssn_num_signal_fft_bincode;
+    pub use crate::ffi_apis::numerical_signal_ffi::bincode_api::rssn_num_signal_cross_correlation_bincode;
+    pub use crate::ffi_apis::numerical_signal_ffi::bincode_api::rssn_num_signal_fft_bincode;
 
     // crate::ffi_apis::numerical_signal_ffi::handle exports:
     pub use crate::ffi_apis::numerical_signal_ffi::handle::rssn_num_signal_convolve;
-pub use crate::ffi_apis::numerical_signal_ffi::handle::rssn_num_signal_cross_correlation;
-pub use crate::ffi_apis::numerical_signal_ffi::handle::rssn_num_signal_fft;
-pub use crate::ffi_apis::numerical_signal_ffi::handle::rssn_num_signal_hamming_window;
-pub use crate::ffi_apis::numerical_signal_ffi::handle::rssn_num_signal_hann_window;
+    pub use crate::ffi_apis::numerical_signal_ffi::handle::rssn_num_signal_cross_correlation;
+    pub use crate::ffi_apis::numerical_signal_ffi::handle::rssn_num_signal_fft;
+    pub use crate::ffi_apis::numerical_signal_ffi::handle::rssn_num_signal_hamming_window;
+    pub use crate::ffi_apis::numerical_signal_ffi::handle::rssn_num_signal_hann_window;
 
     // crate::ffi_apis::numerical_signal_ffi::json exports:
     pub use crate::ffi_apis::numerical_signal_ffi::json::rssn_num_signal_convolve_json;
-pub use crate::ffi_apis::numerical_signal_ffi::json::rssn_num_signal_cross_correlation_json;
-pub use crate::ffi_apis::numerical_signal_ffi::json::rssn_num_signal_fft_json;
+    pub use crate::ffi_apis::numerical_signal_ffi::json::rssn_num_signal_cross_correlation_json;
+    pub use crate::ffi_apis::numerical_signal_ffi::json::rssn_num_signal_fft_json;
 
     // crate::ffi_apis::numerical_solve_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_solve_ffi::bincode_api::rssn_solve_linear_system_bincode;
 
     // crate::ffi_apis::numerical_solve_ffi::handle exports:
     pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_free_solution;
-pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_get_unique_solution;
-pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_get_unique_solution_len;
-pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_is_no_solution;
-pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_is_unique;
-pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_linear_system_handle;
+    pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_get_unique_solution;
+    pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_get_unique_solution_len;
+    pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_is_no_solution;
+    pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_is_unique;
+    pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_linear_system_handle;
 
     // crate::ffi_apis::numerical_solve_ffi::json exports:
     pub use crate::ffi_apis::numerical_solve_ffi::json::rssn_solve_linear_system_json;
@@ -1138,240 +1136,240 @@ pub use crate::ffi_apis::numerical_solve_ffi::handle::rssn_num_solve_linear_syst
 
     // crate::ffi_apis::numerical_sparse_ffi::handle exports:
     pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_create;
-pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_free;
-pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_frobenius_norm;
-pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_get_cols;
-pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_get_nnz;
-pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_get_rows;
-pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_spmv;
-pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_trace;
+    pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_free;
+    pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_frobenius_norm;
+    pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_get_cols;
+    pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_get_nnz;
+    pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_get_rows;
+    pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_spmv;
+    pub use crate::ffi_apis::numerical_sparse_ffi::handle::rssn_num_sparse_trace;
 
     // crate::ffi_apis::numerical_sparse_ffi::json exports:
     pub use crate::ffi_apis::numerical_sparse_ffi::json::rssn_num_sparse_solve_cg_json;
-pub use crate::ffi_apis::numerical_sparse_ffi::json::rssn_num_sparse_spmv_json;
+    pub use crate::ffi_apis::numerical_sparse_ffi::json::rssn_num_sparse_spmv_json;
 
     // crate::ffi_apis::numerical_special_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_bessel_j0_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_bessel_j1_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_beta_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_binomial_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_chebyshev_t_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_digamma_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_erf_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_erfc_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_factorial_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_gamma_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_hermite_h_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_legendre_p_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_ln_gamma_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_regularized_beta_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_sigmoid_bincode;
-pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_sinc_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_bessel_j1_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_beta_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_binomial_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_chebyshev_t_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_digamma_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_erf_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_erfc_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_factorial_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_gamma_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_hermite_h_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_legendre_p_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_ln_gamma_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_regularized_beta_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_sigmoid_bincode;
+    pub use crate::ffi_apis::numerical_special_ffi::bincode_api::rssn_num_special_sinc_bincode;
 
     // crate::ffi_apis::numerical_special_ffi::handle exports:
     pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_bessel_i0;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_bessel_i1;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_bessel_j0;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_bessel_j1;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_bessel_y0;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_bessel_y1;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_beta;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_binomial;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_chebyshev_t;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_chebyshev_u;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_digamma;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_double_factorial;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_erf;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_erfc;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_factorial;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_gamma;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_hermite_h;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_inverse_erf;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_laguerre_l;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_legendre_p;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_ln_beta;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_ln_gamma;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_logit;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_lower_incomplete_gamma;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_regularized_beta;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_sigmoid;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_sinc;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_softplus;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_upper_incomplete_gamma;
-pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_zeta;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_bessel_i1;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_bessel_j0;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_bessel_j1;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_bessel_y0;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_bessel_y1;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_beta;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_binomial;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_chebyshev_t;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_chebyshev_u;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_digamma;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_double_factorial;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_erf;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_erfc;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_factorial;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_gamma;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_hermite_h;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_inverse_erf;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_laguerre_l;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_legendre_p;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_ln_beta;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_ln_gamma;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_logit;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_lower_incomplete_gamma;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_regularized_beta;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_sigmoid;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_sinc;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_softplus;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_upper_incomplete_gamma;
+    pub use crate::ffi_apis::numerical_special_ffi::handle::rssn_num_special_zeta;
 
     // crate::ffi_apis::numerical_special_ffi::json exports:
     pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_bessel_j0_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_bessel_j1_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_beta_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_binomial_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_chebyshev_t_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_digamma_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_erf_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_erfc_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_factorial_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_gamma_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_hermite_h_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_legendre_p_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_ln_gamma_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_regularized_beta_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_sigmoid_json;
-pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_sinc_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_bessel_j1_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_beta_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_binomial_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_chebyshev_t_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_digamma_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_erf_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_erfc_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_factorial_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_gamma_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_hermite_h_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_legendre_p_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_ln_gamma_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_regularized_beta_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_sigmoid_json;
+    pub use crate::ffi_apis::numerical_special_ffi::json::rssn_num_special_sinc_json;
 
     // crate::ffi_apis::numerical_stats_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_chi_squared_test_bincode;
-pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_correlation_bincode;
-pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_covariance_bincode;
-pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_linear_regression_bincode;
-pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_mean_bincode;
-pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_shannon_entropy_bincode;
-pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_std_dev_bincode;
-pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_two_sample_t_test_bincode;
-pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_variance_bincode;
-pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_welch_t_test_bincode;
-pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_z_scores_bincode;
+    pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_correlation_bincode;
+    pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_covariance_bincode;
+    pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_linear_regression_bincode;
+    pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_mean_bincode;
+    pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_shannon_entropy_bincode;
+    pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_std_dev_bincode;
+    pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_two_sample_t_test_bincode;
+    pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_variance_bincode;
+    pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_welch_t_test_bincode;
+    pub use crate::ffi_apis::numerical_stats_ffi::bincode_api::rssn_num_stats_z_scores_bincode;
 
     // crate::ffi_apis::numerical_stats_ffi::handle exports:
     pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_chi_squared_test;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_correlation;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_covariance;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_cv;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_geometric_mean;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_harmonic_mean;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_linear_regression;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_mean;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_range;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_shannon_entropy;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_standard_error;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_std_dev;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_two_sample_t_test;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_variance;
-pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_welch_t_test;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_correlation;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_covariance;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_cv;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_geometric_mean;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_harmonic_mean;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_linear_regression;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_mean;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_range;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_shannon_entropy;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_standard_error;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_std_dev;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_two_sample_t_test;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_variance;
+    pub use crate::ffi_apis::numerical_stats_ffi::handle::rssn_num_stats_welch_t_test;
 
     // crate::ffi_apis::numerical_stats_ffi::json exports:
     pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_chi_squared_test_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_correlation_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_covariance_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_geometric_mean_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_harmonic_mean_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_linear_regression_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_mean_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_shannon_entropy_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_std_dev_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_two_sample_t_test_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_variance_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_welch_t_test_json;
-pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_z_scores_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_correlation_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_covariance_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_geometric_mean_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_harmonic_mean_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_linear_regression_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_mean_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_shannon_entropy_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_std_dev_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_two_sample_t_test_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_variance_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_welch_t_test_json;
+    pub use crate::ffi_apis::numerical_stats_ffi::json::rssn_num_stats_z_scores_json;
 
     // crate::ffi_apis::numerical_tensor_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_tensor_ffi::bincode_api::rssn_num_tensor_tensordot_bincode;
 
     // crate::ffi_apis::numerical_tensor_ffi::handle exports:
     pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_create;
-pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_free;
-pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_get_ndim;
-pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_get_shape;
-pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_norm;
-pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_outer_product;
-pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_tensordot;
+    pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_free;
+    pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_get_ndim;
+    pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_get_shape;
+    pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_norm;
+    pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_outer_product;
+    pub use crate::ffi_apis::numerical_tensor_ffi::handle::rssn_num_tensor_tensordot;
 
     // crate::ffi_apis::numerical_tensor_ffi::json exports:
     pub use crate::ffi_apis::numerical_tensor_ffi::json::rssn_num_tensor_outer_product_json;
-pub use crate::ffi_apis::numerical_tensor_ffi::json::rssn_num_tensor_tensordot_json;
+    pub use crate::ffi_apis::numerical_tensor_ffi::json::rssn_num_tensor_tensordot_json;
 
     // crate::ffi_apis::numerical_topology_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_topology_ffi::bincode_api::rssn_num_topology_betti_numbers_bincode;
-pub use crate::ffi_apis::numerical_topology_ffi::bincode_api::rssn_num_topology_persistence_bincode;
+    pub use crate::ffi_apis::numerical_topology_ffi::bincode_api::rssn_num_topology_persistence_bincode;
 
     // crate::ffi_apis::numerical_topology_ffi::handle exports:
     pub use crate::ffi_apis::numerical_topology_ffi::handle::rssn_num_topology_betti_numbers;
-pub use crate::ffi_apis::numerical_topology_ffi::handle::rssn_num_topology_euclidean_distance;
-pub use crate::ffi_apis::numerical_topology_ffi::handle::rssn_num_topology_find_connected_components;
+    pub use crate::ffi_apis::numerical_topology_ffi::handle::rssn_num_topology_euclidean_distance;
+    pub use crate::ffi_apis::numerical_topology_ffi::handle::rssn_num_topology_find_connected_components;
 
     // crate::ffi_apis::numerical_topology_ffi::json exports:
     pub use crate::ffi_apis::numerical_topology_ffi::json::rssn_num_topology_betti_numbers_json;
-pub use crate::ffi_apis::numerical_topology_ffi::json::rssn_num_topology_persistence_json;
+    pub use crate::ffi_apis::numerical_topology_ffi::json::rssn_num_topology_persistence_json;
 
     // crate::ffi_apis::numerical_transforms_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_transforms_ffi::bincode_api::rssn_num_fft_bincode;
-pub use crate::ffi_apis::numerical_transforms_ffi::bincode_api::rssn_num_ifft_bincode;
+    pub use crate::ffi_apis::numerical_transforms_ffi::bincode_api::rssn_num_ifft_bincode;
 
     // crate::ffi_apis::numerical_transforms_ffi::handle exports:
     pub use crate::ffi_apis::numerical_transforms_ffi::handle::rssn_num_fft_inplace;
-pub use crate::ffi_apis::numerical_transforms_ffi::handle::rssn_num_ifft_inplace;
+    pub use crate::ffi_apis::numerical_transforms_ffi::handle::rssn_num_ifft_inplace;
 
     // crate::ffi_apis::numerical_transforms_ffi::json exports:
     pub use crate::ffi_apis::numerical_transforms_ffi::json::rssn_num_fft_json;
-pub use crate::ffi_apis::numerical_transforms_ffi::json::rssn_num_ifft_json;
+    pub use crate::ffi_apis::numerical_transforms_ffi::json::rssn_num_ifft_json;
 
     // crate::ffi_apis::numerical_vector_calculus_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_vector_calculus_ffi::bincode_api::rssn_num_vector_calculus_curl_bincode;
-pub use crate::ffi_apis::numerical_vector_calculus_ffi::bincode_api::rssn_num_vector_calculus_divergence_bincode;
-pub use crate::ffi_apis::numerical_vector_calculus_ffi::bincode_api::rssn_num_vector_calculus_laplacian_bincode;
+    pub use crate::ffi_apis::numerical_vector_calculus_ffi::bincode_api::rssn_num_vector_calculus_divergence_bincode;
+    pub use crate::ffi_apis::numerical_vector_calculus_ffi::bincode_api::rssn_num_vector_calculus_laplacian_bincode;
 
     // crate::ffi_apis::numerical_vector_calculus_ffi::handle exports:
     pub use crate::ffi_apis::numerical_vector_calculus_ffi::handle::rssn_num_vector_calculus_curl;
-pub use crate::ffi_apis::numerical_vector_calculus_ffi::handle::rssn_num_vector_calculus_directional_derivative;
-pub use crate::ffi_apis::numerical_vector_calculus_ffi::handle::rssn_num_vector_calculus_divergence;
-pub use crate::ffi_apis::numerical_vector_calculus_ffi::handle::rssn_num_vector_calculus_laplacian;
+    pub use crate::ffi_apis::numerical_vector_calculus_ffi::handle::rssn_num_vector_calculus_directional_derivative;
+    pub use crate::ffi_apis::numerical_vector_calculus_ffi::handle::rssn_num_vector_calculus_divergence;
+    pub use crate::ffi_apis::numerical_vector_calculus_ffi::handle::rssn_num_vector_calculus_laplacian;
 
     // crate::ffi_apis::numerical_vector_calculus_ffi::json exports:
     pub use crate::ffi_apis::numerical_vector_calculus_ffi::json::rssn_num_vector_calculus_curl_json;
-pub use crate::ffi_apis::numerical_vector_calculus_ffi::json::rssn_num_vector_calculus_divergence_json;
-pub use crate::ffi_apis::numerical_vector_calculus_ffi::json::rssn_num_vector_calculus_laplacian_json;
+    pub use crate::ffi_apis::numerical_vector_calculus_ffi::json::rssn_num_vector_calculus_divergence_json;
+    pub use crate::ffi_apis::numerical_vector_calculus_ffi::json::rssn_num_vector_calculus_laplacian_json;
 
     // crate::ffi_apis::numerical_vector_ffi::bincode_api exports:
     pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_add_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_angle_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_cosine_similarity_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_cross_product_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_distance_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_dot_product_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_is_orthogonal_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_is_parallel_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_lerp_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_lp_norm_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_norm_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_normalize_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_project_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_reflect_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_scalar_mul_bincode;
-pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_sub_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_angle_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_cosine_similarity_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_cross_product_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_distance_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_dot_product_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_is_orthogonal_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_is_parallel_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_lerp_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_lp_norm_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_norm_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_normalize_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_project_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_reflect_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_scalar_mul_bincode;
+    pub use crate::ffi_apis::numerical_vector_ffi::bincode_api::rssn_vec_sub_bincode;
 
     // crate::ffi_apis::numerical_vector_ffi::handle exports:
     pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_add;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_angle;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_create;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_cross_product;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_data;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_dot_product;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_free;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_len;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_lp_norm;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_norm;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_normalize;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_project;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_reflect;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_scalar_mul;
-pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_sub;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_angle;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_create;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_cross_product;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_data;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_dot_product;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_free;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_len;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_lp_norm;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_norm;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_normalize;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_project;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_reflect;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_scalar_mul;
+    pub use crate::ffi_apis::numerical_vector_ffi::handle::rssn_num_vec_sub;
 
     // crate::ffi_apis::numerical_vector_ffi::json exports:
     pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_add_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_angle_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_cosine_similarity_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_cross_product_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_distance_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_dot_product_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_is_orthogonal_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_is_parallel_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_lerp_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_lp_norm_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_norm_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_normalize_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_project_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_reflect_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_scalar_mul_json;
-pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_sub_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_angle_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_cosine_similarity_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_cross_product_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_distance_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_dot_product_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_is_orthogonal_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_is_parallel_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_lerp_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_lp_norm_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_norm_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_normalize_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_project_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_reflect_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_scalar_mul_json;
+    pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_sub_json;
 
     // crate::ffi_apis::physics_bem_ffi::bincode_api exports:
     pub use crate::ffi_apis::physics_bem_ffi::bincode_api::rssn_physics_bem_solve_laplace_2d_bincode;
@@ -1387,7 +1385,7 @@ pub use crate::ffi_apis::numerical_vector_ffi::json::rssn_vec_sub_json;
 
     // crate::ffi_apis::physics_cnm_ffi::handle exports:
     pub use crate::ffi_apis::physics_cnm_ffi::handle::rssn_free_f64_cnm_array;
-pub use crate::ffi_apis::physics_cnm_ffi::handle::rssn_physics_cnm_solve_heat_1d;
+    pub use crate::ffi_apis::physics_cnm_ffi::handle::rssn_physics_cnm_solve_heat_1d;
 
     // crate::ffi_apis::physics_cnm_ffi::json exports:
     pub use crate::ffi_apis::physics_cnm_ffi::json::rssn_physics_cnm_solve_heat_2d_json;
@@ -1397,8 +1395,8 @@ pub use crate::ffi_apis::physics_cnm_ffi::handle::rssn_physics_cnm_solve_heat_1d
 
     // crate::ffi_apis::physics_em_ffi::handle exports:
     pub use crate::ffi_apis::physics_em_ffi::handle::rssn_physics_em_simulate_gravity_semi_implicit;
-pub use crate::ffi_apis::physics_em_ffi::handle::rssn_physics_em_simulate_oscillator_forward;
-pub use crate::ffi_apis::physics_em_ffi::handle::rssn_physics_em_simulate_stiff_decay_backward;
+    pub use crate::ffi_apis::physics_em_ffi::handle::rssn_physics_em_simulate_oscillator_forward;
+    pub use crate::ffi_apis::physics_em_ffi::handle::rssn_physics_em_simulate_stiff_decay_backward;
 
     // crate::ffi_apis::physics_em_ffi::json exports:
     pub use crate::ffi_apis::physics_em_ffi::json::rssn_physics_em_solve_json;
@@ -1408,24 +1406,24 @@ pub use crate::ffi_apis::physics_em_ffi::handle::rssn_physics_em_simulate_stiff_
 
     // crate::ffi_apis::physics_fdm_ffi::handle exports:
     pub use crate::ffi_apis::physics_fdm_ffi::handle::rssn_physics_fdm_grid_data;
-pub use crate::ffi_apis::physics_fdm_ffi::handle::rssn_physics_fdm_grid_free;
-pub use crate::ffi_apis::physics_fdm_ffi::handle::rssn_physics_fdm_grid_len;
-pub use crate::ffi_apis::physics_fdm_ffi::handle::rssn_physics_fdm_grid_new;
-pub use crate::ffi_apis::physics_fdm_ffi::handle::rssn_physics_fdm_simulate_heat_2d;
-pub use crate::ffi_apis::physics_fdm_ffi::handle::rssn_physics_fdm_simulate_wave_2d;
+    pub use crate::ffi_apis::physics_fdm_ffi::handle::rssn_physics_fdm_grid_free;
+    pub use crate::ffi_apis::physics_fdm_ffi::handle::rssn_physics_fdm_grid_len;
+    pub use crate::ffi_apis::physics_fdm_ffi::handle::rssn_physics_fdm_grid_new;
+    pub use crate::ffi_apis::physics_fdm_ffi::handle::rssn_physics_fdm_simulate_heat_2d;
+    pub use crate::ffi_apis::physics_fdm_ffi::handle::rssn_physics_fdm_simulate_wave_2d;
 
     // crate::ffi_apis::physics_fdm_ffi::json exports:
     pub use crate::ffi_apis::physics_fdm_ffi::json::rssn_physics_fdm_burgers_json;
-pub use crate::ffi_apis::physics_fdm_ffi::json::rssn_physics_fdm_heat_json;
-pub use crate::ffi_apis::physics_fdm_ffi::json::rssn_physics_fdm_poisson_json;
-pub use crate::ffi_apis::physics_fdm_ffi::json::rssn_physics_fdm_wave_json;
+    pub use crate::ffi_apis::physics_fdm_ffi::json::rssn_physics_fdm_heat_json;
+    pub use crate::ffi_apis::physics_fdm_ffi::json::rssn_physics_fdm_poisson_json;
+    pub use crate::ffi_apis::physics_fdm_ffi::json::rssn_physics_fdm_wave_json;
 
     // crate::ffi_apis::physics_fem_ffi::bincode_api exports:
     pub use crate::ffi_apis::physics_fem_ffi::bincode_api::rssn_physics_fem_solve_poisson_1d_bincode;
 
     // crate::ffi_apis::physics_fem_ffi::handle exports:
     pub use crate::ffi_apis::physics_fem_ffi::handle::rssn_free_f64_array;
-pub use crate::ffi_apis::physics_fem_ffi::handle::rssn_physics_fem_solve_poisson_1d;
+    pub use crate::ffi_apis::physics_fem_ffi::handle::rssn_physics_fem_solve_poisson_1d;
 
     // crate::ffi_apis::physics_fem_ffi::json exports:
     pub use crate::ffi_apis::physics_fem_ffi::json::rssn_physics_fem_solve_poisson_1d_json;
@@ -1435,56 +1433,56 @@ pub use crate::ffi_apis::physics_fem_ffi::handle::rssn_physics_fem_solve_poisson
 
     // crate::ffi_apis::physics_fvm_ffi::handle exports:
     pub use crate::ffi_apis::physics_fvm_ffi::handle::rssn_physics_fvm_mesh_data;
-pub use crate::ffi_apis::physics_fvm_ffi::handle::rssn_physics_fvm_mesh_free;
-pub use crate::ffi_apis::physics_fvm_ffi::handle::rssn_physics_fvm_mesh_new;
-pub use crate::ffi_apis::physics_fvm_ffi::handle::rssn_physics_fvm_simulate_advection_1d;
+    pub use crate::ffi_apis::physics_fvm_ffi::handle::rssn_physics_fvm_mesh_free;
+    pub use crate::ffi_apis::physics_fvm_ffi::handle::rssn_physics_fvm_mesh_new;
+    pub use crate::ffi_apis::physics_fvm_ffi::handle::rssn_physics_fvm_simulate_advection_1d;
 
     // crate::ffi_apis::physics_fvm_ffi::json exports:
     pub use crate::ffi_apis::physics_fvm_ffi::json::rssn_physics_fvm_advection_json;
-pub use crate::ffi_apis::physics_fvm_ffi::json::rssn_physics_fvm_swe_json;
+    pub use crate::ffi_apis::physics_fvm_ffi::json::rssn_physics_fvm_swe_json;
 
     // crate::ffi_apis::physics_mm_ffi::bincode_api exports:
     pub use crate::ffi_apis::physics_mm_ffi::bincode_api::rssn_physics_mm_sph_update_bincode;
 
     // crate::ffi_apis::physics_mm_ffi::handle exports:
     pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_simulate_dam_break;
-pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_add_particle;
-pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_create;
-pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_free;
-pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_get_particle_count;
-pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_get_positions;
-pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_update;
+    pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_add_particle;
+    pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_create;
+    pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_free;
+    pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_get_particle_count;
+    pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_get_positions;
+    pub use crate::ffi_apis::physics_mm_ffi::handle::rssn_physics_mm_sph_update;
 
     // crate::ffi_apis::physics_mm_ffi::json exports:
     pub use crate::ffi_apis::physics_mm_ffi::json::rssn_physics_mm_simulate_dam_break_json;
-pub use crate::ffi_apis::physics_mm_ffi::json::rssn_physics_mm_sph_update_json;
+    pub use crate::ffi_apis::physics_mm_ffi::json::rssn_physics_mm_sph_update_json;
 
     // crate::ffi_apis::physics_mtm_ffi::bincode_api exports:
     pub use crate::ffi_apis::physics_mtm_ffi::bincode_api::rssn_physics_mtm_solve_poisson_2d_bincode;
 
     // crate::ffi_apis::physics_mtm_ffi::handle exports:
     pub use crate::ffi_apis::physics_mtm_ffi::handle::rssn_free_f64_mtm_array;
-pub use crate::ffi_apis::physics_mtm_ffi::handle::rssn_physics_mtm_solve_poisson_1d;
-pub use crate::ffi_apis::physics_mtm_ffi::handle::rssn_physics_mtm_solve_poisson_2d;
+    pub use crate::ffi_apis::physics_mtm_ffi::handle::rssn_physics_mtm_solve_poisson_1d;
+    pub use crate::ffi_apis::physics_mtm_ffi::handle::rssn_physics_mtm_solve_poisson_2d;
 
     // crate::ffi_apis::physics_mtm_ffi::json exports:
     pub use crate::ffi_apis::physics_mtm_ffi::json::rssn_physics_mtm_solve_poisson_1d_json;
-pub use crate::ffi_apis::physics_mtm_ffi::json::rssn_physics_mtm_solve_poisson_2d_json;
+    pub use crate::ffi_apis::physics_mtm_ffi::json::rssn_physics_mtm_solve_poisson_2d_json;
 
     // crate::ffi_apis::physics_rkm_ffi::bincode_api exports:
     pub use crate::ffi_apis::physics_rkm_ffi::bincode_api::rssn_physics_rkm_lorenz_bincode;
 
     // crate::ffi_apis::physics_rkm_ffi::handle exports:
     pub use crate::ffi_apis::physics_rkm_ffi::handle::rssn_physics_rkm_simulate_damped_oscillator;
-pub use crate::ffi_apis::physics_rkm_ffi::handle::rssn_physics_rkm_simulate_lorenz;
-pub use crate::ffi_apis::physics_rkm_ffi::handle::rssn_physics_rkm_simulate_lotka_volterra;
-pub use crate::ffi_apis::physics_rkm_ffi::handle::rssn_physics_rkm_simulate_vanderpol;
+    pub use crate::ffi_apis::physics_rkm_ffi::handle::rssn_physics_rkm_simulate_lorenz;
+    pub use crate::ffi_apis::physics_rkm_ffi::handle::rssn_physics_rkm_simulate_lotka_volterra;
+    pub use crate::ffi_apis::physics_rkm_ffi::handle::rssn_physics_rkm_simulate_vanderpol;
 
     // crate::ffi_apis::physics_rkm_ffi::json exports:
     pub use crate::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_damped_oscillator_json;
-pub use crate::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_lorenz_json;
-pub use crate::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_lotka_volterra_json;
-pub use crate::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_vanderpol_json;
+    pub use crate::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_lorenz_json;
+    pub use crate::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_lotka_volterra_json;
+    pub use crate::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_vanderpol_json;
 
     // crate::ffi_apis::physics_sim_fdtd_ffi::bincode_api exports:
     pub use crate::ffi_apis::physics_sim_fdtd_ffi::bincode_api::rssn_physics_sim_fdtd_run_bincode;
@@ -1518,8 +1516,8 @@ pub use crate::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_vanderpol_json;
 
     // crate::ffi_apis::physics_sim_ising_ffi::handle exports:
     pub use crate::ffi_apis::physics_sim_ising_ffi::handle::IsingResultHandle;
-pub use crate::ffi_apis::physics_sim_ising_ffi::handle::rssn_physics_sim_ising_free_result;
-pub use crate::ffi_apis::physics_sim_ising_ffi::handle::rssn_physics_sim_ising_run;
+    pub use crate::ffi_apis::physics_sim_ising_ffi::handle::rssn_physics_sim_ising_free_result;
+    pub use crate::ffi_apis::physics_sim_ising_ffi::handle::rssn_physics_sim_ising_run;
 
     // crate::ffi_apis::physics_sim_ising_ffi::json exports:
     pub use crate::ffi_apis::physics_sim_ising_ffi::json::rssn_physics_sim_ising_run_json;
@@ -1538,8 +1536,8 @@ pub use crate::ffi_apis::physics_sim_ising_ffi::handle::rssn_physics_sim_ising_r
 
     // crate::ffi_apis::physics_sim_navier_stokes_ffi::handle exports:
     pub use crate::ffi_apis::physics_sim_navier_stokes_ffi::handle::NavierStokesResultHandles;
-pub use crate::ffi_apis::physics_sim_navier_stokes_ffi::handle::rssn_physics_sim_navier_stokes_free_results;
-pub use crate::ffi_apis::physics_sim_navier_stokes_ffi::handle::rssn_physics_sim_navier_stokes_run_lid_driven_cavity;
+    pub use crate::ffi_apis::physics_sim_navier_stokes_ffi::handle::rssn_physics_sim_navier_stokes_free_results;
+    pub use crate::ffi_apis::physics_sim_navier_stokes_ffi::handle::rssn_physics_sim_navier_stokes_run_lid_driven_cavity;
 
     // crate::ffi_apis::physics_sim_navier_stokes_ffi::json exports:
     pub use crate::ffi_apis::physics_sim_navier_stokes_ffi::json::rssn_physics_sim_navier_stokes_run_json;
@@ -1558,258 +1556,258 @@ pub use crate::ffi_apis::physics_sim_navier_stokes_ffi::handle::rssn_physics_sim
 
     // crate::ffi_apis::physics_sm_ffi::handle exports:
     pub use crate::ffi_apis::physics_sm_ffi::handle::rssn_physics_sm_simulate_1d_advection;
-pub use crate::ffi_apis::physics_sm_ffi::handle::rssn_physics_sm_simulate_2d_advection;
+    pub use crate::ffi_apis::physics_sm_ffi::handle::rssn_physics_sm_simulate_2d_advection;
 
     // crate::ffi_apis::physics_sm_ffi::json exports:
     pub use crate::ffi_apis::physics_sm_ffi::json::rssn_physics_sm_solve_advection_1d_json;
-pub use crate::ffi_apis::physics_sm_ffi::json::rssn_physics_sm_solve_advection_2d_json;
+    pub use crate::ffi_apis::physics_sm_ffi::json::rssn_physics_sm_solve_advection_2d_json;
 
     // crate::ffi_apis::symbolic_cad_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_cad_ffi::bincode_api::rssn_bincode_cad;
 
     // crate::ffi_apis::symbolic_cad_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_cad_ffi::handle::rssn_cad_get_cell_count;
-pub use crate::ffi_apis::symbolic_cad_ffi::handle::rssn_cad_handle;
-pub use crate::ffi_apis::symbolic_cad_ffi::handle::rssn_free_cad_handle;
+    pub use crate::ffi_apis::symbolic_cad_ffi::handle::rssn_cad_handle;
+    pub use crate::ffi_apis::symbolic_cad_ffi::handle::rssn_free_cad_handle;
 
     // crate::ffi_apis::symbolic_cad_ffi::json exports:
     pub use crate::ffi_apis::symbolic_cad_ffi::json::rssn_json_cad;
 
     // crate::ffi_apis::symbolic_calculus_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_calculate_residue;
-pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_check_analytic;
-pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_definite_integrate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_differentiate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_evaluate_at_point;
-pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_find_pole_order;
-pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_find_poles;
-pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_get_real_imag_parts;
-pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_integrate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_limit;
-pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_path_integrate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_substitute;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_check_analytic;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_definite_integrate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_differentiate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_evaluate_at_point;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_find_pole_order;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_find_poles;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_get_real_imag_parts;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_integrate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_limit;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_path_integrate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::bincode_api::rssn_bincode_substitute;
 
     // crate::ffi_apis::symbolic_calculus_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_calculate_residue;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_check_analytic;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_definite_integrate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_differentiate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_evaluate_at_point;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_find_pole_order;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_find_poles;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_free_poles;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_get_real_imag_parts;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_integrate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_limit;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_path_integrate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_poles_get;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_poles_len;
-pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_substitute;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_check_analytic;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_definite_integrate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_differentiate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_evaluate_at_point;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_find_pole_order;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_find_poles;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_free_poles;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_get_real_imag_parts;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_integrate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_limit;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_path_integrate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_poles_get;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_poles_len;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::handle::rssn_substitute;
 
     // crate::ffi_apis::symbolic_calculus_ffi::json exports:
     pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_calculate_residue;
-pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_check_analytic;
-pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_definite_integrate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_differentiate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_evaluate_at_point;
-pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_find_pole_order;
-pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_find_poles;
-pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_get_real_imag_parts;
-pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_integrate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_limit;
-pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_path_integrate;
-pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_substitute;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_check_analytic;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_definite_integrate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_differentiate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_evaluate_at_point;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_find_pole_order;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_find_poles;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_get_real_imag_parts;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_integrate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_limit;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_path_integrate;
+    pub use crate::ffi_apis::symbolic_calculus_ffi::json::rssn_json_substitute;
 
     // crate::ffi_apis::symbolic_calculus_of_variations_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::bincode_api::rssn_bincode_euler_lagrange;
-pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::bincode_api::rssn_bincode_hamiltons_principle;
-pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::bincode_api::rssn_bincode_solve_euler_lagrange;
+    pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::bincode_api::rssn_bincode_hamiltons_principle;
+    pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::bincode_api::rssn_bincode_solve_euler_lagrange;
 
     // crate::ffi_apis::symbolic_calculus_of_variations_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::handle::rssn_euler_lagrange;
-pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::handle::rssn_hamiltons_principle;
-pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::handle::rssn_solve_euler_lagrange;
+    pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::handle::rssn_hamiltons_principle;
+    pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::handle::rssn_solve_euler_lagrange;
 
     // crate::ffi_apis::symbolic_calculus_of_variations_ffi::json exports:
     pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::json::rssn_json_euler_lagrange;
-pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::json::rssn_json_hamiltons_principle;
-pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::json::rssn_json_solve_euler_lagrange;
+    pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::json::rssn_json_hamiltons_principle;
+    pub use crate::ffi_apis::symbolic_calculus_of_variations_ffi::json::rssn_json_solve_euler_lagrange;
 
     // crate::ffi_apis::symbolic_cas_foundations_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_cas_foundations_ffi::bincode_api::rssn_cas_expand_bincode;
-pub use crate::ffi_apis::symbolic_cas_foundations_ffi::bincode_api::rssn_cas_factorize_bincode;
-pub use crate::ffi_apis::symbolic_cas_foundations_ffi::bincode_api::rssn_cas_normalize_bincode;
-pub use crate::ffi_apis::symbolic_cas_foundations_ffi::bincode_api::rssn_cas_simplify_with_relations_bincode;
+    pub use crate::ffi_apis::symbolic_cas_foundations_ffi::bincode_api::rssn_cas_factorize_bincode;
+    pub use crate::ffi_apis::symbolic_cas_foundations_ffi::bincode_api::rssn_cas_normalize_bincode;
+    pub use crate::ffi_apis::symbolic_cas_foundations_ffi::bincode_api::rssn_cas_simplify_with_relations_bincode;
 
     // crate::ffi_apis::symbolic_cas_foundations_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_cas_foundations_ffi::handle::rssn_cas_expand;
-pub use crate::ffi_apis::symbolic_cas_foundations_ffi::handle::rssn_cas_factorize;
-pub use crate::ffi_apis::symbolic_cas_foundations_ffi::handle::rssn_cas_normalize;
-pub use crate::ffi_apis::symbolic_cas_foundations_ffi::handle::rssn_cas_simplify_with_relations;
+    pub use crate::ffi_apis::symbolic_cas_foundations_ffi::handle::rssn_cas_factorize;
+    pub use crate::ffi_apis::symbolic_cas_foundations_ffi::handle::rssn_cas_normalize;
+    pub use crate::ffi_apis::symbolic_cas_foundations_ffi::handle::rssn_cas_simplify_with_relations;
 
     // crate::ffi_apis::symbolic_cas_foundations_ffi::json exports:
     pub use crate::ffi_apis::symbolic_cas_foundations_ffi::json::rssn_cas_expand_json;
-pub use crate::ffi_apis::symbolic_cas_foundations_ffi::json::rssn_cas_factorize_json;
-pub use crate::ffi_apis::symbolic_cas_foundations_ffi::json::rssn_cas_normalize_json;
-pub use crate::ffi_apis::symbolic_cas_foundations_ffi::json::rssn_cas_simplify_with_relations_json;
+    pub use crate::ffi_apis::symbolic_cas_foundations_ffi::json::rssn_cas_factorize_json;
+    pub use crate::ffi_apis::symbolic_cas_foundations_ffi::json::rssn_cas_normalize_json;
+    pub use crate::ffi_apis::symbolic_cas_foundations_ffi::json::rssn_cas_simplify_with_relations_json;
 
     // crate::ffi_apis::symbolic_classical_mechanics_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::bincode_api::rssn_bincode_euler_lagrange_equation;
-pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::bincode_api::rssn_bincode_kinetic_energy;
+    pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::bincode_api::rssn_bincode_kinetic_energy;
 
     // crate::ffi_apis::symbolic_classical_mechanics_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_euler_lagrange_equation;
-pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_hamiltonian;
-pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_kinetic_energy;
-pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_lagrangian;
-pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_power;
-pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_torque;
-pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_work_line_integral;
+    pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_hamiltonian;
+    pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_kinetic_energy;
+    pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_lagrangian;
+    pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_power;
+    pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_torque;
+    pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::handle::rssn_work_line_integral;
 
     // crate::ffi_apis::symbolic_classical_mechanics_ffi::json exports:
     pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::json::rssn_json_euler_lagrange_equation;
-pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::json::rssn_json_kinetic_energy;
+    pub use crate::ffi_apis::symbolic_classical_mechanics_ffi::json::rssn_json_kinetic_energy;
 
     // crate::ffi_apis::symbolic_combinatorics_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_combinatorics_ffi::bincode_api::rssn_bincode_bell_number;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::bincode_api::rssn_bincode_catalan_number;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::bincode_api::rssn_bincode_combinations;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::bincode_api::rssn_bincode_permutations;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::bincode_api::rssn_bincode_stirling_number_second_kind;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::bincode_api::rssn_bincode_catalan_number;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::bincode_api::rssn_bincode_combinations;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::bincode_api::rssn_bincode_permutations;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::bincode_api::rssn_bincode_stirling_number_second_kind;
 
     // crate::ffi_apis::symbolic_combinatorics_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_combinatorics_ffi::handle::rssn_bell_number;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::handle::rssn_catalan_number;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::handle::rssn_combinations;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::handle::rssn_permutations;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::handle::rssn_stirling_number_second_kind;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::handle::rssn_catalan_number;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::handle::rssn_combinations;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::handle::rssn_permutations;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::handle::rssn_stirling_number_second_kind;
 
     // crate::ffi_apis::symbolic_combinatorics_ffi::json exports:
     pub use crate::ffi_apis::symbolic_combinatorics_ffi::json::rssn_json_bell_number;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::json::rssn_json_catalan_number;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::json::rssn_json_combinations;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::json::rssn_json_permutations;
-pub use crate::ffi_apis::symbolic_combinatorics_ffi::json::rssn_json_stirling_number_second_kind;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::json::rssn_json_catalan_number;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::json::rssn_json_combinations;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::json::rssn_json_permutations;
+    pub use crate::ffi_apis::symbolic_combinatorics_ffi::json::rssn_json_stirling_number_second_kind;
 
     // crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::calculate_residue_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::cauchy_derivative_formula_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::cauchy_integral_formula_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::classify_singularity_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::complex_arg_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::complex_distance_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::complex_exp_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::complex_log_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::complex_modulus_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::contour_integral_residue_theorem_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::estimate_radius_of_convergence_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::laurent_series_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::mobius_transformation_apply_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::mobius_transformation_compose_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::mobius_transformation_identity_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::mobius_transformation_inverse_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::mobius_transformation_new_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::path_continuation_continue_along_path_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::path_continuation_get_final_expression_bincode;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::path_continuation_new_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::cauchy_derivative_formula_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::cauchy_integral_formula_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::classify_singularity_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::complex_arg_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::complex_distance_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::complex_exp_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::complex_log_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::complex_modulus_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::contour_integral_residue_theorem_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::estimate_radius_of_convergence_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::laurent_series_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::mobius_transformation_apply_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::mobius_transformation_compose_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::mobius_transformation_identity_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::mobius_transformation_inverse_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::mobius_transformation_new_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::path_continuation_continue_along_path_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::path_continuation_get_final_expression_bincode;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::bincode_api::path_continuation_new_bincode;
 
     // crate::ffi_apis::symbolic_complex_analysis_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::calculate_residue;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::cauchy_derivative_formula;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::cauchy_integral_formula;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::classify_singularity;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::complex_arg;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::complex_distance;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::complex_exp;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::complex_log;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::complex_modulus;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::contour_integral_residue_theorem;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::estimate_radius_of_convergence;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::laurent_series;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::mobius_transformation_apply;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::mobius_transformation_compose;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::mobius_transformation_identity;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::mobius_transformation_inverse;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::mobius_transformation_new;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::path_continuation_continue_along_path;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::path_continuation_get_final_expression;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::path_continuation_new;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::cauchy_derivative_formula;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::cauchy_integral_formula;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::classify_singularity;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::complex_arg;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::complex_distance;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::complex_exp;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::complex_log;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::complex_modulus;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::contour_integral_residue_theorem;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::estimate_radius_of_convergence;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::laurent_series;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::mobius_transformation_apply;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::mobius_transformation_compose;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::mobius_transformation_identity;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::mobius_transformation_inverse;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::mobius_transformation_new;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::path_continuation_continue_along_path;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::path_continuation_get_final_expression;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::handle::path_continuation_new;
 
     // crate::ffi_apis::symbolic_complex_analysis_ffi::json exports:
     pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::calculate_residue_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::cauchy_derivative_formula_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::cauchy_integral_formula_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::classify_singularity_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::complex_arg_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::complex_distance_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::complex_exp_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::complex_log_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::complex_modulus_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::contour_integral_residue_theorem_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::estimate_radius_of_convergence_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::laurent_series_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::mobius_transformation_apply_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::mobius_transformation_compose_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::mobius_transformation_identity_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::mobius_transformation_inverse_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::mobius_transformation_new_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::path_continuation_continue_along_path_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::path_continuation_get_final_expression_json;
-pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::path_continuation_new_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::cauchy_derivative_formula_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::cauchy_integral_formula_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::classify_singularity_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::complex_arg_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::complex_distance_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::complex_exp_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::complex_log_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::complex_modulus_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::contour_integral_residue_theorem_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::estimate_radius_of_convergence_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::laurent_series_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::mobius_transformation_apply_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::mobius_transformation_compose_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::mobius_transformation_identity_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::mobius_transformation_inverse_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::mobius_transformation_new_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::path_continuation_continue_along_path_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::path_continuation_get_final_expression_json;
+    pub use crate::ffi_apis::symbolic_complex_analysis_ffi::json::path_continuation_new_json;
 
     // crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_reflection_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_reflection_3d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_rotation_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_rotation_3d_x;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_rotation_3d_y;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_rotation_3d_z;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_rotation_axis_angle;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_scaling_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_scaling_3d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_shear_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_translation_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_translation_3d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_reflection_3d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_rotation_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_rotation_3d_x;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_rotation_3d_y;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_rotation_3d_z;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_rotation_axis_angle;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_scaling_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_scaling_3d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_shear_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_translation_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::bincode_api::rssn_bincode_translation_3d;
 
     // crate::ffi_apis::symbolic_computer_graphics_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_bezier_curve_derivative;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_bezier_curve_evaluate;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_bezier_curve_free;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_bezier_curve_new;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_bezier_curve_split_left;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_bezier_curve_split_right;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_orthographic_projection;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_perspective_projection;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_polygon_mesh_free;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_polygon_mesh_new;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_polygon_mesh_triangulate;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_reflection_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_reflection_3d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_rotation_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_rotation_3d_x;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_rotation_3d_y;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_rotation_3d_z;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_rotation_axis_angle;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_scaling_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_scaling_3d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_shear_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_translation_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_translation_3d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_vector_free;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_bezier_curve_evaluate;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_bezier_curve_free;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_bezier_curve_new;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_bezier_curve_split_left;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_bezier_curve_split_right;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_orthographic_projection;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_perspective_projection;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_polygon_mesh_free;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_polygon_mesh_new;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_polygon_mesh_triangulate;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_reflection_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_reflection_3d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_rotation_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_rotation_3d_x;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_rotation_3d_y;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_rotation_3d_z;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_rotation_axis_angle;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_scaling_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_scaling_3d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_shear_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_translation_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_translation_3d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::handle::rssn_vector_free;
 
     // crate::ffi_apis::symbolic_computer_graphics_ffi::json exports:
     pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_reflection_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_reflection_3d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_rotation_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_rotation_3d_x;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_rotation_3d_y;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_rotation_3d_z;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_rotation_axis_angle;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_scaling_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_scaling_3d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_shear_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_translation_2d;
-pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_translation_3d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_reflection_3d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_rotation_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_rotation_3d_x;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_rotation_3d_y;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_rotation_3d_z;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_rotation_axis_angle;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_scaling_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_scaling_3d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_shear_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_translation_2d;
+    pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_translation_3d;
 
     // crate::ffi_apis::symbolic_convergence_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_convergence_ffi::bincode_api::rssn_bincode_analyze_convergence;
@@ -1822,783 +1820,783 @@ pub use crate::ffi_apis::symbolic_computer_graphics_ffi::json::rssn_json_transla
 
     // crate::ffi_apis::symbolic_coordinates_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_coordinates_get_metric_tensor;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_contravariant_vector;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_covariant_vector;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_curl;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_divergence;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_expression;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_gradient;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_point;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_contravariant_vector;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_covariant_vector;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_curl;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_divergence;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_expression;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_gradient;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::bincode_api::rssn_bincode_transform_point;
 
     // crate::ffi_apis::symbolic_coordinates_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_coordinates_get_metric_tensor_handle;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_contravariant_vector_handle;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_covariant_vector_handle;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_curl_handle;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_divergence_handle;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_expression_handle;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_gradient_handle;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_point_handle;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_contravariant_vector_handle;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_covariant_vector_handle;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_curl_handle;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_divergence_handle;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_expression_handle;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_gradient_handle;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::handle::rssn_transform_point_handle;
 
     // crate::ffi_apis::symbolic_coordinates_ffi::json exports:
     pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_coordinates_get_metric_tensor;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_contravariant_vector;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_covariant_vector;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_curl;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_divergence;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_expression;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_gradient;
-pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_point;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_contravariant_vector;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_covariant_vector;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_curl;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_divergence;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_expression;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_gradient;
+    pub use crate::ffi_apis::symbolic_coordinates_ffi::json::rssn_json_transform_point;
 
     // crate::ffi_apis::symbolic_cryptography_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_add;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_double;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_is_on_curve;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_negate;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_point_affine;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_point_infinity;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_scalar_mult;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_ecdsa_sign;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_ecdsa_verify;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_elliptic_curve_new;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_generate_keypair;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_generate_shared_secret;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_point_compress;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_point_decompress;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_double;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_is_on_curve;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_negate;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_point_affine;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_point_infinity;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_curve_scalar_mult;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_ecdsa_sign;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_ecdsa_verify;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_elliptic_curve_new;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_generate_keypair;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_generate_shared_secret;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_point_compress;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::bincode_api::rssn_bincode_point_decompress;
 
     // crate::ffi_apis::symbolic_cryptography_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_add;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_double;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_is_on_curve;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_negate;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_affine;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_free;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_get_x;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_get_y;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_infinity;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_is_infinity;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_scalar_mult;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_ecdsa_sign;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_ecdsa_signature_free;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_ecdsa_signature_get_r;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_ecdsa_signature_get_s;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_ecdsa_verify;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_elliptic_curve_free;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_elliptic_curve_new;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_generate_keypair;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_generate_shared_secret;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_keypair_free;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_keypair_get_private_key;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_keypair_get_public_key;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_point_compress;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_point_decompress;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_double;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_is_on_curve;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_negate;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_affine;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_free;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_get_x;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_get_y;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_infinity;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_point_is_infinity;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_curve_scalar_mult;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_ecdsa_sign;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_ecdsa_signature_free;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_ecdsa_signature_get_r;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_ecdsa_signature_get_s;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_ecdsa_verify;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_elliptic_curve_free;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_elliptic_curve_new;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_generate_keypair;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_generate_shared_secret;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_keypair_free;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_keypair_get_private_key;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_keypair_get_public_key;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_point_compress;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::handle::rssn_point_decompress;
 
     // crate::ffi_apis::symbolic_cryptography_ffi::json exports:
     pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_add;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_double;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_is_on_curve;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_negate;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_point_affine;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_point_infinity;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_scalar_mult;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_ecdsa_sign;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_ecdsa_verify;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_elliptic_curve_new;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_generate_keypair;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_generate_shared_secret;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_point_compress;
-pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_point_decompress;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_double;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_is_on_curve;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_negate;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_point_affine;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_point_infinity;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_curve_scalar_mult;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_ecdsa_sign;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_ecdsa_verify;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_elliptic_curve_new;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_generate_keypair;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_generate_shared_secret;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_point_compress;
+    pub use crate::ffi_apis::symbolic_cryptography_ffi::json::rssn_json_point_decompress;
 
     // crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_boundary;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_exterior_derivative;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_gauss_theorem;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_generalized_stokes_theorem;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_greens_theorem;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_stokes_theorem;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_wedge_product;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_exterior_derivative;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_gauss_theorem;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_generalized_stokes_theorem;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_greens_theorem;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_stokes_theorem;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::bincode_api::rssn_bincode_wedge_product;
 
     // crate::ffi_apis::symbolic_differential_geometry_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_boundary_handle;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_exterior_derivative_handle;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_free_differential_form_handle;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_gauss_theorem_handle;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_generalized_stokes_theorem_handle;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_greens_theorem_handle;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_stokes_theorem_handle;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_wedge_product_handle;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_exterior_derivative_handle;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_free_differential_form_handle;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_gauss_theorem_handle;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_generalized_stokes_theorem_handle;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_greens_theorem_handle;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_stokes_theorem_handle;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::handle::rssn_wedge_product_handle;
 
     // crate::ffi_apis::symbolic_differential_geometry_ffi::json exports:
     pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_boundary;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_exterior_derivative;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_gauss_theorem;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_generalized_stokes_theorem;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_greens_theorem;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_stokes_theorem;
-pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_wedge_product;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_exterior_derivative;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_gauss_theorem;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_generalized_stokes_theorem;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_greens_theorem;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_stokes_theorem;
+    pub use crate::ffi_apis::symbolic_differential_geometry_ffi::json::rssn_json_wedge_product;
 
     // crate::ffi_apis::symbolic_discrete_groups_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_discrete_groups_ffi::bincode_api::rssn_bincode_cyclic_group_create;
-pub use crate::ffi_apis::symbolic_discrete_groups_ffi::bincode_api::rssn_bincode_dihedral_group_create;
-pub use crate::ffi_apis::symbolic_discrete_groups_ffi::bincode_api::rssn_bincode_klein_four_group_create;
-pub use crate::ffi_apis::symbolic_discrete_groups_ffi::bincode_api::rssn_bincode_symmetric_group_create;
+    pub use crate::ffi_apis::symbolic_discrete_groups_ffi::bincode_api::rssn_bincode_dihedral_group_create;
+    pub use crate::ffi_apis::symbolic_discrete_groups_ffi::bincode_api::rssn_bincode_klein_four_group_create;
+    pub use crate::ffi_apis::symbolic_discrete_groups_ffi::bincode_api::rssn_bincode_symmetric_group_create;
 
     // crate::ffi_apis::symbolic_discrete_groups_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_discrete_groups_ffi::handle::rssn_cyclic_group_create;
-pub use crate::ffi_apis::symbolic_discrete_groups_ffi::handle::rssn_dihedral_group_create;
-pub use crate::ffi_apis::symbolic_discrete_groups_ffi::handle::rssn_klein_four_group_create;
-pub use crate::ffi_apis::symbolic_discrete_groups_ffi::handle::rssn_symmetric_group_create;
+    pub use crate::ffi_apis::symbolic_discrete_groups_ffi::handle::rssn_dihedral_group_create;
+    pub use crate::ffi_apis::symbolic_discrete_groups_ffi::handle::rssn_klein_four_group_create;
+    pub use crate::ffi_apis::symbolic_discrete_groups_ffi::handle::rssn_symmetric_group_create;
 
     // crate::ffi_apis::symbolic_discrete_groups_ffi::json exports:
     pub use crate::ffi_apis::symbolic_discrete_groups_ffi::json::rssn_json_cyclic_group_create;
-pub use crate::ffi_apis::symbolic_discrete_groups_ffi::json::rssn_json_dihedral_group_create;
-pub use crate::ffi_apis::symbolic_discrete_groups_ffi::json::rssn_json_klein_four_group_create;
-pub use crate::ffi_apis::symbolic_discrete_groups_ffi::json::rssn_json_symmetric_group_create;
+    pub use crate::ffi_apis::symbolic_discrete_groups_ffi::json::rssn_json_dihedral_group_create;
+    pub use crate::ffi_apis::symbolic_discrete_groups_ffi::json::rssn_json_klein_four_group_create;
+    pub use crate::ffi_apis::symbolic_discrete_groups_ffi::json::rssn_json_symmetric_group_create;
 
     // crate::ffi_apis::symbolic_electromagnetism_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_electromagnetism_ffi::bincode_api::rssn_bincode_electromagnetic_energy_density;
-pub use crate::ffi_apis::symbolic_electromagnetism_ffi::bincode_api::rssn_bincode_lorentz_force;
+    pub use crate::ffi_apis::symbolic_electromagnetism_ffi::bincode_api::rssn_bincode_lorentz_force;
 
     // crate::ffi_apis::symbolic_electromagnetism_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_electromagnetism_ffi::handle::rssn_coulombs_law;
-pub use crate::ffi_apis::symbolic_electromagnetism_ffi::handle::rssn_electric_field_from_potentials;
-pub use crate::ffi_apis::symbolic_electromagnetism_ffi::handle::rssn_electromagnetic_energy_density;
-pub use crate::ffi_apis::symbolic_electromagnetism_ffi::handle::rssn_lorentz_force;
-pub use crate::ffi_apis::symbolic_electromagnetism_ffi::handle::rssn_magnetic_field_from_vector_potential;
-pub use crate::ffi_apis::symbolic_electromagnetism_ffi::handle::rssn_poynting_vector;
+    pub use crate::ffi_apis::symbolic_electromagnetism_ffi::handle::rssn_electric_field_from_potentials;
+    pub use crate::ffi_apis::symbolic_electromagnetism_ffi::handle::rssn_electromagnetic_energy_density;
+    pub use crate::ffi_apis::symbolic_electromagnetism_ffi::handle::rssn_lorentz_force;
+    pub use crate::ffi_apis::symbolic_electromagnetism_ffi::handle::rssn_magnetic_field_from_vector_potential;
+    pub use crate::ffi_apis::symbolic_electromagnetism_ffi::handle::rssn_poynting_vector;
 
     // crate::ffi_apis::symbolic_electromagnetism_ffi::json exports:
     pub use crate::ffi_apis::symbolic_electromagnetism_ffi::json::rssn_json_electromagnetic_energy_density;
-pub use crate::ffi_apis::symbolic_electromagnetism_ffi::json::rssn_json_lorentz_force;
+    pub use crate::ffi_apis::symbolic_electromagnetism_ffi::json::rssn_json_lorentz_force;
 
     // crate::ffi_apis::symbolic_elementary_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_cos_bincode;
-pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_e_bincode;
-pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_exp_bincode;
-pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_expand_bincode;
-pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_ln_bincode;
-pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_pi_bincode;
-pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_pow_bincode;
-pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_sin_bincode;
-pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_sqrt_bincode;
-pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_tan_bincode;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_e_bincode;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_exp_bincode;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_expand_bincode;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_ln_bincode;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_pi_bincode;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_pow_bincode;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_sin_bincode;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_sqrt_bincode;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::bincode_api::rssn_tan_bincode;
 
     // crate::ffi_apis::symbolic_elementary_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_binomial_coefficient;
-pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_cos;
-pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_e;
-pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_exp;
-pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_expand;
-pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_free_expr;
-pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_ln;
-pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_pi;
-pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_pow;
-pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_sin;
-pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_sqrt;
-pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_tan;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_cos;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_e;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_exp;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_expand;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_free_expr;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_ln;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_pi;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_pow;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_sin;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_sqrt;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::handle::rssn_tan;
 
     // crate::ffi_apis::symbolic_elementary_ffi::json exports:
     pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_binomial_coefficient_json;
-pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_cos_json;
-pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_e_json;
-pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_exp_json;
-pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_expand_json;
-pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_ln_json;
-pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_pi_json;
-pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_pow_json;
-pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_sin_json;
-pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_sqrt_json;
-pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_tan_json;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_cos_json;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_e_json;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_exp_json;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_expand_json;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_ln_json;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_pi_json;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_pow_json;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_sin_json;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_sqrt_json;
+    pub use crate::ffi_apis::symbolic_elementary_ffi::json::rssn_tan_json;
 
     // crate::ffi_apis::symbolic_error_correction_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_crc32_compute;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_crc32_finalize;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_crc32_update;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_crc32_verify;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_hamming_check;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_hamming_decode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_hamming_distance;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_hamming_encode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_hamming_weight;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_rs_check;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_rs_decode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_rs_encode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_rs_error_count;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_crc32_finalize;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_crc32_update;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_crc32_verify;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_hamming_check;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_hamming_decode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_hamming_distance;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_hamming_encode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_hamming_weight;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_rs_check;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_rs_decode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_rs_encode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::bincode_api::rssn_bincode_rs_error_count;
 
     // crate::ffi_apis::symbolic_error_correction_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_crc32_compute;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_crc32_finalize;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_crc32_update;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_crc32_verify;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_hamming_check;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_hamming_decode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_hamming_distance;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_hamming_encode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_hamming_weight;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_rs_check;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_rs_decode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_rs_encode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_rs_error_count;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_rs_free;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_crc32_finalize;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_crc32_update;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_crc32_verify;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_hamming_check;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_hamming_decode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_hamming_distance;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_hamming_encode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_hamming_weight;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_rs_check;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_rs_decode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_rs_encode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_rs_error_count;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::handle::rssn_rs_free;
 
     // crate::ffi_apis::symbolic_error_correction_ffi::json exports:
     pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_crc32_compute;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_crc32_finalize;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_crc32_update;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_crc32_verify;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_hamming_check;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_hamming_decode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_hamming_distance;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_hamming_encode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_hamming_weight;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_rs_check;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_rs_decode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_rs_encode;
-pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_rs_error_count;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_crc32_finalize;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_crc32_update;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_crc32_verify;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_hamming_check;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_hamming_decode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_hamming_distance;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_hamming_encode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_hamming_weight;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_rs_check;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_rs_decode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_rs_encode;
+    pub use crate::ffi_apis::symbolic_error_correction_ffi::json::rssn_json_rs_error_count;
 
     // crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_gf256_add;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_gf256_inv;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_gf256_mul;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_poly_add_gf256;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_poly_add_gf;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_poly_eval_gf256;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_poly_mul_gf256;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_poly_mul_gf;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_gf256_inv;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_gf256_mul;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_poly_add_gf;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_poly_add_gf256;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_poly_eval_gf256;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_poly_mul_gf;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::bincode_api::rssn_bincode_poly_mul_gf256;
 
     // crate::ffi_apis::symbolic_error_correction_helper_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_finite_field_free;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_finite_field_new;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_add;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_div;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_exp;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_inv;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_log;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_mul;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_pow;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_add_gf256;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_add_gf;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_derivative_gf256;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_eval_gf256;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_gcd_gf256;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_mul_gf256;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_mul_gf;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_scale_gf256;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_finite_field_new;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_add;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_div;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_exp;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_inv;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_log;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_mul;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_gf256_pow;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_add_gf;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_add_gf256;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_derivative_gf256;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_eval_gf256;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_gcd_gf256;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_mul_gf;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_mul_gf256;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::handle::rssn_poly_scale_gf256;
 
     // crate::ffi_apis::symbolic_error_correction_helper_ffi::json exports:
     pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_gf256_add;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_gf256_inv;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_gf256_mul;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_poly_add_gf256;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_poly_add_gf;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_poly_eval_gf256;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_poly_mul_gf256;
-pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_poly_mul_gf;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_gf256_inv;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_gf256_mul;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_poly_add_gf;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_poly_add_gf256;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_poly_eval_gf256;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_poly_mul_gf;
+    pub use crate::ffi_apis::symbolic_error_correction_helper_ffi::json::rssn_json_poly_mul_gf256;
 
     // crate::ffi_apis::symbolic_finite_field_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_finite_field_polynomial_degree;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_finite_field_polynomial_long_division;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_finite_field_polynomial_new;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_add;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_div;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_inverse;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_mul;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_new;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_sub;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_finite_field_polynomial_long_division;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_finite_field_polynomial_new;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_add;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_div;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_inverse;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_mul;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_new;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::bincode_api::rssn_bincode_prime_field_element_sub;
 
     // crate::ffi_apis::symbolic_finite_field_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_finite_field_ffi::handle::rssn_prime_field_element_add_handle;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::handle::rssn_prime_field_element_free_handle;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::handle::rssn_prime_field_element_inverse_handle;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::handle::rssn_prime_field_element_mul_handle;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::handle::rssn_prime_field_element_new_handle;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::handle::rssn_prime_field_element_free_handle;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::handle::rssn_prime_field_element_inverse_handle;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::handle::rssn_prime_field_element_mul_handle;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::handle::rssn_prime_field_element_new_handle;
 
     // crate::ffi_apis::symbolic_finite_field_ffi::json exports:
     pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_finite_field_polynomial_degree;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_finite_field_polynomial_long_division;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_finite_field_polynomial_new;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_add;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_div;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_inverse;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_mul;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_new;
-pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_sub;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_finite_field_polynomial_long_division;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_finite_field_polynomial_new;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_add;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_div;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_inverse;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_mul;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_new;
+    pub use crate::ffi_apis::symbolic_finite_field_ffi::json::rssn_json_prime_field_element_sub;
 
     // crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_analyze_stability;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_complex_system_fixed_points;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_complex_system_iterate;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_complex_system_new_mandelbrot;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_find_fixed_points;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_ifs_create;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_ifs_similarity_dimension;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_lorenz_system;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_lyapunov_exponent;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_complex_system_fixed_points;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_complex_system_iterate;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_complex_system_new_mandelbrot;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_find_fixed_points;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_ifs_create;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_ifs_similarity_dimension;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_lorenz_system;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::bincode_api::rssn_bincode_lyapunov_exponent;
 
     // crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_analyze_stability;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_complex_system_fixed_points;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_complex_system_free;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_complex_system_iterate;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_complex_system_new_mandelbrot;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_find_fixed_points;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_ifs_create;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_ifs_free;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_ifs_similarity_dimension;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_lorenz_system;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_lyapunov_exponent;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_complex_system_fixed_points;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_complex_system_free;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_complex_system_iterate;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_complex_system_new_mandelbrot;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_find_fixed_points;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_ifs_create;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_ifs_free;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_ifs_similarity_dimension;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_lorenz_system;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::handle::rssn_lyapunov_exponent;
 
     // crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json exports:
     pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_analyze_stability;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_complex_system_fixed_points;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_complex_system_iterate;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_complex_system_new_mandelbrot;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_find_fixed_points;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_ifs_create;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_ifs_similarity_dimension;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_lorenz_system;
-pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_lyapunov_exponent;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_complex_system_fixed_points;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_complex_system_iterate;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_complex_system_new_mandelbrot;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_find_fixed_points;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_ifs_create;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_ifs_similarity_dimension;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_lorenz_system;
+    pub use crate::ffi_apis::symbolic_fractal_geometry_and_chaos_ffi::json::rssn_json_lyapunov_exponent;
 
     // crate::ffi_apis::symbolic_functional_analysis_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_functional_analysis_ffi::bincode_api::rssn_bincode_gram_schmidt;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::bincode_api::rssn_bincode_hilbert_space_create;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::bincode_api::rssn_bincode_inner_product;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::bincode_api::rssn_bincode_norm;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::bincode_api::rssn_bincode_hilbert_space_create;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::bincode_api::rssn_bincode_inner_product;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::bincode_api::rssn_bincode_norm;
 
     // crate::ffi_apis::symbolic_functional_analysis_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_are_orthogonal;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_banach_norm;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_banach_space_create;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_banach_space_free;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_gram_schmidt;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_hilbert_space_create;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_hilbert_space_free;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_inner_product;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_linear_operator_apply;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_linear_operator_derivative_create;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_linear_operator_free;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_linear_operator_integral_create;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_norm;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_project;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_banach_norm;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_banach_space_create;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_banach_space_free;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_gram_schmidt;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_hilbert_space_create;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_hilbert_space_free;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_inner_product;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_linear_operator_apply;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_linear_operator_derivative_create;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_linear_operator_free;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_linear_operator_integral_create;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_norm;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::handle::rssn_project;
 
     // crate::ffi_apis::symbolic_functional_analysis_ffi::json exports:
     pub use crate::ffi_apis::symbolic_functional_analysis_ffi::json::rssn_json_gram_schmidt;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::json::rssn_json_hilbert_space_create;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::json::rssn_json_inner_product;
-pub use crate::ffi_apis::symbolic_functional_analysis_ffi::json::rssn_json_norm;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::json::rssn_json_hilbert_space_create;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::json::rssn_json_inner_product;
+    pub use crate::ffi_apis::symbolic_functional_analysis_ffi::json::rssn_json_norm;
 
     // crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_geometric_product;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_grade_projection;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_inner_product;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_magnitude;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_outer_product;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_reverse;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_scalar;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_grade_projection;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_inner_product;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_magnitude;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_outer_product;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_reverse;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::bincode_api::rssn_bincode_multivector_scalar;
 
     // crate::ffi_apis::symbolic_geometric_algebra_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_free_multivector_handle;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_geometric_product_handle;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_grade_projection_handle;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_inner_product_handle;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_magnitude_handle;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_outer_product_handle;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_reverse_handle;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_scalar_handle;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_geometric_product_handle;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_grade_projection_handle;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_inner_product_handle;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_magnitude_handle;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_outer_product_handle;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_reverse_handle;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::handle::rssn_multivector_scalar_handle;
 
     // crate::ffi_apis::symbolic_geometric_algebra_ffi::json exports:
     pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_geometric_product;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_grade_projection;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_inner_product;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_magnitude;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_outer_product;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_reverse;
-pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_scalar;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_grade_projection;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_inner_product;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_magnitude;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_outer_product;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_reverse;
+    pub use crate::ffi_apis::symbolic_geometric_algebra_ffi::json::rssn_json_multivector_scalar;
 
     // crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_bfs_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_bipartite_maximum_matching;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_bridges_and_articulation_points;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_connected_components_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_dfs_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_dinic_max_flow;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_edmonds_karp_max_flow;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_has_cycle_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_is_bipartite_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_is_connected;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_kruskal_mst_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_strongly_connected_components;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_topological_sort;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_bipartite_maximum_matching;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_bridges_and_articulation_points;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_connected_components_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_dfs_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_dinic_max_flow;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_edmonds_karp_max_flow;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_has_cycle_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_is_bipartite_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_is_connected;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_kruskal_mst_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_strongly_connected_components;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::bincode_api::rssn_bincode_graph_topological_sort;
 
     // crate::ffi_apis::symbolic_graph_algorithms_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_free_string_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_bfs_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_bipartite_maximum_matching;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_bridges_and_articulation_points_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_connected_components_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_dfs_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_dinic_max_flow;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_edmonds_karp_max_flow;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_has_cycle_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_is_bipartite_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_is_connected;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_kruskal_mst_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_strongly_connected_components;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_topological_sort;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_bfs_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_bipartite_maximum_matching;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_bridges_and_articulation_points_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_connected_components_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_dfs_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_dinic_max_flow;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_edmonds_karp_max_flow;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_has_cycle_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_is_bipartite_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_is_connected;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_kruskal_mst_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_strongly_connected_components;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::handle::rssn_graph_topological_sort;
 
     // crate::ffi_apis::symbolic_graph_algorithms_ffi::json exports:
     pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_bfs_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_bipartite_maximum_matching;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_bridges_and_articulation_points;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_connected_components_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_dfs_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_dinic_max_flow;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_edmonds_karp_max_flow;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_has_cycle_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_is_bipartite_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_is_connected;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_kruskal_mst_api;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_strongly_connected_components;
-pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_topological_sort;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_bipartite_maximum_matching;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_bridges_and_articulation_points;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_connected_components_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_dfs_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_dinic_max_flow;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_edmonds_karp_max_flow;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_has_cycle_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_is_bipartite_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_is_connected;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_kruskal_mst_api;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_strongly_connected_components;
+    pub use crate::ffi_apis::symbolic_graph_algorithms_ffi::json::rssn_json_graph_topological_sort;
 
     // crate::ffi_apis::symbolic_graph_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_add_edge;
-pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_add_node;
-pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_adjacency_matrix;
-pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_bfs;
-pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_connected_components;
-pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_dfs;
-pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_has_cycle;
-pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_is_bipartite;
-pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_kruskal_mst;
-pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_laplacian_matrix;
-pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_max_flow;
-pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_new;
+    pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_add_node;
+    pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_adjacency_matrix;
+    pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_bfs;
+    pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_connected_components;
+    pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_dfs;
+    pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_has_cycle;
+    pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_is_bipartite;
+    pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_kruskal_mst;
+    pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_laplacian_matrix;
+    pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_max_flow;
+    pub use crate::ffi_apis::symbolic_graph_ffi::bincode_api::rssn_bincode_graph_new;
 
     // crate::ffi_apis::symbolic_graph_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_graph_ffi::handle::RssnGraph;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_add_edge;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_add_node;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_adjacency_matrix;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_bfs;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_connected_components;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_dfs;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_free;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_has_cycle;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_incidence_matrix;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_is_bipartite;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_kruskal_mst;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_laplacian_matrix;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_max_flow;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_new;
-pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_node_count;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_add_edge;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_add_node;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_adjacency_matrix;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_bfs;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_connected_components;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_dfs;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_free;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_has_cycle;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_incidence_matrix;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_is_bipartite;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_kruskal_mst;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_laplacian_matrix;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_max_flow;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_new;
+    pub use crate::ffi_apis::symbolic_graph_ffi::handle::rssn_graph_node_count;
 
     // crate::ffi_apis::symbolic_graph_ffi::json exports:
     pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_add_edge;
-pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_add_node;
-pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_adjacency_matrix;
-pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_bfs;
-pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_connected_components;
-pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_dfs;
-pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_has_cycle;
-pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_is_bipartite;
-pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_kruskal_mst;
-pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_laplacian_matrix;
-pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_max_flow;
-pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_new;
+    pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_add_node;
+    pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_adjacency_matrix;
+    pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_bfs;
+    pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_connected_components;
+    pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_dfs;
+    pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_has_cycle;
+    pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_is_bipartite;
+    pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_kruskal_mst;
+    pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_laplacian_matrix;
+    pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_max_flow;
+    pub use crate::ffi_apis::symbolic_graph_ffi::json::rssn_json_graph_new;
 
     // crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::bincode_api::rssn_bincode_are_isomorphic_heuristic;
-pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::bincode_api::rssn_bincode_chromatic_number_exact;
-pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::bincode_api::rssn_bincode_greedy_coloring;
+    pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::bincode_api::rssn_bincode_chromatic_number_exact;
+    pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::bincode_api::rssn_bincode_greedy_coloring;
 
     // crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::handle::rssn_are_isomorphic_heuristic;
-pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::handle::rssn_chromatic_number_exact;
-pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::handle::rssn_greedy_coloring;
+    pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::handle::rssn_chromatic_number_exact;
+    pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::handle::rssn_greedy_coloring;
 
     // crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::json exports:
     pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::json::rssn_json_are_isomorphic_heuristic;
-pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::json::rssn_json_chromatic_number_exact;
-pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::json::rssn_json_greedy_coloring;
+    pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::json::rssn_json_chromatic_number_exact;
+    pub use crate::ffi_apis::symbolic_graph_isomorphism_and_coloring_ffi::json::rssn_json_greedy_coloring;
 
     // crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_cartesian_product;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_complement;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_disjoint_union;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_induced_subgraph;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_intersection;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_join;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_tensor_product;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_union;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_complement;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_disjoint_union;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_induced_subgraph;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_intersection;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_join;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_tensor_product;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::bincode_api::rssn_bincode_graph_union;
 
     // crate::ffi_apis::symbolic_graph_operations_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_cartesian_product;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_complement;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_disjoint_union;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_induced_subgraph;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_intersection;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_join;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_tensor_product;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_union;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_complement;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_disjoint_union;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_induced_subgraph;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_intersection;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_join;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_tensor_product;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::handle::rssn_graph_union;
 
     // crate::ffi_apis::symbolic_graph_operations_ffi::json exports:
     pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_cartesian_product;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_complement;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_disjoint_union;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_induced_subgraph;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_intersection;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_join;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_tensor_product;
-pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_union;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_complement;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_disjoint_union;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_induced_subgraph;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_intersection;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_join;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_tensor_product;
+    pub use crate::ffi_apis::symbolic_graph_operations_ffi::json::rssn_json_graph_union;
 
     // crate::ffi_apis::symbolic_grobner_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_grobner_ffi::bincode_api::rssn_bincode_buchberger;
-pub use crate::ffi_apis::symbolic_grobner_ffi::bincode_api::rssn_bincode_poly_division_multivariate;
+    pub use crate::ffi_apis::symbolic_grobner_ffi::bincode_api::rssn_bincode_poly_division_multivariate;
 
     // crate::ffi_apis::symbolic_grobner_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_grobner_ffi::handle::rssn_buchberger_handle;
-pub use crate::ffi_apis::symbolic_grobner_ffi::handle::rssn_poly_division_multivariate_handle;
+    pub use crate::ffi_apis::symbolic_grobner_ffi::handle::rssn_poly_division_multivariate_handle;
 
     // crate::ffi_apis::symbolic_grobner_ffi::json exports:
     pub use crate::ffi_apis::symbolic_grobner_ffi::json::rssn_json_buchberger;
-pub use crate::ffi_apis::symbolic_grobner_ffi::json::rssn_json_poly_division_multivariate;
+    pub use crate::ffi_apis::symbolic_grobner_ffi::json::rssn_json_poly_division_multivariate;
 
     // crate::ffi_apis::symbolic_group_theory_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_character;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_center;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_conjugacy_classes;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_create;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_element_order;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_inverse;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_is_abelian;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_multiply;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_representation_create;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_representation_is_valid;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_center;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_conjugacy_classes;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_create;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_element_order;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_inverse;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_is_abelian;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_group_multiply;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_representation_create;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::bincode_api::rssn_bincode_representation_is_valid;
 
     // crate::ffi_apis::symbolic_group_theory_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_character;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_center;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_create;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_element_order;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_free;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_inverse;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_is_abelian;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_multiply;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_representation_create;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_representation_free;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_representation_is_valid;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_center;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_create;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_element_order;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_free;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_inverse;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_is_abelian;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_group_multiply;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_representation_create;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_representation_free;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::handle::rssn_representation_is_valid;
 
     // crate::ffi_apis::symbolic_group_theory_ffi::json exports:
     pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_character;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_center;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_conjugacy_classes;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_create;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_element_order;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_inverse;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_is_abelian;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_multiply;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_representation_create;
-pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_representation_is_valid;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_center;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_conjugacy_classes;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_create;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_element_order;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_inverse;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_is_abelian;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_group_multiply;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_representation_create;
+    pub use crate::ffi_apis::symbolic_group_theory_ffi::json::rssn_json_representation_is_valid;
 
     // crate::ffi_apis::symbolic_handles_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_clear_bincode;
-pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_clone_bincode;
-pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_exists_bincode;
-pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_free_bincode;
-pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_get_all_bincode;
-pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_get_bincode;
-pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_insert_bincode;
+    pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_clone_bincode;
+    pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_exists_bincode;
+    pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_free_bincode;
+    pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_get_all_bincode;
+    pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_get_bincode;
+    pub use crate::ffi_apis::symbolic_handles_ffi::bincode_api::rssn_handle_insert_bincode;
 
     // crate::ffi_apis::symbolic_handles_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_clear;
-pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_clone;
-pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_count;
-pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_exists;
-pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_free;
-pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_get;
-pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_get_all;
-pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_insert;
-pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_to_string;
+    pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_clone;
+    pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_count;
+    pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_exists;
+    pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_free;
+    pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_get;
+    pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_get_all;
+    pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_insert;
+    pub use crate::ffi_apis::symbolic_handles_ffi::handle::rssn_handle_to_string;
 
     // crate::ffi_apis::symbolic_handles_ffi::json exports:
     pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_clear_json;
-pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_clone_json;
-pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_exists_json;
-pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_free_json;
-pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_get_json;
-pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_insert_json;
-pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_stats_json;
+    pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_clone_json;
+    pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_exists_json;
+    pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_free_json;
+    pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_get_json;
+    pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_insert_json;
+    pub use crate::ffi_apis::symbolic_handles_ffi::json::rssn_handle_stats_json;
 
     // crate::ffi_apis::symbolic_integral_equations_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_integral_equations_ffi::bincode_api::rssn_fredholm_solve_neumann_bincode;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::bincode_api::rssn_fredholm_solve_separable_bincode;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::bincode_api::rssn_solve_airfoil_equation_bincode;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::bincode_api::rssn_volterra_solve_by_differentiation_bincode;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::bincode_api::rssn_volterra_solve_successive_bincode;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::bincode_api::rssn_fredholm_solve_separable_bincode;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::bincode_api::rssn_solve_airfoil_equation_bincode;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::bincode_api::rssn_volterra_solve_by_differentiation_bincode;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::bincode_api::rssn_volterra_solve_successive_bincode;
 
     // crate::ffi_apis::symbolic_integral_equations_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_fredholm_free;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_fredholm_new;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_fredholm_solve_neumann;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_fredholm_solve_separable;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_solve_airfoil_equation;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_volterra_free;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_volterra_new;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_volterra_solve_by_differentiation;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_volterra_solve_successive;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_fredholm_new;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_fredholm_solve_neumann;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_fredholm_solve_separable;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_solve_airfoil_equation;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_volterra_free;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_volterra_new;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_volterra_solve_by_differentiation;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::handle::rssn_volterra_solve_successive;
 
     // crate::ffi_apis::symbolic_integral_equations_ffi::json exports:
     pub use crate::ffi_apis::symbolic_integral_equations_ffi::json::rssn_fredholm_solve_neumann_json;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::json::rssn_fredholm_solve_separable_json;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::json::rssn_solve_airfoil_equation_json;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::json::rssn_volterra_solve_by_differentiation_json;
-pub use crate::ffi_apis::symbolic_integral_equations_ffi::json::rssn_volterra_solve_successive_json;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::json::rssn_fredholm_solve_separable_json;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::json::rssn_solve_airfoil_equation_json;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::json::rssn_volterra_solve_by_differentiation_json;
+    pub use crate::ffi_apis::symbolic_integral_equations_ffi::json::rssn_volterra_solve_successive_json;
 
     // crate::ffi_apis::symbolic_integration_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_integration_ffi::bincode_api::rssn_bincode_integrate_rational_function;
-pub use crate::ffi_apis::symbolic_integration_ffi::bincode_api::rssn_bincode_risch_norman_integrate;
+    pub use crate::ffi_apis::symbolic_integration_ffi::bincode_api::rssn_bincode_risch_norman_integrate;
 
     // crate::ffi_apis::symbolic_integration_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_integration_ffi::handle::rssn_integrate_rational_function_handle;
-pub use crate::ffi_apis::symbolic_integration_ffi::handle::rssn_risch_norman_integrate_handle;
+    pub use crate::ffi_apis::symbolic_integration_ffi::handle::rssn_risch_norman_integrate_handle;
 
     // crate::ffi_apis::symbolic_integration_ffi::json exports:
     pub use crate::ffi_apis::symbolic_integration_ffi::json::rssn_json_integrate_rational_function;
-pub use crate::ffi_apis::symbolic_integration_ffi::json::rssn_json_risch_norman_integrate;
+    pub use crate::ffi_apis::symbolic_integration_ffi::json::rssn_json_risch_norman_integrate;
 
     // crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_adjoint_representation_algebra;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_adjoint_representation_group;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_check_jacobi_identity;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_commutator_table;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_exponential_map;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_lie_algebra_so3;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_lie_algebra_su2;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_lie_bracket;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_so3_generators;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_su2_generators;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_adjoint_representation_group;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_check_jacobi_identity;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_commutator_table;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_exponential_map;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_lie_algebra_so3;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_lie_algebra_su2;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_lie_bracket;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_so3_generators;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::bincode_api::rssn_bincode_su2_generators;
 
     // crate::ffi_apis::symbolic_lie_groups_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_adjoint_representation_algebra;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_adjoint_representation_group;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_check_jacobi_identity;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_commutator_table;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_exponential_map;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_free;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_get_basis_element;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_get_dimension;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_get_name;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_so3_create;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_su2_create;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_bracket;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_so3_generators;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_su2_generators;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_adjoint_representation_group;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_check_jacobi_identity;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_commutator_table;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_exponential_map;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_free;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_get_basis_element;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_get_dimension;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_get_name;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_so3_create;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_algebra_su2_create;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_lie_bracket;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_so3_generators;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::handle::rssn_su2_generators;
 
     // crate::ffi_apis::symbolic_lie_groups_ffi::json exports:
     pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_adjoint_representation_algebra;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_adjoint_representation_group;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_check_jacobi_identity;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_commutator_table;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_exponential_map;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_lie_algebra_so3;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_lie_algebra_su2;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_lie_bracket;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_so3_generators;
-pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_su2_generators;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_adjoint_representation_group;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_check_jacobi_identity;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_commutator_table;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_exponential_map;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_lie_algebra_so3;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_lie_algebra_su2;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_lie_bracket;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_so3_generators;
+    pub use crate::ffi_apis::symbolic_lie_groups_ffi::json::rssn_json_su2_generators;
 
     // crate::ffi_apis::symbolic_logic_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_logic_ffi::bincode_api::rssn_bincode_is_satisfiable;
-pub use crate::ffi_apis::symbolic_logic_ffi::bincode_api::rssn_bincode_simplify_logic;
-pub use crate::ffi_apis::symbolic_logic_ffi::bincode_api::rssn_bincode_to_cnf;
-pub use crate::ffi_apis::symbolic_logic_ffi::bincode_api::rssn_bincode_to_dnf;
+    pub use crate::ffi_apis::symbolic_logic_ffi::bincode_api::rssn_bincode_simplify_logic;
+    pub use crate::ffi_apis::symbolic_logic_ffi::bincode_api::rssn_bincode_to_cnf;
+    pub use crate::ffi_apis::symbolic_logic_ffi::bincode_api::rssn_bincode_to_dnf;
 
     // crate::ffi_apis::symbolic_logic_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_logic_ffi::handle::rssn_is_satisfiable_handle;
-pub use crate::ffi_apis::symbolic_logic_ffi::handle::rssn_simplify_logic_handle;
-pub use crate::ffi_apis::symbolic_logic_ffi::handle::rssn_to_cnf_handle;
-pub use crate::ffi_apis::symbolic_logic_ffi::handle::rssn_to_dnf_handle;
+    pub use crate::ffi_apis::symbolic_logic_ffi::handle::rssn_simplify_logic_handle;
+    pub use crate::ffi_apis::symbolic_logic_ffi::handle::rssn_to_cnf_handle;
+    pub use crate::ffi_apis::symbolic_logic_ffi::handle::rssn_to_dnf_handle;
 
     // crate::ffi_apis::symbolic_logic_ffi::json exports:
     pub use crate::ffi_apis::symbolic_logic_ffi::json::rssn_json_is_satisfiable;
-pub use crate::ffi_apis::symbolic_logic_ffi::json::rssn_json_simplify_logic;
-pub use crate::ffi_apis::symbolic_logic_ffi::json::rssn_json_to_cnf;
-pub use crate::ffi_apis::symbolic_logic_ffi::json::rssn_json_to_dnf;
+    pub use crate::ffi_apis::symbolic_logic_ffi::json::rssn_json_simplify_logic;
+    pub use crate::ffi_apis::symbolic_logic_ffi::json::rssn_json_to_cnf;
+    pub use crate::ffi_apis::symbolic_logic_ffi::json::rssn_json_to_dnf;
 
     // crate::ffi_apis::symbolic_matrix_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_matrix_ffi::bincode_api::rssn_bincode_matrix_add;
-pub use crate::ffi_apis::symbolic_matrix_ffi::bincode_api::rssn_bincode_matrix_determinant;
-pub use crate::ffi_apis::symbolic_matrix_ffi::bincode_api::rssn_bincode_matrix_inverse;
-pub use crate::ffi_apis::symbolic_matrix_ffi::bincode_api::rssn_bincode_matrix_mul;
-pub use crate::ffi_apis::symbolic_matrix_ffi::bincode_api::rssn_bincode_matrix_solve_linear_system;
-pub use crate::ffi_apis::symbolic_matrix_ffi::bincode_api::rssn_bincode_matrix_transpose;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::bincode_api::rssn_bincode_matrix_determinant;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::bincode_api::rssn_bincode_matrix_inverse;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::bincode_api::rssn_bincode_matrix_mul;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::bincode_api::rssn_bincode_matrix_solve_linear_system;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::bincode_api::rssn_bincode_matrix_transpose;
 
     // crate::ffi_apis::symbolic_matrix_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_matrix_ffi::handle::rssn_matrix_add_handle;
-pub use crate::ffi_apis::symbolic_matrix_ffi::handle::rssn_matrix_determinant_handle;
-pub use crate::ffi_apis::symbolic_matrix_ffi::handle::rssn_matrix_inverse_handle;
-pub use crate::ffi_apis::symbolic_matrix_ffi::handle::rssn_matrix_mul_handle;
-pub use crate::ffi_apis::symbolic_matrix_ffi::handle::rssn_matrix_solve_linear_system_handle;
-pub use crate::ffi_apis::symbolic_matrix_ffi::handle::rssn_matrix_transpose_handle;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::handle::rssn_matrix_determinant_handle;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::handle::rssn_matrix_inverse_handle;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::handle::rssn_matrix_mul_handle;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::handle::rssn_matrix_solve_linear_system_handle;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::handle::rssn_matrix_transpose_handle;
 
     // crate::ffi_apis::symbolic_matrix_ffi::json exports:
     pub use crate::ffi_apis::symbolic_matrix_ffi::json::rssn_json_matrix_add;
-pub use crate::ffi_apis::symbolic_matrix_ffi::json::rssn_json_matrix_determinant;
-pub use crate::ffi_apis::symbolic_matrix_ffi::json::rssn_json_matrix_inverse;
-pub use crate::ffi_apis::symbolic_matrix_ffi::json::rssn_json_matrix_mul;
-pub use crate::ffi_apis::symbolic_matrix_ffi::json::rssn_json_matrix_solve_linear_system;
-pub use crate::ffi_apis::symbolic_matrix_ffi::json::rssn_json_matrix_transpose;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::json::rssn_json_matrix_determinant;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::json::rssn_json_matrix_inverse;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::json::rssn_json_matrix_mul;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::json::rssn_json_matrix_solve_linear_system;
+    pub use crate::ffi_apis::symbolic_matrix_ffi::json::rssn_json_matrix_transpose;
 
     // crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_abs;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_arg;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_arccos;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_arcsin;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_arctan;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_log;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_nth_root;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_power;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_sqrt;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_arg;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_arccos;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_arcsin;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_arctan;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_log;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_nth_root;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_power;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::bincode_api::rssn_bincode_general_sqrt;
 
     // crate::ffi_apis::symbolic_multi_valued_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_abs_handle;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_arg_handle;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_arccos_handle;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_arcsin_handle;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_arctan_handle;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_log_handle;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_nth_root_handle;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_power_handle;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_sqrt_handle;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_arg_handle;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_arccos_handle;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_arcsin_handle;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_arctan_handle;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_log_handle;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_nth_root_handle;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_power_handle;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::handle::rssn_general_sqrt_handle;
 
     // crate::ffi_apis::symbolic_multi_valued_ffi::json exports:
     pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_abs;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_arg;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_arccos;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_arcsin;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_arctan;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_log;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_nth_root;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_power;
-pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_sqrt;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_arg;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_arccos;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_arcsin;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_arctan;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_log;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_nth_root;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_power;
+    pub use crate::ffi_apis::symbolic_multi_valued_ffi::json::rssn_json_general_sqrt;
 
     // crate::ffi_apis::symbolic_number_theory_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_number_theory_ffi::bincode_api::rssn_bincode_chinese_remainder;
-pub use crate::ffi_apis::symbolic_number_theory_ffi::bincode_api::rssn_bincode_extended_gcd;
-pub use crate::ffi_apis::symbolic_number_theory_ffi::bincode_api::rssn_bincode_is_prime;
-pub use crate::ffi_apis::symbolic_number_theory_ffi::bincode_api::rssn_bincode_solve_diophantine;
+    pub use crate::ffi_apis::symbolic_number_theory_ffi::bincode_api::rssn_bincode_extended_gcd;
+    pub use crate::ffi_apis::symbolic_number_theory_ffi::bincode_api::rssn_bincode_is_prime;
+    pub use crate::ffi_apis::symbolic_number_theory_ffi::bincode_api::rssn_bincode_solve_diophantine;
 
     // crate::ffi_apis::symbolic_number_theory_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_number_theory_ffi::handle::rssn_chinese_remainder_handle;
-pub use crate::ffi_apis::symbolic_number_theory_ffi::handle::rssn_extended_gcd_handle;
-pub use crate::ffi_apis::symbolic_number_theory_ffi::handle::rssn_is_prime_handle;
-pub use crate::ffi_apis::symbolic_number_theory_ffi::handle::rssn_solve_diophantine_handle;
+    pub use crate::ffi_apis::symbolic_number_theory_ffi::handle::rssn_extended_gcd_handle;
+    pub use crate::ffi_apis::symbolic_number_theory_ffi::handle::rssn_is_prime_handle;
+    pub use crate::ffi_apis::symbolic_number_theory_ffi::handle::rssn_solve_diophantine_handle;
 
     // crate::ffi_apis::symbolic_number_theory_ffi::json exports:
     pub use crate::ffi_apis::symbolic_number_theory_ffi::json::rssn_json_chinese_remainder;
-pub use crate::ffi_apis::symbolic_number_theory_ffi::json::rssn_json_extended_gcd;
-pub use crate::ffi_apis::symbolic_number_theory_ffi::json::rssn_json_is_prime;
-pub use crate::ffi_apis::symbolic_number_theory_ffi::json::rssn_json_solve_diophantine;
+    pub use crate::ffi_apis::symbolic_number_theory_ffi::json::rssn_json_extended_gcd;
+    pub use crate::ffi_apis::symbolic_number_theory_ffi::json::rssn_json_is_prime;
+    pub use crate::ffi_apis::symbolic_number_theory_ffi::json::rssn_json_solve_diophantine;
 
     // crate::ffi_apis::symbolic_numeric_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_numeric_ffi::bincode_api::rssn_bincode_evaluate_numerical;
@@ -2611,294 +2609,294 @@ pub use crate::ffi_apis::symbolic_number_theory_ffi::json::rssn_json_solve_dioph
 
     // crate::ffi_apis::symbolic_ode_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_bernoulli_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_by_reduction_of_order;
-pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_cauchy_euler_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_exact_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_first_order_linear_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_riccati_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_separable_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_by_reduction_of_order;
+    pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_cauchy_euler_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_exact_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_first_order_linear_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_riccati_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::bincode_api::rssn_bincode_solve_separable_ode;
 
     // crate::ffi_apis::symbolic_ode_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_bernoulli_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_by_reduction_of_order;
-pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_cauchy_euler_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_exact_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_first_order_linear_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_riccati_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_separable_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_by_reduction_of_order;
+    pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_cauchy_euler_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_exact_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_first_order_linear_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_riccati_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::handle::rssn_solve_separable_ode;
 
     // crate::ffi_apis::symbolic_ode_ffi::json exports:
     pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_bernoulli_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_by_reduction_of_order;
-pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_cauchy_euler_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_exact_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_first_order_linear_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_riccati_ode;
-pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_separable_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_by_reduction_of_order;
+    pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_cauchy_euler_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_exact_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_first_order_linear_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_riccati_ode;
+    pub use crate::ffi_apis::symbolic_ode_ffi::json::rssn_json_solve_separable_ode;
 
     // crate::ffi_apis::symbolic_optimize_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_optimize_ffi::bincode_api::rssn_bincode_find_constrained_extrema;
-pub use crate::ffi_apis::symbolic_optimize_ffi::bincode_api::rssn_bincode_find_extrema;
-pub use crate::ffi_apis::symbolic_optimize_ffi::bincode_api::rssn_bincode_hessian_matrix;
+    pub use crate::ffi_apis::symbolic_optimize_ffi::bincode_api::rssn_bincode_find_extrema;
+    pub use crate::ffi_apis::symbolic_optimize_ffi::bincode_api::rssn_bincode_hessian_matrix;
 
     // crate::ffi_apis::symbolic_optimize_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_optimize_ffi::handle::rssn_find_constrained_extrema_handle;
-pub use crate::ffi_apis::symbolic_optimize_ffi::handle::rssn_find_extrema_handle;
-pub use crate::ffi_apis::symbolic_optimize_ffi::handle::rssn_free_critical_point_vec_handle;
-pub use crate::ffi_apis::symbolic_optimize_ffi::handle::rssn_free_solution_vec_handle;
-pub use crate::ffi_apis::symbolic_optimize_ffi::handle::rssn_hessian_matrix_handle;
+    pub use crate::ffi_apis::symbolic_optimize_ffi::handle::rssn_find_extrema_handle;
+    pub use crate::ffi_apis::symbolic_optimize_ffi::handle::rssn_free_critical_point_vec_handle;
+    pub use crate::ffi_apis::symbolic_optimize_ffi::handle::rssn_free_solution_vec_handle;
+    pub use crate::ffi_apis::symbolic_optimize_ffi::handle::rssn_hessian_matrix_handle;
 
     // crate::ffi_apis::symbolic_optimize_ffi::json exports:
     pub use crate::ffi_apis::symbolic_optimize_ffi::json::rssn_json_find_constrained_extrema;
-pub use crate::ffi_apis::symbolic_optimize_ffi::json::rssn_json_find_extrema;
-pub use crate::ffi_apis::symbolic_optimize_ffi::json::rssn_json_hessian_matrix;
+    pub use crate::ffi_apis::symbolic_optimize_ffi::json::rssn_json_find_extrema;
+    pub use crate::ffi_apis::symbolic_optimize_ffi::json::rssn_json_hessian_matrix;
 
     // crate::ffi_apis::symbolic_pde_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_pde_ffi::bincode_api::rssn_bincode_classify_pde;
-pub use crate::ffi_apis::symbolic_pde_ffi::bincode_api::rssn_bincode_solve_heat_equation_1d;
-pub use crate::ffi_apis::symbolic_pde_ffi::bincode_api::rssn_bincode_solve_laplace_equation_2d;
-pub use crate::ffi_apis::symbolic_pde_ffi::bincode_api::rssn_bincode_solve_pde;
-pub use crate::ffi_apis::symbolic_pde_ffi::bincode_api::rssn_bincode_solve_pde_by_characteristics;
-pub use crate::ffi_apis::symbolic_pde_ffi::bincode_api::rssn_bincode_solve_wave_equation_1d;
+    pub use crate::ffi_apis::symbolic_pde_ffi::bincode_api::rssn_bincode_solve_heat_equation_1d;
+    pub use crate::ffi_apis::symbolic_pde_ffi::bincode_api::rssn_bincode_solve_laplace_equation_2d;
+    pub use crate::ffi_apis::symbolic_pde_ffi::bincode_api::rssn_bincode_solve_pde;
+    pub use crate::ffi_apis::symbolic_pde_ffi::bincode_api::rssn_bincode_solve_pde_by_characteristics;
+    pub use crate::ffi_apis::symbolic_pde_ffi::bincode_api::rssn_bincode_solve_wave_equation_1d;
 
     // crate::ffi_apis::symbolic_pde_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_heat_equation_1d;
-pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_helmholtz_equation;
-pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_klein_gordon_equation;
-pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_laplace_equation_2d;
-pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_pde;
-pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_pde_by_characteristics;
-pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_poisson_equation_2d;
-pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_schrodinger_equation;
-pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_wave_equation_1d_dalembert;
+    pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_helmholtz_equation;
+    pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_klein_gordon_equation;
+    pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_laplace_equation_2d;
+    pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_pde;
+    pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_pde_by_characteristics;
+    pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_poisson_equation_2d;
+    pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_schrodinger_equation;
+    pub use crate::ffi_apis::symbolic_pde_ffi::handle::rssn_solve_wave_equation_1d_dalembert;
 
     // crate::ffi_apis::symbolic_pde_ffi::json exports:
     pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_classify_pde;
-pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_heat_equation_1d;
-pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_laplace_equation_2d;
-pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_pde;
-pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_pde_by_characteristics;
-pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_poisson_equation_2d;
-pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_wave_equation_1d;
+    pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_heat_equation_1d;
+    pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_laplace_equation_2d;
+    pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_pde;
+    pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_pde_by_characteristics;
+    pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_poisson_equation_2d;
+    pub use crate::ffi_apis::symbolic_pde_ffi::json::rssn_json_solve_wave_equation_1d;
 
     // crate::ffi_apis::symbolic_poly_factorization_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_poly_factorization_ffi::bincode_api::rssn_bincode_factor_gf;
-pub use crate::ffi_apis::symbolic_poly_factorization_ffi::bincode_api::rssn_bincode_poly_derivative_gf;
-pub use crate::ffi_apis::symbolic_poly_factorization_ffi::bincode_api::rssn_bincode_poly_gcd_gf;
-pub use crate::ffi_apis::symbolic_poly_factorization_ffi::bincode_api::rssn_bincode_square_free_factorization_gf;
+    pub use crate::ffi_apis::symbolic_poly_factorization_ffi::bincode_api::rssn_bincode_poly_derivative_gf;
+    pub use crate::ffi_apis::symbolic_poly_factorization_ffi::bincode_api::rssn_bincode_poly_gcd_gf;
+    pub use crate::ffi_apis::symbolic_poly_factorization_ffi::bincode_api::rssn_bincode_square_free_factorization_gf;
 
     // crate::ffi_apis::symbolic_poly_factorization_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_poly_factorization_ffi::handle::rssn_factor_gf_handle;
-pub use crate::ffi_apis::symbolic_poly_factorization_ffi::handle::rssn_free_poly_mult_vec_handle;
-pub use crate::ffi_apis::symbolic_poly_factorization_ffi::handle::rssn_free_poly_vec_handle;
-pub use crate::ffi_apis::symbolic_poly_factorization_ffi::handle::rssn_poly_derivative_gf_handle;
-pub use crate::ffi_apis::symbolic_poly_factorization_ffi::handle::rssn_poly_gcd_gf_handle;
-pub use crate::ffi_apis::symbolic_poly_factorization_ffi::handle::rssn_square_free_factorization_gf_handle;
+    pub use crate::ffi_apis::symbolic_poly_factorization_ffi::handle::rssn_free_poly_mult_vec_handle;
+    pub use crate::ffi_apis::symbolic_poly_factorization_ffi::handle::rssn_free_poly_vec_handle;
+    pub use crate::ffi_apis::symbolic_poly_factorization_ffi::handle::rssn_poly_derivative_gf_handle;
+    pub use crate::ffi_apis::symbolic_poly_factorization_ffi::handle::rssn_poly_gcd_gf_handle;
+    pub use crate::ffi_apis::symbolic_poly_factorization_ffi::handle::rssn_square_free_factorization_gf_handle;
 
     // crate::ffi_apis::symbolic_poly_factorization_ffi::json exports:
     pub use crate::ffi_apis::symbolic_poly_factorization_ffi::json::rssn_json_factor_gf;
-pub use crate::ffi_apis::symbolic_poly_factorization_ffi::json::rssn_json_poly_derivative_gf;
-pub use crate::ffi_apis::symbolic_poly_factorization_ffi::json::rssn_json_poly_gcd_gf;
-pub use crate::ffi_apis::symbolic_poly_factorization_ffi::json::rssn_json_square_free_factorization_gf;
+    pub use crate::ffi_apis::symbolic_poly_factorization_ffi::json::rssn_json_poly_derivative_gf;
+    pub use crate::ffi_apis::symbolic_poly_factorization_ffi::json::rssn_json_poly_gcd_gf;
+    pub use crate::ffi_apis::symbolic_poly_factorization_ffi::json::rssn_json_square_free_factorization_gf;
 
     // crate::ffi_apis::symbolic_polynomial_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_polynomial_ffi::bincode_api::rssn_bincode_polynomial_contains_var;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::bincode_api::rssn_bincode_polynomial_degree;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::bincode_api::rssn_bincode_polynomial_is_polynomial;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::bincode_api::rssn_bincode_polynomial_leading_coefficient;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::bincode_api::rssn_bincode_polynomial_long_division;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::bincode_api::rssn_bincode_polynomial_to_coeffs_vec;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::bincode_api::rssn_bincode_polynomial_degree;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::bincode_api::rssn_bincode_polynomial_is_polynomial;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::bincode_api::rssn_bincode_polynomial_leading_coefficient;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::bincode_api::rssn_bincode_polynomial_long_division;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::bincode_api::rssn_bincode_polynomial_to_coeffs_vec;
 
     // crate::ffi_apis::symbolic_polynomial_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_polynomial_ffi::handle::polynomial_contains_var_handle;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::handle::polynomial_degree_handle;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::handle::polynomial_free_expr_handle;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::handle::polynomial_is_polynomial_handle;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::handle::polynomial_leading_coefficient_handle;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::handle::polynomial_long_division_handle;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::handle::polynomial_degree_handle;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::handle::polynomial_free_expr_handle;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::handle::polynomial_is_polynomial_handle;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::handle::polynomial_leading_coefficient_handle;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::handle::polynomial_long_division_handle;
 
     // crate::ffi_apis::symbolic_polynomial_ffi::json exports:
     pub use crate::ffi_apis::symbolic_polynomial_ffi::json::rssn_json_polynomial_contains_var;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::json::rssn_json_polynomial_degree;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::json::rssn_json_polynomial_is_polynomial;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::json::rssn_json_polynomial_leading_coefficient;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::json::rssn_json_polynomial_long_division;
-pub use crate::ffi_apis::symbolic_polynomial_ffi::json::rssn_json_polynomial_to_coeffs_vec;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::json::rssn_json_polynomial_degree;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::json::rssn_json_polynomial_is_polynomial;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::json::rssn_json_polynomial_leading_coefficient;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::json::rssn_json_polynomial_long_division;
+    pub use crate::ffi_apis::symbolic_polynomial_ffi::json::rssn_json_polynomial_to_coeffs_vec;
 
     // crate::ffi_apis::symbolic_proof_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_proof_ffi::bincode_api::rssn_bincode_verify_equation_solution;
-pub use crate::ffi_apis::symbolic_proof_ffi::bincode_api::rssn_bincode_verify_indefinite_integral;
+    pub use crate::ffi_apis::symbolic_proof_ffi::bincode_api::rssn_bincode_verify_indefinite_integral;
 
     // crate::ffi_apis::symbolic_proof_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_definite_integral_handle;
-pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_derivative_handle;
-pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_equation_solution_handle;
-pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_indefinite_integral_handle;
-pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_limit_handle;
-pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_matrix_inverse_handle;
-pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_ode_solution_handle;
+    pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_derivative_handle;
+    pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_equation_solution_handle;
+    pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_indefinite_integral_handle;
+    pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_limit_handle;
+    pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_matrix_inverse_handle;
+    pub use crate::ffi_apis::symbolic_proof_ffi::handle::rssn_verify_ode_solution_handle;
 
     // crate::ffi_apis::symbolic_proof_ffi::json exports:
     pub use crate::ffi_apis::symbolic_proof_ffi::json::rssn_json_verify_equation_solution;
-pub use crate::ffi_apis::symbolic_proof_ffi::json::rssn_json_verify_indefinite_integral;
-pub use crate::ffi_apis::symbolic_proof_ffi::json::rssn_json_verify_matrix_inverse;
+    pub use crate::ffi_apis::symbolic_proof_ffi::json::rssn_json_verify_indefinite_integral;
+    pub use crate::ffi_apis::symbolic_proof_ffi::json::rssn_json_verify_matrix_inverse;
 
     // crate::ffi_apis::symbolic_quantum_field_theory_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::bincode_api::rssn_bincode_qft_propagator;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::bincode_api::rssn_bincode_scalar_field_lagrangian;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::bincode_api::rssn_bincode_scalar_field_lagrangian;
 
     // crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_dirac_adjoint;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_feynman_propagator_position_space;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_feynman_slash;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_qcd_lagrangian;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_qed_lagrangian;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_qft_propagator;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_qft_scattering_cross_section;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_scalar_field_lagrangian;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_feynman_propagator_position_space;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_feynman_slash;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_qcd_lagrangian;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_qed_lagrangian;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_qft_propagator;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_qft_scattering_cross_section;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::handle::rssn_scalar_field_lagrangian;
 
     // crate::ffi_apis::symbolic_quantum_field_theory_ffi::json exports:
     pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::json::rssn_json_dirac_adjoint;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::json::rssn_json_feynman_slash;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::json::rssn_json_qcd_lagrangian;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::json::rssn_json_qed_lagrangian;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::json::rssn_json_qft_propagator;
-pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::json::rssn_json_scalar_field_lagrangian;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::json::rssn_json_feynman_slash;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::json::rssn_json_qcd_lagrangian;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::json::rssn_json_qed_lagrangian;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::json::rssn_json_qft_propagator;
+    pub use crate::ffi_apis::symbolic_quantum_field_theory_ffi::json::rssn_json_scalar_field_lagrangian;
 
     // crate::ffi_apis::symbolic_quantum_mechanics_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::bincode_api::rssn_bincode_bra_ket;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::bincode_api::rssn_bincode_expectation_value;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::bincode_api::rssn_bincode_uncertainty;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::bincode_api::rssn_bincode_expectation_value;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::bincode_api::rssn_bincode_uncertainty;
 
     // crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_bra_free;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_bra_ket;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_bra_new;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_commutator;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_dirac_equation;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_expectation_value;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_first_order_energy_correction;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_hamiltonian_free_particle;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_hamiltonian_harmonic_oscillator;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_ket_free;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_ket_new;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_klein_gordon_equation;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_operator_free;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_operator_new;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_pauli_matrices;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_probability_density;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_scattering_amplitude;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_spin_operator;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_time_dependent_schrodinger_equation;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_uncertainty;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_bra_ket;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_bra_new;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_commutator;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_dirac_equation;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_expectation_value;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_first_order_energy_correction;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_hamiltonian_free_particle;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_hamiltonian_harmonic_oscillator;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_ket_free;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_ket_new;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_klein_gordon_equation;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_operator_free;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_operator_new;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_pauli_matrices;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_probability_density;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_scattering_amplitude;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_spin_operator;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_time_dependent_schrodinger_equation;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::handle::rssn_uncertainty;
 
     // crate::ffi_apis::symbolic_quantum_mechanics_ffi::json exports:
     pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::json::rssn_json_bra_ket;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::json::rssn_json_expectation_value;
-pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::json::rssn_json_uncertainty;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::json::rssn_json_expectation_value;
+    pub use crate::ffi_apis::symbolic_quantum_mechanics_ffi::json::rssn_json_uncertainty;
 
     // crate::ffi_apis::symbolic_radicals_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_radicals_ffi::bincode_api::rssn_bincode_denest_sqrt;
-pub use crate::ffi_apis::symbolic_radicals_ffi::bincode_api::rssn_bincode_simplify_radicals;
+    pub use crate::ffi_apis::symbolic_radicals_ffi::bincode_api::rssn_bincode_simplify_radicals;
 
     // crate::ffi_apis::symbolic_radicals_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_radicals_ffi::handle::rssn_denest_sqrt_handle;
-pub use crate::ffi_apis::symbolic_radicals_ffi::handle::rssn_simplify_radicals_handle;
+    pub use crate::ffi_apis::symbolic_radicals_ffi::handle::rssn_simplify_radicals_handle;
 
     // crate::ffi_apis::symbolic_radicals_ffi::json exports:
     pub use crate::ffi_apis::symbolic_radicals_ffi::json::rssn_json_denest_sqrt;
-pub use crate::ffi_apis::symbolic_radicals_ffi::json::rssn_json_simplify_radicals;
+    pub use crate::ffi_apis::symbolic_radicals_ffi::json::rssn_json_simplify_radicals;
 
     // crate::ffi_apis::symbolic_real_roots_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_real_roots_ffi::bincode_api::rssn_bincode_count_real_roots_in_interval;
-pub use crate::ffi_apis::symbolic_real_roots_ffi::bincode_api::rssn_bincode_isolate_real_roots;
-pub use crate::ffi_apis::symbolic_real_roots_ffi::bincode_api::rssn_bincode_sturm_sequence;
+    pub use crate::ffi_apis::symbolic_real_roots_ffi::bincode_api::rssn_bincode_isolate_real_roots;
+    pub use crate::ffi_apis::symbolic_real_roots_ffi::bincode_api::rssn_bincode_sturm_sequence;
 
     // crate::ffi_apis::symbolic_real_roots_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_real_roots_ffi::handle::rssn_count_real_roots_in_interval_handle;
-pub use crate::ffi_apis::symbolic_real_roots_ffi::handle::rssn_free_expr_vec_handle;
-pub use crate::ffi_apis::symbolic_real_roots_ffi::handle::rssn_free_interval_vec_handle;
-pub use crate::ffi_apis::symbolic_real_roots_ffi::handle::rssn_isolate_real_roots_handle;
-pub use crate::ffi_apis::symbolic_real_roots_ffi::handle::rssn_sturm_sequence_handle;
+    pub use crate::ffi_apis::symbolic_real_roots_ffi::handle::rssn_free_expr_vec_handle;
+    pub use crate::ffi_apis::symbolic_real_roots_ffi::handle::rssn_free_interval_vec_handle;
+    pub use crate::ffi_apis::symbolic_real_roots_ffi::handle::rssn_isolate_real_roots_handle;
+    pub use crate::ffi_apis::symbolic_real_roots_ffi::handle::rssn_sturm_sequence_handle;
 
     // crate::ffi_apis::symbolic_real_roots_ffi::json exports:
     pub use crate::ffi_apis::symbolic_real_roots_ffi::json::rssn_json_count_real_roots_in_interval;
-pub use crate::ffi_apis::symbolic_real_roots_ffi::json::rssn_json_isolate_real_roots;
-pub use crate::ffi_apis::symbolic_real_roots_ffi::json::rssn_json_sturm_sequence;
+    pub use crate::ffi_apis::symbolic_real_roots_ffi::json::rssn_json_isolate_real_roots;
+    pub use crate::ffi_apis::symbolic_real_roots_ffi::json::rssn_json_sturm_sequence;
 
     // crate::ffi_apis::symbolic_relativity_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_relativity_ffi::bincode_api::rssn_bincode_lorentz_factor;
-pub use crate::ffi_apis::symbolic_relativity_ffi::bincode_api::rssn_bincode_mass_energy_equivalence;
-pub use crate::ffi_apis::symbolic_relativity_ffi::bincode_api::rssn_bincode_schwarzschild_radius;
+    pub use crate::ffi_apis::symbolic_relativity_ffi::bincode_api::rssn_bincode_mass_energy_equivalence;
+    pub use crate::ffi_apis::symbolic_relativity_ffi::bincode_api::rssn_bincode_schwarzschild_radius;
 
     // crate::ffi_apis::symbolic_relativity_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_relativity_ffi::handle::ExprPair;
-pub use crate::ffi_apis::symbolic_relativity_ffi::handle::rssn_lorentz_factor;
-pub use crate::ffi_apis::symbolic_relativity_ffi::handle::rssn_lorentz_transformation_x;
-pub use crate::ffi_apis::symbolic_relativity_ffi::handle::rssn_mass_energy_equivalence;
-pub use crate::ffi_apis::symbolic_relativity_ffi::handle::rssn_schwarzschild_radius;
+    pub use crate::ffi_apis::symbolic_relativity_ffi::handle::rssn_lorentz_factor;
+    pub use crate::ffi_apis::symbolic_relativity_ffi::handle::rssn_lorentz_transformation_x;
+    pub use crate::ffi_apis::symbolic_relativity_ffi::handle::rssn_mass_energy_equivalence;
+    pub use crate::ffi_apis::symbolic_relativity_ffi::handle::rssn_schwarzschild_radius;
 
     // crate::ffi_apis::symbolic_relativity_ffi::json exports:
     pub use crate::ffi_apis::symbolic_relativity_ffi::json::rssn_json_lorentz_factor;
-pub use crate::ffi_apis::symbolic_relativity_ffi::json::rssn_json_mass_energy_equivalence;
-pub use crate::ffi_apis::symbolic_relativity_ffi::json::rssn_json_schwarzschild_radius;
+    pub use crate::ffi_apis::symbolic_relativity_ffi::json::rssn_json_mass_energy_equivalence;
+    pub use crate::ffi_apis::symbolic_relativity_ffi::json::rssn_json_schwarzschild_radius;
 
     // crate::ffi_apis::symbolic_rewriting_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_rewriting_ffi::bincode_api::rssn_apply_rules_to_normal_form_bincode;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::bincode_api::rssn_knuth_bendix_bincode;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::bincode_api::rssn_rewrite_rule_new_bincode;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::bincode_api::rssn_rewrite_rule_to_string_bincode;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::bincode_api::rssn_knuth_bendix_bincode;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::bincode_api::rssn_rewrite_rule_new_bincode;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::bincode_api::rssn_rewrite_rule_to_string_bincode;
 
     // crate::ffi_apis::symbolic_rewriting_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_apply_rules_to_normal_form;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_knuth_bendix;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rewrite_rule_free;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rewrite_rule_get_lhs;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rewrite_rule_get_rhs;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rewrite_rule_new;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rewrite_rule_to_string;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rules_vec_free;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rules_vec_get;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rules_vec_len;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_knuth_bendix;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rewrite_rule_free;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rewrite_rule_get_lhs;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rewrite_rule_get_rhs;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rewrite_rule_new;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rewrite_rule_to_string;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rules_vec_free;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rules_vec_get;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::handle::rssn_rules_vec_len;
 
     // crate::ffi_apis::symbolic_rewriting_ffi::json exports:
     pub use crate::ffi_apis::symbolic_rewriting_ffi::json::rssn_apply_rules_to_normal_form_json;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::json::rssn_knuth_bendix_json;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::json::rssn_rewrite_rule_new_json;
-pub use crate::ffi_apis::symbolic_rewriting_ffi::json::rssn_rewrite_rule_to_string_json;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::json::rssn_knuth_bendix_json;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::json::rssn_rewrite_rule_new_json;
+    pub use crate::ffi_apis::symbolic_rewriting_ffi::json::rssn_rewrite_rule_to_string_json;
 
     // crate::ffi_apis::symbolic_series_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_analytic_continuation;
-pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_asymptotic_expansion;
-pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_fourier_series;
-pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_laurent_series;
-pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_product;
-pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_summation;
-pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_taylor_series;
-pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_series_bincode_analyze_convergence;
+    pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_asymptotic_expansion;
+    pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_fourier_series;
+    pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_laurent_series;
+    pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_product;
+    pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_summation;
+    pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_bincode_taylor_series;
+    pub use crate::ffi_apis::symbolic_series_ffi::bincode_api::rssn_series_bincode_analyze_convergence;
 
     // crate::ffi_apis::symbolic_series_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_analytic_continuation_handle;
-pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_asymptotic_expansion_handle;
-pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_fourier_series_handle;
-pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_laurent_series_handle;
-pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_product_handle;
-pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_series_analyze_convergence_handle;
-pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_summation_handle;
-pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_taylor_series_handle;
+    pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_asymptotic_expansion_handle;
+    pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_fourier_series_handle;
+    pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_laurent_series_handle;
+    pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_product_handle;
+    pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_series_analyze_convergence_handle;
+    pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_summation_handle;
+    pub use crate::ffi_apis::symbolic_series_ffi::handle::rssn_taylor_series_handle;
 
     // crate::ffi_apis::symbolic_series_ffi::json exports:
     pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_analytic_continuation;
-pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_asymptotic_expansion;
-pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_fourier_series;
-pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_laurent_series;
-pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_product;
-pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_summation;
-pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_taylor_series;
-pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_series_json_analyze_convergence;
+    pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_asymptotic_expansion;
+    pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_fourier_series;
+    pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_laurent_series;
+    pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_product;
+    pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_summation;
+    pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_json_taylor_series;
+    pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_series_json_analyze_convergence;
 
     // crate::ffi_apis::symbolic_simplify_dag_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_simplify_dag_ffi::bincode_api::rssn_bincode_simplify_dag;
@@ -2911,492 +2909,492 @@ pub use crate::ffi_apis::symbolic_series_ffi::json::rssn_series_json_analyze_con
 
     // crate::ffi_apis::symbolic_simplify_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_simplify_ffi::bincode_api::rssn_bincode_heuristic_simplify;
-pub use crate::ffi_apis::symbolic_simplify_ffi::bincode_api::rssn_bincode_simplify;
+    pub use crate::ffi_apis::symbolic_simplify_ffi::bincode_api::rssn_bincode_simplify;
 
     // crate::ffi_apis::symbolic_simplify_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_simplify_ffi::handle::rssn_heuristic_simplify;
-pub use crate::ffi_apis::symbolic_simplify_ffi::handle::rssn_simplify;
+    pub use crate::ffi_apis::symbolic_simplify_ffi::handle::rssn_simplify;
 
     // crate::ffi_apis::symbolic_simplify_ffi::json exports:
     pub use crate::ffi_apis::symbolic_simplify_ffi::json::rssn_json_heuristic_simplify;
-pub use crate::ffi_apis::symbolic_simplify_ffi::json::rssn_json_simplify;
+    pub use crate::ffi_apis::symbolic_simplify_ffi::json::rssn_json_simplify;
 
     // crate::ffi_apis::symbolic_solid_state_physics_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::bincode_api::rssn_bincode_density_of_states_3d;
-pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::bincode_api::rssn_bincode_drude_conductivity;
-pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::bincode_api::rssn_bincode_fermi_energy_3d;
+    pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::bincode_api::rssn_bincode_drude_conductivity;
+    pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::bincode_api::rssn_bincode_fermi_energy_3d;
 
     // crate::ffi_apis::symbolic_solid_state_physics_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_crystal_lattice_free;
-pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_crystal_lattice_new;
-pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_crystal_lattice_reciprocal_vectors;
-pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_crystal_lattice_volume;
-pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_density_of_states_3d;
-pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_drude_conductivity;
-pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_fermi_energy_3d;
-pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_hall_coefficient;
+    pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_crystal_lattice_new;
+    pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_crystal_lattice_reciprocal_vectors;
+    pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_crystal_lattice_volume;
+    pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_density_of_states_3d;
+    pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_drude_conductivity;
+    pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_fermi_energy_3d;
+    pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::handle::rssn_hall_coefficient;
 
     // crate::ffi_apis::symbolic_solid_state_physics_ffi::json exports:
     pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::json::rssn_json_density_of_states_3d;
-pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::json::rssn_json_drude_conductivity;
-pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::json::rssn_json_fermi_energy_3d;
+    pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::json::rssn_json_drude_conductivity;
+    pub use crate::ffi_apis::symbolic_solid_state_physics_ffi::json::rssn_json_fermi_energy_3d;
 
     // crate::ffi_apis::symbolic_solve_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_solve_ffi::bincode_api::rssn_bincode_solve;
-pub use crate::ffi_apis::symbolic_solve_ffi::bincode_api::rssn_bincode_solve_linear_system;
-pub use crate::ffi_apis::symbolic_solve_ffi::bincode_api::rssn_bincode_solve_system;
+    pub use crate::ffi_apis::symbolic_solve_ffi::bincode_api::rssn_bincode_solve_linear_system;
+    pub use crate::ffi_apis::symbolic_solve_ffi::bincode_api::rssn_bincode_solve_system;
 
     // crate::ffi_apis::symbolic_solve_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_solve_ffi::handle::rssn_solve_handle;
-pub use crate::ffi_apis::symbolic_solve_ffi::handle::rssn_solve_linear_system_handle;
-pub use crate::ffi_apis::symbolic_solve_ffi::handle::rssn_solve_system_handle;
+    pub use crate::ffi_apis::symbolic_solve_ffi::handle::rssn_solve_linear_system_handle;
+    pub use crate::ffi_apis::symbolic_solve_ffi::handle::rssn_solve_system_handle;
 
     // crate::ffi_apis::symbolic_solve_ffi::json exports:
     pub use crate::ffi_apis::symbolic_solve_ffi::json::rssn_json_solve;
-pub use crate::ffi_apis::symbolic_solve_ffi::json::rssn_json_solve_linear_system;
-pub use crate::ffi_apis::symbolic_solve_ffi::json::rssn_json_solve_system;
+    pub use crate::ffi_apis::symbolic_solve_ffi::json::rssn_json_solve_linear_system;
+    pub use crate::ffi_apis::symbolic_solve_ffi::json::rssn_json_solve_system;
 
     // crate::ffi_apis::symbolic_special_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_i0;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_i1;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_j0;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_j1;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_k0;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_k1;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_y0;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_y1;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_beta_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_binomial;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_digamma_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_double_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_erf_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_erfc_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_falling_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_gamma_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_inverse_erf;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_inverse_erfc;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_ln_beta_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_ln_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_ln_gamma_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_regularized_gamma_p;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_regularized_gamma_q;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_regularized_incomplete_beta;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_rising_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_sinc;
-pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_zeta_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_i1;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_j0;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_j1;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_k0;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_k1;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_y0;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_bessel_y1;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_beta_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_binomial;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_digamma_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_double_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_erf_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_erfc_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_falling_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_gamma_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_inverse_erf;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_inverse_erfc;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_ln_beta_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_ln_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_ln_gamma_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_regularized_gamma_p;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_regularized_gamma_q;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_regularized_incomplete_beta;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_rising_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_sinc;
+    pub use crate::ffi_apis::symbolic_special_ffi::bincode_api::rssn_bincode_zeta_numerical;
 
     // crate::ffi_apis::symbolic_special_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_i0;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_i1;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_j0;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_j1;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_k0;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_k1;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_y0;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_y1;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_beta_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_binomial;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_digamma_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_double_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_erf_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_erfc_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_falling_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_gamma_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_inverse_erf;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_inverse_erfc;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_ln_beta_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_ln_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_ln_gamma_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_regularized_gamma_p;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_regularized_gamma_q;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_regularized_incomplete_beta;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_rising_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_sinc;
-pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_zeta_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_i1;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_j0;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_j1;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_k0;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_k1;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_y0;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_bessel_y1;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_beta_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_binomial;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_digamma_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_double_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_erf_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_erfc_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_falling_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_gamma_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_inverse_erf;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_inverse_erfc;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_ln_beta_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_ln_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_ln_gamma_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_regularized_gamma_p;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_regularized_gamma_q;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_regularized_incomplete_beta;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_rising_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_sinc;
+    pub use crate::ffi_apis::symbolic_special_ffi::handle::rssn_zeta_numerical;
 
     // crate::ffi_apis::symbolic_special_ffi::json exports:
     pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_i0;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_i1;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_j0;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_j1;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_k0;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_k1;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_y0;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_y1;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_beta_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_binomial;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_digamma_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_double_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_erf_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_erfc_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_falling_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_gamma_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_inverse_erf;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_inverse_erfc;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_ln_beta_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_ln_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_ln_gamma_numerical;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_regularized_gamma_p;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_regularized_gamma_q;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_regularized_incomplete_beta;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_rising_factorial;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_sinc;
-pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_zeta_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_i1;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_j0;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_j1;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_k0;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_k1;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_y0;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_bessel_y1;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_beta_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_binomial;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_digamma_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_double_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_erf_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_erfc_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_falling_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_gamma_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_inverse_erf;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_inverse_erfc;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_ln_beta_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_ln_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_ln_gamma_numerical;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_regularized_gamma_p;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_regularized_gamma_q;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_regularized_incomplete_beta;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_rising_factorial;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_sinc;
+    pub use crate::ffi_apis::symbolic_special_ffi::json::rssn_json_zeta_numerical;
 
     // crate::ffi_apis::symbolic_special_functions_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_bessel_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_bessel_i;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_bessel_j;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_bessel_k;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_bessel_y;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_beta;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_chebyshev_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_chebyshev_t;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_chebyshev_u;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_digamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_erf;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_erfc;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_erfi;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_gamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_generalized_laguerre;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_hermite_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_hermite_h;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_hermite_rodrigues_formula;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_laguerre_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_laguerre_l;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_legendre_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_legendre_p;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_legendre_rodrigues_formula;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_ln_gamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_polygamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_zeta;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_bessel_i;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_bessel_j;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_bessel_k;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_bessel_y;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_beta;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_chebyshev_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_chebyshev_t;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_chebyshev_u;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_digamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_erf;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_erfc;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_erfi;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_gamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_generalized_laguerre;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_hermite_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_hermite_h;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_hermite_rodrigues_formula;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_laguerre_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_laguerre_l;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_legendre_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_legendre_p;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_legendre_rodrigues_formula;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_ln_gamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_polygamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::bincode_api::rssn_bincode_zeta;
 
     // crate::ffi_apis::symbolic_special_functions_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_bessel_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_bessel_i;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_bessel_j;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_bessel_k;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_bessel_y;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_beta;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_chebyshev_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_chebyshev_t;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_chebyshev_u;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_digamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_erf;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_erfc;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_erfi;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_gamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_generalized_laguerre;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_hermite_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_hermite_h;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_hermite_rodrigues_formula;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_laguerre_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_laguerre_l;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_legendre_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_legendre_p;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_legendre_rodrigues_formula;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_ln_gamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_polygamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_zeta;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_bessel_i;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_bessel_j;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_bessel_k;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_bessel_y;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_beta;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_chebyshev_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_chebyshev_t;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_chebyshev_u;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_digamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_erf;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_erfc;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_erfi;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_gamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_generalized_laguerre;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_hermite_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_hermite_h;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_hermite_rodrigues_formula;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_laguerre_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_laguerre_l;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_legendre_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_legendre_p;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_legendre_rodrigues_formula;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_ln_gamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_polygamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::handle::rssn_zeta;
 
     // crate::ffi_apis::symbolic_special_functions_ffi::json exports:
     pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_bessel_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_bessel_i;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_bessel_j;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_bessel_k;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_bessel_y;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_beta;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_chebyshev_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_chebyshev_t;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_chebyshev_u;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_digamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_erf;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_erfc;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_erfi;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_gamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_generalized_laguerre;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_hermite_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_hermite_h;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_hermite_rodrigues_formula;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_laguerre_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_laguerre_l;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_legendre_differential_equation;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_legendre_p;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_legendre_rodrigues_formula;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_ln_gamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_polygamma;
-pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_zeta;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_bessel_i;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_bessel_j;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_bessel_k;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_bessel_y;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_beta;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_chebyshev_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_chebyshev_t;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_chebyshev_u;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_digamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_erf;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_erfc;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_erfi;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_gamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_generalized_laguerre;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_hermite_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_hermite_h;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_hermite_rodrigues_formula;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_laguerre_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_laguerre_l;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_legendre_differential_equation;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_legendre_p;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_legendre_rodrigues_formula;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_ln_gamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_polygamma;
+    pub use crate::ffi_apis::symbolic_special_functions_ffi::json::rssn_json_zeta;
 
     // crate::ffi_apis::symbolic_stats_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_stats_ffi::bincode_api::rssn_bincode_correlation;
-pub use crate::ffi_apis::symbolic_stats_ffi::bincode_api::rssn_bincode_covariance;
-pub use crate::ffi_apis::symbolic_stats_ffi::bincode_api::rssn_bincode_mean;
-pub use crate::ffi_apis::symbolic_stats_ffi::bincode_api::rssn_bincode_std_dev;
-pub use crate::ffi_apis::symbolic_stats_ffi::bincode_api::rssn_bincode_variance;
+    pub use crate::ffi_apis::symbolic_stats_ffi::bincode_api::rssn_bincode_covariance;
+    pub use crate::ffi_apis::symbolic_stats_ffi::bincode_api::rssn_bincode_mean;
+    pub use crate::ffi_apis::symbolic_stats_ffi::bincode_api::rssn_bincode_std_dev;
+    pub use crate::ffi_apis::symbolic_stats_ffi::bincode_api::rssn_bincode_variance;
 
     // crate::ffi_apis::symbolic_stats_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_stats_ffi::handle::rssn_correlation;
-pub use crate::ffi_apis::symbolic_stats_ffi::handle::rssn_covariance;
-pub use crate::ffi_apis::symbolic_stats_ffi::handle::rssn_mean;
-pub use crate::ffi_apis::symbolic_stats_ffi::handle::rssn_std_dev;
-pub use crate::ffi_apis::symbolic_stats_ffi::handle::rssn_variance;
+    pub use crate::ffi_apis::symbolic_stats_ffi::handle::rssn_covariance;
+    pub use crate::ffi_apis::symbolic_stats_ffi::handle::rssn_mean;
+    pub use crate::ffi_apis::symbolic_stats_ffi::handle::rssn_std_dev;
+    pub use crate::ffi_apis::symbolic_stats_ffi::handle::rssn_variance;
 
     // crate::ffi_apis::symbolic_stats_ffi::json exports:
     pub use crate::ffi_apis::symbolic_stats_ffi::json::rssn_json_correlation;
-pub use crate::ffi_apis::symbolic_stats_ffi::json::rssn_json_covariance;
-pub use crate::ffi_apis::symbolic_stats_ffi::json::rssn_json_mean;
-pub use crate::ffi_apis::symbolic_stats_ffi::json::rssn_json_std_dev;
-pub use crate::ffi_apis::symbolic_stats_ffi::json::rssn_json_variance;
+    pub use crate::ffi_apis::symbolic_stats_ffi::json::rssn_json_covariance;
+    pub use crate::ffi_apis::symbolic_stats_ffi::json::rssn_json_mean;
+    pub use crate::ffi_apis::symbolic_stats_ffi::json::rssn_json_std_dev;
+    pub use crate::ffi_apis::symbolic_stats_ffi::json::rssn_json_variance;
 
     // crate::ffi_apis::symbolic_stats_inference_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_stats_inference_ffi::bincode_api::rssn_bincode_one_sample_t_test;
-pub use crate::ffi_apis::symbolic_stats_inference_ffi::bincode_api::rssn_bincode_two_sample_t_test;
-pub use crate::ffi_apis::symbolic_stats_inference_ffi::bincode_api::rssn_bincode_z_test;
+    pub use crate::ffi_apis::symbolic_stats_inference_ffi::bincode_api::rssn_bincode_two_sample_t_test;
+    pub use crate::ffi_apis::symbolic_stats_inference_ffi::bincode_api::rssn_bincode_z_test;
 
     // crate::ffi_apis::symbolic_stats_inference_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_stats_inference_ffi::handle::rssn_one_sample_t_test;
-pub use crate::ffi_apis::symbolic_stats_inference_ffi::handle::rssn_two_sample_t_test;
-pub use crate::ffi_apis::symbolic_stats_inference_ffi::handle::rssn_z_test;
+    pub use crate::ffi_apis::symbolic_stats_inference_ffi::handle::rssn_two_sample_t_test;
+    pub use crate::ffi_apis::symbolic_stats_inference_ffi::handle::rssn_z_test;
 
     // crate::ffi_apis::symbolic_stats_inference_ffi::json exports:
     pub use crate::ffi_apis::symbolic_stats_inference_ffi::json::rssn_json_one_sample_t_test;
-pub use crate::ffi_apis::symbolic_stats_inference_ffi::json::rssn_json_two_sample_t_test;
-pub use crate::ffi_apis::symbolic_stats_inference_ffi::json::rssn_json_z_test;
+    pub use crate::ffi_apis::symbolic_stats_inference_ffi::json::rssn_json_two_sample_t_test;
+    pub use crate::ffi_apis::symbolic_stats_inference_ffi::json::rssn_json_z_test;
 
     // crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_conditional_entropy;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_cross_entropy;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_gini_impurity;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_joint_entropy;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_kl_divergence;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_mutual_information;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_shannon_entropy;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_cross_entropy;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_gini_impurity;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_joint_entropy;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_kl_divergence;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_mutual_information;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::bincode_api::rssn_bincode_shannon_entropy;
 
     // crate::ffi_apis::symbolic_stats_information_theory_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_conditional_entropy;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_cross_entropy;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_gini_impurity;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_joint_entropy;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_kl_divergence;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_mutual_information;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_shannon_entropy;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_cross_entropy;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_gini_impurity;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_joint_entropy;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_kl_divergence;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_mutual_information;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::handle::rssn_shannon_entropy;
 
     // crate::ffi_apis::symbolic_stats_information_theory_ffi::json exports:
     pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_conditional_entropy;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_cross_entropy;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_gini_impurity;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_joint_entropy;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_kl_divergence;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_mutual_information;
-pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_shannon_entropy;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_cross_entropy;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_gini_impurity;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_joint_entropy;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_kl_divergence;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_mutual_information;
+    pub use crate::ffi_apis::symbolic_stats_information_theory_ffi::json::rssn_json_shannon_entropy;
 
     // crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_bernoulli;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_beta;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_binomial;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_cdf;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_expectation;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_exponential;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_gamma;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_mgf;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_normal;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_pdf;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_poisson;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_student_t;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_uniform;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_variance;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_beta;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_binomial;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_cdf;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_expectation;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_exponential;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_gamma;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_mgf;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_normal;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_pdf;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_poisson;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_student_t;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_uniform;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::bincode_api::rssn_bincode_dist_variance;
 
     // crate::ffi_apis::symbolic_stats_probability_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_bernoulli;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_beta;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_binomial;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_cdf;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_expectation;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_exponential;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_gamma;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_mgf;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_normal;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_pdf;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_poisson;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_student_t;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_uniform;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_variance;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_beta;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_binomial;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_cdf;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_expectation;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_exponential;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_gamma;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_mgf;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_normal;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_pdf;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_poisson;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_student_t;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_uniform;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::handle::rssn_dist_variance;
 
     // crate::ffi_apis::symbolic_stats_probability_ffi::json exports:
     pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_bernoulli;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_beta;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_binomial;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_cdf;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_expectation;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_exponential;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_gamma;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_mgf;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_normal;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_pdf;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_poisson;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_student_t;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_uniform;
-pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_variance;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_beta;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_binomial;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_cdf;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_expectation;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_exponential;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_gamma;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_mgf;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_normal;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_pdf;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_poisson;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_student_t;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_uniform;
+    pub use crate::ffi_apis::symbolic_stats_probability_ffi::json::rssn_json_dist_variance;
 
     // crate::ffi_apis::symbolic_stats_regression_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_stats_regression_ffi::bincode_api::rssn_bincode_nonlinear_regression;
-pub use crate::ffi_apis::symbolic_stats_regression_ffi::bincode_api::rssn_bincode_polynomial_regression;
-pub use crate::ffi_apis::symbolic_stats_regression_ffi::bincode_api::rssn_bincode_simple_linear_regression;
+    pub use crate::ffi_apis::symbolic_stats_regression_ffi::bincode_api::rssn_bincode_polynomial_regression;
+    pub use crate::ffi_apis::symbolic_stats_regression_ffi::bincode_api::rssn_bincode_simple_linear_regression;
 
     // crate::ffi_apis::symbolic_stats_regression_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_stats_regression_ffi::handle::rssn_nonlinear_regression;
-pub use crate::ffi_apis::symbolic_stats_regression_ffi::handle::rssn_polynomial_regression;
-pub use crate::ffi_apis::symbolic_stats_regression_ffi::handle::rssn_simple_linear_regression;
+    pub use crate::ffi_apis::symbolic_stats_regression_ffi::handle::rssn_polynomial_regression;
+    pub use crate::ffi_apis::symbolic_stats_regression_ffi::handle::rssn_simple_linear_regression;
 
     // crate::ffi_apis::symbolic_stats_regression_ffi::json exports:
     pub use crate::ffi_apis::symbolic_stats_regression_ffi::json::rssn_json_nonlinear_regression;
-pub use crate::ffi_apis::symbolic_stats_regression_ffi::json::rssn_json_polynomial_regression;
-pub use crate::ffi_apis::symbolic_stats_regression_ffi::json::rssn_json_simple_linear_regression;
+    pub use crate::ffi_apis::symbolic_stats_regression_ffi::json::rssn_json_polynomial_regression;
+    pub use crate::ffi_apis::symbolic_stats_regression_ffi::json::rssn_json_simple_linear_regression;
 
     // crate::ffi_apis::symbolic_tensor_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_tensor_ffi::bincode_api::rssn_bincode_tensor_add;
-pub use crate::ffi_apis::symbolic_tensor_ffi::bincode_api::rssn_bincode_tensor_outer_product;
-pub use crate::ffi_apis::symbolic_tensor_ffi::bincode_api::rssn_bincode_tensor_scalar_mul;
+    pub use crate::ffi_apis::symbolic_tensor_ffi::bincode_api::rssn_bincode_tensor_outer_product;
+    pub use crate::ffi_apis::symbolic_tensor_ffi::bincode_api::rssn_bincode_tensor_scalar_mul;
 
     // crate::ffi_apis::symbolic_tensor_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_tensor_ffi::handle::rssn_tensor_add_handle;
-pub use crate::ffi_apis::symbolic_tensor_ffi::handle::rssn_tensor_contract_handle;
-pub use crate::ffi_apis::symbolic_tensor_ffi::handle::rssn_tensor_outer_product_handle;
-pub use crate::ffi_apis::symbolic_tensor_ffi::handle::rssn_tensor_scalar_mul_handle;
+    pub use crate::ffi_apis::symbolic_tensor_ffi::handle::rssn_tensor_contract_handle;
+    pub use crate::ffi_apis::symbolic_tensor_ffi::handle::rssn_tensor_outer_product_handle;
+    pub use crate::ffi_apis::symbolic_tensor_ffi::handle::rssn_tensor_scalar_mul_handle;
 
     // crate::ffi_apis::symbolic_tensor_ffi::json exports:
     pub use crate::ffi_apis::symbolic_tensor_ffi::json::rssn_json_tensor_add;
-pub use crate::ffi_apis::symbolic_tensor_ffi::json::rssn_json_tensor_contract;
-pub use crate::ffi_apis::symbolic_tensor_ffi::json::rssn_json_tensor_outer_product;
-pub use crate::ffi_apis::symbolic_tensor_ffi::json::rssn_json_tensor_scalar_mul;
+    pub use crate::ffi_apis::symbolic_tensor_ffi::json::rssn_json_tensor_contract;
+    pub use crate::ffi_apis::symbolic_tensor_ffi::json::rssn_json_tensor_outer_product;
+    pub use crate::ffi_apis::symbolic_tensor_ffi::json::rssn_json_tensor_scalar_mul;
 
     // crate::ffi_apis::symbolic_thermodynamics_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_thermodynamics_ffi::bincode_api::rssn_bincode_gibbs_free_energy;
-pub use crate::ffi_apis::symbolic_thermodynamics_ffi::bincode_api::rssn_bincode_ideal_gas_law;
+    pub use crate::ffi_apis::symbolic_thermodynamics_ffi::bincode_api::rssn_bincode_ideal_gas_law;
 
     // crate::ffi_apis::symbolic_thermodynamics_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_thermodynamics_ffi::handle::rssn_boltzmann_distribution;
-pub use crate::ffi_apis::symbolic_thermodynamics_ffi::handle::rssn_carnot_efficiency;
-pub use crate::ffi_apis::symbolic_thermodynamics_ffi::handle::rssn_enthalpy;
-pub use crate::ffi_apis::symbolic_thermodynamics_ffi::handle::rssn_gibbs_free_energy;
-pub use crate::ffi_apis::symbolic_thermodynamics_ffi::handle::rssn_ideal_gas_law;
+    pub use crate::ffi_apis::symbolic_thermodynamics_ffi::handle::rssn_carnot_efficiency;
+    pub use crate::ffi_apis::symbolic_thermodynamics_ffi::handle::rssn_enthalpy;
+    pub use crate::ffi_apis::symbolic_thermodynamics_ffi::handle::rssn_gibbs_free_energy;
+    pub use crate::ffi_apis::symbolic_thermodynamics_ffi::handle::rssn_ideal_gas_law;
 
     // crate::ffi_apis::symbolic_thermodynamics_ffi::json exports:
     pub use crate::ffi_apis::symbolic_thermodynamics_ffi::json::rssn_json_gibbs_free_energy;
-pub use crate::ffi_apis::symbolic_thermodynamics_ffi::json::rssn_json_ideal_gas_law;
+    pub use crate::ffi_apis::symbolic_thermodynamics_ffi::json::rssn_json_ideal_gas_law;
 
     // crate::ffi_apis::symbolic_topology_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_simplex_create;
-pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_simplex_dimension;
-pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_simplicial_complex_add_simplex;
-pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_simplicial_complex_apply_symbolic_boundary_operator;
-pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_simplicial_complex_create;
-pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_simplicial_complex_get_symbolic_boundary_matrix;
-pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_symbolic_chain_add_term;
-pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_symbolic_chain_create;
+    pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_simplex_dimension;
+    pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_simplicial_complex_add_simplex;
+    pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_simplicial_complex_apply_symbolic_boundary_operator;
+    pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_simplicial_complex_create;
+    pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_simplicial_complex_get_symbolic_boundary_matrix;
+    pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_symbolic_chain_add_term;
+    pub use crate::ffi_apis::symbolic_topology_ffi::bincode_api::rssn_bincode_symbolic_chain_create;
 
     // crate::ffi_apis::symbolic_topology_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_create_grid_complex;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_create_torus_complex;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplex_create;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplex_dimension;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplex_free;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_add_simplex;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_apply_symbolic_boundary_operator;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_create;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_dimension;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_euler_characteristic;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_free;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_get_symbolic_boundary_matrix;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_symbolic_chain_add_term;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_symbolic_chain_create;
-pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_symbolic_chain_free;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_create_torus_complex;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplex_create;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplex_dimension;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplex_free;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_add_simplex;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_apply_symbolic_boundary_operator;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_create;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_dimension;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_euler_characteristic;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_free;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_simplicial_complex_get_symbolic_boundary_matrix;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_symbolic_chain_add_term;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_symbolic_chain_create;
+    pub use crate::ffi_apis::symbolic_topology_ffi::handle::rssn_symbolic_chain_free;
 
     // crate::ffi_apis::symbolic_topology_ffi::json exports:
     pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_simplex_create;
-pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_simplex_dimension;
-pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_simplicial_complex_add_simplex;
-pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_simplicial_complex_apply_symbolic_boundary_operator;
-pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_simplicial_complex_create;
-pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_simplicial_complex_get_symbolic_boundary_matrix;
-pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_symbolic_chain_add_term;
-pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_symbolic_chain_create;
+    pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_simplex_dimension;
+    pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_simplicial_complex_add_simplex;
+    pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_simplicial_complex_apply_symbolic_boundary_operator;
+    pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_simplicial_complex_create;
+    pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_simplicial_complex_get_symbolic_boundary_matrix;
+    pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_symbolic_chain_add_term;
+    pub use crate::ffi_apis::symbolic_topology_ffi::json::rssn_json_symbolic_chain_create;
 
     // crate::ffi_apis::symbolic_transforms_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_convolution_fourier;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_convolution_laplace;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_fourier_differentiation;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_fourier_frequency_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_fourier_scaling;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_fourier_time_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_fourier_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_inverse_fourier_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_inverse_laplace_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_inverse_z_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_differentiation;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_frequency_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_integration;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_scaling;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_time_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_partial_fraction_decomposition;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_z_differentiation;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_z_scaling;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_z_time_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_z_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_convolution_laplace;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_fourier_differentiation;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_fourier_frequency_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_fourier_scaling;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_fourier_time_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_fourier_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_inverse_fourier_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_inverse_laplace_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_inverse_z_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_differentiation;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_frequency_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_integration;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_scaling;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_time_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_laplace_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_partial_fraction_decomposition;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_z_differentiation;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_z_scaling;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_z_time_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::bincode_api::rssn_bincode_z_transform;
 
     // crate::ffi_apis::symbolic_transforms_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_transforms_ffi::handle::ExprList;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_convolution_fourier;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_convolution_laplace;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_expr_list_free;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_expr_list_get;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_expr_list_len;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_fourier_differentiation;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_fourier_frequency_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_fourier_scaling;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_fourier_time_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_fourier_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_inverse_fourier_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_inverse_laplace_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_inverse_z_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_differentiation;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_frequency_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_integration;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_scaling;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_time_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_partial_fraction_decomposition;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_z_differentiation;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_z_scaling;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_z_time_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_z_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_convolution_fourier;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_convolution_laplace;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_expr_list_free;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_expr_list_get;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_expr_list_len;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_fourier_differentiation;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_fourier_frequency_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_fourier_scaling;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_fourier_time_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_fourier_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_inverse_fourier_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_inverse_laplace_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_inverse_z_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_differentiation;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_frequency_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_integration;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_scaling;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_time_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_laplace_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_partial_fraction_decomposition;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_z_differentiation;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_z_scaling;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_z_time_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::handle::rssn_z_transform;
 
     // crate::ffi_apis::symbolic_transforms_ffi::json exports:
     pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_convolution_fourier;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_convolution_laplace;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_fourier_differentiation;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_fourier_frequency_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_fourier_scaling;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_fourier_time_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_fourier_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_inverse_fourier_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_inverse_laplace_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_inverse_z_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_differentiation;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_frequency_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_integration;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_scaling;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_time_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_transform;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_partial_fraction_decomposition;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_z_differentiation;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_z_scaling;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_z_time_shift;
-pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_z_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_convolution_laplace;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_fourier_differentiation;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_fourier_frequency_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_fourier_scaling;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_fourier_time_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_fourier_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_inverse_fourier_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_inverse_laplace_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_inverse_z_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_differentiation;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_frequency_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_integration;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_scaling;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_time_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_laplace_transform;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_partial_fraction_decomposition;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_z_differentiation;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_z_scaling;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_z_time_shift;
+    pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_z_transform;
 
     // crate::ffi_apis::symbolic_unit_unification_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_unit_unification_ffi::bincode_api::rssn_bincode_unify_expression;
@@ -3409,54 +3407,53 @@ pub use crate::ffi_apis::symbolic_transforms_ffi::json::rssn_json_z_transform;
 
     // crate::ffi_apis::symbolic_vector_calculus_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_vector_calculus_ffi::bincode_api::rssn_line_integral_scalar_bincode;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::bincode_api::rssn_line_integral_vector_bincode;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::bincode_api::rssn_surface_integral_bincode;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::bincode_api::rssn_volume_integral_bincode;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::bincode_api::rssn_line_integral_vector_bincode;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::bincode_api::rssn_surface_integral_bincode;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::bincode_api::rssn_volume_integral_bincode;
 
     // crate::ffi_apis::symbolic_vector_calculus_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_line_integral_scalar;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_line_integral_vector;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_parametric_curve_free;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_parametric_curve_new;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_parametric_surface_free;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_parametric_surface_new;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_surface_integral;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_volume_free;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_volume_integral;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_volume_new;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_line_integral_vector;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_parametric_curve_free;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_parametric_curve_new;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_parametric_surface_free;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_parametric_surface_new;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_surface_integral;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_volume_free;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_volume_integral;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::handle::rssn_volume_new;
 
     // crate::ffi_apis::symbolic_vector_calculus_ffi::json exports:
     pub use crate::ffi_apis::symbolic_vector_calculus_ffi::json::rssn_line_integral_scalar_json;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::json::rssn_line_integral_vector_json;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::json::rssn_surface_integral_json;
-pub use crate::ffi_apis::symbolic_vector_calculus_ffi::json::rssn_volume_integral_json;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::json::rssn_line_integral_vector_json;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::json::rssn_surface_integral_json;
+    pub use crate::ffi_apis::symbolic_vector_calculus_ffi::json::rssn_volume_integral_json;
 
     // crate::ffi_apis::symbolic_vector_ffi::bincode_api exports:
     pub use crate::ffi_apis::symbolic_vector_ffi::bincode_api::rssn_bincode_vector_cross;
-pub use crate::ffi_apis::symbolic_vector_ffi::bincode_api::rssn_bincode_vector_dot;
-pub use crate::ffi_apis::symbolic_vector_ffi::bincode_api::rssn_bincode_vector_magnitude;
-pub use crate::ffi_apis::symbolic_vector_ffi::bincode_api::rssn_bincode_vector_normalize;
+    pub use crate::ffi_apis::symbolic_vector_ffi::bincode_api::rssn_bincode_vector_dot;
+    pub use crate::ffi_apis::symbolic_vector_ffi::bincode_api::rssn_bincode_vector_magnitude;
+    pub use crate::ffi_apis::symbolic_vector_ffi::bincode_api::rssn_bincode_vector_normalize;
 
     // crate::ffi_apis::symbolic_vector_ffi::handle exports:
     pub use crate::ffi_apis::symbolic_vector_ffi::handle::rssn_vector_cross_handle;
-pub use crate::ffi_apis::symbolic_vector_ffi::handle::rssn_vector_dot_handle;
-pub use crate::ffi_apis::symbolic_vector_ffi::handle::rssn_vector_magnitude_handle;
-pub use crate::ffi_apis::symbolic_vector_ffi::handle::rssn_vector_normalize_handle;
+    pub use crate::ffi_apis::symbolic_vector_ffi::handle::rssn_vector_dot_handle;
+    pub use crate::ffi_apis::symbolic_vector_ffi::handle::rssn_vector_magnitude_handle;
+    pub use crate::ffi_apis::symbolic_vector_ffi::handle::rssn_vector_normalize_handle;
 
     // crate::ffi_apis::symbolic_vector_ffi::json exports:
     pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_cross;
-pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_curl;
-pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_divergence;
-pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_dot;
-pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_gradient;
-pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_magnitude;
-pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_normalize;
+    pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_curl;
+    pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_divergence;
+    pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_dot;
+    pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_gradient;
+    pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_magnitude;
+    pub use crate::ffi_apis::symbolic_vector_ffi::json::rssn_json_vector_normalize;
 }
 
 pub use crate::is_exclusive;
 
 /// Numerical computation types and functions.
-
 pub mod numerical {
 
     pub use crate::numerical::calculus::*;
@@ -3472,13 +3469,13 @@ pub mod numerical {
     pub use crate::numerical::complex_analysis::eval_complex_expr as numerical_eval_complex_expr;
     pub use crate::numerical::complex_analysis::residue as numerical_residue;
     pub use crate::numerical::complex_analysis::*;
+    pub use crate::numerical::computer_graphics::Point3D as numerical_Point3D;
+    pub use crate::numerical::computer_graphics::Vector3D as numerical_Vector3D;
     pub use crate::numerical::computer_graphics::cross_product as computer_graphics_numerical_cross_product;
     pub use crate::numerical::computer_graphics::dot_product as computer_graphics_numerical_dot_product;
     pub use crate::numerical::computer_graphics::rotation_matrix_x as numerical_rotation_matrix_x;
     pub use crate::numerical::computer_graphics::scaling_matrix as numerical_scaling_matrix;
     pub use crate::numerical::computer_graphics::translation_matrix as numerical_translation_matrix;
-    pub use crate::numerical::computer_graphics::Point3D as numerical_Point3D;
-    pub use crate::numerical::computer_graphics::Vector3D as numerical_Vector3D;
     pub use crate::numerical::convergence::aitken_acceleration as numerical_aitken_acceleration;
     pub use crate::numerical::convergence::find_sequence_limit as numerical_find_sequence_limit;
     pub use crate::numerical::convergence::richardson_extrapolation as numerical_richardson_extrapolation;
@@ -3513,15 +3510,15 @@ pub mod numerical {
     pub use crate::numerical::elementary::pure::sqrt as numerical_sqrt;
     pub use crate::numerical::elementary::pure::tan as numerical_tan;
     pub use crate::numerical::elementary::pure::tanh as numerical_tanh;
+    pub use crate::numerical::error_correction::PolyGF256 as numerical_PolyGF256;
     pub use crate::numerical::error_correction::reed_solomon_decode as numerical_rs_decode;
     pub use crate::numerical::error_correction::reed_solomon_encode as numerical_rs_encode;
-    pub use crate::numerical::error_correction::PolyGF256 as numerical_PolyGF256;
+    pub use crate::numerical::finite_field::PrimeFieldElement as numerical_PrimeFieldElement;
     pub use crate::numerical::finite_field::gf256_add as numerical_gf256_add;
     pub use crate::numerical::finite_field::gf256_div as numerical_gf256_div;
     pub use crate::numerical::finite_field::gf256_inv as numerical_gf256_inv;
     pub use crate::numerical::finite_field::gf256_mul as numerical_gf256_mul;
     pub use crate::numerical::finite_field::gf256_pow as numerical_gf256_pow;
-    pub use crate::numerical::finite_field::PrimeFieldElement as numerical_PrimeFieldElement;
     pub use crate::numerical::fractal_geometry_and_chaos::generate_lorenz_attractor as numerical_generate_lorenz_attractor;
     pub use crate::numerical::fractal_geometry_and_chaos::generate_mandelbrot_set as numerical_generate_mandelbrot_set;
     pub use crate::numerical::functional_analysis::infinity_norm as numerical_infinity_norm;
@@ -3530,14 +3527,14 @@ pub mod numerical {
     pub use crate::numerical::functional_analysis::l2_norm as numerical_functional_analysis_l2_norm;
     pub use crate::numerical::functional_analysis::*;
     pub use crate::numerical::geometric_algebra::Multivector3D as numerical_Multivector3D;
-    pub use crate::numerical::graph::dijkstra as numerical_dijkstra;
     pub use crate::numerical::graph::Graph as numerical_Graph;
     pub use crate::numerical::graph::State as numerical_State;
+    pub use crate::numerical::graph::dijkstra as numerical_dijkstra;
+    pub use crate::numerical::integrate::QuadratureMethod as numerical_QuadratureMethod;
     pub use crate::numerical::integrate::adaptive_quadrature as numerical_adaptive_quadrature;
     pub use crate::numerical::integrate::quadrature as numerical_quadrature;
     pub use crate::numerical::integrate::simpson_rule as numerical_simpson_rule;
     pub use crate::numerical::integrate::trapezoidal_rule as numerical_trapezoidal_rule;
-    pub use crate::numerical::integrate::QuadratureMethod as numerical_QuadratureMethod;
     pub use crate::numerical::interpolate::b_spline as numerical_b_spline;
     pub use crate::numerical::interpolate::bezier_curve as numerical_bezier_curve;
     pub use crate::numerical::interpolate::cubic_spline_interpolation as numerical_cubic_spline_interpolation;
@@ -3575,21 +3572,23 @@ pub mod numerical {
     pub use crate::numerical::physics_cfd::solve_advection_1d as numerical_solve_advection_1d;
     pub use crate::numerical::physics_cfd::solve_diffusion_1d as numerical_solve_diffusion_1d;
     pub use crate::numerical::physics_cfd::solve_poisson_2d_jacobi as numerical_solve_poisson_2d_jacobi;
+    pub use crate::numerical::physics_fea::LinearElement1D as numerical_LinearElement1D;
     pub use crate::numerical::physics_fea::assemble_global_stiffness_matrix as numerical_assemble_global_stiffness_matrix;
     pub use crate::numerical::physics_fea::solve_static_structural as numerical_solve_static_structural;
-    pub use crate::numerical::physics_fea::LinearElement1D as numerical_LinearElement1D;
+    pub use crate::numerical::physics_md::Particle as numerical_Particle;
     pub use crate::numerical::physics_md::integrate_velocity_verlet as numerical_integrate_velocity_verlet;
     pub use crate::numerical::physics_md::lennard_jones_interaction as numerical_lennard_jones_interaction;
-    pub use crate::numerical::physics_md::Particle as numerical_Particle;
     pub use crate::numerical::polynomial::Polynomial as numerical_Polynomial;
     pub use crate::numerical::real_roots::find_roots as numerical_find_roots;
     pub use crate::numerical::real_roots::isolate_real_roots as numerical_isolate_real_roots;
     pub use crate::numerical::real_roots::sturm_sequence as numerical_sturm_sequence;
     pub use crate::numerical::series::*;
     pub use crate::numerical::signal::*;
+    pub use crate::numerical::solve::LinearSolution as numerical_LinearSolution;
     pub use crate::numerical::solve::solve_linear_system as numerical_solve_linear_system;
     pub use crate::numerical::solve::solve_nonlinear_system as numerical_solve_nonlinear_system;
-    pub use crate::numerical::solve::LinearSolution as numerical_LinearSolution;
+    pub use crate::numerical::sparse::Array as numerical_Array;
+    pub use crate::numerical::sparse::SparseMatrixData as numerical_SparseMatrixData;
     pub use crate::numerical::sparse::csr_from_triplets as numerical_csr_from_triplets;
     pub use crate::numerical::sparse::frobenius_norm as numerical_frobenius_norm;
     pub use crate::numerical::sparse::is_diagonal as numerical_is_diagonal;
@@ -3603,14 +3602,18 @@ pub mod numerical {
     pub use crate::numerical::sparse::to_dense as numerical_to_dense;
     pub use crate::numerical::sparse::trace as numerical_trace;
     pub use crate::numerical::sparse::transpose as numerical_transpose;
-    pub use crate::numerical::sparse::Array as numerical_Array;
-    pub use crate::numerical::sparse::SparseMatrixData as numerical_SparseMatrixData;
     pub use crate::numerical::special::beta_numerical as numerical_beta_numerical;
     pub use crate::numerical::special::erf_numerical as numerical_erf_numerical;
     pub use crate::numerical::special::erfc_numerical as numerical_erfc_numerical;
     pub use crate::numerical::special::gamma_numerical as numerical_gamma_numerical;
     pub use crate::numerical::special::ln_beta_numerical as numerical_ln_beta_numerical;
     pub use crate::numerical::special::ln_gamma_numerical as numerical_ln_gamma_numerical;
+    pub use crate::numerical::stats::BinomialDist as numerical_BinomialDist;
+    pub use crate::numerical::stats::ExponentialDist as numerical_ExponentialDist;
+    pub use crate::numerical::stats::GammaDist as numerical_GammaDist;
+    pub use crate::numerical::stats::NormalDist as numerical_NormalDist;
+    pub use crate::numerical::stats::PoissonDist as numerical_PoissonDist;
+    pub use crate::numerical::stats::UniformDist as numerical_UniformDist;
     pub use crate::numerical::stats::correlation as numerical_correlation;
     pub use crate::numerical::stats::covariance as numerical_covariance;
     pub use crate::numerical::stats::kurtosis as numerical_kurtosis;
@@ -3626,19 +3629,13 @@ pub mod numerical {
     pub use crate::numerical::stats::std_dev as numerical_std_dev;
     pub use crate::numerical::stats::two_sample_t_test as numerical_two_sample_t_test;
     pub use crate::numerical::stats::variance as numerical_variance;
-    pub use crate::numerical::stats::BinomialDist as numerical_BinomialDist;
-    pub use crate::numerical::stats::ExponentialDist as numerical_ExponentialDist;
-    pub use crate::numerical::stats::GammaDist as numerical_GammaDist;
-    pub use crate::numerical::stats::NormalDist as numerical_NormalDist;
-    pub use crate::numerical::stats::PoissonDist as numerical_PoissonDist;
-    pub use crate::numerical::stats::UniformDist as numerical_UniformDist;
+    pub use crate::numerical::tensor::TensorData as numerical_TensorData;
     pub use crate::numerical::tensor::contract as numerical_contract;
     pub use crate::numerical::tensor::inner_product as numerical_tensor_inner_product;
     pub use crate::numerical::tensor::norm as numerical_tensor_norm;
     pub use crate::numerical::tensor::outer_product as numerical_outer_product;
     pub use crate::numerical::tensor::tensor_vec_mul as numerical_tensor_vec_mul;
     pub use crate::numerical::tensor::tensordot as numerical_tensordot;
-    pub use crate::numerical::tensor::TensorData as numerical_TensorData;
     pub use crate::numerical::testing::extract_polynomial_coeffs as numerical_extract_polynomial_coeffs;
     pub use crate::numerical::testing::solve as numerical_solve;
     pub use crate::numerical::testing::solve_linear_system_numerical as numerical_solve_linear_system_numerical;
@@ -3647,9 +3644,9 @@ pub mod numerical {
     pub use crate::numerical::testing::solve_polynomial as numerical_solve_polynomial;
     pub use crate::numerical::testing::solve_system as numerical_solve_system;
     pub use crate::numerical::testing::solve_transcendental_numerical as numerical_solve_transcendental_numerical;
+    pub use crate::numerical::topology::Simplex as numerical_Simplex;
     pub use crate::numerical::topology::find_connected_components as numerical_find_connected_components;
     pub use crate::numerical::topology::vietoris_rips_complex as numerical_vietoris_rips_complex;
-    pub use crate::numerical::topology::Simplex as numerical_Simplex;
     pub use crate::numerical::topology::*;
     pub use crate::numerical::transforms::fft as transforms_numerical_fft;
     pub use crate::numerical::transforms::fft_slice as numerical_fft_slice;
@@ -3680,10 +3677,8 @@ pub mod numerical {
     pub use crate::numerical::vector_calculus::*;
 }
 
-#[cfg(feature = "output")]
-
 /// Output and plotting utilities.
-
+#[cfg(feature = "output")]
 pub mod output {
 
     pub use crate::output::io::load_npy_as_expr;
@@ -3693,15 +3688,15 @@ pub mod output {
     pub use crate::output::latex::to_latex;
     pub use crate::output::plotting::plot_function_2d;
     pub use crate::output::plotting::plot_parametric_curve_3d;
-    pub use crate::output::plotting::plot_surface_3d;
+    pub use crate::output::plotting::plot_series_2d;
     pub use crate::output::plotting::plot_surface_2d;
+    pub use crate::output::plotting::plot_surface_3d;
     pub use crate::output::plotting::plot_vector_field_2d;
     pub use crate::output::plotting::plot_vector_field_3d;
-    pub use crate::output::plotting::plot_series_2d;
 
     // crate::output::pretty_print exports:
-    pub use crate::output::pretty_print::pretty_print;
     pub use crate::output::pretty_print::PrintBox;
+    pub use crate::output::pretty_print::pretty_print;
 
     // crate::output::typst exports:
     pub use crate::output::typst::to_typst;
@@ -3724,103 +3719,103 @@ pub mod output {
 
     // crate::output::plotting exports:
     pub use crate::output::plotting::PlotConfig;
-    pub use crate::output::plotting::plot_heatmap_2d;
     pub use crate::output::plotting::plot_3d_path_from_points;
+    pub use crate::output::plotting::plot_heatmap_2d;
 }
 
-#[cfg(feature = "physics")]
-
 /// Physics simulation types and functions.
-
+#[cfg(feature = "physics")]
 pub mod physics {
 
-    pub use crate::physics::physics_bem::simulate_2d_cylinder_scenario;
-    pub use crate::physics::physics_bem::solve_laplace_bem_2d;
-    pub use crate::physics::physics_bem::solve_laplace_bem_3d;
     pub use crate::physics::physics_bem::BoundaryCondition;
     pub use crate::physics::physics_bem::Element2D;
     pub use crate::physics::physics_bem::Vector2D as bem_Vector2D;
     pub use crate::physics::physics_bem::Vector3D;
+    pub use crate::physics::physics_bem::simulate_2d_cylinder_scenario;
+    pub use crate::physics::physics_bem::solve_laplace_bem_2d;
+    pub use crate::physics::physics_bem::solve_laplace_bem_3d;
+    pub use crate::physics::physics_cnm::HeatEquationSolverConfig;
     pub use crate::physics::physics_cnm::simulate_1d_heat_conduction_cn_scenario;
     pub use crate::physics::physics_cnm::simulate_2d_heat_conduction_cn_adi_scenario;
     pub use crate::physics::physics_cnm::solve_heat_equation_1d_cn;
     pub use crate::physics::physics_cnm::solve_heat_equation_2d_cn_adi;
-    pub use crate::physics::physics_cnm::HeatEquationSolverConfig;
+    pub use crate::physics::physics_em::LinearOdeSystem;
+    pub use crate::physics::physics_em::MechanicalSystem;
+    pub use crate::physics::physics_em::OrbitalSystem;
+    pub use crate::physics::physics_em::StiffDecaySystem;
     pub use crate::physics::physics_em::simulate_gravity_semi_implicit_euler_scenario;
     pub use crate::physics::physics_em::simulate_oscillator_forward_euler_scenario;
     pub use crate::physics::physics_em::simulate_stiff_decay_scenario;
     pub use crate::physics::physics_em::solve_backward_euler_linear;
     pub use crate::physics::physics_em::solve_forward_euler;
     pub use crate::physics::physics_em::solve_semi_implicit_euler;
-    pub use crate::physics::physics_em::LinearOdeSystem;
-    pub use crate::physics::physics_em::MechanicalSystem;
-    pub use crate::physics::physics_em::OrbitalSystem;
-    pub use crate::physics::physics_em::StiffDecaySystem;
-    pub use crate::physics::physics_fdm::simulate_2d_heat_conduction_scenario;
-    pub use crate::physics::physics_fdm::solve_heat_equation_2d;
     pub use crate::physics::physics_fdm::Dimensions;
     pub use crate::physics::physics_fdm::FdmGrid as fdm_Grid;
+    pub use crate::physics::physics_fdm::simulate_2d_heat_conduction_scenario;
+    pub use crate::physics::physics_fdm::solve_heat_equation_2d;
+    pub use crate::physics::physics_fem::GaussQuadrature;
     pub use crate::physics::physics_fem::simulate_1d_poisson_scenario;
     pub use crate::physics::physics_fem::simulate_2d_poisson_scenario;
     pub use crate::physics::physics_fem::simulate_3d_poisson_scenario;
     pub use crate::physics::physics_fem::solve_poisson_1d;
     pub use crate::physics::physics_fem::solve_poisson_2d;
     pub use crate::physics::physics_fem::solve_poisson_3d;
-    pub use crate::physics::physics_fem::GaussQuadrature;
+    pub use crate::physics::physics_fvm::Cell;
+    pub use crate::physics::physics_fvm::Mesh;
+    pub use crate::physics::physics_fvm::Mesh2D;
+    pub use crate::physics::physics_fvm::Mesh3D;
     pub use crate::physics::physics_fvm::simulate_1d_advection_scenario;
     pub use crate::physics::physics_fvm::simulate_2d_advection_scenario;
     pub use crate::physics::physics_fvm::simulate_3d_advection_scenario;
     pub use crate::physics::physics_fvm::solve_advection_1d;
     pub use crate::physics::physics_fvm::solve_advection_2d;
     pub use crate::physics::physics_fvm::solve_advection_3d;
-    pub use crate::physics::physics_fvm::Cell;
-    pub use crate::physics::physics_fvm::Mesh;
-    pub use crate::physics::physics_fvm::Mesh2D;
-    pub use crate::physics::physics_fvm::Mesh3D;
-    pub use crate::physics::physics_mm::simulate_dam_break_2d_scenario;
     pub use crate::physics::physics_mm::Particle;
     pub use crate::physics::physics_mm::Poly6Kernel;
     pub use crate::physics::physics_mm::SPHSystem;
     pub use crate::physics::physics_mm::SpikyKernel;
     pub use crate::physics::physics_mm::Vector2D as mm_Vector2D;
+    pub use crate::physics::physics_mm::simulate_dam_break_2d_scenario;
+    pub use crate::physics::physics_mtm::Grid as mtm_Grid;
+    pub use crate::physics::physics_mtm::Grid2D;
     pub use crate::physics::physics_mtm::simulate_1d_poisson_multigrid_scenario;
     pub use crate::physics::physics_mtm::simulate_2d_poisson_multigrid_scenario;
     pub use crate::physics::physics_mtm::solve_poisson_1d_multigrid;
     pub use crate::physics::physics_mtm::solve_poisson_2d_multigrid;
-    pub use crate::physics::physics_mtm::Grid as mtm_Grid;
-    pub use crate::physics::physics_mtm::Grid2D;
-    pub use crate::physics::physics_rkm::simulate_damped_oscillator_scenario;
-    pub use crate::physics::physics_rkm::simulate_lorenz_attractor_scenario;
-    pub use crate::physics::physics_rkm::solve_rk4;
     pub use crate::physics::physics_rkm::DampedOscillatorSystem;
     pub use crate::physics::physics_rkm::DormandPrince54;
     pub use crate::physics::physics_rkm::LorenzSystem;
     pub use crate::physics::physics_rkm::OdeSystem;
+    pub use crate::physics::physics_rkm::simulate_damped_oscillator_scenario;
+    pub use crate::physics::physics_rkm::simulate_lorenz_attractor_scenario;
+    pub use crate::physics::physics_rkm::solve_rk4;
+    pub use crate::physics::physics_sim::fdtd_electrodynamics::FdtdParameters;
     pub use crate::physics::physics_sim::fdtd_electrodynamics::run_fdtd_simulation;
     pub use crate::physics::physics_sim::fdtd_electrodynamics::simulate_and_save_final_state;
-    pub use crate::physics::physics_sim::fdtd_electrodynamics::FdtdParameters;
-    pub use crate::physics::physics_sim::geodesic_relativity::run_geodesic_simulation;
-    pub use crate::physics::physics_sim::geodesic_relativity::simulate_black_hole_orbits_scenario;
     pub use crate::physics::physics_sim::geodesic_relativity::GeodesicParameters;
     pub use crate::physics::physics_sim::geodesic_relativity::SchwarzschildSystem;
+    pub use crate::physics::physics_sim::geodesic_relativity::run_geodesic_simulation;
+    pub use crate::physics::physics_sim::geodesic_relativity::simulate_black_hole_orbits_scenario;
+    pub use crate::physics::physics_sim::gpe_superfluidity::GpeParameters;
     pub use crate::physics::physics_sim::gpe_superfluidity::run_gpe_ground_state_finder;
     pub use crate::physics::physics_sim::gpe_superfluidity::simulate_bose_einstein_vortex_scenario;
-    pub use crate::physics::physics_sim::gpe_superfluidity::GpeParameters;
+    pub use crate::physics::physics_sim::ising_statistical::IsingParameters;
     pub use crate::physics::physics_sim::ising_statistical::run_ising_simulation;
     pub use crate::physics::physics_sim::ising_statistical::simulate_ising_phase_transition_scenario;
-    pub use crate::physics::physics_sim::ising_statistical::IsingParameters;
-    pub use crate::physics::physics_sim::linear_elasticity::run_elasticity_simulation;
-    pub use crate::physics::physics_sim::linear_elasticity::simulate_cantilever_beam_scenario;
     pub use crate::physics::physics_sim::linear_elasticity::ElasticityParameters;
     pub use crate::physics::physics_sim::linear_elasticity::Elements;
     pub use crate::physics::physics_sim::linear_elasticity::Nodes;
-    pub use crate::physics::physics_sim::navier_stokes_fluid::run_lid_driven_cavity;
-    pub use crate::physics::physics_sim::navier_stokes_fluid::simulate_lid_driven_cavity_scenario;
+    pub use crate::physics::physics_sim::linear_elasticity::run_elasticity_simulation;
+    pub use crate::physics::physics_sim::linear_elasticity::simulate_cantilever_beam_scenario;
     pub use crate::physics::physics_sim::navier_stokes_fluid::NavierStokesOutput;
     pub use crate::physics::physics_sim::navier_stokes_fluid::NavierStokesParameters;
+    pub use crate::physics::physics_sim::navier_stokes_fluid::run_lid_driven_cavity;
+    pub use crate::physics::physics_sim::navier_stokes_fluid::simulate_lid_driven_cavity_scenario;
+    pub use crate::physics::physics_sim::schrodinger_quantum::SchrodingerParameters;
     pub use crate::physics::physics_sim::schrodinger_quantum::run_schrodinger_simulation;
     pub use crate::physics::physics_sim::schrodinger_quantum::simulate_double_slit_scenario;
-    pub use crate::physics::physics_sim::schrodinger_quantum::SchrodingerParameters;
+    pub use crate::physics::physics_sm::AdvectionDiffusionConfig;
+    pub use crate::physics::physics_sm::AdvectionDiffusionConfig3d;
     pub use crate::physics::physics_sm::fft2d;
     pub use crate::physics::physics_sm::fft3d;
     pub use crate::physics::physics_sm::ifft2d;
@@ -3831,38 +3826,36 @@ pub mod physics {
     pub use crate::physics::physics_sm::solve_advection_diffusion_1d;
     pub use crate::physics::physics_sm::solve_advection_diffusion_2d;
     pub use crate::physics::physics_sm::solve_advection_diffusion_3d;
-    pub use crate::physics::physics_sm::AdvectionDiffusionConfig;
-    pub use crate::physics::physics_sm::AdvectionDiffusionConfig3d;
 
     // crate::physics::physics_bem exports:
     pub use crate::physics::physics_bem::Vector2D;
-pub use crate::physics::physics_bem::evaluate_potential_2d;
+    pub use crate::physics::physics_bem::evaluate_potential_2d;
 
     // crate::physics::physics_cnm exports:
     pub use crate::physics::physics_cnm::solve_schrodinger_1d_cn;
 
     // crate::physics::physics_em exports:
     pub use crate::physics::physics_em::EulerSolverConfig;
-pub use crate::physics::physics_em::solve_heun_euler;
-pub use crate::physics::physics_em::solve_midpoint_euler;
+    pub use crate::physics::physics_em::solve_heun_euler;
+    pub use crate::physics::physics_em::solve_midpoint_euler;
 
     // crate::physics::physics_fdm exports:
     pub use crate::physics::physics_fdm::FdmGrid;
-pub use crate::physics::physics_fdm::simulate_2d_wave_propagation_scenario;
-pub use crate::physics::physics_fdm::solve_advection_diffusion_1d as physics_fdm_solve_advection_diffusion_1d;
-pub use crate::physics::physics_fdm::solve_burgers_1d;
-pub use crate::physics::physics_fdm::solve_poisson_2d as physics_fdm_solve_poisson_2d;
-pub use crate::physics::physics_fdm::solve_wave_equation_2d;
+    pub use crate::physics::physics_fdm::simulate_2d_wave_propagation_scenario;
+    pub use crate::physics::physics_fdm::solve_advection_diffusion_1d as physics_fdm_solve_advection_diffusion_1d;
+    pub use crate::physics::physics_fdm::solve_burgers_1d;
+    pub use crate::physics::physics_fdm::solve_poisson_2d as physics_fdm_solve_poisson_2d;
+    pub use crate::physics::physics_fdm::solve_wave_equation_2d;
 
     // crate::physics::physics_fem exports:
 
     // crate::physics::physics_fvm exports:
     pub use crate::physics::physics_fvm::SweState;
-pub use crate::physics::physics_fvm::lax_friedrichs_flux;
-pub use crate::physics::physics_fvm::minmod;
-pub use crate::physics::physics_fvm::solve_burgers_1d as physics_fvm_solve_burgers_1d;
-pub use crate::physics::physics_fvm::solve_shallow_water_1d;
-pub use crate::physics::physics_fvm::van_leer;
+    pub use crate::physics::physics_fvm::lax_friedrichs_flux;
+    pub use crate::physics::physics_fvm::minmod;
+    pub use crate::physics::physics_fvm::solve_burgers_1d as physics_fvm_solve_burgers_1d;
+    pub use crate::physics::physics_fvm::solve_shallow_water_1d;
+    pub use crate::physics::physics_fvm::van_leer;
 
     // crate::physics::physics_mm exports:
     pub use crate::physics::physics_mm::Vector2D as physics_mm_Vector2D;
@@ -3872,12 +3865,12 @@ pub use crate::physics::physics_fvm::van_leer;
 
     // crate::physics::physics_rkm exports:
     pub use crate::physics::physics_rkm::BogackiShampine23;
-pub use crate::physics::physics_rkm::CashKarp45;
-pub use crate::physics::physics_rkm::LotkaVolterraSystem;
-pub use crate::physics::physics_rkm::PendulumSystem;
-pub use crate::physics::physics_rkm::VanDerPolSystem;
-pub use crate::physics::physics_rkm::simulate_lotka_volterra_scenario;
-pub use crate::physics::physics_rkm::simulate_vanderpol_scenario;
+    pub use crate::physics::physics_rkm::CashKarp45;
+    pub use crate::physics::physics_rkm::LotkaVolterraSystem;
+    pub use crate::physics::physics_rkm::PendulumSystem;
+    pub use crate::physics::physics_rkm::VanDerPolSystem;
+    pub use crate::physics::physics_rkm::simulate_lotka_volterra_scenario;
+    pub use crate::physics::physics_rkm::simulate_vanderpol_scenario;
 
     // crate::physics::physics_sim::fdtd_electrodynamics exports:
 
@@ -3897,10 +3890,8 @@ pub use crate::physics::physics_rkm::simulate_vanderpol_scenario;
     // crate::physics::physics_sm exports:
 }
 
-#[cfg(feature = "plugins")]
-
 /// Plugin management and extension points.
-
+#[cfg(feature = "plugins")]
 pub mod plugins {
 
     pub use crate::plugins::manager::ManagedPlugin;
@@ -3919,17 +3910,17 @@ pub mod plugins {
 
     // crate::plugins::stable_abi exports:
     pub use crate::plugins::stable_abi::RoVtable;
-pub use crate::plugins::stable_abi::StablePluginModule_Prefix;
+    pub use crate::plugins::stable_abi::StablePluginModule_Prefix;
 
     // crate::plugins::stable_abi::StablePlugin_trait exports:
     pub use crate::plugins::stable_abi::StablePlugin_trait::StablePlugin as StablePlugin_trait_StablePlugin;
-pub use crate::plugins::stable_abi::StablePlugin_trait::StablePlugin_Backend;
-pub use crate::plugins::stable_abi::StablePlugin_trait::StablePlugin_CTO;
-pub use crate::plugins::stable_abi::StablePlugin_trait::StablePlugin_Interface;
-pub use crate::plugins::stable_abi::StablePlugin_trait::StablePlugin_TO;
-pub use crate::plugins::stable_abi::StablePlugin_trait::VTable;
-pub use crate::plugins::stable_abi::StablePlugin_trait::VTable_Prefix;
-pub use crate::plugins::stable_abi::StablePlugin_trait::VTable_Ref;
+    pub use crate::plugins::stable_abi::StablePlugin_trait::StablePlugin_Backend;
+    pub use crate::plugins::stable_abi::StablePlugin_trait::StablePlugin_CTO;
+    pub use crate::plugins::stable_abi::StablePlugin_trait::StablePlugin_Interface;
+    pub use crate::plugins::stable_abi::StablePlugin_trait::StablePlugin_TO;
+    pub use crate::plugins::stable_abi::StablePlugin_trait::VTable;
+    pub use crate::plugins::stable_abi::StablePlugin_trait::VTable_Prefix;
+    pub use crate::plugins::stable_abi::StablePlugin_trait::VTable_Ref;
 }
 
 pub use std::collections::BTreeMap;
@@ -3991,9 +3982,8 @@ pub use crate::constant::COMMIT_SHA as constant_COMMIT_SHA;
 pub use crate::constant::RUSTC_VERSION as constant_RUSTC_VERSION;
 pub use crate::constant::SYSTEM_INFO as constant_SYSTEM_INFO;
 
-#[cfg(feature = "compute")]
 /// Prelude for the compute module
-
+#[cfg(feature = "compute")]
 pub mod compute {
 
     pub use crate::compute::cache::ComputationResultCache;
@@ -4013,7 +4003,6 @@ pub use crate::constant::get_commit_sha;
 pub use crate::constant::get_rustc_version;
 pub use crate::constant::get_system_info;
 #[cfg(feature = "input")]
-
 pub use crate::input::parser::parse_expr;
 
 // crate::symbolic::cad exports:
@@ -4252,15 +4241,15 @@ pub use crate::symbolic::error_correction_helper::gf256_inv as error_correction_
 pub use crate::symbolic::error_correction_helper::gf256_log as error_correction_helper_gf256_log;
 pub use crate::symbolic::error_correction_helper::gf256_mul as error_correction_helper_gf256_mul;
 pub use crate::symbolic::error_correction_helper::gf256_pow as error_correction_helper_gf256_pow;
-pub use crate::symbolic::error_correction_helper::poly_add_gf256 as error_correction_helper_poly_add_gf256;
 pub use crate::symbolic::error_correction_helper::poly_add_gf as error_correction_helper_poly_add_gf;
+pub use crate::symbolic::error_correction_helper::poly_add_gf256 as error_correction_helper_poly_add_gf256;
 pub use crate::symbolic::error_correction_helper::poly_derivative_gf256 as error_correction_helper_poly_derivative_gf256;
-pub use crate::symbolic::error_correction_helper::poly_div_gf256 as error_correction_helper_poly_div_gf256;
 pub use crate::symbolic::error_correction_helper::poly_div_gf as error_correction_helper_poly_div_gf;
+pub use crate::symbolic::error_correction_helper::poly_div_gf256 as error_correction_helper_poly_div_gf256;
 pub use crate::symbolic::error_correction_helper::poly_eval_gf256 as error_correction_helper_poly_eval_gf256;
 pub use crate::symbolic::error_correction_helper::poly_gcd_gf256 as error_correction_helper_poly_gcd_gf256;
-pub use crate::symbolic::error_correction_helper::poly_mul_gf256 as error_correction_helper_poly_mul_gf256;
 pub use crate::symbolic::error_correction_helper::poly_mul_gf as error_correction_helper_poly_mul_gf;
+pub use crate::symbolic::error_correction_helper::poly_mul_gf256 as error_correction_helper_poly_mul_gf256;
 pub use crate::symbolic::error_correction_helper::poly_scale_gf256 as error_correction_helper_poly_scale_gf256;
 
 // crate::symbolic::finite_field exports:
@@ -4808,9 +4797,9 @@ pub use crate::symbolic::vector_calculus::line_integral_vector as vector_calculu
 pub use crate::symbolic::vector_calculus::surface_integral as vector_calculus_surface_integral;
 pub use crate::symbolic::vector_calculus::volume_integral as vector_calculus_volume_integral;
 
-pub use crate::symbolic::cad::cad as symbolic_cad;
 pub use crate::symbolic::cad::Cad as symbolic_Cad;
 pub use crate::symbolic::cad::CadCell as symbolic_CadCell;
+pub use crate::symbolic::cad::cad as symbolic_cad;
 pub use crate::symbolic::calculus::calculate_residue as symbolic_calculate_residue;
 pub use crate::symbolic::calculus::check_analytic as symbolic_check_analytic;
 pub use crate::symbolic::calculus::definite_integrate as symbolic_definite_integrate;
@@ -4838,6 +4827,7 @@ pub use crate::symbolic::cas_foundations::normalize as symbolic_normalize;
 pub use crate::symbolic::cas_foundations::normalize_with_relations as symbolic_normalize_with_relations;
 pub use crate::symbolic::cas_foundations::risch_integrate as symbolic_risch_integrate;
 pub use crate::symbolic::cas_foundations::simplify_with_relations as symbolic_simplify_with_relations;
+pub use crate::symbolic::classical_mechanics::Kinematics as symbolic_Kinematics;
 pub use crate::symbolic::classical_mechanics::angular_momentum as symbolic_angular_momentum;
 pub use crate::symbolic::classical_mechanics::centripetal_acceleration as symbolic_centripetal_acceleration;
 pub use crate::symbolic::classical_mechanics::euler_lagrange_equation as symbolic_euler_lagrange_equation;
@@ -4856,7 +4846,6 @@ pub use crate::symbolic::classical_mechanics::rotational_kinetic_energy as symbo
 pub use crate::symbolic::classical_mechanics::torque as symbolic_torque;
 pub use crate::symbolic::classical_mechanics::work_constant_force as symbolic_work_constant_force;
 pub use crate::symbolic::classical_mechanics::work_line_integral as symbolic_work_line_integral;
-pub use crate::symbolic::classical_mechanics::Kinematics as symbolic_Kinematics;
 pub use crate::symbolic::combinatorics::apply_inclusion_exclusion as symbolic_apply_inclusion_exclusion;
 pub use crate::symbolic::combinatorics::combinations as symbolic_combinations;
 pub use crate::symbolic::combinatorics::expand_binomial as symbolic_expand_binomial;
@@ -4864,9 +4853,13 @@ pub use crate::symbolic::combinatorics::find_period as symbolic_find_period;
 pub use crate::symbolic::combinatorics::get_sequence_from_gf as symbolic_get_sequence_from_gf;
 pub use crate::symbolic::combinatorics::permutations as symbolic_permutations;
 pub use crate::symbolic::combinatorics::solve_recurrence as symbolic_solve_recurrence;
+pub use crate::symbolic::complex_analysis::PathContinuation as symbolic_PathContinuation;
 pub use crate::symbolic::complex_analysis::complex_distance as symbolic_complex_distance;
 pub use crate::symbolic::complex_analysis::estimate_radius_of_convergence as symbolic_estimate_radius_of_convergence;
-pub use crate::symbolic::complex_analysis::PathContinuation as symbolic_PathContinuation;
+pub use crate::symbolic::computer_graphics::BSplineCurve as symbolic_BSplineCurve;
+pub use crate::symbolic::computer_graphics::BezierCurve as symbolic_BezierCurve;
+pub use crate::symbolic::computer_graphics::Polygon as symbolic_Polygon;
+pub use crate::symbolic::computer_graphics::PolygonMesh as symbolic_PolygonMesh;
 pub use crate::symbolic::computer_graphics::look_at as symbolic_look_at;
 pub use crate::symbolic::computer_graphics::orthographic_projection as symbolic_orthographic_projection;
 pub use crate::symbolic::computer_graphics::perspective_projection as symbolic_perspective_projection;
@@ -4878,12 +4871,11 @@ pub use crate::symbolic::computer_graphics::scaling_2d as symbolic_scaling_2d;
 pub use crate::symbolic::computer_graphics::scaling_3d as symbolic_scaling_3d;
 pub use crate::symbolic::computer_graphics::translation_2d as symbolic_translation_2d;
 pub use crate::symbolic::computer_graphics::translation_3d as symbolic_translation_3d;
-pub use crate::symbolic::computer_graphics::BSplineCurve as symbolic_BSplineCurve;
-pub use crate::symbolic::computer_graphics::BezierCurve as symbolic_BezierCurve;
-pub use crate::symbolic::computer_graphics::Polygon as symbolic_Polygon;
-pub use crate::symbolic::computer_graphics::PolygonMesh as symbolic_PolygonMesh;
-pub use crate::symbolic::convergence::analyze_convergence as convergence_symbolic_analyze_convergence;
 pub use crate::symbolic::convergence::ConvergenceResult as symbolic_ConvergenceResult;
+pub use crate::symbolic::convergence::analyze_convergence as convergence_symbolic_analyze_convergence;
+pub use crate::symbolic::coordinates::CoordinateSystem as symbolic_CoordinateSystem;
+pub use crate::symbolic::coordinates::TensorType as symbolic_TensorType;
+pub use crate::symbolic::coordinates::TransformationRules as symbolic_TransformationRules;
 pub use crate::symbolic::coordinates::get_metric_tensor as symbolic_get_metric_tensor;
 pub use crate::symbolic::coordinates::get_to_cartesian_rules as symbolic_get_to_cartesian_rules;
 pub use crate::symbolic::coordinates::get_transform_rules as symbolic_get_transform_rules;
@@ -4896,9 +4888,6 @@ pub use crate::symbolic::coordinates::transform_expression as symbolic_transform
 pub use crate::symbolic::coordinates::transform_gradient as symbolic_transform_gradient;
 pub use crate::symbolic::coordinates::transform_point as symbolic_transform_point;
 pub use crate::symbolic::coordinates::transform_tensor2 as symbolic_transform_tensor2;
-pub use crate::symbolic::coordinates::CoordinateSystem as symbolic_CoordinateSystem;
-pub use crate::symbolic::coordinates::TensorType as symbolic_TensorType;
-pub use crate::symbolic::coordinates::TransformationRules as symbolic_TransformationRules;
 pub use crate::symbolic::core::DagManager;
 pub use crate::symbolic::core::DagNode;
 pub use crate::symbolic::core::DagOp;
@@ -4908,16 +4897,17 @@ pub use crate::symbolic::core::Monomial;
 pub use crate::symbolic::core::PathType;
 pub use crate::symbolic::core::SparsePolynomial;
 pub use crate::symbolic::core::SymbolicError;
+pub use crate::symbolic::cryptography::CurvePoint as symbolic_CurvePoint;
+pub use crate::symbolic::cryptography::EcdhKeyPair as symbolic_EcdhKeyPair;
+pub use crate::symbolic::cryptography::EcdsaSignature as symbolic_EcdsaSignature;
+pub use crate::symbolic::cryptography::EllipticCurve as symbolic_EllipticCurve;
 pub use crate::symbolic::cryptography::ecdsa_sign as symbolic_ecdsa_sign;
 pub use crate::symbolic::cryptography::ecdsa_verify as symbolic_ecdsa_verify;
 pub use crate::symbolic::cryptography::generate_keypair as symbolic_generate_keypair;
 pub use crate::symbolic::cryptography::generate_shared_secret as symbolic_generate_shared_secret;
 pub use crate::symbolic::cryptography::point_compress as symbolic_point_compress;
 pub use crate::symbolic::cryptography::point_decompress as symbolic_point_decompress;
-pub use crate::symbolic::cryptography::CurvePoint as symbolic_CurvePoint;
-pub use crate::symbolic::cryptography::EcdhKeyPair as symbolic_EcdhKeyPair;
-pub use crate::symbolic::cryptography::EcdsaSignature as symbolic_EcdsaSignature;
-pub use crate::symbolic::cryptography::EllipticCurve as symbolic_EllipticCurve;
+pub use crate::symbolic::differential_geometry::DifferentialForm as symbolic_DifferentialForm;
 pub use crate::symbolic::differential_geometry::boundary as symbolic_boundary;
 pub use crate::symbolic::differential_geometry::exterior_derivative as symbolic_exterior_derivative;
 pub use crate::symbolic::differential_geometry::gauss_theorem as symbolic_gauss_theorem;
@@ -4925,14 +4915,13 @@ pub use crate::symbolic::differential_geometry::generalized_stokes_theorem as sy
 pub use crate::symbolic::differential_geometry::greens_theorem as symbolic_greens_theorem;
 pub use crate::symbolic::differential_geometry::stokes_theorem as symbolic_stokes_theorem;
 pub use crate::symbolic::differential_geometry::wedge_product as symbolic_wedge_product;
-pub use crate::symbolic::differential_geometry::DifferentialForm as symbolic_DifferentialForm;
 pub use crate::symbolic::discrete_groups::cyclic_group as symbolic_cyclic_group;
 pub use crate::symbolic::discrete_groups::dihedral_group as symbolic_dihedral_group;
 pub use crate::symbolic::discrete_groups::klein_four_group as symbolic_klein_four_group;
 pub use crate::symbolic::discrete_groups::symmetric_group as symbolic_symmetric_group;
+pub use crate::symbolic::electromagnetism::MaxwellEquations as symbolic_MaxwellEquations;
 pub use crate::symbolic::electromagnetism::electric_field_from_potential as symbolic_electric_field_from_potential;
 pub use crate::symbolic::electromagnetism::magnetic_field_from_vector_potential as symbolic_magnetic_field_from_vector_potential;
-pub use crate::symbolic::electromagnetism::MaxwellEquations as symbolic_MaxwellEquations;
 pub use crate::symbolic::elementary::acosh as symbolic_acosh;
 pub use crate::symbolic::elementary::acot as symbolic_acot;
 pub use crate::symbolic::elementary::acoth as symbolic_acoth;
@@ -4978,6 +4967,8 @@ pub use crate::symbolic::error_correction::rs_check as symbolic_rs_check;
 pub use crate::symbolic::error_correction::rs_decode as symbolic_rs_decode;
 pub use crate::symbolic::error_correction::rs_encode as symbolic_rs_encode;
 pub use crate::symbolic::error_correction::rs_error_count as symbolic_rs_error_count;
+pub use crate::symbolic::error_correction_helper::FieldElement as symbolic_FieldElement;
+pub use crate::symbolic::error_correction_helper::FiniteField as symbolic_FiniteField;
 pub use crate::symbolic::error_correction_helper::gf256_add as symbolic_gf256_add;
 pub use crate::symbolic::error_correction_helper::gf256_div as symbolic_gf256_div;
 pub use crate::symbolic::error_correction_helper::gf256_exp as symbolic_gf256_exp;
@@ -4995,19 +4986,20 @@ pub use crate::symbolic::error_correction_helper::poly_gcd_gf256 as symbolic_pol
 pub use crate::symbolic::error_correction_helper::poly_mul_gf as symbolic_poly_mul_gf;
 pub use crate::symbolic::error_correction_helper::poly_mul_gf256 as symbolic_poly_mul_gf256;
 pub use crate::symbolic::error_correction_helper::poly_scale_gf256 as symbolic_poly_scale_gf256;
-pub use crate::symbolic::error_correction_helper::FieldElement as symbolic_FieldElement;
-pub use crate::symbolic::error_correction_helper::FiniteField as symbolic_FiniteField;
 pub use crate::symbolic::finite_field::ExtensionField as symbolic_ExtensionField;
 pub use crate::symbolic::finite_field::ExtensionFieldElement as symbolic_ExtensionFieldElement;
 pub use crate::symbolic::finite_field::FiniteFieldPolynomial as symbolic_FiniteFieldPolynomial;
 pub use crate::symbolic::finite_field::PrimeField as symbolic_PrimeField;
 pub use crate::symbolic::finite_field::PrimeFieldElement as symbolic_PrimeFieldElement;
+pub use crate::symbolic::fractal_geometry_and_chaos::ComplexDynamicalSystem;
+pub use crate::symbolic::fractal_geometry_and_chaos::IteratedFunctionSystem;
 pub use crate::symbolic::fractal_geometry_and_chaos::analyze_stability;
 pub use crate::symbolic::fractal_geometry_and_chaos::find_fixed_points;
 pub use crate::symbolic::fractal_geometry_and_chaos::lorenz_system;
 pub use crate::symbolic::fractal_geometry_and_chaos::lyapunov_exponent as symbolic_lyapunov_exponent;
-pub use crate::symbolic::fractal_geometry_and_chaos::ComplexDynamicalSystem;
-pub use crate::symbolic::fractal_geometry_and_chaos::IteratedFunctionSystem;
+pub use crate::symbolic::functional_analysis::BanachSpace as symbolic_BanachSpace;
+pub use crate::symbolic::functional_analysis::HilbertSpace as symbolic_HilbertSpace;
+pub use crate::symbolic::functional_analysis::LinearOperator as symbolic_LinearOperator;
 pub use crate::symbolic::functional_analysis::are_orthogonal as symbolic_are_orthogonal;
 pub use crate::symbolic::functional_analysis::banach_norm as symbolic_banach_norm;
 pub use crate::symbolic::functional_analysis::gram_schmidt as symbolic_gram_schmidt;
@@ -5015,11 +5007,9 @@ pub use crate::symbolic::functional_analysis::gram_schmidt_orthonormal as symbol
 pub use crate::symbolic::functional_analysis::inner_product as symbolic_inner_product;
 pub use crate::symbolic::functional_analysis::norm as symbolic_norm;
 pub use crate::symbolic::functional_analysis::project as symbolic_project;
-pub use crate::symbolic::functional_analysis::BanachSpace as symbolic_BanachSpace;
-pub use crate::symbolic::functional_analysis::HilbertSpace as symbolic_HilbertSpace;
-pub use crate::symbolic::functional_analysis::LinearOperator as symbolic_LinearOperator;
 pub use crate::symbolic::geometric_algebra::Multivector as symbolic_Multivector;
 pub use crate::symbolic::graph::Graph as symbolic_Graph;
+pub use crate::symbolic::graph_algorithms::DSU as symbolic_DSU;
 pub use crate::symbolic::graph_algorithms::algebraic_connectivity as symbolic_algebraic_connectivity;
 pub use crate::symbolic::graph_algorithms::bellman_ford as symbolic_bellman_ford;
 pub use crate::symbolic::graph_algorithms::bfs as symbolic_bfs;
@@ -5045,7 +5035,6 @@ pub use crate::symbolic::graph_algorithms::spectral_analysis as symbolic_spectra
 pub use crate::symbolic::graph_algorithms::strongly_connected_components as symbolic_strongly_connected_components;
 pub use crate::symbolic::graph_algorithms::topological_sort_dfs as symbolic_topological_sort_dfs;
 pub use crate::symbolic::graph_algorithms::topological_sort_kahn as symbolic_topological_sort_kahn;
-pub use crate::symbolic::graph_algorithms::DSU as symbolic_DSU;
 pub use crate::symbolic::graph_isomorphism_and_coloring::are_isomorphic_heuristic as symbolic_are_isomorphic_heuristic;
 pub use crate::symbolic::graph_isomorphism_and_coloring::chromatic_number_exact as symbolic_chromatic_number_exact;
 pub use crate::symbolic::graph_isomorphism_and_coloring::greedy_coloring as symbolic_greedy_coloring;
@@ -5054,18 +5043,18 @@ pub use crate::symbolic::graph_operations::induced_subgraph as symbolic_induced_
 pub use crate::symbolic::graph_operations::intersection as symbolic_intersection;
 pub use crate::symbolic::graph_operations::tensor_product as symbolic_tensor_product;
 pub use crate::symbolic::graph_operations::union as symbolic_union;
+pub use crate::symbolic::grobner::MonomialOrder as symbolic_MonomialOrder;
 pub use crate::symbolic::grobner::buchberger as symbolic_buchberger;
 pub use crate::symbolic::grobner::poly_division_multivariate as symbolic_poly_division_multivariate;
 pub use crate::symbolic::grobner::subtract_poly as symbolic_subtract_poly;
-pub use crate::symbolic::grobner::MonomialOrder as symbolic_MonomialOrder;
-pub use crate::symbolic::group_theory::character as symbolic_character;
 pub use crate::symbolic::group_theory::Group as symbolic_Group;
 pub use crate::symbolic::group_theory::GroupElement as symbolic_GroupElement;
 pub use crate::symbolic::group_theory::Representation as symbolic_Representation;
+pub use crate::symbolic::group_theory::character as symbolic_character;
 pub use crate::symbolic::handles::HandleManager as symbolic_HandleManager;
-pub use crate::symbolic::integral_equations::solve_airfoil_equation as symbolic_solve_airfoil_equation;
 pub use crate::symbolic::integral_equations::FredholmEquation as symbolic_FredholmEquation;
 pub use crate::symbolic::integral_equations::VolterraEquation as symbolic_VolterraEquation;
+pub use crate::symbolic::integral_equations::solve_airfoil_equation as symbolic_solve_airfoil_equation;
 pub use crate::symbolic::integration::hermite_integrate_rational as symbolic_hermite_integrate_rational;
 pub use crate::symbolic::integration::integrate_poly_exp as symbolic_integrate_poly_exp;
 pub use crate::symbolic::integration::integrate_rational_function as symbolic_integrate_rational_function;
@@ -5073,6 +5062,8 @@ pub use crate::symbolic::integration::partial_fraction_integrate as symbolic_par
 pub use crate::symbolic::integration::poly_derivative_symbolic as symbolic_poly_derivative_symbolic;
 pub use crate::symbolic::integration::poly_from_coeffs as integration_symbolic_poly_from_coeffs;
 pub use crate::symbolic::integration::risch_norman_integrate as symbolic_risch_norman_integrate;
+pub use crate::symbolic::lie_groups_and_algebras::LieAlgebra as symbolic_LieAlgebra;
+pub use crate::symbolic::lie_groups_and_algebras::LieAlgebraElement as symbolic_LieAlgebraElement;
 pub use crate::symbolic::lie_groups_and_algebras::adjoint_representation_algebra as symbolic_adjoint_representation_algebra;
 pub use crate::symbolic::lie_groups_and_algebras::adjoint_representation_group as symbolic_adjoint_representation_group;
 pub use crate::symbolic::lie_groups_and_algebras::check_jacobi_identity as symbolic_check_jacobi_identity;
@@ -5083,13 +5074,11 @@ pub use crate::symbolic::lie_groups_and_algebras::so3 as symbolic_so3;
 pub use crate::symbolic::lie_groups_and_algebras::so3_generators as symbolic_so3_generators;
 pub use crate::symbolic::lie_groups_and_algebras::su2 as symbolic_su2;
 pub use crate::symbolic::lie_groups_and_algebras::su2_generators as symbolic_su2_generators;
-pub use crate::symbolic::lie_groups_and_algebras::LieAlgebra as symbolic_LieAlgebra;
-pub use crate::symbolic::lie_groups_and_algebras::LieAlgebraElement as symbolic_LieAlgebraElement;
+pub use crate::symbolic::logic::Literal as symbolic_Literal;
 pub use crate::symbolic::logic::is_satisfiable as symbolic_is_satisfiable;
 pub use crate::symbolic::logic::simplify_logic as symbolic_simplify_logic;
 pub use crate::symbolic::logic::to_cnf as symbolic_to_cnf;
 pub use crate::symbolic::logic::to_dnf as symbolic_to_dnf;
-pub use crate::symbolic::logic::Literal as symbolic_Literal;
 pub use crate::symbolic::matrix::add_matrices as symbolic_add_matrices;
 pub use crate::symbolic::matrix::characteristic_polynomial as symbolic_characteristic_polynomial;
 pub use crate::symbolic::matrix::create_empty_matrix as symbolic_create_empty_matrix;
@@ -5128,6 +5117,7 @@ pub use crate::symbolic::number_theory::solve_diophantine as symbolic_solve_diop
 pub use crate::symbolic::number_theory::solve_pell_from_poly as symbolic_solve_pell_from_poly;
 pub use crate::symbolic::number_theory::sqrt_continued_fraction as symbolic_sqrt_continued_fraction;
 pub use crate::symbolic::numeric::evaluate_numerical as symbolic_evaluate_numerical;
+pub use crate::symbolic::ode::ParsedODE as symbolic_ParsedODE;
 pub use crate::symbolic::ode::solve_bernoulli_ode as symbolic_solve_bernoulli_ode;
 pub use crate::symbolic::ode::solve_by_reduction_of_order as symbolic_solve_by_reduction_of_order;
 pub use crate::symbolic::ode::solve_cauchy_euler_ode as symbolic_solve_cauchy_euler_ode;
@@ -5137,12 +5127,12 @@ pub use crate::symbolic::ode::solve_ode_by_fourier as symbolic_solve_ode_by_four
 pub use crate::symbolic::ode::solve_ode_by_series as symbolic_solve_ode_by_series;
 pub use crate::symbolic::ode::solve_ode_system as symbolic_solve_ode_system;
 pub use crate::symbolic::ode::solve_riccati_ode as symbolic_solve_riccati_ode;
-pub use crate::symbolic::ode::ParsedODE as symbolic_ParsedODE;
+pub use crate::symbolic::optimize::CriticalPoint as symbolic_CriticalPoint;
+pub use crate::symbolic::optimize::ExtremumType as symbolic_ExtremumType;
 pub use crate::symbolic::optimize::find_constrained_extrema as symbolic_find_constrained_extrema;
 pub use crate::symbolic::optimize::find_extrema as symbolic_find_extrema;
 pub use crate::symbolic::optimize::hessian_matrix as symbolic_hessian_matrix;
-pub use crate::symbolic::optimize::CriticalPoint as symbolic_CriticalPoint;
-pub use crate::symbolic::optimize::ExtremumType as symbolic_ExtremumType;
+pub use crate::symbolic::pde::BoundaryConditions as symbolic_BoundaryConditions;
 pub use crate::symbolic::pde::solve_burgers_equation as symbolic_solve_burgers_equation;
 pub use crate::symbolic::pde::solve_heat_equation_1d as symbolic_solve_heat_equation_1d;
 pub use crate::symbolic::pde::solve_heat_equation_3d as symbolic_solve_heat_equation_3d;
@@ -5161,7 +5151,6 @@ pub use crate::symbolic::pde::solve_second_order_pde as symbolic_solve_second_or
 pub use crate::symbolic::pde::solve_wave_equation_1d_dalembert as symbolic_solve_wave_equation_1d_dalembert;
 pub use crate::symbolic::pde::solve_wave_equation_3d as symbolic_solve_wave_equation_3d;
 pub use crate::symbolic::pde::solve_with_fourier_transform as symbolic_solve_with_fourier_transform;
-pub use crate::symbolic::pde::BoundaryConditions as symbolic_BoundaryConditions;
 pub use crate::symbolic::poly_factorization::berlekamp_factorization as symbolic_berlekamp_factorization;
 pub use crate::symbolic::poly_factorization::berlekamp_zassenhaus as symbolic_berlekamp_zassenhaus;
 pub use crate::symbolic::poly_factorization::cantor_zassenhaus as symbolic_cantor_zassenhaus;
@@ -5202,6 +5191,9 @@ pub use crate::symbolic::quantum_field_theory::qcd_lagrangian as symbolic_qcd_la
 pub use crate::symbolic::quantum_field_theory::qed_lagrangian as symbolic_qed_lagrangian;
 pub use crate::symbolic::quantum_field_theory::scalar_field_lagrangian as symbolic_scalar_field_lagrangian;
 pub use crate::symbolic::quantum_field_theory::scattering_cross_section as symbolic_scattering_cross_section;
+pub use crate::symbolic::quantum_mechanics::Bra as symbolic_Bra;
+pub use crate::symbolic::quantum_mechanics::Ket as symbolic_Ket;
+pub use crate::symbolic::quantum_mechanics::Operator as symbolic_Operator;
 pub use crate::symbolic::quantum_mechanics::angular_momentum_z as symbolic_angular_momentum_z;
 pub use crate::symbolic::quantum_mechanics::bra_ket as symbolic_bra_ket;
 pub use crate::symbolic::quantum_mechanics::commutator as symbolic_commutator;
@@ -5218,9 +5210,6 @@ pub use crate::symbolic::quantum_mechanics::solve_time_independent_schrodinger a
 pub use crate::symbolic::quantum_mechanics::spin_operator as symbolic_spin_operator;
 pub use crate::symbolic::quantum_mechanics::time_dependent_schrodinger_equation as symbolic_time_dependent_schrodinger_equation;
 pub use crate::symbolic::quantum_mechanics::uncertainty as symbolic_uncertainty;
-pub use crate::symbolic::quantum_mechanics::Bra as symbolic_Bra;
-pub use crate::symbolic::quantum_mechanics::Ket as symbolic_Ket;
-pub use crate::symbolic::quantum_mechanics::Operator as symbolic_Operator;
 pub use crate::symbolic::radicals::denest_sqrt as symbolic_denest_sqrt;
 pub use crate::symbolic::radicals::simplify_radicals as symbolic_simplify_radicals;
 pub use crate::symbolic::real_roots::count_real_roots_in_interval as symbolic_count_real_roots_in_interval;
@@ -5239,9 +5228,9 @@ pub use crate::symbolic::relativity::mass_energy_equivalence as symbolic_mass_en
 pub use crate::symbolic::relativity::relativistic_momentum as symbolic_relativistic_momentum;
 pub use crate::symbolic::relativity::schwarzschild_radius as symbolic_schwarzschild_radius;
 pub use crate::symbolic::relativity::velocity_addition as symbolic_velocity_addition;
+pub use crate::symbolic::rewriting::RewriteRule as rewriting_symbolic_RewriteRule;
 pub use crate::symbolic::rewriting::apply_rules_to_normal_form as symbolic_apply_rules_to_normal_form;
 pub use crate::symbolic::rewriting::knuth_bendix as symbolic_knuth_bendix;
-pub use crate::symbolic::rewriting::RewriteRule as rewriting_symbolic_RewriteRule;
 pub use crate::symbolic::series::analytic_continuation as symbolic_analytic_continuation;
 pub use crate::symbolic::series::analyze_convergence as series_symbolic_analyze_convergence;
 pub use crate::symbolic::series::asymptotic_expansion as symbolic_asymptotic_expansion;
@@ -5251,6 +5240,7 @@ pub use crate::symbolic::series::laurent_series as symbolic_laurent_series;
 pub use crate::symbolic::series::product as symbolic_product;
 pub use crate::symbolic::series::summation as symbolic_summation;
 pub use crate::symbolic::series::taylor_series as symbolic_taylor_series;
+pub use crate::symbolic::simplify::RewriteRule as simplify_symbolic_RewriteRule;
 pub use crate::symbolic::simplify::as_f64 as symbolic_as_f64;
 pub use crate::symbolic::simplify::collect_and_order_terms as symbolic_collect_and_order_terms;
 pub use crate::symbolic::simplify::get_name as symbolic_get_name;
@@ -5260,10 +5250,10 @@ pub use crate::symbolic::simplify::is_zero as symbolic_is_zero;
 pub use crate::symbolic::simplify::pattern_match as symbolic_pattern_match;
 pub use crate::symbolic::simplify::simplify as symbolic_simplify;
 pub use crate::symbolic::simplify::substitute_patterns as symbolic_substitute_patterns;
-pub use crate::symbolic::simplify::RewriteRule as simplify_symbolic_RewriteRule;
 pub use crate::symbolic::simplify_dag::pattern_match;
 pub use crate::symbolic::simplify_dag::simplify;
 pub use crate::symbolic::simplify_dag::substitute_patterns;
+pub use crate::symbolic::solid_state_physics::CrystalLattice as symbolic_CrystalLattice;
 pub use crate::symbolic::solid_state_physics::bloch_theorem as symbolic_bloch_theorem;
 pub use crate::symbolic::solid_state_physics::debye_frequency as symbolic_debye_frequency;
 pub use crate::symbolic::solid_state_physics::density_of_states_3d as symbolic_density_of_states_3d;
@@ -5274,7 +5264,6 @@ pub use crate::symbolic::solid_state_physics::fermi_energy_3d as symbolic_fermi_
 pub use crate::symbolic::solid_state_physics::hall_coefficient as symbolic_hall_coefficient;
 pub use crate::symbolic::solid_state_physics::london_penetration_depth as symbolic_london_penetration_depth;
 pub use crate::symbolic::solid_state_physics::plasma_frequency as symbolic_plasma_frequency;
-pub use crate::symbolic::solid_state_physics::CrystalLattice as symbolic_CrystalLattice;
 pub use crate::symbolic::solve::extract_polynomial_coeffs as symbolic_extract_polynomial_coeffs;
 pub use crate::symbolic::solve::solve as symbolic_solve;
 pub use crate::symbolic::solve::solve_linear_system as solve_symbolic_solve_linear_system;
@@ -5338,10 +5327,10 @@ pub use crate::symbolic::stats::covariance as symbolic_covariance;
 pub use crate::symbolic::stats::mean as symbolic_mean;
 pub use crate::symbolic::stats::std_dev as symbolic_std_dev;
 pub use crate::symbolic::stats::variance as symbolic_variance;
+pub use crate::symbolic::stats_inference::HypothesisTest as symbolic_HypothesisTest;
 pub use crate::symbolic::stats_inference::one_sample_t_test_symbolic as symbolic_one_sample_t_test_symbolic;
 pub use crate::symbolic::stats_inference::two_sample_t_test_symbolic as symbolic_two_sample_t_test_symbolic;
 pub use crate::symbolic::stats_inference::z_test_symbolic as symbolic_z_test_symbolic;
-pub use crate::symbolic::stats_inference::HypothesisTest as symbolic_HypothesisTest;
 pub use crate::symbolic::stats_information_theory::conditional_entropy as symbolic_conditional_entropy;
 pub use crate::symbolic::stats_information_theory::cross_entropy as symbolic_cross_entropy;
 pub use crate::symbolic::stats_information_theory::gini_impurity as symbolic_gini_impurity;
@@ -5361,12 +5350,12 @@ pub use crate::symbolic::stats_probability::Uniform as symbolic_Uniform;
 pub use crate::symbolic::stats_regression::nonlinear_regression_symbolic as symbolic_nonlinear_regression_symbolic;
 pub use crate::symbolic::stats_regression::polynomial_regression_symbolic as symbolic_polynomial_regression_symbolic;
 pub use crate::symbolic::stats_regression::simple_linear_regression_symbolic as symbolic_simple_linear_regression_symbolic;
+pub use crate::symbolic::tensor::MetricTensor as symbolic_MetricTensor;
+pub use crate::symbolic::tensor::Tensor as symbolic_Tensor;
 pub use crate::symbolic::tensor::christoffel_symbols_first_kind as symbolic_christoffel_symbols_first_kind;
 pub use crate::symbolic::tensor::christoffel_symbols_second_kind as symbolic_christoffel_symbols_second_kind;
 pub use crate::symbolic::tensor::covariant_derivative_vector as symbolic_covariant_derivative_vector;
 pub use crate::symbolic::tensor::riemann_curvature_tensor as symbolic_riemann_curvature_tensor;
-pub use crate::symbolic::tensor::MetricTensor as symbolic_MetricTensor;
-pub use crate::symbolic::tensor::Tensor as symbolic_Tensor;
 pub use crate::symbolic::thermodynamics::boltzmann_distribution as symbolic_boltzmann_distribution;
 pub use crate::symbolic::thermodynamics::boltzmann_entropy as symbolic_boltzmann_entropy;
 pub use crate::symbolic::thermodynamics::bose_einstein_distribution as symbolic_bose_einstein_distribution;
@@ -5380,15 +5369,15 @@ pub use crate::symbolic::thermodynamics::ideal_gas_law as symbolic_ideal_gas_law
 pub use crate::symbolic::thermodynamics::partition_function as symbolic_partition_function;
 pub use crate::symbolic::thermodynamics::verify_maxwell_relation_helmholtz as symbolic_verify_maxwell_relation_helmholtz;
 pub use crate::symbolic::thermodynamics::work_isothermal_expansion as symbolic_work_isothermal_expansion;
-pub use crate::symbolic::topology::create_grid_complex as symbolic_create_grid_complex;
-pub use crate::symbolic::topology::create_torus_complex as symbolic_create_torus_complex;
-pub use crate::symbolic::topology::vietoris_rips_filtration as symbolic_vietoris_rips_filtration;
 pub use crate::symbolic::topology::Chain as symbolic_Chain;
 pub use crate::symbolic::topology::ChainComplex as symbolic_ChainComplex;
 pub use crate::symbolic::topology::Cochain as symbolic_Cochain;
 pub use crate::symbolic::topology::Filtration as symbolic_Filtration;
 pub use crate::symbolic::topology::Simplex as symbolic_Simplex;
 pub use crate::symbolic::topology::SimplicialComplex as symbolic_SimplicialComplex;
+pub use crate::symbolic::topology::create_grid_complex as symbolic_create_grid_complex;
+pub use crate::symbolic::topology::create_torus_complex as symbolic_create_torus_complex;
+pub use crate::symbolic::topology::vietoris_rips_filtration as symbolic_vietoris_rips_filtration;
 pub use crate::symbolic::transforms::convolution_fourier as symbolic_convolution_fourier;
 pub use crate::symbolic::transforms::convolution_laplace as symbolic_convolution_laplace;
 pub use crate::symbolic::transforms::fourier_differentiation as symbolic_fourier_differentiation;
@@ -5410,22 +5399,22 @@ pub use crate::symbolic::transforms::z_differentiation as symbolic_z_differentia
 pub use crate::symbolic::transforms::z_scaling as symbolic_z_scaling;
 pub use crate::symbolic::transforms::z_time_shift as symbolic_z_time_shift;
 pub use crate::symbolic::transforms::z_transform as symbolic_z_transform;
-pub use crate::symbolic::unit_unification::unify_expression as symbolic_unify_expression;
 pub use crate::symbolic::unit_unification::SupportedQuantity as symbolic_SupportedQuantity;
 pub use crate::symbolic::unit_unification::UnitQuantity as symbolic_UnitQuantity;
+pub use crate::symbolic::unit_unification::unify_expression as symbolic_unify_expression;
+pub use crate::symbolic::vector::Vector as symbolic_Vector;
 pub use crate::symbolic::vector::curl as symbolic_curl;
 pub use crate::symbolic::vector::directional_derivative as symbolic_directional_derivative;
 pub use crate::symbolic::vector::divergence as symbolic_divergence;
 pub use crate::symbolic::vector::gradient as symbolic_gradient;
 pub use crate::symbolic::vector::partial_derivative_vector as symbolic_partial_derivative_vector;
-pub use crate::symbolic::vector::Vector as symbolic_Vector;
+pub use crate::symbolic::vector_calculus::ParametricCurve as symbolic_ParametricCurve;
+pub use crate::symbolic::vector_calculus::ParametricSurface as symbolic_ParametricSurface;
+pub use crate::symbolic::vector_calculus::Volume as symbolic_Volume;
 pub use crate::symbolic::vector_calculus::line_integral_scalar as symbolic_line_integral_scalar;
 pub use crate::symbolic::vector_calculus::line_integral_vector as symbolic_line_integral_vector;
 pub use crate::symbolic::vector_calculus::surface_integral as symbolic_surface_integral;
 pub use crate::symbolic::vector_calculus::volume_integral as symbolic_volume_integral;
-pub use crate::symbolic::vector_calculus::ParametricCurve as symbolic_ParametricCurve;
-pub use crate::symbolic::vector_calculus::ParametricSurface as symbolic_ParametricSurface;
-pub use crate::symbolic::vector_calculus::Volume as symbolic_Volume;
 
 // crate::numerical::calculus exports:
 pub use crate::numerical::calculus::gradient as calculus_gradient;
@@ -5531,8 +5520,8 @@ pub use crate::numerical::elementary::pure::acos as pure_acos;
 pub use crate::numerical::elementary::pure::acosh as numerical_pure_acosh;
 pub use crate::numerical::elementary::pure::asin as pure_asin;
 pub use crate::numerical::elementary::pure::asinh as numerical_pure_asinh;
-pub use crate::numerical::elementary::pure::atan2 as numerical_pure_atan2;
 pub use crate::numerical::elementary::pure::atan as pure_atan;
+pub use crate::numerical::elementary::pure::atan2 as numerical_pure_atan2;
 pub use crate::numerical::elementary::pure::atanh as numerical_pure_atanh;
 pub use crate::numerical::elementary::pure::ceil as pure_ceil;
 pub use crate::numerical::elementary::pure::cos as numerical_pure_cos;
@@ -5558,12 +5547,12 @@ pub use crate::numerical::error_correction::calculate_syndromes as error_correct
 pub use crate::numerical::error_correction::chien_search as error_correction_chien_search;
 pub use crate::numerical::error_correction::code_rate as error_correction_code_rate;
 pub use crate::numerical::error_correction::convolutional_encode as error_correction_convolutional_encode;
+pub use crate::numerical::error_correction::crc8_compute as error_correction_crc8_compute;
 pub use crate::numerical::error_correction::crc16_compute as error_correction_crc16_compute;
 pub use crate::numerical::error_correction::crc32_compute_numerical as error_correction_crc32_compute_numerical;
 pub use crate::numerical::error_correction::crc32_finalize_numerical as error_correction_crc32_finalize_numerical;
 pub use crate::numerical::error_correction::crc32_update_numerical as error_correction_crc32_update_numerical;
 pub use crate::numerical::error_correction::crc32_verify_numerical as error_correction_crc32_verify_numerical;
-pub use crate::numerical::error_correction::crc8_compute as error_correction_crc8_compute;
 pub use crate::numerical::error_correction::deinterleave as error_correction_deinterleave;
 pub use crate::numerical::error_correction::error_correction_capability as error_correction_error_correction_capability;
 pub use crate::numerical::error_correction::error_detection_capability as error_correction_error_detection_capability;
@@ -6006,14 +5995,12 @@ pub use crate::numerical::vector_calculus::gradient as vector_calculus_gradient;
 pub use crate::numerical::vector_calculus::laplacian as vector_calculus_laplacian;
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod rand {
 
     pub use rand::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod argmin {
 
     pub use argmin::*;
@@ -6022,70 +6009,60 @@ pub mod argmin {
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod nalgebra {
 
     pub use nalgebra::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod statrs {
 
     pub use statrs::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod ndarray {
 
     pub use ndarray::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod quadrature {
 
     pub use quadrature::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod rustfft {
 
     pub use rustfft::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod sprs {
 
     pub use sprs_rssn::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod special {
 
     pub use special::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod errorfunctions {
 
     pub use errorfunctions::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod bincode {
 
     pub use bincode_next::*;
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod num {
 
     pub use num_bigint::*;
@@ -6096,7 +6073,6 @@ pub mod num {
 }
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
-
 pub mod faer {
 
     pub use faer::*;
@@ -6104,7 +6080,6 @@ pub mod faer {
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 #[cfg(feature = "jit")]
-
 pub mod jit {
 
     pub use cranelift_codegen::*;
@@ -6116,7 +6091,6 @@ pub mod jit {
 
 /// Unified layer under development, for now rssn only provide campatible version choises.
 #[cfg(feature = "experimental")]
-
 pub mod simba {
 
     pub use simba::*;

@@ -27,8 +27,8 @@
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::core::Monomial;
 //! use rssn::symbolic::core::SparsePolynomial;
-//! use rssn::symbolic::grobner::buchberger;
 //! use rssn::symbolic::grobner::MonomialOrder;
+//! use rssn::symbolic::grobner::buchberger;
 //!
 //! // Create polynomials: x^2 - y and xy - 1
 //! let mut poly1_terms = BTreeMap::new();
@@ -37,32 +37,20 @@
 //!
 //! mono1.insert("x".to_string(), 2);
 //!
-//! poly1_terms.insert(
-//!     Monomial(mono1),
-//!     Expr::new_constant(1.0),
-//! );
+//! poly1_terms.insert(Monomial(mono1), Expr::new_constant(1.0));
 //!
 //! let mut mono2 = BTreeMap::new();
 //!
 //! mono2.insert("y".to_string(), 1);
 //!
-//! poly1_terms.insert(
-//!     Monomial(mono2),
-//!     Expr::new_constant(-1.0),
-//! );
+//! poly1_terms.insert(Monomial(mono2), Expr::new_constant(-1.0));
 //!
-//! let poly1 = SparsePolynomial {
-//!     terms : poly1_terms,
-//! };
+//! let poly1 = SparsePolynomial { terms: poly1_terms };
 //!
 //! // Compute Gröbner basis
 //! let basis = vec![poly1];
 //!
-//! let grobner = buchberger(
-//!     &basis,
-//!     MonomialOrder::Lexicographical,
-//! )
-//! .unwrap();
+//! let grobner = buchberger(&basis, MonomialOrder::Lexicographical).unwrap();
 //! ```
 //!
 //! **Demo Two**
@@ -78,57 +66,58 @@
 //! // Equation 2: (x-1)^2 + y^2 - 1 = 0  => x^2 - 2x + y^2 = 0
 //!
 //! use rssn::input::parser::parse_expr;
-//! use rssn::symbolic::core::{Expr, SparsePolynomial};
-//! use rssn::symbolic::grobner::{buchberger, MonomialOrder};
-//! use rssn::symbolic::polynomial::{expr_to_sparse_poly, sparse_poly_to_expr};
+//! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::core::SparsePolynomial;
+//! use rssn::symbolic::grobner::MonomialOrder;
+//! use rssn::symbolic::grobner::buchberger;
+//! use rssn::symbolic::polynomial::expr_to_sparse_poly;
+//! use rssn::symbolic::polynomial::sparse_poly_to_expr;
 //!
-//!     println!("=== Grobner Basis Computation Example ===\n");
+//! println!("=== Grobner Basis Computation Example ===\n");
 //!
-//!     // Define the polynomial equations as strings
-//!     let input1 = "x^2 + y^2 - 1";
-//!     let input2 = "x^2 - 2*x + y^2";
+//! // Define the polynomial equations as strings
+//! let input1 = "x^2 + y^2 - 1";
+//! let input2 = "x^2 - 2*x + y^2";
 //!
-//!     // Parse the strings into expressions
-//!     let f1_expr = match parse_expr(input1) {
-//!         Ok(("", expr)) => expr,
-//!         Ok((rem, _)) => panic!("Unparsed input: '{}'", rem),
-//!         Err(e) => panic!("Failed to parse expression '{}': {:?}", input1, e),
-//!     };
+//! // Parse the strings into expressions
+//! let f1_expr = match parse_expr(input1) {
+//!     | Ok(("", expr)) => expr,
+//!     | Ok((rem, _)) => panic!("Unparsed input: '{}'", rem),
+//!     | Err(e) => panic!("Failed to parse expression '{}': {:?}", input1, e),
+//! };
 //!
-//!     let f2_expr = match parse_expr(input2) {
-//!         Ok(("", expr)) => expr,
-//!         Ok((rem, _)) => panic!("Unparsed input: '{}'", rem),
-//!         Err(e) => panic!("Failed to parse expression '{}': {:?}", input2, e),
-//!     };
+//! let f2_expr = match parse_expr(input2) {
+//!     | Ok(("", expr)) => expr,
+//!     | Ok((rem, _)) => panic!("Unparsed input: '{}'", rem),
+//!     | Err(e) => panic!("Failed to parse expression '{}': {:?}", input2, e),
+//! };
 //!
-//!     println!("Polynomial 1 (f1): {}", f1_expr);
-//!     println!("Polynomial 2 (f2): {}\n", f2_expr);
+//! println!("Polynomial 1 (f1): {}", f1_expr);
+//! println!("Polynomial 2 (f2): {}\n", f2_expr);
 //!
-//!     // Convert expressions to SparsePolynomial
-//!     let f1_sparse = expr_to_sparse_poly(&f1_expr, &["x", "y"]);
-//!     let f2_sparse = expr_to_sparse_poly(&f2_expr, &["x", "y"]);
+//! // Convert expressions to SparsePolynomial
+//! let f1_sparse = expr_to_sparse_poly(&f1_expr, &["x", "y"]);
+//! let f2_sparse = expr_to_sparse_poly(&f2_expr, &["x", "y"]);
 //!
-//!     // Create the basis for Buchberger's algorithm
-//!     let basis = vec![f1_sparse, f2_sparse];
+//! // Create the basis for Buchberger's algorithm
+//! let basis = vec![f1_sparse, f2_sparse];
 //!
-//!     println!(
-//!         "Computing Grobner basis using Lexicographical order...\n"
-//!     );
+//! println!("Computing Grobner basis using Lexicographical order...\n");
 //!
-//!     // Compute the Grobner basis
-//!     match buchberger(&basis, MonomialOrder::Lexicographical) {
-//!         Ok(grobner_basis) => {
-//!             println!("Grobner Basis:");
-//!             for (i, poly) in grobner_basis.iter().enumerate() {
-//!                 println!("  g{}: {}", i + 1, sparse_poly_to_expr(poly));
-//!             }
+//! // Compute the Grobner basis
+//! match buchberger(&basis, MonomialOrder::Lexicographical) {
+//!     | Ok(grobner_basis) => {
+//!         println!("Grobner Basis:");
+//!         for (i, poly) in grobner_basis.iter().enumerate() {
+//!             println!("  g{}: {}", i + 1, sparse_poly_to_expr(poly));
 //!         }
-//!         Err(e) => {
-//!             eprintln!("Error computing Grobner basis: {}", e);
-//!         }
-//!     }
+//!     },
+//!     | Err(e) => {
+//!         eprintln!("Error computing Grobner basis: {}", e);
+//!     },
+//! }
 //!
-//!     println!("\n=== Example Complete ===");
+//! println!("\n=== Example Complete ===");
 //! ```
 //!
 //! **Demo Three**
@@ -144,10 +133,15 @@
 //! // Equation 2: (x-1)^2 + y^2 - 1 = 0  => x^2 - 2x + y^2 = 0
 //!
 //! use std::collections::BTreeMap;
-//! use std::ops::{Add, Mul, Sub};
+//! use std::ops::Add;
+//! use std::ops::Mul;
+//! use std::ops::Sub;
 //!
-//! use rssn::symbolic::core::{Expr, Monomial, SparsePolynomial};
-//! use rssn::symbolic::grobner::{buchberger, MonomialOrder};
+//! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::core::Monomial;
+//! use rssn::symbolic::core::SparsePolynomial;
+//! use rssn::symbolic::grobner::MonomialOrder;
+//! use rssn::symbolic::grobner::buchberger;
 //! use rssn::symbolic::polynomial::sparse_poly_to_expr;
 //!
 //! // Helper function to create a SparsePolynomial from a single variable.
@@ -167,43 +161,45 @@
 //! }
 //!
 //!
-//!     println!("=== Grobner Basis Computation Example ===\n");
+//! println!("=== Grobner Basis Computation Example ===\n");
 //!
-//!     // Define variables and constants as SparsePolynomials
-//!     let x = var_poly("x");
-//!     let y = var_poly("y");
-//!     let one = const_poly(1.0);
-//!     let two = const_poly(2.0);
+//! // Define variables and constants as SparsePolynomials
+//! let x = var_poly("x");
+//! let y = var_poly("y");
+//! let one = const_poly(1.0);
+//! let two = const_poly(2.0);
 //!
-//!     // Equation 1: x^2 + y^2 - 1 = 0
-//!     let f1_sparse = (x.clone() * x.clone()).add(y.clone() * y.clone()).sub(one.clone());
-//!     println!("Polynomial 1 (f1): {}", sparse_poly_to_expr(&f1_sparse));
+//! // Equation 1: x^2 + y^2 - 1 = 0
+//! let f1_sparse = (x.clone() * x.clone())
+//!     .add(y.clone() * y.clone())
+//!     .sub(one.clone());
+//! println!("Polynomial 1 (f1): {}", sparse_poly_to_expr(&f1_sparse));
 //!
-//!     // Equation 2: x^2 - 2x + y^2 = 0
-//!     let f2_sparse = (x.clone() * x.clone()).sub(two.clone() * x.clone()).add(y.clone() * y.clone());
-//!     println!("Polynomial 2 (f2): {}\n", sparse_poly_to_expr(&f2_sparse));
+//! // Equation 2: x^2 - 2x + y^2 = 0
+//! let f2_sparse = (x.clone() * x.clone())
+//!     .sub(two.clone() * x.clone())
+//!     .add(y.clone() * y.clone());
+//! println!("Polynomial 2 (f2): {}\n", sparse_poly_to_expr(&f2_sparse));
 //!
-//!     // Create the basis for Buchberger's algorithm
-//!     let basis = vec![f1_sparse, f2_sparse];
+//! // Create the basis for Buchberger's algorithm
+//! let basis = vec![f1_sparse, f2_sparse];
 //!
-//!     println!(
-//!         "Computing Grobner basis using Lexicographical order...\n"
-//!     );
+//! println!("Computing Grobner basis using Lexicographical order...\n");
 //!
-//!     // Compute the Grobner basis
-//!     match buchberger(&basis, MonomialOrder::Lexicographical) {
-//!         Ok(grobner_basis) => {
-//!             println!("Grobner Basis:");
-//!             for (i, poly) in grobner_basis.iter().enumerate() {
-//!                 println!("  g{}: {}", i + 1, sparse_poly_to_expr(poly));
-//!             }
+//! // Compute the Grobner basis
+//! match buchberger(&basis, MonomialOrder::Lexicographical) {
+//!     | Ok(grobner_basis) => {
+//!         println!("Grobner Basis:");
+//!         for (i, poly) in grobner_basis.iter().enumerate() {
+//!             println!("  g{}: {}", i + 1, sparse_poly_to_expr(poly));
 //!         }
-//!         Err(e) => {
-//!             eprintln!("Error computing Grobner basis: {}", e);
-//!         }
-//!     }
+//!     },
+//!     | Err(e) => {
+//!         eprintln!("Error computing Grobner basis: {}", e);
+//!     },
+//! }
 //!
-//!     println!("\n=== Example Complete ===");
+//! println!("\n=== Example Complete ===");
 //! ```
 //!
 //! **Demo Four**
@@ -229,122 +225,75 @@
 //! use rssn::symbolic::polynomial::sparse_poly_to_expr;
 //!
 //!
-//!
-//!     println!(
-//!         "=== Grobner Basis \
+//! println!(
+//!     "=== Grobner Basis \
 //!          Computation Example ===\n"
-//!     );
+//! );
 //!
-//!     // Define the variables
-//!     let x = Expr::new_variable("x");
+//! // Define the variables
+//! let x = Expr::new_variable("x");
 //!
-//!     let y = Expr::new_variable("y");
+//! let y = Expr::new_variable("y");
 //!
-//!     let one = Expr::new_constant(1.0);
+//! let one = Expr::new_constant(1.0);
 //!
-//!     let two = Expr::new_constant(2.0);
+//! let two = Expr::new_constant(2.0);
 //!
-//!     // Equation 1: x^2 + y^2 - 1 = 0
-//!     let f1_expr = Expr::new_sub(
-//!         Expr::new_add(
-//!             Expr::new_pow(
-//!                 x.clone(),
-//!                 two.clone(),
-//!             ),
-//!             Expr::new_pow(
-//!                 y.clone(),
-//!                 two.clone(),
-//!             ),
-//!         ),
-//!         one.clone(),
-//!     );
+//! // Equation 1: x^2 + y^2 - 1 = 0
+//! let f1_expr = Expr::new_sub(
+//!     Expr::new_add(
+//!         Expr::new_pow(x.clone(), two.clone()),
+//!         Expr::new_pow(y.clone(), two.clone()),
+//!     ),
+//!     one.clone(),
+//! );
 //!
-//!     println!(
-//!         "Polynomial 1 (f1): {}",
-//!         f1_expr
-//!     );
+//! println!("Polynomial 1 (f1): {}", f1_expr);
 //!
-//!     // Equation 2: (x-1)^2 + y^2 - 1 = 0  => x^2 - 2x + y^2 = 0
-//!     let f2_expr = Expr::new_add(
-//!         Expr::new_sub(
-//!             Expr::new_pow(
-//!                 x.clone(),
-//!                 two.clone(),
-//!             ),
-//!             Expr::new_mul(
-//!                 two.clone(),
-//!                 x.clone(),
-//!             ),
-//!         ),
-//!         Expr::new_pow(
-//!             y.clone(),
-//!             two.clone(),
-//!         ),
-//!     );
+//! // Equation 2: (x-1)^2 + y^2 - 1 = 0  => x^2 - 2x + y^2 = 0
+//! let f2_expr = Expr::new_add(
+//!     Expr::new_sub(
+//!         Expr::new_pow(x.clone(), two.clone()),
+//!         Expr::new_mul(two.clone(), x.clone()),
+//!     ),
+//!     Expr::new_pow(y.clone(), two.clone()),
+//! );
 //!
-//!     println!(
-//!         "Polynomial 2 (f2): {}\n",
-//!         f2_expr
-//!     );
+//! println!("Polynomial 2 (f2): {}\n", f2_expr);
 //!
-//!     // Convert expressions to SparsePolynomial
-//!     let f1_sparse = expr_to_sparse_poly(
-//!         &f1_expr,
-//!         &["x", "y"],
-//!     );
+//! // Convert expressions to SparsePolynomial
+//! let f1_sparse = expr_to_sparse_poly(&f1_expr, &["x", "y"]);
 //!
-//!     let f2_sparse = expr_to_sparse_poly(
-//!         &f2_expr,
-//!         &["x", "y"],
-//!     );
+//! let f2_sparse = expr_to_sparse_poly(&f2_expr, &["x", "y"]);
 //!
-//!     // Create the basis for Buchberger's algorithm
-//!     let basis =
-//!         vec![f1_sparse, f2_sparse];
+//! // Create the basis for Buchberger's algorithm
+//! let basis = vec![f1_sparse, f2_sparse];
 //!
-//!     println!(
-//!         "Computing Grobner basis \
+//! println!(
+//!     "Computing Grobner basis \
 //!          using Lexicographical \
 //!          order...\n"
-//!     );
+//! );
 //!
-//!     // Compute the Grobner basis
-//!     match buchberger(
-//!         &basis,
-//!         MonomialOrder::Lexicographical,
-//!     ) {
-//!         | Ok(grobner_basis) => {
+//! // Compute the Grobner basis
+//! match buchberger(&basis, MonomialOrder::Lexicographical) {
+//!     | Ok(grobner_basis) => {
+//!         println!("Grobner Basis:");
 //!
-//!             println!("Grobner Basis:");
-//!
-//!             for (i, poly) in
-//!                 grobner_basis
-//!                     .iter()
-//!                     .enumerate()
-//!             {
-//!
-//!                 println!(
-//!                     "  g{}: {}",
-//!                     i + 1,
-//!                     sparse_poly_to_expr(
-//!                         poly
-//!                     )
-//!                 );
-//!             }
-//!         },
-//!         | Err(e) => {
-//!
-//!             eprintln!(
-//!                 "Error computing \
+//!         for (i, poly) in grobner_basis.iter().enumerate() {
+//!             println!("  g{}: {}", i + 1, sparse_poly_to_expr(poly));
+//!         }
+//!     },
+//!     | Err(e) => {
+//!         eprintln!(
+//!             "Error computing \
 //!                  Grobner basis: {}",
-//!                 e
-//!             );
-//!         },
-//!     }
+//!             e
+//!         );
+//!     },
+//! }
 //!
-//!     println!(
-//!         "\n=== Example Complete ==="
-//!     );
+//! println!("\n=== Example Complete ===");
 //! ```
 
 use std::cmp::Ordering;
@@ -360,15 +309,8 @@ use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify_dag::simplify;
 
 /// Defines the monomial ordering to be used in polynomial division.
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    serde::Serialize,
-    serde::Deserialize,
-)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 #[repr(C)]
-
 pub enum MonomialOrder {
     /// Dictionary order: compares exponents of variables in a fixed sequence.
     Lexicographical,
@@ -379,33 +321,29 @@ pub enum MonomialOrder {
 }
 
 /// Compares two monomials based on a given ordering.
-
 pub(crate) fn compare_monomials(
     m1: &Monomial,
     m2: &Monomial,
     order: MonomialOrder,
 ) -> Ordering {
-
     match order {
-        | MonomialOrder::Lexicographical => {
-            compare_lex(m1, m2)
-        },
+        | MonomialOrder::Lexicographical => compare_lex(m1, m2),
         | MonomialOrder::GradedLexicographical => {
             let deg1: u32 = m1.0.values().sum();
             let deg2: u32 = m2.0.values().sum();
             match deg1.cmp(&deg2) {
-                Ordering::Equal => compare_lex(m1, m2),
-                other => other,
+                | Ordering::Equal => compare_lex(m1, m2),
+                | other => other,
             }
-        }
+        },
         | MonomialOrder::GradedReverseLexicographical => {
             let deg1: u32 = m1.0.values().sum();
             let deg2: u32 = m2.0.values().sum();
             match deg1.cmp(&deg2) {
-                Ordering::Equal => compare_revlex(m1, m2),
-                other => other,
+                | Ordering::Equal => compare_revlex(m1, m2),
+                | other => other,
             }
-        }
+        },
     }
 }
 
@@ -413,25 +351,15 @@ pub(crate) fn compare_lex(
     m1: &Monomial,
     m2: &Monomial,
 ) -> Ordering {
-
-    let all_vars: BTreeSet<&String> =
-        m1.0.keys()
-            .chain(m2.0.keys())
-            .collect();
+    let all_vars: BTreeSet<&String> = m1.0.keys().chain(m2.0.keys()).collect();
 
     for var in all_vars {
+        let e1 = m1.0.get(var).unwrap_or(&0);
 
-        let e1 =
-            m1.0.get(var)
-                .unwrap_or(&0);
-
-        let e2 =
-            m2.0.get(var)
-                .unwrap_or(&0);
+        let e2 = m2.0.get(var).unwrap_or(&0);
 
         match e1.cmp(e2) {
             | Ordering::Equal => {
-
                 continue;
             },
             | other => return other,
@@ -445,33 +373,21 @@ pub(crate) fn compare_revlex(
     m1: &Monomial,
     m2: &Monomial,
 ) -> Ordering {
-
-    let mut all_vars: Vec<&String> =
-        m1.0.keys()
-            .chain(m2.0.keys())
-            .collect();
+    let mut all_vars: Vec<&String> = m1.0.keys().chain(m2.0.keys()).collect();
 
     all_vars.sort();
 
     all_vars.dedup();
 
-    for var in all_vars
-        .iter()
-        .rev()
-    {
+    for var in all_vars.iter().rev() {
+        let e1 = m1.0.get(*var).unwrap_or(&0);
 
-        let e1 =
-            m1.0.get(*var)
-                .unwrap_or(&0);
-
-        let e2 =
-            m2.0.get(*var)
-                .unwrap_or(&0);
+        let e2 = m2.0.get(*var).unwrap_or(&0);
 
         match e1.cmp(e2) {
-            Ordering::Equal => continue,
-            Ordering::Greater => return Ordering::Less,
-            Ordering::Less => return Ordering::Greater,
+            | Ordering::Equal => continue,
+            | Ordering::Greater => return Ordering::Less,
+            | Ordering::Less => return Ordering::Greater,
         }
     }
 
@@ -497,61 +413,34 @@ pub(crate) fn compare_revlex(
 ///
 /// This function will return an error if there is a logic error during term processing,
 /// such as a leading term not being found in the polynomial or divisor terms.
-
 pub fn poly_division_multivariate(
     f: &SparsePolynomial,
     divisors: &[SparsePolynomial],
     order: MonomialOrder,
-) -> Result<
-    (
-        Vec<SparsePolynomial>,
-        SparsePolynomial,
-    ),
-    String,
-> {
-
+) -> Result<(Vec<SparsePolynomial>, SparsePolynomial), String> {
     let mut quotients = vec![
         SparsePolynomial {
-            terms : BTreeMap::new()
+            terms: BTreeMap::new()
         };
         divisors.len()
     ];
 
-    let mut remainder =
-        SparsePolynomial {
-            terms: BTreeMap::new(),
-        };
+    let mut remainder = SparsePolynomial {
+        terms: BTreeMap::new(),
+    };
 
     let mut p = f.clone();
 
     while !p.terms.is_empty() {
+        let mut division_occurred = false;
 
-        let mut division_occurred =
-            false;
-
-        let lead_term_p = match p
-            .terms
-            .keys()
-            .max_by(|a, b| {
-
-                compare_monomials(
-                    a, b, order,
-                )
-            }) {
+        let lead_term_p = match p.terms.keys().max_by(|a, b| compare_monomials(a, b, order)) {
             | Some(lt) => lt.clone(),
             | None => continue,
         };
 
-        for (i, divisor) in divisors
-            .iter()
-            .enumerate()
-        {
-
-            if divisor
-                .terms
-                .is_empty()
-            {
-
+        for (i, divisor) in divisors.iter().enumerate() {
+            if divisor.terms.is_empty() {
                 continue;
             }
 
@@ -564,108 +453,52 @@ pub fn poly_division_multivariate(
                 | None => unreachable!(),
             };
 
-            if is_divisible(
-                &lead_term_p,
-                &lead_term_g,
-            ) {
-
-                let coeff_p = match p
-                    .terms
-                    .get(&lead_term_p)
-                {
+            if is_divisible(&lead_term_p, &lead_term_g) {
+                let coeff_p = match p.terms.get(&lead_term_p) {
                     | Some(c) => c,
                     | None => {
-
                         return Err("Logic error: lead term not in polynomial terms".to_string());
                     },
                 };
 
-                let coeff_g =
-                    match divisor
-                        .terms
-                        .get(
-                        &lead_term_g,
-                    ) {
-                        | Some(c) => c,
-                        | None => {
+                let coeff_g = match divisor.terms.get(&lead_term_g) {
+                    | Some(c) => c,
+                    | None => {
+                        return Err("Logic error: lead term not found in divisor terms".to_string());
+                    },
+                };
 
-                            return Err(
-                            "Logic error: lead term not found in divisor terms".to_string(),
-                        );
-                        },
-                    };
+                let coeff_ratio = simplify(&Expr::new_div(coeff_p.clone(), coeff_g.clone()));
 
-                let coeff_ratio =
-                    simplify(
-                        &Expr::new_div(
-                            coeff_p
-                                .clone(
-                                ),
-                            coeff_g
-                                .clone(
-                                ),
-                        ),
-                    );
+                let mono_ratio = subtract_monomials(&lead_term_p, &lead_term_g);
 
-                let mono_ratio =
-                    subtract_monomials(
-                        &lead_term_p,
-                        &lead_term_g,
-                    );
+                let mut t_terms = BTreeMap::new();
 
-                let mut t_terms =
-                    BTreeMap::new();
+                t_terms.insert(mono_ratio, coeff_ratio);
 
-                t_terms.insert(
-                    mono_ratio,
-                    coeff_ratio,
-                );
+                let t = SparsePolynomial { terms: t_terms };
 
-                let t =
-                    SparsePolynomial {
-                        terms: t_terms,
-                    };
+                quotients[i] = add_poly(&quotients[i], &t);
 
-                quotients[i] = add_poly(
-                    &quotients[i],
-                    &t,
-                );
+                let t_g = mul_poly(&t, divisor);
 
-                let t_g = mul_poly(
-                    &t,
-                    divisor,
-                );
+                p = subtract_poly(&p, &t_g);
 
-                p = subtract_poly(
-                    &p, &t_g,
-                );
-
-                division_occurred =
-                    true;
+                division_occurred = true;
 
                 break;
             }
         }
 
         if !division_occurred {
-
-            let coeff = match p
-                .terms
-                .remove(&lead_term_p)
-            {
+            let coeff = match p.terms.remove(&lead_term_p) {
                 | Some(c) => c,
                 | None => {
-
                     return Err("Logic error: lead term not found for removal".to_string());
                 },
             };
 
-            remainder
-                .terms
-                .insert(
-                    lead_term_p,
-                    coeff,
-                );
+            remainder.terms.insert(lead_term_p, coeff);
         }
     }
 
@@ -676,43 +509,24 @@ pub(crate) fn is_divisible(
     m1: &Monomial,
     m2: &Monomial,
 ) -> bool {
-
     m2.0.iter()
-        .all(|(var, exp2)| {
-
-            m1.0.get(var)
-                .is_some_and(|exp1| {
-
-                    exp1 >= exp2
-                })
-        })
+        .all(|(var, exp2)| m1.0.get(var).is_some_and(|exp1| exp1 >= exp2))
 }
 
 pub(crate) fn subtract_monomials(
     m1: &Monomial,
     m2: &Monomial,
 ) -> Monomial {
-
     let mut result = m1.0.clone();
 
     for (var, exp2) in &m2.0 {
-
-        let exp1 = result
-            .entry(var.clone())
-            .or_insert(0);
+        let exp1 = result.entry(var.clone()).or_insert(0);
 
         *exp1 -= exp2;
     }
 
-    Monomial(
-        result
-            .into_iter()
-            .filter(|(_, exp)| *exp > 0)
-            .collect(),
-    )
+    Monomial(result.into_iter().filter(|(_, exp)| *exp > 0).collect())
 }
-
-#[must_use]
 
 /// Subtracts one polynomial from another.
 ///
@@ -722,77 +536,48 @@ pub(crate) fn subtract_monomials(
 ///
 /// # Returns
 /// A `SparsePolynomial` representing `p1 - p2`.
-
+#[must_use]
 pub fn subtract_poly(
     p1: &SparsePolynomial,
     p2: &SparsePolynomial,
 ) -> SparsePolynomial {
-
-    let mut result_terms =
-        p1.terms.clone();
+    let mut result_terms = p1.terms.clone();
 
     for (mono, coeff) in &p2.terms {
-
         let entry = result_terms
             .entry(mono.clone())
-            .or_insert_with(|| {
+            .or_insert_with(|| Expr::Constant(0.0));
 
-                Expr::Constant(0.0)
-            });
-
-        *entry =
-            simplify(&Expr::new_sub(
-                entry.clone(),
-                coeff.clone(),
-            ));
+        *entry = simplify(&Expr::new_sub(entry.clone(), coeff.clone()));
     }
 
-    result_terms
-        .retain(|_, v| !is_zero(v));
+    result_terms.retain(|_, v| !is_zero(v));
 
-    SparsePolynomial {
-        terms: result_terms,
-    }
+    SparsePolynomial { terms: result_terms }
 }
 
 /// Computes the leading term (monomial, coefficient) of a polynomial.
-
 pub(crate) fn leading_term(
     p: &SparsePolynomial,
     order: MonomialOrder,
 ) -> Option<(Monomial, Expr)> {
-
     p.terms
         .iter()
-        .max_by(|(m1, _), (m2, _)| {
-
-            compare_monomials(
-                m1, m2, order,
-            )
-        })
-        .map(|(m, c)| {
-
-            (m.clone(), c.clone())
-        })
+        .max_by(|(m1, _), (m2, _)| compare_monomials(m1, m2, order))
+        .map(|(m, c)| (m.clone(), c.clone()))
 }
 
 /// Computes the least common multiple (LCM) of two monomials.
-
 pub(crate) fn lcm_monomial(
     m1: &Monomial,
     m2: &Monomial,
 ) -> Monomial {
-
     let mut lcm_map = m1.0.clone();
 
     for (var, &exp2) in &m2.0 {
+        let exp1 = lcm_map.entry(var.clone()).or_insert(0);
 
-        let exp1 = lcm_map
-            .entry(var.clone())
-            .or_insert(0);
-
-        *exp1 =
-            std::cmp::max(*exp1, exp2);
+        *exp1 = std::cmp::max(*exp1, exp2);
     }
 
     Monomial(lcm_map)
@@ -800,63 +585,42 @@ pub(crate) fn lcm_monomial(
 
 /// Computes the S-polynomial of two polynomials.
 /// S(f, g) = (lcm(LM(f), LM(g)) / LT(f)) * f - (lcm(LM(f), LM(g)) / LT(g)) * g
-
 pub(crate) fn s_polynomial(
     p1: &SparsePolynomial,
     p2: &SparsePolynomial,
     order: MonomialOrder,
 ) -> Option<SparsePolynomial> {
+    let (lm1, lc1) = leading_term(p1, order)?;
 
-    let (lm1, lc1) =
-        leading_term(p1, order)?;
-
-    let (lm2, lc2) =
-        leading_term(p2, order)?;
+    let (lm2, lc2) = leading_term(p2, order)?;
 
     let lcm = lcm_monomial(&lm1, &lm2);
 
-    let t1_mono =
-        subtract_monomials(&lcm, &lm1);
+    let t1_mono = subtract_monomials(&lcm, &lm1);
 
-    let t1_coeff =
-        simplify(&Expr::new_div(
-            Expr::Constant(1.0),
-            lc1,
-        ));
+    let t1_coeff = simplify(&Expr::new_div(Expr::Constant(1.0), lc1));
 
     let mut t1_terms = BTreeMap::new();
 
     t1_terms.insert(t1_mono, t1_coeff);
 
-    let t1 = SparsePolynomial {
-        terms: t1_terms,
-    };
+    let t1 = SparsePolynomial { terms: t1_terms };
 
-    let t2_mono =
-        subtract_monomials(&lcm, &lm2);
+    let t2_mono = subtract_monomials(&lcm, &lm2);
 
-    let t2_coeff =
-        simplify(&Expr::new_div(
-            Expr::Constant(1.0),
-            lc2,
-        ));
+    let t2_coeff = simplify(&Expr::new_div(Expr::Constant(1.0), lc2));
 
     let mut t2_terms = BTreeMap::new();
 
     t2_terms.insert(t2_mono, t2_coeff);
 
-    let t2 = SparsePolynomial {
-        terms: t2_terms,
-    };
+    let t2 = SparsePolynomial { terms: t2_terms };
 
     let term1 = mul_poly(&t1, p1);
 
     let term2 = mul_poly(&t2, p2);
 
-    Some(subtract_poly(
-        &term1,
-        &term2,
-    ))
+    Some(subtract_poly(&term1, &term2))
 }
 
 /// Computes a Gröbner basis for a polynomial ideal using Buchberger's algorithm.
@@ -877,57 +641,29 @@ pub(crate) fn s_polynomial(
 ///
 /// This function will return an error if `poly_division_multivariate` encounters
 /// an error during the reduction of S-polynomials.
-
 pub fn buchberger(
     basis: &[SparsePolynomial],
     order: MonomialOrder,
-) -> Result<Vec<SparsePolynomial>, String>
-{
-
+) -> Result<Vec<SparsePolynomial>, String> {
     if basis.is_empty() {
-
         return Ok(vec![]);
     }
 
     let mut g = basis.to_vec();
 
-    let mut pairs: Vec<(usize, usize)> =
-        (0 .. g.len())
-            .flat_map(|i| {
+    let mut pairs: Vec<(usize, usize)> = (0..g.len())
+        .flat_map(|i| (i + 1..g.len()).map(move |j| (i, j)))
+        .collect();
 
-                (i + 1 .. g.len()).map(
-                    move |j| (i, j),
-                )
-            })
-            .collect();
-
-    while let Some((i, j)) = pairs.pop()
-    {
-
-        if let Some(s_poly) =
-            s_polynomial(
-                &g[i], &g[j], order,
-            )
-        {
-
+    while let Some((i, j)) = pairs.pop() {
+        if let Some(s_poly) = s_polynomial(&g[i], &g[j], order) {
             let (_, remainder) = poly_division_multivariate(&s_poly, &g, order)?;
 
-            if !remainder
-                .terms
-                .is_empty()
-            {
+            if !remainder.terms.is_empty() {
+                let new_poly_idx = g.len();
 
-                let new_poly_idx =
-                    g.len();
-
-                for k in
-                    0 .. new_poly_idx
-                {
-
-                    pairs.push((
-                        k,
-                        new_poly_idx,
-                    ));
+                for k in 0..new_poly_idx {
+                    pairs.push((k, new_poly_idx));
                 }
 
                 g.push(remainder);
@@ -935,9 +671,7 @@ pub fn buchberger(
         }
     }
 
-    Ok(reduced_basis(
-        g, order,
-    ))
+    Ok(reduced_basis(g, order))
 }
 
 /// Reduces a Gröbner basis to its reduced form.
@@ -945,14 +679,11 @@ pub fn buchberger(
 /// A reduced Gröbner basis is a unique (for a given order) basis where:
 /// 1. The leading coefficient of each polynomial is 1.
 /// 2. For each polynomial p in the basis, no monomial in p is divisible by any LT(g) for g in G \ {p}.
-
 pub fn reduced_basis(
     basis: Vec<SparsePolynomial>,
     order: MonomialOrder,
 ) -> Vec<SparsePolynomial> {
-
     if basis.is_empty() {
-
         return vec![];
     }
 
@@ -961,51 +692,29 @@ pub fn reduced_basis(
 
     let mut sorted_basis = basis;
 
-    sorted_basis.retain(|p| {
+    sorted_basis.retain(|p| !p.terms.is_empty());
 
-        !p.terms.is_empty()
-    });
-
-    for i in 0 .. sorted_basis.len() {
-
-        let lt_i = match leading_term(
-            &sorted_basis[i],
-            order,
-        ) {
+    for i in 0..sorted_basis.len() {
+        let lt_i = match leading_term(&sorted_basis[i], order) {
             | Some((m, _)) => m,
             | None => continue,
         };
 
         let mut redundant = false;
 
-        for (j, other_poly) in
-            sorted_basis
-                .iter()
-                .enumerate()
-        {
-
+        for (j, other_poly) in sorted_basis.iter().enumerate() {
             if i == j {
-
                 continue;
             }
 
-            let lt_j =
-                match leading_term(
-                    other_poly,
-                    order,
-                ) {
-                    | Some((m, _)) => m,
-                    | None => continue,
-                };
+            let lt_j = match leading_term(other_poly, order) {
+                | Some((m, _)) => m,
+                | None => continue,
+            };
 
-            if is_divisible(
-                &lt_i, &lt_j,
-            ) {
-
+            if is_divisible(&lt_i, &lt_j) {
                 // If LT_j divides LT_i, then LT_i is redundant.
-                if lt_i != lt_j || i > j
-                {
-
+                if lt_i != lt_j || i > j {
                     redundant = true;
 
                     break;
@@ -1014,96 +723,47 @@ pub fn reduced_basis(
         }
 
         if !redundant {
-
-            minimal.push(
-                sorted_basis[i].clone(),
-            );
+            minimal.push(sorted_basis[i].clone());
         }
     }
 
     // 2. Reduce each polynomial by the others
     let mut reduced = Vec::new();
 
-    for i in 0 .. minimal.len() {
-
-        let mut others =
-            minimal.clone();
+    for i in 0..minimal.len() {
+        let mut others = minimal.clone();
 
         others.remove(i);
 
-        let (_, rem) =
-            poly_division_multivariate(
-                &minimal[i],
-                &others,
-                order,
-            )
-            .unwrap_or_else(|_| {
-
-                (
-                    vec![],
-                    minimal[i].clone(),
-                )
-            });
+        let (_, rem) = poly_division_multivariate(&minimal[i], &others, order)
+            .unwrap_or_else(|_| (vec![], minimal[i].clone()));
 
         // 3. Make monic
-        if let Some((_, lc)) =
-            leading_term(&rem, order)
-        {
-
-            let mut monic_terms =
-                BTreeMap::new();
+        if let Some((_, lc)) = leading_term(&rem, order) {
+            let mut monic_terms = BTreeMap::new();
 
             for (m, c) in rem.terms {
-
-                let monic_c = simplify(
-                    &Expr::new_div(
-                        c,
-                        lc.clone(),
-                    ),
-                );
+                let monic_c = simplify(&Expr::new_div(c, lc.clone()));
 
                 if !is_zero(&monic_c) {
-
-                    monic_terms.insert(
-                        m,
-                        monic_c,
-                    );
+                    monic_terms.insert(m, monic_c);
                 }
             }
 
-            reduced.push(
-                SparsePolynomial {
-                    terms: monic_terms,
-                },
-            );
+            reduced.push(SparsePolynomial { terms: monic_terms });
         }
     }
 
     reduced.sort_by(|p1, p2| {
+        let lt1 = leading_term(p1, order).map(|(m, _)| m);
 
-        let lt1 =
-            leading_term(p1, order)
-                .map(|(m, _)| m);
-
-        let lt2 =
-            leading_term(p2, order)
-                .map(|(m, _)| m);
+        let lt2 = leading_term(p2, order).map(|(m, _)| m);
 
         match (lt1, lt2) {
-            | (Some(m1), Some(m2)) => {
-                compare_monomials(
-                    &m1, &m2, order,
-                )
-            },
-            | (Some(_), None) => {
-                Ordering::Greater
-            },
-            | (None, Some(_)) => {
-                Ordering::Less
-            },
-            | (None, None) => {
-                Ordering::Equal
-            },
+            | (Some(m1), Some(m2)) => compare_monomials(&m1, &m2, order),
+            | (Some(_), None) => Ordering::Greater,
+            | (None, Some(_)) => Ordering::Less,
+            | (None, None) => Ordering::Equal,
         }
     });
 

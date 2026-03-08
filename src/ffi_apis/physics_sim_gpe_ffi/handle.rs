@@ -8,7 +8,6 @@ use crate::physics::physics_sim::gpe_superfluidity::{
 
 /// Runs the GPE ground state finder and returns the result as a Matrix handle (Nx x Ny).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_physics_sim_gpe_run_ground_state_finder(
     nx: usize,
     ny: usize,
@@ -19,7 +18,6 @@ pub extern "C" fn rssn_physics_sim_gpe_run_ground_state_finder(
     g: f64,
     trap_strength: f64,
 ) -> *mut Matrix<f64> {
-
     let params = GpeParameters {
         nx,
         ny,
@@ -33,18 +31,15 @@ pub extern "C" fn rssn_physics_sim_gpe_run_ground_state_finder(
 
     match gpe_superfluidity::run_gpe_ground_state_finder(&params) {
         | Ok(res) => {
-
             let rows = res.nrows();
 
             let cols = res.ncols();
 
-            Box::into_raw(Box::new(
-                Matrix::new(
-                    rows,
-                    cols,
-                    res.into_raw_vec_and_offset().0,
-                ),
-            ))
+            Box::into_raw(Box::new(Matrix::new(
+                rows,
+                cols,
+                res.into_raw_vec_and_offset().0,
+            )))
         },
         | Err(_) => std::ptr::null_mut(),
     }

@@ -6,6 +6,7 @@
 use std::sync::Arc;
 
 use crate::symbolic::core::Expr;
+use crate::symbolic::error_correction_helper::FiniteField;
 use crate::symbolic::error_correction_helper::gf256_add;
 use crate::symbolic::error_correction_helper::gf256_div;
 use crate::symbolic::error_correction_helper::gf256_exp;
@@ -21,82 +22,61 @@ use crate::symbolic::error_correction_helper::poly_gcd_gf256;
 use crate::symbolic::error_correction_helper::poly_mul_gf;
 use crate::symbolic::error_correction_helper::poly_mul_gf256;
 use crate::symbolic::error_correction_helper::poly_scale_gf256;
-use crate::symbolic::error_correction_helper::FiniteField;
 
 /// Performs addition in GF(2^8) (XOR operation).
 #[unsafe(no_mangle)]
-
 pub const extern "C" fn rssn_gf256_add(
     a: u8,
     b: u8,
 ) -> u8 {
-
     gf256_add(a, b)
 }
 
 /// Performs multiplication in GF(2^8).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_gf256_mul(
     a: u8,
     b: u8,
 ) -> u8 {
-
     gf256_mul(a, b)
 }
 
 /// Computes the exponentiation (anti-logarithm) in GF(2^8).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_gf256_exp(
-    log_val: u8
-) -> u8 {
-
+pub extern "C" fn rssn_gf256_exp(log_val: u8) -> u8 {
     gf256_exp(log_val)
 }
 
 /// Computes the discrete logarithm in GF(2^8).
 /// Returns 0 if input is 0 (error case, as log(0) is undefined).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_gf256_log(
-    a: u8
-) -> u8 {
-
+pub extern "C" fn rssn_gf256_log(a: u8) -> u8 {
     gf256_log(a).unwrap_or(0)
 }
 
 /// Computes a^exp in GF(2^8).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_gf256_pow(
     a: u8,
     exp: u8,
 ) -> u8 {
-
     gf256_pow(a, exp)
 }
 
 /// Computes the multiplicative inverse in GF(2^8).
 /// Returns 0 if input is 0 (error case).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_gf256_inv(
-    a: u8
-) -> u8 {
-
+pub extern "C" fn rssn_gf256_inv(a: u8) -> u8 {
     gf256_inv(a).unwrap_or(0)
 }
 
 /// Performs division in GF(2^8).
 /// Returns 0 if divisor is 0 (error case).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_gf256_div(
     a: u8,
     b: u8,
 ) -> u8 {
-
     gf256_div(a, b).unwrap_or(0)
 }
 
@@ -104,8 +84,7 @@ pub extern "C" fn rssn_gf256_div(
 ///
 /// # Safety
 /// Caller must ensure `poly` is a valid pointer to an array of `len` bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -113,24 +92,18 @@ pub extern "C" fn rssn_gf256_div(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_poly_eval_gf256(
     poly: *const u8,
     len: usize,
     x: u8,
 ) -> u8 {
-
     unsafe {
-
         if poly.is_null() || len == 0 {
-
             return 0;
         }
 
-        let slice =
-            std::slice::from_raw_parts(
-                poly, len,
-            );
+        let slice = std::slice::from_raw_parts(poly, len);
 
         poly_eval_gf256(slice, x)
     }
@@ -140,8 +113,7 @@ pub unsafe extern "C" fn rssn_poly_eval_gf256(
 ///
 /// # Safety
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -149,7 +121,7 @@ pub unsafe extern "C" fn rssn_poly_eval_gf256(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_poly_add_gf256(
     p1: *const u8,
     p1_len: usize,
@@ -157,40 +129,22 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
     p2_len: usize,
     out_len: *mut usize,
 ) -> *mut u8 {
-
     unsafe {
-
-        if p1.is_null()
-            || p2.is_null()
-            || out_len.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if p1.is_null() || p2.is_null() || out_len.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let s1 =
-            std::slice::from_raw_parts(
-                p1,
-                p1_len,
-            );
+        let s1 = std::slice::from_raw_parts(p1, p1_len);
 
-        let s2 =
-            std::slice::from_raw_parts(
-                p2,
-                p2_len,
-            );
+        let s2 = std::slice::from_raw_parts(p2, p2_len);
 
-        let result =
-            poly_add_gf256(s1, s2);
+        let result = poly_add_gf256(s1, s2);
 
         *out_len = result.len();
 
-        let boxed =
-            result.into_boxed_slice();
+        let boxed = result.into_boxed_slice();
 
-        Box::into_raw(boxed)
-            .cast::<u8>()
+        Box::into_raw(boxed).cast::<u8>()
     }
 }
 
@@ -198,8 +152,7 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
 ///
 /// # Safety
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -207,7 +160,7 @@ pub unsafe extern "C" fn rssn_poly_add_gf256(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_poly_mul_gf256(
     p1: *const u8,
     p1_len: usize,
@@ -215,40 +168,22 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
     p2_len: usize,
     out_len: *mut usize,
 ) -> *mut u8 {
-
     unsafe {
-
-        if p1.is_null()
-            || p2.is_null()
-            || out_len.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if p1.is_null() || p2.is_null() || out_len.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let s1 =
-            std::slice::from_raw_parts(
-                p1,
-                p1_len,
-            );
+        let s1 = std::slice::from_raw_parts(p1, p1_len);
 
-        let s2 =
-            std::slice::from_raw_parts(
-                p2,
-                p2_len,
-            );
+        let s2 = std::slice::from_raw_parts(p2, p2_len);
 
-        let result =
-            poly_mul_gf256(s1, s2);
+        let result = poly_mul_gf256(s1, s2);
 
         *out_len = result.len();
 
-        let boxed =
-            result.into_boxed_slice();
+        let boxed = result.into_boxed_slice();
 
-        Box::into_raw(boxed)
-            .cast::<u8>()
+        Box::into_raw(boxed).cast::<u8>()
     }
 }
 
@@ -256,8 +191,7 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
 ///
 /// # Safety
 /// Caller must ensure pointer is valid. Result is allocated and must be freed.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -265,41 +199,27 @@ pub unsafe extern "C" fn rssn_poly_mul_gf256(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_poly_scale_gf256(
     poly: *const u8,
     len: usize,
     scalar: u8,
     out_len: *mut usize,
 ) -> *mut u8 {
-
     unsafe {
-
-        if poly.is_null()
-            || out_len.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if poly.is_null() || out_len.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let slice =
-            std::slice::from_raw_parts(
-                poly, len,
-            );
+        let slice = std::slice::from_raw_parts(poly, len);
 
-        let result = poly_scale_gf256(
-            slice,
-            scalar,
-        );
+        let result = poly_scale_gf256(slice, scalar);
 
         *out_len = result.len();
 
-        let boxed =
-            result.into_boxed_slice();
+        let boxed = result.into_boxed_slice();
 
-        Box::into_raw(boxed)
-            .cast::<u8>()
+        Box::into_raw(boxed).cast::<u8>()
     }
 }
 
@@ -307,8 +227,7 @@ pub unsafe extern "C" fn rssn_poly_scale_gf256(
 ///
 /// # Safety
 /// Caller must ensure pointer is valid. Result is allocated and must be freed.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -316,40 +235,26 @@ pub unsafe extern "C" fn rssn_poly_scale_gf256(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_poly_derivative_gf256(
     poly: *const u8,
     len: usize,
     out_len: *mut usize,
 ) -> *mut u8 {
-
     unsafe {
-
-        if poly.is_null()
-            || out_len.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if poly.is_null() || out_len.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let slice =
-            std::slice::from_raw_parts(
-                poly, len,
-            );
+        let slice = std::slice::from_raw_parts(poly, len);
 
-        let result =
-            poly_derivative_gf256(
-                slice,
-            );
+        let result = poly_derivative_gf256(slice);
 
         *out_len = result.len();
 
-        let boxed =
-            result.into_boxed_slice();
+        let boxed = result.into_boxed_slice();
 
-        Box::into_raw(boxed)
-            .cast::<u8>()
+        Box::into_raw(boxed).cast::<u8>()
     }
 }
 
@@ -357,8 +262,7 @@ pub unsafe extern "C" fn rssn_poly_derivative_gf256(
 ///
 /// # Safety
 /// Caller must ensure pointers are valid. Result is allocated and must be freed.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -366,7 +270,7 @@ pub unsafe extern "C" fn rssn_poly_derivative_gf256(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_poly_gcd_gf256(
     p1: *const u8,
     p1_len: usize,
@@ -374,40 +278,22 @@ pub unsafe extern "C" fn rssn_poly_gcd_gf256(
     p2_len: usize,
     out_len: *mut usize,
 ) -> *mut u8 {
-
     unsafe {
-
-        if p1.is_null()
-            || p2.is_null()
-            || out_len.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if p1.is_null() || p2.is_null() || out_len.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let s1 =
-            std::slice::from_raw_parts(
-                p1,
-                p1_len,
-            );
+        let s1 = std::slice::from_raw_parts(p1, p1_len);
 
-        let s2 =
-            std::slice::from_raw_parts(
-                p2,
-                p2_len,
-            );
+        let s2 = std::slice::from_raw_parts(p2, p2_len);
 
-        let result =
-            poly_gcd_gf256(s1, s2);
+        let result = poly_gcd_gf256(s1, s2);
 
         *out_len = result.len();
 
-        let boxed =
-            result.into_boxed_slice();
+        let boxed = result.into_boxed_slice();
 
-        Box::into_raw(boxed)
-            .cast::<u8>()
+        Box::into_raw(boxed).cast::<u8>()
     }
 }
 
@@ -415,22 +301,15 @@ pub unsafe extern "C" fn rssn_poly_gcd_gf256(
 ///
 /// Returns an opaque handle to the field.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_finite_field_new(
-    modulus: i64
-) -> *mut Arc<FiniteField> {
-
-    Box::into_raw(Box::new(
-        FiniteField::new(modulus),
-    ))
+pub extern "C" fn rssn_finite_field_new(modulus: i64) -> *mut Arc<FiniteField> {
+    Box::into_raw(Box::new(FiniteField::new(modulus)))
 }
 
 /// Frees a finite field handle.
 ///
 /// # Safety
 /// Caller must ensure `field` is a valid pointer returned by `rssn_finite_field_new`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -438,15 +317,10 @@ pub extern "C" fn rssn_finite_field_new(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_finite_field_free(
-    field: *mut Arc<FiniteField>
-) {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_finite_field_free(field: *mut Arc<FiniteField>) {
     unsafe {
-
         if !field.is_null() {
-
             drop(Box::from_raw(field));
         }
     }
@@ -456,8 +330,7 @@ pub unsafe extern "C" fn rssn_finite_field_free(
 ///
 /// # Safety
 /// Caller must ensure all pointers are valid.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -465,37 +338,20 @@ pub unsafe extern "C" fn rssn_finite_field_free(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_poly_add_gf(
     p1: *const Expr,
     p2: *const Expr,
     field: *const Arc<FiniteField>,
 ) -> *mut Expr {
-
     unsafe {
-
-        if p1.is_null()
-            || p2.is_null()
-            || field.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if p1.is_null() || p2.is_null() || field.is_null() {
+            return std::ptr::null_mut();
         }
 
-        match poly_add_gf(
-            &*p1,
-            &*p2,
-            &*field,
-        ) {
-            | Ok(result) => {
-                Box::into_raw(Box::new(
-                    result,
-                ))
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+        match poly_add_gf(&*p1, &*p2, &*field) {
+            | Ok(result) => Box::into_raw(Box::new(result)),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }
@@ -504,8 +360,7 @@ pub unsafe extern "C" fn rssn_poly_add_gf(
 ///
 /// # Safety
 /// Caller must ensure all pointers are valid.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -513,37 +368,20 @@ pub unsafe extern "C" fn rssn_poly_add_gf(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_poly_mul_gf(
     p1: *const Expr,
     p2: *const Expr,
     field: *const Arc<FiniteField>,
 ) -> *mut Expr {
-
     unsafe {
-
-        if p1.is_null()
-            || p2.is_null()
-            || field.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if p1.is_null() || p2.is_null() || field.is_null() {
+            return std::ptr::null_mut();
         }
 
-        match poly_mul_gf(
-            &*p1,
-            &*p2,
-            &*field,
-        ) {
-            | Ok(result) => {
-                Box::into_raw(Box::new(
-                    result,
-                ))
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+        match poly_mul_gf(&*p1, &*p2, &*field) {
+            | Ok(result) => Box::into_raw(Box::new(result)),
+            | Err(_) => std::ptr::null_mut(),
         }
     }
 }

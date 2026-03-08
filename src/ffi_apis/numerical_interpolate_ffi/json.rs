@@ -9,29 +9,24 @@ use crate::ffi_apis::common::to_c_string;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::interpolate;
 
-
 #[derive(Deserialize)]
-
 struct LagrangeInput {
     points: Vec<(f64, f64)>,
 }
 
 #[derive(Deserialize)]
-
 struct CubicSplineInput {
     points: Vec<(f64, f64)>,
     x_eval: f64,
 }
 
 #[derive(Deserialize)]
-
 struct BezierInput {
     control_points: Vec<Vec<f64>>,
     t: f64,
 }
 
 #[derive(Deserialize)]
-
 struct BSplineInput {
     control_points: Vec<Vec<f64>>,
     degree: usize,
@@ -40,9 +35,7 @@ struct BSplineInput {
 }
 
 /// Computes the Lagrange interpolation polynomial for a given set of points using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -50,17 +43,16 @@ struct BSplineInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_lagrange_interpolation_json(
     input_ptr: *const c_char
 ) -> *mut c_char {
-
-    let input : LagrangeInput = match from_json_string(input_ptr) {
+    let input: LagrangeInput = match from_json_string(input_ptr) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
@@ -82,18 +74,11 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(
-            &ffi_result,
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_result).unwrap())
 }
 
 /// Computes the cubic spline interpolation for a given set of points using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -101,17 +86,16 @@ pub unsafe extern "C" fn rssn_num_lagrange_interpolation_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
     input_ptr: *const c_char
 ) -> *mut c_char {
-
-    let input : CubicSplineInput = match from_json_string(input_ptr) {
+    let input: CubicSplineInput = match from_json_string(input_ptr) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
@@ -120,9 +104,7 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
 
     let ffi_result = match result {
         | Ok(spline) => {
-
-            let val =
-                spline(input.x_eval);
+            let val = spline(input.x_eval);
 
             FfiResult {
                 ok: Some(val),
@@ -137,18 +119,11 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(
-            &ffi_result,
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_result).unwrap())
 }
 
 /// Computes a point on a Bezier curve given control points and a parameter t, using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -156,45 +131,30 @@ pub unsafe extern "C" fn rssn_num_cubic_spline_interpolation_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_bezier_curve_json(
-    input_ptr: *const c_char
-) -> *mut c_char {
-
-    let input : BezierInput = match from_json_string(input_ptr) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_bezier_curve_json(input_ptr: *const c_char) -> *mut c_char {
+    let input: BezierInput = match from_json_string(input_ptr) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        interpolate::bezier_curve(
-            &input.control_points,
-            input.t,
-        );
+    let result = interpolate::bezier_curve(&input.control_points, input.t);
 
-    let ffi_result =
-        FfiResult::<Vec<f64>, String> {
-            ok: Some(result),
-            err: None,
-        };
+    let ffi_result = FfiResult::<Vec<f64>, String> {
+        ok: Some(result),
+        err: None,
+    };
 
-    to_c_string(
-        serde_json::to_string(
-            &ffi_result,
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_result).unwrap())
 }
 
 /// Computes a point on a B-spline curve given control points, degree, knots, and a parameter t, using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -202,50 +162,38 @@ pub unsafe extern "C" fn rssn_num_bezier_curve_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_b_spline_json(
-    input_ptr: *const c_char
-) -> *mut c_char {
-
-    let input : BSplineInput = match from_json_string(input_ptr) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_b_spline_json(input_ptr: *const c_char) -> *mut c_char {
+    let input: BSplineInput = match from_json_string(input_ptr) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
 
-    let result = interpolate::b_spline(
-        &input.control_points,
-        input.degree,
-        &input.knots,
-        input.t,
-    );
+    let result = interpolate::b_spline(&input.control_points, input.degree, &input.knots, input.t);
 
-    let ffi_result =
-        match result {
-            | Some(p) => {
-                FfiResult {
-                    ok: Some(p),
-                    err: None,
-                }
-            },
-            | None => FfiResult {
+    let ffi_result = match result {
+        | Some(p) => {
+            FfiResult {
+                ok: Some(p),
+                err: None,
+            }
+        },
+        | None => {
+            FfiResult {
                 ok: None,
                 err: Some(
                     "Invalid B-spline \
                      parameters"
                         .to_string(),
                 ),
-            },
-        };
+            }
+        },
+    };
 
-    to_c_string(
-        serde_json::to_string(
-            &ffi_result,
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_result).unwrap())
 }

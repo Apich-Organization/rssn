@@ -15,7 +15,6 @@ use rustfft::num_complex::Complex;
 ///
 /// # Example
 /// ```rust
-/// 
 /// use rssn::numerical::signal::fft;
 /// use rustfft::num_complex::Complex;
 ///
@@ -28,20 +27,12 @@ use rustfft::num_complex::Complex;
 ///
 /// let output = fft(&mut input);
 ///
-/// assert!(
-///     (output[0].re - 4.0).abs()
-///         < 1e-9
-/// );
+/// assert!((output[0].re - 4.0).abs() < 1e-9);
 /// ```
-
-pub fn fft(
-    input: &mut [Complex<f64>]
-) -> Vec<Complex<f64>> {
-
+pub fn fft(input: &mut [Complex<f64>]) -> Vec<Complex<f64>> {
     let mut planner = FftPlanner::new();
 
-    let fft = planner
-        .plan_fft_forward(input.len());
+    let fft = planner.plan_fft_forward(input.len());
 
     let mut buffer = input.to_vec();
 
@@ -65,7 +56,6 @@ pub fn fft(
 ///
 /// # Example
 /// ```rust
-/// 
 /// use rssn::numerical::signal::convolve;
 ///
 /// let a = vec![1.0, 2.0, 3.0];
@@ -74,33 +64,25 @@ pub fn fft(
 ///
 /// let res = convolve(&a, &v);
 ///
-/// assert_eq!(
-///     res,
-///     vec![0.0, 1.0, 2.5, 4.0, 1.5]
-/// );
+/// assert_eq!(res, vec![0.0, 1.0, 2.5, 4.0, 1.5]);
 /// ```
 #[must_use]
-
 pub fn convolve(
     a: &[f64],
     v: &[f64],
 ) -> Vec<f64> {
-
     let n = a.len();
 
     let m = v.len();
 
     if n == 0 || m == 0 {
-
         return vec![];
     }
 
     let mut out = vec![0.0; n + m - 1];
 
-    for i in 0 .. n {
-
-        for j in 0 .. m {
-
+    for i in 0..n {
+        for j in 0..m {
             out[i + j] += a[i] * v[j];
         }
     }
@@ -121,7 +103,6 @@ pub fn convolve(
 ///
 /// # Example
 /// ```rust
-/// 
 /// use rssn::numerical::signal::cross_correlation;
 ///
 /// let a = vec![1.0, 2.0, 3.0];
@@ -132,12 +113,10 @@ pub fn convolve(
 /// // correlation(a, v)[k] = sum_i a[i] * v[i-k]
 /// ```
 #[must_use]
-
 pub fn cross_correlation(
     a: &[f64],
     v: &[f64],
 ) -> Vec<f64> {
-
     let mut v_rev = v.to_vec();
 
     v_rev.reverse();
@@ -150,29 +129,17 @@ pub fn cross_correlation(
 /// # Arguments
 /// * `n` - The number of points in the output window.
 #[must_use]
-
-pub fn hann_window(
-    n: usize
-) -> Vec<f64> {
-
+pub fn hann_window(n: usize) -> Vec<f64> {
     if n == 0 {
-
         return vec![];
     }
 
     if n == 1 {
-
         return vec![1.0];
     }
 
-    (0 .. n)
-        .map(|i| {
-
-            0.5 * (1.0
-                - (2.0 * PI * i as f64
-                    / (n - 1) as f64)
-                    .cos())
-        })
+    (0..n)
+        .map(|i| 0.5 * (1.0 - (2.0 * PI * i as f64 / (n - 1) as f64).cos()))
         .collect()
 }
 
@@ -181,30 +148,16 @@ pub fn hann_window(
 /// # Arguments
 /// * `n` - The number of points in the output window.
 #[must_use]
-
-pub fn hamming_window(
-    n: usize
-) -> Vec<f64> {
-
+pub fn hamming_window(n: usize) -> Vec<f64> {
     if n == 0 {
-
         return vec![];
     }
 
     if n == 1 {
-
         return vec![1.0];
     }
 
-    (0 .. n)
-        .map(|i| {
-
-            0.46f64.mul_add(
-                -(2.0 * PI * i as f64
-                    / (n - 1) as f64)
-                    .cos(),
-                0.54,
-            )
-        })
+    (0..n)
+        .map(|i| 0.46f64.mul_add(-(2.0 * PI * i as f64 / (n - 1) as f64).cos(), 0.54))
         .collect()
 }
