@@ -13,7 +13,6 @@ use crate::physics::physics_cnm::{
 };
 
 #[derive(Deserialize)]
-
 struct Heat2DInput {
     initial_condition: Vec<f64>,
     config: HeatEquationSolverConfig,
@@ -40,8 +39,7 @@ struct Heat2DInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -49,43 +47,26 @@ struct Heat2DInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let input : Heat2DInput = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_cnm_solve_heat_2d_json(input: *const c_char) -> *mut c_char {
+    let input: Heat2DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res = physics_cnm::solve_heat_equation_2d_cn_adi(
-        &input.initial_condition,
-        &input.config,
-    );
+    let res = physics_cnm::solve_heat_equation_2d_cn_adi(&input.initial_condition, &input.config);
 
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(res),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
 }

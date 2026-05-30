@@ -7,35 +7,24 @@ use vergen_gitcl::GitclBuilder;
 use vergen_gitcl::RustcBuilder;
 use vergen_gitcl::SysinfoBuilder;
 
-fn main() -> Result<
-    (),
-    Box<dyn std::error::Error>,
-> {
-
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     const ENV_VAR_NAME: &str = "DEV";
 
-    let mut emitter =
-        Emitter::default();
+    println!("cargo:rustc-env=VERGEN_SYSINFO_KERNEL_VERSION=unknown");
 
-    emitter.add_instructions(
-        &BuildBuilder::all_build()?,
-    )?;
+    let mut emitter = Emitter::default();
 
-    emitter.add_instructions(
-        &CargoBuilder::all_cargo()?,
-    )?;
+    emitter.add_instructions(&BuildBuilder::all_build()?)?;
 
-    emitter.add_instructions(
-        &GitclBuilder::all_git()?,
-    )?;
+    emitter.add_instructions(&CargoBuilder::all_cargo()?)?;
 
-    emitter.add_instructions(
-        &RustcBuilder::all_rustc()?,
-    )?;
+    let git = GitclBuilder::default().all().dirty(true).build()?;
 
-    emitter.add_instructions(
-        &SysinfoBuilder::all_sysinfo()?,
-    )?;
+    emitter.add_instructions(&git)?;
+
+    emitter.add_instructions(&RustcBuilder::all_rustc()?)?;
+
+    emitter.add_instructions(&SysinfoBuilder::all_sysinfo()?)?;
 
     emitter.emit()?;
 
@@ -43,7 +32,6 @@ fn main() -> Result<
     match env::var(ENV_VAR_NAME) {
         // 2. If the variable is successfully retrieved (Ok(value)), check if the value is "1".
         | Ok(value) if value == "1" => {
-
             println!(
                 "cargo:warning=Condition met: {} is set to '1'.",
                 ENV_VAR_NAME
@@ -54,7 +42,6 @@ fn main() -> Result<
         },
         // 4. If the variable is set to any other value, or not set (Err), skip.
         | _ => {
-
             println!(
                 "cargo:warning=Skipping header generation. Set {}='1' to enable.",
                 ENV_VAR_NAME
@@ -65,30 +52,17 @@ fn main() -> Result<
     Ok(())
 }
 
-fn generate_headers() -> Result<
-    (),
-    Box<dyn std::error::Error>,
-> {
-
-    let crate_dir = std::env::var(
-        "CARGO_MANIFEST_DIR",
-    )?;
+fn generate_headers() -> Result<(), Box<dyn std::error::Error>> {
+    let crate_dir = std::env::var("CARGO_MANIFEST_DIR")?;
 
     // Generate C header using cbindgen.toml
-    match cbindgen::generate(&crate_dir)
-    {
+    match cbindgen::generate(&crate_dir) {
         | Ok(bindings) => {
+            bindings.write_to_file("rssn.h");
 
-            bindings.write_to_file(
-                "rssn.h",
-            );
-
-            println!(
-                "cargo:warning=Generated rssn.h"
-            );
+            println!("cargo:warning=Generated rssn.h");
         },
         | Err(e) => {
-
             println!(
                 "cargo:warning=Failed \
                  to generate C \
@@ -96,23 +70,15 @@ fn generate_headers() -> Result<
                 e
             );
 
-            println!(
-                "cargo:warning=Continuing build without C header generation"
-            );
+            println!("cargo:warning=Continuing build without C header generation");
         },
     }
 
     // Generate C++ header with custom config
     let cpp_config = cbindgen::Config {
-        language:
-            cbindgen::Language::Cxx,
-        namespace: Some(
-            "rssn".to_string(),
-        ),
-        ..cbindgen::Config::from_file(
-            "cbindgen.toml",
-        )
-        .unwrap_or_default()
+        language: cbindgen::Language::Cxx,
+        namespace: Some("rssn".to_string()),
+        ..cbindgen::Config::from_file("cbindgen.toml").unwrap_or_default()
     };
 
     match cbindgen::Builder::new()
@@ -121,17 +87,11 @@ fn generate_headers() -> Result<
         .generate()
     {
         | Ok(bindings) => {
+            bindings.write_to_file("rssn.hpp");
 
-            bindings.write_to_file(
-                "rssn.hpp",
-            );
-
-            println!(
-                "cargo:warning=Generated rssn.hpp"
-            );
+            println!("cargo:warning=Generated rssn.hpp");
         },
         | Err(e) => {
-
             println!(
                 "cargo:warning=Failed \
                  to generate C++ \
@@ -139,19 +99,15 @@ fn generate_headers() -> Result<
                 e
             );
 
-            println!(
-                "cargo:warning=Continuing build without C++ header generation"
-            );
+            println!("cargo:warning=Continuing build without C++ header generation");
         },
     }
 
-    println!(
-        "cargo:rerun-if-changed=src/"
-    );
+    println!("cargo:rerun-if-changed=src/");
 
-    println!(
-        "cargo:rerun-if-changed=cbindgen.toml"
-    );
+    println!("cargo:rerun-if-changed=cbindgen.toml");
+
+    println!("cargo:rerun-if-changed=Cargo.toml");
 
     Ok(())
 }

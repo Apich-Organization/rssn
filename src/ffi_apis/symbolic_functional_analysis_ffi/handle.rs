@@ -2,7 +2,15 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::functional_analysis::{HilbertSpace, BanachSpace, LinearOperator, inner_product, norm, banach_norm, are_orthogonal, project, gram_schmidt};
+use crate::symbolic::functional_analysis::BanachSpace;
+use crate::symbolic::functional_analysis::HilbertSpace;
+use crate::symbolic::functional_analysis::LinearOperator;
+use crate::symbolic::functional_analysis::are_orthogonal;
+use crate::symbolic::functional_analysis::banach_norm;
+use crate::symbolic::functional_analysis::gram_schmidt;
+use crate::symbolic::functional_analysis::inner_product;
+use crate::symbolic::functional_analysis::norm;
+use crate::symbolic::functional_analysis::project;
 
 // --- HilbertSpace ---
 
@@ -15,8 +23,7 @@ use crate::symbolic::functional_analysis::{HilbertSpace, BanachSpace, LinearOper
 ///
 /// # Returns
 /// A raw pointer to the newly created `HilbertSpace`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -24,30 +31,21 @@ use crate::symbolic::functional_analysis::{HilbertSpace, BanachSpace, LinearOper
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_hilbert_space_create(
     var: *const c_char,
     lower_bound: *const Expr,
     upper_bound: *const Expr,
 ) -> *mut HilbertSpace {
-
     unsafe {
+        let var_str = CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            CStr::from_ptr(var)
-                .to_str()
-                .unwrap();
-
-        let space = HilbertSpace::new(
-            var_str,
-            (*lower_bound).clone(),
-            (*upper_bound).clone(),
-        );
+        let space = HilbertSpace::new(var_str, (*lower_bound).clone(), (*upper_bound).clone());
 
         Box::into_raw(Box::new(space))
     }
@@ -57,8 +55,7 @@ pub unsafe extern "C" fn rssn_hilbert_space_create(
 ///
 /// # Arguments
 /// * `ptr` - Pointer to the `HilbertSpace` to free.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -66,15 +63,10 @@ pub unsafe extern "C" fn rssn_hilbert_space_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_hilbert_space_free(
-    ptr: *mut HilbertSpace
-) {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_hilbert_space_free(ptr: *mut HilbertSpace) {
     unsafe {
-
         if !ptr.is_null() {
-
             let _ = Box::from_raw(ptr);
         }
     }
@@ -92,8 +84,7 @@ pub unsafe extern "C" fn rssn_hilbert_space_free(
 ///
 /// # Returns
 /// A raw pointer to the newly created `BanachSpace`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -101,25 +92,20 @@ pub unsafe extern "C" fn rssn_hilbert_space_free(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_banach_space_create(
     var: *const c_char,
     lower_bound: *const Expr,
     upper_bound: *const Expr,
     p: *const Expr,
 ) -> *mut BanachSpace {
-
     unsafe {
-
-        let var_str =
-            CStr::from_ptr(var)
-                .to_str()
-                .unwrap();
+        let var_str = CStr::from_ptr(var).to_str().unwrap();
 
         let space = BanachSpace::new(
             var_str,
@@ -136,8 +122,7 @@ pub unsafe extern "C" fn rssn_banach_space_create(
 ///
 /// # Arguments
 /// * `ptr` - Pointer to the `BanachSpace` to free.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -145,15 +130,10 @@ pub unsafe extern "C" fn rssn_banach_space_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_banach_space_free(
-    ptr: *mut BanachSpace
-) {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_banach_space_free(ptr: *mut BanachSpace) {
     unsafe {
-
         if !ptr.is_null() {
-
             let _ = Box::from_raw(ptr);
         }
     }
@@ -168,8 +148,7 @@ pub unsafe extern "C" fn rssn_banach_space_free(
 ///
 /// # Returns
 /// A raw pointer to the `LinearOperator`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -177,27 +156,19 @@ pub unsafe extern "C" fn rssn_banach_space_free(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
     var: *const c_char
 ) -> *mut LinearOperator {
-
     unsafe {
+        let var_str = CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            CStr::from_ptr(var)
-                .to_str()
-                .unwrap();
-
-        let op =
-            LinearOperator::Derivative(
-                var_str.to_string(),
-            );
+        let op = LinearOperator::Derivative(var_str.to_string());
 
         Box::into_raw(Box::new(op))
     }
@@ -211,8 +182,7 @@ pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
 ///
 /// # Returns
 /// A raw pointer to the `LinearOperator`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -220,29 +190,20 @@ pub unsafe extern "C" fn rssn_linear_operator_derivative_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_linear_operator_integral_create(
     lower_bound: *const Expr,
     var: *const c_char,
 ) -> *mut LinearOperator {
-
     unsafe {
+        let var_str = CStr::from_ptr(var).to_str().unwrap();
 
-        let var_str =
-            CStr::from_ptr(var)
-                .to_str()
-                .unwrap();
-
-        let op =
-            LinearOperator::Integral(
-                (*lower_bound).clone(),
-                var_str.to_string(),
-            );
+        let op = LinearOperator::Integral((*lower_bound).clone(), var_str.to_string());
 
         Box::into_raw(Box::new(op))
     }
@@ -256,8 +217,7 @@ pub unsafe extern "C" fn rssn_linear_operator_integral_create(
 ///
 /// # Returns
 /// A raw pointer to the resulting symbolic expression.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -265,16 +225,13 @@ pub unsafe extern "C" fn rssn_linear_operator_integral_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_linear_operator_apply(
     op: *const LinearOperator,
     expr: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
-
-        let result =
-            (*op).apply(&*expr);
+        let result = (*op).apply(&*expr);
 
         Box::into_raw(Box::new(result))
     }
@@ -284,8 +241,7 @@ pub unsafe extern "C" fn rssn_linear_operator_apply(
 ///
 /// # Arguments
 /// * `ptr` - Pointer to the `LinearOperator` to free.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -293,15 +249,10 @@ pub unsafe extern "C" fn rssn_linear_operator_apply(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_linear_operator_free(
-    ptr: *mut LinearOperator
-) {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_linear_operator_free(ptr: *mut LinearOperator) {
     unsafe {
-
         if !ptr.is_null() {
-
             let _ = Box::from_raw(ptr);
         }
     }
@@ -318,8 +269,7 @@ pub unsafe extern "C" fn rssn_linear_operator_free(
 ///
 /// # Returns
 /// A raw pointer to the symbolic expression representing the inner product.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -327,20 +277,14 @@ pub unsafe extern "C" fn rssn_linear_operator_free(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_inner_product(
     space: *const HilbertSpace,
     f: *const Expr,
     g: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
-
-        let result = inner_product(
-            &*space,
-            &*f,
-            &*g,
-        );
+        let result = inner_product(&*space, &*f, &*g);
 
         Box::into_raw(Box::new(result))
     }
@@ -354,8 +298,7 @@ pub unsafe extern "C" fn rssn_inner_product(
 ///
 /// # Returns
 /// A raw pointer to the symbolic expression representing the norm.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -363,14 +306,12 @@ pub unsafe extern "C" fn rssn_inner_product(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_norm(
     space: *const HilbertSpace,
     f: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
-
         let result = norm(&*space, &*f);
 
         Box::into_raw(Box::new(result))
@@ -385,8 +326,7 @@ pub unsafe extern "C" fn rssn_norm(
 ///
 /// # Returns
 /// A raw pointer to the symbolic expression representing the norm.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -394,16 +334,13 @@ pub unsafe extern "C" fn rssn_norm(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_banach_norm(
     space: *const BanachSpace,
     f: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
-
-        let result =
-            banach_norm(&*space, &*f);
+        let result = banach_norm(&*space, &*f);
 
         Box::into_raw(Box::new(result))
     }
@@ -418,8 +355,7 @@ pub unsafe extern "C" fn rssn_banach_norm(
 ///
 /// # Returns
 /// `true` if orthogonal, `false` otherwise.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -427,21 +363,13 @@ pub unsafe extern "C" fn rssn_banach_norm(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_are_orthogonal(
     space: *const HilbertSpace,
     f: *const Expr,
     g: *const Expr,
 ) -> bool {
-
-    unsafe {
-
-        are_orthogonal(
-            &*space,
-            &*f,
-            &*g,
-        )
-    }
+    unsafe { are_orthogonal(&*space, &*f, &*g) }
 }
 
 /// Projects one function onto another within a Hilbert space.
@@ -453,8 +381,7 @@ pub unsafe extern "C" fn rssn_are_orthogonal(
 ///
 /// # Returns
 /// A raw pointer to the resulting projection expression.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -462,17 +389,14 @@ pub unsafe extern "C" fn rssn_are_orthogonal(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_project(
     space: *const HilbertSpace,
     f: *const Expr,
     g: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
-
-        let result =
-            project(&*space, &*f, &*g);
+        let result = project(&*space, &*f, &*g);
 
         Box::into_raw(Box::new(result))
     }
@@ -488,8 +412,7 @@ pub unsafe extern "C" fn rssn_project(
 ///
 /// # Returns
 /// A raw pointer to an array of handles to the orthogonalized basis expressions.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -497,49 +420,26 @@ pub unsafe extern "C" fn rssn_project(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_gram_schmidt(
     space: *const HilbertSpace,
     basis_ptr: *const *const Expr,
     basis_len: usize,
     out_len: *mut usize,
 ) -> *mut *mut Expr {
-
     unsafe {
+        let basis_slice = std::slice::from_raw_parts(basis_ptr, basis_len);
 
-        let basis_slice =
-            std::slice::from_raw_parts(
-                basis_ptr,
-                basis_len,
-            );
+        let basis: Vec<Expr> = basis_slice.iter().map(|&p| (*p).clone()).collect();
 
-        let basis: Vec<Expr> =
-            basis_slice
-                .iter()
-                .map(|&p| (*p).clone())
-                .collect();
+        let orthogonal_basis = gram_schmidt(&*space, &basis);
 
-        let orthogonal_basis =
-            gram_schmidt(
-                &*space,
-                &basis,
-            );
+        *out_len = orthogonal_basis.len();
 
-        *out_len =
-            orthogonal_basis.len();
-
-        let mut out_ptrs =
-            Vec::with_capacity(
-                orthogonal_basis.len(),
-            );
+        let mut out_ptrs = Vec::with_capacity(orthogonal_basis.len());
 
         for expr in orthogonal_basis {
-
-            out_ptrs.push(
-                Box::into_raw(
-                    Box::new(expr),
-                ),
-            );
+            out_ptrs.push(Box::into_raw(Box::new(expr)));
         }
 
         let ptr = out_ptrs.as_mut_ptr();

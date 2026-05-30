@@ -9,7 +9,6 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::physics_cfd;
 
 #[derive(Deserialize)]
-
 struct ReynoldsInput {
     velocity: f64,
     length: f64,
@@ -17,7 +16,6 @@ struct ReynoldsInput {
 }
 
 #[derive(Deserialize)]
-
 struct CflInput {
     velocity: f64,
     dt: f64,
@@ -25,7 +23,6 @@ struct CflInput {
 }
 
 #[derive(Deserialize)]
-
 struct Advection1DInput {
     u0: Vec<f64>,
     c: f64,
@@ -56,8 +53,7 @@ struct Advection1DInput {
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -65,29 +61,21 @@ struct Advection1DInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : ReynoldsInput = match from_bincode_buffer(&buffer) {
+    let input: ReynoldsInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let re =
-        physics_cfd::reynolds_number(
-            input.velocity,
-            input.length,
-            input.kinematic_viscosity,
-        );
+    let re = physics_cfd::reynolds_number(input.velocity, input.length, input.kinematic_viscosity);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(re),
@@ -119,8 +107,7 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -128,28 +115,19 @@ pub unsafe extern "C" fn rssn_num_cfd_reynolds_number_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : CflInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: CflInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let cfl = physics_cfd::cfl_number(
-        input.velocity,
-        input.dt,
-        input.dx,
-    );
+    let cfl = physics_cfd::cfl_number(input.velocity, input.dt, input.dx);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(cfl),
@@ -183,8 +161,7 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -192,31 +169,22 @@ pub unsafe extern "C" fn rssn_num_cfd_cfl_number_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_cfd_solve_advection_1d_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : Advection1DInput = match from_bincode_buffer(&buffer) {
+    let input: Advection1DInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<Vec<f64>>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<Vec<f64>>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     let results =
-        physics_cfd::solve_advection_1d(
-            &input.u0,
-            input.c,
-            input.dx,
-            input.dt,
-            input.num_steps,
-        );
+        physics_cfd::solve_advection_1d(&input.u0, input.c, input.dx, input.dt, input.num_steps);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(results),

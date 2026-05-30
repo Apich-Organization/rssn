@@ -13,8 +13,7 @@ use crate::symbolic::handles::HANDLE_MANAGER;
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -22,22 +21,16 @@ use crate::symbolic::handles::HANDLE_MANAGER;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_handle_insert(
-    expr: *const Expr
-) -> usize {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_handle_insert(expr: *const Expr) -> usize {
     unsafe {
-
         if expr.is_null() {
-
             return 0; // 0 represents null/invalid handle
         }
 
         let expr_ref = &*expr;
 
-        HANDLE_MANAGER
-            .insert(expr_ref.clone())
+        HANDLE_MANAGER.insert(expr_ref.clone())
     }
 }
 
@@ -47,8 +40,7 @@ pub unsafe extern "C" fn rssn_handle_insert(
 ///
 /// # Safety
 /// The caller must ensure the returned pointer is freed using `rssn_free_expr`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -56,17 +48,10 @@ pub unsafe extern "C" fn rssn_handle_insert(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_handle_get(
-    handle: usize
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_handle_get(handle: usize) -> *mut Expr {
     match HANDLE_MANAGER.get(handle) {
-        | Some(arc_expr) => {
-            Box::into_raw(Box::new(
-                (*arc_expr).clone(),
-            ))
-        },
+        | Some(arc_expr) => Box::into_raw(Box::new((*arc_expr).clone())),
         | None => std::ptr::null_mut(),
     }
 }
@@ -76,11 +61,7 @@ pub unsafe extern "C" fn rssn_handle_get(
 /// # Safety
 /// This function is safe to call with any handle value.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_exists(
-    handle: usize
-) -> bool {
-
+pub extern "C" fn rssn_handle_exists(handle: usize) -> bool {
     HANDLE_MANAGER.exists(handle)
 }
 
@@ -91,14 +72,8 @@ pub extern "C" fn rssn_handle_exists(
 /// # Safety
 /// This function is safe to call with any handle value.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_free(
-    handle: usize
-) -> bool {
-
-    HANDLE_MANAGER
-        .free(handle)
-        .is_some()
+pub extern "C" fn rssn_handle_free(handle: usize) -> bool {
+    HANDLE_MANAGER.free(handle).is_some()
 }
 
 /// Returns the number of expressions currently managed.
@@ -106,10 +81,7 @@ pub extern "C" fn rssn_handle_free(
 /// # Safety
 /// This function is always safe to call.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_count()
--> usize {
-
+pub extern "C" fn rssn_handle_count() -> usize {
     HANDLE_MANAGER.count()
 }
 
@@ -120,9 +92,7 @@ pub extern "C" fn rssn_handle_count()
 /// # Safety
 /// This function is always safe to call, but will invalidate all handles.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_handle_clear() {
-
     HANDLE_MANAGER.clear();
 }
 
@@ -133,12 +103,8 @@ pub extern "C" fn rssn_handle_clear() {
 /// # Safety
 /// The caller must free the returned string.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_get_all()
--> *mut c_char {
-
-    let handles = HANDLE_MANAGER
-        .get_all_handles();
+pub extern "C" fn rssn_handle_get_all() -> *mut c_char {
+    let handles = HANDLE_MANAGER.get_all_handles();
 
     to_json_string(&handles)
 }
@@ -150,17 +116,9 @@ pub extern "C" fn rssn_handle_get_all()
 /// # Safety
 /// This function is safe to call with any handle value.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_clone(
-    handle: usize
-) -> usize {
-
-    match HANDLE_MANAGER
-        .clone_expr(handle)
-    {
-        | Some(expr) => {
-            HANDLE_MANAGER.insert(expr)
-        },
+pub extern "C" fn rssn_handle_clone(handle: usize) -> usize {
+    match HANDLE_MANAGER.clone_expr(handle) {
+        | Some(expr) => HANDLE_MANAGER.insert(expr),
         | None => 0,
     }
 }
@@ -172,17 +130,9 @@ pub extern "C" fn rssn_handle_clone(
 /// # Safety
 /// The caller must free the returned string.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_handle_to_string(
-    handle: usize
-) -> *mut c_char {
-
+pub extern "C" fn rssn_handle_to_string(handle: usize) -> *mut c_char {
     match HANDLE_MANAGER.get(handle) {
-        | Some(arc_expr) => {
-            to_c_string(format!(
-                "{arc_expr}"
-            ))
-        },
+        | Some(arc_expr) => to_c_string(format!("{arc_expr}")),
         | None => std::ptr::null_mut(),
     }
 }

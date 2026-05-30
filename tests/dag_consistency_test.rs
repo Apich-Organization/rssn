@@ -5,47 +5,29 @@ use rssn::symbolic::simplify_dag::simplify;
 #[test]
 
 fn test_simplify_dag_consistency() {
-
     let x = Expr::new_variable("x");
 
     let y = Expr::new_variable("y");
 
     // (x + y) - x -> y
-    let expr1 = Expr::new_sub(
-        Expr::new_add(
-            x.clone(),
-            y.clone(),
-        ),
-        x.clone(),
-    );
+    let expr1 = Expr::new_sub(Expr::new_add(x.clone(), y.clone()), x.clone());
 
     let simplified1 = simplify(&expr1);
 
     assert_eq!(simplified1, y);
 
     // (2*x) - (2*x) -> 0
-    let two_x = Expr::new_mul(
-        Expr::Constant(2.0),
-        x.clone(),
-    );
+    let two_x = Expr::new_mul(Expr::Constant(2.0), x.clone());
 
-    let expr2 = Expr::new_sub(
-        two_x.clone(),
-        two_x.clone(),
-    );
+    let expr2 = Expr::new_sub(two_x.clone(), two_x.clone());
 
     let simplified2 = simplify(&expr2);
 
     // Check if it simplifies to zero
-    println!(
-        "Simplified (2x - 2x): {:?}",
-        simplified2
-    );
+    println!("Simplified (2x - 2x): {:?}", simplified2);
 
-    let is_zero =
-        |expr: &Expr| -> bool {
-
-            match expr {
+    let is_zero = |expr: &Expr| -> bool {
+        match expr {
             | Expr::Constant(c) => c.abs() < 1e-9,
             | Expr::BigInt(n) => n.is_zero(),
             | Expr::Dag(node) => {
@@ -57,11 +39,7 @@ fn test_simplify_dag_consistency() {
             },
             | _ => false,
         }
-        };
+    };
 
-    assert!(
-        is_zero(&simplified2),
-        "Expected 0, got {:?}",
-        simplified2
-    );
+    assert!(is_zero(&simplified2), "Expected 0, got {:?}", simplified2);
 }

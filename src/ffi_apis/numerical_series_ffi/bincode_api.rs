@@ -10,7 +10,6 @@ use crate::numerical::series;
 use crate::symbolic::core::Expr;
 
 #[derive(Deserialize)]
-
 struct TaylorInput {
     expr: Expr,
     var: String,
@@ -19,7 +18,6 @@ struct TaylorInput {
 }
 
 #[derive(Deserialize)]
-
 struct SumInput {
     expr: Expr,
     var: String,
@@ -50,8 +48,7 @@ struct SumInput {
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -59,30 +56,21 @@ struct SumInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : TaylorInput = match from_bincode_buffer(&buffer) {
+    let input: TaylorInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<f64>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<f64>, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let res =
-        series::taylor_coefficients(
-            &input.expr,
-            &input.var,
-            input.at_point,
-            input.order,
-        );
+    let res = series::taylor_coefficients(&input.expr, &input.var, input.at_point, input.order);
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -124,8 +112,7 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -133,29 +120,19 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_numerical_sum_series_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : SumInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_numerical_sum_series_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: SumInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let res = series::sum_series(
-        &input.expr,
-        &input.var,
-        input.start,
-        input.end,
-    );
+    let res = series::sum_series(&input.expr, &input.var, input.start, input.end);
 
     let ffi_res = match res {
         | Ok(v) => {

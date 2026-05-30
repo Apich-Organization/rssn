@@ -16,22 +16,11 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 
 /// Represents an element of a Lie algebra, which is typically a matrix.
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-)]
-
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LieAlgebraElement(pub Expr);
 
 /// Represents a Lie algebra, defined by its name and basis elements.
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
-
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LieAlgebra {
     /// The name of the Lie algebra (e.g., "so(3)", "su(2)").
     pub name: String,
@@ -57,23 +46,15 @@ pub struct LieAlgebra {
 ///
 /// This function will return an error if the operands `x` or `y` are not valid matrices
 /// (i.e., `matrix::mul_matrices` returns a non-matrix `Expr`).
-
 pub fn lie_bracket(
     x: &Expr,
     y: &Expr,
 ) -> Result<Expr, String> {
-
     let xy = matrix::mul_matrices(x, y);
 
     let yx = matrix::mul_matrices(y, x);
 
-    if !matches!(xy, Expr::Matrix(_))
-        || !matches!(
-            yx,
-            Expr::Matrix(_)
-        )
-    {
-
+    if !matches!(xy, Expr::Matrix(_)) || !matches!(yx, Expr::Matrix(_)) {
         return Err("Operands for \
                     lie_bracket \
                     must be valid \
@@ -100,23 +81,17 @@ pub fn lie_bracket(
 ///
 /// This function will return an error if the input `x` is not a valid matrix,
 /// or if it is not a square matrix.
-
 pub fn exponential_map(
     x: &Expr,
     order: usize,
 ) -> Result<Expr, String> {
-
-    let (rows, cols) =
-        matrix::get_matrix_dims(x)
-            .ok_or_else(|| {
-
-                "Input must be a valid \
+    let (rows, cols) = matrix::get_matrix_dims(x).ok_or_else(|| {
+        "Input must be a valid \
                  matrix."
-                    .to_string()
-            })?;
+            .to_string()
+    })?;
 
     if rows != cols {
-
         return Err("Matrix must be \
                     square for \
                     exponential map."
@@ -125,39 +100,22 @@ pub fn exponential_map(
 
     let n = rows;
 
-    let mut result =
-        matrix::identity_matrix(n);
+    let mut result = matrix::identity_matrix(n);
 
     let mut x_power = x.clone();
 
     let mut factorial = BigInt::one();
 
-    for i in 1 ..= order {
-
+    for i in 1..=order {
         factorial *= i;
 
-        let factor = Expr::new_div(
-            Expr::BigInt(BigInt::one()),
-            Expr::BigInt(
-                factorial.clone(),
-            ),
-        );
+        let factor = Expr::new_div(Expr::BigInt(BigInt::one()), Expr::BigInt(factorial.clone()));
 
-        let term =
-            matrix::scalar_mul_matrix(
-                &factor,
-                &x_power,
-            );
+        let term = matrix::scalar_mul_matrix(&factor, &x_power);
 
-        result = matrix::add_matrices(
-            &result,
-            &term,
-        );
+        result = matrix::add_matrices(&result, &term);
 
-        x_power = matrix::mul_matrices(
-            &x_power,
-            x,
-        );
+        x_power = matrix::mul_matrices(&x_power, x);
     }
 
     Ok(result)
@@ -178,19 +136,14 @@ pub fn exponential_map(
 /// # Errors
 ///
 /// This function will return an error if the Lie group element `g` is not invertible.
-
 pub fn adjoint_representation_group(
     g: &Expr,
     x: &Expr,
 ) -> Result<Expr, String> {
-
-    let g_inv =
-        matrix::inverse_matrix(g);
+    let g_inv = matrix::inverse_matrix(g);
 
     if let Expr::Variable(s) = &g_inv {
-
         if s.starts_with("Error:") {
-
             return Err(format!(
                 "Failed to invert \
                  group element g: {s}"
@@ -200,10 +153,7 @@ pub fn adjoint_representation_group(
 
     let gx = matrix::mul_matrices(g, x);
 
-    let gxg_inv = matrix::mul_matrices(
-        &gx,
-        &g_inv,
-    );
+    let gxg_inv = matrix::mul_matrices(&gx, &g_inv);
 
     Ok(gxg_inv)
 }
@@ -223,12 +173,10 @@ pub fn adjoint_representation_group(
 ///
 /// This function will return an error if `lie_bracket` fails, which occurs
 /// if `x` or `y` are not valid matrices.
-
 pub fn adjoint_representation_algebra(
     x: &Expr,
     y: &Expr,
 ) -> Result<Expr, String> {
-
     lie_bracket(x, y)
 }
 
@@ -245,27 +193,16 @@ pub fn adjoint_representation_algebra(
 ///
 /// This function will return an error if `lie_bracket` fails for any pair of basis elements,
 /// which occurs if the basis elements are not valid matrices.
-
-pub fn commutator_table(
-    algebra: &LieAlgebra
-) -> Result<Vec<Vec<Expr>>, String> {
-
+pub fn commutator_table(algebra: &LieAlgebra) -> Result<Vec<Vec<Expr>>, String> {
     let n = algebra.dimension;
 
-    let mut table =
-        Vec::with_capacity(n);
+    let mut table = Vec::with_capacity(n);
 
-    for i in 0 .. n {
+    for i in 0..n {
+        let mut row = Vec::with_capacity(n);
 
-        let mut row =
-            Vec::with_capacity(n);
-
-        for j in 0 .. n {
-
-            let bracket = lie_bracket(
-                &algebra.basis[i].0,
-                &algebra.basis[j].0,
-            )?;
+        for j in 0..n {
+            let bracket = lie_bracket(&algebra.basis[i].0, &algebra.basis[j].0)?;
 
             row.push(bracket);
         }
@@ -295,21 +232,14 @@ pub fn commutator_table(
 ///
 /// Note: This check relies on symbolic simplification. If simplification is incomplete,
 /// it might return false negatives (but shouldn't return false positives if simplification is correct).
-
-pub fn check_jacobi_identity(
-    algebra: &LieAlgebra
-) -> Result<bool, String> {
-
+pub fn check_jacobi_identity(algebra: &LieAlgebra) -> Result<bool, String> {
     let n = algebra.dimension;
 
     let basis = &algebra.basis;
 
-    for i in 0 .. n {
-
-        for j in 0 .. n {
-
-            for k in 0 .. n {
-
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
                 let x = &basis[i].0;
 
                 let y = &basis[j].0;
@@ -317,44 +247,28 @@ pub fn check_jacobi_identity(
                 let z = &basis[k].0;
 
                 // [y, z]
-                let yz =
-                    lie_bracket(y, z)?;
+                let yz = lie_bracket(y, z)?;
 
                 // [x, [y, z]]
-                let term1 =
-                    lie_bracket(
-                        x, &yz,
-                    )?;
+                let term1 = lie_bracket(x, &yz)?;
 
                 // [z, x]
-                let zx =
-                    lie_bracket(z, x)?;
+                let zx = lie_bracket(z, x)?;
 
                 // [y, [z, x]]
-                let term2 =
-                    lie_bracket(
-                        y, &zx,
-                    )?;
+                let term2 = lie_bracket(y, &zx)?;
 
                 // [x, y]
-                let xy =
-                    lie_bracket(x, y)?;
+                let xy = lie_bracket(x, y)?;
 
                 // [z, [x, y]]
-                let term3 =
-                    lie_bracket(
-                        z, &xy,
-                    )?;
+                let term3 = lie_bracket(z, &xy)?;
 
                 // Sum = term1 + term2 + term3
-                let sum = matrix::add_matrices(
-                    &matrix::add_matrices(&term1, &term2),
-                    &term3,
-                );
+                let sum = matrix::add_matrices(&matrix::add_matrices(&term1, &term2), &term3);
 
                 // Check if sum is zero matrix
                 if !matrix::is_zero_matrix(&sum) {
-
                     // Try to simplify?
                     // For now, we rely on matrix operations doing some simplification.
                     // If it's not explicitly zero, we might want to return false or try harder.
@@ -376,10 +290,7 @@ pub fn check_jacobi_identity(
 /// # Returns
 /// A `Vec<LieAlgebraElement>` containing the three `so(3)` generators.
 #[must_use]
-
-pub fn so3_generators()
--> Vec<LieAlgebraElement> {
-
+pub fn so3_generators() -> Vec<LieAlgebraElement> {
     let lz = Expr::Matrix(vec![
         vec![
             Expr::Constant(0.0),
@@ -446,9 +357,7 @@ pub fn so3_generators()
 /// # Returns
 /// A `LieAlgebra` struct representing `so(3)`.
 #[must_use]
-
 pub fn so3() -> LieAlgebra {
-
     let basis = so3_generators();
 
     LieAlgebra {
@@ -466,32 +375,18 @@ pub fn so3() -> LieAlgebra {
 /// # Returns
 /// A `Vec<LieAlgebraElement>` containing the three `su(2)` generators.
 #[must_use]
+pub fn su2_generators() -> Vec<LieAlgebraElement> {
+    let i = Expr::Variable("i".to_string());
 
-pub fn su2_generators()
--> Vec<LieAlgebraElement> {
+    let half = Expr::new_div(Expr::BigInt(One::one()), Expr::BigInt(BigInt::from(2)));
 
-    let i =
-        Expr::Variable("i".to_string());
-
-    let half = Expr::new_div(
-        Expr::BigInt(One::one()),
-        Expr::BigInt(BigInt::from(2)),
-    );
-
-    let i_half =
-        Expr::new_mul(i.clone(), half);
+    let i_half = Expr::new_mul(i.clone(), half);
 
     let sx = matrix::scalar_mul_matrix(
         &i_half,
         &Expr::Matrix(vec![
-            vec![
-                Expr::Constant(0.0),
-                Expr::Constant(1.0),
-            ],
-            vec![
-                Expr::Constant(1.0),
-                Expr::Constant(0.0),
-            ],
+            vec![Expr::Constant(0.0), Expr::Constant(1.0)],
+            vec![Expr::Constant(1.0), Expr::Constant(0.0)],
         ]),
     );
 
@@ -500,33 +395,17 @@ pub fn su2_generators()
         &Expr::Matrix(vec![
             vec![
                 Expr::Constant(0.0),
-                Expr::Mul(
-                    Arc::new(
-                        Expr::Constant(
-                            -1.0,
-                        ),
-                    ),
-                    Arc::new(i.clone()),
-                ),
+                Expr::Mul(Arc::new(Expr::Constant(-1.0)), Arc::new(i.clone())),
             ],
-            vec![
-                i,
-                Expr::Constant(0.0),
-            ],
+            vec![i, Expr::Constant(0.0)],
         ]),
     );
 
     let sz = matrix::scalar_mul_matrix(
         &i_half,
         &Expr::Matrix(vec![
-            vec![
-                Expr::Constant(1.0),
-                Expr::Constant(0.0),
-            ],
-            vec![
-                Expr::Constant(0.0),
-                Expr::Constant(-1.0),
-            ],
+            vec![Expr::Constant(1.0), Expr::Constant(0.0)],
+            vec![Expr::Constant(0.0), Expr::Constant(-1.0)],
         ]),
     );
 
@@ -542,9 +421,7 @@ pub fn su2_generators()
 /// # Returns
 /// A `LieAlgebra` struct representing `su(2)`.
 #[must_use]
-
 pub fn su2() -> LieAlgebra {
-
     let basis = su2_generators();
 
     LieAlgebra {

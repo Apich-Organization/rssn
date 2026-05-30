@@ -5,50 +5,27 @@ use rssn::numerical::interpolate::*;
 #[test]
 
 fn test_lagrange_basic() {
+    let points = vec![(0.0, 0.0), (1.0, 1.0), (2.0, 4.0)];
 
-    let points = vec![
-        (0.0, 0.0),
-        (1.0, 1.0),
-        (2.0, 4.0),
-    ];
+    let poly = lagrange_interpolation(&points).unwrap();
 
-    let poly =
-        lagrange_interpolation(&points)
-            .unwrap();
-
-    assert_approx_eq!(
-        poly.eval(1.5),
-        2.25,
-        1e-9
-    );
+    assert_approx_eq!(poly.eval(1.5), 2.25, 1e-9);
 }
 
 // test cubic spline interpolation
 #[test]
 
 fn test_cubic_spline_reasonable() {
+    let points = vec![(0.0, 0.0), (1.0, 1.0), (2.0, 0.0)];
 
-    let points = vec![
-        (0.0, 0.0),
-        (1.0, 1.0),
-        (2.0, 0.0),
-    ];
-
-    let spline =
-        cubic_spline_interpolation(
-            &points,
-        )
-        .unwrap();
+    let spline = cubic_spline_interpolation(&points).unwrap();
 
     // Check that interpolated value is reasonable (between the y values)
     let val = spline(0.5);
 
     println!("val: {}", val);
 
-    assert!(
-        (spline(0.5) - 0.6875).abs()
-            < 1e-9
-    );
+    assert!((spline(0.5) - 0.6875).abs() < 1e-9);
 
     assert!(val > 0.0 && val < 1.0);
 }
@@ -56,46 +33,21 @@ fn test_cubic_spline_reasonable() {
 #[test]
 
 fn test_cubic_spline_basic() {
+    let points = vec![(0.0, 0.0), (1.0, 1.0), (2.0, 0.0)];
 
-    let points = vec![
-        (0.0, 0.0),
-        (1.0, 1.0),
-        (2.0, 0.0),
-    ];
+    let spline = cubic_spline_interpolation(&points).unwrap();
 
-    let spline =
-        cubic_spline_interpolation(
-            &points,
-        )
-        .unwrap();
+    assert_approx_eq!(spline(0.5), 0.6875, 1e-9);
 
-    assert_approx_eq!(
-        spline(0.5),
-        0.6875,
-        1e-9
-    );
-
-    assert_approx_eq!(
-        spline(1.5),
-        0.6875,
-        1e-9
-    );
+    assert_approx_eq!(spline(1.5), 0.6875, 1e-9);
 }
 
 #[test]
 
 fn test_bezier_basic() {
+    let control_points = vec![vec![0.0, 0.0], vec![1.0, 2.0], vec![2.0, 0.0]];
 
-    let control_points = vec![
-        vec![0.0, 0.0],
-        vec![1.0, 2.0],
-        vec![2.0, 0.0],
-    ];
-
-    let p = bezier_curve(
-        &control_points,
-        0.5,
-    );
+    let p = bezier_curve(&control_points, 0.5);
 
     assert_approx_eq!(p[0], 1.0, 1e-9);
 
@@ -105,29 +57,13 @@ fn test_bezier_basic() {
 #[test]
 
 fn test_b_spline_basic() {
+    let control_points = vec![vec![0.0], vec![1.0], vec![2.0]];
 
-    let control_points = vec![
-        vec![0.0],
-        vec![1.0],
-        vec![2.0],
-    ];
+    let knots = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
 
-    let knots = vec![
-        0.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-    ];
+    let p = b_spline(&control_points, 2, &knots, 0.5);
 
-    let p = b_spline(
-        &control_points,
-        2,
-        &knots,
-        0.5,
-    );
-
-    assert_approx_eq!(
-        p.unwrap()[0],
-        1.0,
-        1e-9
-    );
+    assert_approx_eq!(p.unwrap()[0], 1.0, 1e-9);
 }
 
 proptest! {

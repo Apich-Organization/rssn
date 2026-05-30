@@ -7,8 +7,6 @@ use crate::symbolic::grobner::MonomialOrder;
 use crate::symbolic::grobner::buchberger;
 use crate::symbolic::grobner::poly_division_multivariate;
 
-#[unsafe(no_mangle)]
-
 /// Computes a Gröbner basis using Buchberger's algorithm and returns it as JSON-encoded polynomials.
 ///
 /// # Arguments
@@ -25,37 +23,25 @@ use crate::symbolic::grobner::poly_division_multivariate;
 ///
 /// This function is unsafe because it dereferences raw C string pointers and returns
 /// ownership of a heap-allocated C string that must be freed by the caller.
-
+#[unsafe(no_mangle)]
 pub extern "C" fn rssn_json_buchberger(
     basis_json: *const c_char,
     order_json: *const c_char,
 ) -> *mut c_char {
+    let basis: Option<Vec<SparsePolynomial>> = from_json_string(basis_json);
 
-    let basis: Option<
-        Vec<SparsePolynomial>,
-    > = from_json_string(basis_json);
-
-    let order: Option<MonomialOrder> =
-        from_json_string(order_json);
+    let order: Option<MonomialOrder> = from_json_string(order_json);
 
     match (basis, order) {
         | (Some(b), Some(o)) => {
             match buchberger(&b, o) {
-                | Ok(result) => {
-                    to_json_string(
-                        &result,
-                    )
-                },
-                | Err(_) => {
-                    std::ptr::null_mut()
-                },
+                | Ok(result) => to_json_string(&result),
+                | Err(_) => std::ptr::null_mut(),
             }
         },
         | _ => std::ptr::null_mut(),
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Divides a multivariate polynomial by a list of divisors under a given monomial order
 /// and returns quotients and remainder as JSON-encoded polynomials.
@@ -76,46 +62,25 @@ pub extern "C" fn rssn_json_buchberger(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and returns
 /// ownership of a heap-allocated C string that must be freed by the caller.
-
+#[unsafe(no_mangle)]
 pub extern "C" fn rssn_json_poly_division_multivariate(
     dividend_json: *const c_char,
     divisors_json: *const c_char,
     order_json: *const c_char,
 ) -> *mut c_char {
+    let dividend: Option<SparsePolynomial> = from_json_string(dividend_json);
 
-    let dividend: Option<
-        SparsePolynomial,
-    > = from_json_string(dividend_json);
+    let divisors: Option<Vec<SparsePolynomial>> = from_json_string(divisors_json);
 
-    let divisors: Option<
-        Vec<SparsePolynomial>,
-    > = from_json_string(divisors_json);
+    let order: Option<MonomialOrder> = from_json_string(order_json);
 
-    let order: Option<MonomialOrder> =
-        from_json_string(order_json);
-
-    match (
-        dividend,
-        divisors,
-        order,
-    ) { (
-        Some(d),
-        Some(divs),
-        Some(o),
-    ) => {
-
-        match poly_division_multivariate(
-            &d, &divs, o,
-        ) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
-        }
-    } _ => {
-
-        std::ptr::null_mut()
-    }}
+    match (dividend, divisors, order) {
+        | (Some(d), Some(divs), Some(o)) => {
+            match poly_division_multivariate(&d, &divs, o) {
+                | Ok(result) => to_json_string(&result),
+                | Err(_) => std::ptr::null_mut(),
+            }
+        },
+        | _ => std::ptr::null_mut(),
+    }
 }

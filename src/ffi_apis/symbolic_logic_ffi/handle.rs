@@ -9,24 +9,16 @@ use crate::symbolic::logic::to_dnf;
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_simplify_logic_handle(
-    expr: *const Expr
-) -> *mut Expr {
-
+pub extern "C" fn rssn_simplify_logic_handle(expr: *const Expr) -> *mut Expr {
     let expr_ref = unsafe {
-
         if expr.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*expr
     };
 
-    let result =
-        simplify_logic(expr_ref);
+    let result = simplify_logic(expr_ref);
 
     Box::into_raw(Box::new(result))
 }
@@ -36,17 +28,10 @@ pub extern "C" fn rssn_simplify_logic_handle(
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_to_cnf_handle(
-    expr: *const Expr
-) -> *mut Expr {
-
+pub extern "C" fn rssn_to_cnf_handle(expr: *const Expr) -> *mut Expr {
     let expr_ref = unsafe {
-
         if expr.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*expr
@@ -62,17 +47,10 @@ pub extern "C" fn rssn_to_cnf_handle(
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_to_dnf_handle(
-    expr: *const Expr
-) -> *mut Expr {
-
+pub extern "C" fn rssn_to_dnf_handle(expr: *const Expr) -> *mut Expr {
     let expr_ref = unsafe {
-
         if expr.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         &*expr
@@ -93,15 +71,9 @@ pub extern "C" fn rssn_to_dnf_handle(
 /// # Safety
 /// The caller must ensure that `expr` is a valid pointer to an `Expr`.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_is_satisfiable_handle(
-    expr: *const Expr
-) -> i32 {
-
+pub extern "C" fn rssn_is_satisfiable_handle(expr: *const Expr) -> i32 {
     let expr_ref = unsafe {
-
         if expr.is_null() {
-
             return -1;
         }
 

@@ -9,7 +9,6 @@ use rssn::numerical::graph::page_rank;
 #[test]
 
 fn test_graph_creation_and_bfs() {
-
     let mut graph = Graph::new(5);
 
     // 0 -> 1 -> 2
@@ -42,7 +41,6 @@ fn test_graph_creation_and_bfs() {
 #[test]
 
 fn test_dijkstra() {
-
     let mut graph = Graph::new(3);
 
     graph.add_edge(0, 1, 1.0);
@@ -51,8 +49,7 @@ fn test_dijkstra() {
 
     graph.add_edge(0, 2, 4.0); // 1+2 = 3 < 4
 
-    let (dist, prev) =
-        dijkstra(&graph, 0);
+    let (dist, prev) = dijkstra(&graph, 0);
 
     assert_eq!(dist[0], 0.0);
 
@@ -70,7 +67,6 @@ fn test_dijkstra() {
 #[test]
 
 fn test_page_rank() {
-
     let mut graph = Graph::new(3);
 
     // 0 -> 1 -> 2 -> 0 circle
@@ -80,32 +76,14 @@ fn test_page_rank() {
 
     graph.add_edge(2, 0, 1.0);
 
-    let scores = page_rank(
-        &graph,
-        0.85,
-        1e-6,
-        100,
-    );
+    let scores = page_rank(&graph, 0.85, 1e-6, 100);
 
     // Should be equal due to symmetry
-    assert!(
-        (scores[0] - scores[1]).abs()
-            < 1e-4
-    );
+    assert!((scores[0] - scores[1]).abs() < 1e-4);
 
-    assert!(
-        (scores[1] - scores[2]).abs()
-            < 1e-4
-    );
+    assert!((scores[1] - scores[2]).abs() < 1e-4);
 
-    assert!(
-        (scores[0]
-            + scores[1]
-            + scores[2]
-            - 1.0)
-            .abs()
-            < 1e-6
-    );
+    assert!((scores[0] + scores[1] + scores[2] - 1.0).abs() < 1e-6);
 
     // Star graph: 1->0, 2->0
     let mut graph2 = Graph::new(3);
@@ -114,12 +92,7 @@ fn test_page_rank() {
 
     graph2.add_edge(2, 0, 1.0);
 
-    let scores2 = page_rank(
-        &graph2,
-        0.85,
-        1e-6,
-        100,
-    );
+    let scores2 = page_rank(&graph2, 0.85, 1e-6, 100);
 
     // Node 0 should have highest score
     assert!(scores2[0] > scores2[1]);
@@ -130,7 +103,6 @@ fn test_page_rank() {
 #[test]
 
 fn test_floyd_warshall() {
-
     let mut graph = Graph::new(4);
 
     // 0 -> 1 (1)
@@ -153,10 +125,7 @@ fn test_floyd_warshall() {
     assert_eq!(dist[0 * n + 3], 6.0);
 
     // 3 to 0: 3->0 = 10
-    assert_eq!(
-        dist[3 * n + 0],
-        10.0
-    );
+    assert_eq!(dist[3 * n + 0], 10.0);
 
     // 0 to 2: 0->1->2 = 3
     assert_eq!(dist[0 * n + 2], 3.0);
@@ -165,16 +134,12 @@ fn test_floyd_warshall() {
     assert_eq!(dist[0 * n + 0], 0.0);
 
     // Unconnected: 1 -> 0 ? 1->2->3->0 = 2+3+10 = 15
-    assert_eq!(
-        dist[1 * n + 0],
-        15.0
-    );
+    assert_eq!(dist[1 * n + 0], 15.0);
 }
 
 #[test]
 
 fn test_connected_components() {
-
     let mut graph = Graph::new(5);
 
     // 0-1-2, 3-4
@@ -204,7 +169,6 @@ fn test_connected_components() {
 #[test]
 
 fn test_minimum_spanning_tree() {
-
     let mut graph = Graph::new(4);
 
     // 0-1 (1), 1-2 (2), 2-3 (3), 0-3 (10)
@@ -232,12 +196,9 @@ fn test_minimum_spanning_tree() {
 
     let mut edges_count = 0;
 
-    for u in 0 .. 4 {
-
+    for u in 0..4 {
         for &(v, w) in mst.adj(u) {
-
             if u < v {
-
                 // count each edge once
                 total_weight += w;
 

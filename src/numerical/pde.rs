@@ -9,9 +9,7 @@
 /// NOTE: This is a placeholder function. Real-world PDE solvers are
 /// computationally intensive and typically require specialized libraries
 /// (e.g., dedicated physics or numerical analysis crates).
-
 pub fn pde_solver() {
-
     println!(
         "PDE solver is a complex \
          topic."

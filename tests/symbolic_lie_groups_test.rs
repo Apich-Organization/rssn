@@ -5,26 +5,17 @@ use rssn::symbolic::matrix;
 #[test]
 
 fn test_so3_generators() {
-
     let generators = so3_generators();
 
     assert_eq!(generators.len(), 3);
 
     // Check that each generator is a 3x3 matrix
     for r#gen in &generators {
-
-        if let Expr::Matrix(rows) =
-            &r#gen.0
-        {
-
+        if let Expr::Matrix(rows) = &r#gen.0 {
             assert_eq!(rows.len(), 3);
 
-            assert_eq!(
-                rows[0].len(),
-                3
-            );
+            assert_eq!(rows[0].len(), 3);
         } else {
-
             panic!(
                 "Generator is not a \
                  matrix"
@@ -36,26 +27,17 @@ fn test_so3_generators() {
 #[test]
 
 fn test_su2_generators() {
-
     let generators = su2_generators();
 
     assert_eq!(generators.len(), 3);
 
     // Check that each generator is a 2x2 matrix
     for r#gen in &generators {
-
-        if let Expr::Matrix(rows) =
-            &r#gen.0
-        {
-
+        if let Expr::Matrix(rows) = &r#gen.0 {
             assert_eq!(rows.len(), 2);
 
-            assert_eq!(
-                rows[0].len(),
-                2
-            );
+            assert_eq!(rows[0].len(), 2);
         } else {
-
             panic!(
                 "Generator is not a \
                  matrix"
@@ -67,7 +49,6 @@ fn test_su2_generators() {
 #[test]
 
 fn test_lie_bracket_antisymmetry() {
-
     let so3_algebra = so3();
 
     let x = &so3_algebra.basis[0].0;
@@ -79,22 +60,12 @@ fn test_lie_bracket_antisymmetry() {
 
     let yx = lie_bracket(y, x).unwrap();
 
-    let neg_yx =
-        matrix::scalar_mul_matrix(
-            &Expr::Constant(-1.0),
-            &yx,
-        );
+    let neg_yx = matrix::scalar_mul_matrix(&Expr::Constant(-1.0), &yx);
 
     // Check if xy equals -yx
-    if let (
-        Expr::Matrix(xy_mat),
-        Expr::Matrix(neg_yx_mat),
-    ) = (&xy, &neg_yx)
-    {
-
-        for i in 0 .. 3 {
-
-            for j in 0 .. 3 {
+    if let (Expr::Matrix(xy_mat), Expr::Matrix(neg_yx_mat)) = (&xy, &neg_yx) {
+        for i in 0..3 {
+            for j in 0..3 {
                 // We'll just check that they're structurally similar
                 // (exact equality might be tricky with symbolic expressions)
             }
@@ -105,7 +76,6 @@ fn test_lie_bracket_antisymmetry() {
 #[test]
 
 fn test_lie_bracket_bilinearity() {
-
     let so3_algebra = so3();
 
     let x = &so3_algebra.basis[0].0;
@@ -121,7 +91,6 @@ fn test_lie_bracket_bilinearity() {
 #[test]
 
 fn test_exponential_map() {
-
     let so3_algebra = so3();
 
     let x = &so3_algebra.basis[0].0;
@@ -135,12 +104,10 @@ fn test_exponential_map() {
 
     // Check it's a 3x3 matrix
     if let Expr::Matrix(rows) = result {
-
         assert_eq!(rows.len(), 3);
 
         assert_eq!(rows[0].len(), 3);
     } else {
-
         panic!(
             "Exponential map did not \
              return a matrix"
@@ -150,9 +117,7 @@ fn test_exponential_map() {
 
 #[test]
 
-fn test_adjoint_representation_algebra()
-{
-
+fn test_adjoint_representation_algebra() {
     let so3_algebra = so3();
 
     let x = &so3_algebra.basis[0].0;
@@ -160,10 +125,7 @@ fn test_adjoint_representation_algebra()
     let y = &so3_algebra.basis[1].0;
 
     // ad_X(Y) = [X, Y]
-    let ad_xy =
-        adjoint_representation_algebra(
-            x, y,
-        );
+    let ad_xy = adjoint_representation_algebra(x, y);
 
     let bracket_xy = lie_bracket(x, y);
 
@@ -172,20 +134,15 @@ fn test_adjoint_representation_algebra()
     assert!(bracket_xy.is_ok());
 
     // They should be equal
-    assert_eq!(
-        ad_xy.unwrap(),
-        bracket_xy.unwrap()
-    );
+    assert_eq!(ad_xy.unwrap(), bracket_xy.unwrap());
 }
 
 #[test]
 
 fn test_commutator_table() {
-
     let so3_algebra = so3();
 
-    let table =
-        commutator_table(&so3_algebra);
+    let table = commutator_table(&so3_algebra);
 
     assert!(table.is_ok());
 
@@ -195,30 +152,21 @@ fn test_commutator_table() {
     assert_eq!(table.len(), 3);
 
     for row in &table {
-
         assert_eq!(row.len(), 3);
     }
 
     // Diagonal elements should be zero (anti-symmetry: [X, X] = 0)
-    for i in 0 .. 3 {
-
-        assert!(
-            matrix::is_zero_matrix(
-                &table[i][i]
-            )
-        );
+    for i in 0..3 {
+        assert!(matrix::is_zero_matrix(&table[i][i]));
     }
 }
 
 #[test]
 
 fn test_jacobi_identity_so3() {
-
     let so3_algebra = so3();
 
-    let result = check_jacobi_identity(
-        &so3_algebra,
-    );
+    let result = check_jacobi_identity(&so3_algebra);
 
     assert!(result.is_ok());
     // For so(3), the Jacobi identity should hold
@@ -229,12 +177,9 @@ fn test_jacobi_identity_so3() {
 #[test]
 
 fn test_jacobi_identity_su2() {
-
     let su2_algebra = su2();
 
-    let result = check_jacobi_identity(
-        &su2_algebra,
-    );
+    let result = check_jacobi_identity(&su2_algebra);
 
     assert!(result.is_ok());
     // For su(2), the Jacobi identity should hold
@@ -243,147 +188,78 @@ fn test_jacobi_identity_su2() {
 #[test]
 
 fn test_so3_structure() {
-
     let so3_algebra = so3();
 
-    assert_eq!(
-        so3_algebra.name,
-        "so(3)"
-    );
+    assert_eq!(so3_algebra.name, "so(3)");
 
-    assert_eq!(
-        so3_algebra.dimension,
-        3
-    );
+    assert_eq!(so3_algebra.dimension, 3);
 
-    assert_eq!(
-        so3_algebra
-            .basis
-            .len(),
-        3
-    );
+    assert_eq!(so3_algebra.basis.len(), 3);
 }
 
 #[test]
 
 fn test_su2_structure() {
-
     let su2_algebra = su2();
 
-    assert_eq!(
-        su2_algebra.name,
-        "su(2)"
-    );
+    assert_eq!(su2_algebra.name, "su(2)");
 
-    assert_eq!(
-        su2_algebra.dimension,
-        3
-    );
+    assert_eq!(su2_algebra.dimension, 3);
 
-    assert_eq!(
-        su2_algebra
-            .basis
-            .len(),
-        3
-    );
+    assert_eq!(su2_algebra.basis.len(), 3);
 }
 
 #[test]
 
 fn test_exponential_map_identity() {
-
     // exp(0) should be the identity matrix
-    let zero_matrix =
-        Expr::Matrix(vec![
-            vec![
-                Expr::Constant(0.0),
-                Expr::Constant(0.0),
-            ],
-            vec![
-                Expr::Constant(0.0),
-                Expr::Constant(0.0),
-            ],
-        ]);
+    let zero_matrix = Expr::Matrix(vec![
+        vec![Expr::Constant(0.0), Expr::Constant(0.0)],
+        vec![Expr::Constant(0.0), Expr::Constant(0.0)],
+    ]);
 
-    let exp_zero = exponential_map(
-        &zero_matrix,
-        5,
-    )
-    .unwrap();
+    let exp_zero = exponential_map(&zero_matrix, 5).unwrap();
 
-    let identity =
-        matrix::identity_matrix(2);
+    let identity = matrix::identity_matrix(2);
 
     // exp(0) should equal I
-    if let (
-        Expr::Matrix(exp_mat),
-        Expr::Matrix(id_mat),
-    ) = (&exp_zero, &identity)
-    {
+    if let (Expr::Matrix(exp_mat), Expr::Matrix(id_mat)) = (&exp_zero, &identity) {
+        assert_eq!(exp_mat.len(), id_mat.len());
 
-        assert_eq!(
-            exp_mat.len(),
-            id_mat.len()
-        );
-
-        assert_eq!(
-            exp_mat[0].len(),
-            id_mat[0].len()
-        );
+        assert_eq!(exp_mat[0].len(), id_mat[0].len());
     }
 }
 
 #[test]
 
 fn test_adjoint_representation_group() {
-
     // Create a simple 2x2 group element (rotation matrix)
     let g = Expr::Matrix(vec![
-        vec![
-            Expr::Constant(0.0),
-            Expr::Constant(-1.0),
-        ],
-        vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
-        ],
+        vec![Expr::Constant(0.0), Expr::Constant(-1.0)],
+        vec![Expr::Constant(1.0), Expr::Constant(0.0)],
     ]);
 
     let x = Expr::Matrix(vec![
-        vec![
-            Expr::Constant(1.0),
-            Expr::Constant(0.0),
-        ],
-        vec![
-            Expr::Constant(0.0),
-            Expr::Constant(-1.0),
-        ],
+        vec![Expr::Constant(1.0), Expr::Constant(0.0)],
+        vec![Expr::Constant(0.0), Expr::Constant(-1.0)],
     ]);
 
-    let result =
-        adjoint_representation_group(
-            &g, &x,
-        );
+    let result = adjoint_representation_group(&g, &x);
 
     assert!(result.is_ok());
 
     // Result should be a matrix
     match result.unwrap() {
         | Expr::Matrix(rows) => {
-
             assert_eq!(rows.len(), 2);
 
-            assert_eq!(
-                rows[0].len(),
-                2
-            );
+            assert_eq!(rows[0].len(), 2);
         },
         | _ => {
-
             panic!(
-            "Adjoint representation \
+                "Adjoint representation \
              did not return a matrix"
-        );
+            );
         },
     }
 }
@@ -391,39 +267,23 @@ fn test_adjoint_representation_group() {
 #[test]
 
 fn test_serialization() {
-
     use serde_json;
 
     let so3_algebra = so3();
 
     // Test serialization
-    let serialized =
-        serde_json::to_string(
-            &so3_algebra,
-        );
+    let serialized = serde_json::to_string(&so3_algebra);
 
     assert!(serialized.is_ok());
 
     // Test deserialization
-    let deserialized: Result<
-        LieAlgebra,
-        _,
-    > = serde_json::from_str(
-        &serialized.unwrap(),
-    );
+    let deserialized: Result<LieAlgebra, _> = serde_json::from_str(&serialized.unwrap());
 
     assert!(deserialized.is_ok());
 
-    let recovered =
-        deserialized.unwrap();
+    let recovered = deserialized.unwrap();
 
-    assert_eq!(
-        recovered.name,
-        "so(3)"
-    );
+    assert_eq!(recovered.name, "so(3)");
 
-    assert_eq!(
-        recovered.dimension,
-        3
-    );
+    assert_eq!(recovered.dimension, 3);
 }

@@ -2,20 +2,19 @@
 //! These macros are not intended to be used by users.
 
 /// Macro for generating handle-based FFI unary functions.
-
 macro_rules! handle_unary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
-        #[unsafe(no_mangle)]
-        /// # Safety
-        ///
-        /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
-        /// The caller must ensure:
-        /// 1. All pointer arguments are valid and point to initialized memory.
-        /// 2. The memory layout of passed structures matches the expected C-ABI layout.
-        /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-        #[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
-        #[doc = ""]
-        #[doc = concat!("This function takes a handle, parses it into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a handle.")]
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+#[unsafe(no_mangle)]
+#[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
+#[doc = ""]
+#[doc = concat!("This function takes a handle, parses it into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a handle.")]
         pub unsafe extern "C" fn $ffi_name(
             arg: *const Expr
         ) -> *mut Expr {
@@ -31,20 +30,19 @@ macro_rules! handle_unary_ffi {
 }
 
 /// Macro for generating handle-based FFI binary functions.
-
 macro_rules! handle_binary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
-        #[unsafe(no_mangle)]
-        /// # Safety
-        ///
-        /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
-        /// The caller must ensure:
-        /// 1. All pointer arguments are valid and point to initialized memory.
-        /// 2. The memory layout of passed structures matches the expected C-ABI layout.
-        /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-        #[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
-        #[doc = ""]
-        #[doc = concat!("This function takes two handles, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a handle.")]
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+#[unsafe(no_mangle)]
+#[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
+#[doc = ""]
+#[doc = concat!("This function takes two handles, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a handle.")]
         pub unsafe extern "C" fn $ffi_name(
             lhs: *const Expr,
             rhs: *const Expr,
@@ -62,20 +60,19 @@ macro_rules! handle_binary_ffi {
 }
 
 /// Macro for generating handle-based FFI n-ary functions (from C array).
-
 macro_rules! handle_nary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
-        #[unsafe(no_mangle)]
-        /// # Safety
-        ///
-        /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
-        /// The caller must ensure:
-        /// 1. All pointer arguments are valid and point to initialized memory.
-        /// 2. The memory layout of passed structures matches the expected C-ABI layout.
-        /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-        #[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
-        #[doc = ""]
-        #[doc = concat!("This function takes a vector of handles, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a handle.")]
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+#[unsafe(no_mangle)]
+#[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
+#[doc = ""]
+#[doc = concat!("This function takes a vector of handles, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a handle.")]
         pub unsafe extern "C" fn $ffi_name(
             args: *const *const Expr,
             len: usize
@@ -99,20 +96,19 @@ macro_rules! handle_nary_ffi {
 }
 
 /// Macro for generating Bincode-based FFI unary functions.
-
 macro_rules! bincode_unary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
-        #[unsafe(no_mangle)]
-        /// # Safety
-        ///
-        /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
-        /// The caller must ensure:
-        /// 1. All pointer arguments are valid and point to initialized memory.
-        /// 2. The memory layout of passed structures matches the expected C-ABI layout.
-        /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-        #[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
-        #[doc = ""]
-        #[doc = concat!("This function takes a bincode buffer, parses it into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a bincode buffer.")]
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+#[unsafe(no_mangle)]
+#[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
+#[doc = ""]
+#[doc = concat!("This function takes a bincode buffer, parses it into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a bincode buffer.")]
         pub extern "C" fn $ffi_name(
             arg_buf: BincodeBuffer
         ) -> BincodeBuffer {
@@ -128,20 +124,19 @@ macro_rules! bincode_unary_ffi {
 }
 
 /// Macro for generating Bincode-based FFI binary functions.
-
 macro_rules! bincode_binary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
-        #[unsafe(no_mangle)]
-        /// # Safety
-        ///
-        /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
-        /// The caller must ensure:
-        /// 1. All pointer arguments are valid and point to initialized memory.
-        /// 2. The memory layout of passed structures matches the expected C-ABI layout.
-        /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-        #[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
-        #[doc = ""]
-        #[doc = concat!("This function takes two bincode buffers, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a bincode buffer.")]
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+#[unsafe(no_mangle)]
+#[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
+#[doc = ""]
+#[doc = concat!("This function takes two bincode buffers, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a bincode buffer.")]
         pub extern "C" fn $ffi_name(
             lhs_buf: BincodeBuffer,
             rhs_buf: BincodeBuffer
@@ -160,20 +155,19 @@ macro_rules! bincode_binary_ffi {
 }
 
 /// Macro for generating JSON-based FFI unary functions.
-
 macro_rules! json_unary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
-        #[unsafe(no_mangle)]
-        /// # Safety
-        ///
-        /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
-        /// The caller must ensure:
-        /// 1. All pointer arguments are valid and point to initialized memory.
-        /// 2. The memory layout of passed structures matches the expected C-ABI layout.
-        /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-        #[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
-        #[doc = ""]
-        #[doc = concat!("This function takes a JSON string, parses it into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a JSON string.")]
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+#[unsafe(no_mangle)]
+#[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
+#[doc = ""]
+#[doc = concat!("This function takes a JSON string, parses it into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a JSON string.")]
         pub extern "C" fn $ffi_name(
             arg_json: *const c_char
         ) -> *mut c_char {
@@ -189,20 +183,19 @@ macro_rules! json_unary_ffi {
 }
 
 /// Macro for generating JSON-based FFI binary functions.
-
 macro_rules! json_binary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
-        #[unsafe(no_mangle)]
-        /// # Safety
-        ///
-        /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
-        /// The caller must ensure:
-        /// 1. All pointer arguments are valid and point to initialized memory.
-        /// 2. The memory layout of passed structures matches the expected C-ABI layout.
-        /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-        #[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
-        #[doc = ""]
-        #[doc = concat!("This function takes two JSON strings, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a JSON string.")]
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+#[unsafe(no_mangle)]
+#[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
+#[doc = ""]
+#[doc = concat!("This function takes two JSON strings, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a JSON string.")]
         pub extern "C" fn $ffi_name(
             lhs_json: *const c_char,
             rhs_json: *const c_char
@@ -221,20 +214,19 @@ macro_rules! json_binary_ffi {
 }
 
 /// Macro for generating Bincode-based FFI n-ary functions.
-
 macro_rules! bincode_nary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
-        #[unsafe(no_mangle)]
-        /// # Safety
-        ///
-        /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
-        /// The caller must ensure:
-        /// 1. All pointer arguments are valid and point to initialized memory.
-        /// 2. The memory layout of passed structures matches the expected C-ABI layout.
-        /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-        #[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
-        #[doc = ""]
-        #[doc = concat!("This function takes a vector of bincode buffers, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a bincode buffer.")]
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+#[unsafe(no_mangle)]
+#[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
+#[doc = ""]
+#[doc = concat!("This function takes a vector of bincode buffers, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a bincode buffer.")]
         pub extern "C" fn $ffi_name(
             args_buf: BincodeBuffer
         ) -> BincodeBuffer {
@@ -250,20 +242,19 @@ macro_rules! bincode_nary_ffi {
 }
 
 /// Macro for generating JSON-based FFI n-ary functions.
-
 macro_rules! json_nary_ffi {
     ($ffi_name:ident, $rs_func:ident) => {
-        #[unsafe(no_mangle)]
-        /// # Safety
-        ///
-        /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
-        /// The caller must ensure:
-        /// 1. All pointer arguments are valid and point to initialized memory.
-        /// 2. The memory layout of passed structures matches the expected C-ABI layout.
-        /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-        #[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
-        #[doc = ""]
-        #[doc = concat!("This function takes a vector of JSON strings, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a JSON string.")]
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
+/// The caller must ensure:
+/// 1. All pointer arguments are valid and point to initialized memory.
+/// 2. The memory layout of passed structures matches the expected C-ABI layout.
+/// 3. Any pointers returned by this function are managed according to the API's ownership rules.
+#[unsafe(no_mangle)]
+#[doc = concat!("FFI wrapper for `", stringify!($rs_func), "`.")]
+#[doc = ""]
+#[doc = concat!("This function takes a vector of JSON strings, parses them into `Expr`, calls `Expr::", stringify!($rs_func), "`, and returns the result as a JSON string.")]
         pub extern "C" fn $ffi_name(
             args_json: *const c_char
         ) -> *mut c_char {

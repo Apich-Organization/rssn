@@ -61,8 +61,8 @@
 //! The [`DagManager`] provides centralized management of DAG nodes:
 //!
 //! ```rust
-//! 
-//! use rssn::symbolic::core::{Expr, DAG_MANAGER};
+//! use rssn::symbolic::core::DAG_MANAGER;
+//! use rssn::symbolic::core::Expr;
 //!
 //! // Create expressions using smart constructors
 //! let x = Expr::new_variable("x");
@@ -114,7 +114,6 @@
 //! ### Basic Expression Creation
 //!
 //! ```rust
-//! 
 //! use rssn::symbolic::core::Expr;
 //!
 //! // Using smart constructors (recommended)
@@ -130,7 +129,6 @@
 //! ### N-ary Operations
 //!
 //! ```rust
-//! 
 //! use rssn::symbolic::core::Expr;
 //!
 //! // Efficient multi-term addition
@@ -145,30 +143,27 @@
 //! ### Dynamic Operations
 //!
 //! ```rust
-//! 
 //! use std::sync::Arc;
 //!
-//! use rssn::symbolic::core::register_dynamic_op;
 //! use rssn::symbolic::core::DynamicOpProperties;
 //! use rssn::symbolic::core::Expr;
+//! use rssn::symbolic::core::register_dynamic_op;
 //!
 //! // Register a custom operation
 //! register_dynamic_op(
 //!     "custom_func",
 //!     DynamicOpProperties {
-//!         name : "custom_func".to_string(),
-//!         description : "My custom function".to_string(),
-//!         is_associative : false,
-//!         is_commutative : false,
+//!         name: "custom_func".to_string(),
+//!         description: "My custom function".to_string(),
+//!         is_associative: false,
+//!         is_commutative: false,
 //!     },
 //! );
 //!
 //! // Use it
 //! let expr = Expr::UnaryList(
 //!     "custom_func".to_string(),
-//!     Arc::new(Expr::Variable(
-//!         "x".to_string(),
-//!     )),
+//!     Arc::new(Expr::Variable("x".to_string())),
 //! );
 //! ```
 //!
@@ -201,7 +196,6 @@ pub use api::*;
 pub use dag_mgr::*;
 pub use expr::*;
 pub use expr_impl::*;
-
 
 /// Public API and constructors for symbolic expressions.
 pub mod api;

@@ -13,7 +13,6 @@ use crate::physics::physics_sim::ising_statistical::{
 };
 
 #[derive(Serialize)]
-
 struct IsingOutput {
     pub grid: Vec<i8>,
     pub magnetization: f64,
@@ -41,8 +40,7 @@ struct IsingOutput {
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw C string pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -50,45 +48,28 @@ struct IsingOutput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let params : IsingParameters = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_sim_ising_run_json(input: *const c_char) -> *mut c_char {
+    let params: IsingParameters = match from_json_string(input) {
         | Some(p) => p,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    IsingOutput,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<IsingOutput, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
     let (grid, magnetization) = ising_statistical::run_ising_simulation(&params);
 
-    let out = IsingOutput {
-        grid,
-        magnetization,
-    };
+    let out = IsingOutput { grid, magnetization };
 
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                IsingOutput,
-                String,
-            >::ok(out),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<IsingOutput, String>::ok(out)).unwrap())
 }

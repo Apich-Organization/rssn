@@ -9,7 +9,6 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_mtm;
 
 #[derive(Deserialize)]
-
 struct Multigrid2DInput {
     n: usize,
     f: Vec<f64>,
@@ -38,8 +37,7 @@ struct Multigrid2DInput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -47,43 +45,21 @@ struct Multigrid2DInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_mtm_solve_poisson_2d_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : Multigrid2DInput = match from_bincode_buffer(&buffer) {
+    let input: Multigrid2DInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
+            return to_bincode_buffer(&FfiResult::<Vec<f64>, String>::err(
                 "Invalid Bincode".to_string(),
-            ))
+            ));
         },
     };
 
-    match physics_mtm::solve_poisson_2d_multigrid(
-        input.n,
-        &input.f,
-        input.num_cycles,
-    ) {
-        | Ok(res) => {
-            to_bincode_buffer(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(
-                res
-            ))
-        },
-        | Err(e) => {
-            to_bincode_buffer(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
-                e
-            ))
-        },
+    match physics_mtm::solve_poisson_2d_multigrid(input.n, &input.f, input.num_cycles) {
+        | Ok(res) => to_bincode_buffer(&FfiResult::<Vec<f64>, String>::ok(res)),
+        | Err(e) => to_bincode_buffer(&FfiResult::<Vec<f64>, String>::err(e)),
     }
 }

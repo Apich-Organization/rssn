@@ -22,16 +22,7 @@ use crate::numerical::elementary::eval_expr;
 use crate::symbolic::core::Expr;
 
 /// Enum to select the numerical integration method.
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-)]
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QuadratureMethod {
     /// Trapezoidal rule.
     Trapezoidal,
@@ -59,16 +50,14 @@ pub enum QuadratureMethod {
 ///
 /// ## Example
 /// ```
-/// 
 /// use rssn::numerical::integrate::trapezoidal_rule;
 ///
-/// let f = |x : f64| x * x;
+/// let f = |x: f64| x * x;
 ///
 /// let res = trapezoidal_rule(f, (0.0, 1.0), 1000);
 ///
 /// assert!((res - 1.0 / 3.0).abs() < 1e-4);
 /// ```
-
 pub fn trapezoidal_rule<F>(
     f: F,
     range: (f64, f64),
@@ -77,11 +66,9 @@ pub fn trapezoidal_rule<F>(
 where
     F: Fn(f64) -> f64,
 {
-
     let (a, b) = range;
 
     if n_steps == 0 {
-
         return 0.0;
     }
 
@@ -89,7 +76,6 @@ where
     // and a > b (integral is negative of b to a)
     // The logic below works for a > b as h will be negative.
     if (a - b).abs() < f64::EPSILON {
-
         return 0.0;
     }
 
@@ -97,10 +83,8 @@ where
 
     let mut sum = 0.5 * (f(a) + f(b));
 
-    for i in 1 .. n_steps {
-
-        let x =
-            (i as f64).mul_add(h, a);
+    for i in 1..n_steps {
+        let x = (i as f64).mul_add(h, a);
 
         sum += f(x);
     }
@@ -125,16 +109,14 @@ where
 ///
 /// ## Example
 /// ```
-/// 
 /// use rssn::numerical::integrate::simpson_rule;
 ///
-/// let f = |x : f64| x * x;
+/// let f = |x: f64| x * x;
 ///
 /// let res = simpson_rule(f, (0.0, 1.0), 10).unwrap();
 ///
 /// assert!((res - 1.0 / 3.0).abs() < 1e-10);
 /// ```
-
 pub fn simpson_rule<F>(
     f: F,
     range: (f64, f64),
@@ -143,46 +125,32 @@ pub fn simpson_rule<F>(
 where
     F: Fn(f64) -> f64,
 {
-
     let (a, b) = range;
 
     if n_steps == 0 {
-
         return Ok(0.0);
     }
 
     if (a - b).abs() < f64::EPSILON {
-
         return Ok(0.0);
     }
 
     // Simpson's rule requires even number of intervals for the strict global formula.
     // If odd, we can warn or adjust. For now, enforce even.
-    let steps =
-        if n_steps.is_multiple_of(2) {
-
-            n_steps
-        } else {
-
-            n_steps + 1
-        };
+    let steps = if n_steps.is_multiple_of(2) {
+        n_steps
+    } else {
+        n_steps + 1
+    };
 
     let h = (b - a) / (steps as f64);
 
     let mut sum = f(a) + f(b);
 
-    for i in 1 .. steps {
+    for i in 1..steps {
+        let x = (i as f64).mul_add(h, a);
 
-        let x =
-            (i as f64).mul_add(h, a);
-
-        let weight = if i % 2 == 0 {
-
-            2.0
-        } else {
-
-            4.0
-        };
+        let weight = if i % 2 == 0 { 2.0 } else { 4.0 };
 
         sum += weight * f(x);
     }
@@ -201,23 +169,14 @@ where
 ///
 /// ## Example
 /// ```
-/// 
 /// use rssn::numerical::integrate::adaptive_quadrature;
 ///
-/// let f = |x : f64| x.sin();
+/// let f = |x: f64| x.sin();
 ///
-/// let res = adaptive_quadrature(
-///     f,
-///     (
-///         0.0,
-///         std::f64::consts::PI,
-///     ),
-///     1e-6,
-/// );
+/// let res = adaptive_quadrature(f, (0.0, std::f64::consts::PI), 1e-6);
 ///
 /// assert!((res - 2.0).abs() < 1e-6);
 /// ```
-
 pub fn adaptive_quadrature<F>(
     f: F,
     range: (f64, f64),
@@ -226,7 +185,6 @@ pub fn adaptive_quadrature<F>(
 where
     F: Fn(f64) -> f64,
 {
-
     // Inner recursive function
     fn adaptive_recursive<F>(
         f: &F,
@@ -239,20 +197,16 @@ where
     where
         F: Fn(f64) -> f64,
     {
-
         if limit == 0 {
-
             // Recursion limit reached, return current best guess
             return whole_simpson;
         }
 
         let mid = f64::midpoint(a, b);
 
-        let sub_mid_left =
-            f64::midpoint(a, mid);
+        let sub_mid_left = f64::midpoint(a, mid);
 
-        let sub_mid_right =
-            f64::midpoint(mid, b);
+        let sub_mid_right = f64::midpoint(mid, b);
 
         let fa = f(a);
 
@@ -265,56 +219,27 @@ where
         let fmr = f(sub_mid_right);
 
         // Simp(a, b) = (b-a)/6 * (f(a) + 4f(m) + f(b))
-        let left_simpson = (mid - a)
-            / 6.0
-            * (4.0f64.mul_add(fml, fa)
-                + fm);
+        let left_simpson = (mid - a) / 6.0 * (4.0f64.mul_add(fml, fa) + fm);
 
-        let right_simpson = (b - mid)
-            / 6.0
-            * (4.0f64.mul_add(fmr, fm)
-                + fb);
+        let right_simpson = (b - mid) / 6.0 * (4.0f64.mul_add(fmr, fm) + fb);
 
-        let sum_halves = left_simpson
-            + right_simpson;
+        let sum_halves = left_simpson + right_simpson;
 
         // Error estimate (1/15 rule)
-        let error = (sum_halves
-            - whole_simpson)
-            .abs()
-            / 15.0;
+        let error = (sum_halves - whole_simpson).abs() / 15.0;
 
         if error <= eps {
-
             // Richardson extrapolation: S + (S - S_whole)/15
-            sum_halves
-                + (sum_halves
-                    - whole_simpson)
-                    / 15.0
+            sum_halves + (sum_halves - whole_simpson) / 15.0
         } else {
-
-            adaptive_recursive(
-                f,
-                a,
-                mid,
-                eps / 2.0,
-                left_simpson,
-                limit - 1,
-            ) + adaptive_recursive(
-                f,
-                mid,
-                b,
-                eps / 2.0,
-                right_simpson,
-                limit - 1,
-            )
+            adaptive_recursive(f, a, mid, eps / 2.0, left_simpson, limit - 1)
+                + adaptive_recursive(f, mid, b, eps / 2.0, right_simpson, limit - 1)
         }
     }
 
     let (a, b) = range;
 
     if (a - b).abs() < f64::EPSILON {
-
         return 0.0;
     }
 
@@ -323,18 +248,9 @@ where
 
     let fm = f(mid);
 
-    let initial_simpson = (b - a) / 6.0
-        * (4.0f64.mul_add(fm, f(a))
-            + f(b));
+    let initial_simpson = (b - a) / 6.0 * (4.0f64.mul_add(fm, f(a)) + f(b));
 
-    adaptive_recursive(
-        &f,
-        a,
-        b,
-        tolerance,
-        initial_simpson,
-        100,
-    ) // limit depth to avoid stack overflow
+    adaptive_recursive(&f, a, b, tolerance, initial_simpson, 100) // limit depth to avoid stack overflow
 }
 
 /// # Romberg Integration
@@ -348,18 +264,14 @@ where
 ///
 /// ## Example
 /// ```
-/// 
 /// use rssn::numerical::integrate::romberg_integration;
 ///
-/// let f = |x : f64| x.exp();
+/// let f = |x: f64| x.exp();
 ///
 /// let res = romberg_integration(f, (0.0, 1.0), 6);
 ///
-/// assert!(
-///     (res - (std::f64::consts::E - 1.0)).abs() < 1e-10
-/// );
+/// assert!((res - (std::f64::consts::E - 1.0)).abs() < 1e-10);
 /// ```
-
 pub fn romberg_integration<F>(
     f: F,
     range: (f64, f64),
@@ -368,32 +280,24 @@ pub fn romberg_integration<F>(
 where
     F: Fn(f64) -> f64,
 {
-
     let (a, b) = range;
 
     if max_steps == 0 {
-
         return 0.0;
     }
 
     if (a - b).abs() < f64::EPSILON {
-
         return 0.0;
     }
 
-    let mut r =
-        vec![
-            vec![0.0; max_steps];
-            max_steps
-        ];
+    let mut r = vec![vec![0.0; max_steps]; max_steps];
 
     // R[0][0]
     let h = b - a;
 
     r[0][0] = 0.5 * h * (f(a) + f(b));
 
-    for i in 1 .. max_steps {
-
+    for i in 1..max_steps {
         // Calculate R[i][0] using Trapezoidal rule with 2^i segments
         // But we can update from R[i-1][0] efficiently
         let steps_prev = 1 << (i - 1);
@@ -402,30 +306,19 @@ where
 
         let mut sum = 0.0;
 
-        for k in 1 ..= steps_prev {
-
-            let x = a + f64::from(
-                2 * k - 1,
-            ) * h_i;
+        for k in 1..=steps_prev {
+            let x = a + f64::from(2 * k - 1) * h_i;
 
             sum += f(x);
         }
 
-        r[i][0] = 0.5f64.mul_add(
-            r[i - 1][0],
-            h_i * sum,
-        );
+        r[i][0] = 0.5f64.mul_add(r[i - 1][0], h_i * sum);
 
         // Richardson extrapolation
-        for j in 1 ..= i {
+        for j in 1..=i {
+            let k = 4.0_f64.powi(j as i32);
 
-            let k =
-                4.0_f64.powi(j as i32);
-
-            r[i][j] = k.mul_add(
-                r[i][j - 1],
-                -r[i - 1][j - 1],
-            ) / (k - 1.0);
+            r[i][j] = k.mul_add(r[i][j - 1], -r[i - 1][j - 1]) / (k - 1.0);
         }
     }
 
@@ -439,7 +332,6 @@ where
 ///
 /// ## Example
 /// ```
-/// 
 /// use rssn::numerical::integrate::gauss_legendre_quadrature;
 ///
 /// let f = |x: f64| x.powi(3);
@@ -448,7 +340,6 @@ where
 ///
 /// assert!((res - 0.25).abs() < 1e-10);
 /// ```
-
 pub fn gauss_legendre_quadrature<F>(
     f: F,
     range: (f64, f64),
@@ -456,11 +347,9 @@ pub fn gauss_legendre_quadrature<F>(
 where
     F: Fn(f64) -> f64,
 {
-
     let (a, b) = range;
 
     if (a - b).abs() < f64::EPSILON {
-
         return 0.0;
     }
 
@@ -488,11 +377,9 @@ where
 
     let mut sum = 0.0;
 
-    for i in 0 .. 5 {
-
+    for i in 0..5 {
         // Transform x from [-1, 1] to [a, b]
-        let x =
-            mid + half_len * nodes[i];
+        let x = mid + half_len * nodes[i];
 
         sum += weights[i] * f(x);
     }
@@ -515,7 +402,6 @@ where
 /// # Errors
 /// Returns an error if the integration results in NaN, which may happen if the symbolic
 /// expression fails to evaluate at any of the sample points.
-
 pub fn quadrature(
     f: &Expr,
     var: &str,
@@ -523,15 +409,12 @@ pub fn quadrature(
     n_steps: usize,
     method: &QuadratureMethod,
 ) -> Result<f64, String> {
-
     let func = |x: f64| -> f64 {
-
         let mut vars = HashMap::new();
 
         vars.insert(var.to_string(), x);
 
-        eval_expr(f, &vars)
-            .unwrap_or(f64::NAN)
+        eval_expr(f, &vars).unwrap_or(f64::NAN)
     };
 
     let result = match method {
@@ -543,7 +426,6 @@ pub fn quadrature(
     };
 
     if result.is_nan() {
-
         return Err("Integration \
                     resulted in \
                     NaN, likely due \

@@ -9,7 +9,6 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::physics;
 
 #[derive(Deserialize)]
-
 struct HarmonicOscillatorInput {
     amplitude: f64,
     omega: f64,
@@ -18,7 +17,6 @@ struct HarmonicOscillatorInput {
 }
 
 #[derive(Deserialize)]
-
 struct TwoChargesInput {
     q1: f64,
     q2: f64,
@@ -26,7 +24,6 @@ struct TwoChargesInput {
 }
 
 #[derive(Deserialize)]
-
 struct IdealGasInput {
     n: f64,
     t: f64,
@@ -34,26 +31,22 @@ struct IdealGasInput {
 }
 
 #[derive(Deserialize)]
-
 struct VelocityInput {
     velocity: f64,
 }
 
 #[derive(Deserialize)]
-
 struct MassInput {
     mass: f64,
 }
 
 #[derive(Deserialize)]
-
 struct QuantumHarmonicInput {
     n: u64,
     omega: f64,
 }
 
 #[derive(Deserialize)]
-
 struct QuantumNumberInput {
     n: u64,
 }
@@ -81,8 +74,7 @@ struct QuantumNumberInput {
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -90,29 +82,22 @@ struct QuantumNumberInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : HarmonicOscillatorInput = match from_bincode_buffer(&buffer) {
+    let input: HarmonicOscillatorInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result = physics::simple_harmonic_oscillator(
-        input.amplitude,
-        input.omega,
-        input.phase,
-        input.time,
-    );
+    let result =
+        physics::simple_harmonic_oscillator(input.amplitude, input.omega, input.phase, input.time);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -142,8 +127,7 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -151,28 +135,21 @@ pub unsafe extern "C" fn rssn_num_physics_simple_harmonic_oscillator_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_physics_coulomb_force_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : TwoChargesInput = match from_bincode_buffer(&buffer) {
+    let input: TwoChargesInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result = physics::coulomb_force(
-        input.q1,
-        input.q2,
-        input.r,
-    );
+    let result = physics::coulomb_force(input.q1, input.q2, input.r);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -202,8 +179,7 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -211,29 +187,21 @@ pub unsafe extern "C" fn rssn_num_physics_coulomb_force_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : IdealGasInput = match from_bincode_buffer(&buffer) {
+    let input: IdealGasInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result =
-        physics::ideal_gas_pressure(
-            input.n,
-            input.t,
-            input.v,
-        );
+    let result = physics::ideal_gas_pressure(input.n, input.t, input.v);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -261,8 +229,7 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -270,27 +237,21 @@ pub unsafe extern "C" fn rssn_num_physics_ideal_gas_pressure_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : VelocityInput = match from_bincode_buffer(&buffer) {
+    let input: VelocityInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result =
-        physics::lorentz_factor(
-            input.velocity,
-        );
+    let result = physics::lorentz_factor(input.velocity);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -318,8 +279,7 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -327,26 +287,21 @@ pub unsafe extern "C" fn rssn_num_physics_lorentz_factor_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : MassInput = match from_bincode_buffer(&buffer) {
+    let input: MassInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result = physics::mass_energy(
-        input.mass,
-    );
+    let result = physics::mass_energy(input.mass);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),
@@ -376,8 +331,7 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -385,20 +339,17 @@ pub unsafe extern "C" fn rssn_num_physics_mass_energy_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : QuantumHarmonicInput = match from_bincode_buffer(&buffer) {
+    let input: QuantumHarmonicInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
@@ -431,8 +382,7 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bin
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -440,27 +390,21 @@ pub unsafe extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy_bin
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_physics_hydrogen_energy_level_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : QuantumNumberInput = match from_bincode_buffer(&buffer) {
+    let input: QuantumNumberInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let result =
-        physics::hydrogen_energy_level(
-            input.n,
-        );
+    let result = physics::hydrogen_energy_level(input.n);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(result),

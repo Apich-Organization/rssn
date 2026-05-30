@@ -3,8 +3,6 @@ use crate::symbolic::grobner::MonomialOrder;
 use crate::symbolic::grobner::buchberger;
 use crate::symbolic::grobner::poly_division_multivariate;
 
-#[unsafe(no_mangle)]
-
 /// Computes a Gröbner basis using Buchberger's algorithm and returns it as a heap-allocated vector handle.
 ///
 /// # Arguments
@@ -21,30 +19,18 @@ use crate::symbolic::grobner::poly_division_multivariate;
 ///
 /// This function is unsafe because it dereferences a raw pointer and returns
 /// ownership of a heap-allocated vector that must be freed by the caller.
-
+#[unsafe(no_mangle)]
 pub extern "C" fn rssn_buchberger_handle(
     basis: *const Vec<SparsePolynomial>,
     order: MonomialOrder,
 ) -> *mut Vec<SparsePolynomial> {
-
-    let basis_ref = unsafe {
-
-        &*basis
-    };
+    let basis_ref = unsafe { &*basis };
 
     match buchberger(basis_ref, order) {
-        | Ok(result) => {
-            Box::into_raw(Box::new(
-                result,
-            ))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Divides a multivariate polynomial by a list of divisors under a given monomial order
 /// and returns quotient polynomials and remainder as a heap-allocated tuple.
@@ -64,40 +50,18 @@ pub extern "C" fn rssn_buchberger_handle(
 ///
 /// This function is unsafe because it dereferences raw pointers and returns ownership
 /// of a heap-allocated tuple that must be freed by the caller.
-
+#[unsafe(no_mangle)]
 pub extern "C" fn rssn_poly_division_multivariate_handle(
     dividend: *const SparsePolynomial,
-    divisors: *const Vec<
-        SparsePolynomial,
-    >,
+    divisors: *const Vec<SparsePolynomial>,
     order: MonomialOrder,
-) -> *mut (
-    Vec<SparsePolynomial>,
-    SparsePolynomial,
-) {
+) -> *mut (Vec<SparsePolynomial>, SparsePolynomial) {
+    let dividend_ref = unsafe { &*dividend };
 
-    let dividend_ref = unsafe {
+    let divisors_ref = unsafe { &*divisors };
 
-        &*dividend
-    };
-
-    let divisors_ref = unsafe {
-
-        &*divisors
-    };
-
-    match poly_division_multivariate(
-        dividend_ref,
-        divisors_ref,
-        order,
-    ) {
-        | Ok(result) => {
-            Box::into_raw(Box::new(
-                result,
-            ))
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+    match poly_division_multivariate(dividend_ref, divisors_ref, order) {
+        | Ok(result) => Box::into_raw(Box::new(result)),
+        | Err(_) => std::ptr::null_mut(),
     }
 }

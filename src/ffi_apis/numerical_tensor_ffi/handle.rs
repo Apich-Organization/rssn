@@ -11,8 +11,7 @@ use crate::numerical::tensor::{
 };
 
 /// Creates a new tensor from shape and data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20,58 +19,32 @@ use crate::numerical::tensor::{
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_tensor_create(
     shape: *const usize,
     ndim: usize,
     data: *const f64,
     data_len: usize,
 ) -> *mut ArrayD<f64> {
-
     unsafe {
-
-        if shape.is_null()
-            || data.is_null()
-        {
-
+        if shape.is_null() || data.is_null() {
             update_last_error(
-            "Null pointer passed to \
+                "Null pointer passed to \
              rssn_num_tensor_create"
-                .to_string(),
-        );
+                    .to_string(),
+            );
 
             return ptr::null_mut();
         }
 
-        let s = {
+        let s = { std::slice::from_raw_parts(shape, ndim) };
 
-            std::slice::from_raw_parts(
-                shape, ndim,
-            )
-        };
+        let d = { std::slice::from_raw_parts(data, data_len) };
 
-        let d = {
-
-            std::slice::from_raw_parts(
-                data,
-                data_len,
-            )
-        };
-
-        match ArrayD::from_shape_vec(
-            IxDyn(s),
-            d.to_vec(),
-        ) {
-            | Ok(arr) => {
-                Box::into_raw(Box::new(
-                    arr,
-                ))
-            },
+        match ArrayD::from_shape_vec(IxDyn(s), d.to_vec()) {
+            | Ok(arr) => Box::into_raw(Box::new(arr)),
             | Err(e) => {
-
-                update_last_error(
-                    e.to_string(),
-                );
+                update_last_error(e.to_string());
 
                 ptr::null_mut()
             },
@@ -80,8 +53,7 @@ pub unsafe extern "C" fn rssn_num_tensor_create(
 }
 
 /// Frees a tensor object.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -89,24 +61,17 @@ pub unsafe extern "C" fn rssn_num_tensor_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_tensor_free(
-    tensor: *mut ArrayD<f64>
-) {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_tensor_free(tensor: *mut ArrayD<f64>) {
     if !tensor.is_null() {
-
         unsafe {
-
-            let _ =
-                Box::from_raw(tensor);
+            let _ = Box::from_raw(tensor);
         }
     }
 }
 
 /// Returns the number of dimensions.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -114,25 +79,17 @@ pub unsafe extern "C" fn rssn_num_tensor_free(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_tensor_get_ndim(
-    tensor: *const ArrayD<f64>
-) -> usize {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_tensor_get_ndim(tensor: *const ArrayD<f64>) -> usize {
     if tensor.is_null() {
-
         return 0;
     }
 
-    unsafe {
-
-        (*tensor).ndim()
-    }
+    unsafe { (*tensor).ndim() }
 }
 
 /// Returns the shape of the tensor.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -140,41 +97,28 @@ pub unsafe extern "C" fn rssn_num_tensor_get_ndim(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_tensor_get_shape(
     tensor: *const ArrayD<f64>,
     out_shape: *mut usize,
 ) -> i32 {
-
-    if tensor.is_null()
-        || out_shape.is_null()
-    {
-
+    if tensor.is_null() || out_shape.is_null() {
         return -1;
     }
 
-    let t = unsafe {
-
-        &*tensor
-    };
+    let t = unsafe { &*tensor };
 
     let shape = t.shape();
 
     unsafe {
-
-        ptr::copy_nonoverlapping(
-            shape.as_ptr(),
-            out_shape,
-            shape.len(),
-        );
+        ptr::copy_nonoverlapping(shape.as_ptr(), out_shape, shape.len());
     }
 
     0
 }
 
 /// Tensor contraction (tensordot).
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -182,7 +126,7 @@ pub unsafe extern "C" fn rssn_num_tensor_get_shape(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_tensor_tensordot(
     a: *const ArrayD<f64>,
     b: *const ArrayD<f64>,
@@ -191,54 +135,22 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
     axes_b: *const usize,
     axes_b_len: usize,
 ) -> *mut ArrayD<f64> {
-
     unsafe {
-
-        if a.is_null()
-            || b.is_null()
-            || axes_a.is_null()
-            || axes_b.is_null()
-        {
-
+        if a.is_null() || b.is_null() || axes_a.is_null() || axes_b.is_null() {
             return ptr::null_mut();
         }
 
-        let ta = {
+        let ta = { &*a };
 
-            &*a
-        };
+        let tb = { &*b };
 
-        let tb = {
+        let aa = { std::slice::from_raw_parts(axes_a, axes_a_len) };
 
-            &*b
-        };
+        let ab = { std::slice::from_raw_parts(axes_b, axes_b_len) };
 
-        let aa = {
-
-            std::slice::from_raw_parts(
-                axes_a,
-                axes_a_len,
-            )
-        };
-
-        let ab = {
-
-            std::slice::from_raw_parts(
-                axes_b,
-                axes_b_len,
-            )
-        };
-
-        match tensor::tensordot(
-            ta, tb, aa, ab,
-        ) {
-            | Ok(res) => {
-                Box::into_raw(Box::new(
-                    res,
-                ))
-            },
+        match tensor::tensordot(ta, tb, aa, ab) {
+            | Ok(res) => Box::into_raw(Box::new(res)),
             | Err(e) => {
-
                 update_last_error(e);
 
                 ptr::null_mut()
@@ -248,8 +160,7 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
 }
 
 /// Outer product of two tensors.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -257,39 +168,23 @@ pub unsafe extern "C" fn rssn_num_tensor_tensordot(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_tensor_outer_product(
     a: *const ArrayD<f64>,
     b: *const ArrayD<f64>,
 ) -> *mut ArrayD<f64> {
-
     unsafe {
-
         if a.is_null() || b.is_null() {
-
             return ptr::null_mut();
         }
 
-        let ta = {
+        let ta = { &*a };
 
-            &*a
-        };
+        let tb = { &*b };
 
-        let tb = {
-
-            &*b
-        };
-
-        match tensor::outer_product(
-            ta, tb,
-        ) {
-            | Ok(res) => {
-                Box::into_raw(Box::new(
-                    res,
-                ))
-            },
+        match tensor::outer_product(ta, tb) {
+            | Ok(res) => Box::into_raw(Box::new(res)),
             | Err(e) => {
-
                 update_last_error(e);
 
                 ptr::null_mut()
@@ -299,8 +194,7 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product(
 }
 
 /// Frobenius norm of a tensor.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -308,20 +202,13 @@ pub unsafe extern "C" fn rssn_num_tensor_outer_product(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_tensor_norm(
-    tensor: *const ArrayD<f64>
-) -> f64 {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_tensor_norm(tensor: *const ArrayD<f64>) -> f64 {
     if tensor.is_null() {
-
         return 0.0;
     }
 
-    let t = unsafe {
-
-        &*tensor
-    };
+    let t = unsafe { &*tensor };
 
     tensor::norm(t)
 }

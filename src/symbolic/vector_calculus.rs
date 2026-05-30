@@ -13,13 +13,7 @@ use crate::symbolic::vector::Vector;
 use crate::symbolic::vector::partial_derivative_vector;
 
 /// Represents a parameterized curve C given by r(t).
-#[derive(
-    Debug,
-    Clone,
-    serde::Serialize,
-    serde::Deserialize,
-)]
-
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ParametricCurve {
     /// The vector expression for the curve, e.g., [cos(t), sin(t), t].
     pub r: Vector,
@@ -30,13 +24,7 @@ pub struct ParametricCurve {
 }
 
 /// Represents a parameterized surface S given by r(u, v).
-#[derive(
-    Debug,
-    Clone,
-    serde::Serialize,
-    serde::Deserialize,
-)]
-
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ParametricSurface {
     /// The vector expression for the surface, e.g., [u*cos(v), u*sin(v), v].
     pub r: Vector,
@@ -52,13 +40,7 @@ pub struct ParametricSurface {
 
 /// Represents a volume V for triple integration.
 /// Defines the integration order as dz dy dx.
-#[derive(
-    Debug,
-    Clone,
-    serde::Serialize,
-    serde::Deserialize,
-)]
-
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Volume {
     /// The bounds for the innermost integral (dz). Can be expressions in terms of x and y.
     pub z_bounds: (Expr, Expr),
@@ -67,11 +49,7 @@ pub struct Volume {
     /// The bounds for the outermost integral (dx). Must be constants.
     pub x_bounds: (Expr, Expr),
     /// The variable names for (x, y, z).
-    pub vars: (
-        String,
-        String,
-        String,
-    ),
+    pub vars: (String, String, String),
 }
 
 /// Computes the line integral of a scalar field `f` along a parameterized curve C.
@@ -85,46 +63,25 @@ pub struct Volume {
 /// # Returns
 /// An `Expr` representing the symbolic line integral.
 #[must_use]
-
 pub fn line_integral_scalar(
     scalar_field: &Expr,
     curve: &ParametricCurve,
 ) -> Expr {
+    let r_prime = partial_derivative_vector(&curve.r, &curve.t_var);
 
-    let r_prime =
-        partial_derivative_vector(
-            &curve.r,
-            &curve.t_var,
-        );
-
-    let r_prime_magnitude =
-        r_prime.magnitude();
+    let r_prime_magnitude = r_prime.magnitude();
 
     let sub = |expr: &Expr| {
+        let e1 = substitute(expr, "x", &curve.r.x);
 
-        let e1 = substitute(
-            expr,
-            "x",
-            &curve.r.x,
-        );
-
-        let e2 = substitute(
-            &e1,
-            "y",
-            &curve.r.y,
-        );
+        let e2 = substitute(&e1, "y", &curve.r.y);
 
         substitute(&e2, "z", &curve.r.z)
     };
 
-    let field_on_curve =
-        sub(scalar_field);
+    let field_on_curve = sub(scalar_field);
 
-    let integrand =
-        simplify(&Expr::new_mul(
-            field_on_curve,
-            r_prime_magnitude,
-        ));
+    let integrand = simplify(&Expr::new_mul(field_on_curve, r_prime_magnitude));
 
     let integral = definite_integrate(
         &integrand,
@@ -147,31 +104,16 @@ pub fn line_integral_scalar(
 /// # Returns
 /// An `Expr` representing the symbolic line integral.
 #[must_use]
-
 pub fn line_integral_vector(
     vector_field: &Vector,
     curve: &ParametricCurve,
 ) -> Expr {
-
-    let r_prime =
-        partial_derivative_vector(
-            &curve.r,
-            &curve.t_var,
-        );
+    let r_prime = partial_derivative_vector(&curve.r, &curve.t_var);
 
     let sub = |expr: &Expr| {
+        let e1 = substitute(expr, "x", &curve.r.x);
 
-        let e1 = substitute(
-            expr,
-            "x",
-            &curve.r.x,
-        );
-
-        let e2 = substitute(
-            &e1,
-            "y",
-            &curve.r.y,
-        );
+        let e2 = substitute(&e1, "y", &curve.r.y);
 
         substitute(&e2, "z", &curve.r.z)
     };
@@ -182,8 +124,7 @@ pub fn line_integral_vector(
         sub(&vector_field.z),
     );
 
-    let integrand =
-        field_on_curve.dot(&r_prime);
+    let integrand = field_on_curve.dot(&r_prime);
 
     let integral = definite_integrate(
         &integrand,
@@ -206,69 +147,41 @@ pub fn line_integral_vector(
 /// # Returns
 /// An `Expr` representing the symbolic surface integral.
 #[must_use]
-
 pub fn surface_integral(
     field: &Vector,
     surface: &ParametricSurface,
 ) -> Expr {
+    let r_u = partial_derivative_vector(&surface.r, &surface.u_var);
 
-    let r_u = partial_derivative_vector(
-        &surface.r,
-        &surface.u_var,
-    );
-
-    let r_v = partial_derivative_vector(
-        &surface.r,
-        &surface.v_var,
-    );
+    let r_v = partial_derivative_vector(&surface.r, &surface.v_var);
 
     let normal_vector = r_u.cross(&r_v);
 
     let sub = |expr: &Expr| {
+        let e1 = substitute(expr, "x", &surface.r.x);
 
-        let e1 = substitute(
-            expr,
-            "x",
-            &surface.r.x,
-        );
+        let e2 = substitute(&e1, "y", &surface.r.y);
 
-        let e2 = substitute(
-            &e1,
-            "y",
-            &surface.r.y,
-        );
-
-        substitute(
-            &e2,
-            "z",
-            &surface.r.z,
-        )
+        substitute(&e2, "z", &surface.r.z)
     };
 
-    let field_on_surface = Vector::new(
-        sub(&field.x),
-        sub(&field.y),
-        sub(&field.z),
+    let field_on_surface = Vector::new(sub(&field.x), sub(&field.y), sub(&field.z));
+
+    let integrand = field_on_surface.dot(&normal_vector);
+
+    let inner_integral = definite_integrate(
+        &integrand,
+        &surface.u_var,
+        &surface.u_bounds.0,
+        &surface.u_bounds.1,
     );
 
-    let integrand = field_on_surface
-        .dot(&normal_vector);
-
-    let inner_integral =
-        definite_integrate(
-            &integrand,
-            &surface.u_var,
-            &surface.u_bounds.0,
-            &surface.u_bounds.1,
-        );
-
-    let outer_integral =
-        definite_integrate(
-            &inner_integral,
-            &surface.v_var,
-            &surface.v_bounds.0,
-            &surface.v_bounds.1,
-        );
+    let outer_integral = definite_integrate(
+        &inner_integral,
+        &surface.v_var,
+        &surface.v_bounds.0,
+        &surface.v_bounds.1,
+    );
 
     simplify(&outer_integral)
 }
@@ -284,38 +197,18 @@ pub fn surface_integral(
 /// # Returns
 /// An `Expr` representing the symbolic volume integral.
 #[must_use]
-
 pub fn volume_integral(
     scalar_field: &Expr,
     volume: &Volume,
 ) -> Expr {
+    let (x_var, y_var, z_var) = (&volume.vars.0, &volume.vars.1, &volume.vars.2);
 
-    let (x_var, y_var, z_var) = (
-        &volume.vars.0,
-        &volume.vars.1,
-        &volume.vars.2,
-    );
+    let integral_z =
+        definite_integrate(scalar_field, z_var, &volume.z_bounds.0, &volume.z_bounds.1);
 
-    let integral_z = definite_integrate(
-        scalar_field,
-        z_var,
-        &volume.z_bounds.0,
-        &volume.z_bounds.1,
-    );
+    let integral_y = definite_integrate(&integral_z, y_var, &volume.y_bounds.0, &volume.y_bounds.1);
 
-    let integral_y = definite_integrate(
-        &integral_z,
-        y_var,
-        &volume.y_bounds.0,
-        &volume.y_bounds.1,
-    );
-
-    let integral_x = definite_integrate(
-        &integral_y,
-        x_var,
-        &volume.x_bounds.0,
-        &volume.x_bounds.1,
-    );
+    let integral_x = definite_integrate(&integral_y, x_var, &volume.x_bounds.0, &volume.x_bounds.1);
 
     simplify(&integral_x)
 }

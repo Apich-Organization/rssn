@@ -6,13 +6,7 @@ use rssn::physics::physics_fem::*;
 #[test]
 
 fn test_poisson_1d_basic() {
-
-    let result = solve_poisson_1d(
-        10,
-        1.0,
-        |_| 2.0,
-    )
-    .unwrap();
+    let result = solve_poisson_1d(10, 1.0, |_| 2.0).unwrap();
 
     assert_eq!(result.len(), 11);
 
@@ -26,13 +20,7 @@ fn test_poisson_1d_basic() {
 #[test]
 
 fn test_poisson_2d_basic() {
-
-    let result = solve_poisson_2d(
-        5,
-        5,
-        |_, _| 2.0,
-    )
-    .unwrap();
+    let result = solve_poisson_2d(5, 5, |_, _| 2.0).unwrap();
 
     assert_eq!(result.len(), 36);
 }

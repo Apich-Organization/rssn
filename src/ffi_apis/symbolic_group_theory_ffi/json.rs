@@ -7,8 +7,6 @@ use crate::symbolic::group_theory::GroupElement;
 use crate::symbolic::group_theory::Representation;
 use crate::symbolic::group_theory::character;
 
-#[unsafe(no_mangle)]
-
 /// Creates a group from a JSON-encoded description.
 ///
 /// The input string encodes a [`Group`] (e.g., its elements and multiplication law),
@@ -27,7 +25,7 @@ use crate::symbolic::group_theory::character;
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -35,20 +33,15 @@ use crate::symbolic::group_theory::character;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_group_create(
-    json_str: *const c_char
-) -> *mut c_char {
-
-    let group : Group = match from_json_string(json_str) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_group_create(json_str: *const c_char) -> *mut c_char {
+    let group: Group = match from_json_string(json_str) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&group)
 }
-
-#[unsafe(no_mangle)]
 
 /// Multiplies two group elements using a JSON-encoded group and elements.
 ///
@@ -67,7 +60,7 @@ pub unsafe extern "C" fn rssn_json_group_create(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -75,24 +68,23 @@ pub unsafe extern "C" fn rssn_json_group_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_group_multiply(
     group_json: *const c_char,
     a_json: *const c_char,
     b_json: *const c_char,
 ) -> *mut c_char {
-
-    let group : Group = match from_json_string(group_json) {
+    let group: Group = match from_json_string(group_json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let a : GroupElement = match from_json_string(a_json) {
+    let a: GroupElement = match from_json_string(a_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
 
-    let b : GroupElement = match from_json_string(b_json) {
+    let b: GroupElement = match from_json_string(b_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
@@ -101,8 +93,6 @@ pub unsafe extern "C" fn rssn_json_group_multiply(
 
     to_json_string(&result)
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the inverse of a group element using a JSON-encoded group.
 ///
@@ -120,7 +110,7 @@ pub unsafe extern "C" fn rssn_json_group_multiply(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -128,18 +118,17 @@ pub unsafe extern "C" fn rssn_json_group_multiply(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_group_inverse(
     group_json: *const c_char,
     a_json: *const c_char,
 ) -> *mut c_char {
-
-    let group : Group = match from_json_string(group_json) {
+    let group: Group = match from_json_string(group_json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let a : GroupElement = match from_json_string(a_json) {
+    let a: GroupElement = match from_json_string(a_json) {
         | Some(e) => e,
         | None => return std::ptr::null_mut(),
     };
@@ -148,8 +137,6 @@ pub unsafe extern "C" fn rssn_json_group_inverse(
 
     to_json_string(&result)
 }
-
-#[unsafe(no_mangle)]
 
 /// Tests whether a group is Abelian using a JSON-encoded group.
 ///
@@ -167,7 +154,7 @@ pub unsafe extern "C" fn rssn_json_group_inverse(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer; the
 /// caller must ensure it points to a valid JSON string.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -175,23 +162,15 @@ pub unsafe extern "C" fn rssn_json_group_inverse(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_group_is_abelian(
-    group_json: *const c_char
-) -> bool {
-
-    let group: Group =
-        match from_json_string(
-            group_json,
-        ) {
-            | Some(g) => g,
-            | None => return false,
-        };
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_group_is_abelian(group_json: *const c_char) -> bool {
+    let group: Group = match from_json_string(group_json) {
+        | Some(g) => g,
+        | None => return false,
+    };
 
     group.is_abelian()
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the order of a group element using a JSON-encoded group.
 ///
@@ -212,7 +191,7 @@ pub unsafe extern "C" fn rssn_json_group_is_abelian(
 ///
 /// This function is unsafe because it dereferences raw C string pointers; the
 /// caller must ensure they point to valid JSON strings.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -220,32 +199,23 @@ pub unsafe extern "C" fn rssn_json_group_is_abelian(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_group_element_order(
     group_json: *const c_char,
     a_json: *const c_char,
 ) -> usize {
+    let group: Group = match from_json_string(group_json) {
+        | Some(g) => g,
+        | None => return 0,
+    };
 
-    let group: Group =
-        match from_json_string(
-            group_json,
-        ) {
-            | Some(g) => g,
-            | None => return 0,
-        };
+    let a: GroupElement = match from_json_string(a_json) {
+        | Some(e) => e,
+        | None => return 0,
+    };
 
-    let a: GroupElement =
-        match from_json_string(a_json) {
-            | Some(e) => e,
-            | None => return 0,
-        };
-
-    group
-        .element_order(&a)
-        .unwrap_or(0)
+    group.element_order(&a).unwrap_or(0)
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the conjugacy classes of a group using a JSON-encoded group.
 ///
@@ -265,7 +235,7 @@ pub unsafe extern "C" fn rssn_json_group_element_order(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -273,23 +243,19 @@ pub unsafe extern "C" fn rssn_json_group_element_order(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
     group_json: *const c_char
 ) -> *mut c_char {
-
-    let group : Group = match from_json_string(group_json) {
+    let group: Group = match from_json_string(group_json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let classes =
-        group.conjugacy_classes();
+    let classes = group.conjugacy_classes();
 
     to_json_string(&classes)
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the center of a group using a JSON-encoded group.
 ///
@@ -308,7 +274,7 @@ pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -316,12 +282,9 @@ pub unsafe extern "C" fn rssn_json_group_conjugacy_classes(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_group_center(
-    group_json: *const c_char
-) -> *mut c_char {
-
-    let group : Group = match from_json_string(group_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_group_center(group_json: *const c_char) -> *mut c_char {
+    let group: Group = match from_json_string(group_json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
@@ -330,8 +293,6 @@ pub unsafe extern "C" fn rssn_json_group_center(
 
     to_json_string(&center)
 }
-
-#[unsafe(no_mangle)]
 
 /// Creates a group representation from a JSON-encoded description.
 ///
@@ -351,7 +312,7 @@ pub unsafe extern "C" fn rssn_json_group_center(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -359,20 +320,15 @@ pub unsafe extern "C" fn rssn_json_group_center(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_representation_create(
-    json_str: *const c_char
-) -> *mut c_char {
-
-    let rep : Representation = match from_json_string(json_str) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_representation_create(json_str: *const c_char) -> *mut c_char {
+    let rep: Representation = match from_json_string(json_str) {
         | Some(r) => r,
         | None => return std::ptr::null_mut(),
     };
 
     to_json_string(&rep)
 }
-
-#[unsafe(no_mangle)]
 
 /// Checks whether a representation is valid for a given group using JSON-encoded inputs.
 ///
@@ -393,7 +349,7 @@ pub unsafe extern "C" fn rssn_json_representation_create(
 ///
 /// This function is unsafe because it dereferences raw C string pointers; the
 /// caller must ensure they point to valid JSON strings.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -401,31 +357,23 @@ pub unsafe extern "C" fn rssn_json_representation_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_representation_is_valid(
     rep_json: *const c_char,
     group_json: *const c_char,
 ) -> bool {
+    let rep: Representation = match from_json_string(rep_json) {
+        | Some(r) => r,
+        | None => return false,
+    };
 
-    let rep: Representation =
-        match from_json_string(rep_json)
-        {
-            | Some(r) => r,
-            | None => return false,
-        };
-
-    let group: Group =
-        match from_json_string(
-            group_json,
-        ) {
-            | Some(g) => g,
-            | None => return false,
-        };
+    let group: Group = match from_json_string(group_json) {
+        | Some(g) => g,
+        | None => return false,
+    };
 
     rep.is_valid(&group)
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the character of a representation using a JSON-encoded input.
 ///
@@ -445,7 +393,7 @@ pub unsafe extern "C" fn rssn_json_representation_is_valid(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and
 /// returns ownership of a heap-allocated C string that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -453,12 +401,9 @@ pub unsafe extern "C" fn rssn_json_representation_is_valid(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_character(
-    rep_json: *const c_char
-) -> *mut c_char {
-
-    let rep : Representation = match from_json_string(rep_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_character(rep_json: *const c_char) -> *mut c_char {
+    let rep: Representation = match from_json_string(rep_json) {
         | Some(r) => r,
         | None => return std::ptr::null_mut(),
     };

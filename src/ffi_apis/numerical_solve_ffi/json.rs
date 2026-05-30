@@ -13,15 +13,13 @@ use crate::numerical::solve::{
 };
 
 #[derive(Deserialize)]
-
 struct SolveLinearInput {
     matrix: Matrix<f64>,
     vector: Vec<f64>,
 }
 
 /// JSON FFI for solving linear systems.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29,51 +27,32 @@ struct SolveLinearInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_solve_linear_system_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_solve_linear_system_json(json_ptr: *const c_char) -> *mut c_char {
     unsafe {
+        let json_str = match CStr::from_ptr(json_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        let json_str = match CStr::from_ptr(
-        json_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
-    };
-
-        let input: SolveLinearInput =
-        match serde_json::from_str(
-            json_str,
-        ) {
+        let input: SolveLinearInput = match serde_json::from_str(json_str) {
             | Ok(v) => v,
             | Err(e) => {
-                return CString::new(
-                    format!(
-                        "{{\"err\": \
+                return CString::new(format!(
+                    "{{\"err\": \
                          \"{e}\"}}"
-                    ),
-                )
+                ))
                 .unwrap()
-                .into_raw()
+                .into_raw();
             },
         };
 
-        let result =
-            solve::solve_linear_system(
-                &input.matrix,
-                &input.vector,
-            );
+        let result = solve::solve_linear_system(&input.matrix, &input.vector);
 
         let res = match result {
             | Ok(sol) => {
@@ -90,11 +69,8 @@ pub unsafe extern "C" fn rssn_solve_linear_system_json(
             },
         };
 
-        CString::new(
-            serde_json::to_string(&res)
-                .unwrap(),
-        )
-        .unwrap()
-        .into_raw()
+        CString::new(serde_json::to_string(&res).unwrap())
+            .unwrap()
+            .into_raw()
     }
 }

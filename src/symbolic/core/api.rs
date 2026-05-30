@@ -32,7 +32,6 @@ use super::expr::SparsePolynomial;
 
 impl AsRef<Self> for Expr {
     fn as_ref(&self) -> &Self {
-
         self
     }
 }
@@ -41,25 +40,20 @@ impl AsRef<Self> for Expr {
 macro_rules! unary_constructor {
     ($name:ident, $op:ident) => {
         /// Creates a new
-        #[doc = stringify!($op)]
         /// expression, managed by the DAG.
+        #[doc = stringify!($op)]
         #[allow(clippy::inline_always)]
         #[inline(always)]
-
-        pub fn $name<A>(a : A) -> Expr
+        pub fn $name<A>(a: A) -> Expr
         where
-            A : AsRef<Expr>,
+            A: AsRef<Expr>,
         {
-
             let dag_a = DAG_MANAGER
                 .get_or_create(a.as_ref())
                 .expect("DAG manager get_or_create failed");
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(
-                    DagOp::$op,
-                    vec![dag_a],
-                )
+                .get_or_create_normalized(DagOp::$op, vec![dag_a])
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -70,20 +64,18 @@ macro_rules! unary_constructor {
 macro_rules! binary_constructor {
     ($name:ident, $op:ident) => {
         /// Creates a new
-        #[doc = stringify!($op)]
         /// expression, managed by the DAG.
+        #[doc = stringify!($op)]
         #[allow(clippy::inline_always)]
         #[inline(always)]
-
         pub fn $name<A, B>(
-            a : A,
-            b : B,
+            a: A,
+            b: B,
         ) -> Expr
         where
-            A : AsRef<Expr>,
-            B : AsRef<Expr>,
+            A: AsRef<Expr>,
+            B: AsRef<Expr>,
         {
-
             let dag_a = DAG_MANAGER
                 .get_or_create(a.as_ref())
                 .expect("DAG manager get_or_create failed");
@@ -93,10 +85,7 @@ macro_rules! binary_constructor {
                 .expect("DAG manager get_or_create failed");
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(
-                    DagOp::$op,
-                    vec![dag_a, dag_b],
-                )
+                .get_or_create_normalized(DagOp::$op, vec![dag_a, dag_b])
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -107,21 +96,18 @@ macro_rules! binary_constructor {
 macro_rules! n_ary_constructor {
     ($name:ident, $op:ident) => {
         /// Creates a new
-        #[doc = stringify!($op)]
         /// expression, managed by the DAG.
+        #[doc = stringify!($op)]
         #[allow(clippy::inline_always)]
         #[inline(always)]
-
-        pub fn $name<I, T>(elements : I) -> Expr
+        pub fn $name<I, T>(elements: I) -> Expr
         where
-            I : IntoIterator<Item = T>,
-            T : AsRef<Expr>,
+            I: IntoIterator<Item = T>,
+            T: AsRef<Expr>,
         {
-
             let children_nodes = elements
                 .into_iter()
                 .map(|child| {
-
                     DAG_MANAGER
                         .get_or_create(child.as_ref())
                         .expect("DAG manager get_or_create failed")
@@ -129,10 +115,7 @@ macro_rules! n_ary_constructor {
                 .collect::<Vec<_>>();
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(
-                    DagOp::$op,
-                    children_nodes,
-                )
+                .get_or_create_normalized(DagOp::$op, children_nodes)
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -150,29 +133,21 @@ macro_rules! n_ary_constructor {
 macro_rules! unary_constructor_deprecated {
     ($name:ident, $op:ident) => {
         /// Creates a new
-        #[doc = stringify!($op)]
         /// expression, managed by the DAG.
-        #[deprecated(
-            since = "0.1.18",
-            note = "Please use the 'UnaryList' variant instead."
-        )]
+        #[doc = stringify!($op)]
+        #[deprecated(since = "0.1.18", note = "Please use the 'UnaryList' variant instead.")]
         #[allow(clippy::inline_always)]
         #[inline(always)]
-
-        pub fn $name<A>(a : A) -> Expr
+        pub fn $name<A>(a: A) -> Expr
         where
-            A : AsRef<Expr>,
+            A: AsRef<Expr>,
         {
-
             let dag_a = DAG_MANAGER
                 .get_or_create(a.as_ref())
                 .expect("DAG manager get_or_create failed");
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(
-                    DagOp::$op,
-                    vec![dag_a],
-                )
+                .get_or_create_normalized(DagOp::$op, vec![dag_a])
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -190,24 +165,22 @@ macro_rules! unary_constructor_deprecated {
 macro_rules! binary_constructor_deprecated {
     ($name:ident, $op:ident) => {
         /// Creates a new
-        #[doc = stringify!($op)]
         /// expression, managed by the DAG.
+        #[doc = stringify!($op)]
         #[deprecated(
             since = "0.1.18",
             note = "Please use the 'BinaryList' variant instead."
         )]
         #[allow(clippy::inline_always)]
         #[inline(always)]
-
         pub fn $name<A, B>(
-            a : A,
-            b : B,
+            a: A,
+            b: B,
         ) -> Expr
         where
-            A : AsRef<Expr>,
-            B : AsRef<Expr>,
+            A: AsRef<Expr>,
+            B: AsRef<Expr>,
         {
-
             let dag_a = DAG_MANAGER
                 .get_or_create(a.as_ref())
                 .expect("DAG manager get_or_create failed");
@@ -217,10 +190,7 @@ macro_rules! binary_constructor_deprecated {
                 .expect("DAG manager get_or_create failed");
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(
-                    DagOp::$op,
-                    vec![dag_a, dag_b],
-                )
+                .get_or_create_normalized(DagOp::$op, vec![dag_a, dag_b])
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -237,25 +207,19 @@ macro_rules! binary_constructor_deprecated {
 macro_rules! n_ary_constructor_deprecated {
     ($name:ident, $op:ident) => {
         /// Creates a new
-        #[doc = stringify!($op)]
         /// expression, managed by the DAG.
-        #[deprecated(
-            since = "0.1.18",
-            note = "Please use the 'NaryList' variant instead."
-        )]
+        #[doc = stringify!($op)]
+        #[deprecated(since = "0.1.18", note = "Please use the 'NaryList' variant instead.")]
         #[allow(clippy::inline_always)]
         #[inline(always)]
-
-        pub fn $name<I, T>(elements : I) -> Expr
+        pub fn $name<I, T>(elements: I) -> Expr
         where
-            I : IntoIterator<Item = T>,
-            T : AsRef<Expr>,
+            I: IntoIterator<Item = T>,
+            T: AsRef<Expr>,
         {
-
             let children_nodes = elements
                 .into_iter()
                 .map(|child| {
-
                     DAG_MANAGER
                         .get_or_create(child.as_ref())
                         .expect("DAG manager get_or_create failed")
@@ -263,10 +227,7 @@ macro_rules! n_ary_constructor_deprecated {
                 .collect::<Vec<_>>();
 
             let node = DAG_MANAGER
-                .get_or_create_normalized(
-                    DagOp::$op,
-                    children_nodes,
-                )
+                .get_or_create_normalized(DagOp::$op, children_nodes)
                 .expect("DAG manager get_or_create_normalized failed");
 
             Expr::Dag(node)
@@ -293,15 +254,9 @@ impl Expr {
 
     unary_constructor!(new_sqrt, Sqrt);
 
-    unary_constructor!(
-        new_transpose,
-        Transpose
-    );
+    unary_constructor!(new_transpose, Transpose);
 
-    unary_constructor!(
-        new_inverse,
-        Inverse
-    );
+    unary_constructor!(new_inverse, Inverse);
 
     unary_constructor!(new_sec, Sec);
 
@@ -309,35 +264,17 @@ impl Expr {
 
     unary_constructor!(new_cot, Cot);
 
-    unary_constructor!(
-        new_arcsin,
-        ArcSin
-    );
+    unary_constructor!(new_arcsin, ArcSin);
 
-    unary_constructor!(
-        new_arccos,
-        ArcCos
-    );
+    unary_constructor!(new_arccos, ArcCos);
 
-    unary_constructor!(
-        new_arctan,
-        ArcTan
-    );
+    unary_constructor!(new_arctan, ArcTan);
 
-    unary_constructor!(
-        new_arcsec,
-        ArcSec
-    );
+    unary_constructor!(new_arcsec, ArcSec);
 
-    unary_constructor!(
-        new_arccsc,
-        ArcCsc
-    );
+    unary_constructor!(new_arccsc, ArcCsc);
 
-    unary_constructor!(
-        new_arccot,
-        ArcCot
-    );
+    unary_constructor!(new_arccot, ArcCot);
 
     unary_constructor!(new_sinh, Sinh);
 
@@ -351,47 +288,23 @@ impl Expr {
 
     unary_constructor!(new_coth, Coth);
 
-    unary_constructor!(
-        new_arcsinh,
-        ArcSinh
-    );
+    unary_constructor!(new_arcsinh, ArcSinh);
 
-    unary_constructor!(
-        new_arccosh,
-        ArcCosh
-    );
+    unary_constructor!(new_arccosh, ArcCosh);
 
-    unary_constructor!(
-        new_arctanh,
-        ArcTanh
-    );
+    unary_constructor!(new_arctanh, ArcTanh);
 
-    unary_constructor!(
-        new_arcsech,
-        ArcSech
-    );
+    unary_constructor!(new_arcsech, ArcSech);
 
-    unary_constructor!(
-        new_arccsch,
-        ArcCsch
-    );
+    unary_constructor!(new_arccsch, ArcCsch);
 
-    unary_constructor!(
-        new_arccoth,
-        ArcCoth
-    );
+    unary_constructor!(new_arccoth, ArcCoth);
 
     unary_constructor!(new_not, Not);
 
-    unary_constructor!(
-        new_floor,
-        Floor
-    );
+    unary_constructor!(new_floor, Floor);
 
-    unary_constructor!(
-        new_gamma,
-        Gamma
-    );
+    unary_constructor!(new_gamma, Gamma);
 
     unary_constructor!(new_erf, Erf);
 
@@ -401,10 +314,7 @@ impl Expr {
 
     unary_constructor!(new_zeta, Zeta);
 
-    unary_constructor!(
-        new_digamma,
-        Digamma
-    );
+    unary_constructor!(new_digamma, Digamma);
 
     // --- Binary Operator Constructors ---
     binary_constructor!(new_add, Add);
@@ -417,139 +327,64 @@ impl Expr {
 
     binary_constructor!(new_pow, Power);
 
-    binary_constructor!(
-        new_complex,
-        Complex
-    );
+    binary_constructor!(new_complex, Complex);
 
-    binary_constructor!(
-        new_matrix_mul,
-        MatrixMul
-    );
+    binary_constructor!(new_matrix_mul, MatrixMul);
 
-    binary_constructor!(
-        new_matrix_vec_mul,
-        MatrixVecMul
-    );
+    binary_constructor!(new_matrix_vec_mul, MatrixVecMul);
 
-    binary_constructor!(
-        new_log_base,
-        LogBase
-    );
+    binary_constructor!(new_log_base, LogBase);
 
-    binary_constructor!(
-        new_atan2,
-        Atan2
-    );
+    binary_constructor!(new_atan2, Atan2);
 
     binary_constructor!(new_xor, Xor);
 
-    binary_constructor!(
-        new_implies,
-        Implies
-    );
+    binary_constructor!(new_implies, Implies);
 
-    binary_constructor!(
-        new_equivalent,
-        Equivalent
-    );
+    binary_constructor!(new_equivalent, Equivalent);
 
     binary_constructor!(new_beta, Beta);
 
-    binary_constructor!(
-        new_bessel_j,
-        BesselJ
-    );
+    binary_constructor!(new_bessel_j, BesselJ);
 
-    binary_constructor!(
-        new_bessel_y,
-        BesselY
-    );
+    binary_constructor!(new_bessel_y, BesselY);
 
-    binary_constructor!(
-        new_legendre_p,
-        LegendreP
-    );
+    binary_constructor!(new_legendre_p, LegendreP);
 
-    binary_constructor!(
-        new_laguerre_l,
-        LaguerreL
-    );
+    binary_constructor!(new_laguerre_l, LaguerreL);
 
-    binary_constructor!(
-        new_hermite_h,
-        HermiteH
-    );
+    binary_constructor!(new_hermite_h, HermiteH);
 
-    binary_constructor!(
-        new_kronecker_delta,
-        KroneckerDelta
-    );
+    binary_constructor!(new_kronecker_delta, KroneckerDelta);
 
-    binary_constructor!(
-        new_apply,
-        Apply
-    );
+    binary_constructor!(new_apply, Apply);
 
     // --- N-ary Constructors ---
-    n_ary_constructor!(
-        new_vector,
-        Vector
-    );
+    n_ary_constructor!(new_vector, Vector);
 
     n_ary_constructor!(new_and, And);
 
     n_ary_constructor!(new_or, Or);
 
-    n_ary_constructor!(
-        new_union,
-        Union
-    );
+    n_ary_constructor!(new_union, Union);
 
-    n_ary_constructor!(
-        new_polynomial,
-        Polynomial
-    );
+    n_ary_constructor!(new_polynomial, Polynomial);
 
-    n_ary_constructor!(
-        new_tuple,
-        Tuple
-    );
+    n_ary_constructor!(new_tuple, Tuple);
 
-    unary_constructor_deprecated!(
-        new_custom_arc_one,
-        CustomArcOne
-    );
+    unary_constructor_deprecated!(new_custom_arc_one, CustomArcOne);
 
-    binary_constructor_deprecated!(
-        new_custom_arc_two,
-        CustomArcTwo
-    );
+    binary_constructor_deprecated!(new_custom_arc_two, CustomArcTwo);
 
-    n_ary_constructor_deprecated!(
-        new_custom_vec_one,
-        CustomVecOne
-    );
+    n_ary_constructor_deprecated!(new_custom_vec_one, CustomVecOne);
 
-    n_ary_constructor_deprecated!(
-        new_custom_vec_two,
-        CustomVecTwo
-    );
+    n_ary_constructor_deprecated!(new_custom_vec_two, CustomVecTwo);
 
-    n_ary_constructor_deprecated!(
-        new_custom_vec_three,
-        CustomVecThree
-    );
+    n_ary_constructor_deprecated!(new_custom_vec_three, CustomVecThree);
 
-    n_ary_constructor_deprecated!(
-        new_custom_vec_four,
-        CustomVecFour
-    );
+    n_ary_constructor_deprecated!(new_custom_vec_four, CustomVecFour);
 
-    n_ary_constructor_deprecated!(
-        new_custom_vec_five,
-        CustomVecFive
-    );
+    n_ary_constructor_deprecated!(new_custom_vec_five, CustomVecFive);
 
     // --- Leaf Node Constructors ---
     /// Creates a new Constant expression, managed by the DAG.
@@ -559,18 +394,9 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
-    pub fn new_constant(
-        c: f64
-    ) -> Self {
-
+    pub fn new_constant(c: f64) -> Self {
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Constant(
-                    OrderedFloat(c),
-                ),
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::Constant(OrderedFloat(c)), vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -583,18 +409,9 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
-    pub fn new_variable(
-        name: &str
-    ) -> Self {
-
+    pub fn new_variable(name: &str) -> Self {
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Variable(
-                    name.to_string(),
-                ),
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::Variable(name.to_string()), vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -607,16 +424,9 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
-    pub fn new_bigint(
-        i: BigInt
-    ) -> Self {
-
+    pub fn new_bigint(i: BigInt) -> Self {
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::BigInt(i),
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::BigInt(i), vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -629,16 +439,9 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
-    pub fn new_rational(
-        r: BigRational
-    ) -> Self {
-
+    pub fn new_rational(r: BigRational) -> Self {
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Rational(r),
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::Rational(r), vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -651,14 +454,9 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
     pub fn new_pi() -> Self {
-
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Pi,
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::Pi, vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -671,14 +469,9 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
     pub fn new_e() -> Self {
-
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::E,
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::E, vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -691,14 +484,9 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
     pub fn new_infinity() -> Self {
-
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Infinity,
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::Infinity, vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -711,15 +499,9 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
-    pub fn new_negative_infinity()
-    -> Self {
-
+    pub fn new_negative_infinity() -> Self {
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::NegativeInfinity,
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::NegativeInfinity, vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -732,48 +514,36 @@ impl Expr {
     /// Panics if the matrix rows have inconsistent length or if elements cannot be created in the DAG.
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
-    pub fn new_matrix<I, J, T>(
-        elements: I
-    ) -> Self
+    pub fn new_matrix<I, J, T>(elements: I) -> Self
     where
         I: IntoIterator<Item = J>,
         J: IntoIterator<Item = T>,
         T: AsRef<Self>,
     {
-
-        let mut flat_children_nodes =
-            Vec::new();
+        let mut flat_children_nodes = Vec::new();
 
         let mut rows = 0;
 
         let mut cols = 0;
 
         for row_iter in elements {
-
             rows += 1;
 
             let mut current_cols = 0;
 
             for element in row_iter {
-
                 let node = DAG_MANAGER
                     .get_or_create(element.as_ref())
                     .expect("Value is valid");
 
-                flat_children_nodes
-                    .push(node);
+                flat_children_nodes.push(node);
 
                 current_cols += 1;
             }
 
             if cols == 0 {
-
                 cols = current_cols;
-            } else if current_cols
-                != cols
-            {
-
+            } else if current_cols != cols {
                 panic!(
                     "Matrix rows must \
                      have consistent \
@@ -783,13 +553,7 @@ impl Expr {
         }
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Matrix {
-                    rows,
-                    cols,
-                },
-                flat_children_nodes,
-            )
+            .get_or_create_normalized(DagOp::Matrix { rows, cols }, flat_children_nodes)
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -801,7 +565,6 @@ impl Expr {
     /// Panics if the predicate or its arguments cannot be created in the DAG.
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
     pub fn new_predicate<I, T>(
         name: &str,
         args: I,
@@ -810,11 +573,9 @@ impl Expr {
         I: IntoIterator<Item = T>,
         T: AsRef<Self>,
     {
-
         let children_nodes = args
             .into_iter()
             .map(|child| {
-
                 DAG_MANAGER
                     .get_or_create(child.as_ref())
                     .expect("Value is valid")
@@ -824,8 +585,7 @@ impl Expr {
         let node = DAG_MANAGER
             .get_or_create_normalized(
                 DagOp::Predicate {
-                    name: name
-                        .to_string(),
+                    name: name.to_string(),
                 },
                 children_nodes,
             )
@@ -840,7 +600,6 @@ impl Expr {
     /// Panics if the expression cannot be created in the DAG.
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
     pub fn new_forall<A>(
         var: &str,
         expr: A,
@@ -848,20 +607,12 @@ impl Expr {
     where
         A: AsRef<Self>,
     {
-
         let child_node = DAG_MANAGER
-            .get_or_create(
-                expr.as_ref(),
-            )
+            .get_or_create(expr.as_ref())
             .expect("Value is valid");
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::ForAll(
-                    var.to_string(),
-                ),
-                vec![child_node],
-            )
+            .get_or_create_normalized(DagOp::ForAll(var.to_string()), vec![child_node])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -873,7 +624,6 @@ impl Expr {
     /// Panics if the expression cannot be created in the DAG.
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
     pub fn new_exists<A>(
         var: &str,
         expr: A,
@@ -881,20 +631,12 @@ impl Expr {
     where
         A: AsRef<Self>,
     {
-
         let child_node = DAG_MANAGER
-            .get_or_create(
-                expr.as_ref(),
-            )
+            .get_or_create(expr.as_ref())
             .expect("Value is valid");
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Exists(
-                    var.to_string(),
-                ),
-                vec![child_node],
-            )
+            .get_or_create_normalized(DagOp::Exists(var.to_string()), vec![child_node])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -904,10 +646,8 @@ impl Expr {
     ///
     /// # Panics
     /// Panics if the interval boundaries cannot be created in the DAG.
-
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
     pub fn new_interval<A, B>(
         lower: A,
         upper: B,
@@ -918,29 +658,18 @@ impl Expr {
         A: AsRef<Self>,
         B: AsRef<Self>,
     {
-
         let dag_lower = DAG_MANAGER
-            .get_or_create(
-                lower.as_ref(),
-            )
+            .get_or_create(lower.as_ref())
             .expect("Value is valid");
 
         let dag_upper = DAG_MANAGER
-            .get_or_create(
-                upper.as_ref(),
-            )
+            .get_or_create(upper.as_ref())
             .expect("Value is valid");
 
         let node = DAG_MANAGER
             .get_or_create_normalized(
-                DagOp::Interval(
-                    incl_lower,
-                    incl_upper,
-                ),
-                vec![
-                    dag_lower,
-                    dag_upper,
-                ],
+                DagOp::Interval(incl_lower, incl_upper),
+                vec![dag_lower, dag_upper],
             )
             .expect("Value is valid");
 
@@ -954,7 +683,6 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
     pub fn new_derivative<A>(
         function: A,
         variable: String,
@@ -962,20 +690,12 @@ impl Expr {
     where
         A: AsRef<Self>,
     {
-
         let dag_function = DAG_MANAGER
-            .get_or_create(
-                function.as_ref(),
-            )
+            .get_or_create(function.as_ref())
             .expect("Value is valid");
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Derivative(
-                    variable,
-                ),
-                vec![dag_function],
-            )
+            .get_or_create_normalized(DagOp::Derivative(variable), vec![dag_function])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -988,7 +708,6 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
     pub fn new_derivativen<A, B>(
         function: A,
         variable: String,
@@ -998,29 +717,16 @@ impl Expr {
         A: AsRef<Self>,
         B: AsRef<Self>,
     {
-
         let dag_function = DAG_MANAGER
-            .get_or_create(
-                function.as_ref(),
-            )
+            .get_or_create(function.as_ref())
             .expect("Value is valid");
 
         let dag_grades = DAG_MANAGER
-            .get_or_create(
-                grades.as_ref(),
-            )
+            .get_or_create(grades.as_ref())
             .expect("Value is valid");
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::DerivativeN(
-                    variable,
-                ),
-                vec![
-                    dag_function,
-                    dag_grades,
-                ],
-            )
+            .get_or_create_normalized(DagOp::DerivativeN(variable), vec![dag_function, dag_grades])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -1033,18 +739,9 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
-    pub fn new_sparse_polynomial(
-        p: SparsePolynomial
-    ) -> Self {
-
+    pub fn new_sparse_polynomial(p: SparsePolynomial) -> Self {
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::SparsePolynomial(
-                    p,
-                ),
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::SparsePolynomial(p), vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -1064,14 +761,9 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
     pub fn new_custom_zero() -> Self {
-
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::CustomZero,
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::CustomZero, vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -1090,18 +782,9 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
-    pub fn new_custom_string(
-        s: &str
-    ) -> Self {
-
+    pub fn new_custom_string(s: &str) -> Self {
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::CustomString(
-                    s.to_string(),
-                ),
-                vec![],
-            )
+            .get_or_create_normalized(DagOp::CustomString(s.to_string()), vec![])
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -1119,12 +802,7 @@ impl Expr {
     )]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
-    pub fn new_custom_arc_three<
-        A,
-        B,
-        C,
-    >(
+    pub fn new_custom_arc_three<A, B, C>(
         a: A,
         b: B,
         c: C,
@@ -1134,7 +812,6 @@ impl Expr {
         B: AsRef<Self>,
         C: AsRef<Self>,
     {
-
         let dag_a = DAG_MANAGER
             .get_or_create(a.as_ref())
             .expect("Value is valid");
@@ -1147,14 +824,10 @@ impl Expr {
             .get_or_create(c.as_ref())
             .expect("Value is valid");
 
-        let children =
-            vec![dag_a, dag_b, dag_c];
+        let children = vec![dag_a, dag_b, dag_c];
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::CustomArcThree,
-                children,
-            )
+            .get_or_create_normalized(DagOp::CustomArcThree, children)
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -1172,13 +845,7 @@ impl Expr {
     )]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
-    pub fn new_custom_arc_four<
-        A,
-        B,
-        C,
-        D,
-    >(
+    pub fn new_custom_arc_four<A, B, C, D>(
         a: A,
         b: B,
         c: C,
@@ -1190,7 +857,6 @@ impl Expr {
         C: AsRef<Self>,
         D: AsRef<Self>,
     {
-
         let dag_a = DAG_MANAGER
             .get_or_create(a.as_ref())
             .expect("Value is valid");
@@ -1207,15 +873,10 @@ impl Expr {
             .get_or_create(d.as_ref())
             .expect("Value is valid");
 
-        let children = vec![
-            dag_a, dag_b, dag_c, dag_d,
-        ];
+        let children = vec![dag_a, dag_b, dag_c, dag_d];
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::CustomArcFour,
-                children,
-            )
+            .get_or_create_normalized(DagOp::CustomArcFour, children)
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -1233,14 +894,7 @@ impl Expr {
     )]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
-    pub fn new_custom_arc_five<
-        A,
-        B,
-        C,
-        D,
-        E,
-    >(
+    pub fn new_custom_arc_five<A, B, C, D, E>(
         a: A,
         b: B,
         c: C,
@@ -1254,7 +908,6 @@ impl Expr {
         D: AsRef<Self>,
         E: AsRef<Self>,
     {
-
         let dag_a = DAG_MANAGER
             .get_or_create(a.as_ref())
             .expect("Value is valid");
@@ -1275,16 +928,10 @@ impl Expr {
             .get_or_create(e.as_ref())
             .expect("Value is valid");
 
-        let children = vec![
-            dag_a, dag_b, dag_c, dag_d,
-            dag_e,
-        ];
+        let children = vec![dag_a, dag_b, dag_c, dag_d, dag_e];
 
         let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::CustomArcFive,
-                children,
-            )
+            .get_or_create_normalized(DagOp::CustomArcFive, children)
             .expect("Value is valid");
 
         Self::Dag(node)
@@ -1299,11 +946,9 @@ impl Expr {
     ///
     /// # Examples
     /// ```
-    /// 
     /// use rssn::symbolic::core::Expr;
     ///
-    /// let dag_expr =
-    ///     Expr::new_variable("x");
+    /// let dag_expr = Expr::new_variable("x");
     ///
     /// assert!(dag_expr.is_dag());
     ///
@@ -1314,9 +959,7 @@ impl Expr {
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
-
     pub const fn is_dag(&self) -> bool {
-
         matches!(self, Self::Dag(_))
     }
 
@@ -1335,47 +978,30 @@ impl Expr {
     ///
     /// # Examples
     /// ```
-    /// 
     /// use std::sync::Arc;
     ///
     /// use rssn::symbolic::core::Expr;
     ///
     /// // Old AST form
     /// let ast = Expr::Add(
-    ///     Arc::new(Expr::Variable(
-    ///         "x".to_string(),
-    ///     )),
+    ///     Arc::new(Expr::Variable("x".to_string())),
     ///     Arc::new(Expr::Constant(1.0)),
     /// );
     ///
     /// // Convert to DAG
-    /// let dag = ast
-    ///     .to_dag()
-    ///     .unwrap();
+    /// let dag = ast.to_dag().unwrap();
     ///
     /// assert!(dag.is_dag());
     /// ```
-
     #[inline]
-
-    pub fn to_dag(
-        &self
-    ) -> Result<Self, String> {
-
+    pub fn to_dag(&self) -> Result<Self, String> {
         match self {
             // Already in DAG form, just clone
-            | Self::Dag(_) => {
-                Ok(self.clone())
-            },
+            | Self::Dag(_) => Ok(self.clone()),
 
             // Convert AST to DAG
             | _ => {
-
-                let dag_node =
-                    DAG_MANAGER
-                        .get_or_create(
-                            self,
-                        )?;
+                let dag_node = DAG_MANAGER.get_or_create(self)?;
 
                 Ok(Self::Dag(dag_node))
             },
@@ -1389,7 +1015,6 @@ impl Expr {
     ///
     /// # Examples
     /// ```
-    /// 
     /// use rssn::symbolic::core::Expr;
     ///
     /// let mut expr = Expr::Constant(1.0);
@@ -1400,13 +1025,9 @@ impl Expr {
     ///
     /// assert!(expr.is_dag());
     /// ```
-
     #[inline]
-
     pub fn to_dag_form(&mut self) {
-
         if let Ok(dag) = self.to_dag() {
-
             *self = dag;
         }
     }
@@ -1423,15 +1044,9 @@ impl Expr {
     /// # Errors
     /// Returns an error if conversion from DAG to AST fails.
     #[inline]
-
-    pub fn to_ast(
-        &self
-    ) -> Result<Self, String> {
-
+    pub fn to_ast(&self) -> Result<Self, String> {
         match self {
-            | Self::Dag(node) => {
-                node.to_expr()
-            },
+            | Self::Dag(node) => node.to_expr(),
             | _ => Ok(self.clone()),
         }
     }
@@ -1455,7 +1070,6 @@ impl Expr {
 /// registered at runtime. These properties are used by the simplification engine
 /// to apply appropriate transformations.
 #[derive(Debug, Clone, Default)]
-
 pub struct DynamicOpProperties {
     /// The name of the operation (must be unique).
     pub name: String,
@@ -1471,19 +1085,8 @@ pub struct DynamicOpProperties {
 ///
 /// This registry maps operation names to their properties. It's thread-safe
 /// and can be accessed from multiple threads simultaneously.
-
-pub static DYNAMIC_OP_REGISTRY:
-    LazyLock<
-        RwLock<
-            HashMap<
-                String,
-                DynamicOpProperties,
-            >,
-        >,
-    > = LazyLock::new(|| {
-
-    RwLock::new(HashMap::new())
-});
+pub static DYNAMIC_OP_REGISTRY: LazyLock<RwLock<HashMap<String, DynamicOpProperties>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
 
 /// Registers a dynamic operation with the global registry.
 ///
@@ -1500,39 +1103,28 @@ pub static DYNAMIC_OP_REGISTRY:
 ///
 /// # Examples
 /// ```
-/// 
-/// use rssn::symbolic::core::register_dynamic_op;
 /// use rssn::symbolic::core::DynamicOpProperties;
+/// use rssn::symbolic::core::register_dynamic_op;
 ///
 /// register_dynamic_op(
 ///     "my_custom_op",
 ///     DynamicOpProperties {
-///         name : "my_custom_op".to_string(),
-///         description : "A custom commutative operation"
-///             .to_string(),
-///         is_associative : true,
-///         is_commutative : true,
+///         name: "my_custom_op".to_string(),
+///         description: "A custom commutative operation".to_string(),
+///         is_associative: true,
+///         is_commutative: true,
 ///     },
 /// );
 /// ```
-
 #[allow(clippy::inline_always)]
 #[inline(always)]
-
 pub fn register_dynamic_op(
     name: &str,
     props: DynamicOpProperties,
 ) {
+    let mut registry = DYNAMIC_OP_REGISTRY.write().unwrap();
 
-    let mut registry =
-        DYNAMIC_OP_REGISTRY
-            .write()
-            .unwrap();
-
-    registry.insert(
-        name.to_string(),
-        props,
-    );
+    registry.insert(name.to_string(), props);
 }
 
 /// Retrieves the properties of a dynamically registered operation.
@@ -1552,18 +1144,17 @@ pub fn register_dynamic_op(
 ///
 /// # Examples
 /// ```
-/// 
+/// use rssn::symbolic::core::DynamicOpProperties;
 /// use rssn::symbolic::core::get_dynamic_op_properties;
 /// use rssn::symbolic::core::register_dynamic_op;
-/// use rssn::symbolic::core::DynamicOpProperties;
 ///
 /// register_dynamic_op(
 ///     "test_op",
 ///     DynamicOpProperties {
-///         name : "test_op".to_string(),
-///         description : "Test operation".to_string(),
-///         is_associative : false,
-///         is_commutative : true,
+///         name: "test_op".to_string(),
+///         description: "Test operation".to_string(),
+///         is_associative: false,
+///         is_commutative: true,
 ///     },
 /// );
 ///
@@ -1571,154 +1162,112 @@ pub fn register_dynamic_op(
 ///
 /// assert!(props.is_some());
 ///
-/// assert!(
-///     props
-///         .unwrap()
-///         .is_commutative
-/// );
+/// assert!(props.unwrap().is_commutative);
 /// ```
 #[must_use]
 #[allow(clippy::inline_always)]
 #[inline(always)]
+pub fn get_dynamic_op_properties(name: &str) -> Option<DynamicOpProperties> {
+    let registry = DYNAMIC_OP_REGISTRY.read().unwrap();
 
-pub fn get_dynamic_op_properties(
-    name: &str
-) -> Option<DynamicOpProperties> {
-
-    let registry = DYNAMIC_OP_REGISTRY
-        .read()
-        .unwrap();
-
-    registry
-        .get(name)
-        .cloned()
+    registry.get(name).cloned()
 }
 
 // --- Convenient Mathematical Methods ---
 impl Expr {
     /// Returns the sine of the expression.
     #[must_use]
-
     pub fn sin(&self) -> Self {
-
         Self::new_sin(self)
     }
 
     /// Returns the cosine of the expression.
     #[must_use]
-
     pub fn cos(&self) -> Self {
-
         Self::new_cos(self)
     }
 
     /// Returns the tangent of the expression.
     #[must_use]
-
     pub fn tan(&self) -> Self {
-
         Self::new_tan(self)
     }
 
     /// Returns the natural exponential of the expression (e^x).
     #[must_use]
-
     pub fn exp(&self) -> Self {
-
         Self::new_exp(self)
     }
 
     /// Returns the natural logarithm of the expression.
     #[must_use]
-
     pub fn ln(&self) -> Self {
-
         Self::new_log(self)
     }
 
     /// Returns the logarithm of the expression with a specified base.
     #[must_use]
-
     pub fn log<B: AsRef<Self>>(
         &self,
         base: B,
     ) -> Self {
-
         Self::new_log_base(base, self)
     }
 
     /// Returns the absolute value of the expression.
     #[must_use]
-
     pub fn abs(&self) -> Self {
-
         Self::new_abs(self)
     }
 
     /// Returns the square root of the expression.
     #[must_use]
-
     pub fn sqrt(&self) -> Self {
-
         Self::new_sqrt(self)
     }
 
     /// Returns the expression raised to the power of another expression.
     #[must_use]
-
     pub fn pow<E: AsRef<Self>>(
         &self,
         exponent: E,
     ) -> Self {
-
         Self::new_pow(self, exponent)
     }
 
     /// Returns the arcsine of the expression.
     #[must_use]
-
     pub fn asin(&self) -> Self {
-
         Self::new_arcsin(self)
     }
 
     /// Returns the arccosine of the expression.
     #[must_use]
-
     pub fn acos(&self) -> Self {
-
         Self::new_arccos(self)
     }
 
     /// Returns the arctangent of the expression.
     #[must_use]
-
     pub fn atan(&self) -> Self {
-
         Self::new_arctan(self)
     }
 
     /// Returns the hyperbolic sine of the expression.
     #[must_use]
-
     pub fn sinh(&self) -> Self {
-
         Self::new_sinh(self)
     }
 
     /// Returns the hyperbolic cosine of the expression.
     #[must_use]
-
     pub fn cosh(&self) -> Self {
-
         Self::new_cosh(self)
     }
 
     /// Returns the hyperbolic tangent of the expression.
     #[must_use]
-
     pub fn tanh(&self) -> Self {
-
         Self::new_tanh(self)
     }
 }
@@ -1738,10 +1287,7 @@ macro_rules! impl_binary_op {
                 self,
                 rhs: Expr,
             ) -> Self::Output {
-
-                Expr::$constructor(
-                    &self, &rhs,
-                )
+                Expr::$constructor(&self, &rhs)
             }
         }
 
@@ -1752,10 +1298,7 @@ macro_rules! impl_binary_op {
                 self,
                 rhs: &Expr,
             ) -> Self::Output {
-
-                Expr::$constructor(
-                    &self, rhs,
-                )
+                Expr::$constructor(&self, rhs)
             }
         }
 
@@ -1766,10 +1309,7 @@ macro_rules! impl_binary_op {
                 self,
                 rhs: Expr,
             ) -> Self::Output {
-
-                Expr::$constructor(
-                    self, &rhs,
-                )
+                Expr::$constructor(self, &rhs)
             }
         }
 
@@ -1780,10 +1320,7 @@ macro_rules! impl_binary_op {
                 self,
                 rhs: &Expr,
             ) -> Self::Output {
-
-                Expr::$constructor(
-                    self, rhs,
-                )
+                Expr::$constructor(self, rhs)
             }
         }
 
@@ -1795,13 +1332,7 @@ macro_rules! impl_binary_op {
                 self,
                 rhs: f64,
             ) -> Self::Output {
-
-                Expr::$constructor(
-                    &self,
-                    &Expr::new_constant(
-                        rhs,
-                    ),
-                )
+                Expr::$constructor(&self, &Expr::new_constant(rhs))
             }
         }
 
@@ -1812,13 +1343,7 @@ macro_rules! impl_binary_op {
                 self,
                 rhs: f64,
             ) -> Self::Output {
-
-                Expr::$constructor(
-                    self,
-                    &Expr::new_constant(
-                        rhs,
-                    ),
-                )
+                Expr::$constructor(self, &Expr::new_constant(rhs))
             }
         }
 
@@ -1829,13 +1354,7 @@ macro_rules! impl_binary_op {
                 self,
                 rhs: Expr,
             ) -> Self::Output {
-
-                Expr::$constructor(
-                    &Expr::new_constant(
-                        self,
-                    ),
-                    &rhs,
-                )
+                Expr::$constructor(&Expr::new_constant(self), &rhs)
             }
         }
 
@@ -1846,13 +1365,7 @@ macro_rules! impl_binary_op {
                 self,
                 rhs: &Expr,
             ) -> Self::Output {
-
-                Expr::$constructor(
-                    &Expr::new_constant(
-                        self,
-                    ),
-                    rhs,
-                )
+                Expr::$constructor(&Expr::new_constant(self), rhs)
             }
         }
     };
@@ -1870,7 +1383,6 @@ impl Neg for Expr {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-
         Self::new_neg(&self)
     }
 }
@@ -1879,7 +1391,6 @@ impl Neg for &Expr {
     type Output = Expr;
 
     fn neg(self) -> Self::Output {
-
         Expr::new_neg(self)
     }
 }
@@ -1889,57 +1400,43 @@ impl Neg for &Expr {
 /// This allows for a more fluent syntax when creating expressions with constants.
 /// Note: user requested `.const()`, but `const` is a reserved keyword in Rust,
 /// so we use `.constant()` instead.
-
 pub trait ToConstant {
     /// Converts the value to a symbolic Constant expression.
-
     fn constant(&self) -> Expr;
 }
 
 /// Trait to easily convert primitive types to symbolic BigInt expressions.
-
 pub trait ToBigInt {
     /// Converts the value to a symbolic BigInt expression.
-
     fn bigint(&self) -> Expr;
 }
 
 /// Trait to easily convert primitive types to symbolic Rational expressions.
-
 pub trait ToRational {
     /// Converts the value to a symbolic Rational expression.
-
     fn rational(&self) -> Expr;
 }
 
 impl ToConstant for f64 {
     fn constant(&self) -> Expr {
-
         Expr::new_constant(*self)
     }
 }
 
 impl ToConstant for f32 {
     fn constant(&self) -> Expr {
-
-        Expr::new_constant(f64::from(
-            *self,
-        ))
+        Expr::new_constant(f64::from(*self))
     }
 }
 
 impl ToConstant for i32 {
     fn constant(&self) -> Expr {
-
-        Expr::new_constant(f64::from(
-            *self,
-        ))
+        Expr::new_constant(f64::from(*self))
     }
 }
 
 impl ToConstant for i64 {
     fn constant(&self) -> Expr {
-
         Expr::new_constant(*self as f64)
     }
 }
@@ -1947,7 +1444,6 @@ impl ToConstant for i64 {
 /// A unified numeric type capable of holding various primitive and arbitrary-precision numbers.
 /// This type is used internally for constant folding and numeric evaluation within the symbolic engine.
 #[derive(Debug, Clone)]
-
 pub enum Number {
     /// An arbitrary-precision integer.
     BigInteger(BigInt),
@@ -1960,25 +1456,11 @@ pub enum Number {
 impl Number {
     /// Calculate the absolute value of a number.
     #[must_use]
-
     pub fn abs(&self) -> Self {
-
         match self {
-            | Self::BigInteger(i) => {
-                Self::BigInteger(
-                    i.abs(),
-                )
-            },
-            | Self::Rational(r) => {
-                Self::Rational(r.abs())
-            },
-            | Self::Float(f) => {
-                Self::Float(
-                    OrderedFloat(
-                        f.0.abs(),
-                    ),
-                )
-            },
+            | Self::BigInteger(i) => Self::BigInteger(i.abs()),
+            | Self::Rational(r) => Self::Rational(r.abs()),
+            | Self::Float(f) => Self::Float(OrderedFloat(f.0.abs())),
         }
     }
 }
@@ -1986,71 +1468,37 @@ impl Number {
 impl Number {
     /// Converts the number to f64 for floating-point operations.
     #[must_use]
-
     pub fn to_f64(&self) -> f64 {
-
         match self {
-            | Self::BigInteger(i) => {
-                i.to_f64()
-                    .unwrap_or(
-                        f64::INFINITY,
-                    )
-            },
-            | Self::Rational(r) => {
-                r.to_f64()
-                    .unwrap_or(
-                        f64::INFINITY,
-                    )
-            },
+            | Self::BigInteger(i) => i.to_f64().unwrap_or(f64::INFINITY),
+            | Self::Rational(r) => r.to_f64().unwrap_or(f64::INFINITY),
             | Self::Float(f) => f.0,
         }
     }
 
     /// Calculate the square root of a number.
     #[must_use]
-
     pub fn sqrt(&self) -> Option<Self> {
-
         // Handle negative numbers (sqrt of negative is undefined for Real numbers)
         if self.is_negative() {
-
             return None;
         }
 
         match self {
             // High-precision check for BigInts
             | Self::BigInteger(i) => {
-
-                if let Some(root) =
-                    i.sqrt().to_bigint()
-                {
-
+                if let Some(root) = i.sqrt().to_bigint() {
                     // Only return BigInt if it's a perfect square
-                    if &root * &root
-                        == *i
-                    {
-
+                    if &root * &root == *i {
                         return Some(Self::BigInteger(root));
                     }
                 }
 
                 // Fallback to float if not a perfect square
-                Some(Self::Float(
-                    OrderedFloat(
-                        self.to_f64()
-                            .sqrt(),
-                    ),
-                ))
+                Some(Self::Float(OrderedFloat(self.to_f64().sqrt())))
             },
             // Standard fallback
-            | _ => {
-                Some(Self::Float(
-                    OrderedFloat(
-                        self.to_f64()
-                            .sqrt(),
-                    ),
-                ))
-            },
+            | _ => Some(Self::Float(OrderedFloat(self.to_f64().sqrt()))),
         }
     }
 }
@@ -2058,59 +1506,32 @@ impl Number {
 impl Number {
     /// Returns true if the number is greater than zero.
     #[must_use]
-
     pub fn is_positive(&self) -> bool {
-
         match self {
-            | Self::BigInteger(i) => {
-                i.is_positive()
-            },
-            | Self::Rational(r) => {
-                r.is_positive()
-            },
-            | Self::Float(f) => {
-                f.0 > 0.0
-            },
+            | Self::BigInteger(i) => i.is_positive(),
+            | Self::Rational(r) => r.is_positive(),
+            | Self::Float(f) => f.0 > 0.0,
         }
     }
 
     /// Returns true if the number is less than zero.
     #[must_use]
-
     pub fn is_negative(&self) -> bool {
-
         match self {
-            | Self::BigInteger(i) => {
-                i.is_negative()
-            },
-            | Self::Rational(r) => {
-                r.is_negative()
-            },
+            | Self::BigInteger(i) => i.is_negative(),
+            | Self::Rational(r) => r.is_negative(),
             // Using is_sign_negative handles -0.0 and negative infinity correctly
-            | Self::Float(f) => {
-                f.0.is_sign_negative()
-                    && f.0 != 0.0
-            },
+            | Self::Float(f) => f.0.is_sign_negative() && f.0 != 0.0,
         }
     }
 
     /// Returns true if the number is not a whole integer.
     #[must_use]
-
-    pub fn is_fractional(
-        &self
-    ) -> bool {
-
+    pub fn is_fractional(&self) -> bool {
         match self {
-            | Self::BigInteger(_) => {
-                false
-            },
-            | Self::Rational(r) => {
-                !r.is_integer()
-            },
-            | Self::Float(f) => {
-                f.0.fract() != 0.0
-            },
+            | Self::BigInteger(_) => false,
+            | Self::Rational(r) => !r.is_integer(),
+            | Self::Float(f) => f.0.fract() != 0.0,
         }
     }
 }
@@ -2118,112 +1539,62 @@ impl Number {
 impl Number {
     /// Checks if the number is an integer (BigInteger variant).
     #[must_use]
-
-    pub const fn is_integer(
-        &self
-    ) -> bool {
-
-        matches!(
-            self,
-            Self::BigInteger(_)
-        )
+    pub const fn is_integer(&self) -> bool {
+        matches!(self, Self::BigInteger(_))
     }
 
     /// Checks if the number is a floating-point number.
     #[must_use]
-
-    pub const fn is_float(
-        &self
-    ) -> bool {
-
+    pub const fn is_float(&self) -> bool {
         matches!(self, Self::Float(_))
     }
 
     /// Checks if the number is zero.
     #[must_use]
-
     pub fn is_zero(&self) -> bool {
-
         match self {
-            | Self::BigInteger(i) => {
-                i.is_zero()
-            },
-            | Self::Rational(r) => {
-                r.is_zero()
-            },
-            | Self::Float(f) => {
-                f.0.abs() < f64::EPSILON
-            },
+            | Self::BigInteger(i) => i.is_zero(),
+            | Self::Rational(r) => r.is_zero(),
+            | Self::Float(f) => f.0.abs() < f64::EPSILON,
         }
     }
 
     /// Checks if the number is one.
     #[must_use]
-
     pub fn is_one(&self) -> bool {
-
         match self {
-            | Self::BigInteger(i) => {
-                i.is_one()
-            },
-            | Self::Rational(r) => {
-                r.is_one()
-            },
-            | Self::Float(f) => {
-                (f.0 - 1.0).abs()
-                    < f64::EPSILON
-            },
+            | Self::BigInteger(i) => i.is_one(),
+            | Self::Rational(r) => r.is_one(),
+            | Self::Float(f) => (f.0 - 1.0).abs() < f64::EPSILON,
         }
     }
 
     /// Attempts to convert the number to a standard f64.
     #[must_use]
-
-    pub fn as_f64(
-        &self
-    ) -> Option<f64> {
-
+    pub fn as_f64(&self) -> Option<f64> {
         match self {
-            | Self::BigInteger(i) => {
-                i.to_f64()
-            },
-            | Self::Rational(r) => {
-                r.to_f64()
-            },
-            | Self::Float(f) => {
-                Some(f.0)
-            },
+            | Self::BigInteger(i) => i.to_f64(),
+            | Self::Rational(r) => r.to_f64(),
+            | Self::Float(f) => Some(f.0),
         }
     }
 
     /// Converts the number to its most compact exact form.
     /// E.g., a Rational with denominator 1 becomes a BigInteger.
     #[must_use]
-
     pub fn simplify(self) -> Self {
-
         match self {
-            | Self::Rational(r)
-                if r.is_integer() =>
-            {
-                Self::BigInteger(
-                    r.to_integer(),
-                )
-            },
+            | Self::Rational(r) if r.is_integer() => Self::BigInteger(r.to_integer()),
             | _ => self,
         }
     }
 
     /// Helper to promote an owned Number to a BigRational if it's exact.
-
-    fn into_rational(
-        self
-    ) -> Option<BigRational> {
-
+    fn into_rational(self) -> Option<BigRational> {
         match self {
-            Self::BigInteger(i) => Some(BigRational::from_integer(i)),
-            Self::Rational(r) => Some(r),
-            Self::Float(_) => None,
+            | Self::BigInteger(i) => Some(BigRational::from_integer(i)),
+            | Self::Rational(r) => Some(r),
+            | Self::Float(_) => None,
         }
     }
 }
@@ -2235,46 +1606,16 @@ impl PartialEq for Number {
         &self,
         other: &Self,
     ) -> bool {
-
         match (self, other) {
-            | (
-                Self::BigInteger(a),
-                Self::BigInteger(b),
-            ) => a == b,
-            | (
-                Self::Rational(a),
-                Self::Rational(b),
-            ) => a == b,
-            | (
-                Self::Float(a),
-                Self::Float(b),
-            ) => {
-                (a.0 - b.0).abs()
-                    < f64::EPSILON
-            },
-            | (
-                Self::BigInteger(a),
-                Self::Rational(b),
-            )
-            | (
-                Self::Rational(b),
-                Self::BigInteger(a),
-            ) => {
-                b.is_integer()
-                    && b.numer() == a
-            },
+            | (Self::BigInteger(a), Self::BigInteger(b)) => a == b,
+            | (Self::Rational(a), Self::Rational(b)) => a == b,
+            | (Self::Float(a), Self::Float(b)) => (a.0 - b.0).abs() < f64::EPSILON,
+            | (Self::BigInteger(a), Self::Rational(b))
+            | (Self::Rational(b), Self::BigInteger(a)) => b.is_integer() && b.numer() == a,
             | _ => {
-
                 // Any mix involving Float falls back to f64 comparison
-                match (
-                    self.as_f64(),
-                    other.as_f64(),
-                ) {
-                    | (
-                        Some(a),
-                        Some(b),
-                    ) => (a - b).abs()
-                        < f64::EPSILON,
+                match (self.as_f64(), other.as_f64()) {
+                    | (Some(a), Some(b)) => (a - b).abs() < f64::EPSILON,
                     | _ => false,
                 }
             },
@@ -2282,32 +1623,29 @@ impl PartialEq for Number {
     }
 }
 
-impl Eq for Number {
-}
+impl Eq for Number {}
 
 impl PartialOrd for Number {
     fn partial_cmp(
         &self,
         other: &Self,
-    ) -> Option<std::cmp::Ordering>
-    {
-
+    ) -> Option<std::cmp::Ordering> {
         match (self, other) {
-            (Self::BigInteger(a), Self::BigInteger(b)) => a.partial_cmp(b),
-            (Self::Rational(a), Self::Rational(b)) => a.partial_cmp(b),
-            (Self::Float(a), Self::Float(b)) => a.partial_cmp(b),
-            (Self::BigInteger(a), Self::Rational(b)) => {
+            | (Self::BigInteger(a), Self::BigInteger(b)) => a.partial_cmp(b),
+            | (Self::Rational(a), Self::Rational(b)) => a.partial_cmp(b),
+            | (Self::Float(a), Self::Float(b)) => a.partial_cmp(b),
+            | (Self::BigInteger(a), Self::Rational(b)) => {
                 BigRational::from_integer(a.clone()).partial_cmp(b)
-            }
-            (Self::Rational(a), Self::BigInteger(b)) => {
+            },
+            | (Self::Rational(a), Self::BigInteger(b)) => {
                 a.partial_cmp(&BigRational::from_integer(b.clone()))
-            }
-            _ => {
+            },
+            | _ => {
                 match (self.as_f64(), other.as_f64()) {
-                    (Some(a), Some(b)) => OrderedFloat(a).partial_cmp(&OrderedFloat(b)),
-                    _ => None,
+                    | (Some(a), Some(b)) => OrderedFloat(a).partial_cmp(&OrderedFloat(b)),
+                    | _ => None,
                 }
-            }
+            },
         }
     }
 }
@@ -2319,18 +1657,14 @@ impl fmt::Display for Number {
         &self,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
-
         match self {
             | Self::BigInteger(i) => {
-
                 write!(f, "{i}")
             },
             | Self::Rational(r) => {
-
                 write!(f, "{r}")
             },
             | Self::Float(fl) => {
-
                 write!(f, "{}", fl.0)
             },
         }
@@ -2352,100 +1686,61 @@ macro_rules! impl_from_int {
 }
 
 impl_from_int!(
-    i8, i16, i32, i64, i128, isize, u8,
-    u16, u32, u64, u128, usize
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
 );
 
 impl From<BigInt> for Number {
     fn from(i: BigInt) -> Self {
-
         Self::BigInteger(i)
     }
 }
 
 impl From<BigRational> for Number {
     fn from(r: BigRational) -> Self {
-
         Self::Rational(r).simplify()
     }
 }
 
 impl From<f32> for Number {
     fn from(f: f32) -> Self {
-
-        Self::Float(OrderedFloat(
-            f64::from(f),
-        ))
+        Self::Float(OrderedFloat(f64::from(f)))
     }
 }
 
 impl From<f64> for Number {
     fn from(f: f64) -> Self {
-
         Self::Float(OrderedFloat(f))
     }
 }
 
 impl ToConstant for Number {
     fn constant(&self) -> Expr {
-
         match self {
-            | Self::BigInteger(n) => {
-                Expr::new_constant(
-                    n.to_f64()
-                        .unwrap_or(
-                            f64::NAN,
-                        ),
-                )
-            },
-            | Self::Rational(n) => {
-                Expr::new_constant(
-                    n.to_f64()
-                        .unwrap_or(
-                            f64::NAN,
-                        ),
-                )
-            },
-            | Self::Float(n) => {
-                Expr::new_constant(n.0)
-            },
+            | Self::BigInteger(n) => Expr::new_constant(n.to_f64().unwrap_or(f64::NAN)),
+            | Self::Rational(n) => Expr::new_constant(n.to_f64().unwrap_or(f64::NAN)),
+            | Self::Float(n) => Expr::new_constant(n.0),
         }
     }
 }
 
 impl ToBigInt for Number {
     fn bigint(&self) -> Expr {
-
         match self {
-            | Self::BigInteger(n) => {
-                Expr::new_bigint(
-                    n.clone(),
-                )
-            },
-            | Self::Rational(n) => {
-                Expr::new_bigint(
-                    n.to_integer(),
-                )
-            },
-            | Self::Float(n) => {
-                Expr::new_bigint(
-                    n.to_bigint()
-                        .unwrap_or_else(
-                        BigInt::zero,
-                    ),
-                )
-            },
+            | Self::BigInteger(n) => Expr::new_bigint(n.clone()),
+            | Self::Rational(n) => Expr::new_bigint(n.to_integer()),
+            | Self::Float(n) => Expr::new_bigint(n.to_bigint().unwrap_or_else(BigInt::zero)),
         }
     }
 }
 
 impl ToRational for Number {
     fn rational(&self) -> Expr {
-
         match self {
-            Self::BigInteger(n) => Expr::new_rational(BigRational::from_integer(n.clone())),
-            Self::Rational(n) => Expr::new_rational(n.clone()),
-            Self::Float(n) => Expr::new_rational(BigRational::from_float(n.0).unwrap_or_else(BigRational::zero)),
+            | Self::BigInteger(n) => Expr::new_rational(BigRational::from_integer(n.clone())),
+            | Self::Rational(n) => Expr::new_rational(n.clone()),
+            | Self::Float(n) => {
+                Expr::new_rational(BigRational::from_float(n.0).unwrap_or_else(BigRational::zero))
+            },
         }
     }
 }
@@ -2459,34 +1754,15 @@ impl Add for Number {
         self,
         other: Self,
     ) -> Self {
-
         match (self, other) {
-            | (
-                Self::BigInteger(a),
-                Self::BigInteger(b),
-            ) => {
-                Self::BigInteger(a + b)
-            },
-            | (Self::Float(a), b)
-            | (b, Self::Float(a)) => {
-                Self::Float(
-                    a + OrderedFloat(
-                        b.as_f64()
-                            .unwrap_or(
-                            f64::NAN,
-                        ),
-                    ),
-                )
+            | (Self::BigInteger(a), Self::BigInteger(b)) => Self::BigInteger(a + b),
+            | (Self::Float(a), b) | (b, Self::Float(a)) => {
+                Self::Float(a + OrderedFloat(b.as_f64().unwrap_or(f64::NAN)))
             },
             | (a, b) => {
+                let ra = a.into_rational().unwrap();
 
-                let ra = a
-                    .into_rational()
-                    .unwrap();
-
-                let rb = b
-                    .into_rational()
-                    .unwrap();
+                let rb = b.into_rational().unwrap();
 
                 Self::from(ra + rb)
             },
@@ -2501,43 +1777,14 @@ impl Sub for Number {
         self,
         other: Self,
     ) -> Self {
-
         match (self, other) {
-            | (
-                Self::BigInteger(a),
-                Self::BigInteger(b),
-            ) => {
-                Self::BigInteger(a - b)
-            },
-            | (Self::Float(a), b) => {
-                Self::Float(
-                    a - OrderedFloat(
-                        b.as_f64()
-                            .unwrap_or(
-                            f64::NAN,
-                        ),
-                    ),
-                )
-            },
-            | (a, Self::Float(b)) => {
-                Self::Float(
-                    OrderedFloat(
-                        a.as_f64()
-                            .unwrap_or(
-                            f64::NAN,
-                        ),
-                    ) - b,
-                )
-            },
+            | (Self::BigInteger(a), Self::BigInteger(b)) => Self::BigInteger(a - b),
+            | (Self::Float(a), b) => Self::Float(a - OrderedFloat(b.as_f64().unwrap_or(f64::NAN))),
+            | (a, Self::Float(b)) => Self::Float(OrderedFloat(a.as_f64().unwrap_or(f64::NAN)) - b),
             | (a, b) => {
+                let ra = a.into_rational().unwrap();
 
-                let ra = a
-                    .into_rational()
-                    .unwrap();
-
-                let rb = b
-                    .into_rational()
-                    .unwrap();
+                let rb = b.into_rational().unwrap();
 
                 Self::from(ra - rb)
             },
@@ -2552,34 +1799,15 @@ impl Mul for Number {
         self,
         other: Self,
     ) -> Self {
-
         match (self, other) {
-            | (
-                Self::BigInteger(a),
-                Self::BigInteger(b),
-            ) => {
-                Self::BigInteger(a * b)
-            },
-            | (Self::Float(a), b)
-            | (b, Self::Float(a)) => {
-                Self::Float(
-                    a * OrderedFloat(
-                        b.as_f64()
-                            .unwrap_or(
-                            f64::NAN,
-                        ),
-                    ),
-                )
+            | (Self::BigInteger(a), Self::BigInteger(b)) => Self::BigInteger(a * b),
+            | (Self::Float(a), b) | (b, Self::Float(a)) => {
+                Self::Float(a * OrderedFloat(b.as_f64().unwrap_or(f64::NAN)))
             },
             | (a, b) => {
+                let ra = a.into_rational().unwrap();
 
-                let ra = a
-                    .into_rational()
-                    .unwrap();
-
-                let rb = b
-                    .into_rational()
-                    .unwrap();
+                let rb = b.into_rational().unwrap();
 
                 Self::from(ra * rb)
             },
@@ -2594,44 +1822,17 @@ impl Div for Number {
         self,
         other: Self,
     ) -> Self {
-
         if other.is_zero() {
-
-            return Self::Float(
-                OrderedFloat(f64::NAN),
-            );
+            return Self::Float(OrderedFloat(f64::NAN));
         }
 
         match (self, other) {
-            | (Self::Float(a), b) => {
-                Self::Float(
-                    a / OrderedFloat(
-                        b.as_f64()
-                            .unwrap_or(
-                            f64::NAN,
-                        ),
-                    ),
-                )
-            },
-            | (a, Self::Float(b)) => {
-                Self::Float(
-                    OrderedFloat(
-                        a.as_f64()
-                            .unwrap_or(
-                            f64::NAN,
-                        ),
-                    ) / b,
-                )
-            },
+            | (Self::Float(a), b) => Self::Float(a / OrderedFloat(b.as_f64().unwrap_or(f64::NAN))),
+            | (a, Self::Float(b)) => Self::Float(OrderedFloat(a.as_f64().unwrap_or(f64::NAN)) / b),
             | (a, b) => {
+                let ra = a.into_rational().unwrap();
 
-                let ra = a
-                    .into_rational()
-                    .unwrap();
-
-                let rb = b
-                    .into_rational()
-                    .unwrap();
+                let rb = b.into_rational().unwrap();
 
                 Self::from(ra / rb)
             },
@@ -2646,40 +1847,18 @@ impl Rem for Number {
         self,
         other: Self,
     ) -> Self {
-
         if other.is_zero() {
-
-            return Self::Float(
-                OrderedFloat(f64::NAN),
-            );
+            return Self::Float(OrderedFloat(f64::NAN));
         }
 
         match (self, other) {
-            | (
-                Self::BigInteger(a),
-                Self::BigInteger(b),
-            ) => {
-                Self::BigInteger(a % b)
-            },
+            | (Self::BigInteger(a), Self::BigInteger(b)) => Self::BigInteger(a % b),
             | (a, b) => {
+                let val_a = a.as_f64().unwrap_or(f64::NAN);
 
-                let val_a = a
-                    .as_f64()
-                    .unwrap_or(
-                        f64::NAN,
-                    );
+                let val_b = b.as_f64().unwrap_or(f64::NAN);
 
-                let val_b = b
-                    .as_f64()
-                    .unwrap_or(
-                        f64::NAN,
-                    );
-
-                Self::Float(
-                    OrderedFloat(
-                        val_a % val_b,
-                    ),
-                )
+                Self::Float(OrderedFloat(val_a % val_b))
             },
         }
     }
@@ -2689,17 +1868,10 @@ impl Neg for Number {
     type Output = Self;
 
     fn neg(self) -> Self {
-
         match self {
-            | Self::BigInteger(i) => {
-                Self::BigInteger(-i)
-            },
-            | Self::Rational(r) => {
-                Self::Rational(-r)
-            },
-            | Self::Float(f) => {
-                Self::Float(-f)
-            },
+            | Self::BigInteger(i) => Self::BigInteger(-i),
+            | Self::Rational(r) => Self::Rational(-r),
+            | Self::Float(f) => Self::Float(-f),
         }
     }
 }

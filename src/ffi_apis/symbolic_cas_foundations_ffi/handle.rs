@@ -11,8 +11,7 @@ use crate::symbolic::grobner::MonomialOrder;
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -20,26 +19,16 @@ use crate::symbolic::grobner::MonomialOrder;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_cas_expand(
-    expr: *const Expr
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_cas_expand(expr: *const Expr) -> *mut Expr {
     unsafe {
-
         if expr.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         let expr_ref = &*expr;
 
-        Box::into_raw(Box::new(
-            cas_foundations::expand(
-                expr_ref.clone(),
-            ),
-        ))
+        Box::into_raw(Box::new(cas_foundations::expand(expr_ref.clone())))
     }
 }
 
@@ -47,8 +36,7 @@ pub unsafe extern "C" fn rssn_cas_expand(
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -56,26 +44,16 @@ pub unsafe extern "C" fn rssn_cas_expand(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_cas_factorize(
-    expr: *const Expr
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_cas_factorize(expr: *const Expr) -> *mut Expr {
     unsafe {
-
         if expr.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         let expr_ref = &*expr;
 
-        Box::into_raw(Box::new(
-            cas_foundations::factorize(
-                expr_ref.clone(),
-            ),
-        ))
+        Box::into_raw(Box::new(cas_foundations::factorize(expr_ref.clone())))
     }
 }
 
@@ -83,8 +61,7 @@ pub unsafe extern "C" fn rssn_cas_factorize(
 ///
 /// # Safety
 /// The caller must ensure `expr` is a valid Expr pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -92,26 +69,16 @@ pub unsafe extern "C" fn rssn_cas_factorize(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_cas_normalize(
-    expr: *const Expr
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_cas_normalize(expr: *const Expr) -> *mut Expr {
     unsafe {
-
         if expr.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         let expr_ref = &*expr;
 
-        Box::into_raw(Box::new(
-            cas_foundations::normalize(
-                expr_ref.clone(),
-            ),
-        ))
+        Box::into_raw(Box::new(cas_foundations::normalize(expr_ref.clone())))
     }
 }
 
@@ -127,8 +94,7 @@ pub unsafe extern "C" fn rssn_cas_normalize(
 ///
 /// # Safety
 /// The caller must ensure all pointers are valid.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -136,7 +102,7 @@ pub unsafe extern "C" fn rssn_cas_normalize(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
     expr: *const Expr,
     relations: *const *const Expr,
@@ -145,91 +111,59 @@ pub unsafe extern "C" fn rssn_cas_simplify_with_relations(
     vars_len: usize,
     order_int: i32,
 ) -> *mut Expr {
-
     unsafe {
-
         if expr.is_null()
-            || (relations_len > 0
-                && relations.is_null())
-            || (vars_len > 0
-                && vars.is_null())
+            || (relations_len > 0 && relations.is_null())
+            || (vars_len > 0 && vars.is_null())
         {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         let expr_ref = &*expr;
 
         // Convert relations array
-        let mut relations_vec =
-            Vec::with_capacity(
-                relations_len,
-            );
+        let mut relations_vec = Vec::with_capacity(relations_len);
 
         if relations_len > 0 {
+            let relations_slice = std::slice::from_raw_parts(relations, relations_len);
 
-            let relations_slice =
-            std::slice::from_raw_parts(
-                relations,
-                relations_len,
-            );
-
-            for &rel_ptr in
-                relations_slice
-            {
-
+            for &rel_ptr in relations_slice {
                 if rel_ptr.is_null() {
-
                     return std::ptr::null_mut();
                 }
 
-                relations_vec.push(
-                    (*rel_ptr).clone(),
-                );
+                relations_vec.push((*rel_ptr).clone());
             }
         }
 
         // Convert vars array
-        let mut vars_vec =
-            Vec::with_capacity(
-                vars_len,
-            );
+        let mut vars_vec = Vec::with_capacity(vars_len);
 
         if vars_len > 0 {
-
-            let vars_slice =
-            std::slice::from_raw_parts(
-                vars,
-                vars_len,
-            );
+            let vars_slice = std::slice::from_raw_parts(vars, vars_len);
 
             for &var_ptr in vars_slice {
-
                 match c_str_to_str(var_ptr) {
-                | Some(s) => vars_vec.push(s),
-                | None => return std::ptr::null_mut(),
-            }
+                    | Some(s) => vars_vec.push(s),
+                    | None => return std::ptr::null_mut(),
+                }
             }
         }
 
-        let vars_refs: Vec<&str> =
-            vars_vec.clone();
+        let vars_refs: Vec<&str> = vars_vec.clone();
 
         // Convert order
         let order = match order_int {
-        | 1 => MonomialOrder::GradedLexicographical,
-        | 2 => MonomialOrder::GradedReverseLexicographical,
-        | _ => MonomialOrder::Lexicographical, // Default
-    };
+            | 1 => MonomialOrder::GradedLexicographical,
+            | 2 => MonomialOrder::GradedReverseLexicographical,
+            | _ => MonomialOrder::Lexicographical, // Default
+        };
 
-        Box::into_raw(Box::new(
-        cas_foundations::simplify_with_relations(
+        Box::into_raw(Box::new(cas_foundations::simplify_with_relations(
             expr_ref,
             &relations_vec,
             &vars_refs,
             order,
-        ),
-    ))
+        )))
     }
 }

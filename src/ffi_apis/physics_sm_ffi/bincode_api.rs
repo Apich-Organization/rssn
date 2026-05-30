@@ -11,10 +11,9 @@ use crate::physics::physics_sm::{
 }; // Alias for clarity if needed
 
 #[derive(Deserialize)]
-
 struct AdvectionDiffusion2DInput {
-    initial_condition : Vec<f64>,
-    config : physics_sm::AdvectionDiffusionConfig,
+    initial_condition: Vec<f64>,
+    config: physics_sm::AdvectionDiffusionConfig,
 }
 
 /// Solves the 2D advection-diffusion equation using spectral methods via bincode serialization.
@@ -44,8 +43,7 @@ struct AdvectionDiffusion2DInput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -53,30 +51,20 @@ struct AdvectionDiffusion2DInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : AdvectionDiffusion2DInput = match from_bincode_buffer(&buffer) {
+    let input: AdvectionDiffusion2DInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
+            return to_bincode_buffer(&FfiResult::<Vec<f64>, String>::err(
                 "Invalid Bincode".to_string(),
-            ))
+            ));
         },
     };
 
-    let res = physics_sm::solve_advection_diffusion_2d(
-        &input.initial_condition,
-        &input.config,
-    );
+    let res = physics_sm::solve_advection_diffusion_2d(&input.initial_condition, &input.config);
 
-    to_bincode_buffer(&FfiResult::<
-        Vec<f64>,
-        String,
-    >::ok(res))
+    to_bincode_buffer(&FfiResult::<Vec<f64>, String>::ok(res))
 }

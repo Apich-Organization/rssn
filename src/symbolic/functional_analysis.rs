@@ -22,15 +22,7 @@ use crate::symbolic::simplify_dag::simplify;
 /// Represents a Hilbert space, a complete inner product space.
 /// This implementation specifically models L^2([a, b]), the space of square-integrable
 /// complex-valued functions on an interval [a, b].
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-)]
-
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HilbertSpace {
     /// The variable of the functions in this space, e.g., "x".
     pub var: String,
@@ -43,13 +35,11 @@ pub struct HilbertSpace {
 impl HilbertSpace {
     /// Creates a new L^2 space on the interval `[a, b]`.
     #[must_use]
-
     pub fn new(
         var: &str,
         lower_bound: Expr,
         upper_bound: Expr,
     ) -> Self {
-
         Self {
             var: var.to_string(),
             lower_bound,
@@ -62,15 +52,7 @@ impl HilbertSpace {
 ///
 /// This implementation specifically models L^p([a, b]), the space of functions for which
 /// the p-th power of their absolute value is Lebesgue integrable.
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-)]
-
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BanachSpace {
     /// The variable of the functions in this space, e.g., "x".
     pub var: String,
@@ -85,14 +67,12 @@ pub struct BanachSpace {
 impl BanachSpace {
     /// Creates a new L^p space on the interval `[a, b]`.
     #[must_use]
-
     pub fn new(
         var: &str,
         lower_bound: Expr,
         upper_bound: Expr,
         p: Expr,
     ) -> Self {
-
         Self {
             var: var.to_string(),
             lower_bound,
@@ -103,15 +83,7 @@ impl BanachSpace {
 }
 
 /// Represents common linear operators that act on functions in a vector space.
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-)]
-
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LinearOperator {
     /// The identity operator I(f) = f.
     Identity,
@@ -128,53 +100,20 @@ pub enum LinearOperator {
 impl LinearOperator {
     /// Applies the operator to a given expression (function).
     #[must_use]
-
     pub fn apply(
         &self,
         expr: &Expr,
     ) -> Expr {
-
         match self {
-            | Self::Identity => {
-                expr.clone()
-            },
-            | Self::Derivative(var) => {
-                differentiate(expr, var)
-            },
-            | Self::Integral(
-                lower_bound,
-                var,
-            ) => {
+            | Self::Identity => expr.clone(),
+            | Self::Derivative(var) => differentiate(expr, var),
+            | Self::Integral(lower_bound, var) => {
+                let x = Expr::Variable(var.clone());
 
-                let x = Expr::Variable(
-                    var.clone(),
-                );
-
-                definite_integrate(
-                    expr,
-                    var,
-                    lower_bound,
-                    &x,
-                )
+                definite_integrate(expr, var, lower_bound, &x)
             },
-            | Self::Multiplication(
-                g,
-            ) => {
-                simplify(
-                    &Expr::new_mul(
-                        g.clone(),
-                        expr.clone(),
-                    ),
-                )
-            },
-            | Self::Composition(
-                op1,
-                op2,
-            ) => {
-                op1.apply(
-                    &op2.apply(expr),
-                )
-            },
+            | Self::Multiplication(g) => simplify(&Expr::new_mul(g.clone(), expr.clone())),
+            | Self::Composition(op1, op2) => op1.apply(&op2.apply(expr)),
         }
     }
 }
@@ -185,18 +124,12 @@ impl LinearOperator {
 /// `<f, g> = ∫_a^b f(x)g*(x) dx`.
 /// For simplicity with real functions, this implementation computes `∫_a^b f(x)g(x) dx`.
 #[must_use]
-
 pub fn inner_product(
     space: &HilbertSpace,
     f: &Expr,
     g: &Expr,
 ) -> Expr {
-
-    let integrand =
-        simplify(&Expr::new_mul(
-            f.clone(),
-            g.clone(),
-        ));
+    let integrand = simplify(&Expr::new_mul(f.clone(), g.clone()));
 
     definite_integrate(
         &integrand,
@@ -211,14 +144,11 @@ pub fn inner_product(
 /// The norm is a measure of the "length" of the function and is induced by the inner product:
 /// `||f|| = sqrt(<f, f>)`.
 #[must_use]
-
 pub fn norm(
     space: &HilbertSpace,
     f: &Expr,
 ) -> Expr {
-
-    let inner_product_f_f =
-        inner_product(space, f, f);
+    let inner_product_f_f = inner_product(space, f, f);
 
     sqrt(inner_product_f_f)
 }
@@ -227,16 +157,11 @@ pub fn norm(
 ///
 /// The L^p norm is defined as: `||f||_p = (∫_a^b |f(x)|^p dx)^(1/p)`.
 #[must_use]
-
 pub fn banach_norm(
     space: &BanachSpace,
     f: &Expr,
 ) -> Expr {
-
-    let integrand = Expr::new_pow(
-        Expr::new_abs(f.clone()),
-        space.p.clone(),
-    );
+    let integrand = Expr::new_pow(Expr::new_abs(f.clone()), space.p.clone());
 
     let integral = definite_integrate(
         &integrand,
@@ -245,31 +170,21 @@ pub fn banach_norm(
         &space.upper_bound,
     );
 
-    let one_over_p = Expr::new_div(
-        Expr::BigInt(BigInt::one()),
-        space.p.clone(),
-    );
+    let one_over_p = Expr::new_div(Expr::BigInt(BigInt::one()), space.p.clone());
 
-    simplify(&Expr::new_pow(
-        integral,
-        one_over_p,
-    ))
+    simplify(&Expr::new_pow(integral, one_over_p))
 }
 
 /// Checks if two functions are orthogonal in a given Hilbert space.
 ///
 /// Two functions are orthogonal if their inner product is zero.
 #[must_use]
-
 pub fn are_orthogonal(
     space: &HilbertSpace,
     f: &Expr,
     g: &Expr,
 ) -> bool {
-
-    let prod = simplify(
-        &inner_product(space, f, g),
-    );
+    let prod = simplify(&inner_product(space, f, g));
 
     is_zero(&prod)
 }
@@ -279,38 +194,22 @@ pub fn are_orthogonal(
 /// The projection of `f` onto `g` finds the component of `f` that lies in the direction of `g`.
 /// Formula: `proj_g(f) = (<f, g> / <g, g>) * g`.
 #[must_use]
-
 pub fn project(
     space: &HilbertSpace,
     f: &Expr,
     g: &Expr,
 ) -> Expr {
+    let inner_product_f_g = inner_product(space, f, g);
 
-    let inner_product_f_g =
-        inner_product(space, f, g);
+    let inner_product_g_g = inner_product(space, g, g);
 
-    let inner_product_g_g =
-        inner_product(space, g, g);
-
-    if is_zero(&simplify(
-        &inner_product_g_g,
-    )) {
-
-        return Expr::BigInt(
-            num_bigint::BigInt::zero(),
-        );
+    if is_zero(&simplify(&inner_product_g_g)) {
+        return Expr::BigInt(num_bigint::BigInt::zero());
     }
 
-    let coefficient =
-        simplify(&Expr::new_div(
-            inner_product_f_g,
-            inner_product_g_g,
-        ));
+    let coefficient = simplify(&Expr::new_div(inner_product_f_g, inner_product_g_g));
 
-    simplify(&Expr::new_mul(
-        coefficient,
-        g.clone(),
-    ))
+    simplify(&Expr::new_mul(coefficient, g.clone()))
 }
 
 /// Performs the Gram-Schmidt process to orthogonalize a set of functions.
@@ -321,29 +220,22 @@ pub fn project(
 /// `v_1` = `u_1`
 /// `v_k` = `u_k` - sum_{j=1}^{k-1} proj_{`v_j}(u_k)`
 #[must_use]
-
 pub fn gram_schmidt(
     space: &HilbertSpace,
     basis: &[Expr],
 ) -> Vec<Expr> {
-
-    let mut orthogonal_basis =
-        Vec::new();
+    let mut orthogonal_basis = Vec::new();
 
     for b in basis {
-
         let mut v = b.clone();
 
         for u in &orthogonal_basis {
-
-            let proj =
-                project(space, b, u);
+            let proj = project(space, b, u);
 
             v = Expr::new_sub(v, proj);
         }
 
-        orthogonal_basis
-            .push(simplify(&v));
+        orthogonal_basis.push(simplify(&v));
     }
 
     orthogonal_basis
@@ -353,35 +245,22 @@ pub fn gram_schmidt(
 ///
 /// This is similar to `gram_schmidt`, but each resulting vector is normalized to have length 1.
 #[must_use]
-
 pub fn gram_schmidt_orthonormal(
     space: &HilbertSpace,
     basis: &[Expr],
 ) -> Vec<Expr> {
+    let orthogonal_basis = gram_schmidt(space, basis);
 
-    let orthogonal_basis =
-        gram_schmidt(space, basis);
-
-    let mut orthonormal_basis =
-        Vec::new();
+    let mut orthonormal_basis = Vec::new();
 
     for v in orthogonal_basis {
-
         let n = norm(space, &v);
 
         if is_zero(&n) {
-
             // Should not happen if basis is linearly independent
             orthonormal_basis.push(v);
         } else {
-
-            orthonormal_basis.push(
-                simplify(
-                    &Expr::new_div(
-                        v, n,
-                    ),
-                ),
-            );
+            orthonormal_basis.push(simplify(&Expr::new_div(v, n)));
         }
     }
 

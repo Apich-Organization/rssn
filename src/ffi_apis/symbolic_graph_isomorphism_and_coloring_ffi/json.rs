@@ -1,12 +1,14 @@
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::graph_isomorphism_and_coloring::{are_isomorphic_heuristic, greedy_coloring, chromatic_number_exact};
+use crate::symbolic::graph_isomorphism_and_coloring::are_isomorphic_heuristic;
+use crate::symbolic::graph_isomorphism_and_coloring::chromatic_number_exact;
+use crate::symbolic::graph_isomorphism_and_coloring::greedy_coloring;
 
 /// Checks if two graphs are isomorphic.
 /// Input: {"g1": Graph, "g2": Graph}
 /// Output: bool
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -14,28 +16,22 @@ use crate::symbolic::graph_isomorphism_and_coloring::{are_isomorphic_heuristic, 
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
-
     #[derive(serde::Deserialize)]
-
     struct Input {
         g1: Graph<String>,
         g2: Graph<String>,
     }
 
-    let input : Input = match from_json_string(json) {
+    let input: Input = match from_json_string(json) {
         | Some(i) => i,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        are_isomorphic_heuristic(
-            &input.g1,
-            &input.g2,
-        );
+    let result = are_isomorphic_heuristic(&input.g1, &input.g2);
 
     to_json_string(&result)
 }
@@ -43,8 +39,7 @@ pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
 /// Greedy coloring.
 /// Input: Graph
 /// Output: {`node_id`: `color_id`}
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -52,18 +47,16 @@ pub unsafe extern "C" fn rssn_json_are_isomorphic_heuristic(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_greedy_coloring(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
-
-    let graph : Graph<String> = match from_json_string(json) {
+    let graph: Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        greedy_coloring(&graph);
+    let result = greedy_coloring(&graph);
 
     to_json_string(&result)
 }
@@ -71,8 +64,7 @@ pub unsafe extern "C" fn rssn_json_greedy_coloring(
 /// Exact chromatic number.
 /// Input: Graph
 /// Output: usize
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -80,18 +72,16 @@ pub unsafe extern "C" fn rssn_json_greedy_coloring(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_chromatic_number_exact(
     json: *const std::os::raw::c_char
 ) -> *mut std::os::raw::c_char {
-
-    let graph : Graph<String> = match from_json_string(json) {
+    let graph: Graph<String> = match from_json_string(json) {
         | Some(g) => g,
         | None => return std::ptr::null_mut(),
     };
 
-    let result =
-        chromatic_number_exact(&graph);
+    let result = chromatic_number_exact(&graph);
 
     to_json_string(&result)
 }

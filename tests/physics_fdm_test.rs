@@ -6,10 +6,7 @@ use rssn::physics::physics_fdm::*;
 #[test]
 
 fn test_grid_indexing_1d() {
-
-    let mut grid = FdmGrid::new(
-        Dimensions::D1(10),
-    );
+    let mut grid = FdmGrid::new(Dimensions::D1(10));
 
     grid[5] = 42.0;
 
@@ -19,10 +16,7 @@ fn test_grid_indexing_1d() {
 #[test]
 
 fn test_grid_indexing_2d() {
-
-    let mut grid = FdmGrid::new(
-        Dimensions::D2(10, 10),
-    );
+    let mut grid = FdmGrid::new(Dimensions::D2(10, 10));
 
     grid[(5, 5)] = 42.0;
 
@@ -32,7 +26,6 @@ fn test_grid_indexing_2d() {
 #[test]
 
 fn test_heat_equation_2d_stability() {
-
     // Small simulation to check stability and convergence
     let config = FdmSolverConfig2D {
         width: 20,
@@ -43,24 +36,17 @@ fn test_heat_equation_2d_stability() {
         steps: 100,
     };
 
-    let grid = solve_heat_equation_2d(
-        &config,
-        0.01,
-        |x, y| {
-            if x == 10 && y == 10 {
-
-                100.0
-            } else {
-
-                0.0
-            }
-        },
-    );
+    let grid = solve_heat_equation_2d(&config, 0.01, |x, y| {
+        if x == 10 && y == 10 {
+            100.0
+        } else {
+            0.0
+        }
+    });
 
     // Total energy should be conserved (roughly, for zero boundaries it leaks)
     // Here we just check it doesn't blow up
     for &val in grid.as_slice() {
-
         assert!(val.is_finite());
 
         assert!(val >= -1e-10); // Temperature shouldn't go negative in this setup
@@ -70,7 +56,6 @@ fn test_heat_equation_2d_stability() {
 #[test]
 
 fn test_wave_equation_2d_basic() {
-
     let config = FdmSolverConfig2D {
         width: 30,
         height: 30,
@@ -80,22 +65,15 @@ fn test_wave_equation_2d_basic() {
         steps: 50,
     };
 
-    let grid = solve_wave_equation_2d(
-        &config,
-        1.0,
-        |x, y| {
-            if x == 15 && y == 15 {
-
-                1.0
-            } else {
-
-                0.0
-            }
-        },
-    );
+    let grid = solve_wave_equation_2d(&config, 1.0, |x, y| {
+        if x == 15 && y == 15 {
+            1.0
+        } else {
+            0.0
+        }
+    });
 
     for &val in grid.as_slice() {
-
         assert!(val.is_finite());
     }
 }
@@ -103,80 +81,48 @@ fn test_wave_equation_2d_basic() {
 #[test]
 
 fn test_poisson_solver() {
-
     let width = 20;
 
     let height = 20;
 
-    let mut source = FdmGrid::new(
-        Dimensions::D2(width, height),
-    );
+    let mut source = FdmGrid::new(Dimensions::D2(width, height));
 
     source[(10, 10)] = 10.0; // Positive source => Concave up => Minimum at source
 
-    let config =
-        PoissonSolverConfig2D {
-            width,
-            height,
-            dx: 1.0,
-            dy: 1.0,
-            omega: 1.5,
-            max_iter: 1000,
-            tolerance: 1e-6,
-        };
+    let config = PoissonSolverConfig2D {
+        width,
+        height,
+        dx: 1.0,
+        dy: 1.0,
+        omega: 1.5,
+        max_iter: 1000,
+        tolerance: 1e-6,
+    };
 
-    let u = solve_poisson_2d(
-        &config,
-        &source,
-    );
+    let u = solve_poisson_2d(&config, &source);
 
     // Potential should be minimum (most negative) at the negative source
-    let min_val = u
-        .as_slice()
-        .iter()
-        .fold(
-            f64::INFINITY,
-            |a, &b| a.min(b),
-        );
+    let min_val = u.as_slice().iter().fold(f64::INFINITY, |a, &b| a.min(b));
 
-    println!(
-        "min_val: {}",
-        min_val
-    );
+    println!("min_val: {}", min_val);
 
-    println!(
-        "u[(10, 10)]: {}",
-        u[(10, 10)]
-    );
+    println!("u[(10, 10)]: {}", u[(10, 10)]);
 
-    println!(
-        "min_val + 1e-10: {}",
-        min_val + 1e-10
-    );
+    println!("min_val + 1e-10: {}", min_val + 1e-10);
 
-    assert!(
-        u[(10, 10)] <= min_val + 1e-10
-    );
+    assert!(u[(10, 10)] <= min_val + 1e-10);
 }
 
 #[test]
 
 fn test_burgers_1d_shocks() {
-
     let mut initial_u = vec![0.0; 100];
 
-    for i in 0 .. 50 {
-
+    for i in 0..50 {
         initial_u[i] = 1.0;
     } // Step function
 
-    let result = solve_burgers_1d(
-        &initial_u,
-        1.0,
-        0.1,
-        0.1,
-        100,
-    );
+    let result = solve_burgers_1d(&initial_u, 1.0, 0.1, 0.1, 100);
 
     // Step should smooth out and move to the right
     assert!(result[40] < 1.0);

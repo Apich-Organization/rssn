@@ -6,9 +6,7 @@ use rssn::physics::physics_mtm::*;
 
 #[test]
 
-fn test_solve_poisson_1d_multigrid_basic()
- {
-
+fn test_solve_poisson_1d_multigrid_basic() {
     let result = simulate_1d_poisson_multigrid_scenario().unwrap();
 
     let n = result.len();
@@ -16,8 +14,7 @@ fn test_solve_poisson_1d_multigrid_basic()
     let dx = 1.0 / (n - 1) as f64;
 
     // Check u(x) ≈ x(1-x)
-    for i in 0 .. n {
-
+    for i in 0..n {
         let x = i as f64 * dx;
 
         let expected = x * (1.0 - x);
@@ -28,42 +25,29 @@ fn test_solve_poisson_1d_multigrid_basic()
             i, result[i], expected
         );
 
-        assert_approx_eq!(
-            result[i],
-            expected,
-            0.05
-        );
+        assert_approx_eq!(result[i], expected, 0.05);
     }
 }
 
 #[test]
 
-fn test_solve_poisson_2d_multigrid_basic()
- {
-
+fn test_solve_poisson_2d_multigrid_basic() {
     let result = simulate_2d_poisson_multigrid_scenario().unwrap();
 
-    let n = (result.len() as f64).sqrt()
-        as usize;
+    let n = (result.len() as f64).sqrt() as usize;
 
     let h = 1.0 / (n - 1) as f64;
 
     // Check u(x,y) ≈ sin(pi*x)*sin(pi*y)
-    for i in 0 .. n {
-
-        for j in 0 .. n {
-
+    for i in 0..n {
+        for j in 0..n {
             let x = i as f64 * h;
 
             let y = j as f64 * h;
 
             let expected = (std::f64::consts::PI * x).sin() * (std::f64::consts::PI * y).sin();
 
-            assert_approx_eq!(
-                result[i * n + j],
-                expected,
-                0.1
-            );
+            assert_approx_eq!(result[i * n + j], expected, 0.1);
         }
     }
 }

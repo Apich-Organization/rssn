@@ -3,7 +3,14 @@ use std::os::raw::c_char;
 use std::os::raw::c_int;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::differential_geometry::{DifferentialForm, exterior_derivative, wedge_product, boundary, generalized_stokes_theorem, gauss_theorem, stokes_theorem, greens_theorem};
+use crate::symbolic::differential_geometry::DifferentialForm;
+use crate::symbolic::differential_geometry::boundary;
+use crate::symbolic::differential_geometry::exterior_derivative;
+use crate::symbolic::differential_geometry::gauss_theorem;
+use crate::symbolic::differential_geometry::generalized_stokes_theorem;
+use crate::symbolic::differential_geometry::greens_theorem;
+use crate::symbolic::differential_geometry::stokes_theorem;
+use crate::symbolic::differential_geometry::wedge_product;
 use crate::symbolic::vector::Vector;
 
 /// # Safety
@@ -13,43 +20,31 @@ use crate::symbolic::vector::Vector;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
 unsafe fn parse_c_str_array(
     arr: *const *const c_char,
     len: usize,
 ) -> Option<Vec<String>> {
-
     unsafe {
-
         if arr.is_null() {
-
             return None;
         }
 
-        let mut vars =
-            Vec::with_capacity(len);
+        let mut vars = Vec::with_capacity(len);
 
-        for i in 0 .. len {
-
+        for i in 0..len {
             let ptr = *arr.add(i);
 
             if ptr.is_null() {
-
                 return None;
             }
 
-            let c_str =
-                CStr::from_ptr(ptr);
+            let c_str = CStr::from_ptr(ptr);
 
             match c_str.to_str() {
                 | Ok(s) => {
-
-                    vars.push(
-                        s.to_string(),
-                    );
+                    vars.push(s.to_string());
                 },
                 | Err(_) => {
-
                     return None;
                 },
             }
@@ -61,41 +56,29 @@ unsafe fn parse_c_str_array(
 
 /// Computes the exterior derivative of a differential form (Handle)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_exterior_derivative_handle(
     form_ptr: *const DifferentialForm,
     vars_ptr: *const *const c_char,
     vars_len: c_int,
 ) -> *mut DifferentialForm {
-
     if form_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
     unsafe {
-
         let form = &*form_ptr;
 
-        let vars_strings = match parse_c_str_array(
-            vars_ptr,
-            vars_len.try_into().unwrap_or(0),
-        ) {
+        let vars_strings = match parse_c_str_array(vars_ptr, vars_len.try_into().unwrap_or(0)) {
             | Some(v) => v,
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> =
-            vars_strings
-                .iter()
-                .map(std::string::String::as_str)
-                .collect();
+        let vars_refs: Vec<&str> = vars_strings
+            .iter()
+            .map(std::string::String::as_str)
+            .collect();
 
-        let result =
-            exterior_derivative(
-                form,
-                &vars_refs,
-            );
+        let result = exterior_derivative(form, &vars_refs);
 
         Box::into_raw(Box::new(result))
     }
@@ -103,27 +86,20 @@ pub extern "C" fn rssn_exterior_derivative_handle(
 
 /// Computes the wedge product of two differential forms (Handle)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_wedge_product_handle(
     form1_ptr: *const DifferentialForm,
     form2_ptr: *const DifferentialForm,
 ) -> *mut DifferentialForm {
-
-    if form1_ptr.is_null()
-        || form2_ptr.is_null()
-    {
-
+    if form1_ptr.is_null() || form2_ptr.is_null() {
         return std::ptr::null_mut();
     }
 
     unsafe {
-
         let form1 = &*form1_ptr;
 
         let form2 = &*form2_ptr;
 
-        let result =
-            wedge_product(form1, form2);
+        let result = wedge_product(form1, form2);
 
         Box::into_raw(Box::new(result))
     }
@@ -131,18 +107,12 @@ pub extern "C" fn rssn_wedge_product_handle(
 
 /// Computes the boundary of a domain (Handle)
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_boundary_handle(
-    domain_ptr: *const Expr
-) -> *mut Expr {
-
+pub extern "C" fn rssn_boundary_handle(domain_ptr: *const Expr) -> *mut Expr {
     if domain_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
     unsafe {
-
         let domain = &*domain_ptr;
 
         let result = boundary(domain);
@@ -153,47 +123,32 @@ pub extern "C" fn rssn_boundary_handle(
 
 /// Represents the generalized Stokes' theorem (Handle)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_generalized_stokes_theorem_handle(
     omega_ptr: *const DifferentialForm,
     manifold_ptr: *const Expr,
     vars_ptr: *const *const c_char,
     vars_len: c_int,
 ) -> *mut Expr {
-
-    if omega_ptr.is_null()
-        || manifold_ptr.is_null()
-    {
-
+    if omega_ptr.is_null() || manifold_ptr.is_null() {
         return std::ptr::null_mut();
     }
 
     unsafe {
-
         let omega = &*omega_ptr;
 
         let manifold = &*manifold_ptr;
 
-        let vars_strings = match parse_c_str_array(
-            vars_ptr,
-            vars_len.try_into().unwrap_or(0),
-        ) {
+        let vars_strings = match parse_c_str_array(vars_ptr, vars_len.try_into().unwrap_or(0)) {
             | Some(v) => v,
             | None => return std::ptr::null_mut(),
         };
 
-        let vars_refs: Vec<&str> =
-            vars_strings
-                .iter()
-                .map(std::string::String::as_str)
-                .collect();
+        let vars_refs: Vec<&str> = vars_strings
+            .iter()
+            .map(std::string::String::as_str)
+            .collect();
 
-        let result =
-            generalized_stokes_theorem(
-                omega,
-                manifold,
-                &vars_refs,
-            );
+        let result = generalized_stokes_theorem(omega, manifold, &vars_refs);
 
         Box::into_raw(Box::new(result))
     }
@@ -201,30 +156,20 @@ pub extern "C" fn rssn_generalized_stokes_theorem_handle(
 
 /// Represents Gauss's theorem (Handle)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_gauss_theorem_handle(
     vector_field_ptr: *const Vector,
     volume_ptr: *const Expr,
 ) -> *mut Expr {
-
-    if vector_field_ptr.is_null()
-        || volume_ptr.is_null()
-    {
-
+    if vector_field_ptr.is_null() || volume_ptr.is_null() {
         return std::ptr::null_mut();
     }
 
     unsafe {
-
-        let vector_field =
-            &*vector_field_ptr;
+        let vector_field = &*vector_field_ptr;
 
         let volume = &*volume_ptr;
 
-        let result = gauss_theorem(
-            vector_field,
-            volume,
-        );
+        let result = gauss_theorem(vector_field, volume);
 
         Box::into_raw(Box::new(result))
     }
@@ -232,30 +177,20 @@ pub extern "C" fn rssn_gauss_theorem_handle(
 
 /// Represents Stokes' theorem (Handle)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_stokes_theorem_handle(
     vector_field_ptr: *const Vector,
     surface_ptr: *const Expr,
 ) -> *mut Expr {
-
-    if vector_field_ptr.is_null()
-        || surface_ptr.is_null()
-    {
-
+    if vector_field_ptr.is_null() || surface_ptr.is_null() {
         return std::ptr::null_mut();
     }
 
     unsafe {
-
-        let vector_field =
-            &*vector_field_ptr;
+        let vector_field = &*vector_field_ptr;
 
         let surface = &*surface_ptr;
 
-        let result = stokes_theorem(
-            vector_field,
-            surface,
-        );
+        let result = stokes_theorem(vector_field, surface);
 
         Box::into_raw(Box::new(result))
     }
@@ -263,34 +198,23 @@ pub extern "C" fn rssn_stokes_theorem_handle(
 
 /// Represents Green's theorem (Handle)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_greens_theorem_handle(
     p_ptr: *const Expr,
     q_ptr: *const Expr,
     domain_ptr: *const Expr,
 ) -> *mut Expr {
-
-    if p_ptr.is_null()
-        || q_ptr.is_null()
-        || domain_ptr.is_null()
-    {
-
+    if p_ptr.is_null() || q_ptr.is_null() || domain_ptr.is_null() {
         return std::ptr::null_mut();
     }
 
     unsafe {
-
         let p = &*p_ptr;
 
         let q = &*q_ptr;
 
         let domain = &*domain_ptr;
 
-        let result = greens_theorem(
-            p,
-            q,
-            domain,
-        );
+        let result = greens_theorem(p, q, domain);
 
         Box::into_raw(Box::new(result))
     }
@@ -298,15 +222,9 @@ pub extern "C" fn rssn_greens_theorem_handle(
 
 /// Frees a `DifferentialForm` handle
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_free_differential_form_handle(
-    ptr: *mut DifferentialForm
-) {
-
+pub extern "C" fn rssn_free_differential_form_handle(ptr: *mut DifferentialForm) {
     if !ptr.is_null() {
-
         unsafe {
-
             let _ = Box::from_raw(ptr);
         }
     }

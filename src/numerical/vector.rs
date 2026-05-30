@@ -24,14 +24,11 @@
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
-
 pub fn vec_add(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<Vec<f64>, String> {
-
     if v1.len() != v2.len() {
-
         return Err(format!(
             "Dimension mismatch: \
              v1.len() = {}, v2.len() \
@@ -41,11 +38,7 @@ pub fn vec_add(
         ));
     }
 
-    Ok(v1
-        .iter()
-        .zip(v2.iter())
-        .map(|(a, b)| a + b)
-        .collect())
+    Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a + b).collect())
 }
 
 /// Subtracts one vector from another element-wise.
@@ -61,14 +54,11 @@ pub fn vec_add(
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
-
 pub fn vec_sub(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<Vec<f64>, String> {
-
     if v1.len() != v2.len() {
-
         return Err(format!(
             "Dimension mismatch: \
              v1.len() = {}, v2.len() \
@@ -78,11 +68,7 @@ pub fn vec_sub(
         ));
     }
 
-    Ok(v1
-        .iter()
-        .zip(v2.iter())
-        .map(|(a, b)| a - b)
-        .collect())
+    Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a - b).collect())
 }
 
 /// Multiplies a vector by a scalar.
@@ -93,15 +79,11 @@ pub fn vec_sub(
 /// * `v` - The vector to scale.
 /// * `s` - The scalar factor.
 #[must_use]
-
 pub fn scalar_mul(
     v: &[f64],
     s: f64,
 ) -> Vec<f64> {
-
-    v.iter()
-        .map(|&a| a * s)
-        .collect()
+    v.iter().map(|&a| a * s).collect()
 }
 
 /// Computes the dot product of two vectors.
@@ -117,14 +99,11 @@ pub fn scalar_mul(
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
-
 pub fn dot_product(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<f64, String> {
-
     if v1.len() != v2.len() {
-
         return Err(format!(
             "Dimension mismatch: \
              v1.len() = {}, v2.len() \
@@ -134,80 +113,52 @@ pub fn dot_product(
         ));
     }
 
-    Ok(v1
-        .iter()
-        .zip(v2.iter())
-        .map(|(a, b)| a * b)
-        .sum())
+    Ok(v1.iter().zip(v2.iter()).map(|(a, b)| a * b).sum())
 }
 
 /// Computes the Euclidean norm ($`L_2`$ norm) of a vector.
 ///
 /// Formula: $||\mathbf{v}||_2 = \sqrt{\sum_{i=1}^n `v_i^2`}$
 #[must_use]
-
 pub fn norm(v: &[f64]) -> f64 {
-
-    v.iter()
-        .map(|&a| a * a)
-        .sum::<f64>()
-        .sqrt()
+    v.iter().map(|&a| a * a).sum::<f64>().sqrt()
 }
 
 /// Computes the Manhattan norm ($`L_1`$ norm) of a vector.
 ///
 /// Formula: $||\mathbf{v}||_1 = \sum_{i=1}^n |`v_i`|$
 #[must_use]
-
 pub fn l1_norm(v: &[f64]) -> f64 {
-
-    v.iter()
-        .map(|&a| a.abs())
-        .sum()
+    v.iter().map(|&a| a.abs()).sum()
 }
 
 /// Computes the Infinity norm ($L_\infty$ norm) of a vector.
 ///
 /// Formula: $||\mathbf{v}||_\infty = \max_{i} |`v_i`|$
 #[must_use]
-
 pub fn linf_norm(v: &[f64]) -> f64 {
-
     v.iter()
         .map(|&a| a.abs())
-        .fold(0.0, |max, val| {
-            if val > max {
-
-                val
-            } else {
-
-                max
-            }
-        })
+        .fold(0.0, |max, val| if val > max { val } else { max })
 }
 
 /// Computes the $`L_p`$ norm of a vector.
 ///
 /// Formula: $||\mathbf{v}||_p = (\sum_{i=1}^n |`v_i|^p)^{1/p`}$
 #[must_use]
-
 pub fn lp_norm(
     v: &[f64],
     p: f64,
 ) -> f64 {
-
     if p <= 0.0 {
-
         return f64::NAN;
     }
 
     if (p - 1.0).abs() < f64::EPSILON {
-
         return l1_norm(v);
     }
 
     if p.is_infinite() {
-
         return linf_norm(v);
     }
 
@@ -221,26 +172,16 @@ pub fn lp_norm(
 ///
 /// # Errors
 /// Returns an error if the vector is a zero vector.
-
-pub fn normalize(
-    v: &[f64]
-) -> Result<Vec<f64>, String> {
-
+pub fn normalize(v: &[f64]) -> Result<Vec<f64>, String> {
     let n = norm(v);
 
     if n == 0.0 {
-
-        return Err(
-            "Cannot normalize a zero \
+        return Err("Cannot normalize a zero \
              vector."
-                .to_string(),
-        );
+            .to_string());
     }
 
-    Ok(scalar_mul(
-        v,
-        1.0 / n,
-    ))
+    Ok(scalar_mul(v, 1.0 / n))
 }
 
 /// Computes the cross product of two 3D vectors.
@@ -254,14 +195,11 @@ pub fn normalize(
 ///
 /// # Errors
 /// Returns an error if the input vectors are not 3D.
-
 pub fn cross_product(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<Vec<f64>, String> {
-
     if v1.len() != 3 || v2.len() != 3 {
-
         return Err("Cross product \
                     is only defined \
                     for 3D vectors."
@@ -269,18 +207,9 @@ pub fn cross_product(
     }
 
     Ok(vec![
-        v1[1].mul_add(
-            v2[2],
-            -(v1[2] * v2[1]),
-        ),
-        v1[2].mul_add(
-            v2[0],
-            -(v1[0] * v2[2]),
-        ),
-        v1[0].mul_add(
-            v2[1],
-            -(v1[1] * v2[0]),
-        ),
+        v1[1].mul_add(v2[2], -(v1[2] * v2[1])),
+        v1[2].mul_add(v2[0], -(v1[0] * v2[2])),
+        v1[0].mul_add(v2[1], -(v1[1] * v2[0])),
     ])
 }
 
@@ -288,12 +217,10 @@ pub fn cross_product(
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
-
 pub fn distance(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<f64, String> {
-
     let diff = vec_sub(v1, v2)?;
 
     Ok(norm(&diff))
@@ -305,25 +232,21 @@ pub fn distance(
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
-
 pub fn angle(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<f64, String> {
-
     let n1 = norm(v1);
 
     let n2 = norm(v2);
 
     if n1 == 0.0 || n2 == 0.0 {
-
         return Ok(0.0);
     }
 
     let dot = dot_product(v1, v2)?;
 
-    let cos_theta = (dot / (n1 * n2))
-        .clamp(-1.0, 1.0);
+    let cos_theta = (dot / (n1 * n2)).clamp(-1.0, 1.0);
 
     Ok(cos_theta.acos())
 }
@@ -334,14 +257,11 @@ pub fn angle(
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
-
 pub fn project(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<Vec<f64>, String> {
-
     if v1.len() != v2.len() {
-
         return Err("Vectors must \
                     have the same \
                     dimension."
@@ -353,14 +273,10 @@ pub fn project(
     let dot2 = dot_product(v2, v2)?;
 
     if dot2 == 0.0 {
-
         return Ok(vec![0.0; v1.len()]);
     }
 
-    Ok(scalar_mul(
-        v2,
-        dot / dot2,
-    ))
+    Ok(scalar_mul(v2, dot / dot2))
 }
 
 /// Reflects vector `v` about a normal vector `n`.
@@ -370,14 +286,11 @@ pub fn project(
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
-
 pub fn reflect(
     v: &[f64],
     n: &[f64],
 ) -> Result<Vec<f64>, String> {
-
     if v.len() != n.len() {
-
         return Err("Vectors must \
                     have the same \
                     dimension."
@@ -386,8 +299,7 @@ pub fn reflect(
 
     let dot = dot_product(v, n)?;
 
-    let scaled_n =
-        scalar_mul(n, 2.0 * dot);
+    let scaled_n = scalar_mul(n, 2.0 * dot);
 
     vec_sub(v, &scaled_n)
 }
@@ -401,15 +313,12 @@ pub fn reflect(
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
-
 pub fn lerp(
     v1: &[f64],
     v2: &[f64],
     t: f64,
 ) -> Result<Vec<f64>, String> {
-
     if v1.len() != v2.len() {
-
         return Err("Vectors must \
                     have the same \
                     dimension."
@@ -419,10 +328,7 @@ pub fn lerp(
     Ok(v1
         .iter()
         .zip(v2.iter())
-        .map(|(&a, &b)| {
-
-            (1.0 - t).mul_add(a, t * b)
-        })
+        .map(|(&a, &b)| (1.0 - t).mul_add(a, t * b))
         .collect())
 }
 
@@ -430,13 +336,11 @@ pub fn lerp(
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
-
 pub fn is_orthogonal(
     v1: &[f64],
     v2: &[f64],
     epsilon: f64,
 ) -> Result<bool, String> {
-
     let dot = dot_product(v1, v2)?;
 
     Ok(dot.abs() < epsilon)
@@ -446,15 +350,12 @@ pub fn is_orthogonal(
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths.
-
 pub fn is_parallel(
     v1: &[f64],
     v2: &[f64],
     epsilon: f64,
 ) -> Result<bool, String> {
-
     if v1.len() != v2.len() {
-
         return Err("Vectors must \
                     have the same \
                     dimension."
@@ -466,43 +367,33 @@ pub fn is_parallel(
     let n2 = norm(v2);
 
     if n1 == 0.0 || n2 == 0.0 {
-
         return Ok(true);
     }
 
     let dot = dot_product(v1, v2)?;
 
-    let cos_theta =
-        (dot / (n1 * n2)).abs();
+    let cos_theta = (dot / (n1 * n2)).abs();
 
-    Ok(
-        (1.0 - cos_theta).abs()
-            < epsilon,
-    )
+    Ok((1.0 - cos_theta).abs() < epsilon)
 }
 
 /// Computes the cosine similarity between two vectors.
 ///
 /// # Errors
 /// Returns an error if the vectors have different lengths or if any vector is zero.
-
 pub fn cosine_similarity(
     v1: &[f64],
     v2: &[f64],
 ) -> Result<f64, String> {
-
     let n1 = norm(v1);
 
     let n2 = norm(v2);
 
     if n1 == 0.0 || n2 == 0.0 {
-
-        return Err(
-            "Cosine similarity is \
+        return Err("Cosine similarity is \
              undefined for zero \
              vectors."
-                .to_string(),
-        );
+            .to_string());
     }
 
     let dot = dot_product(v1, v2)?;

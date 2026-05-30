@@ -9,20 +9,17 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::combinatorics;
 
 #[derive(Deserialize)]
-
 struct NInput {
     n: u64,
 }
 
 #[derive(Deserialize)]
-
 struct NKInput {
     n: u64,
     k: u64,
 }
 
 #[derive(Deserialize)]
-
 struct RecurrenceInput {
     coeffs: Vec<f64>,
     initial_conditions: Vec<f64>,
@@ -30,9 +27,7 @@ struct RecurrenceInput {
 }
 
 /// Computes the factorial of a number using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -40,26 +35,19 @@ struct RecurrenceInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_comb_factorial_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : NInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_comb_factorial_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: NInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let res = combinatorics::factorial(
-        input.n,
-    );
+    let res = combinatorics::factorial(input.n);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(res),
@@ -68,9 +56,7 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_bincode(
 }
 
 /// Computes the number of permutations using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -78,28 +64,21 @@ pub unsafe extern "C" fn rssn_num_comb_factorial_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : NKInput = match from_bincode_buffer(&buffer) {
+    let input: NKInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let res =
-        combinatorics::permutations(
-            input.n,
-            input.k,
-        );
+    let res = combinatorics::permutations(input.n, input.k);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(res),
@@ -108,9 +87,7 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
 }
 
 /// Computes the number of combinations using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -118,28 +95,21 @@ pub unsafe extern "C" fn rssn_num_comb_permutations_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : NKInput = match from_bincode_buffer(&buffer) {
+    let input: NKInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let res =
-        combinatorics::combinations(
-            input.n,
-            input.k,
-        );
+    let res = combinatorics::combinations(input.n, input.k);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(res),
@@ -148,9 +118,7 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
 }
 
 /// Solves a linear recurrence relation using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -158,20 +126,17 @@ pub unsafe extern "C" fn rssn_num_comb_combinations_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : RecurrenceInput = match from_bincode_buffer(&buffer) {
+    let input: RecurrenceInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
@@ -182,32 +147,27 @@ pub unsafe extern "C" fn rssn_num_comb_solve_recurrence_bincode(
     ) {
         | Ok(res) => {
             to_bincode_buffer(&FfiResult {
-                ok : Some(res),
-                err : None::<String>,
+                ok: Some(res),
+                err: None::<String>,
             })
         },
         | Err(e) => {
-            to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some(e),
-                },
-            )
+            to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some(e),
+            })
         },
     }
 }
 
 #[derive(Deserialize)]
-
 struct XNInput {
     x: f64,
     n: u64,
 }
 
 /// Computes the Stirling number of the second kind using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -215,28 +175,21 @@ struct XNInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_comb_stirling_second_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : NKInput = match from_bincode_buffer(&buffer) {
+    let input: NKInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let res =
-        combinatorics::stirling_second(
-            input.n,
-            input.k,
-        );
+    let res = combinatorics::stirling_second(input.n, input.k);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(res),
@@ -245,9 +198,7 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_bincode(
 }
 
 /// Computes the Bell number using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -255,25 +206,19 @@ pub unsafe extern "C" fn rssn_num_comb_stirling_second_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_comb_bell_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : NInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_comb_bell_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: NInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let res =
-        combinatorics::bell(input.n);
+    let res = combinatorics::bell(input.n);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(res),
@@ -282,9 +227,7 @@ pub unsafe extern "C" fn rssn_num_comb_bell_bincode(
 }
 
 /// Computes the Catalan number using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -292,25 +235,19 @@ pub unsafe extern "C" fn rssn_num_comb_bell_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_comb_catalan_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : NInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_comb_catalan_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: NInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let res =
-        combinatorics::catalan(input.n);
+    let res = combinatorics::catalan(input.n);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(res),
@@ -319,9 +256,7 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_bincode(
 }
 
 /// Computes the rising factorial using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -329,28 +264,21 @@ pub unsafe extern "C" fn rssn_num_comb_catalan_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : XNInput = match from_bincode_buffer(&buffer) {
+    let input: XNInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 
-    let res =
-        combinatorics::rising_factorial(
-            input.x,
-            input.n,
-        );
+    let res = combinatorics::rising_factorial(input.x, input.n);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(res),
@@ -359,9 +287,7 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
 }
 
 /// Computes the falling factorial using bincode for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -369,20 +295,17 @@ pub unsafe extern "C" fn rssn_num_comb_rising_factorial_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_comb_falling_factorial_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : XNInput = match from_bincode_buffer(&buffer) {
+    let input: XNInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode input".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode input".to_string()),
+            });
         },
     };
 

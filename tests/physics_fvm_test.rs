@@ -6,17 +6,13 @@ use rssn::physics::physics_fvm::*;
 #[test]
 
 fn test_advection_1d_stability() {
-
-    let mut mesh =
-        Mesh::new(100, 1.0, |x| {
-            if x > 0.4 && x < 0.6 {
-
-                1.0
-            } else {
-
-                0.0
-            }
-        });
+    let mut mesh = Mesh::new(100, 1.0, |x| {
+        if x > 0.4 && x < 0.6 {
+            1.0
+        } else {
+            0.0
+        }
+    });
 
     let velocity = 1.0;
 
@@ -24,16 +20,9 @@ fn test_advection_1d_stability() {
 
     let dt = 0.5 * dx / velocity;
 
-    let result = solve_advection_1d(
-        &mut mesh,
-        velocity,
-        dt,
-        10,
-        || (0.0, 0.0),
-    );
+    let result = solve_advection_1d(&mut mesh, velocity, dt, 10, || (0.0, 0.0));
 
     for &val in &result {
-
         assert!(val.is_finite());
 
         assert!(val >= -1e-10); // Should be non-negative
@@ -44,27 +33,13 @@ fn test_advection_1d_stability() {
 #[test]
 
 fn test_burgers_1d_shock() {
-
-    let mut mesh =
-        Mesh::new(100, 1.0, |x| {
-            if x < 0.5 {
-
-                1.0
-            } else {
-
-                0.0
-            }
-        });
+    let mut mesh = Mesh::new(100, 1.0, |x| if x < 0.5 { 1.0 } else { 0.0 });
 
     let dx = 1.0 / 100.0;
 
     let dt = 0.001;
 
-    let result = solve_burgers_1d(
-        &mut mesh,
-        dt,
-        50,
-    );
+    let result = solve_burgers_1d(&mut mesh, dt, 50);
 
     // Shock should have moved to the right and stayed sharp-ish but slightly smoothed by LF
     assert!(result[60] > 0.0);
@@ -73,13 +48,11 @@ fn test_burgers_1d_shock() {
 #[test]
 
 fn test_swe_1d_dam_break() {
-
     let n = 100;
 
     let mut h = vec![1.0; n];
 
-    for i in 50 .. n {
-
+    for i in 50..n {
         h[i] = 0.5;
     } // Dam break setup
     let hu = vec![0.0; n];
@@ -88,9 +61,7 @@ fn test_swe_1d_dam_break() {
 
     let dt = 0.001;
 
-    let result = solve_shallow_water_1d(
-        h, hu, dx, dt, 50, 9.81,
-    );
+    let result = solve_shallow_water_1d(h, hu, dx, dt, 50, 9.81);
 
     assert!(result[45].h < 1.0); // Rarefaction wave
     assert!(result[55].h > 0.5); // Bore (shock) wave

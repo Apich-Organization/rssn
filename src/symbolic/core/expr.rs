@@ -16,63 +16,42 @@ use crate::symbolic::unit_unification::UnitQuantity;
 // --- Distribution Trait ---
 // Moved here to break circular dependency
 /// Trait representing a probability distribution.
-
 pub trait Distribution:
-    Debug
-    + Send
-    + Sync
-    + std::panic::RefUnwindSafe
-    + std::panic::UnwindSafe
+    Debug + Send + Sync + std::panic::RefUnwindSafe + std::panic::UnwindSafe
 {
     /// Probability Density Function (PDF).
-
     fn pdf(
         &self,
         x: &Expr,
     ) -> Expr;
 
     /// Cumulative Distribution Function (CDF).
-
     fn cdf(
         &self,
         x: &Expr,
     ) -> Expr;
 
     /// Calculates the expected value of the distribution.
-
     fn expectation(&self) -> Expr;
 
     /// Calculates the variance of the distribution.
-
     fn variance(&self) -> Expr;
 
     /// Moment Generating Function (MGF).
-
     fn mgf(
         &self,
         t: &Expr,
     ) -> Expr;
 
     /// Creates a boxed clone of the distribution.
-
-    fn clone_box(
-        &self
-    ) -> Arc<dyn Distribution>;
+    fn clone_box(&self) -> Arc<dyn Distribution>;
 }
 
 // --- End Distribution Trait ---
 
 /// `PathType` enum
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    serde::Serialize,
-    serde::Deserialize,
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 
 pub enum PathType {
@@ -92,20 +71,10 @@ pub enum PathType {
 /// such as `x^2*y^3`. This struct stores it as a map from variable names (String)
 /// to their exponents (u32).
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    serde::Serialize,
-    serde::Deserialize,
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 
-pub struct Monomial(
-    pub BTreeMap<String, u32>,
-);
+pub struct Monomial(pub BTreeMap<String, u32>);
 
 /// Represents a sparse multivariate polynomial.
 ///
@@ -113,15 +82,7 @@ pub struct Monomial(
 /// This representation is highly efficient for polynomials with a small number of non-zero
 /// terms relative to the degree, such as `x^1000 + 1`.
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    serde::Serialize,
-    serde::Deserialize,
-    PartialOrd,
-    Ord,
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PartialOrd, Ord,
 )]
 
 pub struct SparsePolynomial {
@@ -135,10 +96,7 @@ pub struct SparsePolynomial {
 /// mathematical objects and operations. Manual implementations for `Debug`, `Clone`,
 /// `PartialEq`, `Eq`, and `Hash` are provided to handle variants containing types
 /// that do not derive these traits automatically (e.g., `f64`, `Arc<dyn Distribution>`).
-#[derive(
-    serde::Serialize, serde::Deserialize,
-)]
-
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum Expr {
     // --- Basic & Numeric Types ---
     /// A floating-point constant (64-bit).
@@ -181,7 +139,6 @@ pub enum Expr {
     ///
     /// # Examples
     /// ```
-    /// 
     /// use rssn::symbolic::core::Expr;
     ///
     /// // Representing a + b + c + d as a single n-ary operation
@@ -202,7 +159,6 @@ pub enum Expr {
     ///
     /// # Examples
     /// ```
-    /// 
     /// use rssn::symbolic::core::Expr;
     ///
     /// // Representing a * b * c * d as a single n-ary operation
@@ -263,11 +219,7 @@ pub enum Expr {
     /// The derivative of an expression with respect to a variable.
     Derivative(Arc<Self>, String),
     /// The N-th derivative of an expression.
-    DerivativeN(
-        Arc<Self>,
-        String,
-        Arc<Self>,
-    ),
+    DerivativeN(Arc<Self>, String, Arc<Self>),
     /// A definite integral of `integrand` with respect to `var` from `lower_bound` to `upper_bound`.
     Integral {
         /// The expression to be integrated.
@@ -294,11 +246,7 @@ pub enum Expr {
         surface: Arc<Self>,
     },
     /// A limit of an expression as a variable approaches a point.
-    Limit(
-        Arc<Self>,
-        String,
-        Arc<Self>,
-    ),
+    Limit(Arc<Self>, String, Arc<Self>),
 
     // --- Series and Summations ---
     /// A summation of `body` with `var` from `from` to `to`.
@@ -313,38 +261,15 @@ pub enum Expr {
         to: Arc<Self>,
     },
     /// A finite or infinite series expansion.
-    Series(
-        Arc<Self>,
-        String,
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    Series(Arc<Self>, String, Arc<Self>, Arc<Self>),
     /// A summation over a range (similar to `Sum`).
-    Summation(
-        Arc<Self>,
-        String,
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    Summation(Arc<Self>, String, Arc<Self>, Arc<Self>),
     /// A product of terms over a range.
-    Product(
-        Arc<Self>,
-        String,
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    Product(Arc<Self>, String, Arc<Self>, Arc<Self>),
     /// Represents a convergence analysis for a series.
-    ConvergenceAnalysis(
-        Arc<Self>,
-        String,
-    ),
+    ConvergenceAnalysis(Arc<Self>, String),
     /// An asymptotic expansion of a function.
-    AsymptoticExpansion(
-        Arc<Self>,
-        String,
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    AsymptoticExpansion(Arc<Self>, String, Arc<Self>, Arc<Self>),
 
     // --- Trigonometric & Hyperbolic Functions (Extended) ---
     /// Secant function.
@@ -404,23 +329,13 @@ pub enum Expr {
     /// Combinations, `C(n, k)`.
     Combination(Arc<Self>, Arc<Self>),
     /// Falling factorial.
-    FallingFactorial(
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    FallingFactorial(Arc<Self>, Arc<Self>),
     /// Rising factorial.
-    RisingFactorial(
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    RisingFactorial(Arc<Self>, Arc<Self>),
 
     // --- Geometry & Vector Calculus ---
     /// A path for path integrals (e.g., line, circle).
-    Path(
-        PathType,
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    Path(PathType, Arc<Self>, Arc<Self>),
     /// Represents the boundary of a domain.
     Boundary(Arc<Self>),
     /// Represents a named domain (e.g., for integrals).
@@ -462,10 +377,7 @@ pub enum Expr {
     /// The digamma function (psi function).
     Digamma(Arc<Self>),
     /// The Kronecker delta function.
-    KroneckerDelta(
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    KroneckerDelta(Arc<Self>, Arc<Self>),
 
     // --- Logic & Sets ---
     /// Logical AND of a vector of expressions.
@@ -494,12 +406,7 @@ pub enum Expr {
     /// A union of sets or intervals.
     Union(Vec<Self>),
     /// An interval with a lower and upper bound, and flags for inclusion.
-    Interval(
-        Arc<Self>,
-        Arc<Self>,
-        bool,
-        bool,
-    ),
+    Interval(Arc<Self>, Arc<Self>, bool, bool),
 
     // --- Polynomials & Number Theory ---
     /// A dense polynomial represented by its coefficients.
@@ -519,11 +426,7 @@ pub enum Expr {
     /// Represents the action of solving an equation for a variable.
     Solve(Arc<Self>, String),
     /// Represents the substitution of a variable in an expression with another expression.
-    Substitute(
-        Arc<Self>,
-        String,
-        Arc<Self>,
-    ),
+    Substitute(Arc<Self>, String, Arc<Self>),
     /// Represents a system of equations to be solved.
     System(Vec<Self>),
     /// Represents the set of solutions to an equation or system.
@@ -573,19 +476,9 @@ pub enum Expr {
 
     // --- Integral Equations ---
     /// A Fredholm integral equation.
-    Fredholm(
-        Arc<Self>,
-        Arc<Self>,
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    Fredholm(Arc<Self>, Arc<Self>, Arc<Self>, Arc<Self>),
     /// A Volterra integral equation.
-    Volterra(
-        Arc<Self>,
-        Arc<Self>,
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    Volterra(Arc<Self>, Arc<Self>, Arc<Self>, Arc<Self>),
 
     // --- Miscellaneous ---
     /// Application of a function to an argument.
@@ -598,20 +491,14 @@ pub enum Expr {
     /// When serialized, the DAG structure is preserved.
     Dag(Arc<DagNode>),
     /// A probability distribution.
-    #[serde(
-        skip_serializing,
-        skip_deserializing
-    )]
+    #[serde(skip_serializing, skip_deserializing)]
     Distribution(Arc<dyn Distribution>),
     /// Maximum of two expressions.
     Max(Arc<Self>, Arc<Self>),
     /// A unified quantity with its value and unit string.
     Quantity(Arc<UnitQuantity>),
     /// A temporary representation of a value with a unit string, before unification.
-    QuantityWithValue(
-        Arc<Self>,
-        String,
-    ),
+    QuantityWithValue(Arc<Self>, String),
 
     // --- Custom Variants (Old and Deprecated)---
     #[deprecated(
@@ -654,11 +541,7 @@ pub enum Expr {
                 instead."
     )]
     /// Deprecated: Three-arc-argument custom operation.
-    CustomArcThree(
-        Arc<Self>,
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    CustomArcThree(Arc<Self>, Arc<Self>, Arc<Self>),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -666,12 +549,7 @@ pub enum Expr {
                 instead."
     )]
     /// Deprecated: Four-arc-argument custom operation.
-    CustomArcFour(
-        Arc<Self>,
-        Arc<Self>,
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    CustomArcFour(Arc<Self>, Arc<Self>, Arc<Self>, Arc<Self>),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -679,13 +557,7 @@ pub enum Expr {
                 instead."
     )]
     /// Deprecated: Five-arc-argument custom operation.
-    CustomArcFive(
-        Arc<Self>,
-        Arc<Self>,
-        Arc<Self>,
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    CustomArcFive(Arc<Self>, Arc<Self>, Arc<Self>, Arc<Self>, Arc<Self>),
 
     #[deprecated(
         since = "0.1.18",
@@ -710,11 +582,7 @@ pub enum Expr {
                 instead."
     )]
     /// Deprecated: Three-vector-argument custom operation.
-    CustomVecThree(
-        Vec<Self>,
-        Vec<Self>,
-        Vec<Self>,
-    ),
+    CustomVecThree(Vec<Self>, Vec<Self>, Vec<Self>),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -722,12 +590,7 @@ pub enum Expr {
                 instead."
     )]
     /// Deprecated: Four-vector-argument custom operation.
-    CustomVecFour(
-        Vec<Self>,
-        Vec<Self>,
-        Vec<Self>,
-        Vec<Self>,
-    ),
+    CustomVecFour(Vec<Self>, Vec<Self>, Vec<Self>, Vec<Self>),
     #[deprecated(
         since = "0.1.18",
         note = "Please use the \
@@ -735,13 +598,7 @@ pub enum Expr {
                 instead."
     )]
     /// Deprecated: Five-vector-argument custom operation.
-    CustomVecFive(
-        Vec<Self>,
-        Vec<Self>,
-        Vec<Self>,
-        Vec<Self>,
-        Vec<Self>,
-    ),
+    CustomVecFive(Vec<Self>, Vec<Self>, Vec<Self>, Vec<Self>, Vec<Self>),
 
     // --- Dynamic/Generic Operations ---
     /// Generic unary operation identified by a name.
@@ -753,30 +610,27 @@ pub enum Expr {
     ///
     /// # Examples
     /// ```
-    /// 
     /// use std::sync::Arc;
     ///
-    /// use rssn::symbolic::core::register_dynamic_op;
     /// use rssn::symbolic::core::DynamicOpProperties;
     /// use rssn::symbolic::core::Expr;
+    /// use rssn::symbolic::core::register_dynamic_op;
     ///
     /// // Register a custom operation
     /// register_dynamic_op(
     ///     "my_func",
     ///     DynamicOpProperties {
-    ///         name : "my_func".to_string(),
-    ///         description : "My custom function".to_string(),
-    ///         is_associative : false,
-    ///         is_commutative : false,
+    ///         name: "my_func".to_string(),
+    ///         description: "My custom function".to_string(),
+    ///         is_associative: false,
+    ///         is_commutative: false,
     ///     },
     /// );
     ///
     /// // Use it
     /// let expr = Expr::UnaryList(
     ///     "my_func".to_string(),
-    ///     Arc::new(Expr::Variable(
-    ///         "x".to_string(),
-    ///     )),
+    ///     Arc::new(Expr::Variable("x".to_string())),
     /// );
     /// ```
     UnaryList(String, Arc<Self>),
@@ -787,41 +641,31 @@ pub enum Expr {
     ///
     /// # Examples
     /// ```
-    /// 
     /// use std::sync::Arc;
     ///
-    /// use rssn::symbolic::core::register_dynamic_op;
     /// use rssn::symbolic::core::DynamicOpProperties;
     /// use rssn::symbolic::core::Expr;
+    /// use rssn::symbolic::core::register_dynamic_op;
     ///
     /// // Register a custom binary operation
     /// register_dynamic_op(
     ///     "my_binop",
     ///     DynamicOpProperties {
-    ///         name : "my_binop".to_string(),
-    ///         description : "My custom binary operation"
-    ///             .to_string(),
-    ///         is_associative : true,
-    ///         is_commutative : true,
+    ///         name: "my_binop".to_string(),
+    ///         description: "My custom binary operation".to_string(),
+    ///         is_associative: true,
+    ///         is_commutative: true,
     ///     },
     /// );
     ///
     /// // Use it
     /// let expr = Expr::BinaryList(
     ///     "my_binop".to_string(),
-    ///     Arc::new(Expr::Variable(
-    ///         "x".to_string(),
-    ///     )),
-    ///     Arc::new(Expr::Variable(
-    ///         "y".to_string(),
-    ///     )),
+    ///     Arc::new(Expr::Variable("x".to_string())),
+    ///     Arc::new(Expr::Variable("y".to_string())),
     /// );
     /// ```
-    BinaryList(
-        String,
-        Arc<Self>,
-        Arc<Self>,
-    ),
+    BinaryList(String, Arc<Self>, Arc<Self>),
     /// Generic n-ary operation identified by a name.
     ///
     /// This variant allows for extensible n-ary operations without modifying the `Expr` enum.
@@ -830,20 +674,18 @@ pub enum Expr {
     ///
     /// # Examples
     /// ```
-    /// 
-    /// use rssn::symbolic::core::register_dynamic_op;
     /// use rssn::symbolic::core::DynamicOpProperties;
     /// use rssn::symbolic::core::Expr;
+    /// use rssn::symbolic::core::register_dynamic_op;
     ///
     /// // Register a custom n-ary operation
     /// register_dynamic_op(
     ///     "my_nary",
     ///     DynamicOpProperties {
-    ///         name : "my_nary".to_string(),
-    ///         description : "My custom n-ary operation"
-    ///             .to_string(),
-    ///         is_associative : true,
-    ///         is_commutative : false,
+    ///         name: "my_nary".to_string(),
+    ///         description: "My custom n-ary operation".to_string(),
+    ///         is_associative: true,
+    ///         is_commutative: false,
     ///     },
     /// );
     ///

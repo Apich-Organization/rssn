@@ -22,18 +22,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
 
 /// Represents a k-simplex as a set of its vertex indices.
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Serialize,
-    Deserialize,
-)]
-
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Simplex(pub BTreeSet<usize>);
 
 impl Simplex {
@@ -47,17 +36,8 @@ impl Simplex {
     /// # Returns
     /// A new `Simplex` instance.
     #[must_use]
-
-    pub fn new(
-        vertices: &[usize]
-    ) -> Self {
-
-        Self(
-            vertices
-                .iter()
-                .copied()
-                .collect(),
-        )
+    pub fn new(vertices: &[usize]) -> Self {
+        Self(vertices.iter().copied().collect())
     }
 
     /// Returns the dimension of the simplex.
@@ -69,12 +49,8 @@ impl Simplex {
     /// # Returns
     /// The dimension as a `usize`.
     #[must_use]
-
     pub fn dimension(&self) -> usize {
-
-        self.0
-            .len()
-            .saturating_sub(1)
+        self.0.len().saturating_sub(1)
     }
 
     /// Computes the boundary of the simplex (numerical version).
@@ -87,48 +63,28 @@ impl Simplex {
     /// A tuple `(faces, coeffs)` where `faces` is a `Vec<Simplex>` of the boundary faces
     /// and `coeffs` is a `Vec<f64>` of their corresponding coefficients.
     #[must_use]
-
-    pub fn boundary(
-        &self
-    ) -> (Vec<Self>, Vec<f64>) {
-
+    pub fn boundary(&self) -> (Vec<Self>, Vec<f64>) {
         let mut faces = Vec::new();
 
         let mut coeffs = Vec::new();
 
-        let vertices: Vec<_> = self
-            .0
-            .iter()
-            .copied()
-            .collect();
+        let vertices: Vec<_> = self.0.iter().copied().collect();
 
         if self.dimension() == 0 {
-
             return (faces, coeffs);
         }
 
-        for i in 0 .. vertices.len() {
-
-            let face_vertices : BTreeSet<_> = vertices
+        for i in 0..vertices.len() {
+            let face_vertices: BTreeSet<_> = vertices
                 .iter()
                 .enumerate()
                 .filter(|(j, _)| *j != i)
                 .map(|(_, &v)| v)
                 .collect();
 
-            faces.push(Self(
-                face_vertices,
-            ));
+            faces.push(Self(face_vertices));
 
-            coeffs.push(
-                if i % 2 == 0 {
-
-                    1.0
-                } else {
-
-                    -1.0
-                },
-            );
+            coeffs.push(if i % 2 == 0 { 1.0 } else { -1.0 });
         }
 
         (faces, coeffs)
@@ -142,54 +98,32 @@ impl Simplex {
     /// A tuple `(faces, coeffs)` where `faces` is a `Vec<Simplex>` of the boundary faces
     /// and `coeffs` is a `Vec<Expr>` of their corresponding symbolic coefficients.
     #[must_use]
-
-    pub fn symbolic_boundary(
-        &self
-    ) -> (Vec<Self>, Vec<Expr>) {
-
+    pub fn symbolic_boundary(&self) -> (Vec<Self>, Vec<Expr>) {
         let mut faces = Vec::new();
 
         let mut coeffs = Vec::new();
 
-        let vertices: Vec<_> = self
-            .0
-            .iter()
-            .copied()
-            .collect();
+        let vertices: Vec<_> = self.0.iter().copied().collect();
 
         if self.dimension() == 0 {
-
             return (faces, coeffs);
         }
 
-        for i in 0 .. vertices.len() {
-
-            let face_vertices : BTreeSet<_> = vertices
+        for i in 0..vertices.len() {
+            let face_vertices: BTreeSet<_> = vertices
                 .iter()
                 .enumerate()
                 .filter(|(j, _)| *j != i)
                 .map(|(_, &v)| v)
                 .collect();
 
-            faces.push(Self(
-                face_vertices,
-            ));
+            faces.push(Self(face_vertices));
 
-            coeffs.push(
-                if i % 2 == 0 {
-
-                    Expr::BigInt(
-                        BigInt::one(),
-                    )
-                } else {
-
-                    Expr::BigInt(
-                        BigInt::from(
-                            -1,
-                        ),
-                    )
-                },
-            );
+            coeffs.push(if i % 2 == 0 {
+                Expr::BigInt(BigInt::one())
+            } else {
+                Expr::BigInt(BigInt::from(-1))
+            });
         }
 
         (faces, coeffs)
@@ -197,10 +131,7 @@ impl Simplex {
 }
 
 /// Represents a k-chain as a formal linear combination of k-simplices (numerical version).
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
-
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Chain {
     /// The simplices and their corresponding numerical coefficients in the chain.
     pub terms: HashMap<Simplex, f64>,
@@ -209,10 +140,7 @@ pub struct Chain {
 }
 
 /// Represents a k-chain as a formal linear combination of k-simplices (symbolic version).
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
-
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SymbolicChain {
     /// The simplices and their corresponding symbolic coefficients in the chain.
     pub terms: HashMap<Simplex, Expr>,
@@ -221,13 +149,10 @@ pub struct SymbolicChain {
 }
 
 /// A k-cochain is an element of the dual space to the k-chains. It can be represented similarly.
-
 pub type Cochain = Chain;
 
 /// A symbolic k-cochain.
-
-pub type SymbolicCochain =
-    SymbolicChain;
+pub type SymbolicCochain = SymbolicChain;
 
 impl Chain {
     /// Creates a new, empty k-chain of a specified dimension.
@@ -238,11 +163,7 @@ impl Chain {
     /// # Returns
     /// A new `Chain` instance.
     #[must_use]
-
-    pub fn new(
-        dimension: usize
-    ) -> Self {
-
+    pub fn new(dimension: usize) -> Self {
         Self {
             terms: HashMap::new(),
             dimension,
@@ -259,29 +180,19 @@ impl Chain {
     ///
     /// # Errors
     /// Returns an `Err` if the dimension of the simplex does not match the chain's dimension.
-
     pub fn add_term(
         &mut self,
         simplex: Simplex,
         coeff: f64,
     ) -> Result<(), String> {
-
-        if simplex.dimension()
-            != self.dimension
-        {
-
-            return Err(
-                "Cannot add simplex \
+        if simplex.dimension() != self.dimension {
+            return Err("Cannot add simplex \
                  of wrong dimension \
                  to chain."
-                    .to_string(),
-            );
+                .to_string());
         }
 
-        *self
-            .terms
-            .entry(simplex)
-            .or_insert(0.0) += coeff;
+        *self.terms.entry(simplex).or_insert(0.0) += coeff;
 
         Ok(())
     }
@@ -296,11 +207,7 @@ impl SymbolicChain {
     /// # Returns
     /// A new `SymbolicChain` instance.
     #[must_use]
-
-    pub fn new(
-        dimension: usize
-    ) -> Self {
-
+    pub fn new(dimension: usize) -> Self {
         Self {
             terms: HashMap::new(),
             dimension,
@@ -317,54 +224,34 @@ impl SymbolicChain {
     ///
     /// # Errors
     /// Returns an `Err` if the dimension of the simplex does not match the chain's dimension.
-
     pub fn add_term(
         &mut self,
         simplex: Simplex,
         coeff: Expr,
     ) -> Result<(), String> {
-
-        if simplex.dimension()
-            != self.dimension
-        {
-
-            return Err(
-                "Cannot add simplex \
+        if simplex.dimension() != self.dimension {
+            return Err("Cannot add simplex \
                  of wrong dimension \
                  to chain."
-                    .to_string(),
-            );
+                .to_string());
         }
 
         let entry = self
             .terms
             .entry(simplex)
-            .or_insert(Expr::BigInt(
-                BigInt::zero(),
-            ));
+            .or_insert(Expr::BigInt(BigInt::zero()));
 
-        *entry = Expr::new_add(
-            entry.clone(),
-            coeff,
-        );
+        *entry = Expr::new_add(entry.clone(), coeff);
 
         Ok(())
     }
 }
 
 /// Represents a simplicial complex.
-#[derive(
-    Debug,
-    Clone,
-    Default,
-    Serialize,
-    Deserialize,
-)]
-
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SimplicialComplex {
     simplices: HashSet<Simplex>,
-    simplices_by_dim:
-        BTreeMap<usize, Vec<Simplex>>,
+    simplices_by_dim: BTreeMap<usize, Vec<Simplex>>,
 }
 
 // Private helper function for recursively adding all faces of a simplex to the complex.
@@ -372,12 +259,7 @@ pub(crate) fn add_faces(
     complex: &mut SimplicialComplex,
     s: &Simplex,
 ) {
-
-    if complex
-        .simplices
-        .insert(s.clone())
-    {
-
+    if complex.simplices.insert(s.clone()) {
         let dim = s.dimension();
 
         complex
@@ -387,16 +269,10 @@ pub(crate) fn add_faces(
             .push(s.clone());
 
         if dim > 0 {
-
-            let (boundary_faces, _) =
-                s.boundary();
+            let (boundary_faces, _) = s.boundary();
 
             for face in boundary_faces {
-
-                add_faces(
-                    complex,
-                    &face,
-                );
+                add_faces(complex, &face);
             }
         }
     }
@@ -405,9 +281,7 @@ pub(crate) fn add_faces(
 impl SimplicialComplex {
     /// Creates a new, empty `SimplicialComplex`.
     #[must_use]
-
     pub fn new() -> Self {
-
         Self::default()
     }
 
@@ -418,14 +292,11 @@ impl SimplicialComplex {
     ///
     /// # Arguments
     /// * `vertices` - A slice of `usize` representing the vertex indices of the simplex to add.
-
     pub fn add_simplex(
         &mut self,
         vertices: &[usize],
     ) {
-
-        let simplex =
-            Simplex::new(vertices);
+        let simplex = Simplex::new(vertices);
 
         add_faces(self, &simplex);
     }
@@ -437,15 +308,8 @@ impl SimplicialComplex {
     /// # Returns
     /// An `Option<usize>` containing the dimension, or `None` if the complex is empty.
     #[must_use]
-
-    pub fn dimension(
-        &self
-    ) -> Option<usize> {
-
-        self.simplices_by_dim
-            .keys()
-            .max()
-            .copied()
+    pub fn dimension(&self) -> Option<usize> {
+        self.simplices_by_dim.keys().max().copied()
     }
 
     /// Returns a reference to the vector of simplices of a specific dimension.
@@ -456,14 +320,11 @@ impl SimplicialComplex {
     /// # Returns
     /// An `Option<&Vec<Simplex>>` containing the simplices, or `None` if no simplices of that dimension exist.
     #[must_use]
-
     pub fn get_simplices_by_dim(
         &self,
         dim: usize,
     ) -> Option<&Vec<Simplex>> {
-
-        self.simplices_by_dim
-            .get(&dim)
+        self.simplices_by_dim.get(&dim)
     }
 
     /// Constructs the k-th boundary matrix `∂_k` for the simplicial complex.
@@ -478,29 +339,19 @@ impl SimplicialComplex {
     /// An `Option<CsMat<f64>>` representing the sparse boundary matrix, or `None` if `k` is 0
     /// or if there are no simplices of dimension `k` or `k-1`.
     #[must_use]
-
     pub fn get_boundary_matrix(
         &self,
         k: usize,
     ) -> Option<CsMat<f64>> {
-
         if k == 0 {
-
             return None;
         }
 
-        let k_simplices = self
-            .get_simplices_by_dim(k)?;
+        let k_simplices = self.get_simplices_by_dim(k)?;
 
-        let k_minus_1_simplices = self
-            .get_simplices_by_dim(
-                k - 1,
-            )?;
+        let k_minus_1_simplices = self.get_simplices_by_dim(k - 1)?;
 
-        let k_minus_1_map: HashMap<
-            &Simplex,
-            usize,
-        > = k_minus_1_simplices
+        let k_minus_1_map: HashMap<&Simplex, usize> = k_minus_1_simplices
             .iter()
             .enumerate()
             .map(|(i, s)| (s, i))
@@ -508,33 +359,12 @@ impl SimplicialComplex {
 
         let mut triplets = Vec::new();
 
-        for (j, simplex_k) in
-            k_simplices
-                .iter()
-                .enumerate()
-        {
+        for (j, simplex_k) in k_simplices.iter().enumerate() {
+            let (boundary_faces, coeffs) = simplex_k.boundary();
 
-            let (
-                boundary_faces,
-                coeffs,
-            ) = simplex_k.boundary();
-
-            for (i, face) in
-                boundary_faces
-                    .iter()
-                    .enumerate()
-            {
-
-                if let Some(&row_idx) =
-                    k_minus_1_map
-                        .get(face)
-                {
-
-                    triplets.push((
-                        row_idx,
-                        j,
-                        coeffs[i],
-                    ));
+            for (i, face) in boundary_faces.iter().enumerate() {
+                if let Some(&row_idx) = k_minus_1_map.get(face) {
+                    triplets.push((row_idx, j, coeffs[i]));
                 }
             }
         }
@@ -557,75 +387,36 @@ impl SimplicialComplex {
     /// An `Option<Expr>` representing the symbolic boundary matrix, or `None` if `k` is 0
     /// or if there are no simplices of dimension `k` or `k-1`.
     #[must_use]
-
     pub fn get_symbolic_boundary_matrix(
         &self,
         k: usize,
     ) -> Option<Expr> {
-
         if k == 0 {
-
             return None;
         }
 
-        let k_simplices = self
-            .get_simplices_by_dim(k)?;
+        let k_simplices = self.get_simplices_by_dim(k)?;
 
-        let k_minus_1_simplices = self
-            .get_simplices_by_dim(
-                k - 1,
-            )?;
+        let k_minus_1_simplices = self.get_simplices_by_dim(k - 1)?;
 
-        let k_minus_1_map: HashMap<
-            &Simplex,
-            usize,
-        > = k_minus_1_simplices
+        let k_minus_1_map: HashMap<&Simplex, usize> = k_minus_1_simplices
             .iter()
             .enumerate()
             .map(|(i, s)| (s, i))
             .collect();
 
-        let rows =
-            k_minus_1_simplices.len();
+        let rows = k_minus_1_simplices.len();
 
         let cols = k_simplices.len();
 
-        let mut matrix = vec![
-            vec![
-                    Expr::BigInt(
-                        BigInt::zero()
-                    );
-                    cols
-                ];
-            rows
-        ];
+        let mut matrix = vec![vec![Expr::BigInt(BigInt::zero()); cols]; rows];
 
-        for (j, simplex_k) in
-            k_simplices
-                .iter()
-                .enumerate()
-        {
+        for (j, simplex_k) in k_simplices.iter().enumerate() {
+            let (boundary_faces, coeffs) = simplex_k.symbolic_boundary();
 
-            let (
-                boundary_faces,
-                coeffs,
-            ) = simplex_k
-                .symbolic_boundary();
-
-            for (i, face) in
-                boundary_faces
-                    .iter()
-                    .enumerate()
-            {
-
-                if let Some(&row_idx) =
-                    k_minus_1_map
-                        .get(face)
-                {
-
-                    matrix[row_idx]
-                        [j] = coeffs[i]
-                        .clone();
+            for (i, face) in boundary_faces.iter().enumerate() {
+                if let Some(&row_idx) = k_minus_1_map.get(face) {
+                    matrix[row_idx][j] = coeffs[i].clone();
                 }
             }
         }
@@ -644,70 +435,39 @@ impl SimplicialComplex {
     /// An `Option<Chain>` representing the resulting (k-1)-chain, or `None` if the boundary
     /// matrix for the given dimension `k` cannot be constructed.
     #[must_use]
-
     pub fn apply_boundary_operator(
         &self,
         chain: &Chain,
     ) -> Option<Chain> {
-
         let k = chain.dimension;
 
         if k == 0 {
-
             return Some(Chain::new(0));
         }
 
-        let boundary_matrix = self
-            .get_boundary_matrix(k)?;
+        let boundary_matrix = self.get_boundary_matrix(k)?;
 
-        let k_simplices = self
-            .get_simplices_by_dim(k)?;
+        let k_simplices = self.get_simplices_by_dim(k)?;
 
-        let k_minus_1_simplices = self
-            .get_simplices_by_dim(
-                k - 1,
-            )?;
+        let k_minus_1_simplices = self.get_simplices_by_dim(k - 1)?;
 
-        let mut input_vec = vec![
-                0.0;
-                k_simplices.len()
-            ];
+        let mut input_vec = vec![0.0; k_simplices.len()];
 
-        for (i, simplex) in k_simplices
-            .iter()
-            .enumerate()
-        {
-
-            if let Some(&coeff) = chain
-                .terms
-                .get(simplex)
-            {
-
+        for (i, simplex) in k_simplices.iter().enumerate() {
+            if let Some(&coeff) = chain.terms.get(simplex) {
                 input_vec[i] = coeff;
             }
         }
 
-        let output_vec = crate::numerical::sparse::sp_mat_vec_mul(
-            &boundary_matrix,
-            &input_vec,
-        )
-        .ok()?;
+        let output_vec =
+            crate::numerical::sparse::sp_mat_vec_mul(&boundary_matrix, &input_vec).ok()?;
 
-        let mut result_chain =
-            Chain::new(k - 1);
+        let mut result_chain = Chain::new(k - 1);
 
-        for (i, &coeff) in output_vec
-            .iter()
-            .enumerate()
-        {
-
+        for (i, &coeff) in output_vec.iter().enumerate() {
             if coeff.abs() > 1e-9 {
-
                 result_chain
-                    .add_term(
-                        k_minus_1_simplices[i].clone(),
-                        coeff,
-                    )
+                    .add_term(k_minus_1_simplices[i].clone(), coeff)
                     .ok()?;
             }
         }
@@ -726,90 +486,48 @@ impl SimplicialComplex {
     /// An `Option<SymbolicChain>` representing the resulting (k-1)-chain, or `None` if the boundary
     /// matrix for the given dimension `k` cannot be constructed.
     #[must_use]
-
     pub fn apply_symbolic_boundary_operator(
         &self,
         chain: &SymbolicChain,
     ) -> Option<SymbolicChain> {
-
         let k = chain.dimension;
 
         if k == 0 {
-
-            return Some(
-                SymbolicChain::new(0),
-            );
+            return Some(SymbolicChain::new(0));
         }
 
         let boundary_matrix = self.get_symbolic_boundary_matrix(k)?;
 
-        let k_simplices = self
-            .get_simplices_by_dim(k)?;
+        let k_simplices = self.get_simplices_by_dim(k)?;
 
-        let k_minus_1_simplices = self
-            .get_simplices_by_dim(
-                k - 1,
-            )?;
+        let k_minus_1_simplices = self.get_simplices_by_dim(k - 1)?;
 
-        let mut input_vec = vec![
-            vec![Expr::BigInt(
-                BigInt::zero()
-            )];
-            k_simplices.len()
-        ];
+        let mut input_vec = vec![vec![Expr::BigInt(BigInt::zero())]; k_simplices.len()];
 
-        for (i, simplex) in k_simplices
-            .iter()
-            .enumerate()
-        {
-
-            if let Some(coeff) = chain
-                .terms
-                .get(simplex)
-            {
-
-                input_vec[i][0] =
-                    coeff.clone();
+        for (i, simplex) in k_simplices.iter().enumerate() {
+            if let Some(coeff) = chain.terms.get(simplex) {
+                input_vec[i][0] = coeff.clone();
             }
         }
 
-        let input_matrix =
-            Expr::Matrix(input_vec);
+        let input_matrix = Expr::Matrix(input_vec);
 
-        let output_matrix_expr =
-            matrix::mul_matrices(
-                &boundary_matrix,
-                &input_matrix,
-            );
+        let output_matrix_expr = matrix::mul_matrices(&boundary_matrix, &input_matrix);
 
-        let output_vec =
-            if let Expr::Matrix(rows) =
-                output_matrix_expr
-            {
+        let output_vec = if let Expr::Matrix(rows) = output_matrix_expr {
+            rows
+        } else {
+            return None;
+        };
 
-                rows
-            } else {
+        let mut result_chain = SymbolicChain::new(k - 1);
 
-                return None;
-            };
-
-        let mut result_chain =
-            SymbolicChain::new(k - 1);
-
-        for (i, row) in output_vec
-            .iter()
-            .enumerate()
-        {
-
+        for (i, row) in output_vec.iter().enumerate() {
             let coeff = crate::symbolic::simplify_dag::simplify(&row[0]);
 
             if !crate::symbolic::simplify::is_zero(&coeff) {
-
                 result_chain
-                    .add_term(
-                        k_minus_1_simplices[i].clone(),
-                        coeff,
-                    )
+                    .add_term(k_minus_1_simplices[i].clone(), coeff)
                     .ok()?;
             }
         }
@@ -825,25 +543,15 @@ impl SimplicialComplex {
     /// # Returns
     /// An `isize` representing the Euler characteristic.
     #[must_use]
-
-    pub fn compute_euler_characteristic(
-        &self
-    ) -> isize {
-
+    pub fn compute_euler_characteristic(&self) -> isize {
         let mut ch = 0;
 
-        for (dim, simplices) in
-            &self.simplices_by_dim
-        {
-
-            let term = simplices.len()
-                as isize;
+        for (dim, simplices) in &self.simplices_by_dim {
+            let term = simplices.len() as isize;
 
             if dim % 2 == 0 {
-
                 ch += term;
             } else {
-
                 ch -= term;
             }
         }
@@ -853,16 +561,13 @@ impl SimplicialComplex {
 }
 
 /// Represents the full chain complex and its dual, the cochain complex.
-
 pub struct ChainComplex {
     /// The underlying simplicial complex.
     pub complex: SimplicialComplex,
     /// A map of dimensions to their corresponding sparse boundary matrices.
-    pub boundary_operators:
-        BTreeMap<usize, CsMat<f64>>,
+    pub boundary_operators: BTreeMap<usize, CsMat<f64>>,
     /// A map of dimensions to their corresponding sparse coboundary matrices.
-    pub coboundary_operators:
-        BTreeMap<usize, CsMat<f64>>,
+    pub coboundary_operators: BTreeMap<usize, CsMat<f64>>,
 }
 
 impl ChainComplex {
@@ -877,31 +582,15 @@ impl ChainComplex {
     /// # Returns
     /// A new `ChainComplex` instance.
     #[must_use]
+    pub fn new(complex: SimplicialComplex) -> Self {
+        let mut boundary_operators = BTreeMap::new();
 
-    pub fn new(
-        complex: SimplicialComplex
-    ) -> Self {
+        let mut coboundary_operators = BTreeMap::new();
 
-        let mut boundary_operators =
-            BTreeMap::new();
-
-        let mut coboundary_operators =
-            BTreeMap::new();
-
-        if let Some(max_dim) =
-            complex.dimension()
-        {
-
-            for k in 1 ..= max_dim {
-
+        if let Some(max_dim) = complex.dimension() {
+            for k in 1..=max_dim {
                 if let Some(matrix) = complex.get_boundary_matrix(k) {
-
-                    coboundary_operators.insert(
-                        k - 1,
-                        matrix
-                            .transpose_view()
-                            .to_owned(),
-                    );
+                    coboundary_operators.insert(k - 1, matrix.transpose_view().to_owned());
 
                     boundary_operators.insert(k, matrix);
                 }
@@ -923,27 +612,14 @@ impl ChainComplex {
     /// # Returns
     /// `true` if the property holds for all relevant dimensions, `false` otherwise.
     #[must_use]
-
-    pub fn verify_boundary_property(
-        &self
-    ) -> bool {
-
-        if let Some(max_dim) = self
-            .complex
-            .dimension()
-        {
-
-            for k in 1 .. max_dim {
-
+    pub fn verify_boundary_property(&self) -> bool {
+        if let Some(max_dim) = self.complex.dimension() {
+            for k in 1..max_dim {
                 if let (Some(d_k), Some(d_k_plus_1)) = (
-                    self.boundary_operators
-                        .get(&k),
-                    self.boundary_operators
-                        .get(&(k + 1)),
+                    self.boundary_operators.get(&k),
+                    self.boundary_operators.get(&(k + 1)),
                 ) {
-
                     if (d_k * d_k_plus_1).nnz() != 0 {
-
                         return false;
                     }
                 }
@@ -961,27 +637,14 @@ impl ChainComplex {
     /// # Returns
     /// `true` if the property holds for all relevant dimensions, `false` otherwise.
     #[must_use]
-
-    pub fn verify_coboundary_property(
-        &self
-    ) -> bool {
-
-        if let Some(max_dim) = self
-            .complex
-            .dimension()
-        {
-
-            for k in 1 .. max_dim {
-
+    pub fn verify_coboundary_property(&self) -> bool {
+        if let Some(max_dim) = self.complex.dimension() {
+            for k in 1..max_dim {
                 if let (Some(d_k), Some(d_k_minus_1)) = (
-                    self.coboundary_operators
-                        .get(&k),
-                    self.coboundary_operators
-                        .get(&(k - 1)),
+                    self.coboundary_operators.get(&k),
+                    self.coboundary_operators.get(&(k - 1)),
                 ) {
-
                     if (d_k * d_k_minus_1).nnz() != 0 {
-
                         return false;
                     }
                 }
@@ -1002,43 +665,25 @@ impl ChainComplex {
     /// # Returns
     /// An `Option<usize>` containing the k-th Betti number, or `None` if the necessary
     /// boundary operators or simplex counts are not available.
-
     pub fn compute_homology_betti_number(
         &self,
         k: usize,
     ) -> Option<usize> {
-
-        let num_k_simplices = self
-            .complex
-            .get_simplices_by_dim(k)?
-            .len();
+        let num_k_simplices = self.complex.get_simplices_by_dim(k)?.len();
 
         let rank_dk = if k == 0 {
-
             0
         } else {
-
-            self.boundary_operators
-                .get(&k)
-                .map_or(0, rank)
+            self.boundary_operators.get(&k).map_or(0, rank)
         };
 
-        let rank_dk_plus_1 = self
-            .boundary_operators
-            .get(&(k + 1))
-            .map_or(0, rank);
+        let rank_dk_plus_1 = self.boundary_operators.get(&(k + 1)).map_or(0, rank);
 
-        let dim_ker_k = num_k_simplices
-            .saturating_sub(rank_dk);
+        let dim_ker_k = num_k_simplices.saturating_sub(rank_dk);
 
-        let dim_im_k_plus_1 =
-            rank_dk_plus_1;
+        let dim_im_k_plus_1 = rank_dk_plus_1;
 
-        Some(
-            dim_ker_k.saturating_sub(
-                dim_im_k_plus_1,
-            ),
-        )
+        Some(dim_ker_k.saturating_sub(dim_im_k_plus_1))
     }
 
     /// Computes the k-th cohomology Betti number, `β^k`, which is a topological invariant.
@@ -1052,59 +697,32 @@ impl ChainComplex {
     /// # Returns
     /// An `Option<usize>` containing the k-th cohomology Betti number, or `None` if the necessary
     /// coboundary operators or simplex counts are not available.
-
     pub fn compute_cohomology_betti_number(
         &self,
         k: usize,
     ) -> Option<usize> {
+        let num_k_simplices = self.complex.get_simplices_by_dim(k)?.len();
 
-        let num_k_simplices = self
-            .complex
-            .get_simplices_by_dim(k)?
-            .len();
+        let rank_dk_t = self.coboundary_operators.get(&k).map_or(0, rank);
 
-        let rank_dk_t = self
-            .coboundary_operators
-            .get(&k)
-            .map_or(0, rank);
-
-        let rank_dk_minus_1_t = if k
-            == 0
-        {
-
+        let rank_dk_minus_1_t = if k == 0 {
             0
         } else {
-
-            self.coboundary_operators
-                .get(&(k - 1))
-                .map_or(0, rank)
+            self.coboundary_operators.get(&(k - 1)).map_or(0, rank)
         };
 
-        let dim_ker_dk =
-            num_k_simplices
-                .saturating_sub(
-                    rank_dk_t,
-                );
+        let dim_ker_dk = num_k_simplices.saturating_sub(rank_dk_t);
 
-        let dim_im_dk_minus_1 =
-            rank_dk_minus_1_t;
+        let dim_im_dk_minus_1 = rank_dk_minus_1_t;
 
-        Some(
-            dim_ker_dk.saturating_sub(
-                dim_im_dk_minus_1,
-            ),
-        )
+        Some(dim_ker_dk.saturating_sub(dim_im_dk_minus_1))
     }
 }
 
 /// Represents a filtration, a sequence of nested simplicial complexes.
-
 pub struct Filtration {
     /// A sequence of pairs consisting of a threshold value and the simplicial complex at that threshold.
-    pub steps: Vec<(
-        f64,
-        SimplicialComplex,
-    )>,
+    pub steps: Vec<(f64, SimplicialComplex)>,
 }
 
 /// Creates a 2D grid simplicial complex.
@@ -1119,37 +737,25 @@ pub struct Filtration {
 /// # Returns
 /// A `SimplicialComplex` representing the grid.
 #[must_use]
-
 pub fn create_grid_complex(
     width: usize,
     height: usize,
 ) -> SimplicialComplex {
+    let mut complex = SimplicialComplex::new();
 
-    let mut complex =
-        SimplicialComplex::new();
-
-    for i in 0 .. height {
-
-        for j in 0 .. width {
-
-            let v0 =
-                i * (width + 1) + j;
+    for i in 0..height {
+        for j in 0..width {
+            let v0 = i * (width + 1) + j;
 
             let v1 = v0 + 1;
 
-            let v2 = (i + 1)
-                * (width + 1)
-                + j;
+            let v2 = (i + 1) * (width + 1) + j;
 
             let v3 = v2 + 1;
 
-            complex.add_simplex(&[
-                v0, v1, v2,
-            ]);
+            complex.add_simplex(&[v0, v1, v2]);
 
-            complex.add_simplex(&[
-                v1, v3, v2,
-            ]);
+            complex.add_simplex(&[v1, v3, v2]);
         }
     }
 
@@ -1168,37 +774,25 @@ pub fn create_grid_complex(
 /// # Returns
 /// A `SimplicialComplex` representing the torus.
 #[must_use]
-
 pub fn create_torus_complex(
     m: usize,
     n: usize,
 ) -> SimplicialComplex {
+    let mut complex = SimplicialComplex::new();
 
-    let mut complex =
-        SimplicialComplex::new();
-
-    for i in 0 .. m {
-
-        for j in 0 .. n {
-
+    for i in 0..m {
+        for j in 0..n {
             let v0 = i * n + j;
 
-            let v1 =
-                i * n + (j + 1) % n;
+            let v1 = i * n + (j + 1) % n;
 
-            let v2 =
-                ((i + 1) % m) * n + j;
+            let v2 = ((i + 1) % m) * n + j;
 
-            let v3 = ((i + 1) % m) * n
-                + (j + 1) % n;
+            let v3 = ((i + 1) % m) * n + (j + 1) % n;
 
-            complex.add_simplex(&[
-                v0, v1, v2,
-            ]);
+            complex.add_simplex(&[v0, v1, v2]);
 
-            complex.add_simplex(&[
-                v1, v3, v2,
-            ]);
+            complex.add_simplex(&[v1, v3, v2]);
         }
     }
 
@@ -1219,63 +813,39 @@ pub fn create_torus_complex(
 /// # Returns
 /// A `Filtration` containing a sequence of `SimplicialComplex`es.
 #[must_use]
-
 pub fn vietoris_rips_filtration(
     points: &[Vec<f64>],
     max_epsilon: f64,
     steps: usize,
 ) -> Filtration {
-
-    let mut filtration = Filtration {
-        steps: Vec::new(),
-    };
+    let mut filtration = Filtration { steps: Vec::new() };
 
     let num_points = points.len();
 
-    for step in 0 ..= steps {
+    for step in 0..=steps {
+        let epsilon = max_epsilon * (step as f64 / steps as f64);
 
-        let epsilon = max_epsilon
-            * (step as f64
-                / steps as f64);
+        let mut complex = SimplicialComplex::new();
 
-        let mut complex =
-            SimplicialComplex::new();
-
-        for i in 0 .. num_points {
-
+        for i in 0..num_points {
             complex.add_simplex(&[i]);
         }
 
-        for i in 0 .. num_points {
-
-            for j in
-                (i + 1) .. num_points
-            {
-
+        for i in 0..num_points {
+            for j in (i + 1)..num_points {
                 let dist_sq = points[i]
                     .iter()
                     .zip(&points[j])
-                    .map(|(a, b)| {
-
-                        (a - b).powi(2)
-                    })
+                    .map(|(a, b)| (a - b).powi(2))
                     .sum::<f64>();
 
-                if dist_sq.sqrt()
-                    <= epsilon
-                {
-
-                    complex
-                        .add_simplex(
-                            &[i, j],
-                        );
+                if dist_sq.sqrt() <= epsilon {
+                    complex.add_simplex(&[i, j]);
                 }
             }
         }
 
-        filtration
-            .steps
-            .push((epsilon, complex));
+        filtration.steps.push((epsilon, complex));
     }
 
     filtration
@@ -1286,12 +856,9 @@ pub(crate) fn csr_from_triplets(
     cols: usize,
     triplets: &[(usize, usize, f64)],
 ) -> CsMat<f64> {
-
-    let mut mat =
-        TriMat::new((rows, cols));
+    let mut mat = TriMat::new((rows, cols));
 
     for &(r, c, v) in triplets {
-
         mat.add_triplet(r, c, v);
     }
 

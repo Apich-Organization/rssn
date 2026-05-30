@@ -5,7 +5,6 @@ use crate::symbolic::relativity;
 
 /// Structure to hold two expressions (e.g., transformed x and t).
 #[repr(C)]
-
 pub struct ExprPair {
     /// The first expression in the pair.
     pub first: *mut Expr,
@@ -14,8 +13,7 @@ pub struct ExprPair {
 }
 
 /// Calculates the Lorentz factor.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -23,30 +21,19 @@ pub struct ExprPair {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_lorentz_factor(
-    velocity: *const Expr
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_lorentz_factor(velocity: *const Expr) -> *mut Expr {
     unsafe {
-
         if velocity.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        Box::into_raw(Box::new(
-            relativity::lorentz_factor(
-                &*velocity,
-            ),
-        ))
+        Box::into_raw(Box::new(relativity::lorentz_factor(&*velocity)))
     }
 }
 
 /// Performs a Lorentz transformation in the x-direction.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -54,44 +41,31 @@ pub unsafe extern "C" fn rssn_lorentz_factor(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_lorentz_transformation_x(
     x: *const Expr,
     t: *const Expr,
     v: *const Expr,
 ) -> ExprPair {
-
     unsafe {
-
-        if x.is_null()
-            || t.is_null()
-            || v.is_null()
-        {
-
+        if x.is_null() || t.is_null() || v.is_null() {
             return ExprPair {
-                first:
-                    std::ptr::null_mut(),
-                second:
-                    std::ptr::null_mut(),
+                first: std::ptr::null_mut(),
+                second: std::ptr::null_mut(),
             };
         }
 
         let (xp, tp) = relativity::lorentz_transformation_x(&*x, &*t, &*v);
 
         ExprPair {
-            first: Box::into_raw(
-                Box::new(xp),
-            ),
-            second: Box::into_raw(
-                Box::new(tp),
-            ),
+            first: Box::into_raw(Box::new(xp)),
+            second: Box::into_raw(Box::new(tp)),
         }
     }
 }
 
 /// Calculates mass-energy equivalence.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -99,28 +73,19 @@ pub unsafe extern "C" fn rssn_lorentz_transformation_x(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_mass_energy_equivalence(
-    mass: *const Expr
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_mass_energy_equivalence(mass: *const Expr) -> *mut Expr {
     unsafe {
-
         if mass.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        Box::into_raw(Box::new(
-        relativity::mass_energy_equivalence(&*mass),
-    ))
+        Box::into_raw(Box::new(relativity::mass_energy_equivalence(&*mass)))
     }
 }
 
 /// Calculates Schwarzschild radius.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -128,21 +93,13 @@ pub unsafe extern "C" fn rssn_mass_energy_equivalence(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_schwarzschild_radius(
-    mass: *const Expr
-) -> *mut Expr {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_schwarzschild_radius(mass: *const Expr) -> *mut Expr {
     unsafe {
-
         if mass.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        Box::into_raw(Box::new(
-        relativity::schwarzschild_radius(&*mass),
-    ))
+        Box::into_raw(Box::new(relativity::schwarzschild_radius(&*mass)))
     }
 }

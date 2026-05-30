@@ -8,60 +8,38 @@ use crate::numerical::physics_fea;
 
 /// Creates steel material and returns shear modulus.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_num_fea_material_steel_shear_modulus()
--> f64 {
-
-    physics_fea::Material::steel()
-        .shear_modulus()
+pub extern "C" fn rssn_num_fea_material_steel_shear_modulus() -> f64 {
+    physics_fea::Material::steel().shear_modulus()
 }
 
 /// Creates aluminum material and returns shear modulus.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_num_fea_material_aluminum_shear_modulus()
--> f64 {
-
-    physics_fea::Material::aluminum()
-        .shear_modulus()
+pub extern "C" fn rssn_num_fea_material_aluminum_shear_modulus() -> f64 {
+    physics_fea::Material::aluminum().shear_modulus()
 }
 
 /// Creates copper material and returns shear modulus.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_num_fea_material_copper_shear_modulus()
--> f64 {
-
-    physics_fea::Material::copper()
-        .shear_modulus()
+pub extern "C" fn rssn_num_fea_material_copper_shear_modulus() -> f64 {
+    physics_fea::Material::copper().shear_modulus()
 }
 
 /// Computes shear modulus from Young's modulus and Poisson's ratio.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_fea_shear_modulus(
     youngs_modulus: f64,
     poissons_ratio: f64,
 ) -> f64 {
-
-    youngs_modulus
-        / (2.0 * (1.0 + poissons_ratio))
+    youngs_modulus / (2.0 * (1.0 + poissons_ratio))
 }
 
 /// Computes bulk modulus from Young's modulus and Poisson's ratio.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_fea_bulk_modulus(
     youngs_modulus: f64,
     poissons_ratio: f64,
 ) -> f64 {
-
-    youngs_modulus
-        / (3.0
-            * 2.0f64.mul_add(
-                -poissons_ratio,
-                1.0,
-            ))
+    youngs_modulus / (3.0 * 2.0f64.mul_add(-poissons_ratio, 1.0))
 }
 
 // ============================================================================
@@ -71,13 +49,11 @@ pub extern "C" fn rssn_num_fea_bulk_modulus(
 /// Computes and returns the stiffness value for a 1D linear element.
 /// k = E * A / L
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_fea_linear_element_1d_stiffness(
     length: f64,
     youngs_modulus: f64,
     area: f64,
 ) -> f64 {
-
     youngs_modulus * area / length
 }
 
@@ -87,28 +63,21 @@ pub extern "C" fn rssn_num_fea_linear_element_1d_stiffness(
 
 /// Computes von Mises stress from plane stress components.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_fea_von_mises_stress(
     sx: f64,
     sy: f64,
     txy: f64,
 ) -> f64 {
-
     physics_fea::TriangleElement2D::von_mises_stress(&[sx, sy, txy])
 }
 
 /// Computes maximum shear stress from principal stresses.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_fea_max_shear_stress(
     sigma1: f64,
     sigma2: f64,
 ) -> f64 {
-
-    physics_fea::max_shear_stress(
-        sigma1,
-        sigma2,
-    )
+    physics_fea::max_shear_stress(sigma1, sigma2)
 }
 
 /// Computes principal stresses from stress components.
@@ -116,8 +85,7 @@ pub extern "C" fn rssn_num_fea_max_shear_stress(
 ///
 /// # Safety
 /// Pointers must be valid.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -125,7 +93,7 @@ pub extern "C" fn rssn_num_fea_max_shear_stress(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fea_principal_stresses(
     sx: f64,
     sy: f64,
@@ -134,21 +102,12 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses(
     out_sigma2: *mut f64,
     out_angle: *mut f64,
 ) -> i32 {
-
     unsafe {
-
-        if out_sigma1.is_null()
-            || out_sigma2.is_null()
-            || out_angle.is_null()
-        {
-
+        if out_sigma1.is_null() || out_sigma2.is_null() || out_angle.is_null() {
             return -1;
         }
 
-        let (s1, s2, angle) =
-        physics_fea::principal_stresses(
-            &[sx, sy, txy],
-        );
+        let (s1, s2, angle) = physics_fea::principal_stresses(&[sx, sy, txy]);
 
         *out_sigma1 = s1;
 
@@ -162,18 +121,13 @@ pub unsafe extern "C" fn rssn_num_fea_principal_stresses(
 
 /// Computes safety factor based on von Mises criterion.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_fea_safety_factor_von_mises(
     sx: f64,
     sy: f64,
     txy: f64,
     yield_strength: f64,
 ) -> f64 {
-
-    physics_fea::safety_factor_von_mises(
-        &[sx, sy, txy],
-        yield_strength,
-    )
+    physics_fea::safety_factor_von_mises(&[sx, sy, txy], yield_strength)
 }
 
 // ============================================================================
@@ -183,12 +137,10 @@ pub extern "C" fn rssn_num_fea_safety_factor_von_mises(
 /// Computes the conductivity value for a 1D thermal element.
 /// k = κ * A / L
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_fea_thermal_element_1d_conductivity(
     length: f64,
     conductivity: f64,
     area: f64,
 ) -> f64 {
-
     conductivity * area / length
 }

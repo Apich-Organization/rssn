@@ -7,9 +7,7 @@ use rssn::ffi_apis::ffi_api::FfiResult;
 #[test]
 
 fn test_lorenz_handle_ffi() {
-
     unsafe {
-
         let matrix_ptr =
             rssn::ffi_apis::physics_rkm_ffi::handle::rssn_physics_rkm_simulate_lorenz();
 
@@ -21,15 +19,15 @@ fn test_lorenz_handle_ffi() {
 
         assert_eq!(matrix.cols(), 4); // time, x, y, z
         // Clean up
-        let _ =
-            Box::from_raw(matrix_ptr as *mut rssn::ffi_apis::numerical_matrix_ffi::handle::RssnMatrixHandle);
+        let _ = Box::from_raw(
+            matrix_ptr as *mut rssn::ffi_apis::numerical_matrix_ffi::handle::RssnMatrixHandle,
+        );
     }
 }
 
 #[test]
 
 fn test_lorenz_json_ffi() {
-
     let input = r#"{
         "sigma": 10.0,
         "rho": 28.0,
@@ -40,39 +38,26 @@ fn test_lorenz_json_ffi() {
         "tol": [1e-6, 1e-6]
     }"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
-
         let res_ptr =
             rssn::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_lorenz_json(c_input.as_ptr());
 
         assert!(!res_ptr.is_null());
 
-        let res_str =
-            std::ffi::CStr::from_ptr(
-                res_ptr,
-            )
-            .to_string_lossy();
+        let res_str = std::ffi::CStr::from_ptr(res_ptr).to_string_lossy();
 
-        let _res: serde_json::Value =
-            serde_json::from_str(
-                &res_str,
-            )
-            .unwrap();
+        let _res: serde_json::Value = serde_json::from_str(&res_str).unwrap();
 
         // Check if OK
-        assert!(
-            res_str.contains("\"ok\":")
-        );
+        assert!(res_str.contains("\"ok\":"));
     }
 }
 
 #[test]
 
 fn test_damped_oscillator_json_ffi() {
-
     let input = r#"{
         "omega": 1.0,
         "zeta": 0.15,
@@ -81,11 +66,9 @@ fn test_damped_oscillator_json_ffi() {
         "dt": 0.1
     }"#;
 
-    let c_input =
-        CString::new(input).unwrap();
+    let c_input = CString::new(input).unwrap();
 
     unsafe {
-
         let res_ptr =
             rssn::ffi_apis::physics_rkm_ffi::json::rssn_physics_rkm_damped_oscillator_json(
                 c_input.as_ptr(),
@@ -93,14 +76,8 @@ fn test_damped_oscillator_json_ffi() {
 
         assert!(!res_ptr.is_null());
 
-        let res_str =
-            std::ffi::CStr::from_ptr(
-                res_ptr,
-            )
-            .to_string_lossy();
+        let res_str = std::ffi::CStr::from_ptr(res_ptr).to_string_lossy();
 
-        assert!(
-            res_str.contains("\"ok\":")
-        );
+        assert!(res_str.contains("\"ok\":"));
     }
 }

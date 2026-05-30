@@ -13,15 +13,13 @@ use crate::numerical::finite_field::{
 };
 
 #[derive(Deserialize)]
-
 struct PfeBinaryOpRequest {
     a: PrimeFieldElement,
     b: PrimeFieldElement,
 }
 
 /// GF(p) addition from JSON.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -29,78 +27,52 @@ struct PfeBinaryOpRequest {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ff_pfe_add_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ff_pfe_add_json(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
-    let json_str = match unsafe {
-
-        CStr::from_ptr(json_ptr)
-            .to_str()
-    } {
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
         | Ok(s) => s,
         | Err(_) => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let req: PfeBinaryOpRequest =
-        match serde_json::from_str(
-            json_str,
-        ) {
-            | Ok(r) => r,
-            | Err(e) => {
+    let req: PfeBinaryOpRequest = match serde_json::from_str(json_str) {
+        | Ok(r) => r,
+        | Err(e) => {
+            let res: FfiResult<PrimeFieldElement, String> = FfiResult {
+                ok: None,
+                err: Some(e.to_string()),
+            };
 
-                let res: FfiResult<
-                    PrimeFieldElement,
-                    String,
-                > = FfiResult {
-                    ok: None,
-                    err: Some(
-                        e.to_string(),
-                    ),
-                };
-
-                return CString::new(serde_json::to_string(&res).unwrap())
+            return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-            },
-        };
+        },
+    };
 
     let res_pfe = req.a + req.b;
 
-    let ffi_res: FfiResult<
-        PrimeFieldElement,
-        String,
-    > = FfiResult {
+    let ffi_res: FfiResult<PrimeFieldElement, String> = FfiResult {
         ok: Some(res_pfe),
         err: None,
     };
 
-    CString::new(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
+    CString::new(serde_json::to_string(&ffi_res).unwrap())
+        .unwrap()
+        .into_raw()
 }
 
 /// GF(p) multiplication from JSON.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -108,85 +80,58 @@ pub unsafe extern "C" fn rssn_num_ff_pfe_add_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ff_pfe_mul_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ff_pfe_mul_json(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
-    let json_str = match unsafe {
-
-        CStr::from_ptr(json_ptr)
-            .to_str()
-    } {
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
         | Ok(s) => s,
         | Err(_) => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let req: PfeBinaryOpRequest =
-        match serde_json::from_str(
-            json_str,
-        ) {
-            | Ok(r) => r,
-            | Err(e) => {
+    let req: PfeBinaryOpRequest = match serde_json::from_str(json_str) {
+        | Ok(r) => r,
+        | Err(e) => {
+            let res: FfiResult<PrimeFieldElement, String> = FfiResult {
+                ok: None,
+                err: Some(e.to_string()),
+            };
 
-                let res: FfiResult<
-                    PrimeFieldElement,
-                    String,
-                > = FfiResult {
-                    ok: None,
-                    err: Some(
-                        e.to_string(),
-                    ),
-                };
-
-                return CString::new(serde_json::to_string(&res).unwrap())
+            return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-            },
-        };
+        },
+    };
 
     let res_pfe = req.a * req.b;
 
-    let ffi_res: FfiResult<
-        PrimeFieldElement,
-        String,
-    > = FfiResult {
+    let ffi_res: FfiResult<PrimeFieldElement, String> = FfiResult {
         ok: Some(res_pfe),
         err: None,
     };
 
-    CString::new(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
+    CString::new(serde_json::to_string(&ffi_res).unwrap())
+        .unwrap()
+        .into_raw()
 }
 
 #[derive(Deserialize)]
-
 struct Gf256OpRequest {
     a: u8,
     b: u8,
 }
 
 /// GF(2^8) multiplication from JSON.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -194,71 +139,46 @@ struct Gf256OpRequest {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ff_gf256_mul_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ff_gf256_mul_json(json_ptr: *const c_char) -> *mut c_char {
     if json_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
-    let json_str = match unsafe {
-
-        CStr::from_ptr(json_ptr)
-            .to_str()
-    } {
+    let json_str = match unsafe { CStr::from_ptr(json_ptr).to_str() } {
         | Ok(s) => s,
         | Err(_) => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let req: Gf256OpRequest =
-        match serde_json::from_str(
-            json_str,
-        ) {
-            | Ok(r) => r,
-            | Err(e) => {
+    let req: Gf256OpRequest = match serde_json::from_str(json_str) {
+        | Ok(r) => r,
+        | Err(e) => {
+            let res: FfiResult<u8, String> = FfiResult {
+                ok: None,
+                err: Some(e.to_string()),
+            };
 
-                let res: FfiResult<
-                    u8,
-                    String,
-                > = FfiResult {
-                    ok: None,
-                    err: Some(
-                        e.to_string(),
-                    ),
-                };
-
-                return CString::new(serde_json::to_string(&res).unwrap())
+            return CString::new(serde_json::to_string(&res).unwrap())
                 .unwrap()
                 .into_raw();
-            },
-        };
+        },
+    };
 
-    let res = finite_field::gf256_mul(
-        req.a, req.b,
-    );
+    let res = finite_field::gf256_mul(req.a, req.b);
 
-    let ffi_res: FfiResult<u8, String> =
-        FfiResult {
-            ok: Some(res),
-            err: None,
-        };
+    let ffi_res: FfiResult<u8, String> = FfiResult {
+        ok: Some(res),
+        err: None,
+    };
 
-    CString::new(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_raw()
+    CString::new(serde_json::to_string(&ffi_res).unwrap())
+        .unwrap()
+        .into_raw()
 }

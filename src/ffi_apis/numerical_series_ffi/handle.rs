@@ -10,8 +10,7 @@ use crate::symbolic::core::Expr;
 
 /// Computes the numerical Taylor series coefficients.
 /// Returns a pointer to a `Vec<f64>` containing the coefficients.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -19,66 +18,47 @@ use crate::symbolic::core::Expr;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
     f: *const Expr,
     var: *const c_char,
     at_point: f64,
     order: usize,
 ) -> *mut Vec<f64> {
-
     unsafe {
-
-        if f.is_null() || var.is_null()
-        {
-
+        if f.is_null() || var.is_null() {
             return ptr::null_mut();
         }
 
         let f_expr = &*f;
 
-        let var_str =
-            match CStr::from_ptr(var)
-                .to_str()
-            {
-                | Ok(s) => s,
-                | Err(_) => {
-
-                    update_last_error(
+        let var_str = match CStr::from_ptr(var).to_str() {
+            | Ok(s) => s,
+            | Err(_) => {
+                update_last_error(
                     "Invalid UTF-8 \
                      string for \
                      variable name"
                         .to_string(),
                 );
 
-                    return ptr::null_mut();
-                },
-            };
+                return ptr::null_mut();
+            },
+        };
 
-        match series::taylor_coefficients(
-        f_expr,
-        var_str,
-        at_point,
-        order,
-    ) {
-        | Ok(coeffs) => {
-            Box::into_raw(Box::new(
-                coeffs,
-            ))
-        },
-        | Err(e) => {
+        match series::taylor_coefficients(f_expr, var_str, at_point, order) {
+            | Ok(coeffs) => Box::into_raw(Box::new(coeffs)),
+            | Err(e) => {
+                update_last_error(e);
 
-            update_last_error(e);
-
-            ptr::null_mut()
-        },
-    }
+                ptr::null_mut()
+            },
+        }
     }
 }
 
 /// Evaluates a power series at a point.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -86,31 +66,23 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_numerical_evaluate_power_series(
     coeffs: *const Vec<f64>,
     at_point: f64,
     x: f64,
 ) -> f64 {
-
     unsafe {
-
         if coeffs.is_null() {
-
             return 0.0;
         }
 
-        series::evaluate_power_series(
-            &*coeffs,
-            at_point,
-            x,
-        )
+        series::evaluate_power_series(&*coeffs, at_point, x)
     }
 }
 
 /// Computes the sum of a series.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -118,7 +90,7 @@ pub unsafe extern "C" fn rssn_numerical_evaluate_power_series(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_numerical_sum_series(
     f: *const Expr,
     var: *const c_char,
@@ -126,51 +98,34 @@ pub unsafe extern "C" fn rssn_numerical_sum_series(
     end: i64,
     result: *mut f64,
 ) -> i32 {
-
     unsafe {
-
-        if f.is_null()
-            || var.is_null()
-            || result.is_null()
-        {
-
+        if f.is_null() || var.is_null() || result.is_null() {
             return -1;
         }
 
         let f_expr = &*f;
 
-        let var_str =
-            match CStr::from_ptr(var)
-                .to_str()
-            {
-                | Ok(s) => s,
-                | Err(_) => {
-
-                    update_last_error(
+        let var_str = match CStr::from_ptr(var).to_str() {
+            | Ok(s) => s,
+            | Err(_) => {
+                update_last_error(
                     "Invalid UTF-8 \
                      string for \
                      variable name"
                         .to_string(),
                 );
 
-                    return -1;
-                },
-            };
+                return -1;
+            },
+        };
 
-        match series::sum_series(
-            f_expr,
-            var_str,
-            start,
-            end,
-        ) {
+        match series::sum_series(f_expr, var_str, start, end) {
             | Ok(val) => {
-
                 *result = val;
 
                 0
             },
             | Err(e) => {
-
                 update_last_error(e);
 
                 -1

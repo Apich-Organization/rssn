@@ -8,7 +8,6 @@
 //!
 //! ### Taylor Series
 //! ```
-//! 
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::series::taylor_series;
 //!
@@ -17,30 +16,19 @@
 //!
 //! let expr = Expr::new_exp(x);
 //!
-//! let series = taylor_series(
-//!     &expr,
-//!     "x",
-//!     &Expr::new_constant(0.0),
-//!     3,
-//! );
+//! let series = taylor_series(&expr, "x", &Expr::new_constant(0.0), 3);
 //! // Result: 1 + x + x^2/2 + x^3/6
 //! ```
 //!
 //! ### Summation
 //! ```
-//! 
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::series::summation;
 //!
 //! // Sum of i from 1 to 5
 //! let i = Expr::new_variable("i");
 //!
-//! let sum = summation(
-//!     &i,
-//!     "i",
-//!     &Expr::new_constant(1.0),
-//!     &Expr::new_constant(5.0),
-//! );
+//! let sum = summation(&i, "i", &Expr::new_constant(1.0), &Expr::new_constant(5.0));
 //! // Result: 15
 //! ```
 
@@ -72,50 +60,26 @@ use crate::symbolic::simplify_dag::simplify;
 /// # Returns
 /// An `Expr` representing the truncated Taylor series.
 #[must_use]
-
 pub fn taylor_series(
     expr: &Expr,
     var: &str,
     center: &Expr,
     order: usize,
 ) -> Expr {
+    let coeffs = calculate_taylor_coefficients(expr, var, center, order);
 
-    let coeffs =
-        calculate_taylor_coefficients(
-            expr,
-            var,
-            center,
-            order,
-        );
+    let mut series_sum = Expr::BigInt(BigInt::zero());
 
-    let mut series_sum =
-        Expr::BigInt(BigInt::zero());
-
-    for (n, coeff) in coeffs
-        .iter()
-        .enumerate()
-    {
-
+    for (n, coeff) in coeffs.iter().enumerate() {
         let power_term = Expr::new_pow(
-            Expr::new_sub(
-                Expr::Variable(
-                    var.to_string(),
-                ),
-                center.clone(),
-            ),
-            Expr::BigInt(BigInt::from(
-                n,
-            )),
+            Expr::new_sub(Expr::Variable(var.to_string()), center.clone()),
+            Expr::BigInt(BigInt::from(n)),
         );
 
-        series_sum =
-            simplify(&Expr::new_add(
-                series_sum,
-                Expr::new_mul(
-                    coeff.clone(),
-                    power_term,
-                ),
-            ));
+        series_sum = simplify(&Expr::new_add(
+            series_sum,
+            Expr::new_mul(coeff.clone(), power_term),
+        ));
     }
 
     series_sum
@@ -133,48 +97,30 @@ pub fn taylor_series(
 /// # Returns
 /// A vector of `Expr` representing the coefficients `[c_0, c_1, ..., c_order]`.
 #[must_use]
-
 pub fn calculate_taylor_coefficients(
     expr: &Expr,
     var: &str,
     center: &Expr,
     order: usize,
 ) -> Vec<Expr> {
+    let mut coeffs = Vec::with_capacity(order + 1);
 
-    let mut coeffs =
-        Vec::with_capacity(order + 1);
+    let mut current_derivative = expr.clone();
 
-    let mut current_derivative =
-        expr.clone();
-
-    for n in 0 ..= order {
-
-        let evaluated_derivative =
-            evaluate_at_point(
-                &current_derivative,
-                var,
-                center,
-            );
+    for n in 0..=order {
+        let evaluated_derivative = evaluate_at_point(&current_derivative, var, center);
 
         let n_factorial = factorial(n);
 
-        let term_coefficient =
-            simplify(&Expr::new_div(
-                evaluated_derivative,
-                Expr::Constant(
-                    n_factorial,
-                ),
-            ));
+        let term_coefficient = simplify(&Expr::new_div(
+            evaluated_derivative,
+            Expr::Constant(n_factorial),
+        ));
 
         coeffs.push(term_coefficient);
 
         if n < order {
-
-            current_derivative =
-                differentiate(
-                    &current_derivative,
-                    var,
-                );
+            current_derivative = differentiate(&current_derivative, var);
         }
     }
 
@@ -196,14 +142,12 @@ pub fn calculate_taylor_coefficients(
 /// # Returns
 /// An `Expr` representing the truncated Laurent series.
 #[must_use]
-
 pub fn laurent_series(
     expr: &Expr,
     var: &str,
     center: &Expr,
     order: usize,
 ) -> Expr {
-
     let mut k = 0;
 
     let mut g_z = expr.clone();
@@ -211,41 +155,17 @@ pub fn laurent_series(
     let _help = g_z;
 
     loop {
-
         let term = Expr::new_pow(
-            Expr::new_sub(
-                Expr::Variable(
-                    var.to_string(),
-                ),
-                center.clone(),
-            ),
-            Expr::BigInt(BigInt::from(
-                k,
-            )),
+            Expr::new_sub(Expr::Variable(var.to_string()), center.clone()),
+            Expr::BigInt(BigInt::from(k)),
         );
 
-        let test_expr =
-            simplify(&Expr::new_mul(
-                expr.clone(),
-                term,
-            ));
+        let test_expr = simplify(&Expr::new_mul(expr.clone(), term));
 
-        let val_at_center = simplify(
-            &evaluate_at_point(
-                &test_expr,
-                var,
-                center,
-            ),
-        );
+        let val_at_center = simplify(&evaluate_at_point(&test_expr, var, center));
 
-        if let Expr::Constant(c) =
-            val_at_center
-        {
-
-            if c.is_finite()
-                && c.abs() > 1e-9
-            {
-
+        if let Expr::Constant(c) = val_at_center {
+            if c.is_finite() && c.abs() > 1e-9 {
                 g_z = test_expr;
 
                 break;
@@ -255,41 +175,23 @@ pub fn laurent_series(
         k += 1;
 
         if k > order + 5 {
-
             return Expr::Series(
                 Arc::new(expr.clone()),
                 var.to_string(),
-                Arc::new(
-                    center.clone(),
-                ),
-                Arc::new(Expr::BigInt(
-                    BigInt::from(order),
-                )),
+                Arc::new(center.clone()),
+                Arc::new(Expr::BigInt(BigInt::from(order))),
             );
         }
     }
 
-    let taylor_part = taylor_series(
-        &g_z,
-        var,
-        center,
-        order,
-    );
+    let taylor_part = taylor_series(&g_z, var, center, order);
 
     let divisor = Expr::new_pow(
-        Expr::new_sub(
-            Expr::Variable(
-                var.to_string(),
-            ),
-            center.clone(),
-        ),
+        Expr::new_sub(Expr::Variable(var.to_string()), center.clone()),
         Expr::BigInt(BigInt::from(k)),
     );
 
-    simplify(&Expr::new_div(
-        taylor_part,
-        divisor,
-    ))
+    simplify(&Expr::new_div(taylor_part, divisor))
 }
 
 /// Computes the Fourier series expansion of a periodic expression.
@@ -306,48 +208,28 @@ pub fn laurent_series(
 /// # Returns
 /// An `Expr` representing the truncated Fourier series.
 #[must_use]
-
 pub fn fourier_series(
     expr: &Expr,
     var: &str,
     period: &Expr,
     order: usize,
 ) -> Expr {
-
     let l = simplify(&Expr::new_div(
         period.clone(),
         Expr::BigInt(BigInt::from(2)),
     ));
 
-    let neg_l = simplify(
-        &Expr::new_neg(l.clone()),
-    );
+    let neg_l = simplify(&Expr::new_neg(l.clone()));
 
     let a0_integrand = expr.clone();
 
-    let a0_integral =
-        definite_integrate(
-            &a0_integrand,
-            var,
-            &neg_l,
-            &l,
-        );
+    let a0_integral = definite_integrate(&a0_integrand, var, &neg_l, &l);
 
-    let a0 = simplify(&Expr::new_div(
-        a0_integral,
-        l.clone(),
-    ));
+    let a0 = simplify(&Expr::new_div(a0_integral, l.clone()));
 
-    let mut series_sum =
-        simplify(&Expr::new_div(
-            a0,
-            Expr::BigInt(BigInt::from(
-                2,
-            )),
-        ));
+    let mut series_sum = simplify(&Expr::new_div(a0, Expr::BigInt(BigInt::from(2))));
 
-    for n in 1 ..= order {
-
+    for n in 1..=order {
         let n_f64 = n as f64;
 
         let n_pi_x_over_l = Expr::new_div(
@@ -358,77 +240,25 @@ pub fn fourier_series(
             l.clone(),
         );
 
-        let an_integrand =
-            Expr::new_mul(
-                expr.clone(),
-                Expr::new_cos(
-                    n_pi_x_over_l
-                        .clone(),
-                ),
-            );
+        let an_integrand = Expr::new_mul(expr.clone(), Expr::new_cos(n_pi_x_over_l.clone()));
 
-        let an_integral =
-            definite_integrate(
-                &an_integrand,
-                var,
-                &neg_l,
-                &l,
-            );
+        let an_integral = definite_integrate(&an_integrand, var, &neg_l, &l);
 
-        let an =
-            simplify(&Expr::new_div(
-                an_integral,
-                l.clone(),
-            ));
+        let an = simplify(&Expr::new_div(an_integral, l.clone()));
 
-        let an_term = Expr::new_mul(
-            an,
-            Expr::new_cos(
-                n_pi_x_over_l.clone(),
-            ),
-        );
+        let an_term = Expr::new_mul(an, Expr::new_cos(n_pi_x_over_l.clone()));
 
-        series_sum =
-            simplify(&Expr::new_add(
-                series_sum,
-                an_term,
-            ));
+        series_sum = simplify(&Expr::new_add(series_sum, an_term));
 
-        let bn_integrand =
-            Expr::new_mul(
-                expr.clone(),
-                Expr::new_sin(
-                    n_pi_x_over_l
-                        .clone(),
-                ),
-            );
+        let bn_integrand = Expr::new_mul(expr.clone(), Expr::new_sin(n_pi_x_over_l.clone()));
 
-        let bn_integral =
-            definite_integrate(
-                &bn_integrand,
-                var,
-                &neg_l,
-                &l,
-            );
+        let bn_integral = definite_integrate(&bn_integrand, var, &neg_l, &l);
 
-        let bn =
-            simplify(&Expr::new_div(
-                bn_integral,
-                l.clone(),
-            ));
+        let bn = simplify(&Expr::new_div(bn_integral, l.clone()));
 
-        let bn_term = Expr::new_mul(
-            bn,
-            Expr::new_sin(
-                n_pi_x_over_l.clone(),
-            ),
-        );
+        let bn_term = Expr::new_mul(bn, Expr::new_sin(n_pi_x_over_l.clone()));
 
-        series_sum =
-            simplify(&Expr::new_add(
-                series_sum,
-                bn_term,
-            ));
+        series_sum = simplify(&Expr::new_add(series_sum, bn_term));
     }
 
     series_sum
@@ -449,61 +279,30 @@ pub fn fourier_series(
 /// # Returns
 /// An `Expr` representing the sum.
 #[must_use]
-
 pub fn summation(
     expr: &Expr,
     var: &str,
     lower_bound: &Expr,
     upper_bound: &Expr,
 ) -> Expr {
-
-    if let (
-        Expr::Constant(lower),
-        Expr::Variable(upper_name),
-    ) = (
-        lower_bound,
-        upper_bound,
-    ) {
-
-        if let Expr::Add(a, d_n) = expr
-        {
-
-            if let Expr::Mul(d, n_var) =
-                &**d_n
-            {
-
-                if let Expr::Variable(
-                    n_name,
-                ) = &**n_var
-                {
-
-                    if n_name == var
-                        && *lower == 0.0
-                    {
-
-                        let n = Arc::new(Expr::Variable(
-                            upper_name.clone(),
-                        ));
+    if let (Expr::Constant(lower), Expr::Variable(upper_name)) = (lower_bound, upper_bound) {
+        if let Expr::Add(a, d_n) = expr {
+            if let Expr::Mul(d, n_var) = &**d_n {
+                if let Expr::Variable(n_name) = &**n_var {
+                    if n_name == var && *lower == 0.0 {
+                        let n = Arc::new(Expr::Variable(upper_name.clone()));
 
                         let term1 = Expr::new_div(
-                            Expr::new_add(
-                                n.clone(),
-                                Expr::BigInt(BigInt::one()),
-                            ),
+                            Expr::new_add(n.clone(), Expr::BigInt(BigInt::one())),
                             Expr::BigInt(BigInt::from(2)),
                         );
 
                         let term2 = Expr::new_add(
-                            Expr::new_mul(
-                                Expr::BigInt(BigInt::from(2)),
-                                a.clone(),
-                            ),
+                            Expr::new_mul(Expr::BigInt(BigInt::from(2)), a.clone()),
                             Expr::new_mul(d.clone(), n),
                         );
 
-                        return simplify(&Expr::new_mul(
-                            term1, term2,
-                        ));
+                        return simplify(&Expr::new_mul(term1, term2));
                     }
                 }
             }
@@ -511,62 +310,28 @@ pub fn summation(
     }
 
     if matches!(
-        (
-            lower_bound,
-            upper_bound
-        ),
-        (
-            Expr::Constant(0.0),
-            Expr::Infinity
-        )
+        (lower_bound, upper_bound),
+        (Expr::Constant(0.0), Expr::Infinity)
     ) {
-
-        if let Expr::Power(base, exp) =
-            expr
-        {
-
-            if let Expr::Variable(
-                exp_var_name,
-            ) = &**exp
-            {
-
+        if let Expr::Power(base, exp) = expr {
+            if let Expr::Variable(exp_var_name) = &**exp {
                 if exp_var_name == var {
-
                     return Expr::new_div(
                         Expr::BigInt(BigInt::one()),
-                        Expr::new_sub(
-                            Expr::BigInt(BigInt::one()),
-                            base.clone(),
-                        ),
+                        Expr::new_sub(Expr::BigInt(BigInt::one()), base.clone()),
                     );
                 }
             }
         }
     }
 
-    if let (
-        Some(lower_val),
-        Some(upper_val),
-    ) = (
-        lower_bound.to_f64(),
-        upper_bound.to_f64(),
-    ) {
+    if let (Some(lower_val), Some(upper_val)) = (lower_bound.to_f64(), upper_bound.to_f64()) {
+        let mut sum = Expr::BigInt(BigInt::zero());
 
-        let mut sum = Expr::BigInt(
-            BigInt::zero(),
-        );
-
-        for i in lower_val as i64
-            ..= upper_val as i64
-        {
-
+        for i in lower_val as i64..=upper_val as i64 {
             sum = simplify(&Expr::new_add(
                 sum,
-                evaluate_at_point(
-                    expr,
-                    var,
-                    &Expr::BigInt(BigInt::from(i)),
-                ),
+                evaluate_at_point(expr, var, &Expr::BigInt(BigInt::from(i))),
             ));
         }
 
@@ -595,51 +360,29 @@ pub fn summation(
 /// # Returns
 /// An `Expr` representing the product.
 #[must_use]
-
 pub fn product(
     expr: &Expr,
     var: &str,
     lower_bound: &Expr,
     upper_bound: &Expr,
 ) -> Expr {
+    if let (Some(lower_val), Some(upper_val)) = (lower_bound.to_f64(), upper_bound.to_f64()) {
+        let mut prod = Expr::BigInt(BigInt::one());
 
-    if let (
-        Some(lower_val),
-        Some(upper_val),
-    ) = (
-        lower_bound.to_f64(),
-        upper_bound.to_f64(),
-    ) {
-
-        let mut prod =
-            Expr::BigInt(BigInt::one());
-
-        for i in lower_val as i64
-            ..= upper_val as i64
-        {
-
+        for i in lower_val as i64..=upper_val as i64 {
             prod = simplify(&Expr::new_mul(
                 prod,
-                evaluate_at_point(
-                    expr,
-                    var,
-                    &Expr::BigInt(BigInt::from(i)),
-                ),
+                evaluate_at_point(expr, var, &Expr::BigInt(BigInt::from(i))),
             ));
         }
 
         prod
     } else {
-
         Expr::Product(
             Arc::new(expr.clone()),
             var.to_string(),
-            Arc::new(
-                lower_bound.clone(),
-            ),
-            Arc::new(
-                upper_bound.clone(),
-            ),
+            Arc::new(lower_bound.clone()),
+            Arc::new(upper_bound.clone()),
         )
     }
 }
@@ -657,65 +400,33 @@ pub fn product(
 /// # Returns
 /// An `Expr` representing the convergence condition (e.g., `L < 1`).
 #[must_use]
-
 pub fn analyze_convergence(
     series_expr: &Expr,
     var: &str,
 ) -> Expr {
-
-    if let Expr::Summation(
-        term,
-        index_var,
-        _,
-        _,
-    ) = series_expr
-    {
-
+    if let Expr::Summation(term, index_var, _, _) = series_expr {
         if index_var == var {
-
             let an = term;
 
             let an_plus_1 = evaluate_at_point(
                 an,
                 var,
-                &Expr::new_add(
-                    Expr::Variable(var.to_string()),
-                    Expr::BigInt(BigInt::one()),
-                ),
+                &Expr::new_add(Expr::Variable(var.to_string()), Expr::BigInt(BigInt::one())),
             );
 
-            let ratio = simplify(
-                &Expr::new_abs(
-                    Expr::new_div(
-                        an_plus_1,
-                        an.as_ref()
-                            .clone(),
-                    ),
-                ),
-            );
+            let ratio = simplify(&Expr::new_abs(Expr::new_div(
+                an_plus_1,
+                an.as_ref().clone(),
+            )));
 
             let limit_expr =
-                Expr::Limit(
-                    Arc::new(ratio),
-                    var.to_string(),
-                    Arc::new(
-                        Expr::Infinity,
-                    ),
-                );
+                Expr::Limit(Arc::new(ratio), var.to_string(), Arc::new(Expr::Infinity));
 
-            return Expr::Lt(
-                Arc::new(limit_expr),
-                Arc::new(Expr::BigInt(
-                    BigInt::one(),
-                )),
-            );
+            return Expr::Lt(Arc::new(limit_expr), Arc::new(Expr::BigInt(BigInt::one())));
         }
     }
 
-    Expr::ConvergenceAnalysis(
-        Arc::new(series_expr.clone()),
-        var.to_string(),
-    )
+    Expr::ConvergenceAnalysis(Arc::new(series_expr.clone()), var.to_string())
 }
 
 /// Computes the asymptotic expansion of an expression around a given point (e.g., infinity).
@@ -733,63 +444,31 @@ pub fn analyze_convergence(
 /// # Returns
 /// An `Expr` representing the asymptotic expansion.
 #[must_use]
-
 pub fn asymptotic_expansion(
     expr: &Expr,
     var: &str,
     point: &Expr,
     order: usize,
 ) -> Expr {
-
-    if !matches!(
-        point,
-        Expr::Infinity
-    ) {
-
+    if !matches!(point, Expr::Infinity) {
         return expr.clone();
     }
 
     if let Expr::Div(_p, _q) = expr {
+        let y = Expr::Variable("y".to_string());
 
-        let y = Expr::Variable(
-            "y".to_string(),
-        );
+        let one_over_y = Expr::new_div(Expr::Constant(1.0), y);
 
-        let one_over_y = Expr::new_div(
-            Expr::Constant(1.0),
-            y,
-        );
+        let substituted_expr = substitute(expr, var, &one_over_y);
 
-        let substituted_expr =
-            substitute(
-                expr,
-                var,
-                &one_over_y,
-            );
-
-        let simplified_expr_in_y =
-            simplify(&substituted_expr);
+        let simplified_expr_in_y = simplify(&substituted_expr);
 
         let taylor_series_in_y =
-            taylor_series(
-                &simplified_expr_in_y,
-                "y",
-                &Expr::Constant(0.0),
-                order,
-            );
+            taylor_series(&simplified_expr_in_y, "y", &Expr::Constant(0.0), order);
 
-        let one_over_x = Expr::new_div(
-            Expr::Constant(1.0),
-            Expr::Variable(
-                var.to_string(),
-            ),
-        );
+        let one_over_x = Expr::new_div(Expr::Constant(1.0), Expr::Variable(var.to_string()));
 
-        let final_series = substitute(
-            &taylor_series_in_y,
-            "y",
-            &one_over_x,
-        );
+        let final_series = substitute(&taylor_series_in_y, "y", &one_over_x);
 
         return simplify(&final_series);
     }
@@ -800,9 +479,7 @@ pub fn asymptotic_expansion(
 
     let _ = Arc::new(point.clone());
 
-    let _ = Arc::new(Expr::BigInt(
-        BigInt::from(order),
-    ));
+    let _ = Arc::new(Expr::BigInt(BigInt::from(order)));
 
     expr.clone()
 }
@@ -823,7 +500,6 @@ pub fn asymptotic_expansion(
 /// # Returns
 /// An `Expr` representing the analytically continued series.
 #[must_use]
-
 pub fn analytic_continuation(
     expr: &Expr,
     var: &str,
@@ -831,19 +507,7 @@ pub fn analytic_continuation(
     new_center: &Expr,
     order: usize,
 ) -> Expr {
+    let series_representation = taylor_series(expr, var, original_center, order + 5);
 
-    let series_representation =
-        taylor_series(
-            expr,
-            var,
-            original_center,
-            order + 5,
-        );
-
-    taylor_series(
-        &series_representation,
-        var,
-        new_center,
-        order,
-    )
+    taylor_series(&series_representation, var, new_center, order)
 }

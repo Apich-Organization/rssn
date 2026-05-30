@@ -10,21 +10,18 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::geometric_algebra::Multivector3D;
 
 #[derive(Deserialize)]
-
 struct GaInput {
     mv: Multivector3D,
 }
 
 #[derive(Deserialize)]
-
 struct TwoGaInput {
     mv1: Multivector3D,
     mv2: Multivector3D,
 }
 
 /// JSON FFI for `ga_add`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32,65 +29,44 @@ struct TwoGaInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ga_add_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ga_add_json(json_ptr: *const c_char) -> *mut c_char {
     unsafe {
+        let json_str = match CStr::from_ptr(json_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        let json_str = match CStr::from_ptr(
-        json_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
-    };
-
-        let input: TwoGaInput =
-        match serde_json::from_str(
-            json_str,
-        ) {
+        let input: TwoGaInput = match serde_json::from_str(json_str) {
             | Ok(v) => v,
             | Err(e) => {
-                return CString::new(
-                    format!(
-                        "{{\"err\": \
+                return CString::new(format!(
+                    "{{\"err\": \
                          \"{e}\"}}"
-                    ),
-                )
+                ))
                 .unwrap()
-                .into_raw()
+                .into_raw();
             },
         };
 
         let res = FfiResult {
-            ok: Some(
-                input.mv1 + input.mv2,
-            ),
+            ok: Some(input.mv1 + input.mv2),
             err: None::<String>,
         };
 
-        CString::new(
-            serde_json::to_string(&res)
-                .unwrap(),
-        )
-        .unwrap()
-        .into_raw()
+        CString::new(serde_json::to_string(&res).unwrap())
+            .unwrap()
+            .into_raw()
     }
 }
 
 /// JSON FFI for `ga_sub`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -98,65 +74,44 @@ pub unsafe extern "C" fn rssn_num_ga_add_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ga_sub_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ga_sub_json(json_ptr: *const c_char) -> *mut c_char {
     unsafe {
+        let json_str = match CStr::from_ptr(json_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        let json_str = match CStr::from_ptr(
-        json_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
-    };
-
-        let input: TwoGaInput =
-        match serde_json::from_str(
-            json_str,
-        ) {
+        let input: TwoGaInput = match serde_json::from_str(json_str) {
             | Ok(v) => v,
             | Err(e) => {
-                return CString::new(
-                    format!(
-                        "{{\"err\": \
+                return CString::new(format!(
+                    "{{\"err\": \
                          \"{e}\"}}"
-                    ),
-                )
+                ))
                 .unwrap()
-                .into_raw()
+                .into_raw();
             },
         };
 
         let res = FfiResult {
-            ok: Some(
-                input.mv1 - input.mv2,
-            ),
+            ok: Some(input.mv1 - input.mv2),
             err: None::<String>,
         };
 
-        CString::new(
-            serde_json::to_string(&res)
-                .unwrap(),
-        )
-        .unwrap()
-        .into_raw()
+        CString::new(serde_json::to_string(&res).unwrap())
+            .unwrap()
+            .into_raw()
     }
 }
 
 /// JSON FFI for `ga_mul`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -164,65 +119,44 @@ pub unsafe extern "C" fn rssn_num_ga_sub_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ga_mul_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ga_mul_json(json_ptr: *const c_char) -> *mut c_char {
     unsafe {
+        let json_str = match CStr::from_ptr(json_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        let json_str = match CStr::from_ptr(
-        json_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
-    };
-
-        let input: TwoGaInput =
-        match serde_json::from_str(
-            json_str,
-        ) {
+        let input: TwoGaInput = match serde_json::from_str(json_str) {
             | Ok(v) => v,
             | Err(e) => {
-                return CString::new(
-                    format!(
-                        "{{\"err\": \
+                return CString::new(format!(
+                    "{{\"err\": \
                          \"{e}\"}}"
-                    ),
-                )
+                ))
                 .unwrap()
-                .into_raw()
+                .into_raw();
             },
         };
 
         let res = FfiResult {
-            ok: Some(
-                input.mv1 * input.mv2,
-            ),
+            ok: Some(input.mv1 * input.mv2),
             err: None::<String>,
         };
 
-        CString::new(
-            serde_json::to_string(&res)
-                .unwrap(),
-        )
-        .unwrap()
-        .into_raw()
+        CString::new(serde_json::to_string(&res).unwrap())
+            .unwrap()
+            .into_raw()
     }
 }
 
 /// JSON FFI for `ga_wedge`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -230,67 +164,44 @@ pub unsafe extern "C" fn rssn_num_ga_mul_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ga_wedge_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ga_wedge_json(json_ptr: *const c_char) -> *mut c_char {
     unsafe {
+        let json_str = match CStr::from_ptr(json_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        let json_str = match CStr::from_ptr(
-        json_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
-    };
-
-        let input: TwoGaInput =
-        match serde_json::from_str(
-            json_str,
-        ) {
+        let input: TwoGaInput = match serde_json::from_str(json_str) {
             | Ok(v) => v,
             | Err(e) => {
-                return CString::new(
-                    format!(
-                        "{{\"err\": \
+                return CString::new(format!(
+                    "{{\"err\": \
                          \"{e}\"}}"
-                    ),
-                )
+                ))
                 .unwrap()
-                .into_raw()
+                .into_raw();
             },
         };
 
         let res = FfiResult {
-            ok: Some(
-                input
-                    .mv1
-                    .wedge(input.mv2),
-            ),
+            ok: Some(input.mv1.wedge(input.mv2)),
             err: None::<String>,
         };
 
-        CString::new(
-            serde_json::to_string(&res)
-                .unwrap(),
-        )
-        .unwrap()
-        .into_raw()
+        CString::new(serde_json::to_string(&res).unwrap())
+            .unwrap()
+            .into_raw()
     }
 }
 
 /// JSON FFI for `ga_dot`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -298,67 +209,44 @@ pub unsafe extern "C" fn rssn_num_ga_wedge_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ga_dot_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ga_dot_json(json_ptr: *const c_char) -> *mut c_char {
     unsafe {
+        let json_str = match CStr::from_ptr(json_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        let json_str = match CStr::from_ptr(
-        json_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
-    };
-
-        let input: TwoGaInput =
-        match serde_json::from_str(
-            json_str,
-        ) {
+        let input: TwoGaInput = match serde_json::from_str(json_str) {
             | Ok(v) => v,
             | Err(e) => {
-                return CString::new(
-                    format!(
-                        "{{\"err\": \
+                return CString::new(format!(
+                    "{{\"err\": \
                          \"{e}\"}}"
-                    ),
-                )
+                ))
                 .unwrap()
-                .into_raw()
+                .into_raw();
             },
         };
 
         let res = FfiResult {
-            ok: Some(
-                input
-                    .mv1
-                    .dot(input.mv2),
-            ),
+            ok: Some(input.mv1.dot(input.mv2)),
             err: None::<String>,
         };
 
-        CString::new(
-            serde_json::to_string(&res)
-                .unwrap(),
-        )
-        .unwrap()
-        .into_raw()
+        CString::new(serde_json::to_string(&res).unwrap())
+            .unwrap()
+            .into_raw()
     }
 }
 
 /// JSON FFI for `ga_reverse`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -366,65 +254,44 @@ pub unsafe extern "C" fn rssn_num_ga_dot_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ga_reverse_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ga_reverse_json(json_ptr: *const c_char) -> *mut c_char {
     unsafe {
+        let json_str = match CStr::from_ptr(json_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        let json_str = match CStr::from_ptr(
-        json_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
-    };
-
-        let input: GaInput =
-        match serde_json::from_str(
-            json_str,
-        ) {
+        let input: GaInput = match serde_json::from_str(json_str) {
             | Ok(v) => v,
             | Err(e) => {
-                return CString::new(
-                    format!(
-                        "{{\"err\": \
+                return CString::new(format!(
+                    "{{\"err\": \
                          \"{e}\"}}"
-                    ),
-                )
+                ))
                 .unwrap()
-                .into_raw()
+                .into_raw();
             },
         };
 
         let res = FfiResult {
-            ok: Some(
-                input.mv.reverse(),
-            ),
+            ok: Some(input.mv.reverse()),
             err: None::<String>,
         };
 
-        CString::new(
-            serde_json::to_string(&res)
-                .unwrap(),
-        )
-        .unwrap()
-        .into_raw()
+        CString::new(serde_json::to_string(&res).unwrap())
+            .unwrap()
+            .into_raw()
     }
 }
 
 /// JSON FFI for `ga_norm`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -432,43 +299,28 @@ pub unsafe extern "C" fn rssn_num_ga_reverse_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ga_norm_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ga_norm_json(json_ptr: *const c_char) -> *mut c_char {
     unsafe {
+        let json_str = match CStr::from_ptr(json_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        let json_str = match CStr::from_ptr(
-        json_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
-    };
-
-        let input: GaInput =
-        match serde_json::from_str(
-            json_str,
-        ) {
+        let input: GaInput = match serde_json::from_str(json_str) {
             | Ok(v) => v,
             | Err(e) => {
-                return CString::new(
-                    format!(
-                        "{{\"err\": \
+                return CString::new(format!(
+                    "{{\"err\": \
                          \"{e}\"}}"
-                    ),
-                )
+                ))
                 .unwrap()
-                .into_raw()
+                .into_raw();
             },
         };
 
@@ -477,18 +329,14 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(
             err: None::<String>,
         };
 
-        CString::new(
-            serde_json::to_string(&res)
-                .unwrap(),
-        )
-        .unwrap()
-        .into_raw()
+        CString::new(serde_json::to_string(&res).unwrap())
+            .unwrap()
+            .into_raw()
     }
 }
 
 /// JSON FFI for `ga_inv`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -496,43 +344,28 @@ pub unsafe extern "C" fn rssn_num_ga_norm_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ga_inv_json(
-    json_ptr: *const c_char
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ga_inv_json(json_ptr: *const c_char) -> *mut c_char {
     unsafe {
+        let json_str = match CStr::from_ptr(json_ptr).to_str() {
+            | Ok(s) => s,
+            | Err(_) => return std::ptr::null_mut(),
+        };
 
-        let json_str = match CStr::from_ptr(
-        json_ptr,
-    )
-    .to_str()
-    {
-        | Ok(s) => s,
-        | Err(_) => {
-            return std::ptr::null_mut()
-        },
-    };
-
-        let input: GaInput =
-        match serde_json::from_str(
-            json_str,
-        ) {
+        let input: GaInput = match serde_json::from_str(json_str) {
             | Ok(v) => v,
             | Err(e) => {
-                return CString::new(
-                    format!(
-                        "{{\"err\": \
+                return CString::new(format!(
+                    "{{\"err\": \
                          \"{e}\"}}"
-                    ),
-                )
+                ))
                 .unwrap()
-                .into_raw()
+                .into_raw();
             },
         };
 
@@ -543,21 +376,20 @@ pub unsafe extern "C" fn rssn_num_ga_inv_json(
                     err: None::<String>,
                 }
             },
-            | None => FfiResult {
-                ok: None,
-                err: Some(
-                    "Multivector is \
+            | None => {
+                FfiResult {
+                    ok: None,
+                    err: Some(
+                        "Multivector is \
                      not invertible"
-                        .to_string(),
-                ),
+                            .to_string(),
+                    ),
+                }
             },
         };
 
-        CString::new(
-            serde_json::to_string(&res)
-                .unwrap(),
-        )
-        .unwrap()
-        .into_raw()
+        CString::new(serde_json::to_string(&res).unwrap())
+            .unwrap()
+            .into_raw()
     }
 }

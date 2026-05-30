@@ -8,8 +8,6 @@ use crate::symbolic::group_theory::character;
 
 // --- Group ---
 
-#[unsafe(no_mangle)]
-
 /// Constructs a group from raw pointers describing its elements, multiplication table, and identity.
 ///
 /// The group operation is encoded as a Cayley table over the given elements, represented by
@@ -34,7 +32,7 @@ use crate::symbolic::group_theory::character;
 /// This function is unsafe because it dereferences multiple raw pointers and assumes
 /// they form consistent arrays of valid `Expr` objects. The returned `Group` must be
 /// freed with [`rssn_group_free`].
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -42,7 +40,7 @@ use crate::symbolic::group_theory::character;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_group_create(
     elements_ptr: *const *const Expr,
     elements_len: usize,
@@ -52,84 +50,39 @@ pub unsafe extern "C" fn rssn_group_create(
     table_len: usize,
     identity_ptr: *const Expr,
 ) -> *mut Group {
-
     unsafe {
+        let elements_slice = std::slice::from_raw_parts(elements_ptr, elements_len);
 
-        let elements_slice =
-            std::slice::from_raw_parts(
-                elements_ptr,
-                elements_len,
-            );
-
-        let elements: Vec<
-            GroupElement,
-        > = elements_slice
+        let elements: Vec<GroupElement> = elements_slice
             .iter()
-            .map(|&p| {
-
-                GroupElement(
-                    (*p).clone(),
-                )
-            })
+            .map(|&p| GroupElement((*p).clone()))
             .collect();
 
-        let keys_a_slice =
-            std::slice::from_raw_parts(
-                keys_a_ptr,
-                table_len,
-            );
+        let keys_a_slice = std::slice::from_raw_parts(keys_a_ptr, table_len);
 
-        let keys_b_slice =
-            std::slice::from_raw_parts(
-                keys_b_ptr,
-                table_len,
-            );
+        let keys_b_slice = std::slice::from_raw_parts(keys_b_ptr, table_len);
 
-        let values_slice =
-            std::slice::from_raw_parts(
-                values_ptr,
-                table_len,
-            );
+        let values_slice = std::slice::from_raw_parts(values_ptr, table_len);
 
-        let mut multiplication_table =
-            HashMap::new();
+        let mut multiplication_table = HashMap::new();
 
-        for i in 0 .. table_len {
+        for i in 0..table_len {
+            let a = GroupElement((*keys_a_slice[i]).clone());
 
-            let a = GroupElement(
-                (*keys_a_slice[i])
-                    .clone(),
-            );
+            let b = GroupElement((*keys_b_slice[i]).clone());
 
-            let b = GroupElement(
-                (*keys_b_slice[i])
-                    .clone(),
-            );
+            let val = GroupElement((*values_slice[i]).clone());
 
-            let val = GroupElement(
-                (*values_slice[i])
-                    .clone(),
-            );
-
-            multiplication_table
-                .insert((a, b), val);
+            multiplication_table.insert((a, b), val);
         }
 
-        let identity = GroupElement(
-            (*identity_ptr).clone(),
-        );
+        let identity = GroupElement((*identity_ptr).clone());
 
-        let group = Group::new(
-            elements,
-            multiplication_table,
-            identity,
-        );
+        let group = Group::new(elements, multiplication_table, identity);
 
         Box::into_raw(Box::new(group))
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Frees a group previously created by [`rssn_group_create`].
 ///
@@ -146,7 +99,7 @@ pub unsafe extern "C" fn rssn_group_create(
 /// This function is unsafe because it takes ownership of a raw pointer. The pointer
 /// must either be null or have been allocated by `rssn_group_create`, and must not
 /// be used after this call.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -154,21 +107,14 @@ pub unsafe extern "C" fn rssn_group_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_group_free(
-    ptr: *mut Group
-) {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_group_free(ptr: *mut Group) {
     unsafe {
-
         if !ptr.is_null() {
-
             let _ = Box::from_raw(ptr);
         }
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Multiplies two group elements using a group handle and returns the product expression.
 ///
@@ -187,7 +133,7 @@ pub unsafe extern "C" fn rssn_group_free(
 ///
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -195,37 +141,23 @@ pub unsafe extern "C" fn rssn_group_free(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_group_multiply(
     group: *const Group,
     a: *const Expr,
     b: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
+        let ga = GroupElement((*a).clone());
 
-        let ga =
-            GroupElement((*a).clone());
+        let gb = GroupElement((*b).clone());
 
-        let gb =
-            GroupElement((*b).clone());
-
-        match (*group)
-            .multiply(&ga, &gb)
-        {
-            | Some(result) => {
-                Box::into_raw(Box::new(
-                    result.0,
-                ))
-            },
-            | None => {
-                std::ptr::null_mut()
-            },
+        match (*group).multiply(&ga, &gb) {
+            | Some(result) => Box::into_raw(Box::new(result.0)),
+            | None => std::ptr::null_mut(),
         }
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the inverse of a group element using a group handle.
 ///
@@ -243,7 +175,7 @@ pub unsafe extern "C" fn rssn_group_multiply(
 ///
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of a heap-allocated `Expr` that must be freed by the caller.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -251,31 +183,20 @@ pub unsafe extern "C" fn rssn_group_multiply(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_group_inverse(
     group: *const Group,
     a: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
-
-        let ga =
-            GroupElement((*a).clone());
+        let ga = GroupElement((*a).clone());
 
         match (*group).inverse(&ga) {
-            | Some(result) => {
-                Box::into_raw(Box::new(
-                    result.0,
-                ))
-            },
-            | None => {
-                std::ptr::null_mut()
-            },
+            | Some(result) => Box::into_raw(Box::new(result.0)),
+            | None => std::ptr::null_mut(),
         }
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Tests whether a group is Abelian using a group handle.
 ///
@@ -293,7 +214,7 @@ pub unsafe extern "C" fn rssn_group_inverse(
 ///
 /// This function is unsafe because it dereferences a raw pointer; the caller must
 /// ensure `group` points to a valid [`Group`].
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -301,18 +222,10 @@ pub unsafe extern "C" fn rssn_group_inverse(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_group_is_abelian(
-    group: *const Group
-) -> bool {
-
-    unsafe {
-
-        (*group).is_abelian()
-    }
-}
-
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_group_is_abelian(group: *const Group) -> bool {
+    unsafe { (*group).is_abelian() }
+}
 
 /// Computes the order of a group element using a group handle.
 ///
@@ -332,7 +245,7 @@ pub unsafe extern "C" fn rssn_group_is_abelian(
 ///
 /// This function is unsafe because it dereferences raw pointers; the caller must
 /// ensure they point to a valid group and element.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -340,24 +253,17 @@ pub unsafe extern "C" fn rssn_group_is_abelian(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_group_element_order(
     group: *const Group,
     a: *const Expr,
 ) -> usize {
-
     unsafe {
+        let ga = GroupElement((*a).clone());
 
-        let ga =
-            GroupElement((*a).clone());
-
-        (*group)
-            .element_order(&ga)
-            .unwrap_or(0)
+        (*group).element_order(&ga).unwrap_or(0)
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the center of a group and returns its elements as a dynamically allocated array of expressions.
 ///
@@ -379,7 +285,7 @@ pub unsafe extern "C" fn rssn_group_element_order(
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of heap-allocated memory. The caller must ensure `group` and
 /// `out_len` are valid pointers and must correctly manage the returned memory.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -387,30 +293,20 @@ pub unsafe extern "C" fn rssn_group_element_order(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_group_center(
     group: *const Group,
     out_len: *mut usize,
 ) -> *mut *mut Expr {
-
     unsafe {
-
         let center = (*group).center();
 
         *out_len = center.len();
 
-        let mut out_ptrs =
-            Vec::with_capacity(
-                center.len(),
-            );
+        let mut out_ptrs = Vec::with_capacity(center.len());
 
         for elem in center {
-
-            out_ptrs.push(
-                Box::into_raw(
-                    Box::new(elem.0),
-                ),
-            );
+            out_ptrs.push(Box::into_raw(Box::new(elem.0)));
         }
 
         let ptr = out_ptrs.as_mut_ptr();
@@ -422,8 +318,6 @@ pub unsafe extern "C" fn rssn_group_center(
 }
 
 // --- Representation ---
-
-#[unsafe(no_mangle)]
 
 /// Constructs a group representation from raw pointers describing its carrier set and action matrices.
 ///
@@ -448,7 +342,7 @@ pub unsafe extern "C" fn rssn_group_center(
 /// This function is unsafe because it dereferences multiple raw pointers and
 /// assumes they form consistent arrays of valid `Expr` objects. The returned
 /// `Representation` must be freed with [`rssn_representation_free`].
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -456,7 +350,7 @@ pub unsafe extern "C" fn rssn_group_center(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_representation_create(
     elements_ptr: *const *const Expr,
     elements_len: usize,
@@ -464,66 +358,33 @@ pub unsafe extern "C" fn rssn_representation_create(
     values_ptr: *const *const Expr,
     map_len: usize,
 ) -> *mut Representation {
-
     unsafe {
+        let elements_slice = std::slice::from_raw_parts(elements_ptr, elements_len);
 
-        let elements_slice =
-            std::slice::from_raw_parts(
-                elements_ptr,
-                elements_len,
-            );
-
-        let elements: Vec<
-            GroupElement,
-        > = elements_slice
+        let elements: Vec<GroupElement> = elements_slice
             .iter()
-            .map(|&p| {
-
-                GroupElement(
-                    (*p).clone(),
-                )
-            })
+            .map(|&p| GroupElement((*p).clone()))
             .collect();
 
-        let keys_slice =
-            std::slice::from_raw_parts(
-                keys_ptr,
-                map_len,
-            );
+        let keys_slice = std::slice::from_raw_parts(keys_ptr, map_len);
 
-        let values_slice =
-            std::slice::from_raw_parts(
-                values_ptr,
-                map_len,
-            );
+        let values_slice = std::slice::from_raw_parts(values_ptr, map_len);
 
-        let mut matrices =
-            HashMap::new();
+        let mut matrices = HashMap::new();
 
-        for i in 0 .. map_len {
+        for i in 0..map_len {
+            let key = GroupElement((*keys_slice[i]).clone());
 
-            let key = GroupElement(
-                (*keys_slice[i])
-                    .clone(),
-            );
-
-            let val = (*values_slice
-                [i])
-                .clone();
+            let val = (*values_slice[i]).clone();
 
             matrices.insert(key, val);
         }
 
-        let rep = Representation::new(
-            elements,
-            matrices,
-        );
+        let rep = Representation::new(elements, matrices);
 
         Box::into_raw(Box::new(rep))
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Frees a representation previously created by [`rssn_representation_create`].
 ///
@@ -540,7 +401,7 @@ pub unsafe extern "C" fn rssn_representation_create(
 /// This function is unsafe because it takes ownership of a raw pointer. The pointer
 /// must either be null or have been allocated by `rssn_representation_create`, and
 /// must not be used after this call.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -548,21 +409,14 @@ pub unsafe extern "C" fn rssn_representation_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_representation_free(
-    ptr: *mut Representation
-) {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_representation_free(ptr: *mut Representation) {
     unsafe {
-
         if !ptr.is_null() {
-
             let _ = Box::from_raw(ptr);
         }
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Checks whether a representation is valid for a given group using handle-based APIs.
 ///
@@ -582,7 +436,7 @@ pub unsafe extern "C" fn rssn_representation_free(
 ///
 /// This function is unsafe because it dereferences raw pointers; the caller must
 /// ensure they point to valid objects.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -590,19 +444,13 @@ pub unsafe extern "C" fn rssn_representation_free(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_representation_is_valid(
     rep: *const Representation,
     group: *const Group,
 ) -> bool {
-
-    unsafe {
-
-        (*rep).is_valid(&*group)
-    }
+    unsafe { (*rep).is_valid(&*group) }
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the character of a representation and returns its values via raw output buffers.
 ///
@@ -628,7 +476,7 @@ pub unsafe extern "C" fn rssn_representation_is_valid(
 /// This function is unsafe because it dereferences raw pointers and returns
 /// ownership of heap-allocated arrays of `Expr`. The caller must ensure all input
 /// pointers are valid and is responsible for freeing the returned memory.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -636,50 +484,31 @@ pub unsafe extern "C" fn rssn_representation_is_valid(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_character(
     rep: *const Representation,
     out_len: *mut usize,
     out_keys: *mut *mut *mut Expr,
     out_values: *mut *mut *mut Expr,
 ) {
-
     unsafe {
-
         let chars = character(&*rep);
 
         *out_len = chars.len();
 
-        let mut keys_vec =
-            Vec::with_capacity(
-                chars.len(),
-            );
+        let mut keys_vec = Vec::with_capacity(chars.len());
 
-        let mut values_vec =
-            Vec::with_capacity(
-                chars.len(),
-            );
+        let mut values_vec = Vec::with_capacity(chars.len());
 
         for (k, v) in chars {
+            keys_vec.push(Box::into_raw(Box::new(k.0)));
 
-            keys_vec.push(
-                Box::into_raw(
-                    Box::new(k.0),
-                ),
-            );
-
-            values_vec.push(
-                Box::into_raw(
-                    Box::new(v),
-                ),
-            );
+            values_vec.push(Box::into_raw(Box::new(v)));
         }
 
-        *out_keys =
-            keys_vec.as_mut_ptr();
+        *out_keys = keys_vec.as_mut_ptr();
 
-        *out_values =
-            values_vec.as_mut_ptr();
+        *out_values = values_vec.as_mut_ptr();
 
         std::mem::forget(keys_vec);
 

@@ -13,7 +13,6 @@ use crate::numerical::integrate::{
 use crate::symbolic::core::Expr;
 
 #[derive(Deserialize)]
-
 struct QuadratureInput {
     expr: Expr,
     var: String,
@@ -24,8 +23,7 @@ struct QuadratureInput {
 }
 
 /// Performs numerical integration via Bincode.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -33,26 +31,19 @@ struct QuadratureInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input: QuadratureInput =
-        match from_bincode_buffer(
-            &buffer,
-        ) {
-            | Some(v) => v,
-            | None => {
-
-                let res : FfiResult<f64, String> = FfiResult {
-                ok : None,
-                err : Some("Bincode decoding error".to_string()),
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_numerical_quadrature_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: QuadratureInput = match from_bincode_buffer(&buffer) {
+        | Some(v) => v,
+        | None => {
+            let res: FfiResult<f64, String> = FfiResult {
+                ok: None,
+                err: Some("Bincode decoding error".to_string()),
             };
 
-                return to_bincode_buffer(&res);
-            },
-        };
+            return to_bincode_buffer(&res);
+        },
+    };
 
     let result = integrate::quadrature(
         &input.expr,

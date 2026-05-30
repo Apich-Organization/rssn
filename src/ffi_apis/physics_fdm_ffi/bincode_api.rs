@@ -13,7 +13,6 @@ use crate::physics::physics_fdm::{
 };
 
 #[derive(Deserialize)]
-
 struct WaveEquationInput {
     width: usize,
     height: usize,
@@ -50,8 +49,7 @@ struct WaveEquationInput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -59,20 +57,14 @@ struct WaveEquationInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : WaveEquationInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: WaveEquationInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(&FfiResult::<
-                FdmGrid<f64>,
-                String,
-            >::err(
+            return to_bincode_buffer(&FfiResult::<FdmGrid<f64>, String>::err(
                 "Invalid Bincode".to_string(),
-            ))
+            ));
         },
     };
 
@@ -85,23 +77,15 @@ pub unsafe extern "C" fn rssn_physics_fdm_wave_bincode(
         steps: input.steps,
     };
 
-    let result = physics_fdm::solve_wave_equation_2d(
-        &config,
-        input.c,
-        |x, y| {
+    let result = physics_fdm::solve_wave_equation_2d(&config, input.c, |x, y| {
+        let dx_cen = x as f64 - (input.width / 2) as f64;
 
-            let dx_cen = x as f64 - (input.width / 2) as f64;
+        let dy_cen = y as f64 - (input.height / 2) as f64;
 
-            let dy_cen = y as f64 - (input.height / 2) as f64;
+        let dist2 = dy_cen.mul_add(dy_cen, dx_cen.powi(2));
 
-            let dist2 = dy_cen.mul_add(dy_cen, dx_cen.powi(2));
+        (-dist2 / 20.0).exp()
+    });
 
-            (-dist2 / 20.0).exp()
-        },
-    );
-
-    to_bincode_buffer(&FfiResult::<
-        FdmGrid<f64>,
-        String,
-    >::ok(result))
+    to_bincode_buffer(&FfiResult::<FdmGrid<f64>, String>::ok(result))
 }

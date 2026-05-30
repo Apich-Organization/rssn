@@ -7,8 +7,8 @@
 
 use std::collections::HashMap;
 
-use rand::Rng;
-use rand::thread_rng;
+use rand_v10::RngExt;
+use rand_v10::rng;
 
 use crate::numerical::elementary::eval_expr;
 use crate::numerical::integrate::QuadratureMethod;
@@ -50,86 +50,44 @@ const NUM_SAMPLES: usize = 100;
 /// # Returns
 /// `true` if the solution is numerically verified, `false` otherwise.
 #[must_use]
-
-pub fn verify_equation_solution<
-    S: std::hash::BuildHasher,
->(
+pub fn verify_equation_solution<S: std::hash::BuildHasher>(
     equations: &[Expr],
     solution: &HashMap<String, Expr, S>,
     free_vars: &[&str],
 ) -> bool {
-
-    let mut rng = thread_rng();
+    let mut rng = rng();
 
     for eq in equations {
+        let unwrapped_eq = unwrap_dag(eq.clone());
 
-        let unwrapped_eq =
-            unwrap_dag(eq.clone());
+        let diff = if let Expr::Eq(lhs, rhs) = unwrapped_eq {
+            simplify(&Expr::new_sub(lhs.clone(), rhs.clone()))
+        } else {
+            unwrapped_eq.clone()
+        };
 
-        let diff =
-            if let Expr::Eq(lhs, rhs) =
-                unwrapped_eq
-            {
-
-                simplify(
-                    &Expr::new_sub(
-                        lhs.clone(),
-                        rhs.clone(),
-                    ),
-                )
-            } else {
-
-                unwrapped_eq.clone()
-            };
-
-        for _ in 0 .. NUM_SAMPLES {
-
-            let mut current_vars =
-                HashMap::new();
+        for _ in 0..NUM_SAMPLES {
+            let mut current_vars = HashMap::new();
 
             // Random values for free variables
             for var in free_vars {
-
-                current_vars.insert(
-                    (*var).to_string(),
-                    rng.gen_range(
-                        -10.0 .. 10.0,
-                    ),
-                );
+                current_vars.insert((*var).to_string(), rng.random_range(-10.0..10.0));
             }
 
             // Substitute the proposed solution into the equation
-            let mut substituted_expr =
-                diff.clone();
+            let mut substituted_expr = diff.clone();
 
-            for (var, sol_expr) in
-                solution
-            {
-
-                substituted_expr = substitute(
-                    &substituted_expr,
-                    var,
-                    sol_expr,
-                );
+            for (var, sol_expr) in solution {
+                substituted_expr = substitute(&substituted_expr, var, sol_expr);
             }
 
-            match eval_expr(
-                &simplify(
-                    &substituted_expr,
-                ),
-                &current_vars,
-            ) {
+            match eval_expr(&simplify(&substituted_expr), &current_vars) {
                 | Ok(val) => {
-
-                    if val.abs()
-                        > TOLERANCE
-                    {
-
+                    if val.abs() > TOLERANCE {
                         return false;
                     }
                 },
                 | Err(_) => {
-
                     // Try another point if evaluation fails (e.g., division by zero at a specific random point)
                     continue;
                 },
@@ -140,69 +98,39 @@ pub fn verify_equation_solution<
     true
 }
 
-pub(crate) fn unwrap_dag(
-    expr: Expr
-) -> Expr {
-
+pub(crate) fn unwrap_dag(expr: Expr) -> Expr {
     match expr {
-        | Expr::Dag(node) => {
-            node.to_expr()
-                .unwrap_or(Expr::Dag(
-                    node,
-                ))
-        },
+        | Expr::Dag(node) => node.to_expr().unwrap_or(Expr::Dag(node)),
         | _ => expr,
     }
 }
 
 /// Verifies an indefinite integral `F(x)` for an integrand `f(x)` by checking if `F'(x) == f(x)`.
 #[must_use]
-
 pub fn verify_indefinite_integral(
     integrand: &Expr,
     integral_result: &Expr,
     var: &str,
 ) -> bool {
+    let derivative_of_result = differentiate(integral_result, var);
 
-    let derivative_of_result =
-        differentiate(
-            integral_result,
-            var,
-        );
+    let diff = simplify(&Expr::new_sub(integrand.clone(), derivative_of_result));
 
-    let diff =
-        simplify(&Expr::new_sub(
-            integrand.clone(),
-            derivative_of_result,
-        ));
-
-    let mut rng = thread_rng();
+    let mut rng = rng();
 
     let mut success_count = 0;
 
     let mut attempt_count = 0;
 
-    while success_count < NUM_SAMPLES
-        && attempt_count
-            < NUM_SAMPLES * 2
-    {
-
+    while success_count < NUM_SAMPLES && attempt_count < NUM_SAMPLES * 2 {
         let mut vars = HashMap::new();
 
-        let x_val = rng
-            .gen_range(-10.0 .. 10.0);
+        let x_val = rng.random_range(-10.0..10.0);
 
-        vars.insert(
-            var.to_string(),
-            x_val,
-        );
+        vars.insert(var.to_string(), x_val);
 
-        if let Ok(val) =
-            eval_expr(&diff, &vars)
-        {
-
+        if let Ok(val) = eval_expr(&diff, &vars) {
             if val.abs() > TOLERANCE {
-
                 return false;
             }
 
@@ -217,125 +145,71 @@ pub fn verify_indefinite_integral(
 
 /// Verifies a definite integral by comparing the symbolic result with numerical quadrature.
 #[must_use]
-
 pub fn verify_definite_integral(
     integrand: &Expr,
     var: &str,
     range: (f64, f64),
     symbolic_result: &Expr,
 ) -> bool {
-
-    let symbolic_val = match eval_expr(
-        &simplify(symbolic_result),
-        &HashMap::new(),
-    ) {
+    let symbolic_val = match eval_expr(&simplify(symbolic_result), &HashMap::new()) {
         | Ok(v) => v,
         | Err(_) => return false,
     };
 
-    quadrature(
-        integrand,
-        var,
-        range,
-        1000,
-        &QuadratureMethod::Simpson,
-    )
-    .is_ok_and(|numerical_val| {
-
-        (symbolic_val - numerical_val)
-            .abs()
-            < TOLERANCE
-    })
+    quadrature(integrand, var, range, 1000, &QuadratureMethod::Simpson)
+        .is_ok_and(|numerical_val| (symbolic_val - numerical_val).abs() < TOLERANCE)
 }
 
 /// Verifies a solution to an ODE `G(x, y, y', y'', ...) = 0` by numerical sampling.
 #[must_use]
-
 pub fn verify_ode_solution(
     ode: &Expr,
     solution: &Expr,
     func_name: &str,
     var: &str,
 ) -> bool {
-
     // 1. Convert ODE to f(x, y, y', y'', ...) = 0 form
-    let unwrapped_ode =
-        unwrap_dag(ode.clone());
+    let unwrapped_ode = unwrap_dag(ode.clone());
 
-    let eq_zero =
-        if let Expr::Eq(lhs, rhs) =
-            unwrapped_ode
-        {
+    let eq_zero = if let Expr::Eq(lhs, rhs) = unwrapped_ode {
+        Expr::new_sub(lhs, rhs)
+    } else {
+        unwrapped_ode
+    };
 
-            Expr::new_sub(lhs, rhs)
-        } else {
+    let mut rng = rng();
 
-            unwrapped_ode
-        };
-
-    let mut rng = thread_rng();
-
-    for _ in 0 .. NUM_SAMPLES {
-
-        let x_val = rng
-            .gen_range(-10.0 .. 10.0);
+    for _ in 0..NUM_SAMPLES {
+        let x_val = rng.random_range(-10.0..10.0);
 
         let mut vars = HashMap::new();
 
-        vars.insert(
-            var.to_string(),
-            x_val,
-        );
+        vars.insert(var.to_string(), x_val);
 
         // We need to substitute y, y', y'', ... in the ODE
         // This is a bit complex as we need to find all derivatives of func_name
         // For now, let's just handle y and y' for simplicity, or assume 'solution' is substituted for 'func_name'
 
         // Better approach: symbolically substitute and differentiate
-        let mut substituted_ode =
-            simplify(&eq_zero);
+        let mut substituted_ode = simplify(&eq_zero);
 
         // This is a naive substitution. Proper ODE verification requires handling derivatives specifically.
         // Assuming the ODE uses standard notation or we substitute derivatives of the solution.
         let y = solution.clone();
 
-        let y_prime =
-            differentiate(&y, var);
+        let y_prime = differentiate(&y, var);
 
-        let y_double_prime =
-            differentiate(
-                &y_prime,
-                var,
-            );
+        let y_double_prime = differentiate(&y_prime, var);
 
-        substituted_ode = substitute(
-            &substituted_ode,
-            func_name,
-            &y,
-        );
+        substituted_ode = substitute(&substituted_ode, func_name, &y);
 
-        substituted_ode = substitute(
-            &substituted_ode,
-            &format!("{func_name}'"),
-            &y_prime,
-        );
+        substituted_ode = substitute(&substituted_ode, &format!("{func_name}'"), &y_prime);
 
-        substituted_ode = substitute(
-            &substituted_ode,
-            &format!("{func_name}''"),
-            &y_double_prime,
-        );
+        substituted_ode = substitute(&substituted_ode, &format!("{func_name}''"), &y_double_prime);
 
-        match eval_expr(
-            &simplify(&substituted_ode),
-            &vars,
-        ) {
+        match eval_expr(&simplify(&substituted_ode), &vars) {
             | Ok(val) => {
-
-                if val.abs()
-                    > TOLERANCE * 10.0
-                {
-
+                if val.abs() > TOLERANCE * 10.0 {
                     // ODEs can be more sensitive
                     return false;
                 }
@@ -349,62 +223,28 @@ pub fn verify_ode_solution(
 
 /// Verifies a matrix inverse `A⁻¹` by checking if `A * A⁻¹` is the identity matrix.
 #[must_use]
-
 pub fn verify_matrix_inverse(
     original: &Expr,
     inverse: &Expr,
 ) -> bool {
+    let product = matrix::mul_matrices(original, inverse);
 
-    let product = matrix::mul_matrices(
-        original,
-        inverse,
-    );
+    let simplified_product = unwrap_dag(simplify(&product));
 
-    let simplified_product =
-        unwrap_dag(simplify(&product));
-
-    if let Expr::Matrix(prod_mat) =
-        simplified_product
-    {
-
+    if let Expr::Matrix(prod_mat) = simplified_product {
         let _n = prod_mat.len();
 
-        for (i, row) in prod_mat
-            .iter()
-            .enumerate()
-        {
+        for (i, row) in prod_mat.iter().enumerate() {
+            for (j, item) in row.iter().enumerate() {
+                let expected = if i == j { 1.0 } else { 0.0 };
 
-            for (j, item) in row
-                .iter()
-                .enumerate()
-            {
-
-                let expected = if i == j
-                {
-
-                    1.0
-                } else {
-
-                    0.0
-                };
-
-                match eval_expr(
-                    item,
-                    &HashMap::new(),
-                ) {
+                match eval_expr(item, &HashMap::new()) {
                     | Ok(val) => {
-
-                        if (val
-                            - expected)
-                            .abs()
-                            > TOLERANCE
-                        {
-
+                        if (val - expected).abs() > TOLERANCE {
                             return false;
                         }
                     },
                     | Err(_) => {
-
                         return false;
                     },
                 }
@@ -419,52 +259,32 @@ pub fn verify_matrix_inverse(
 
 /// Verifies a symbolic derivative `f'(x)` by comparing it to a numerical differentiation.
 #[must_use]
-
 pub fn verify_derivative(
     original_func: &Expr,
     derivative_func: &Expr,
     var: &str,
 ) -> bool {
+    let mut rng = rng();
 
-    let mut rng = thread_rng();
+    for _ in 0..NUM_SAMPLES {
+        let x_val = rng.random_range(-10.0..10.0);
 
-    for _ in 0 .. NUM_SAMPLES {
+        let mut vars_map = HashMap::new();
 
-        let x_val = rng
-            .gen_range(-10.0 .. 10.0);
+        vars_map.insert(var.to_string(), x_val);
 
-        let mut vars_map =
-            HashMap::new();
-
-        vars_map.insert(
-            var.to_string(),
-            x_val,
-        );
-
-        let symbolic_deriv_val =
-            match eval_expr(
-                derivative_func,
-                &vars_map,
-            ) {
-                | Ok(v) => v,
-                | Err(_) => continue,
-            };
-
-        let numerical_deriv_val = match crate::numerical::calculus::gradient(
-            original_func,
-            &[var],
-            &[x_val],
-        ) {
-            | Ok(grad_vec) => grad_vec[0],
+        let symbolic_deriv_val = match eval_expr(derivative_func, &vars_map) {
+            | Ok(v) => v,
             | Err(_) => continue,
         };
 
-        if (symbolic_deriv_val
-            - numerical_deriv_val)
-            .abs()
-            > TOLERANCE * 100.0
-        {
+        let numerical_deriv_val =
+            match crate::numerical::calculus::gradient(original_func, &[var], &[x_val]) {
+                | Ok(grad_vec) => grad_vec[0],
+                | Err(_) => continue,
+            };
 
+        if (symbolic_deriv_val - numerical_deriv_val).abs() > TOLERANCE * 100.0 {
             return false;
         }
     }
@@ -474,26 +294,18 @@ pub fn verify_derivative(
 
 /// Verifies a symbolic limit `lim_{x->x0} f(x) = L`.
 #[must_use]
-
 pub fn verify_limit(
     f: &Expr,
     var: &str,
     target: &Expr,
     limit_val: &Expr,
 ) -> bool {
-
-    let x0 = match eval_expr(
-        &simplify(target),
-        &HashMap::new(),
-    ) {
+    let x0 = match eval_expr(&simplify(target), &HashMap::new()) {
         | Ok(v) => v,
         | Err(_) => return false,
     };
 
-    let l = match eval_expr(
-        &simplify(limit_val),
-        &HashMap::new(),
-    ) {
+    let l = match eval_expr(&simplify(limit_val), &HashMap::new()) {
         | Ok(v) => v,
         | Err(_) => return false,
     };
@@ -501,45 +313,20 @@ pub fn verify_limit(
     let epsilons = [1e-3, 1e-5, 1e-7];
 
     for &eps in &epsilons {
-
         let mut vars = HashMap::new();
 
-        vars.insert(
-            var.to_string(),
-            x0 + eps,
-        );
+        vars.insert(var.to_string(), x0 + eps);
 
-        if let Ok(val) =
-            eval_expr(f, &vars)
-        {
-
-            if (val - l).abs()
-                > eps.mul_add(
-                    100.0,
-                    TOLERANCE,
-                )
-            {
-
+        if let Ok(val) = eval_expr(f, &vars) {
+            if (val - l).abs() > eps.mul_add(100.0, TOLERANCE) {
                 return false;
             }
         }
 
-        vars.insert(
-            var.to_string(),
-            x0 - eps,
-        );
+        vars.insert(var.to_string(), x0 - eps);
 
-        if let Ok(val) =
-            eval_expr(f, &vars)
-        {
-
-            if (val - l).abs()
-                > eps.mul_add(
-                    100.0,
-                    TOLERANCE,
-                )
-            {
-
+        if let Ok(val) = eval_expr(f, &vars) {
+            if (val - l).abs() > eps.mul_add(100.0, TOLERANCE) {
                 return false;
             }
         }

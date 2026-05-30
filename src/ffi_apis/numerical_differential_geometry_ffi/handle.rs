@@ -8,8 +8,7 @@ use crate::numerical::matrix::Matrix;
 use crate::symbolic::coordinates::CoordinateSystem;
 
 /// Computes the metric tensor at a given point.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -17,66 +16,41 @@ use crate::symbolic::coordinates::CoordinateSystem;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
     system: CoordinateSystem,
     point: *const f64,
     n_vars: usize,
 ) -> *mut Matrix<f64> {
-
     unsafe {
-
         if point.is_null() {
-
             return ptr::null_mut();
         }
 
-        let point_slice =
-            std::slice::from_raw_parts(
-                point,
-                n_vars,
-            );
+        let point_slice = std::slice::from_raw_parts(point, n_vars);
 
         match differential_geometry::metric_tensor_at_point(system, point_slice) {
-        | Ok(g) => {
+            | Ok(g) => {
+                let rows = g.len();
 
-            let rows = g.len();
+                let cols = if rows > 0 { g[0].len() } else { 0 };
 
-            let cols = if rows > 0 {
+                let flattened: Vec<f64> = g.into_iter().flatten().collect();
 
-                g[0].len()
-            } else {
+                Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+            },
+            | Err(e) => {
+                update_last_error(e);
 
-                0
-            };
-
-            let flattened : Vec<f64> = g
-                .into_iter()
-                .flatten()
-                .collect();
-
-            Box::into_raw(Box::new(
-                Matrix::new(
-                    rows,
-                    cols,
-                    flattened,
-                ),
-            ))
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            ptr::null_mut()
-        },
-    }
+                ptr::null_mut()
+            },
+        }
     }
 }
 
 /// Computes the Christoffel symbols at a given point.
 /// Returns a flattened vector of size dim^3.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -84,50 +58,36 @@ pub unsafe extern "C" fn rssn_num_dg_metric_tensor(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
     system: CoordinateSystem,
     point: *const f64,
     n_vars: usize,
 ) -> *mut Vec<f64> {
-
     unsafe {
-
         if point.is_null() {
-
             return ptr::null_mut();
         }
 
-        let point_slice =
-            std::slice::from_raw_parts(
-                point,
-                n_vars,
-            );
+        let point_slice = std::slice::from_raw_parts(point, n_vars);
 
         match differential_geometry::christoffel_symbols(system, point_slice) {
-        | Ok(c) => {
+            | Ok(c) => {
+                let flattened: Vec<f64> = c.into_iter().flatten().flatten().collect();
 
-            let flattened : Vec<f64> = c
-                .into_iter()
-                .flatten()
-                .flatten()
-                .collect();
+                Box::into_raw(Box::new(flattened))
+            },
+            | Err(e) => {
+                update_last_error(e);
 
-            Box::into_raw(Box::new(flattened))
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            ptr::null_mut()
-        },
-    }
+                ptr::null_mut()
+            },
+        }
     }
 }
 
 /// Computes the Ricci tensor at a given point.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -135,65 +95,40 @@ pub unsafe extern "C" fn rssn_num_dg_christoffel_symbols(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
     system: CoordinateSystem,
     point: *const f64,
     n_vars: usize,
 ) -> *mut Matrix<f64> {
-
     unsafe {
-
         if point.is_null() {
-
             return ptr::null_mut();
         }
 
-        let point_slice =
-            std::slice::from_raw_parts(
-                point,
-                n_vars,
-            );
+        let point_slice = std::slice::from_raw_parts(point, n_vars);
 
         match differential_geometry::ricci_tensor(system, point_slice) {
-        | Ok(r) => {
+            | Ok(r) => {
+                let rows = r.len();
 
-            let rows = r.len();
+                let cols = if rows > 0 { r[0].len() } else { 0 };
 
-            let cols = if rows > 0 {
+                let flattened: Vec<f64> = r.into_iter().flatten().collect();
 
-                r[0].len()
-            } else {
+                Box::into_raw(Box::new(Matrix::new(rows, cols, flattened)))
+            },
+            | Err(e) => {
+                update_last_error(e);
 
-                0
-            };
-
-            let flattened : Vec<f64> = r
-                .into_iter()
-                .flatten()
-                .collect();
-
-            Box::into_raw(Box::new(
-                Matrix::new(
-                    rows,
-                    cols,
-                    flattened,
-                ),
-            ))
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            ptr::null_mut()
-        },
-    }
+                ptr::null_mut()
+            },
+        }
     }
 }
 
 /// Computes the Ricci scalar at a given point.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -201,42 +136,31 @@ pub unsafe extern "C" fn rssn_num_dg_ricci_tensor(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_dg_ricci_scalar(
     system: CoordinateSystem,
     point: *const f64,
     n_vars: usize,
     result: *mut f64,
 ) -> i32 {
-
     unsafe {
-
-        if point.is_null()
-            || result.is_null()
-        {
-
+        if point.is_null() || result.is_null() {
             return -1;
         }
 
-        let point_slice =
-            std::slice::from_raw_parts(
-                point,
-                n_vars,
-            );
+        let point_slice = std::slice::from_raw_parts(point, n_vars);
 
         match differential_geometry::ricci_scalar(system, point_slice) {
-        | Ok(r) => {
+            | Ok(r) => {
+                *result = r;
 
-            *result = r;
+                0
+            },
+            | Err(e) => {
+                update_last_error(e);
 
-            0
-        },
-        | Err(e) => {
-
-            update_last_error(e);
-
-            -1
-        },
-    }
+                -1
+            },
+        }
     }
 }

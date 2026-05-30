@@ -26,10 +26,7 @@ use crate::symbolic::real_roots::isolate_real_roots;
 use crate::symbolic::simplify::is_zero;
 
 /// Represents a cell in the Cylindrical Algebraic Decomposition.
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
-
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CadCell {
     /// A sample point that lies within the cell.
     pub sample_point: Vec<f64>,
@@ -40,10 +37,7 @@ pub struct CadCell {
 }
 
 /// Represents the full Cylindrical Algebraic Decomposition of R^n.
-#[derive(
-    Debug, Clone, Serialize, Deserialize,
-)]
-
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Cad {
     /// The collection of [`CadCell`]s in the decomposition.
     pub cells: Vec<CadCell>,
@@ -64,26 +58,19 @@ pub struct Cad {
 ///
 /// This function will return an error if the variable list is empty, or if an
 /// error occurs during the projection or lifting phases (e.g., during root isolation).
-
 pub fn cad(
     polys: &[SparsePolynomial],
     vars: &[&str],
 ) -> Result<Cad, String> {
-
     if vars.is_empty() {
-
         return Err("Variable list \
                     cannot be empty."
             .to_string());
     }
 
-    let projections =
-        projection_phase(polys, vars);
+    let projections = projection_phase(polys, vars);
 
-    let cells = lifting_phase(
-        &projections,
-        vars,
-    )?;
+    let cells = lifting_phase(&projections, vars)?;
 
     Ok(Cad {
         cells,
@@ -92,100 +79,56 @@ pub fn cad(
 }
 
 /// Performs the projection phase of CAD.
-
 pub(crate) fn projection_phase(
     polys: &[SparsePolynomial],
     vars: &[&str],
 ) -> Vec<Vec<SparsePolynomial>> {
+    let mut projection_sets = vec![polys.to_vec()];
 
-    let mut projection_sets =
-        vec![polys.to_vec()];
+    let mut current_polys = polys.to_vec();
 
-    let mut current_polys =
-        polys.to_vec();
-
-    let mut current_vars =
-        vars.to_vec();
+    let mut current_vars = vars.to_vec();
 
     while current_vars.len() > 1 {
+        let proj_var = current_vars.last().unwrap();
 
-        let proj_var = current_vars
-            .last()
-            .unwrap();
-
-        let mut next_set =
-            HashSet::new();
+        let mut next_set = HashSet::new();
 
         // Discriminants (resultant(p, p_prime))
         for p in &current_polys {
+            let p_prime = differentiate_poly(p, proj_var);
 
-            let p_prime =
-                differentiate_poly(
-                    p,
-                    proj_var,
-                );
-
-            if !p_prime
-                .terms
-                .is_empty()
-            {
-
-                let res = resultant(
-                    p,
-                    &p_prime,
-                    proj_var,
-                );
+            if !p_prime.terms.is_empty() {
+                let res = resultant(p, &p_prime, proj_var);
 
                 println!("Resultant(p, p_prime, {proj_var}): {res:?}");
 
                 if !is_zero(&res) {
+                    let next_vars = &current_vars[0..current_vars.len() - 1];
 
-                    let next_vars = &current_vars[0 .. current_vars.len() - 1];
-
-                    next_set.insert(expr_to_sparse_poly(
-                        &res,
-                        next_vars,
-                    ));
+                    next_set.insert(expr_to_sparse_poly(&res, next_vars));
                 }
             }
         }
 
         // Cross-resultants
-        for i in
-            0 .. current_polys.len()
-        {
-
-            for j in (i + 1)
-                .. current_polys.len()
-            {
-
-                let res = resultant(
-                    &current_polys[i],
-                    &current_polys[j],
-                    proj_var,
-                );
+        for i in 0..current_polys.len() {
+            for j in (i + 1)..current_polys.len() {
+                let res = resultant(&current_polys[i], &current_polys[j], proj_var);
 
                 if !is_zero(&res) {
+                    let next_vars = &current_vars[0..current_vars.len() - 1];
 
-                    let next_vars = &current_vars[0 .. current_vars.len() - 1];
-
-                    next_set.insert(expr_to_sparse_poly(
-                        &res,
-                        next_vars,
-                    ));
+                    next_set.insert(expr_to_sparse_poly(&res, next_vars));
                 }
             }
         }
 
         current_vars.pop();
 
-        current_polys = next_set
-            .into_iter()
-            .collect();
+        current_polys = next_set.into_iter().collect();
 
-        projection_sets.push(
-            current_polys.clone(),
-        );
+        projection_sets.push(current_polys.clone());
     }
 
     projection_sets.reverse();
@@ -194,338 +137,185 @@ pub(crate) fn projection_phase(
 }
 
 /// Performs the lifting phase of CAD.
-
 pub(crate) fn lifting_phase(
-    projections: &[Vec<
-        SparsePolynomial,
-    >],
+    projections: &[Vec<SparsePolynomial>],
     vars: &[&str],
 ) -> Result<Vec<CadCell>, String> {
-
     let base_polys = &projections[0];
 
     let mut all_roots = Vec::new();
 
     for p in base_polys {
-
-        let roots = isolate_real_roots(
-            p,
-            vars[0],
-            1e-9,
-        )?;
+        let roots = isolate_real_roots(p, vars[0], 1e-9)?;
 
         for (a, b) in roots {
-
-            all_roots.push(
-                f64::midpoint(a, b),
-            );
+            all_roots.push(f64::midpoint(a, b));
         }
     }
 
-    all_roots.sort_by(|a, b| {
+    all_roots.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-        a.partial_cmp(b)
-            .unwrap_or(
-            std::cmp::Ordering::Equal,
-        )
-    });
-
-    all_roots.dedup_by(|a, b| {
-
-        (*a - *b).abs() < 1e-9
-    });
+    all_roots.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
 
     let mut current_cells = Vec::new();
 
     // Construct first level cells
     if all_roots.is_empty() {
-
         current_cells.push(CadCell {
             sample_point: vec![0.0],
             dim: 1,
             index: vec![0],
         });
     } else {
-
         // Interval (-inf, first_root)
         current_cells.push(CadCell {
-            sample_point: vec![
-                all_roots[0] - 1.0,
-            ],
+            sample_point: vec![all_roots[0] - 1.0],
             dim: 1,
             index: vec![0],
         });
 
-        for (i, root) in all_roots
-            .iter()
-            .enumerate()
-        {
-
+        for (i, root) in all_roots.iter().enumerate() {
             // Point {root}
-            current_cells.push(
-                CadCell {
-                    sample_point: vec![
-                        *root,
-                    ],
-                    dim: 0,
-                    index: vec![
-                        2 * i + 1,
-                    ],
-                },
-            );
+            current_cells.push(CadCell {
+                sample_point: vec![*root],
+                dim: 0,
+                index: vec![2 * i + 1],
+            });
 
             // Interval (root, next_root) or (root, inf)
-            current_cells.push(
-                CadCell {
-                    sample_point:
-                        vec![
-                            if i + 1 < all_roots.len() {
-                                f64::midpoint(*root, all_roots[i + 1])
-                            } else {
-                                *root + 1.0
-                            },
-                        ],
-                    dim: 1,
-                    index: vec![
-                        2 * i + 2,
-                    ],
-                },
-            );
+            current_cells.push(CadCell {
+                sample_point: vec![if i + 1 < all_roots.len() {
+                    f64::midpoint(*root, all_roots[i + 1])
+                } else {
+                    *root + 1.0
+                }],
+                dim: 1,
+                index: vec![2 * i + 2],
+            });
         }
     }
 
-    for k in 1 .. vars.len() {
-
+    for k in 1..vars.len() {
         let polys_k = &projections[k];
 
-        let mut next_level_cells =
-            Vec::new();
+        let mut next_level_cells = Vec::new();
 
         for cell in &current_cells {
+            let mut sample_map = HashMap::new();
 
-            let mut sample_map =
-                HashMap::new();
-
-            for (i, v) in vars
-                .iter()
-                .enumerate()
-                .take(k)
-            {
-
-                sample_map.insert(
-                    (*v).to_string(),
-                    cell.sample_point
-                        [i],
-                );
+            for (i, v) in vars.iter().enumerate().take(k) {
+                sample_map.insert((*v).to_string(), cell.sample_point[i]);
             }
 
-            let mut roots_at_sample =
-                Vec::new();
+            let mut roots_at_sample = Vec::new();
 
             for p in polys_k {
+                let p_expr = sparse_poly_to_expr(p);
 
-                let p_expr =
-                    sparse_poly_to_expr(
-                        p,
-                    );
+                let p_substituted_expr = substitute_map(&p_expr, &sample_map);
 
-                let p_substituted_expr =
-                    substitute_map(
-                        &p_expr,
-                        &sample_map,
-                    );
+                let p_substituted = expr_to_sparse_poly(&p_substituted_expr, &[vars[k]]);
 
-                let p_substituted = expr_to_sparse_poly(
-                    &p_substituted_expr,
-                    &[vars[k]],
-                );
-
-                if p_substituted
-                    .terms
-                    .is_empty()
-                {
-
+                if p_substituted.terms.is_empty() {
                     continue;
                 }
 
-                let is_constant =
-                    p_substituted
-                        .degree(
-                            vars[k],
-                        )
-                        == 0;
+                let is_constant = p_substituted.degree(vars[k]) == 0;
 
                 if is_constant {
-
                     continue;
                 }
 
-                let roots =
-                    isolate_real_roots(
-                        &p_substituted,
-                        vars[k],
-                        1e-9,
-                    )?;
+                let roots = isolate_real_roots(&p_substituted, vars[k], 1e-9)?;
 
                 for (a, b) in roots {
-
-                    roots_at_sample
-                        .push(
-                        f64::midpoint(
-                            a, b,
-                        ),
-                    );
+                    roots_at_sample.push(f64::midpoint(a, b));
                 }
             }
 
-            roots_at_sample.sort_by(|a, b| {
+            roots_at_sample.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-                a.partial_cmp(b)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
+            roots_at_sample.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
 
-            roots_at_sample.dedup_by(
-                |a, b| {
+            let mut new_sample = cell.sample_point.clone();
 
-                    (*a - *b).abs()
-                        < 1e-9
-                },
-            );
+            let mut new_index = cell.index.clone();
 
-            let mut new_sample = cell
-                .sample_point
-                .clone();
-
-            let mut new_index =
-                cell.index.clone();
-
-            if roots_at_sample
-                .is_empty()
-            {
-
+            if roots_at_sample.is_empty() {
                 new_sample.push(0.0);
 
                 new_index.push(0);
 
-                next_level_cells.push(
-                    CadCell {
-                        sample_point:
-                            new_sample,
-                        dim: cell.dim
-                            + 1,
-                        index:
-                            new_index,
-                    },
-                );
+                next_level_cells.push(CadCell {
+                    sample_point: new_sample,
+                    dim: cell.dim + 1,
+                    index: new_index,
+                });
             } else {
-
                 // Interval (-inf, first_root)
-                new_sample.push(
-                    roots_at_sample[0]
-                        - 1.0,
-                );
+                new_sample.push(roots_at_sample[0] - 1.0);
 
                 new_index.push(0);
 
-                next_level_cells.push(
-                    CadCell {
-                        sample_point:
-                            new_sample,
-                        dim: cell.dim
-                            + 1,
-                        index:
-                            new_index,
-                    },
-                );
+                next_level_cells.push(CadCell {
+                    sample_point: new_sample,
+                    dim: cell.dim + 1,
+                    index: new_index,
+                });
 
-                for (i, root_val) in
-                    roots_at_sample
-                        .iter()
-                        .enumerate()
-                {
-
+                for (i, root_val) in roots_at_sample.iter().enumerate() {
                     // Point {root}
-                    let mut
-                    point_sample = cell
-                        .sample_point
-                        .clone();
+                    let mut point_sample = cell.sample_point.clone();
 
-                    point_sample.push(
-                        *root_val,
-                    );
+                    point_sample.push(*root_val);
 
-                    let mut point_index =
-                        cell.index
-                            .clone();
+                    let mut point_index = cell.index.clone();
 
-                    point_index.push(
-                        2 * i + 1,
-                    );
+                    point_index.push(2 * i + 1);
 
                     next_level_cells.push(CadCell {
-                        sample_point : point_sample,
-                        dim : cell.dim,
-                        index : point_index,
+                        sample_point: point_sample,
+                        dim: cell.dim,
+                        index: point_index,
                     });
 
                     // Interval (root, next_root) or (root, inf)
-                    let mut interval_sample = cell
-                        .sample_point
-                        .clone();
+                    let mut interval_sample = cell.sample_point.clone();
 
                     if i + 1 < roots_at_sample.len() {
-
-                        interval_sample.push(f64::midpoint(
-                            *root_val,
-                            roots_at_sample[i + 1],
-                        ));
+                        interval_sample.push(f64::midpoint(*root_val, roots_at_sample[i + 1]));
                     } else {
-
                         interval_sample.push(*root_val + 1.0);
                     }
 
-                    let mut
-                    interval_index =
-                        cell.index
-                            .clone();
+                    let mut interval_index = cell.index.clone();
 
-                    interval_index
-                        .push(
-                            2 * i + 2,
-                        );
+                    interval_index.push(2 * i + 2);
 
                     next_level_cells.push(CadCell {
-                        sample_point : interval_sample,
-                        dim : cell.dim + 1,
-                        index : interval_index,
+                        sample_point: interval_sample,
+                        dim: cell.dim + 1,
+                        index: interval_index,
                     });
                 }
             }
         }
 
-        current_cells =
-            next_level_cells;
+        current_cells = next_level_cells;
     }
 
     Ok(current_cells)
 }
 
 /// Evaluates an expression by substituting variables with constant values.
-
 pub(crate) fn substitute_map(
     expr: &Expr,
     vars: &HashMap<String, f64>,
 ) -> Expr {
-
     let mut result = expr.clone();
 
     for (var, val) in vars {
-
-        result = crate::symbolic::calculus::substitute(
-            &result,
-            var,
-            &Expr::Constant(*val),
-        );
+        result = crate::symbolic::calculus::substitute(&result, var, &Expr::Constant(*val));
     }
 
     crate::symbolic::simplify_dag::simplify(&result)
@@ -533,50 +323,28 @@ pub(crate) fn substitute_map(
 
 /// Computes the Sylvester matrix of two polynomials with respect to a given variable.
 #[allow(clippy::needless_range_loop)]
-
 pub(crate) fn sylvester_matrix(
     p: &SparsePolynomial,
     q: &SparsePolynomial,
     var: &str,
 ) -> Expr {
+    let n = p.degree(var).try_into().unwrap_or(0);
 
-    let n = p
-        .degree(var)
-        .try_into()
-        .unwrap_or(0);
-
-    let m = q
-        .degree(var)
-        .try_into()
-        .unwrap_or(0);
+    let m = q.degree(var).try_into().unwrap_or(0);
 
     if n == 0 && m == 0 {
-
-        return Expr::Matrix(vec![
-            vec![Expr::Constant(0.0)],
-        ]);
+        return Expr::Matrix(vec![vec![Expr::Constant(0.0)]]);
     }
 
-    let mut matrix_rows = vec![
-        vec![
-                Expr::Constant(0.0);
-                n + m
-            ];
-        n + m
-    ];
+    let mut matrix_rows = vec![vec![Expr::Constant(0.0); n + m]; n + m];
 
-    let p_coeffs_rev =
-        p.get_coeffs_as_vec(var);
+    let p_coeffs_rev = p.get_coeffs_as_vec(var);
 
-    let q_coeffs_rev =
-        q.get_coeffs_as_vec(var);
+    let q_coeffs_rev = q.get_coeffs_as_vec(var);
 
-    for i in 0 .. m {
-
-        for j in 0 ..= n {
-
+    for i in 0..m {
+        for j in 0..=n {
             if i + j < n + m {
-
                 matrix_rows[i][i + j] = p_coeffs_rev
                     .get(j)
                     .cloned()
@@ -585,12 +353,9 @@ pub(crate) fn sylvester_matrix(
         }
     }
 
-    for i in 0 .. n {
-
-        for j in 0 ..= m {
-
+    for i in 0..n {
+        for j in 0..=m {
             if i + j < n + m {
-
                 matrix_rows[i + m][i + j] = q_coeffs_rev
                     .get(j)
                     .cloned()
@@ -603,28 +368,19 @@ pub(crate) fn sylvester_matrix(
 }
 
 /// Computes the resultant of two polynomials with respect to a given variable.
-
 pub(crate) fn resultant(
     p: &SparsePolynomial,
     q: &SparsePolynomial,
     var: &str,
 ) -> Expr {
+    let sylvester = sylvester_matrix(p, q, var);
 
-    let sylvester =
-        sylvester_matrix(p, q, var);
-
-    if let Expr::Matrix(m) = &sylvester
-    {
-
+    if let Expr::Matrix(m) = &sylvester {
         if m.is_empty() {
-
             return Expr::Constant(0.0);
         }
 
-        if m.len() == 1
-            && m[0].len() == 1
-        {
-
+        if m.len() == 1 && m[0].len() == 1 {
             return m[0][0].clone();
         }
     }
@@ -633,7 +389,6 @@ pub(crate) fn resultant(
 }
 
 #[cfg(test)]
-
 mod tests {
 
     use std::collections::BTreeMap;
@@ -642,44 +397,27 @@ mod tests {
     use crate::symbolic::core::Monomial;
 
     #[test]
-
     fn test_simple_cad() {
-
         // p(x) = x^2 - 1
         let mut terms = BTreeMap::new();
 
-        let mut vars_map =
-            BTreeMap::new();
+        let mut vars_map = BTreeMap::new();
 
-        vars_map
-            .insert("x".to_string(), 2);
+        vars_map.insert("x".to_string(), 2);
 
-        terms.insert(
-            Monomial(vars_map),
-            Expr::Constant(1.0),
-        );
+        terms.insert(Monomial(vars_map), Expr::Constant(1.0));
 
-        let vars_map_0 =
-            BTreeMap::new();
+        let vars_map_0 = BTreeMap::new();
 
-        terms.insert(
-            Monomial(vars_map_0),
-            Expr::Constant(-1.0),
-        );
+        terms.insert(Monomial(vars_map_0), Expr::Constant(-1.0));
 
-        let p = SparsePolynomial {
-            terms,
-        };
+        let p = SparsePolynomial { terms };
 
-        let result =
-            cad(&[p], &["x"]).unwrap();
+        let result = cad(&[p], &["x"]).unwrap();
 
         // Roots are -1 and 1.
         // Intervals: (-inf, -1), {-1}, (-1, 1), {1}, (1, inf)
         // Total 5 cells.
-        assert_eq!(
-            result.cells.len(),
-            5
-        );
+        assert_eq!(result.cells.len(), 5);
     }
 }

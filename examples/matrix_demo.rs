@@ -3,32 +3,19 @@ use rssn::symbolic::matrix::*;
 use rssn::symbolic::simplify_dag::simplify;
 
 fn main() {
-
     println!("Symbolic Matrix Demo");
 
     println!("====================");
 
     // Create matrices
     let m1 = Expr::Matrix(vec![
-        vec![
-            Expr::new_constant(1.0),
-            Expr::new_constant(2.0),
-        ],
-        vec![
-            Expr::new_constant(3.0),
-            Expr::new_constant(4.0),
-        ],
+        vec![Expr::new_constant(1.0), Expr::new_constant(2.0)],
+        vec![Expr::new_constant(3.0), Expr::new_constant(4.0)],
     ]);
 
     let m2 = Expr::Matrix(vec![
-        vec![
-            Expr::new_constant(2.0),
-            Expr::new_constant(0.0),
-        ],
-        vec![
-            Expr::new_constant(1.0),
-            Expr::new_constant(2.0),
-        ],
+        vec![Expr::new_constant(2.0), Expr::new_constant(0.0)],
+        vec![Expr::new_constant(1.0), Expr::new_constant(2.0)],
     ]);
 
     println!("Matrix 1:");
@@ -78,23 +65,13 @@ fn main() {
     // 4x + 7y = 5
     // 2x + 6y = -2
     let a = Expr::Matrix(vec![
-        vec![
-            Expr::new_constant(4.0),
-            Expr::new_constant(7.0),
-        ],
-        vec![
-            Expr::new_constant(2.0),
-            Expr::new_constant(6.0),
-        ],
+        vec![Expr::new_constant(4.0), Expr::new_constant(7.0)],
+        vec![Expr::new_constant(2.0), Expr::new_constant(6.0)],
     ]);
 
     let b = Expr::Matrix(vec![
-        vec![Expr::new_constant(
-            5.0,
-        )],
-        vec![Expr::new_constant(
-            -2.0,
-        )],
+        vec![Expr::new_constant(5.0)],
+        vec![Expr::new_constant(-2.0)],
     ]);
 
     println!("Solving Ax = b:");
@@ -105,14 +82,9 @@ fn main() {
 
     match solve_linear_system(&a, &b) {
         | Ok(sol) => {
-
-            println!(
-                "Solution x = {:?}",
-                sol
-            )
+            println!("Solution x = {:?}", sol)
         },
         | Err(e) => {
-
             println!("Error: {}", e)
         },
     }

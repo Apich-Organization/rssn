@@ -2,9 +2,7 @@
 //! Defines the core traits and data structures for the `rssn` plugin architecture.
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
-#![allow(
-    clippy::no_mangle_with_rust_abi
-)]
+#![allow(clippy::no_mangle_with_rust_abi)]
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -15,16 +13,9 @@ use abi_stable::std_types::RString;
 
 use crate::symbolic::core::Expr;
 
-#[repr(C)]
-#[derive(
-    abi_stable::StableAbi,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-)]
 /// Represents the health status of a plugin.
-
+#[repr(C)]
+#[derive(abi_stable::StableAbi, Debug, Clone, PartialEq, Eq)]
 pub enum PluginHealth {
     /// The plugin is operating correctly.
     Ok,
@@ -41,10 +32,7 @@ pub enum PluginHealth {
 }
 
 /// Represents the kind of error that a plugin can encounter.
-#[derive(
-    Debug, Clone, PartialEq, Eq,
-)]
-
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PluginErrorKind {
     /// The plugin was not found.
     NotFound,
@@ -62,7 +50,6 @@ pub enum PluginErrorKind {
 
 /// A specialized error type for plugin-related failures.
 #[derive(Debug, Clone)]
-
 pub struct PluginError {
     /// The kind of error.
     pub kind: PluginErrorKind,
@@ -72,14 +59,11 @@ pub struct PluginError {
 
 impl PluginError {
     /// Creates a new `PluginError`.
-
     #[must_use]
-
     pub fn new(
         kind: PluginErrorKind,
         msg: &str,
     ) -> Self {
-
         Self {
             kind,
             message: msg.to_string(),
@@ -92,44 +76,29 @@ impl fmt::Display for PluginError {
         &self,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
-
-        write!(
-            f,
-            "Plugin Error ({:?}): {}",
-            self.kind, self.message
-        )
+        write!(f, "Plugin Error ({:?}): {}", self.kind, self.message)
     }
 }
 
-impl Error for PluginError {
-}
+impl Error for PluginError {}
 
 /// The central trait that all `rssn` plugins must implement.
 ///
 /// This trait defines the contract between the main library and a dynamically loaded plugin,
 /// covering identity, lifecycle, execution, and health monitoring.
-
 pub trait Plugin: Send + Sync {
     /// Returns the unique, machine-readable name of the plugin (e.g., "`fortran_solver`").
-
     fn name(&self) -> &'static str;
 
     /// Returns a human-readable description of the plugin.
-
-    fn description(
-        &self
-    ) -> &'static str {
-
+    fn description(&self) -> &'static str {
         ""
     }
 
     /// Returns the semantic version of the RSSN API the plugin was built against.
     /// The `PluginManager` will use this to ensure compatibility.
     /// Example: `"0.1.0"`
-
-    fn api_version(
-        &self
-    ) -> &'static str;
+    fn api_version(&self) -> &'static str;
 
     /// Called once when the plugin is loaded by the `PluginManager`.
     /// Use this for any necessary setup or initialization.
@@ -138,10 +107,7 @@ pub trait Plugin: Send + Sync {
     ///
     /// This function will return a `PluginError` if the plugin fails to initialize
     /// or encounters an unrecoverable error during setup.
-
-    fn on_load(
-        &self
-    ) -> Result<(), PluginError>;
+    fn on_load(&self) -> Result<(), PluginError>;
 
     /// The primary entry point for executing plugin functionality.
     ///
@@ -156,7 +122,6 @@ pub trait Plugin: Send + Sync {
     ///
     /// This function will return a `PluginError` if the specified `command` is not
     /// recognized or if an error occurs during the execution of the plugin's logic.
-
     fn execute(
         &self,
         command: &str,
@@ -165,17 +130,10 @@ pub trait Plugin: Send + Sync {
 
     /// Performs a health check on the plugin.
     /// This is used by the `PluginManager` for heartbeat monitoring.
-
-    fn health_check(
-        &self
-    ) -> PluginHealth;
+    fn health_check(&self) -> PluginHealth;
 
     /// Returns a map of metadata for the plugin.
-
-    fn metadata(
-        &self
-    ) -> HashMap<String, String> {
-
+    fn metadata(&self) -> HashMap<String, String> {
         HashMap::new()
     }
 }

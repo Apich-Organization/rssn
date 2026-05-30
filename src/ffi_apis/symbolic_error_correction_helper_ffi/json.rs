@@ -5,8 +5,10 @@
 
 use std::os::raw::c_char;
 
-use crate::ffi_apis::common::{from_json_string, to_json_string};
+use crate::ffi_apis::common::from_json_string;
+use crate::ffi_apis::common::to_json_string;
 use crate::symbolic::core::Expr;
+use crate::symbolic::error_correction_helper::FiniteField;
 use crate::symbolic::error_correction_helper::gf256_add;
 use crate::symbolic::error_correction_helper::gf256_inv;
 use crate::symbolic::error_correction_helper::gf256_mul;
@@ -15,11 +17,9 @@ use crate::symbolic::error_correction_helper::poly_add_gf256;
 use crate::symbolic::error_correction_helper::poly_eval_gf256;
 use crate::symbolic::error_correction_helper::poly_mul_gf;
 use crate::symbolic::error_correction_helper::poly_mul_gf256;
-use crate::symbolic::error_correction_helper::FiniteField;
 
 /// Performs addition in GF(2^8) via JSON interface.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -27,33 +27,24 @@ use crate::symbolic::error_correction_helper::FiniteField;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_gf256_add(
     a_json: *const c_char,
     b_json: *const c_char,
 ) -> *mut c_char {
+    let a: Option<u8> = from_json_string(a_json);
 
-    let a: Option<u8> =
-        from_json_string(a_json);
+    let b: Option<u8> = from_json_string(b_json);
 
-    let b: Option<u8> =
-        from_json_string(b_json);
-
-    if let (Some(va), Some(vb)) = (a, b)
-    {
-
-        to_json_string(&gf256_add(
-            va, vb,
-        ))
+    if let (Some(va), Some(vb)) = (a, b) {
+        to_json_string(&gf256_add(va, vb))
     } else {
-
         std::ptr::null_mut()
     }
 }
 
 /// Performs multiplication in GF(2^8) via JSON interface.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -61,33 +52,24 @@ pub unsafe extern "C" fn rssn_json_gf256_add(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_gf256_mul(
     a_json: *const c_char,
     b_json: *const c_char,
 ) -> *mut c_char {
+    let a: Option<u8> = from_json_string(a_json);
 
-    let a: Option<u8> =
-        from_json_string(a_json);
+    let b: Option<u8> = from_json_string(b_json);
 
-    let b: Option<u8> =
-        from_json_string(b_json);
-
-    if let (Some(va), Some(vb)) = (a, b)
-    {
-
-        to_json_string(&gf256_mul(
-            va, vb,
-        ))
+    if let (Some(va), Some(vb)) = (a, b) {
+        to_json_string(&gf256_mul(va, vb))
     } else {
-
         std::ptr::null_mut()
     }
 }
 
 /// Computes inverse in GF(2^8) via JSON interface.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -95,33 +77,22 @@ pub unsafe extern "C" fn rssn_json_gf256_mul(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_gf256_inv(
-    a_json: *const c_char
-) -> *mut c_char {
-
-    let a: Option<u8> =
-        from_json_string(a_json);
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_gf256_inv(a_json: *const c_char) -> *mut c_char {
+    let a: Option<u8> = from_json_string(a_json);
 
     if let Some(va) = a {
-
         match gf256_inv(va) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
-
         std::ptr::null_mut()
     }
 }
 
 /// Evaluates a polynomial over GF(2^8) via JSON interface.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -129,34 +100,24 @@ pub unsafe extern "C" fn rssn_json_gf256_inv(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_poly_eval_gf256(
     poly_json: *const c_char,
     x_json: *const c_char,
 ) -> *mut c_char {
+    let poly: Option<Vec<u8>> = from_json_string(poly_json);
 
-    let poly: Option<Vec<u8>> =
-        from_json_string(poly_json);
+    let x: Option<u8> = from_json_string(x_json);
 
-    let x: Option<u8> =
-        from_json_string(x_json);
-
-    if let (Some(p), Some(vx)) =
-        (poly, x)
-    {
-
-        to_json_string(
-            &poly_eval_gf256(&p, vx),
-        )
+    if let (Some(p), Some(vx)) = (poly, x) {
+        to_json_string(&poly_eval_gf256(&p, vx))
     } else {
-
         std::ptr::null_mut()
     }
 }
 
 /// Adds two polynomials over GF(2^8) via JSON interface.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -164,34 +125,24 @@ pub unsafe extern "C" fn rssn_json_poly_eval_gf256(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_poly_add_gf256(
     p1_json: *const c_char,
     p2_json: *const c_char,
 ) -> *mut c_char {
+    let p1: Option<Vec<u8>> = from_json_string(p1_json);
 
-    let p1: Option<Vec<u8>> =
-        from_json_string(p1_json);
+    let p2: Option<Vec<u8>> = from_json_string(p2_json);
 
-    let p2: Option<Vec<u8>> =
-        from_json_string(p2_json);
-
-    if let (Some(v1), Some(v2)) =
-        (p1, p2)
-    {
-
-        to_json_string(&poly_add_gf256(
-            &v1, &v2,
-        ))
+    if let (Some(v1), Some(v2)) = (p1, p2) {
+        to_json_string(&poly_add_gf256(&v1, &v2))
     } else {
-
         std::ptr::null_mut()
     }
 }
 
 /// Multiplies two polynomials over GF(2^8) via JSON interface.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -199,34 +150,24 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf256(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_poly_mul_gf256(
     p1_json: *const c_char,
     p2_json: *const c_char,
 ) -> *mut c_char {
+    let p1: Option<Vec<u8>> = from_json_string(p1_json);
 
-    let p1: Option<Vec<u8>> =
-        from_json_string(p1_json);
+    let p2: Option<Vec<u8>> = from_json_string(p2_json);
 
-    let p2: Option<Vec<u8>> =
-        from_json_string(p2_json);
-
-    if let (Some(v1), Some(v2)) =
-        (p1, p2)
-    {
-
-        to_json_string(&poly_mul_gf256(
-            &v1, &v2,
-        ))
+    if let (Some(v1), Some(v2)) = (p1, p2) {
+        to_json_string(&poly_mul_gf256(&v1, &v2))
     } else {
-
         std::ptr::null_mut()
     }
 }
 
 /// Adds two polynomials over a general finite field via JSON interface.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -234,45 +175,25 @@ pub unsafe extern "C" fn rssn_json_poly_mul_gf256(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_poly_add_gf(
     p1_json: *const c_char,
     p2_json: *const c_char,
     modulus_json: *const c_char,
 ) -> *mut c_char {
+    let p1: Option<Expr> = from_json_string(p1_json);
 
-    let p1: Option<Expr> =
-        from_json_string(p1_json);
+    let p2: Option<Expr> = from_json_string(p2_json);
 
-    let p2: Option<Expr> =
-        from_json_string(p2_json);
-
-    let modulus: Option<i64> =
-        from_json_string(modulus_json);
+    let modulus: Option<i64> = from_json_string(modulus_json);
 
     match (p1, p2, modulus) {
-        | (
-            Some(v1),
-            Some(v2),
-            Some(m),
-        ) => {
+        | (Some(v1), Some(v2), Some(m)) => {
+            let field = FiniteField::new(m);
 
-            let field =
-                FiniteField::new(m);
-
-            match poly_add_gf(
-                &v1,
-                &v2,
-                &field,
-            ) {
-                | Ok(result) => {
-                    to_json_string(
-                        &result,
-                    )
-                },
-                | Err(_) => {
-                    std::ptr::null_mut()
-                },
+            match poly_add_gf(&v1, &v2, &field) {
+                | Ok(result) => to_json_string(&result),
+                | Err(_) => std::ptr::null_mut(),
             }
         },
         | _ => std::ptr::null_mut(),
@@ -280,8 +201,7 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf(
 }
 
 /// Multiplies two polynomials over a general finite field via JSON interface.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -289,45 +209,25 @@ pub unsafe extern "C" fn rssn_json_poly_add_gf(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_poly_mul_gf(
     p1_json: *const c_char,
     p2_json: *const c_char,
     modulus_json: *const c_char,
 ) -> *mut c_char {
+    let p1: Option<Expr> = from_json_string(p1_json);
 
-    let p1: Option<Expr> =
-        from_json_string(p1_json);
+    let p2: Option<Expr> = from_json_string(p2_json);
 
-    let p2: Option<Expr> =
-        from_json_string(p2_json);
-
-    let modulus: Option<i64> =
-        from_json_string(modulus_json);
+    let modulus: Option<i64> = from_json_string(modulus_json);
 
     match (p1, p2, modulus) {
-        | (
-            Some(v1),
-            Some(v2),
-            Some(m),
-        ) => {
+        | (Some(v1), Some(v2), Some(m)) => {
+            let field = FiniteField::new(m);
 
-            let field =
-                FiniteField::new(m);
-
-            match poly_mul_gf(
-                &v1,
-                &v2,
-                &field,
-            ) {
-                | Ok(result) => {
-                    to_json_string(
-                        &result,
-                    )
-                },
-                | Err(_) => {
-                    std::ptr::null_mut()
-                },
+            match poly_mul_gf(&v1, &v2, &field) {
+                | Ok(result) => to_json_string(&result),
+                | Err(_) => std::ptr::null_mut(),
             }
         },
         | _ => std::ptr::null_mut(),

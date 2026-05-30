@@ -10,7 +10,6 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::physics_md;
 
 #[derive(Deserialize)]
-
 struct LennardJonesInput {
     p1_position: Vec<f64>,
     p2_position: Vec<f64>,
@@ -19,14 +18,12 @@ struct LennardJonesInput {
 }
 
 #[derive(Serialize)]
-
 struct InteractionOutput {
     potential: f64,
     force: Vec<f64>,
 }
 
 #[derive(Deserialize)]
-
 struct PbcInput {
     position: Vec<f64>,
     box_size: Vec<f64>,
@@ -57,8 +54,7 @@ struct PbcInput {
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -66,62 +62,36 @@ struct PbcInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : LennardJonesInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: LennardJonesInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<InteractionOutput, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<InteractionOutput, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let p1 = physics_md::Particle::new(
-        0,
-        1.0,
-        input.p1_position,
-        vec![0.0, 0.0, 0.0],
-    );
+    let p1 = physics_md::Particle::new(0, 1.0, input.p1_position, vec![0.0, 0.0, 0.0]);
 
-    let p2 = physics_md::Particle::new(
-        1,
-        1.0,
-        input.p2_position,
-        vec![0.0, 0.0, 0.0],
-    );
+    let p2 = physics_md::Particle::new(1, 1.0, input.p2_position, vec![0.0, 0.0, 0.0]);
 
-    match physics_md::lennard_jones_interaction(
-        &p1,
-        &p2,
-        input.epsilon,
-        input.sigma,
-    ) {
+    match physics_md::lennard_jones_interaction(&p1, &p2, input.epsilon, input.sigma) {
         | Ok((potential, force)) => {
-
-            let output = InteractionOutput {
-                potential,
-                force,
-            };
+            let output = InteractionOutput { potential, force };
 
             to_bincode_buffer(&FfiResult {
-                ok : Some(output),
-                err : None::<String>,
+                ok: Some(output),
+                err: None::<String>,
             })
         },
         | Err(e) => {
-            to_bincode_buffer(
-                &FfiResult::<InteractionOutput, String> {
-                    ok : None,
-                    err : Some(e),
-                },
-            )
+            to_bincode_buffer(&FfiResult::<InteractionOutput, String> {
+                ok: None,
+                err: Some(e),
+            })
         },
     }
 }
@@ -147,8 +117,7 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -156,27 +125,19 @@ pub unsafe extern "C" fn rssn_num_md_lennard_jones_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : PbcInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_md_apply_pbc_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: PbcInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<Vec<f64>, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<Vec<f64>, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let wrapped = physics_md::apply_pbc(
-        &input.position,
-        &input.box_size,
-    );
+    let wrapped = physics_md::apply_pbc(&input.position, &input.box_size);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(wrapped),

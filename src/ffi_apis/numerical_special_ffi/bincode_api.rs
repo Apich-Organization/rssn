@@ -9,20 +9,17 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::special;
 
 #[derive(Deserialize)]
-
 struct SingleInput {
     x: f64,
 }
 
 #[derive(Deserialize)]
-
 struct TwoInput {
     a: f64,
     b: f64,
 }
 
 #[derive(Deserialize)]
-
 struct ThreeInput {
     x: f64,
     a: f64,
@@ -30,20 +27,17 @@ struct ThreeInput {
 }
 
 #[derive(Deserialize)]
-
 struct PolyInput {
     n: u32,
     x: f64,
 }
 
 #[derive(Deserialize)]
-
 struct IntInput {
     n: u64,
 }
 
 #[derive(Deserialize)]
-
 struct BinomialInput {
     n: u64,
     k: u64,
@@ -70,8 +64,7 @@ struct BinomialInput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -79,29 +72,20 @@ struct BinomialInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_special_gamma_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : SingleInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_special_gamma_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(
-            special::gamma_numerical(
-                input.x,
-            ),
-        ),
+        ok: Some(special::gamma_numerical(input.x)),
         err: None::<String>,
     })
 }
@@ -126,8 +110,7 @@ pub unsafe extern "C" fn rssn_num_special_gamma_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -135,29 +118,20 @@ pub unsafe extern "C" fn rssn_num_special_gamma_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_special_ln_gamma_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : SingleInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_special_ln_gamma_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(
-            special::ln_gamma_numerical(
-                input.x,
-            ),
-        ),
+        ok: Some(special::ln_gamma_numerical(input.x)),
         err: None::<String>,
     })
 }
@@ -182,8 +156,7 @@ pub unsafe extern "C" fn rssn_num_special_ln_gamma_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -191,29 +164,20 @@ pub unsafe extern "C" fn rssn_num_special_ln_gamma_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_special_digamma_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : SingleInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_special_digamma_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(
-            special::digamma_numerical(
-                input.x,
-            ),
-        ),
+        ok: Some(special::digamma_numerical(input.x)),
         err: None::<String>,
     })
 }
@@ -240,8 +204,7 @@ pub unsafe extern "C" fn rssn_num_special_digamma_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -249,30 +212,20 @@ pub unsafe extern "C" fn rssn_num_special_digamma_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_special_beta_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : TwoInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_special_beta_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: TwoInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(
-            special::beta_numerical(
-                input.a,
-                input.b,
-            ),
-        ),
+        ok: Some(special::beta_numerical(input.a, input.b)),
         err: None::<String>,
     })
 }
@@ -300,8 +253,7 @@ pub unsafe extern "C" fn rssn_num_special_beta_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -309,31 +261,22 @@ pub unsafe extern "C" fn rssn_num_special_beta_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_special_regularized_beta_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : ThreeInput = match from_bincode_buffer(&buffer) {
+    let input: ThreeInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(
-            special::regularized_beta(
-                input.x,
-                input.a,
-                input.b,
-            ),
-        ),
+        ok: Some(special::regularized_beta(input.x, input.a, input.b)),
         err: None::<String>,
     })
 }
@@ -360,8 +303,7 @@ pub unsafe extern "C" fn rssn_num_special_regularized_beta_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -369,29 +311,20 @@ pub unsafe extern "C" fn rssn_num_special_regularized_beta_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_special_erf_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : SingleInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_special_erf_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(
-            special::erf_numerical(
-                input.x,
-            ),
-        ),
+        ok: Some(special::erf_numerical(input.x)),
         err: None::<String>,
     })
 }
@@ -416,8 +349,7 @@ pub unsafe extern "C" fn rssn_num_special_erf_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -425,29 +357,20 @@ pub unsafe extern "C" fn rssn_num_special_erf_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_special_erfc_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : SingleInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_special_erfc_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(
-            special::erfc_numerical(
-                input.x,
-            ),
-        ),
+        ok: Some(special::erfc_numerical(input.x)),
         err: None::<String>,
     })
 }
@@ -473,8 +396,7 @@ pub unsafe extern "C" fn rssn_num_special_erfc_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -482,27 +404,22 @@ pub unsafe extern "C" fn rssn_num_special_erfc_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_special_bessel_j0_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : SingleInput = match from_bincode_buffer(&buffer) {
+    let input: SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(special::bessel_j0(
-            input.x,
-        )),
+        ok: Some(special::bessel_j0(input.x)),
         err: None::<String>,
     })
 }
@@ -527,8 +444,7 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j0_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -536,27 +452,22 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j0_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_special_bessel_j1_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : SingleInput = match from_bincode_buffer(&buffer) {
+    let input: SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(special::bessel_j1(
-            input.x,
-        )),
+        ok: Some(special::bessel_j1(input.x)),
         err: None::<String>,
     })
 }
@@ -584,8 +495,7 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j1_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -593,28 +503,22 @@ pub unsafe extern "C" fn rssn_num_special_bessel_j1_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_special_legendre_p_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : PolyInput = match from_bincode_buffer(&buffer) {
+    let input: PolyInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(special::legendre_p(
-            input.n,
-            input.x,
-        )),
+        ok: Some(special::legendre_p(input.n, input.x)),
         err: None::<String>,
     })
 }
@@ -640,8 +544,7 @@ pub unsafe extern "C" fn rssn_num_special_legendre_p_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -649,30 +552,22 @@ pub unsafe extern "C" fn rssn_num_special_legendre_p_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_special_chebyshev_t_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : PolyInput = match from_bincode_buffer(&buffer) {
+    let input: PolyInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(
-            special::chebyshev_t(
-                input.n,
-                input.x,
-            ),
-        ),
+        ok: Some(special::chebyshev_t(input.n, input.x)),
         err: None::<String>,
     })
 }
@@ -699,8 +594,7 @@ pub unsafe extern "C" fn rssn_num_special_chebyshev_t_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -708,28 +602,22 @@ pub unsafe extern "C" fn rssn_num_special_chebyshev_t_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_special_hermite_h_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : PolyInput = match from_bincode_buffer(&buffer) {
+    let input: PolyInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(special::hermite_h(
-            input.n,
-            input.x,
-        )),
+        ok: Some(special::hermite_h(input.n, input.x)),
         err: None::<String>,
     })
 }
@@ -755,8 +643,7 @@ pub unsafe extern "C" fn rssn_num_special_hermite_h_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -764,27 +651,22 @@ pub unsafe extern "C" fn rssn_num_special_hermite_h_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_special_factorial_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : IntInput = match from_bincode_buffer(&buffer) {
+    let input: IntInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(special::factorial(
-            input.n,
-        )),
+        ok: Some(special::factorial(input.n)),
         err: None::<String>,
     })
 }
@@ -810,8 +692,7 @@ pub unsafe extern "C" fn rssn_num_special_factorial_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -819,28 +700,20 @@ pub unsafe extern "C" fn rssn_num_special_factorial_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_special_binomial_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : BinomialInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_special_binomial_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: BinomialInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(special::binomial(
-            input.n,
-            input.k,
-        )),
+        ok: Some(special::binomial(input.n, input.k)),
         err: None::<String>,
     })
 }
@@ -865,8 +738,7 @@ pub unsafe extern "C" fn rssn_num_special_binomial_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -874,27 +746,20 @@ pub unsafe extern "C" fn rssn_num_special_binomial_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_special_sigmoid_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : SingleInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_special_sigmoid_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(special::sigmoid(
-            input.x,
-        )),
+        ok: Some(special::sigmoid(input.x)),
         err: None::<String>,
     })
 }
@@ -919,8 +784,7 @@ pub unsafe extern "C" fn rssn_num_special_sigmoid_bincode(
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -928,27 +792,20 @@ pub unsafe extern "C" fn rssn_num_special_sigmoid_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_special_sinc_bincode(
-    buffer: BincodeBuffer
-) -> BincodeBuffer {
-
-    let input : SingleInput = match from_bincode_buffer(&buffer) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_special_sinc_bincode(buffer: BincodeBuffer) -> BincodeBuffer {
+    let input: SingleInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
     to_bincode_buffer(&FfiResult {
-        ok: Some(special::sinc(
-            input.x,
-        )),
+        ok: Some(special::sinc(input.x)),
         err: None::<String>,
     })
 }

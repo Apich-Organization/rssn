@@ -11,7 +11,6 @@ use crate::numerical::series;
 use crate::symbolic::core::Expr;
 
 #[derive(Deserialize)]
-
 struct TaylorInput {
     expr: Expr,
     var: String,
@@ -20,7 +19,6 @@ struct TaylorInput {
 }
 
 #[derive(Deserialize)]
-
 struct SumInput {
     expr: Expr,
     var: String,
@@ -50,8 +48,7 @@ struct SumInput {
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -59,38 +56,29 @@ struct SumInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : TaylorInput = match from_json_string(input_json) {
+    let input: TaylorInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<f64>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res =
-        series::taylor_coefficients(
-            &input.expr,
-            &input.var,
-            input.at_point,
-            input.order,
-        );
+    let res = series::taylor_coefficients(&input.expr, &input.var, input.at_point, input.order);
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -107,10 +95,7 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }
 
 /// Computes the numerical sum of a symbolic series using JSON serialization.
@@ -134,8 +119,7 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
 ///
 /// This function is unsafe because it receives a raw C string pointer that must be
 /// valid, null-terminated UTF-8. The caller must free the returned pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -143,37 +127,27 @@ pub unsafe extern "C" fn rssn_numerical_taylor_coefficients_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_numerical_sum_series_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : SumInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_numerical_sum_series_json(input_json: *const c_char) -> *mut c_char {
+    let input: SumInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<f64, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<f64, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res = series::sum_series(
-        &input.expr,
-        &input.var,
-        input.start,
-        input.end,
-    );
+    let res = series::sum_series(&input.expr, &input.var, input.start, input.end);
 
     let ffi_res = match res {
         | Ok(v) => {
@@ -190,8 +164,5 @@ pub unsafe extern "C" fn rssn_numerical_sum_series_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

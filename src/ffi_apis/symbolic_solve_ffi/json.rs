@@ -8,29 +8,19 @@ use crate::symbolic::solve::solve_linear_system;
 use crate::symbolic::solve::solve_system;
 
 /// Solves an equation for a given variable.
-
-///
-
 /// Takes JSON strings representing `Expr` (equation) and `String` (variable).
-
 /// Returns a JSON string representing the `Expr` of the solution.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_solve(
     expr_json: *const c_char,
     var_json: *const c_char,
 ) -> *mut c_char {
+    let expr: Option<Expr> = from_json_string(expr_json);
 
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
-
-    let var: Option<String> =
-        from_json_string(var_json);
+    let var: Option<String> = from_json_string(var_json);
 
     match (expr, var) {
         | (Some(e), Some(v)) => {
-
             let result = solve(&e, &v);
 
             to_json_string(&result)
@@ -40,48 +30,24 @@ pub extern "C" fn rssn_json_solve(
 }
 
 /// Solves a system of equations for given variables.
-
-///
-
 /// Takes JSON strings representing `Vec<Expr>` (equations) and `Vec<String>` (variables).
-
 /// Returns a JSON string representing the `Expr` of the solution.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_solve_system(
     equations_json: *const c_char,
     vars_json: *const c_char,
 ) -> *mut c_char {
+    let equations: Option<Vec<Expr>> = from_json_string(equations_json);
 
-    let equations: Option<Vec<Expr>> =
-        from_json_string(
-            equations_json,
-        );
-
-    let vars: Option<Vec<String>> =
-        from_json_string(vars_json);
+    let vars: Option<Vec<String>> = from_json_string(vars_json);
 
     match (equations, vars) {
         | (Some(eqs), Some(vs)) => {
+            let vars_str: Vec<&str> = vs.iter().map(std::string::String::as_str).collect();
 
-            let vars_str: Vec<&str> = vs
-            .iter()
-            .map(std::string::String::as_str)
-            .collect();
-
-            match solve_system(
-                &eqs,
-                &vars_str,
-            ) {
-                | Some(result) => {
-                    to_json_string(
-                        &result,
-                    )
-                },
-                | None => {
-                    std::ptr::null_mut()
-                },
+            match solve_system(&eqs, &vars_str) {
+                | Some(result) => to_json_string(&result),
+                | None => std::ptr::null_mut(),
             }
         },
         | _ => std::ptr::null_mut(),
@@ -89,39 +55,22 @@ pub extern "C" fn rssn_json_solve_system(
 }
 
 /// Solves a linear system of equations.
-
-///
-
 /// Takes JSON strings representing `Expr` (system) and `Vec<String>` (variables).
-
 /// Returns a JSON string representing the `Expr` of the solution.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_solve_linear_system(
     system_json: *const c_char,
     vars_json: *const c_char,
 ) -> *mut c_char {
+    let system: Option<Expr> = from_json_string(system_json);
 
-    let system: Option<Expr> =
-        from_json_string(system_json);
-
-    let vars: Option<Vec<String>> =
-        from_json_string(vars_json);
+    let vars: Option<Vec<String>> = from_json_string(vars_json);
 
     match (system, vars) {
         | (Some(sys), Some(vs)) => {
-            match solve_linear_system(
-                &sys, &vs,
-            ) {
-                | Ok(result) => {
-                    to_json_string(
-                        &result,
-                    )
-                },
-                | Err(_) => {
-                    std::ptr::null_mut()
-                },
+            match solve_linear_system(&sys, &vs) {
+                | Ok(result) => to_json_string(&result),
+                | Err(_) => std::ptr::null_mut(),
             }
         },
         | _ => std::ptr::null_mut(),

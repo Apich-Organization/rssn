@@ -10,7 +10,6 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::numerical::physics_fea;
 
 #[derive(Deserialize)]
-
 struct LinearElement1DInput {
     length: f64,
     youngs_modulus: f64,
@@ -18,7 +17,6 @@ struct LinearElement1DInput {
 }
 
 #[derive(Deserialize)]
-
 struct StressInput {
     sx: f64,
     sy: f64,
@@ -26,7 +24,6 @@ struct StressInput {
 }
 
 #[derive(Serialize)]
-
 struct PrincipalStressOutput {
     sigma1: f64,
     sigma2: f64,
@@ -55,8 +52,7 @@ struct PrincipalStressOutput {
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -64,27 +60,21 @@ struct PrincipalStressOutput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : LinearElement1DInput = match from_bincode_buffer(&buffer) {
+    let input: LinearElement1DInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let stiffness = input
-        .youngs_modulus
-        * input.area
-        / input.length;
+    let stiffness = input.youngs_modulus * input.area / input.length;
 
     to_bincode_buffer(&FfiResult {
         ok: Some(stiffness),
@@ -114,8 +104,7 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -123,28 +112,21 @@ pub unsafe extern "C" fn rssn_num_fea_linear_element_1d_stiffness_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : StressInput = match from_bincode_buffer(&buffer) {
+    let input: StressInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<f64, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<f64, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let vm = physics_fea::TriangleElement2D::von_mises_stress(&[
-        input.sx,
-        input.sy,
-        input.txy,
-    ]);
+    let vm = physics_fea::TriangleElement2D::von_mises_stress(&[input.sx, input.sy, input.txy]);
 
     to_bincode_buffer(&FfiResult {
         ok: Some(vm),
@@ -177,8 +159,7 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
 ///
 /// This function is unsafe because it receives raw pointers through FFI.
 /// The caller must ensure the input buffer contains valid bincode data.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -186,38 +167,27 @@ pub unsafe extern "C" fn rssn_num_fea_von_mises_stress_bincode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_fea_principal_stresses_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : StressInput = match from_bincode_buffer(&buffer) {
+    let input: StressInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(
-                &FfiResult::<PrincipalStressOutput, String> {
-                    ok : None,
-                    err : Some("Invalid Bincode".to_string()),
-                },
-            )
+            return to_bincode_buffer(&FfiResult::<PrincipalStressOutput, String> {
+                ok: None,
+                err: Some("Invalid Bincode".to_string()),
+            });
         },
     };
 
-    let (sigma1, sigma2, angle) =
-        physics_fea::principal_stresses(
-            &[
-                input.sx,
-                input.sy,
-                input.txy,
-            ],
-        );
+    let (sigma1, sigma2, angle) = physics_fea::principal_stresses(&[input.sx, input.sy, input.txy]);
 
-    let output =
-        PrincipalStressOutput {
-            sigma1,
-            sigma2,
-            angle,
-        };
+    let output = PrincipalStressOutput {
+        sigma1,
+        sigma2,
+        angle,
+    };
 
     to_bincode_buffer(&FfiResult {
         ok: Some(output),

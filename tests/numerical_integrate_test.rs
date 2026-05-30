@@ -17,7 +17,6 @@ fn poly_2(
     c: [f64; 3],
     x: f64,
 ) -> f64 {
-
     c[0] + c[1] * x + c[2] * x * x
 }
 
@@ -26,13 +25,7 @@ fn integral_poly_2(
     a: f64,
     b: f64,
 ) -> f64 {
-
-    let antideriv = |x: f64| {
-
-        c[0] * x
-            + 0.5 * c[1] * x * x
-            + (c[2] * x * x * x) / 3.0
-    };
+    let antideriv = |x: f64| c[0] * x + 0.5 * c[1] * x * x + (c[2] * x * x * x) / 3.0;
 
     antideriv(b) - antideriv(a)
 }
@@ -42,55 +35,31 @@ fn integral_poly_2(
 #[test]
 
 fn test_trapezoidal_basic() {
-
     let f = |x: f64| x * x;
 
-    let res = trapezoidal_rule(
-        f,
-        (0.0, 1.0),
-        1000,
-    );
+    let res = trapezoidal_rule(f, (0.0, 1.0), 1000);
 
-    assert_approx_eq!(
-        res,
-        1.0 / 3.0,
-        1e-4
-    );
+    assert_approx_eq!(res, 1.0 / 3.0, 1e-4);
 }
 
 #[test]
 
 fn test_simpson_basic() {
-
     let f = |x: f64| x * x;
 
     // Simpson's rule is exact for polynomials up to degree 2 (and actually 3).
-    let res =
-        simpson_rule(f, (0.0, 1.0), 10)
-            .unwrap();
+    let res = simpson_rule(f, (0.0, 1.0), 10).unwrap();
 
-    assert_approx_eq!(
-        res,
-        1.0 / 3.0,
-        1e-10
-    );
+    assert_approx_eq!(res, 1.0 / 3.0, 1e-10);
 }
 
 #[test]
 
 fn test_adaptive_basic() {
-
     let f = |x: f64| x.sin();
 
     // Integral of sin(x) from 0 to pi is -cos(pi) - (-cos(0)) = 1 - (-1) = 2
-    let res = adaptive_quadrature(
-        f,
-        (
-            0.0,
-            std::f64::consts::PI,
-        ),
-        1e-6,
-    );
+    let res = adaptive_quadrature(f, (0.0, std::f64::consts::PI), 1e-6);
 
     assert_approx_eq!(res, 2.0, 1e-6);
 }
@@ -98,18 +67,12 @@ fn test_adaptive_basic() {
 #[test]
 
 fn test_romberg_basic() {
-
     let f = |x: f64| x.exp();
 
     // Integral of exp(x) from 0 to 1 is e^1 - e^0 = e - 1
-    let exact =
-        std::f64::consts::E - 1.0;
+    let exact = std::f64::consts::E - 1.0;
 
-    let res = romberg_integration(
-        f,
-        (0.0, 1.0),
-        5,
-    );
+    let res = romberg_integration(f, (0.0, 1.0), 5);
 
     assert_approx_eq!(res, exact, 1e-8);
 }
@@ -117,25 +80,15 @@ fn test_romberg_basic() {
 #[test]
 
 fn test_gauss_legendre_basic() {
-
-    let f = |x: f64| {
-
-        x.powi(3) + x.powi(2) + 1.0
-    };
+    let f = |x: f64| x.powi(3) + x.powi(2) + 1.0;
 
     // Exact: [x^4/4 + x^3/3 + x]_0^1 = 1/4 + 1/3 + 1 = 0.25 + 0.333... + 1 = 1.58333...
-    let exact =
-        1.0 / 4.0 + 1.0 / 3.0 + 1.0;
+    let exact = 1.0 / 4.0 + 1.0 / 3.0 + 1.0;
 
     // Gauss-Legendre with n=5 is exact for polynomials up to degree 2n-1 = 9.
-    let res = gauss_legendre_quadrature(
-        f,
-        (0.0, 1.0),
-    );
+    let res = gauss_legendre_quadrature(f, (0.0, 1.0));
 
-    assert_approx_eq!(
-        res, exact, 1e-10
-    );
+    assert_approx_eq!(res, exact, 1e-10);
 }
 
 // --- 2. Property-Based Tests (Proptest) ---

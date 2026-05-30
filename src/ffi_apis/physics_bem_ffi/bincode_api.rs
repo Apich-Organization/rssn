@@ -13,21 +13,18 @@ use crate::physics::physics_bem::{
 };
 
 #[derive(Deserialize)]
-
 struct Bem2DInput {
     points: Vec<(f64, f64)>,
     bcs: Vec<BemBoundaryCondition>,
 }
 
 #[derive(Deserialize, Serialize)]
-
 enum BemBoundaryCondition {
     Potential(f64),
     Flux(f64),
 }
 
 #[derive(Serialize)]
-
 struct Bem2DOutput {
     u: Vec<f64>,
     q: Vec<f64>,
@@ -57,8 +54,7 @@ struct Bem2DOutput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -66,28 +62,23 @@ struct Bem2DOutput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : Bem2DInput = match from_bincode_buffer(&buffer) {
+    let input: Bem2DInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(&FfiResult::<
-                Bem2DOutput,
-                String,
-            >::err(
+            return to_bincode_buffer(&FfiResult::<Bem2DOutput, String>::err(
                 "Invalid Bincode".to_string(),
-            ))
+            ));
         },
     };
 
-    let bcs : Vec<BoundaryCondition<f64>> = input
+    let bcs: Vec<BoundaryCondition<f64>> = input
         .bcs
         .into_iter()
         .map(|bc| {
-
             match bc {
                 | BemBoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
                 | BemBoundaryCondition::Flux(v) => BoundaryCondition::Flux(v),
@@ -97,23 +88,8 @@ pub unsafe extern "C" fn rssn_physics_bem_solve_laplace_2d_bincode(
 
     match physics_bem::solve_laplace_bem_2d(&input.points, &bcs) {
         | Ok((u, q)) => {
-            to_bincode_buffer(&FfiResult::<
-                Bem2DOutput,
-                String,
-            >::ok(
-                Bem2DOutput {
-                    u,
-                    q,
-                },
-            ))
+            to_bincode_buffer(&FfiResult::<Bem2DOutput, String>::ok(Bem2DOutput { u, q }))
         },
-        | Err(e) => {
-            to_bincode_buffer(&FfiResult::<
-                Bem2DOutput,
-                String,
-            >::err(
-                e
-            ))
-        },
+        | Err(e) => to_bincode_buffer(&FfiResult::<Bem2DOutput, String>::err(e)),
     }
 }

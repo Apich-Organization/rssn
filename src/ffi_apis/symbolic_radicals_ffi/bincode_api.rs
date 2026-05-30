@@ -7,43 +7,28 @@ use crate::symbolic::radicals::simplify_radicals;
 
 /// Simplifies radical expressions (Bincode)
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_bincode_simplify_radicals(
-    expr_buf: BincodeBuffer
-) -> BincodeBuffer {
-
-    let expr: Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+pub extern "C" fn rssn_bincode_simplify_radicals(expr_buf: BincodeBuffer) -> BincodeBuffer {
+    let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {
-
-        let result =
-            simplify_radicals(&e);
+        let result = simplify_radicals(&e);
 
         to_bincode_buffer(&result)
     } else {
-
         BincodeBuffer::empty()
     }
 }
 
 /// Denests a nested square root (Bincode)
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_bincode_denest_sqrt(
-    expr_buf: BincodeBuffer
-) -> BincodeBuffer {
-
-    let expr: Option<Expr> =
-        from_bincode_buffer(&expr_buf);
+pub extern "C" fn rssn_bincode_denest_sqrt(expr_buf: BincodeBuffer) -> BincodeBuffer {
+    let expr: Option<Expr> = from_bincode_buffer(&expr_buf);
 
     if let Some(e) = expr {
-
         let result = denest_sqrt(&e);
 
         to_bincode_buffer(&result)
     } else {
-
         BincodeBuffer::empty()
     }
 }

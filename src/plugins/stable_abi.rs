@@ -1,19 +1,11 @@
 #![allow(unsafe_code)]
 #![allow(clippy::indexing_slicing)]
-#![allow(
-    clippy::no_mangle_with_rust_abi
-)]
+#![allow(clippy::no_mangle_with_rust_abi)]
 #![allow(non_local_definitions)]
 #![allow(clippy::cast_ptr_alignment)]
-#![allow(
-    clippy::used_underscore_binding
-)]
-#![allow(
-    clippy::elidable_lifetime_names
-)]
-#![allow(
-    clippy::expl_impl_clone_on_copy
-)]
+#![allow(clippy::used_underscore_binding)]
+#![allow(clippy::elidable_lifetime_names)]
+#![allow(clippy::expl_impl_clone_on_copy)]
 
 use abi_stable::StableAbi;
 use abi_stable::sabi_trait;
@@ -24,29 +16,20 @@ use abi_stable::std_types::RVec;
 
 use crate::plugins::plugin_c::PluginHealth;
 
+/// This trait defines the stable ABI for plugins.
 #[allow(non_local_definitions)]
 #[sabi_trait]
-/// This trait defines the stable ABI for plugins.
-
-pub trait StablePlugin:
-    Send + Sync
-{
+pub trait StablePlugin: Send + Sync {
     /// Returns the name of the plugin.
-
     fn name(&self) -> RString;
 
     /// Returns the API version of the plugin.
-
     fn api_version(&self) -> RString;
 
     /// Called when the plugin is loaded.
-
-    fn on_load(
-        &self
-    ) -> RResult<(), RString>;
+    fn on_load(&self) -> RResult<(), RString>;
 
     /// Executes a command on the plugin.
-
     fn execute(
         &self,
         command: RString,
@@ -54,29 +37,22 @@ pub trait StablePlugin:
     ) -> RResult<RVec<u8>, RString>;
 
     /// Performs a health check on the plugin.
-
-    fn health_check(
-        &self
-    ) -> RResult<PluginHealth, RString>;
+    fn health_check(&self) -> RResult<PluginHealth, RString>;
 }
 
+/// This struct defines the stable ABI for a plugin module.
 #[repr(C)]
 #[derive(StableAbi)]
 #[sabi(kind(Prefix(prefix_ref = RoVtable)))]
 #[sabi(missing_field(panic))]
-/// This struct defines the stable ABI for a plugin module.
-
 pub struct StablePluginModule {
     /// Returns the name of the plugin.
-
     //#[must_use]
-    pub name : extern "C" fn() -> RString,
+    pub name: extern "C" fn() -> RString,
     /// Returns the version of the plugin.
-
     //#[must_use]
-    pub version : extern "C" fn() -> RString,
+    pub version: extern "C" fn() -> RString,
     /// Creates a new instance of the plugin.
-
     //#[must_use]
-    pub new : extern "C" fn() -> StablePlugin_TO<'static, RBox<()>>,
+    pub new: extern "C" fn() -> StablePlugin_TO<'static, RBox<()>>,
 }

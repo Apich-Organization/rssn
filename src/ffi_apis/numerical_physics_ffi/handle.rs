@@ -12,10 +12,7 @@ use crate::numerical::physics;
 ///
 /// The speed of light c = 2.998 × 10⁸ m/s.
 #[unsafe(no_mangle)]
-
-pub const extern "C" fn rssn_num_physics_speed_of_light()
--> f64 {
-
+pub const extern "C" fn rssn_num_physics_speed_of_light() -> f64 {
     physics::SPEED_OF_LIGHT
 }
 
@@ -25,10 +22,7 @@ pub const extern "C" fn rssn_num_physics_speed_of_light()
 ///
 /// Planck's constant h = 6.626 × 10⁻³⁴ J·s.
 #[unsafe(no_mangle)]
-
-pub const extern "C" fn rssn_num_physics_planck_constant()
--> f64 {
-
+pub const extern "C" fn rssn_num_physics_planck_constant() -> f64 {
     physics::PLANCK_CONSTANT
 }
 
@@ -38,10 +32,7 @@ pub const extern "C" fn rssn_num_physics_planck_constant()
 ///
 /// The gravitational constant G = 6.674 × 10⁻¹¹ N·m²/kg².
 #[unsafe(no_mangle)]
-
-pub const extern "C" fn rssn_num_physics_gravitational_constant()
--> f64 {
-
+pub const extern "C" fn rssn_num_physics_gravitational_constant() -> f64 {
     physics::GRAVITATIONAL_CONSTANT
 }
 
@@ -51,10 +42,7 @@ pub const extern "C" fn rssn_num_physics_gravitational_constant()
 ///
 /// The Boltzmann constant `k_B` = 1.381 × 10⁻²³ J/K.
 #[unsafe(no_mangle)]
-
-pub const extern "C" fn rssn_num_physics_boltzmann_constant()
--> f64 {
-
+pub const extern "C" fn rssn_num_physics_boltzmann_constant() -> f64 {
     physics::BOLTZMANN_CONSTANT
 }
 
@@ -64,10 +52,7 @@ pub const extern "C" fn rssn_num_physics_boltzmann_constant()
 ///
 /// The elementary charge e = 1.602 × 10⁻¹⁹ Coulombs.
 #[unsafe(no_mangle)]
-
-pub const extern "C" fn rssn_num_physics_elementary_charge()
--> f64 {
-
+pub const extern "C" fn rssn_num_physics_elementary_charge() -> f64 {
     physics::ELEMENTARY_CHARGE
 }
 
@@ -77,10 +62,7 @@ pub const extern "C" fn rssn_num_physics_elementary_charge()
 ///
 /// The electron rest mass `m_e` = 9.109 × 10⁻³¹ kg.
 #[unsafe(no_mangle)]
-
-pub const extern "C" fn rssn_num_physics_electron_mass()
--> f64 {
-
+pub const extern "C" fn rssn_num_physics_electron_mass() -> f64 {
     physics::ELECTRON_MASS
 }
 
@@ -103,20 +85,13 @@ pub const extern "C" fn rssn_num_physics_electron_mass()
 ///
 /// The displacement x(t) (m).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_simple_harmonic_oscillator(
     amplitude: f64,
     omega: f64,
     phase: f64,
     time: f64,
 ) -> f64 {
-
-    physics::simple_harmonic_oscillator(
-        amplitude,
-        omega,
-        phase,
-        time,
-    )
+    physics::simple_harmonic_oscillator(amplitude, omega, phase, time)
 }
 
 /// Computes the displacement of a damped harmonic oscillator via handle-based FFI.
@@ -135,7 +110,6 @@ pub extern "C" fn rssn_num_physics_simple_harmonic_oscillator(
 ///
 /// The displacement x(t) for underdamped oscillation (m).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_damped_harmonic_oscillator(
     amplitude: f64,
     omega0: f64,
@@ -143,14 +117,7 @@ pub extern "C" fn rssn_num_physics_damped_harmonic_oscillator(
     phase: f64,
     time: f64,
 ) -> f64 {
-
-    physics::damped_harmonic_oscillator(
-        amplitude,
-        omega0,
-        gamma,
-        phase,
-        time,
-    )
+    physics::damped_harmonic_oscillator(amplitude, omega0, gamma, phase, time)
 }
 
 // ============================================================================
@@ -171,13 +138,11 @@ pub extern "C" fn rssn_num_physics_damped_harmonic_oscillator(
 ///
 /// The Coulomb force magnitude F (Newtons, positive for repulsion).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_coulomb_force(
     q1: f64,
     q2: f64,
     r: f64,
 ) -> f64 {
-
     physics::coulomb_force(q1, q2, r)
 }
 
@@ -194,15 +159,11 @@ pub extern "C" fn rssn_num_physics_coulomb_force(
 ///
 /// The electric field magnitude E (N/C or V/m).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_electric_field_point_charge(
     q: f64,
     r: f64,
 ) -> f64 {
-
-    physics::electric_field_point_charge(
-        q, r,
-    )
+    physics::electric_field_point_charge(q, r)
 }
 
 /// Computes the electric potential of a point charge via handle-based FFI.
@@ -218,12 +179,10 @@ pub extern "C" fn rssn_num_physics_electric_field_point_charge(
 ///
 /// The electric potential V (Volts).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_electric_potential_point_charge(
     q: f64,
     r: f64,
 ) -> f64 {
-
     physics::electric_potential_point_charge(q, r)
 }
 
@@ -240,12 +199,10 @@ pub extern "C" fn rssn_num_physics_electric_potential_point_charge(
 ///
 /// The magnetic field magnitude B (Tesla).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_magnetic_field_infinite_wire(
     current: f64,
     r: f64,
 ) -> f64 {
-
     physics::magnetic_field_infinite_wire(current, r)
 }
 
@@ -264,20 +221,13 @@ pub extern "C" fn rssn_num_physics_magnetic_field_infinite_wire(
 ///
 /// The Lorentz force magnitude F (Newtons).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_lorentz_force(
     charge: f64,
     velocity: f64,
     e_field: f64,
     b_field: f64,
 ) -> f64 {
-
-    physics::lorentz_force(
-        charge,
-        velocity,
-        e_field,
-        b_field,
-    )
+    physics::lorentz_force(charge, velocity, e_field, b_field)
 }
 
 /// Computes the cyclotron radius for a charged particle in a magnetic field via handle-based FFI.
@@ -295,20 +245,13 @@ pub extern "C" fn rssn_num_physics_lorentz_force(
 ///
 /// The cyclotron radius r (m).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_cyclotron_radius(
     mass: f64,
     velocity: f64,
     charge: f64,
     b_field: f64,
 ) -> f64 {
-
-    physics::cyclotron_radius(
-        mass,
-        velocity,
-        charge,
-        b_field,
-    )
+    physics::cyclotron_radius(mass, velocity, charge, b_field)
 }
 
 // ============================================================================
@@ -329,13 +272,11 @@ pub extern "C" fn rssn_num_physics_cyclotron_radius(
 ///
 /// The gas pressure P (Pascals).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_ideal_gas_pressure(
     n: f64,
     t: f64,
     v: f64,
 ) -> f64 {
-
     physics::ideal_gas_pressure(n, t, v)
 }
 
@@ -353,13 +294,11 @@ pub extern "C" fn rssn_num_physics_ideal_gas_pressure(
 ///
 /// The gas volume V (m³).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_ideal_gas_volume(
     n: f64,
     t: f64,
     p: f64,
 ) -> f64 {
-
     physics::ideal_gas_volume(n, t, p)
 }
 
@@ -377,16 +316,12 @@ pub extern "C" fn rssn_num_physics_ideal_gas_volume(
 ///
 /// The absolute temperature T (Kelvin).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_ideal_gas_temperature(
     p: f64,
     v: f64,
     n: f64,
 ) -> f64 {
-
-    physics::ideal_gas_temperature(
-        p, v, n,
-    )
+    physics::ideal_gas_temperature(p, v, n)
 }
 
 /// Computes the Maxwell-Boltzmann speed distribution probability density via handle-based FFI.
@@ -403,13 +338,11 @@ pub extern "C" fn rssn_num_physics_ideal_gas_temperature(
 ///
 /// The probability density f(v) (s/m).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_maxwell_boltzmann_speed_distribution(
     v: f64,
     mass: f64,
     temperature: f64,
 ) -> f64 {
-
     physics::maxwell_boltzmann_speed_distribution(v, mass, temperature)
 }
 
@@ -426,12 +359,10 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_speed_distribution(
 ///
 /// The mean speed ⟨v⟩ (m/s).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed(
     mass: f64,
     temperature: f64,
 ) -> f64 {
-
     physics::maxwell_boltzmann_mean_speed(mass, temperature)
 }
 
@@ -448,16 +379,11 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_mean_speed(
 ///
 /// The RMS speed `v_rms` (m/s).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_maxwell_boltzmann_rms_speed(
     mass: f64,
     temperature: f64,
 ) -> f64 {
-
-    physics::maxwell_boltzmann_rms_speed(
-        mass,
-        temperature,
-    )
+    physics::maxwell_boltzmann_rms_speed(mass, temperature)
 }
 
 /// Computes the total power radiated by a blackbody via handle-based FFI.
@@ -473,16 +399,11 @@ pub extern "C" fn rssn_num_physics_maxwell_boltzmann_rms_speed(
 ///
 /// The radiated power P (Watts).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_blackbody_power(
     area: f64,
     temperature: f64,
 ) -> f64 {
-
-    physics::blackbody_power(
-        area,
-        temperature,
-    )
+    physics::blackbody_power(area, temperature)
 }
 
 /// Computes the peak wavelength of blackbody radiation using Wien's displacement law via handle-based FFI.
@@ -497,11 +418,7 @@ pub extern "C" fn rssn_num_physics_blackbody_power(
 ///
 /// The peak wavelength `λ_max` (meters).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_num_physics_wien_displacement_wavelength(
-    temperature: f64
-) -> f64 {
-
+pub extern "C" fn rssn_num_physics_wien_displacement_wavelength(temperature: f64) -> f64 {
     physics::wien_displacement_wavelength(temperature)
 }
 
@@ -521,11 +438,7 @@ pub extern "C" fn rssn_num_physics_wien_displacement_wavelength(
 ///
 /// The Lorentz factor γ (dimensionless, ≥ 1).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_num_physics_lorentz_factor(
-    velocity: f64
-) -> f64 {
-
+pub extern "C" fn rssn_num_physics_lorentz_factor(velocity: f64) -> f64 {
     physics::lorentz_factor(velocity)
 }
 
@@ -542,16 +455,11 @@ pub extern "C" fn rssn_num_physics_lorentz_factor(
 ///
 /// The dilated time t (s).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_time_dilation(
     proper_time: f64,
     velocity: f64,
 ) -> f64 {
-
-    physics::time_dilation(
-        proper_time,
-        velocity,
-    )
+    physics::time_dilation(proper_time, velocity)
 }
 
 /// Computes relativistic length contraction via handle-based FFI.
@@ -567,16 +475,11 @@ pub extern "C" fn rssn_num_physics_time_dilation(
 ///
 /// The contracted length L (m).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_length_contraction(
     proper_length: f64,
     velocity: f64,
 ) -> f64 {
-
-    physics::length_contraction(
-        proper_length,
-        velocity,
-    )
+    physics::length_contraction(proper_length, velocity)
 }
 
 /// Computes relativistic momentum via handle-based FFI.
@@ -592,16 +495,11 @@ pub extern "C" fn rssn_num_physics_length_contraction(
 ///
 /// The relativistic momentum p (kg·m/s).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_relativistic_momentum(
     mass: f64,
     velocity: f64,
 ) -> f64 {
-
-    physics::relativistic_momentum(
-        mass,
-        velocity,
-    )
+    physics::relativistic_momentum(mass, velocity)
 }
 
 /// Computes relativistic kinetic energy via handle-based FFI.
@@ -617,16 +515,11 @@ pub extern "C" fn rssn_num_physics_relativistic_momentum(
 ///
 /// The kinetic energy K (Joules).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_relativistic_kinetic_energy(
     mass: f64,
     velocity: f64,
 ) -> f64 {
-
-    physics::relativistic_kinetic_energy(
-        mass,
-        velocity,
-    )
+    physics::relativistic_kinetic_energy(mass, velocity)
 }
 
 /// Computes rest mass energy using Einstein's mass-energy equivalence via handle-based FFI.
@@ -641,11 +534,7 @@ pub extern "C" fn rssn_num_physics_relativistic_kinetic_energy(
 ///
 /// The rest energy E (Joules).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_num_physics_mass_energy(
-    mass: f64
-) -> f64 {
-
+pub extern "C" fn rssn_num_physics_mass_energy(mass: f64) -> f64 {
     physics::mass_energy(mass)
 }
 
@@ -662,12 +551,10 @@ pub extern "C" fn rssn_num_physics_mass_energy(
 ///
 /// The combined velocity u (m/s).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_relativistic_velocity_addition(
     v: f64,
     w: f64,
 ) -> f64 {
-
     physics::relativistic_velocity_addition(v, w)
 }
 
@@ -688,12 +575,10 @@ pub extern "C" fn rssn_num_physics_relativistic_velocity_addition(
 ///
 /// The energy eigenvalue `E_n` (Joules).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy(
     n: u64,
     omega: f64,
 ) -> f64 {
-
     physics::quantum_harmonic_oscillator_energy(n, omega)
 }
 
@@ -709,11 +594,7 @@ pub extern "C" fn rssn_num_physics_quantum_harmonic_oscillator_energy(
 ///
 /// The energy level `E_n` (Joules, negative for bound states).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_num_physics_hydrogen_energy_level(
-    n: u64
-) -> f64 {
-
+pub extern "C" fn rssn_num_physics_hydrogen_energy_level(n: u64) -> f64 {
     physics::hydrogen_energy_level(n)
 }
 
@@ -729,14 +610,8 @@ pub extern "C" fn rssn_num_physics_hydrogen_energy_level(
 ///
 /// The de Broglie wavelength λ (meters).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_num_physics_de_broglie_wavelength(
-    momentum: f64
-) -> f64 {
-
-    physics::de_broglie_wavelength(
-        momentum,
-    )
+pub extern "C" fn rssn_num_physics_de_broglie_wavelength(momentum: f64) -> f64 {
+    physics::de_broglie_wavelength(momentum)
 }
 
 /// Computes the energy of a photon from its wavelength via handle-based FFI.
@@ -751,11 +626,7 @@ pub extern "C" fn rssn_num_physics_de_broglie_wavelength(
 ///
 /// The photon energy E (Joules).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_num_physics_photon_energy(
-    wavelength: f64
-) -> f64 {
-
+pub extern "C" fn rssn_num_physics_photon_energy(wavelength: f64) -> f64 {
     physics::photon_energy(wavelength)
 }
 
@@ -771,11 +642,7 @@ pub extern "C" fn rssn_num_physics_photon_energy(
 ///
 /// The photon wavelength λ (meters).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_num_physics_photon_wavelength(
-    energy: f64
-) -> f64 {
-
+pub extern "C" fn rssn_num_physics_photon_wavelength(energy: f64) -> f64 {
     physics::photon_wavelength(energy)
 }
 
@@ -791,10 +658,6 @@ pub extern "C" fn rssn_num_physics_photon_wavelength(
 ///
 /// The Compton wavelength `λ_C` (meters).
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_num_physics_compton_wavelength(
-    mass: f64
-) -> f64 {
-
+pub extern "C" fn rssn_num_physics_compton_wavelength(mass: f64) -> f64 {
     physics::compton_wavelength(mass)
 }

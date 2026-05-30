@@ -4,12 +4,10 @@ use rssn::prelude::*;
 #[test]
 
 fn test_prelude_imports() {
-
     // Verify that we can use some common types and functions from prelude
     let _expr = Expr::new_variable("x");
 
-    let _mat =
-        DMatrix::<f64>::identity(3, 3);
+    let _mat = DMatrix::<f64>::identity(3, 3);
 
     let _vec = DVector::<f64>::zeros(3);
 
@@ -25,9 +23,7 @@ fn test_prelude_imports() {
 #[test]
 
 fn test_numerical_prelude() {
-
-    let val =
-        numerical::numerical_sin(0.0);
+    let val = numerical::numerical_sin(0.0);
 
     assert_eq!(val, 0.0);
 }

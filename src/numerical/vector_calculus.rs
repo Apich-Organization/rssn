@@ -18,13 +18,11 @@ use crate::symbolic::core::Expr;
 ///
 /// # Errors
 /// Returns an error if symbolic expression evaluation fails or if the point dimension mismatches the variables.
-
 pub fn gradient(
     f: &Expr,
     vars: &[&str],
     point: &[f64],
 ) -> Result<Vec<f64>, String> {
-
     scalar_gradient(f, vars, point)
 }
 
@@ -38,48 +36,33 @@ pub fn gradient(
 ///
 /// # Errors
 /// Returns an error if the vector field evaluation fails.
-
 pub fn divergence<F>(
     vector_field: F,
     point: &[f64],
 ) -> Result<f64, String>
 where
-    F: Fn(
-        &[f64],
-    )
-        -> Result<Vec<f64>, String>,
+    F: Fn(&[f64]) -> Result<Vec<f64>, String>,
 {
-
     let dim = point.len();
 
     let h = 1e-6;
 
     let mut div = 0.0;
 
-    for i in 0 .. dim {
-
-        let mut point_plus_h =
-            point.to_vec();
+    for i in 0..dim {
+        let mut point_plus_h = point.to_vec();
 
         point_plus_h[i] += h;
 
-        let mut point_minus_h =
-            point.to_vec();
+        let mut point_minus_h = point.to_vec();
 
         point_minus_h[i] -= h;
 
-        let f_plus_h = vector_field(
-            &point_plus_h,
-        )?;
+        let f_plus_h = vector_field(&point_plus_h)?;
 
-        let f_minus_h = vector_field(
-            &point_minus_h,
-        )?;
+        let f_minus_h = vector_field(&point_minus_h)?;
 
-        let partial_deriv = (f_plus_h
-            [i]
-            - f_minus_h[i])
-            / (2.0 * h);
+        let partial_deriv = (f_plus_h[i] - f_minus_h[i]) / (2.0 * h);
 
         div += partial_deriv;
     }
@@ -96,7 +79,6 @@ where
 ///
 /// # Example
 /// ```rust
-/// 
 /// use rssn::numerical::vector_calculus::divergence_expr;
 /// use rssn::symbolic::core::Expr;
 ///
@@ -105,59 +87,33 @@ where
 /// let y = Expr::new_variable("y");
 ///
 /// // F = [x^2, y^2] -> div F = 2x + 2y
-/// let f1 = Expr::new_pow(
-///     x.clone(),
-///     Expr::new_constant(2.0),
-/// );
+/// let f1 = Expr::new_pow(x.clone(), Expr::new_constant(2.0));
 ///
-/// let f2 = Expr::new_pow(
-///     y.clone(),
-///     Expr::new_constant(2.0),
-/// );
+/// let f2 = Expr::new_pow(y.clone(), Expr::new_constant(2.0));
 ///
-/// let div = divergence_expr(
-///     &[f1, f2],
-///     &["x", "y"],
-///     &[1.0, 2.0],
-/// )
-/// .unwrap();
+/// let div = divergence_expr(&[f1, f2], &["x", "y"], &[1.0, 2.0]).unwrap();
 ///
 /// assert!((div - 6.0).abs() < 1e-5);
 /// ```
 ///
 /// # Errors
 /// Returns an error if the number of functions does not match the number of variables, or if evaluation fails.
-
 pub fn divergence_expr(
     funcs: &[Expr],
     vars: &[&str],
     point: &[f64],
 ) -> Result<f64, String> {
-
     if funcs.len() != vars.len() {
-
-        return Err(
-            "Number of functions must \
+        return Err("Number of functions must \
              match number of variables"
-                .to_string(),
-        );
+            .to_string());
     }
 
-    let vector_field = |p: &[f64]| -> Result<
-        Vec<f64>,
-        String,
-    > {
-
-        let mut res =
-            Vec::with_capacity(
-                funcs.len(),
-            );
+    let vector_field = |p: &[f64]| -> Result<Vec<f64>, String> {
+        let mut res = Vec::with_capacity(funcs.len());
 
         for f in funcs {
-
-            res.push(eval_at_point(
-                f, vars, p,
-            )?);
+            res.push(eval_at_point(f, vars, p)?);
         }
 
         Ok(res)
@@ -174,20 +130,14 @@ pub fn divergence_expr(
 ///
 /// # Errors
 /// Returns an error if the point dimension is not 3 or if the vector field evaluation fails.
-
 pub fn curl<F>(
     vector_field: F,
     point: &[f64],
 ) -> Result<Vec<f64>, String>
 where
-    F: Fn(
-        &[f64],
-    )
-        -> Result<Vec<f64>, String>,
+    F: Fn(&[f64]) -> Result<Vec<f64>, String>,
 {
-
     if point.len() != 3 {
-
         return Err("Curl is only \
                     defined for 3D \
                     vector fields."
@@ -205,12 +155,7 @@ where
 
     p_minus_h[1] -= h;
 
-    let dvz_dy =
-        (vector_field(&p_plus_h)?[2]
-            - vector_field(
-                &p_minus_h,
-            )?[2])
-            / (2.0 * h);
+    let dvz_dy = (vector_field(&p_plus_h)?[2] - vector_field(&p_minus_h)?[2]) / (2.0 * h);
 
     p_plus_h[1] = point[1];
 
@@ -220,12 +165,7 @@ where
 
     p_minus_h[2] -= h;
 
-    let dvy_dz =
-        (vector_field(&p_plus_h)?[1]
-            - vector_field(
-                &p_minus_h,
-            )?[1])
-            / (2.0 * h);
+    let dvy_dz = (vector_field(&p_plus_h)?[1] - vector_field(&p_minus_h)?[1]) / (2.0 * h);
 
     p_plus_h[2] = point[2];
 
@@ -236,12 +176,7 @@ where
 
     p_minus_h[2] -= h;
 
-    let dvx_dz =
-        (vector_field(&p_plus_h)?[0]
-            - vector_field(
-                &p_minus_h,
-            )?[0])
-            / (2.0 * h);
+    let dvx_dz = (vector_field(&p_plus_h)?[0] - vector_field(&p_minus_h)?[0]) / (2.0 * h);
 
     p_plus_h[2] = point[2];
 
@@ -251,12 +186,7 @@ where
 
     p_minus_h[0] -= h;
 
-    let dvz_dx =
-        (vector_field(&p_plus_h)?[2]
-            - vector_field(
-                &p_minus_h,
-            )?[2])
-            / (2.0 * h);
+    let dvz_dx = (vector_field(&p_plus_h)?[2] - vector_field(&p_minus_h)?[2]) / (2.0 * h);
 
     p_plus_h[0] = point[0];
 
@@ -267,12 +197,7 @@ where
 
     p_minus_h[0] -= h;
 
-    let dvy_dx =
-        (vector_field(&p_plus_h)?[1]
-            - vector_field(
-                &p_minus_h,
-            )?[1])
-            / (2.0 * h);
+    let dvy_dx = (vector_field(&p_plus_h)?[1] - vector_field(&p_minus_h)?[1]) / (2.0 * h);
 
     p_plus_h[0] = point[0];
 
@@ -282,54 +207,32 @@ where
 
     p_minus_h[1] -= h;
 
-    let dvx_dy =
-        (vector_field(&p_plus_h)?[0]
-            - vector_field(
-                &p_minus_h,
-            )?[0])
-            / (2.0 * h);
+    let dvx_dy = (vector_field(&p_plus_h)?[0] - vector_field(&p_minus_h)?[0]) / (2.0 * h);
 
-    Ok(vec![
-        dvz_dy - dvy_dz,
-        dvx_dz - dvz_dx,
-        dvy_dx - dvx_dy,
-    ])
+    Ok(vec![dvz_dy - dvy_dz, dvx_dz - dvz_dx, dvy_dx - dvx_dy])
 }
 
 /// Computes the numerical curl of a 3D vector field represented by symbolic expressions.
 ///
 /// # Errors
 /// Returns an error if the number of functions or variables is not 3, or if evaluation fails.
-
 pub fn curl_expr(
     funcs: &[Expr],
     vars: &[&str],
     point: &[f64],
 ) -> Result<Vec<f64>, String> {
-
-    if funcs.len() != 3
-        || vars.len() != 3
-    {
-
+    if funcs.len() != 3 || vars.len() != 3 {
         return Err("Curl is only \
                     defined for 3D \
                     vector fields."
             .to_string());
     }
 
-    let vector_field = |p: &[f64]| -> Result<
-        Vec<f64>,
-        String,
-    > {
-
-        let mut res =
-            Vec::with_capacity(3);
+    let vector_field = |p: &[f64]| -> Result<Vec<f64>, String> {
+        let mut res = Vec::with_capacity(3);
 
         for f in funcs {
-
-            res.push(eval_at_point(
-                f, vars, p,
-            )?);
+            res.push(eval_at_point(f, vars, p)?);
         }
 
         Ok(res)
@@ -342,7 +245,6 @@ pub fn curl_expr(
 ///
 /// # Example
 /// ```rust
-/// 
 /// use rssn::numerical::vector_calculus::laplacian;
 /// use rssn::symbolic::core::Expr;
 ///
@@ -352,71 +254,42 @@ pub fn curl_expr(
 ///
 /// // f = x^2 + y^2 -> laplacian = 2 + 2 = 4
 /// let f = Expr::new_add(
-///     Expr::new_pow(
-///         x,
-///         Expr::new_constant(2.0),
-///     ),
-///     Expr::new_pow(
-///         y,
-///         Expr::new_constant(2.0),
-///     ),
+///     Expr::new_pow(x, Expr::new_constant(2.0)),
+///     Expr::new_pow(y, Expr::new_constant(2.0)),
 /// );
 ///
-/// let lap = laplacian(
-///     &f,
-///     &["x", "y"],
-///     &[1.0, 1.0],
-/// )
-/// .unwrap();
+/// let lap = laplacian(&f, &["x", "y"], &[1.0, 1.0]).unwrap();
 ///
 /// assert!((lap - 4.0).abs() < 1e-5);
 /// ```
 ///
 /// # Errors
 /// Returns an error if symbolic expression evaluation fails.
-
 pub fn laplacian(
     f: &Expr,
     vars: &[&str],
     point: &[f64],
 ) -> Result<f64, String> {
-
     let mut lap = 0.0;
 
     let h = 1e-4;
 
-    for i in 0 .. vars.len() {
-
+    for i in 0..vars.len() {
         let mut p_plus = point.to_vec();
 
         p_plus[i] += h;
 
-        let mut p_minus =
-            point.to_vec();
+        let mut p_minus = point.to_vec();
 
         p_minus[i] -= h;
 
-        let f_plus = eval_at_point(
-            f,
-            vars,
-            &p_plus,
-        )?;
+        let f_plus = eval_at_point(f, vars, &p_plus)?;
 
-        let f_center = eval_at_point(
-            f, vars, point,
-        )?;
+        let f_center = eval_at_point(f, vars, point)?;
 
-        let f_minus = eval_at_point(
-            f,
-            vars,
-            &p_minus,
-        )?;
+        let f_minus = eval_at_point(f, vars, &p_minus)?;
 
-        lap += (2.0f64.mul_add(
-            -f_center,
-            f_plus,
-        ) + f_minus)
-            / (h * h);
+        lap += (2.0f64.mul_add(-f_center, f_plus) + f_minus) / (h * h);
     }
 
     Ok(lap)
@@ -426,46 +299,35 @@ pub fn laplacian(
 ///
 /// # Errors
 /// Returns an error if symbolic expression evaluation fails, if dimensions mismatch, or if the direction vector is zero.
-
 pub fn directional_derivative(
     f: &Expr,
     vars: &[&str],
     point: &[f64],
     direction: &[f64],
 ) -> Result<f64, String> {
-
-    let grad =
-        gradient(f, vars, point)?;
+    let grad = gradient(f, vars, point)?;
 
     if grad.len() != direction.len() {
-
-        return Err(
-            "Direction vector \
+        return Err("Direction vector \
              dimension must match \
              point dimension"
-                .to_string(),
-        );
+            .to_string());
     }
 
     let mut dot = 0.0;
 
     let mut mag_sq = 0.0;
 
-    for i in 0 .. direction.len() {
-
+    for i in 0..direction.len() {
         dot += grad[i] * direction[i];
 
-        mag_sq +=
-            direction[i] * direction[i];
+        mag_sq += direction[i] * direction[i];
     }
 
     if mag_sq == 0.0 {
-
-        return Err(
-            "Direction vector cannot \
+        return Err("Direction vector cannot \
              be zero"
-                .to_string(),
-        );
+            .to_string());
     }
 
     Ok(dot / mag_sq.sqrt())

@@ -14,7 +14,6 @@ use crate::physics::physics_sim::schrodinger_quantum::{
 };
 
 #[derive(Deserialize)]
-
 struct SchrodingerInput {
     params: SchrodingerParameters,
     initial_psi_re: Vec<f64>,
@@ -47,8 +46,7 @@ struct SchrodingerInput {
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw C string pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -56,72 +54,46 @@ struct SchrodingerInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : SchrodingerInput = match from_json_string(input) {
+    let input: SchrodingerInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let mut initial_psi: Vec<
-        Complex<f64>,
-    > = input
+    let mut initial_psi: Vec<Complex<f64>> = input
         .initial_psi_re
         .iter()
-        .zip(
-            input
-                .initial_psi_im
-                .iter(),
-        )
-        .map(|(&r, &i)| {
-
-            Complex::new(r, i)
-        })
+        .zip(input.initial_psi_im.iter())
+        .map(|(&r, &i)| Complex::new(r, i))
         .collect();
 
-    match schrodinger_quantum::run_schrodinger_simulation(
-        &input.params,
-        &mut initial_psi,
-    ) {
+    match schrodinger_quantum::run_schrodinger_simulation(&input.params, &mut initial_psi) {
         | Ok(snapshots) => {
             if let Some(final_state) = snapshots.last() {
-
                 to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<f64>,
-                        String,
-                    >::ok(
-                        final_state
-                            .clone()
-                            .into_raw_vec_and_offset().0,
+                    serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(
+                        final_state.clone().into_raw_vec_and_offset().0,
                     ))
                     .unwrap(),
                 )
             } else {
-
                 to_c_string(
-                    serde_json::to_string(&FfiResult::<
-                        Vec<f64>,
-                        String,
-                    >::err(
+                    serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
                         "No snapshots produced".to_string(),
                     ))
                     .unwrap(),
@@ -129,15 +101,7 @@ pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_json(
             }
         },
         | Err(e) => {
-            to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
-                    e
-                ))
-                .unwrap(),
-            )
+            to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(e)).unwrap())
         },
     }
 }

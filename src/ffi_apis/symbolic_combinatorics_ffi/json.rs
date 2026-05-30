@@ -9,7 +9,6 @@ use crate::symbolic::combinatorics::permutations;
 use crate::symbolic::combinatorics::stirling_number_second_kind;
 use crate::symbolic::core::Expr;
 
-
 /// Computes the number of permutations symbolically using JSON-encoded `Expr` arguments.
 ///
 /// This corresponds to the falling factorial \( P(n,k) = n! / (n-k)! \) when `n` and `k`
@@ -29,9 +28,7 @@ use crate::symbolic::core::Expr;
 ///
 /// This function is unsafe because it dereferences raw C string pointers and returns
 /// ownership of a heap-allocated C string.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -39,31 +36,22 @@ use crate::symbolic::core::Expr;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_permutations(
     n_json: *const c_char,
     k_json: *const c_char,
 ) -> *mut c_char {
-
-    let n: Expr = match from_json_string(
-        n_json,
-    ) {
+    let n: Expr = match from_json_string(n_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let k: Expr = match from_json_string(
-        k_json,
-    ) {
+    let k: Expr = match from_json_string(k_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
@@ -91,8 +79,7 @@ pub unsafe extern "C" fn rssn_json_permutations(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and returns
 /// ownership of a heap-allocated C string.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -100,31 +87,22 @@ pub unsafe extern "C" fn rssn_json_permutations(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_combinations(
     n_json: *const c_char,
     k_json: *const c_char,
 ) -> *mut c_char {
-
-    let n: Expr = match from_json_string(
-        n_json,
-    ) {
+    let n: Expr = match from_json_string(n_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
-    let k: Expr = match from_json_string(
-        k_json,
-    ) {
+    let k: Expr = match from_json_string(k_json) {
         | Some(e) => e,
         | None => {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         },
     };
 
@@ -150,8 +128,7 @@ pub unsafe extern "C" fn rssn_json_combinations(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated C string.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -159,11 +136,8 @@ pub unsafe extern "C" fn rssn_json_combinations(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_catalan_number(
-    n: usize
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_catalan_number(n: usize) -> *mut c_char {
     let result = catalan_number(n);
 
     to_json_string(&result)
@@ -187,8 +161,7 @@ pub unsafe extern "C" fn rssn_json_catalan_number(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated C string.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -196,20 +169,15 @@ pub unsafe extern "C" fn rssn_json_catalan_number(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_json_stirling_number_second_kind(
     n: usize,
     k: usize,
 ) -> *mut c_char {
-
-    let result =
-        stirling_number_second_kind(
-            n, k,
-        );
+    let result = stirling_number_second_kind(n, k);
 
     to_json_string(&result)
 }
-
 
 /// Computes the \(n\)-th Bell number symbolically and returns it as JSON-encoded `Expr`.
 ///
@@ -227,8 +195,7 @@ pub unsafe extern "C" fn rssn_json_stirling_number_second_kind(
 ///
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated C string.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -236,11 +203,8 @@ pub unsafe extern "C" fn rssn_json_stirling_number_second_kind(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_json_bell_number(
-    n: usize
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_json_bell_number(n: usize) -> *mut c_char {
     let result = bell_number(n);
 
     to_json_string(&result)

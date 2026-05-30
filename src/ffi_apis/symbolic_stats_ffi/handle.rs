@@ -7,8 +7,7 @@ use crate::symbolic::stats;
 ///
 /// # Safety
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -16,38 +15,27 @@ use crate::symbolic::stats;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_mean(
     data: *const *const Expr,
     len: usize,
 ) -> *mut Expr {
-
     unsafe {
-
         if data.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        let mut exprs =
-            Vec::with_capacity(len);
+        let mut exprs = Vec::with_capacity(len);
 
-        for i in 0 .. len {
-
+        for i in 0..len {
             let ptr = *data.add(i);
 
             if !ptr.is_null() {
-
-                exprs.push(
-                    (*ptr).clone(),
-                );
+                exprs.push((*ptr).clone());
             }
         }
 
-        Box::into_raw(Box::new(
-            stats::mean(&exprs),
-        ))
+        Box::into_raw(Box::new(stats::mean(&exprs)))
     }
 }
 
@@ -55,8 +43,7 @@ pub unsafe extern "C" fn rssn_mean(
 ///
 /// # Safety
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -64,38 +51,27 @@ pub unsafe extern "C" fn rssn_mean(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_variance(
     data: *const *const Expr,
     len: usize,
 ) -> *mut Expr {
-
     unsafe {
-
         if data.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        let mut exprs =
-            Vec::with_capacity(len);
+        let mut exprs = Vec::with_capacity(len);
 
-        for i in 0 .. len {
-
+        for i in 0..len {
             let ptr = *data.add(i);
 
             if !ptr.is_null() {
-
-                exprs.push(
-                    (*ptr).clone(),
-                );
+                exprs.push((*ptr).clone());
             }
         }
 
-        Box::into_raw(Box::new(
-            stats::variance(&exprs),
-        ))
+        Box::into_raw(Box::new(stats::variance(&exprs)))
     }
 }
 
@@ -103,8 +79,7 @@ pub unsafe extern "C" fn rssn_variance(
 ///
 /// # Safety
 /// The caller must ensure `data` is a valid pointer to an array of `Expr` pointers of size `len`.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -112,38 +87,27 @@ pub unsafe extern "C" fn rssn_variance(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_std_dev(
     data: *const *const Expr,
     len: usize,
 ) -> *mut Expr {
-
     unsafe {
-
         if data.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        let mut exprs =
-            Vec::with_capacity(len);
+        let mut exprs = Vec::with_capacity(len);
 
-        for i in 0 .. len {
-
+        for i in 0..len {
             let ptr = *data.add(i);
 
             if !ptr.is_null() {
-
-                exprs.push(
-                    (*ptr).clone(),
-                );
+                exprs.push((*ptr).clone());
             }
         }
 
-        Box::into_raw(Box::new(
-            stats::std_dev(&exprs),
-        ))
+        Box::into_raw(Box::new(stats::std_dev(&exprs)))
     }
 }
 
@@ -151,8 +115,7 @@ pub unsafe extern "C" fn rssn_std_dev(
 ///
 /// # Safety
 /// The caller must ensure `data1` and `data2` are valid pointers to arrays of `Expr` pointers.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -160,60 +123,39 @@ pub unsafe extern "C" fn rssn_std_dev(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_covariance(
     data1: *const *const Expr,
     len1: usize,
     data2: *const *const Expr,
     len2: usize,
 ) -> *mut Expr {
-
     unsafe {
-
-        if data1.is_null()
-            || data2.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if data1.is_null() || data2.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let mut exprs1 =
-            Vec::with_capacity(len1);
+        let mut exprs1 = Vec::with_capacity(len1);
 
-        for i in 0 .. len1 {
-
+        for i in 0..len1 {
             let ptr = *data1.add(i);
 
             if !ptr.is_null() {
-
-                exprs1.push(
-                    (*ptr).clone(),
-                );
+                exprs1.push((*ptr).clone());
             }
         }
 
-        let mut exprs2 =
-            Vec::with_capacity(len2);
+        let mut exprs2 = Vec::with_capacity(len2);
 
-        for i in 0 .. len2 {
-
+        for i in 0..len2 {
             let ptr = *data2.add(i);
 
             if !ptr.is_null() {
-
-                exprs2.push(
-                    (*ptr).clone(),
-                );
+                exprs2.push((*ptr).clone());
             }
         }
 
-        Box::into_raw(Box::new(
-            stats::covariance(
-                &exprs1,
-                &exprs2,
-            ),
-        ))
+        Box::into_raw(Box::new(stats::covariance(&exprs1, &exprs2)))
     }
 }
 
@@ -221,8 +163,7 @@ pub unsafe extern "C" fn rssn_covariance(
 ///
 /// # Safety
 /// The caller must ensure `data1` and `data2` are valid pointers to arrays of `Expr` pointers.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -230,59 +171,38 @@ pub unsafe extern "C" fn rssn_covariance(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_correlation(
     data1: *const *const Expr,
     len1: usize,
     data2: *const *const Expr,
     len2: usize,
 ) -> *mut Expr {
-
     unsafe {
-
-        if data1.is_null()
-            || data2.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if data1.is_null() || data2.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let mut exprs1 =
-            Vec::with_capacity(len1);
+        let mut exprs1 = Vec::with_capacity(len1);
 
-        for i in 0 .. len1 {
-
+        for i in 0..len1 {
             let ptr = *data1.add(i);
 
             if !ptr.is_null() {
-
-                exprs1.push(
-                    (*ptr).clone(),
-                );
+                exprs1.push((*ptr).clone());
             }
         }
 
-        let mut exprs2 =
-            Vec::with_capacity(len2);
+        let mut exprs2 = Vec::with_capacity(len2);
 
-        for i in 0 .. len2 {
-
+        for i in 0..len2 {
             let ptr = *data2.add(i);
 
             if !ptr.is_null() {
-
-                exprs2.push(
-                    (*ptr).clone(),
-                );
+                exprs2.push((*ptr).clone());
             }
         }
 
-        Box::into_raw(Box::new(
-            stats::correlation(
-                &exprs1,
-                &exprs2,
-            ),
-        ))
+        Box::into_raw(Box::new(stats::correlation(&exprs1, &exprs2)))
     }
 }

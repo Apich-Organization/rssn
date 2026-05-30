@@ -11,27 +11,18 @@ use crate::symbolic::topology::create_torus_complex;
 
 /// Creates a new Simplex (Handle)
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_simplex_create(
     vertices_ptr: *const usize,
     len: usize,
 ) -> *mut Simplex {
-
     if vertices_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
     unsafe {
+        let vertices = std::slice::from_raw_parts(vertices_ptr, len);
 
-        let vertices =
-            std::slice::from_raw_parts(
-                vertices_ptr,
-                len,
-            );
-
-        let simplex =
-            Simplex::new(vertices);
+        let simplex = Simplex::new(vertices);
 
         Box::into_raw(Box::new(simplex))
     }
@@ -39,15 +30,9 @@ pub extern "C" fn rssn_simplex_create(
 
 /// Frees a Simplex handle
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_simplex_free(
-    ptr: *mut Simplex
-) {
-
+pub extern "C" fn rssn_simplex_free(ptr: *mut Simplex) {
     if !ptr.is_null() {
-
         unsafe {
-
             let _ = Box::from_raw(ptr);
         }
     }
@@ -55,47 +40,29 @@ pub extern "C" fn rssn_simplex_free(
 
 /// Gets the dimension of a Simplex
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_simplex_dimension(
-    ptr: *const Simplex
-) -> usize {
-
+pub extern "C" fn rssn_simplex_dimension(ptr: *const Simplex) -> usize {
     if ptr.is_null() {
-
         return 0;
     }
 
-    unsafe {
-
-        (*ptr).dimension()
-    }
+    unsafe { (*ptr).dimension() }
 }
 
 // --- SimplicialComplex ---
 
 /// Creates a new `SimplicialComplex` (Handle)
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_simplicial_complex_create()
--> *mut SimplicialComplex {
-
-    let complex =
-        SimplicialComplex::new();
+pub extern "C" fn rssn_simplicial_complex_create() -> *mut SimplicialComplex {
+    let complex = SimplicialComplex::new();
 
     Box::into_raw(Box::new(complex))
 }
 
 /// Frees a `SimplicialComplex` handle
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_simplicial_complex_free(
-    ptr: *mut SimplicialComplex
-) {
-
+pub extern "C" fn rssn_simplicial_complex_free(ptr: *mut SimplicialComplex) {
     if !ptr.is_null() {
-
         unsafe {
-
             let _ = Box::from_raw(ptr);
         }
     }
@@ -103,29 +70,19 @@ pub extern "C" fn rssn_simplicial_complex_free(
 
 /// Adds a simplex to a `SimplicialComplex`
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_simplicial_complex_add_simplex(
     complex_ptr: *mut SimplicialComplex,
     vertices_ptr: *const usize,
     len: usize,
 ) {
-
-    if complex_ptr.is_null()
-        || vertices_ptr.is_null()
-    {
-
+    if complex_ptr.is_null() || vertices_ptr.is_null() {
         return;
     }
 
     unsafe {
-
         let complex = &mut *complex_ptr;
 
-        let vertices =
-            std::slice::from_raw_parts(
-                vertices_ptr,
-                len,
-            );
+        let vertices = std::slice::from_raw_parts(vertices_ptr, len);
 
         complex.add_simplex(vertices);
     }
@@ -133,18 +90,12 @@ pub extern "C" fn rssn_simplicial_complex_add_simplex(
 
 /// Gets the dimension of a `SimplicialComplex`
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_simplicial_complex_dimension(
-    ptr: *const SimplicialComplex
-) -> c_int {
-
+pub extern "C" fn rssn_simplicial_complex_dimension(ptr: *const SimplicialComplex) -> c_int {
     if ptr.is_null() {
-
         return -1;
     }
 
     unsafe {
-
         match (*ptr).dimension() {
             | Some(d) => d as c_int,
             | None => -1,
@@ -154,37 +105,27 @@ pub extern "C" fn rssn_simplicial_complex_dimension(
 
 /// Computes the Euler characteristic
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_simplicial_complex_euler_characteristic(
     ptr: *const SimplicialComplex
 ) -> isize {
-
     if ptr.is_null() {
-
         return 0;
     }
 
-    unsafe {
-
-        (*ptr).compute_euler_characteristic()
-    }
+    unsafe { (*ptr).compute_euler_characteristic() }
 }
 
 /// Gets the symbolic boundary matrix for dimension k
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_simplicial_complex_get_symbolic_boundary_matrix(
-    complex_ptr : *const SimplicialComplex,
+    complex_ptr: *const SimplicialComplex,
     k: usize,
 ) -> *mut Expr {
-
     if complex_ptr.is_null() {
-
         return std::ptr::null_mut();
     }
 
     unsafe {
-
         match (*complex_ptr).get_symbolic_boundary_matrix(k) {
             | Some(expr) => Box::into_raw(Box::new(expr)),
             | None => std::ptr::null_mut(),
@@ -196,28 +137,17 @@ pub extern "C" fn rssn_simplicial_complex_get_symbolic_boundary_matrix(
 
 /// Creates a new `SymbolicChain` (Handle)
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_symbolic_chain_create(
-    dimension: usize
-) -> *mut SymbolicChain {
-
-    let chain =
-        SymbolicChain::new(dimension);
+pub extern "C" fn rssn_symbolic_chain_create(dimension: usize) -> *mut SymbolicChain {
+    let chain = SymbolicChain::new(dimension);
 
     Box::into_raw(Box::new(chain))
 }
 
 /// Frees a `SymbolicChain` handle
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_symbolic_chain_free(
-    ptr: *mut SymbolicChain
-) {
-
+pub extern "C" fn rssn_symbolic_chain_free(ptr: *mut SymbolicChain) {
     if !ptr.is_null() {
-
         unsafe {
-
             let _ = Box::from_raw(ptr);
         }
     }
@@ -225,33 +155,23 @@ pub extern "C" fn rssn_symbolic_chain_free(
 
 /// Adds a term to a `SymbolicChain`
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_symbolic_chain_add_term(
     chain_ptr: *mut SymbolicChain,
     simplex_ptr: *const Simplex,
     coeff_ptr: *const Expr,
 ) -> bool {
-
-    if chain_ptr.is_null()
-        || simplex_ptr.is_null()
-        || coeff_ptr.is_null()
-    {
-
+    if chain_ptr.is_null() || simplex_ptr.is_null() || coeff_ptr.is_null() {
         return false;
     }
 
     unsafe {
-
         let chain = &mut *chain_ptr;
 
         let simplex = &*simplex_ptr;
 
         let coeff = &*coeff_ptr;
 
-        match chain.add_term(
-            simplex.clone(),
-            coeff.clone(),
-        ) {
+        match chain.add_term(simplex.clone(), coeff.clone()) {
             | Ok(()) => true,
             | Err(_) => false,
         }
@@ -260,21 +180,15 @@ pub extern "C" fn rssn_symbolic_chain_add_term(
 
 /// Applies the symbolic boundary operator to a `SymbolicChain`
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_simplicial_complex_apply_symbolic_boundary_operator(
-    complex_ptr : *const SimplicialComplex,
+    complex_ptr: *const SimplicialComplex,
     chain_ptr: *const SymbolicChain,
 ) -> *mut SymbolicChain {
-
-    if complex_ptr.is_null()
-        || chain_ptr.is_null()
-    {
-
+    if complex_ptr.is_null() || chain_ptr.is_null() {
         return std::ptr::null_mut();
     }
 
     unsafe {
-
         let complex = &*complex_ptr;
 
         let chain = &*chain_ptr;
@@ -290,30 +204,22 @@ pub extern "C" fn rssn_simplicial_complex_apply_symbolic_boundary_operator(
 
 /// Creates a grid complex
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_create_grid_complex(
     width: usize,
     height: usize,
 ) -> *mut SimplicialComplex {
-
-    let complex = create_grid_complex(
-        width,
-        height,
-    );
+    let complex = create_grid_complex(width, height);
 
     Box::into_raw(Box::new(complex))
 }
 
 /// Creates a torus complex
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_create_torus_complex(
     m: usize,
     n: usize,
 ) -> *mut SimplicialComplex {
-
-    let complex =
-        create_torus_complex(m, n);
+    let complex = create_torus_complex(m, n);
 
     Box::into_raw(Box::new(complex))
 }

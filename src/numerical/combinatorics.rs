@@ -13,17 +13,12 @@
 /// The factorial of `n` as an `f64`. Returns `f64::INFINITY` if `n` is too large to fit in `f64`.
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
-
 pub fn factorial(n: u64) -> f64 {
-
     if n > 170 {
-
         return f64::INFINITY;
     }
 
-    (1 ..= n)
-        .map(|i| i as f64)
-        .product()
+    (1..=n).map(|i| i as f64).product()
 }
 
 /// Computes the number of permutations `P(n, k) = n! / (n-k)!`.
@@ -36,20 +31,15 @@ pub fn factorial(n: u64) -> f64 {
 /// The number of permutations as an `f64`. Returns `0.0` if `k > n`.
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
-
 pub fn permutations(
     n: u64,
     k: u64,
 ) -> f64 {
-
     if k > n {
-
         return 0.0;
     }
 
-    (n - k + 1 ..= n)
-        .map(|i| i as f64)
-        .product()
+    (n - k + 1..=n).map(|i| i as f64).product()
 }
 
 /// Computes the number of combinations `C(n, k) = n! / (k! * (n-k)!)`.
@@ -62,33 +52,26 @@ pub fn permutations(
 /// The number of combinations as an `f64`. Returns `0.0` if `k > n`.
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
-
 pub fn combinations(
     n: u64,
     k: u64,
 ) -> f64 {
-
     if k > n {
-
         return 0.0;
     }
 
     if k == 0 || k == n {
-
         return 1.0;
     }
 
     if k > n / 2 {
-
         return combinations(n, n - k);
     }
 
     let mut res = 1.0;
 
-    for i in 1 ..= k {
-
-        res = res * (n - i + 1) as f64
-            / i as f64;
+    for i in 1..=k {
+        res = res * (n - i + 1) as f64 / i as f64;
     }
 
     res
@@ -112,44 +95,32 @@ pub fn combinations(
 /// Returns an error if:
 /// - The number of initial conditions does not match the order of the recurrence.
 /// - The internal storage fails to compute values (e.g., empty result vector).
-
 pub fn solve_recurrence_numerical(
     coeffs: &[f64],
     initial_conditions: &[f64],
     target_n: usize,
 ) -> Result<f64, String> {
-
     let order = coeffs.len();
 
-    if initial_conditions.len() != order
-    {
-
-        return Err(
-            "Number of initial \
+    if initial_conditions.len() != order {
+        return Err("Number of initial \
              conditions must match \
              the order of the \
              recurrence."
-                .to_string(),
-        );
+            .to_string());
     }
 
     if target_n < order {
-
-        return Ok(initial_conditions
-            [target_n]);
+        return Ok(initial_conditions[target_n]);
     }
 
-    let mut values =
-        initial_conditions.to_vec();
+    let mut values = initial_conditions.to_vec();
 
-    for n in order ..= target_n {
-
+    for n in order..=target_n {
         let mut next_val = 0.0;
 
-        for i in 0 .. order {
-
-            next_val += coeffs[i]
-                * values[n - 1 - i];
+        for i in 0..order {
+            next_val += coeffs[i] * values[n - 1 - i];
         }
 
         values.push(next_val);
@@ -171,35 +142,23 @@ pub fn solve_recurrence_numerical(
 /// This is the number of ways to partition a set of `n` elements into `k` non-empty subsets.
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
-
 pub fn stirling_second(
     n: u64,
     k: u64,
 ) -> f64 {
-
     if k > n {
-
         return 0.0;
     }
 
     if k == 0 {
-
-        return if n == 0 {
-
-            1.0
-        } else {
-
-            0.0
-        };
+        return if n == 0 { 1.0 } else { 0.0 };
     }
 
     if k == n {
-
         return 1.0;
     }
 
     if k == 1 {
-
         return 1.0;
     }
 
@@ -209,16 +168,12 @@ pub fn stirling_second(
 
     let mut sum = 0.0;
 
-    for j in 0 ..= k {
-
-        let term = combinations(k, j)
-            * (j as f64).powf(n as f64);
+    for j in 0..=k {
+        let term = combinations(k, j) * (j as f64).powf(n as f64);
 
         if (k - j) % 2 == 1 {
-
             sum -= term;
         } else {
-
             sum += term;
         }
     }
@@ -229,43 +184,32 @@ pub fn stirling_second(
 /// Computes the Bell number B(n), which is the number of partitions of a set of `n` elements.
 /// B(n) = sum_{k=0}^n S(n, k)
 #[must_use]
-
 pub fn bell(n: u64) -> f64 {
-
-    (0 ..= n)
-        .map(|k| stirling_second(n, k))
-        .sum()
+    (0..=n).map(|k| stirling_second(n, k)).sum()
 }
 
 /// Computes the nth Catalan number `C_n`.
 /// `C_n` = (1 / (n + 1)) * C(2n, n)
 #[must_use]
-
 pub fn catalan(n: u64) -> f64 {
-
-    combinations(2 * n, n)
-        / ((n + 1) as f64)
+    combinations(2 * n, n) / ((n + 1) as f64)
 }
 
 /// Computes the rising factorial (Pochhammer symbol) x^(n) = x(x+1)...(x+n-1).
 #[must_use]
 // precision loss is allowed here because we need to introduce bigint otherwise --- that will require a lot of work and results in breaking change and loss of performance. So we will have to handle it later.
 #[allow(clippy::cast_precision_loss)]
-
 pub fn rising_factorial(
     x: f64,
     n: u64,
 ) -> f64 {
-
     if n == 0 {
-
         return 1.0;
     }
 
     let mut res = 1.0;
 
-    for i in 0 .. n {
-
+    for i in 0..n {
         res *= x + (i as f64);
     }
 
@@ -275,21 +219,17 @@ pub fn rising_factorial(
 /// Computes the falling factorial (x)_n = x(x-1)...(x-n+1).
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
-
 pub fn falling_factorial(
     x: f64,
     n: u64,
 ) -> f64 {
-
     if n == 0 {
-
         return 1.0;
     }
 
     let mut res = 1.0;
 
-    for i in 0 .. n {
-
+    for i in 0..n {
         res *= x - (i as f64);
     }
 

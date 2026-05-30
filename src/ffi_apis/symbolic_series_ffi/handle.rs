@@ -9,306 +9,171 @@ use crate::symbolic::series::summation;
 use crate::symbolic::series::taylor_series;
 
 /// Computes the Taylor series expansion of an expression.
-
 ///
-
 /// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
-
 /// a raw pointer to `Expr` (center), and a `usize` (order).
-
 /// Returns a raw pointer to a new `Expr` representing the Taylor series.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_taylor_series_handle(
     expr: *const Expr,
     var: *const std::ffi::c_char,
     center: *const Expr,
     order: usize,
 ) -> *mut Expr {
+    let expr_ref = unsafe { &*expr };
 
-    let expr_ref = unsafe {
-
-        &*expr
-    };
-
-    let center_ref = unsafe {
-
-        &*center
-    };
+    let center_ref = unsafe { &*center };
 
     let var_str = unsafe {
-
         if var.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var)
-            .to_string_lossy()
-            .into_owned()
+        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
     };
 
-    let result = taylor_series(
-        expr_ref,
-        &var_str,
-        center_ref,
-        order,
-    );
+    let result = taylor_series(expr_ref, &var_str, center_ref, order);
 
     Box::into_raw(Box::new(result))
 }
 
 /// Computes the Laurent series expansion of an expression.
-
 ///
-
 /// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
-
 /// a raw pointer to `Expr` (center), and a `usize` (order).
-
 /// Returns a raw pointer to a new `Expr` representing the Laurent series.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_laurent_series_handle(
     expr: *const Expr,
     var: *const std::ffi::c_char,
     center: *const Expr,
     order: usize,
 ) -> *mut Expr {
+    let expr_ref = unsafe { &*expr };
 
-    let expr_ref = unsafe {
-
-        &*expr
-    };
-
-    let center_ref = unsafe {
-
-        &*center
-    };
+    let center_ref = unsafe { &*center };
 
     let var_str = unsafe {
-
         if var.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var)
-            .to_string_lossy()
-            .into_owned()
+        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
     };
 
-    let result = laurent_series(
-        expr_ref,
-        &var_str,
-        center_ref,
-        order,
-    );
+    let result = laurent_series(expr_ref, &var_str, center_ref, order);
 
     Box::into_raw(Box::new(result))
 }
 
 /// Computes the Fourier series expansion of an expression.
-
 ///
-
 /// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
-
 /// a raw pointer to `Expr` (period), and a `usize` (order).
-
 /// Returns a raw pointer to a new `Expr` representing the Fourier series.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_fourier_series_handle(
     expr: *const Expr,
     var: *const std::ffi::c_char,
     period: *const Expr,
     order: usize,
 ) -> *mut Expr {
+    let expr_ref = unsafe { &*expr };
 
-    let expr_ref = unsafe {
-
-        &*expr
-    };
-
-    let period_ref = unsafe {
-
-        &*period
-    };
+    let period_ref = unsafe { &*period };
 
     let var_str = unsafe {
-
         if var.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var)
-            .to_string_lossy()
-            .into_owned()
+        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
     };
 
-    let result = fourier_series(
-        expr_ref,
-        &var_str,
-        period_ref,
-        order,
-    );
+    let result = fourier_series(expr_ref, &var_str, period_ref, order);
 
     Box::into_raw(Box::new(result))
 }
 
 /// Computes the summation of an expression.
-
 ///
-
 /// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
-
 /// raw pointers to `Expr` (lower bound), and `Expr` (upper bound).
-
 /// Returns a raw pointer to a new `Expr` representing the summation.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_summation_handle(
     expr: *const Expr,
     var: *const std::ffi::c_char,
     lower: *const Expr,
     upper: *const Expr,
 ) -> *mut Expr {
+    let expr_ref = unsafe { &*expr };
 
-    let expr_ref = unsafe {
+    let lower_ref = unsafe { &*lower };
 
-        &*expr
-    };
-
-    let lower_ref = unsafe {
-
-        &*lower
-    };
-
-    let upper_ref = unsafe {
-
-        &*upper
-    };
+    let upper_ref = unsafe { &*upper };
 
     let var_str = unsafe {
-
         if var.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var)
-            .to_string_lossy()
-            .into_owned()
+        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
     };
 
-    let result = summation(
-        expr_ref,
-        &var_str,
-        lower_ref,
-        upper_ref,
-    );
+    let result = summation(expr_ref, &var_str, lower_ref, upper_ref);
 
     Box::into_raw(Box::new(result))
 }
 
 /// Computes the product of an expression.
-
 ///
-
 /// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
-
 /// raw pointers to `Expr` (lower bound), and `Expr` (upper bound).
-
 /// Returns a raw pointer to a new `Expr` representing the product.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_product_handle(
     expr: *const Expr,
     var: *const std::ffi::c_char,
     lower: *const Expr,
     upper: *const Expr,
 ) -> *mut Expr {
+    let expr_ref = unsafe { &*expr };
 
-    let expr_ref = unsafe {
+    let lower_ref = unsafe { &*lower };
 
-        &*expr
-    };
-
-    let lower_ref = unsafe {
-
-        &*lower
-    };
-
-    let upper_ref = unsafe {
-
-        &*upper
-    };
+    let upper_ref = unsafe { &*upper };
 
     let var_str = unsafe {
-
         if var.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var)
-            .to_string_lossy()
-            .into_owned()
+        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
     };
 
-    let result = product(
-        expr_ref,
-        &var_str,
-        lower_ref,
-        upper_ref,
-    );
+    let result = product(expr_ref, &var_str, lower_ref, upper_ref);
 
     Box::into_raw(Box::new(result))
 }
 
 /// Analyzes the convergence of a series.
-
 ///
-
 /// Takes a raw pointer to `Expr` (series expression) and a C-style string (variable).
-
 /// Returns a raw pointer to a `ConvergenceResult` representing the convergence analysis result.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_series_analyze_convergence_handle(
     series: *const Expr,
     var: *const std::ffi::c_char,
 ) -> *mut ConvergenceResult {
-
-    let series_ref = unsafe {
-
-        &*series
-    };
+    let series_ref = unsafe { &*series };
 
     let var_str = unsafe {
-
         if var.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var)
-            .to_string_lossy()
-            .into_owned()
+        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
     };
 
     let result = crate::symbolic::convergence::analyze_convergence(series_ref, &var_str);
@@ -317,69 +182,40 @@ pub extern "C" fn rssn_series_analyze_convergence_handle(
 }
 
 /// Computes the asymptotic expansion of an expression.
-
 ///
-
 /// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
-
 /// a raw pointer to `Expr` (point), and a `usize` (order).
-
 /// Returns a raw pointer to a new `Expr` representing the asymptotic expansion.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_asymptotic_expansion_handle(
     expr: *const Expr,
     var: *const std::ffi::c_char,
     point: *const Expr,
     order: usize,
 ) -> *mut Expr {
+    let expr_ref = unsafe { &*expr };
 
-    let expr_ref = unsafe {
-
-        &*expr
-    };
-
-    let point_ref = unsafe {
-
-        &*point
-    };
+    let point_ref = unsafe { &*point };
 
     let var_str = unsafe {
-
         if var.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var)
-            .to_string_lossy()
-            .into_owned()
+        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
     };
 
-    let result = asymptotic_expansion(
-        expr_ref,
-        &var_str,
-        point_ref,
-        order,
-    );
+    let result = asymptotic_expansion(expr_ref, &var_str, point_ref, order);
 
     Box::into_raw(Box::new(result))
 }
 
 /// Computes the analytic continuation of a series.
-
 ///
-
 /// Takes a raw pointer to `Expr` (expression), a C-style string (variable),
-
 /// raw pointers to `Expr` (original center), `Expr` (new center), and a `usize` (order).
-
 /// Returns a raw pointer to a new `Expr` representing the analytic continuation.
-
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_analytic_continuation_handle(
     expr: *const Expr,
     var: *const std::ffi::c_char,
@@ -387,42 +223,21 @@ pub extern "C" fn rssn_analytic_continuation_handle(
     new_center: *const Expr,
     order: usize,
 ) -> *mut Expr {
+    let expr_ref = unsafe { &*expr };
 
-    let expr_ref = unsafe {
+    let orig_center_ref = unsafe { &*orig_center };
 
-        &*expr
-    };
-
-    let orig_center_ref = unsafe {
-
-        &*orig_center
-    };
-
-    let new_center_ref = unsafe {
-
-        &*new_center
-    };
+    let new_center_ref = unsafe { &*new_center };
 
     let var_str = unsafe {
-
         if var.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        std::ffi::CStr::from_ptr(var)
-            .to_string_lossy()
-            .into_owned()
+        std::ffi::CStr::from_ptr(var).to_string_lossy().into_owned()
     };
 
-    let result = analytic_continuation(
-        expr_ref,
-        &var_str,
-        orig_center_ref,
-        new_center_ref,
-        order,
-    );
+    let result = analytic_continuation(expr_ref, &var_str, orig_center_ref, new_center_ref, order);
 
     Box::into_raw(Box::new(result))
 }

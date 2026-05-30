@@ -14,7 +14,6 @@ use crate::numerical::ode::{
 use crate::symbolic::core::Expr;
 
 #[derive(Deserialize)]
-
 struct OdeInput {
     funcs: Vec<Expr>,
     y0: Vec<f64>,
@@ -45,8 +44,7 @@ struct OdeInput {
 /// This function is unsafe because it:
 /// - Receives a raw C string pointer that must be valid, null-terminated UTF-8
 /// - Returns a raw pointer that the caller must free using `rssn_free_string`
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -54,28 +52,23 @@ struct OdeInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_ode_solve_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : OdeInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_ode_solve_json(input_json: *const c_char) -> *mut c_char {
+    let input: OdeInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<Vec<f64>>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -102,8 +95,5 @@ pub unsafe extern "C" fn rssn_num_ode_solve_json(
         },
     };
 
-    to_c_string(
-        serde_json::to_string(&ffi_res)
-            .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&ffi_res).unwrap())
 }

@@ -24,7 +24,7 @@ use crate::symbolic::finite_field::PrimeField;
 use crate::symbolic::finite_field::PrimeFieldElement;
 
 /// Use standard decimal string parsing for `BigInts`.
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -32,40 +32,25 @@ use crate::symbolic::finite_field::PrimeFieldElement;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-unsafe fn parse_bigint(
-    s: *const c_char
-) -> Option<BigInt> {
-
+unsafe fn parse_bigint(s: *const c_char) -> Option<BigInt> {
     unsafe {
-
-        if let Some(str_slice) =
-            c_str_to_str(s)
-        {
-
-            BigInt::from_str(str_slice)
-                .ok()
+        if let Some(str_slice) = c_str_to_str(s) {
+            BigInt::from_str(str_slice).ok()
         } else {
-
             None
         }
     }
 }
 
 /// Helper to convert `BigInt` to C string (decimal).
-
-pub(crate) fn bigint_to_string(
-    b: &BigInt
-) -> *mut c_char {
-
+pub(crate) fn bigint_to_string(b: &BigInt) -> *mut c_char {
     to_c_string(b.to_string())
 }
 
 // --- EllipticCurve ---
 
 /// Creates a new elliptic curve from decimal strings.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -73,47 +58,31 @@ pub(crate) fn bigint_to_string(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_elliptic_curve_new(
     a_str: *const c_char,
     b_str: *const c_char,
     modulus_str: *const c_char,
 ) -> *mut EllipticCurve {
-
     unsafe {
-
         let a = parse_bigint(a_str);
 
         let b = parse_bigint(b_str);
 
-        let m =
-            parse_bigint(modulus_str);
+        let m = parse_bigint(modulus_str);
 
-        if let (
-            Some(a),
-            Some(b),
-            Some(m),
-        ) = (a, b, m)
-        {
+        if let (Some(a), Some(b), Some(m)) = (a, b, m) {
+            let curve = EllipticCurve::new(a, b, m);
 
-            let curve =
-                EllipticCurve::new(
-                    a, b, m,
-                );
-
-            Box::into_raw(Box::new(
-                curve,
-            ))
+            Box::into_raw(Box::new(curve))
         } else {
-
             std::ptr::null_mut()
         }
     }
 }
 
 /// Frees an elliptic curve handle.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -121,15 +90,10 @@ pub unsafe extern "C" fn rssn_elliptic_curve_new(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_elliptic_curve_free(
-    curve: *mut EllipticCurve
-) {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_elliptic_curve_free(curve: *mut EllipticCurve) {
     unsafe {
-
         if !curve.is_null() {
-
             drop(Box::from_raw(curve));
         }
     }
@@ -138,8 +102,7 @@ pub unsafe extern "C" fn rssn_elliptic_curve_free(
 // --- CurvePoint ---
 
 /// Creates an affine curve point from decimal strings.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -147,42 +110,29 @@ pub unsafe extern "C" fn rssn_elliptic_curve_free(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_curve_point_affine(
     x_str: *const c_char,
     y_str: *const c_char,
     modulus_str: *const c_char,
 ) -> *mut CurvePoint {
-
     unsafe {
-
         let x = parse_bigint(x_str);
 
         let y = parse_bigint(y_str);
 
-        let m =
-            parse_bigint(modulus_str);
+        let m = parse_bigint(modulus_str);
 
-        if let (
-            Some(x),
-            Some(y),
-            Some(m),
-        ) = (x, y, m)
-        {
-
-            let field =
-                PrimeField::new(m);
+        if let (Some(x), Some(y), Some(m)) = (x, y, m) {
+            let field = PrimeField::new(m);
 
             let point = CurvePoint::Affine {
-            x : PrimeFieldElement::new(x, field.clone()),
-            y : PrimeFieldElement::new(y, field),
-        };
+                x: PrimeFieldElement::new(x, field.clone()),
+                y: PrimeFieldElement::new(y, field),
+            };
 
-            Box::into_raw(Box::new(
-                point,
-            ))
+            Box::into_raw(Box::new(point))
         } else {
-
             std::ptr::null_mut()
         }
     }
@@ -190,18 +140,12 @@ pub unsafe extern "C" fn rssn_curve_point_affine(
 
 /// Creates the point at infinity.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_curve_point_infinity()
--> *mut CurvePoint {
-
-    Box::into_raw(Box::new(
-        CurvePoint::Infinity,
-    ))
+pub extern "C" fn rssn_curve_point_infinity() -> *mut CurvePoint {
+    Box::into_raw(Box::new(CurvePoint::Infinity))
 }
 
 /// Checks if a point is the point at infinity.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -209,15 +153,10 @@ pub extern "C" fn rssn_curve_point_infinity()
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub const unsafe extern "C" fn rssn_curve_point_is_infinity(
-    point: *const CurvePoint
-) -> bool {
-
+#[unsafe(no_mangle)]
+pub const unsafe extern "C" fn rssn_curve_point_is_infinity(point: *const CurvePoint) -> bool {
     unsafe {
-
         if point.is_null() {
-
             return false;
         }
 
@@ -226,8 +165,7 @@ pub const unsafe extern "C" fn rssn_curve_point_is_infinity(
 }
 
 /// Gets the x-coordinate of an affine point as a string. Returns NULL if infinity.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -235,32 +173,23 @@ pub const unsafe extern "C" fn rssn_curve_point_is_infinity(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_curve_point_get_x(
-    point: *const CurvePoint
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_curve_point_get_x(point: *const CurvePoint) -> *mut c_char {
     unsafe {
-
         if point.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         if let Some(x) = (*point).x() {
-
             bigint_to_string(&x.value)
         } else {
-
             std::ptr::null_mut()
         }
     }
 }
 
 /// Gets the y-coordinate of an affine point as a string. Returns NULL if infinity.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -268,32 +197,23 @@ pub unsafe extern "C" fn rssn_curve_point_get_x(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_curve_point_get_y(
-    point: *const CurvePoint
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_curve_point_get_y(point: *const CurvePoint) -> *mut c_char {
     unsafe {
-
         if point.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
         if let Some(y) = (*point).y() {
-
             bigint_to_string(&y.value)
         } else {
-
             std::ptr::null_mut()
         }
     }
 }
 
 /// Frees a curve point handle.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -301,15 +221,10 @@ pub unsafe extern "C" fn rssn_curve_point_get_y(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_curve_point_free(
-    point: *mut CurvePoint
-) {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_curve_point_free(point: *mut CurvePoint) {
     unsafe {
-
         if !point.is_null() {
-
             drop(Box::from_raw(point));
         }
     }
@@ -325,8 +240,7 @@ pub unsafe extern "C" fn rssn_curve_point_free(
 ///
 /// # Returns
 /// `true` if the point is on the curve, `false` otherwise.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -334,18 +248,13 @@ pub unsafe extern "C" fn rssn_curve_point_free(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_curve_is_on_curve(
     curve: *const EllipticCurve,
     point: *const CurvePoint,
 ) -> bool {
-
     unsafe {
-
-        if curve.is_null()
-            || point.is_null()
-        {
-
+        if curve.is_null() || point.is_null() {
             return false;
         }
 
@@ -361,8 +270,7 @@ pub unsafe extern "C" fn rssn_curve_is_on_curve(
 ///
 /// # Returns
 /// A handle to the negated point, or NULL on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -370,24 +278,17 @@ pub unsafe extern "C" fn rssn_curve_is_on_curve(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_curve_negate(
     curve: *const EllipticCurve,
     point: *const CurvePoint,
 ) -> *mut CurvePoint {
-
     unsafe {
-
-        if curve.is_null()
-            || point.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if curve.is_null() || point.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let result =
-            (*curve).negate(&*point);
+        let result = (*curve).negate(&*point);
 
         Box::into_raw(Box::new(result))
     }
@@ -401,8 +302,7 @@ pub unsafe extern "C" fn rssn_curve_negate(
 ///
 /// # Returns
 /// A handle to the doubled point, or NULL on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -410,24 +310,17 @@ pub unsafe extern "C" fn rssn_curve_negate(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_curve_double(
     curve: *const EllipticCurve,
     point: *const CurvePoint,
 ) -> *mut CurvePoint {
-
     unsafe {
-
-        if curve.is_null()
-            || point.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if curve.is_null() || point.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let result =
-            (*curve).double(&*point);
+        let result = (*curve).double(&*point);
 
         Box::into_raw(Box::new(result))
     }
@@ -442,8 +335,7 @@ pub unsafe extern "C" fn rssn_curve_double(
 ///
 /// # Returns
 /// A handle to the resulting point, or NULL on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -451,34 +343,25 @@ pub unsafe extern "C" fn rssn_curve_double(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_curve_add(
     curve: *const EllipticCurve,
     p1: *const CurvePoint,
     p2: *const CurvePoint,
 ) -> *mut CurvePoint {
-
     unsafe {
-
-        if curve.is_null()
-            || p1.is_null()
-            || p2.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if curve.is_null() || p1.is_null() || p2.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let result =
-            (*curve).add(&*p1, &*p2);
+        let result = (*curve).add(&*p1, &*p2);
 
         Box::into_raw(Box::new(result))
     }
 }
 
 /// Scalar multiplication. k is a string.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -486,35 +369,20 @@ pub unsafe extern "C" fn rssn_curve_add(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_curve_scalar_mult(
     curve: *const EllipticCurve,
     k_str: *const c_char,
     p: *const CurvePoint,
 ) -> *mut CurvePoint {
-
     unsafe {
-
         let k = parse_bigint(k_str);
 
-        if let (
-            Some(curve),
-            Some(k),
-            Some(p),
-        ) = (
-            curve.as_ref(),
-            k,
-            p.as_ref(),
-        ) {
+        if let (Some(curve), Some(k), Some(p)) = (curve.as_ref(), k, p.as_ref()) {
+            let result = curve.scalar_mult(&k, p);
 
-            let result = curve
-                .scalar_mult(&k, p);
-
-            Box::into_raw(Box::new(
-                result,
-            ))
+            Box::into_raw(Box::new(result))
         } else {
-
             std::ptr::null_mut()
         }
     }
@@ -530,8 +398,7 @@ pub unsafe extern "C" fn rssn_curve_scalar_mult(
 ///
 /// # Returns
 /// A handle to the generated key pair, or NULL on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -539,26 +406,17 @@ pub unsafe extern "C" fn rssn_curve_scalar_mult(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_generate_keypair(
     curve: *const EllipticCurve,
     generator: *const CurvePoint,
 ) -> *mut EcdhKeyPair {
-
     unsafe {
-
-        if curve.is_null()
-            || generator.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if curve.is_null() || generator.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let keypair = generate_keypair(
-            &*curve,
-            &*generator,
-        );
+        let keypair = generate_keypair(&*curve, &*generator);
 
         Box::into_raw(Box::new(keypair))
     }
@@ -571,8 +429,7 @@ pub unsafe extern "C" fn rssn_generate_keypair(
 ///
 /// # Returns
 /// A decimal string representing the private key, or NULL on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -580,28 +437,19 @@ pub unsafe extern "C" fn rssn_generate_keypair(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_keypair_get_private_key(
-    kp: *const EcdhKeyPair
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_keypair_get_private_key(kp: *const EcdhKeyPair) -> *mut c_char {
     unsafe {
-
         if let Some(k) = kp.as_ref() {
-
-            bigint_to_string(
-                &k.private_key,
-            )
+            bigint_to_string(&k.private_key)
         } else {
-
             std::ptr::null_mut()
         }
     }
 }
 
 /// Returns a NEW handle to the public key point (must be freed).
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -609,20 +457,12 @@ pub unsafe extern "C" fn rssn_keypair_get_private_key(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_keypair_get_public_key(
-    kp: *const EcdhKeyPair
-) -> *mut CurvePoint {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_keypair_get_public_key(kp: *const EcdhKeyPair) -> *mut CurvePoint {
     unsafe {
-
         if let Some(k) = kp.as_ref() {
-
-            Box::into_raw(Box::new(
-                k.public_key.clone(),
-            ))
+            Box::into_raw(Box::new(k.public_key.clone()))
         } else {
-
             std::ptr::null_mut()
         }
     }
@@ -632,8 +472,7 @@ pub unsafe extern "C" fn rssn_keypair_get_public_key(
 ///
 /// # Arguments
 /// * `keypair` - Handle to the key pair to free.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -641,18 +480,11 @@ pub unsafe extern "C" fn rssn_keypair_get_public_key(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_keypair_free(
-    keypair: *mut EcdhKeyPair
-) {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_keypair_free(keypair: *mut EcdhKeyPair) {
     unsafe {
-
         if !keypair.is_null() {
-
-            drop(Box::from_raw(
-                keypair,
-            ));
+            drop(Box::from_raw(keypair));
         }
     }
 }
@@ -666,8 +498,7 @@ pub unsafe extern "C" fn rssn_keypair_free(
 ///
 /// # Returns
 /// A handle to the shared secret point, or NULL on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -675,39 +506,20 @@ pub unsafe extern "C" fn rssn_keypair_free(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_generate_shared_secret(
     curve: *const EllipticCurve,
     private_key_str: *const c_char,
     other_public_key: *const CurvePoint,
 ) -> *mut CurvePoint {
-
     unsafe {
+        let pk = parse_bigint(private_key_str);
 
-        let pk = parse_bigint(
-            private_key_str,
-        );
+        if let (Some(c), Some(pk), Some(opub)) = (curve.as_ref(), pk, other_public_key.as_ref()) {
+            let result = generate_shared_secret(c, &pk, opub);
 
-        if let (
-            Some(c),
-            Some(pk),
-            Some(opub),
-        ) = (
-            curve.as_ref(),
-            pk,
-            other_public_key.as_ref(),
-        ) {
-
-            let result =
-                generate_shared_secret(
-                    c, &pk, opub,
-                );
-
-            Box::into_raw(Box::new(
-                result,
-            ))
+            Box::into_raw(Box::new(result))
         } else {
-
             std::ptr::null_mut()
         }
     }
@@ -726,8 +538,7 @@ pub unsafe extern "C" fn rssn_generate_shared_secret(
 ///
 /// # Returns
 /// A handle to the ECDSA signature, or NULL on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -735,7 +546,7 @@ pub unsafe extern "C" fn rssn_generate_shared_secret(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_ecdsa_sign(
     message_hash_str: *const c_char,
     private_key_str: *const c_char,
@@ -743,48 +554,21 @@ pub unsafe extern "C" fn rssn_ecdsa_sign(
     generator: *const CurvePoint,
     order_str: *const c_char,
 ) -> *mut EcdsaSignature {
-
     unsafe {
+        let h = parse_bigint(message_hash_str);
 
-        let h = parse_bigint(
-            message_hash_str,
-        );
+        let pk = parse_bigint(private_key_str);
 
-        let pk = parse_bigint(
-            private_key_str,
-        );
+        let order = parse_bigint(order_str);
 
-        let order =
-            parse_bigint(order_str);
-
-        if let (
-            Some(h),
-            Some(pk),
-            Some(c),
-            Some(g),
-            Some(o),
-        ) = (
-            h,
-            pk,
-            curve.as_ref(),
-            generator.as_ref(),
-            order,
-        ) {
-
-            match ecdsa_sign(
-                &h, &pk, c, g, &o,
-            ) {
-                | Some(sig) => {
-                    Box::into_raw(
-                        Box::new(sig),
-                    )
-                },
-                | None => {
-                    std::ptr::null_mut()
-                },
+        if let (Some(h), Some(pk), Some(c), Some(g), Some(o)) =
+            (h, pk, curve.as_ref(), generator.as_ref(), order)
+        {
+            match ecdsa_sign(&h, &pk, c, g, &o) {
+                | Some(sig) => Box::into_raw(Box::new(sig)),
+                | None => std::ptr::null_mut(),
             }
         } else {
-
             std::ptr::null_mut()
         }
     }
@@ -802,8 +586,7 @@ pub unsafe extern "C" fn rssn_ecdsa_sign(
 ///
 /// # Returns
 /// `true` if the signature is valid, `false` otherwise.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -811,7 +594,7 @@ pub unsafe extern "C" fn rssn_ecdsa_sign(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_ecdsa_verify(
     message_hash_str: *const c_char,
     signature: *const EcdsaSignature,
@@ -820,24 +603,12 @@ pub unsafe extern "C" fn rssn_ecdsa_verify(
     generator: *const CurvePoint,
     order_str: *const c_char,
 ) -> bool {
-
     unsafe {
+        let h = parse_bigint(message_hash_str);
 
-        let h = parse_bigint(
-            message_hash_str,
-        );
+        let order = parse_bigint(order_str);
 
-        let order =
-            parse_bigint(order_str);
-
-        if let (
-            Some(h),
-            Some(sig),
-            Some(pk),
-            Some(c),
-            Some(g),
-            Some(o),
-        ) = (
+        if let (Some(h), Some(sig), Some(pk), Some(c), Some(g), Some(o)) = (
             h,
             signature.as_ref(),
             public_key.as_ref(),
@@ -845,12 +616,8 @@ pub unsafe extern "C" fn rssn_ecdsa_verify(
             generator.as_ref(),
             order,
         ) {
-
-            ecdsa_verify(
-                &h, sig, pk, c, g, &o,
-            )
+            ecdsa_verify(&h, sig, pk, c, g, &o)
         } else {
-
             false
         }
     }
@@ -863,8 +630,7 @@ pub unsafe extern "C" fn rssn_ecdsa_verify(
 ///
 /// # Returns
 /// A decimal string representing 'r', or NULL on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -872,18 +638,12 @@ pub unsafe extern "C" fn rssn_ecdsa_verify(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_ecdsa_signature_get_r(
-    sig: *const EcdsaSignature
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_ecdsa_signature_get_r(sig: *const EcdsaSignature) -> *mut c_char {
     unsafe {
-
         if let Some(s) = sig.as_ref() {
-
             bigint_to_string(&s.r)
         } else {
-
             std::ptr::null_mut()
         }
     }
@@ -896,8 +656,7 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_get_r(
 ///
 /// # Returns
 /// A decimal string representing 's', or NULL on error.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -905,18 +664,12 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_get_r(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_ecdsa_signature_get_s(
-    sig: *const EcdsaSignature
-) -> *mut c_char {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_ecdsa_signature_get_s(sig: *const EcdsaSignature) -> *mut c_char {
     unsafe {
-
         if let Some(s) = sig.as_ref() {
-
             bigint_to_string(&s.s)
         } else {
-
             std::ptr::null_mut()
         }
     }
@@ -926,8 +679,7 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_get_s(
 ///
 /// # Arguments
 /// * `sig` - Handle to the signature to free.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -935,15 +687,10 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_get_s(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_ecdsa_signature_free(
-    sig: *mut EcdsaSignature
-) {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_ecdsa_signature_free(sig: *mut EcdsaSignature) {
     unsafe {
-
         if !sig.is_null() {
-
             drop(Box::from_raw(sig));
         }
     }
@@ -952,8 +699,7 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_free(
 // --- Compression ---
 
 /// Compresses a point. Returns the x-coordinate string. sets *`is_odd` to the parity.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -961,31 +707,19 @@ pub unsafe extern "C" fn rssn_ecdsa_signature_free(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_point_compress(
     point: *const CurvePoint,
     is_odd_out: *mut bool,
 ) -> *mut c_char {
-
     unsafe {
-
-        if let Some(p) = point.as_ref()
-        {
-
-            if let Some((x, is_odd)) =
-                point_compress(p)
-            {
-
-                if !is_odd_out.is_null()
-                {
-
-                    *is_odd_out =
-                        is_odd;
+        if let Some(p) = point.as_ref() {
+            if let Some((x, is_odd)) = point_compress(p) {
+                if !is_odd_out.is_null() {
+                    *is_odd_out = is_odd;
                 }
 
-                return bigint_to_string(
-                &x,
-            );
+                return bigint_to_string(&x);
             }
         }
 
@@ -994,8 +728,7 @@ pub unsafe extern "C" fn rssn_point_compress(
 }
 
 /// Decompresses a point.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -1003,32 +736,18 @@ pub unsafe extern "C" fn rssn_point_compress(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_point_decompress(
     x_str: *const c_char,
     is_odd: bool,
     curve: *const EllipticCurve,
 ) -> *mut CurvePoint {
-
     unsafe {
-
         let x = parse_bigint(x_str);
 
-        if let (Some(x), Some(c)) =
-            (x, curve.as_ref())
-        {
-
-            if let Some(p) =
-                point_decompress(
-                    x,
-                    is_odd,
-                    c,
-                )
-            {
-
-                return Box::into_raw(
-                    Box::new(p),
-                );
+        if let (Some(x), Some(c)) = (x, curve.as_ref()) {
+            if let Some(p) = point_decompress(x, is_odd, c) {
+                return Box::into_raw(Box::new(p));
             }
         }
 

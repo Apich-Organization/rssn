@@ -29,99 +29,62 @@ use crate::symbolic::simplify_dag::simplify;
 /// Helper function to extract a numeric value from a symbolic expression for comparison purposes.
 /// This is used internally by algorithms that need to compare weights.
 /// Returns None if the expression cannot be evaluated to a number.
-
-pub(crate) fn try_numeric_value(
-    expr: &Expr
-) -> Option<f64> {
-
+pub(crate) fn try_numeric_value(expr: &Expr) -> Option<f64> {
     match expr {
-        | Expr::Constant(val) => {
-            Some(*val)
-        },
-        | Expr::BigInt(val) => {
-            val.to_f64()
-        },
-        | Expr::Rational(val) => {
-            val.to_f64()
-        },
+        | Expr::Constant(val) => Some(*val),
+        | Expr::BigInt(val) => val.to_f64(),
+        | Expr::Rational(val) => val.to_f64(),
         | Expr::Add(lhs, rhs) => {
+            let l = try_numeric_value(lhs)?;
 
-            let l =
-                try_numeric_value(lhs)?;
-
-            let r =
-                try_numeric_value(rhs)?;
+            let r = try_numeric_value(rhs)?;
 
             Some(l + r)
         },
         | Expr::Sub(lhs, rhs) => {
+            let l = try_numeric_value(lhs)?;
 
-            let l =
-                try_numeric_value(lhs)?;
-
-            let r =
-                try_numeric_value(rhs)?;
+            let r = try_numeric_value(rhs)?;
 
             Some(l - r)
         },
         | Expr::Mul(lhs, rhs) => {
+            let l = try_numeric_value(lhs)?;
 
-            let l =
-                try_numeric_value(lhs)?;
-
-            let r =
-                try_numeric_value(rhs)?;
+            let r = try_numeric_value(rhs)?;
 
             Some(l * r)
         },
         | Expr::Div(lhs, rhs) => {
+            let l = try_numeric_value(lhs)?;
 
-            let l =
-                try_numeric_value(lhs)?;
-
-            let r =
-                try_numeric_value(rhs)?;
+            let r = try_numeric_value(rhs)?;
 
             if r == 0.0 {
-
                 None
             } else {
-
                 Some(l / r)
             }
         },
         | Expr::Neg(inner) => {
-
-            let v = try_numeric_value(
-                inner,
-            )?;
+            let v = try_numeric_value(inner)?;
 
             Some(-v)
         },
         | Expr::AddList(list) => {
-
             let mut sum = 0.0;
 
             for e in list {
-
-                sum +=
-                    try_numeric_value(
-                        e,
-                    )?;
+                sum += try_numeric_value(e)?;
             }
 
             Some(sum)
         },
         | Expr::MulList(list) => {
-
             let mut prod = 1.0;
 
             for e in list {
-
-                prod *=
-                    try_numeric_value(
-                        e,
-                    )?;
+                prod *= try_numeric_value(e)?;
             }
 
             Some(prod)
@@ -129,29 +92,16 @@ pub(crate) fn try_numeric_value(
         | Expr::Dag(node) => {
             node.to_expr()
                 .ok()
-                .and_then(|inner| {
-
-                    try_numeric_value(
-                        &inner,
-                    )
-                })
+                .and_then(|inner| try_numeric_value(&inner))
         },
         // Try to simplify and extract
         | _ => {
-
-            let simplified =
-                simplify(&expr.clone());
+            let simplified = simplify(&expr.clone());
 
             match simplified {
-                | Expr::Constant(
-                    val,
-                ) => Some(val),
-                | Expr::BigInt(val) => {
-                    val.to_f64()
-                },
-                | Expr::Rational(
-                    val,
-                ) => val.to_f64(),
+                | Expr::Constant(val) => Some(val),
+                | Expr::BigInt(val) => val.to_f64(),
+                | Expr::Rational(val) => val.to_f64(),
                 | _ => None,
             }
         },
@@ -159,27 +109,20 @@ pub(crate) fn try_numeric_value(
 }
 
 /// Symbolically adds two expressions.
-
 fn symbolic_add(
     a: &Expr,
     b: &Expr,
 ) -> Expr {
-
-    Expr::Add(
-        Arc::new(a.clone()),
-        Arc::new(b.clone()),
-    )
+    Expr::Add(Arc::new(a.clone()), Arc::new(b.clone()))
 }
 
 /// Symbolically compares two expressions for ordering.
 /// Returns Some(Ordering) if a numeric comparison can be made, None otherwise.
 #[allow(dead_code)]
-
 fn symbolic_compare(
     a: &Expr,
     b: &Expr,
 ) -> Option<std::cmp::Ordering> {
-
     let a_val = try_numeric_value(a)?;
 
     let b_val = try_numeric_value(b)?;
@@ -198,28 +141,18 @@ fn symbolic_compare(
 /// # Returns
 /// A `Vec<usize>` containing the node IDs in the order they were visited.
 #[must_use]
-
 pub fn dfs<V>(
     graph: &Graph<V>,
     start_node: usize,
 ) -> Vec<usize>
 where
-    V: Eq
-        + Hash
-        + Clone
-        + std::fmt::Debug,
+    V: Eq + Hash + Clone + std::fmt::Debug,
 {
-
     let mut visited = HashSet::new();
 
     let mut result = Vec::new();
 
-    dfs_recursive(
-        graph,
-        start_node,
-        &mut visited,
-        &mut result,
-    );
+    dfs_recursive(graph, start_node, &mut visited, &mut result);
 
     result
 }
@@ -230,30 +163,16 @@ pub(crate) fn dfs_recursive<V>(
     visited: &mut HashSet<usize>,
     result: &mut Vec<usize>,
 ) where
-    V: Eq
-        + Hash
-        + Clone
-        + std::fmt::Debug,
+    V: Eq + Hash + Clone + std::fmt::Debug,
 {
-
     visited.insert(u);
 
     result.push(u);
 
-    if let Some(neighbors) =
-        graph.adj.get(u)
-    {
-
+    if let Some(neighbors) = graph.adj.get(u) {
         for &(v, _) in neighbors {
-
             if !visited.contains(&v) {
-
-                dfs_recursive(
-                    graph,
-                    v,
-                    visited,
-                    result,
-                );
+                dfs_recursive(graph, v, visited, result);
             }
         }
     }
@@ -270,18 +189,13 @@ pub(crate) fn dfs_recursive<V>(
 /// # Returns
 /// A `Vec<usize>` containing the node IDs in the order they were visited.
 #[must_use]
-
 pub fn bfs<V>(
     graph: &Graph<V>,
     start_node: usize,
 ) -> Vec<usize>
 where
-    V: Eq
-        + Hash
-        + Clone
-        + std::fmt::Debug,
+    V: Eq + Hash + Clone + std::fmt::Debug,
 {
-
     let mut visited = HashSet::new();
 
     let mut result = Vec::new();
@@ -292,20 +206,12 @@ where
 
     queue.push_back(start_node);
 
-    while let Some(u) =
-        queue.pop_front()
-    {
-
+    while let Some(u) = queue.pop_front() {
         result.push(u);
 
-        if let Some(neighbors) =
-            graph.adj.get(u)
-        {
-
+        if let Some(neighbors) = graph.adj.get(u) {
             for &(v, _) in neighbors {
-
                 if visited.insert(v) {
-
                     queue.push_back(v);
                 }
             }
@@ -326,36 +232,19 @@ where
 /// # Returns
 /// A `Vec<Vec<usize>>` where each inner `Vec` represents a connected component.
 #[must_use]
-
-pub fn connected_components<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn connected_components<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>
 ) -> Vec<Vec<usize>> {
-
     let mut visited = HashSet::new();
 
     let mut components = Vec::new();
 
-    for node_id in
-        0 .. graph.nodes.len()
-    {
-
+    for node_id in 0..graph.nodes.len() {
         if !visited.contains(&node_id) {
+            let component = bfs(graph, node_id);
 
-            let component =
-                bfs(graph, node_id);
-
-            for &visited_node in
-                &component
-            {
-
-                visited.insert(
-                    visited_node,
-                );
+            for &visited_node in &component {
+                visited.insert(visited_node);
             }
 
             components.push(component);
@@ -376,18 +265,8 @@ pub fn connected_components<
 /// # Returns
 /// `true` if the graph is connected, `false` otherwise.
 #[must_use]
-
-pub fn is_connected<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
-    graph: &Graph<V>
-) -> bool {
-
-    connected_components(graph).len()
-        == 1
+pub fn is_connected<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Graph<V>) -> bool {
+    connected_components(graph).len() == 1
 }
 
 pub(crate) struct TarjanSccState {
@@ -401,7 +280,6 @@ pub(crate) struct TarjanSccState {
 
 impl TarjanSccState {
     fn new() -> Self {
-
         Self {
             time: 0,
             disc: HashMap::new(),
@@ -424,138 +302,63 @@ impl TarjanSccState {
 /// # Returns
 /// A `Vec<Vec<usize>>` where each inner `Vec` represents a strongly connected component.
 #[must_use]
-
-pub fn strongly_connected_components<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn strongly_connected_components<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>
 ) -> Vec<Vec<usize>> {
+    let mut state = TarjanSccState::new();
 
-    let mut state =
-        TarjanSccState::new();
-
-    for node_id in
-        0 .. graph.nodes.len()
-    {
-
-        tarjan_scc_util(
-            graph,
-            node_id,
-            &mut state,
-        );
+    for node_id in 0..graph.nodes.len() {
+        tarjan_scc_util(graph, node_id, &mut state);
     }
 
     state.scc
 }
 
-pub(crate) fn tarjan_scc_util<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub(crate) fn tarjan_scc_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     u: usize,
     state: &mut TarjanSccState,
 ) {
+    state.disc.insert(u, state.time);
 
-    state
-        .disc
-        .insert(u, state.time);
-
-    state
-        .low
-        .insert(u, state.time);
+    state.low.insert(u, state.time);
 
     state.time += 1;
 
     state.stack.push(u);
 
-    state
-        .on_stack
-        .insert(u);
+    state.on_stack.insert(u);
 
-    if let Some(neighbors) =
-        graph.adj.get(u)
-    {
-
+    if let Some(neighbors) = graph.adj.get(u) {
         for &(v, _) in neighbors {
+            if !state.disc.contains_key(&v) {
+                tarjan_scc_util(graph, v, state);
 
-            if !state
-                .disc
-                .contains_key(&v)
-            {
-
-                tarjan_scc_util(
-                    graph, v, state,
-                );
-
-                if let (
-                    Some(&low_u),
-                    Some(&low_v),
-                ) = (
-                    state.low.get(&u),
-                    state.low.get(&v),
-                ) {
-
-                    state.low.insert(
-                        u,
-                        low_u
-                            .min(low_v),
-                    );
+                if let (Some(&low_u), Some(&low_v)) = (state.low.get(&u), state.low.get(&v)) {
+                    state.low.insert(u, low_u.min(low_v));
                 }
-            } else if state
-                .on_stack
-                .contains(&v)
-            {
-
-                if let (
-                    Some(&low_u),
-                    Some(&disc_v),
-                ) = (
-                    state.low.get(&u),
-                    state.disc.get(&v),
-                ) {
-
-                    state.low.insert(
-                        u,
-                        low_u.min(
-                            disc_v,
-                        ),
-                    );
+            } else if state.on_stack.contains(&v) {
+                if let (Some(&low_u), Some(&disc_v)) = (state.low.get(&u), state.disc.get(&v)) {
+                    state.low.insert(u, low_u.min(disc_v));
                 }
             }
         }
     }
 
-    if state.low.get(&u)
-        == state.disc.get(&u)
-    {
-
+    if state.low.get(&u) == state.disc.get(&u) {
         let mut component = Vec::new();
 
-        while let Some(top) =
-            state.stack.pop()
-        {
-
-            state
-                .on_stack
-                .remove(&top);
+        while let Some(top) = state.stack.pop() {
+            state.on_stack.remove(&top);
 
             component.push(top);
 
             if top == u {
-
                 break;
             }
         }
 
-        state
-            .scc
-            .push(component);
+        state.scc.push(component);
     }
 }
 
@@ -570,54 +373,24 @@ pub(crate) fn tarjan_scc_util<
 /// # Returns
 /// `true` if a cycle is found, `false` otherwise.
 #[must_use]
-
-pub fn has_cycle<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
-    graph: &Graph<V>
-) -> bool {
-
+pub fn has_cycle<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Graph<V>) -> bool {
     let mut visited = HashSet::new();
 
     if graph.is_directed {
+        let mut recursion_stack = HashSet::new();
 
-        let mut recursion_stack =
-            HashSet::new();
-
-        for node_id in
-            0 .. graph.nodes.len()
-        {
-
+        for node_id in 0..graph.nodes.len() {
             if !visited.contains(&node_id)
-                && has_cycle_directed_util(
-                    graph,
-                    node_id,
-                    &mut visited,
-                    &mut recursion_stack,
-                )
+                && has_cycle_directed_util(graph, node_id, &mut visited, &mut recursion_stack)
             {
-
                 return true;
             }
         }
     } else {
-
-        for node_id in
-            0 .. graph.nodes.len()
-        {
-
+        for node_id in 0..graph.nodes.len() {
             if !visited.contains(&node_id)
-                && has_cycle_undirected_util(
-                    graph,
-                    node_id,
-                    &mut visited,
-                    None,
-                )
+                && has_cycle_undirected_util(graph, node_id, &mut visited, None)
             {
-
                 return true;
             }
         }
@@ -626,43 +399,23 @@ pub fn has_cycle<
     false
 }
 
-pub(crate) fn has_cycle_directed_util<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub(crate) fn has_cycle_directed_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     u: usize,
     visited: &mut HashSet<usize>,
     rec_stack: &mut HashSet<usize>,
 ) -> bool {
-
     visited.insert(u);
 
     rec_stack.insert(u);
 
-    if let Some(neighbors) =
-        graph.adj.get(u)
-    {
-
+    if let Some(neighbors) = graph.adj.get(u) {
         for &(v, _) in neighbors {
-
             if !visited.contains(&v) {
-
-                if has_cycle_directed_util(
-                    graph,
-                    v,
-                    visited,
-                    rec_stack,
-                ) {
-
+                if has_cycle_directed_util(graph, v, visited, rec_stack) {
                     return true;
                 }
-            } else if rec_stack
-                .contains(&v)
-            {
-
+            } else if rec_stack.contains(&v) {
                 return true;
             }
         }
@@ -673,40 +426,21 @@ pub(crate) fn has_cycle_directed_util<
     false
 }
 
-pub(crate) fn has_cycle_undirected_util<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub(crate) fn has_cycle_undirected_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     u: usize,
     visited: &mut HashSet<usize>,
     parent: Option<usize>,
 ) -> bool {
-
     visited.insert(u);
 
-    if let Some(neighbors) =
-        graph.adj.get(u)
-    {
-
+    if let Some(neighbors) = graph.adj.get(u) {
         for &(v, _) in neighbors {
-
             if !visited.contains(&v) {
-
-                if has_cycle_undirected_util(
-                    graph,
-                    v,
-                    visited,
-                    Some(u),
-                ) {
-
+                if has_cycle_undirected_util(graph, v, visited, Some(u)) {
                     return true;
                 }
-            } else if Some(v) != parent
-            {
-
+            } else if Some(v) != parent {
                 return true;
             }
         }
@@ -726,7 +460,6 @@ pub(crate) struct BridgesApState {
 
 impl BridgesApState {
     fn new() -> Self {
-
         Self {
             time: 0,
             visited: HashSet::new(),
@@ -751,186 +484,80 @@ impl BridgesApState {
 /// A tuple `(bridges, articulation_points)` where `bridges` is a `Vec<(usize, usize)>`
 /// and `articulation_points` is a `Vec<usize>`.
 #[must_use]
-
-pub fn find_bridges_and_articulation_points<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn find_bridges_and_articulation_points<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>
-) -> (
-    Vec<(usize, usize)>,
-    Vec<usize>,
-) {
+) -> (Vec<(usize, usize)>, Vec<usize>) {
+    let mut state = BridgesApState::new();
 
-    let mut state =
-        BridgesApState::new();
-
-    for node_id in
-        0 .. graph.nodes.len()
-    {
-
-        if !state
-            .visited
-            .contains(&node_id)
-        {
-
-            b_and_ap_util(
-                graph,
-                node_id,
-                None,
-                &mut state,
-            );
+    for node_id in 0..graph.nodes.len() {
+        if !state.visited.contains(&node_id) {
+            b_and_ap_util(graph, node_id, None, &mut state);
         }
     }
 
-    (
-        state.bridges,
-        state
-            .ap
-            .into_iter()
-            .collect(),
-    )
+    (state.bridges, state.ap.into_iter().collect())
 }
 
-pub(crate) fn b_and_ap_util<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub(crate) fn b_and_ap_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     u: usize,
     parent: Option<usize>,
     state: &mut BridgesApState,
 ) {
+    state.visited.insert(u);
 
-    state
-        .visited
-        .insert(u);
+    state.disc.insert(u, state.time);
 
-    state
-        .disc
-        .insert(u, state.time);
-
-    state
-        .low
-        .insert(u, state.time);
+    state.low.insert(u, state.time);
 
     state.time += 1;
 
     let mut children = 0;
 
-    if let Some(neighbors) =
-        graph.adj.get(u)
-    {
-
+    if let Some(neighbors) = graph.adj.get(u) {
         for &(v, _) in neighbors {
-
             if Some(v) == parent {
-
                 continue;
             }
 
-            if state
-                .visited
-                .contains(&v)
-            {
-
-                if let (
-                    Some(&low_u),
-                    Some(&disc_v),
-                ) = (
-                    state.low.get(&u),
-                    state.disc.get(&v),
-                ) {
-
-                    state.low.insert(
-                        u,
-                        low_u.min(
-                            disc_v,
-                        ),
-                    );
+            if state.visited.contains(&v) {
+                if let (Some(&low_u), Some(&disc_v)) = (state.low.get(&u), state.disc.get(&v)) {
+                    state.low.insert(u, low_u.min(disc_v));
                 }
             } else {
-
                 children += 1;
 
-                b_and_ap_util(
-                    graph,
-                    v,
-                    Some(u),
-                    state,
-                );
+                b_and_ap_util(graph, v, Some(u), state);
 
-                if let (
-                    Some(&low_u),
-                    Some(&low_v),
-                ) = (
-                    state.low.get(&u),
-                    state.low.get(&v),
-                ) {
+                if let (Some(&low_u), Some(&low_v)) = (state.low.get(&u), state.low.get(&v)) {
+                    state.low.insert(u, low_u.min(low_v));
 
-                    state.low.insert(
-                        u,
-                        low_u
-                            .min(low_v),
-                    );
-
-                    if low_v
-                        > *state
-                            .disc
-                            .get(&u)
-                            .unwrap()
-                    {
-
-                        state
-                            .bridges
-                            .push((
-                                u, v,
-                            ));
+                    if low_v > *state.disc.get(&u).unwrap() {
+                        state.bridges.push((u, v));
                     }
 
-                    if parent.is_some()
-                        && low_v
-                            >= *state
-                                .disc
-                                .get(&u)
-                                .unwrap(
-                                )
-                    {
-
-                        state
-                            .ap
-                            .insert(u);
+                    if parent.is_some() && low_v >= *state.disc.get(&u).unwrap() {
+                        state.ap.insert(u);
                     }
                 }
             }
         }
     }
 
-    if parent.is_none() && children > 1
-    {
-
+    if parent.is_none() && children > 1 {
         state.ap.insert(u);
     }
 }
 
-
 /// A Disjoint Set Union (DSU) data structure for Kruskal's algorithm.
-
 pub struct DSU {
     parent: Vec<usize>,
 }
 
 impl DSU {
-    pub(crate) fn new(
-        n: usize
-    ) -> Self {
-
+    pub(crate) fn new(n: usize) -> Self {
         Self {
-            parent: (0 .. n).collect(),
+            parent: (0..n).collect(),
         }
     }
 
@@ -938,14 +565,11 @@ impl DSU {
         &mut self,
         i: usize,
     ) -> usize {
-
         if self.parent[i] == i {
-
             return i;
         }
 
-        self.parent[i] =
-            self.find(self.parent[i]);
+        self.parent[i] = self.find(self.parent[i]);
 
         self.parent[i]
     }
@@ -955,15 +579,12 @@ impl DSU {
         i: usize,
         j: usize,
     ) {
-
         let root_i = self.find(i);
 
         let root_j = self.find(j);
 
         if root_i != root_j {
-
-            self.parent[root_i] =
-                root_j;
+            self.parent[root_i] = root_j;
         }
     }
 }
@@ -980,20 +601,12 @@ impl DSU {
 /// # Returns
 /// A `Vec<(usize, usize, Expr)>` representing the edges `(u, v, weight)` that form the MST.
 #[must_use]
-
-pub fn kruskal_mst<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn kruskal_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>
 ) -> Vec<(usize, usize, Expr)> {
-
     let mut edges = graph.get_edges();
 
     edges.sort_by(|a, b| {
-
         let weight_a = try_numeric_value(&a.2).unwrap_or(f64::INFINITY);
 
         let weight_b = try_numeric_value(&b.2).unwrap_or(f64::INFINITY);
@@ -1003,15 +616,12 @@ pub fn kruskal_mst<
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    let mut dsu =
-        DSU::new(graph.nodes.len());
+    let mut dsu = DSU::new(graph.nodes.len());
 
     let mut mst = Vec::new();
 
     for (u, v, weight) in edges {
-
         if dsu.find(u) != dsu.find(v) {
-
             dsu.union(u, v);
 
             mst.push((u, v, weight));
@@ -1035,45 +645,19 @@ pub fn kruskal_mst<
 /// # Returns
 /// The maximum flow value as an `f64`.
 #[must_use]
-
-pub fn edmonds_karp_max_flow<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn edmonds_karp_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     capacity_graph: &Graph<V>,
     s: usize,
     t: usize,
 ) -> f64 {
+    let n = capacity_graph.nodes.len();
 
-    let n = capacity_graph
-        .nodes
-        .len();
+    let mut residual_capacity = vec![vec![0.0; n]; n];
 
-    let mut residual_capacity =
-        vec![vec![0.0; n]; n];
-
-    for (u, row) in residual_capacity
-        .iter_mut()
-        .enumerate()
-    {
-
-        if let Some(neighbors) =
-            capacity_graph
-                .adj
-                .get(u)
-        {
-
-            for &(v, ref cap) in
-                neighbors
-            {
-
-                row[v] =
-                    try_numeric_value(
-                        cap,
-                    )
-                    .unwrap_or(0.0);
+    for (u, row) in residual_capacity.iter_mut().enumerate() {
+        if let Some(neighbors) = capacity_graph.adj.get(u) {
+            for &(v, ref cap) in neighbors {
+                row[v] = try_numeric_value(cap).unwrap_or(0.0);
             }
         }
     }
@@ -1081,16 +665,9 @@ pub fn edmonds_karp_max_flow<
     let mut max_flow = 0.0;
 
     loop {
-
-        let (parent, path_flow) =
-            bfs_for_augmenting_path(
-                &residual_capacity,
-                s,
-                t,
-            );
+        let (parent, path_flow) = bfs_for_augmenting_path(&residual_capacity, s, t);
 
         if path_flow == 0.0 {
-
             break;
         }
 
@@ -1099,18 +676,13 @@ pub fn edmonds_karp_max_flow<
         let mut v = t;
 
         while v != s {
-
             if let Some(u) = parent[v] {
+                residual_capacity[u][v] -= path_flow;
 
-                residual_capacity[u]
-                    [v] -= path_flow;
-
-                residual_capacity[v]
-                    [u] += path_flow;
+                residual_capacity[v][u] += path_flow;
 
                 v = u;
             } else {
-
                 break;
             }
         }
@@ -1120,51 +692,30 @@ pub fn edmonds_karp_max_flow<
 }
 
 /// Helper BFS to find an augmenting path in the residual graph.
-
 pub(crate) fn bfs_for_augmenting_path(
     capacity: &[Vec<f64>],
     s: usize,
     t: usize,
-) -> (
-    Vec<Option<usize>>,
-    f64,
-) {
-
+) -> (Vec<Option<usize>>, f64) {
     let n = capacity.len();
 
     let mut parent = vec![None; n];
 
     let mut queue = VecDeque::new();
 
-    let mut path_flow =
-        vec![f64::INFINITY; n];
+    let mut path_flow = vec![f64::INFINITY; n];
 
     queue.push_back(s);
 
-    while let Some(u) =
-        queue.pop_front()
-    {
-
-        for v in 0 .. n {
-
-            if parent[v].is_none()
-                && v != s
-                && capacity[u][v] > 0.0
-            {
-
+    while let Some(u) = queue.pop_front() {
+        for v in 0..n {
+            if parent[v].is_none() && v != s && capacity[u][v] > 0.0 {
                 parent[v] = Some(u);
 
-                path_flow[v] =
-                    path_flow[u].min(
-                        capacity[u][v],
-                    );
+                path_flow[v] = path_flow[u].min(capacity[u][v]);
 
                 if v == t {
-
-                    return (
-                        parent,
-                        path_flow[t],
-                    );
+                    return (parent, path_flow[t]);
                 }
 
                 queue.push_back(v);
@@ -1190,45 +741,19 @@ pub(crate) fn bfs_for_augmenting_path(
 /// # Returns
 /// The maximum flow value as an `f64`.
 #[must_use]
-
-pub fn dinic_max_flow<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn dinic_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     capacity_graph: &Graph<V>,
     s: usize,
     t: usize,
 ) -> f64 {
+    let n = capacity_graph.nodes.len();
 
-    let n = capacity_graph
-        .nodes
-        .len();
+    let mut residual_capacity = vec![vec![0.0; n]; n];
 
-    let mut residual_capacity =
-        vec![vec![0.0; n]; n];
-
-    for (u, row) in residual_capacity
-        .iter_mut()
-        .enumerate()
-    {
-
-        if let Some(neighbors) =
-            capacity_graph
-                .adj
-                .get(u)
-        {
-
-            for &(v, ref cap) in
-                neighbors
-            {
-
-                row[v] =
-                    try_numeric_value(
-                        cap,
-                    )
-                    .unwrap_or(0.0);
+    for (u, row) in residual_capacity.iter_mut().enumerate() {
+        if let Some(neighbors) = capacity_graph.adj.get(u) {
+            for &(v, ref cap) in neighbors {
+                row[v] = try_numeric_value(cap).unwrap_or(0.0);
             }
         }
     }
@@ -1237,17 +762,10 @@ pub fn dinic_max_flow<
 
     let mut level = vec![0; n];
 
-    while dinic_bfs(
-        &residual_capacity,
-        s,
-        t,
-        &mut level,
-    ) {
-
+    while dinic_bfs(&residual_capacity, s, t, &mut level) {
         let mut ptr = vec![0; n];
 
         while {
-
             let pushed = dinic_dfs(
                 &mut residual_capacity,
                 s,
@@ -1258,12 +776,10 @@ pub fn dinic_max_flow<
             );
 
             if pushed > 0.0 {
-
                 max_flow += pushed;
 
                 true
             } else {
-
                 false
             }
         } {}
@@ -1278,9 +794,7 @@ pub(crate) fn dinic_bfs(
     t: usize,
     level: &mut [i32],
 ) -> bool {
-
     for l in level.iter_mut() {
-
         *l = -1;
     }
 
@@ -1291,13 +805,8 @@ pub(crate) fn dinic_bfs(
     q.push_back(s);
 
     while let Some(u) = q.pop_front() {
-
-        for v in 0 .. capacity.len() {
-
-            if level[v] < 0
-                && capacity[u][v] > 0.0
-            {
-
+        for v in 0..capacity.len() {
+            if level[v] < 0 && capacity[u][v] > 0.0 {
                 level[v] = level[u] + 1;
 
                 q.push_back(v);
@@ -1316,41 +825,26 @@ pub(crate) fn dinic_dfs(
     level: &Vec<i32>,
     ptr: &mut Vec<usize>,
 ) -> f64 {
-
     if pushed == 0.0 {
-
         return 0.0;
     }
 
     if u == t {
-
         return pushed;
     }
 
     while ptr[u] < cap.len() {
-
         let v = ptr[u];
 
-        if level[v] != level[u] + 1
-            || cap[u][v] == 0.0
-        {
-
+        if level[v] != level[u] + 1 || cap[u][v] == 0.0 {
             ptr[u] += 1;
 
             continue;
         }
 
-        let tr = dinic_dfs(
-            cap,
-            v,
-            t,
-            pushed.min(cap[u][v]),
-            level,
-            ptr,
-        );
+        let tr = dinic_dfs(cap, v, t, pushed.min(cap[u][v]), level, ptr);
 
         if tr == 0.0 {
-
             ptr[u] += 1;
 
             continue;
@@ -1367,14 +861,7 @@ pub(crate) fn dinic_dfs(
 }
 
 /// Result type for the Bellman-Ford algorithm.
-
-pub type BellmanFordResult = Result<
-    (
-        HashMap<usize, Expr>,
-        HashMap<usize, Option<usize>>,
-    ),
-    String,
->;
+pub type BellmanFordResult = Result<(HashMap<usize, Expr>, HashMap<usize, Option<usize>>), String>;
 
 /// Finds the shortest paths from a single source in a graph with possible negative edge weights.
 ///
@@ -1398,65 +885,34 @@ pub type BellmanFordResult = Result<
 ///
 /// This function will return an error if the graph contains a negative-weight cycle
 /// reachable from the `start_node`.
-
-pub fn bellman_ford<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn bellman_ford<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     start_node: usize,
 ) -> BellmanFordResult {
-
     let n = graph.nodes.len();
 
-    let mut dist: HashMap<usize, Expr> =
-        HashMap::new();
+    let mut dist: HashMap<usize, Expr> = HashMap::new();
 
     let mut prev = HashMap::new();
 
     let infinity = Expr::Infinity;
 
-    for node_id in
-        0 .. graph.nodes.len()
-    {
-
-        dist.insert(
-            node_id,
-            infinity.clone(),
-        );
+    for node_id in 0..graph.nodes.len() {
+        dist.insert(node_id, infinity.clone());
     }
 
-    dist.insert(
-        start_node,
-        Expr::Constant(0.0),
-    );
+    dist.insert(start_node, Expr::Constant(0.0));
 
-    for _ in 1 .. n {
+    for _ in 1..n {
+        for u in 0..n {
+            if let Some(neighbors) = graph.adj.get(u) {
+                for &(v, ref weight) in neighbors {
+                    let dist_u = &dist[&u];
 
-        for u in 0 .. n {
-
-            if let Some(neighbors) =
-                graph.adj.get(u)
-            {
-
-                for &(v, ref weight) in
-                    neighbors
-                {
-
-                    let dist_u =
-                        &dist[&u];
-
-                    let dist_v =
-                        &dist[&v];
+                    let dist_v = &dist[&v];
 
                     // Check if dist[u] + weight < dist[v]
-                    let new_dist =
-                        symbolic_add(
-                            dist_u,
-                            weight,
-                        );
+                    let new_dist = symbolic_add(dist_u, weight);
 
                     // For comparison, we need numeric values
                     let dist_u_val = try_numeric_value(dist_u).unwrap_or(f64::INFINITY);
@@ -1465,22 +921,10 @@ pub fn bellman_ford<
 
                     let dist_v_val = try_numeric_value(dist_v).unwrap_or(f64::INFINITY);
 
-                    if dist_u_val
-                        != f64::INFINITY
-                        && dist_u_val
-                            + weight_val
-                            < dist_v_val
-                    {
+                    if dist_u_val != f64::INFINITY && dist_u_val + weight_val < dist_v_val {
+                        dist.insert(v, new_dist);
 
-                        dist.insert(
-                            v,
-                            new_dist,
-                        );
-
-                        prev.insert(
-                            v,
-                            Some(u),
-                        );
+                        prev.insert(v, Some(u));
                     }
                 }
             }
@@ -1488,47 +932,16 @@ pub fn bellman_ford<
     }
 
     // Check for negative cycles
-    for u in 0 .. n {
+    for u in 0..n {
+        if let Some(neighbors) = graph.adj.get(u) {
+            for &(v, ref weight) in neighbors {
+                let dist_u_val = try_numeric_value(&dist[&u]).unwrap_or(f64::INFINITY);
 
-        if let Some(neighbors) =
-            graph.adj.get(u)
-        {
+                let weight_val = try_numeric_value(weight).unwrap_or(f64::INFINITY);
 
-            for &(v, ref weight) in
-                neighbors
-            {
+                let dist_v_val = try_numeric_value(&dist[&v]).unwrap_or(f64::INFINITY);
 
-                let dist_u_val =
-                    try_numeric_value(
-                        &dist[&u],
-                    )
-                    .unwrap_or(
-                        f64::INFINITY,
-                    );
-
-                let weight_val =
-                    try_numeric_value(
-                        weight,
-                    )
-                    .unwrap_or(
-                        f64::INFINITY,
-                    );
-
-                let dist_v_val =
-                    try_numeric_value(
-                        &dist[&v],
-                    )
-                    .unwrap_or(
-                        f64::INFINITY,
-                    );
-
-                if dist_u_val
-                    != f64::INFINITY
-                    && dist_u_val
-                        + weight_val
-                        < dist_v_val
-                {
-
+                if dist_u_val != f64::INFINITY && dist_u_val + weight_val < dist_v_val {
                     return Err("Graph contains a negative-weight cycle.".to_string());
                 }
             }
@@ -1553,42 +966,22 @@ pub fn bellman_ford<
 /// A tuple `(max_flow, min_cost)` as `f64`.
 #[allow(unused_variables)]
 #[must_use]
-
-pub fn min_cost_max_flow<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn min_cost_max_flow<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     s: usize,
     t: usize,
 ) -> (f64, f64) {
-
     let n = graph.nodes.len();
 
-    let mut capacity =
-        vec![vec![0.0; n]; n];
+    let mut capacity = vec![vec![0.0; n]; n];
 
-    let mut cost =
-        vec![vec![0.0; n]; n];
+    let mut cost = vec![vec![0.0; n]; n];
 
-    for u in 0 .. n {
-
-        if let Some(neighbors) =
-            graph.adj.get(u)
-        {
-
-            for &(v, ref weight) in
-                neighbors
-            {
-
-                if let Expr::Tuple(t) =
-                    weight
-                {
-
+    for u in 0..n {
+        if let Some(neighbors) = graph.adj.get(u) {
+            for &(v, ref weight) in neighbors {
+                if let Expr::Tuple(t) = weight {
                     if t.len() == 2 {
-
                         capacity[u][v] = try_numeric_value(&t[0]).unwrap_or(0.0);
 
                         cost[u][v] = try_numeric_value(&t[1]).unwrap_or(0.0);
@@ -1603,25 +996,19 @@ pub fn min_cost_max_flow<
     let mut total_cost = 0.0;
 
     loop {
-
-        let mut dist =
-            vec![f64::INFINITY; n];
+        let mut dist = vec![f64::INFINITY; n];
 
         let mut parent = vec![None; n];
 
         dist[s] = 0.0;
 
-        for _ in 1 .. n {
-
-            for u in 0 .. n {
-
-                for v in 0 .. n {
-
+        for _ in 1..n {
+            for u in 0..n {
+                for v in 0..n {
                     if capacity[u][v] > 0.0
                         && dist[u] != f64::INFINITY
                         && dist[u] + cost[u][v] < dist[v]
                     {
-
                         dist[v] = dist[u] + cost[u][v];
 
                         parent[v] = Some(u);
@@ -1631,35 +1018,26 @@ pub fn min_cost_max_flow<
         }
 
         if dist[t] == f64::INFINITY {
-
             break;
         }
 
-        let mut path_flow =
-            f64::INFINITY;
+        let mut path_flow = f64::INFINITY;
 
         let mut curr = t;
 
-        while let Some(prev) =
-            parent[curr]
-        {
-
-            path_flow = path_flow.min(
-                capacity[prev][curr],
-            );
+        while let Some(prev) = parent[curr] {
+            path_flow = path_flow.min(capacity[prev][curr]);
 
             curr = prev;
         }
 
         flow += path_flow;
 
-        total_cost +=
-            path_flow * dist[t];
+        total_cost += path_flow * dist[t];
 
         let mut v = t;
 
         while let Some(u) = parent[v] {
-
             capacity[u][v] -= path_flow;
 
             capacity[v][u] += path_flow;
@@ -1683,55 +1061,29 @@ pub fn min_cost_max_flow<
 /// `Some(partition)` if bipartite, where `partition[i]` is `0` or `1` indicating the set.
 /// `None` if not bipartite.
 #[must_use]
-
-pub fn is_bipartite<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn is_bipartite<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>
 ) -> Option<Vec<i8>> {
-
     let n = graph.nodes.len();
 
     let mut colors = vec![-1; n];
 
-    for i in 0 .. n {
-
+    for i in 0..n {
         if colors[i] == -1 {
-
-            let mut queue =
-                VecDeque::new();
+            let mut queue = VecDeque::new();
 
             queue.push_back(i);
 
             colors[i] = 0;
 
-            while let Some(u) =
-                queue.pop_front()
-            {
-
-                if let Some(neighbors) =
-                    graph.adj.get(u)
-                {
-
-                    for &(v, _) in
-                        neighbors
-                    {
-
-                        if colors[v]
-                            == -1
-                        {
-
+            while let Some(u) = queue.pop_front() {
+                if let Some(neighbors) = graph.adj.get(u) {
+                    for &(v, _) in neighbors {
+                        if colors[v] == -1 {
                             colors[v] = 1 - colors[u];
 
                             queue.push_back(v);
-                        } else if colors
-                            [v]
-                            == colors[u]
-                        {
-
+                        } else if colors[v] == colors[u] {
                             return None;
                         }
                     }
@@ -1756,51 +1108,28 @@ pub fn is_bipartite<
 /// # Returns
 /// A `Vec<(usize, usize)>` representing the edges `(u, v)` in the maximum matching.
 #[must_use]
-
-pub fn bipartite_maximum_matching<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn bipartite_maximum_matching<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     partition: &[i8],
 ) -> Vec<(usize, usize)> {
-
     let n = graph.nodes.len();
 
     let mut match_r = vec![None; n]; // Stores the matching for nodes in partition 1
     let mut matching_edges = Vec::new();
 
     // Identify nodes in partition 0
-    let u_nodes: Vec<usize> = (0 .. n)
-        .filter(|&i| partition[i] == 0)
-        .collect();
+    let u_nodes: Vec<usize> = (0..n).filter(|&i| partition[i] == 0).collect();
 
     for &u in &u_nodes {
+        let mut visited = vec![false; n];
 
-        let mut visited =
-            vec![false; n];
-
-        bpm_dfs(
-            graph,
-            u,
-            &mut visited,
-            &mut match_r,
-        );
+        bpm_dfs(graph, u, &mut visited, &mut match_r);
     }
 
-    for (v, u_opt) in match_r
-        .iter()
-        .enumerate()
-    {
-
+    for (v, u_opt) in match_r.iter().enumerate() {
         if let Some(u) = u_opt {
-
             if partition[v] == 1 {
-
-                matching_edges
-                    .push((*u, v));
+                matching_edges.push((*u, v));
             }
         }
     }
@@ -1808,43 +1137,22 @@ pub fn bipartite_maximum_matching<
     matching_edges
 }
 
-fn bpm_dfs<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+fn bpm_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     u: usize,
     visited: &mut Vec<bool>,
     match_r: &mut Vec<Option<usize>>,
 ) -> bool {
-
-    if let Some(neighbors) =
-        graph.adj.get(u)
-    {
-
+    if let Some(neighbors) = graph.adj.get(u) {
         for &(v, _) in neighbors {
-
             // We only care about edges to unvisited nodes in the other partition
             // (Assumes graph edges are directed or undirected correctly, but for undirected we check visited)
             if !visited[v] {
-
                 visited[v] = true;
 
                 // If v is not matched or its match can find another match
-                if match_r[v].is_none()
-                    || bpm_dfs(
-                        graph,
-                        match_r[v]
-                            .unwrap(),
-                        visited,
-                        match_r,
-                    )
-                {
-
-                    match_r[v] =
-                        Some(u);
+                if match_r[v].is_none() || bpm_dfs(graph, match_r[v].unwrap(), visited, match_r) {
+                    match_r[v] = Some(u);
 
                     return true;
                 }
@@ -1868,17 +1176,10 @@ fn bpm_dfs<
 /// # Returns
 /// A `Vec<(usize, usize, Expr)>` representing the edges `(u, v, weight)` that form the MST.
 #[must_use]
-
-pub fn prim_mst<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn prim_mst<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     start_node: usize,
 ) -> Vec<(usize, usize, Expr)> {
-
     let n = graph.nodes.len();
 
     let mut mst = Vec::new();
@@ -1889,22 +1190,9 @@ pub fn prim_mst<
 
     visited[start_node] = true;
 
-    if let Some(neighbors) = graph
-        .adj
-        .get(start_node)
-    {
-
-        for &(v, ref weight) in
-            neighbors
-        {
-
-            let cost =
-                try_numeric_value(
-                    weight,
-                )
-                .unwrap_or(
-                    f64::INFINITY,
-                );
+    if let Some(neighbors) = graph.adj.get(start_node) {
+        for &(v, ref weight) in neighbors {
+            let cost = try_numeric_value(weight).unwrap_or(f64::INFINITY);
 
             pq.push((
                 ordered_float::OrderedFloat(-cost),
@@ -1915,12 +1203,8 @@ pub fn prim_mst<
         }
     }
 
-    while let Some((_, u, v, weight)) =
-        pq.pop()
-    {
-
+    while let Some((_, u, v, weight)) = pq.pop() {
         if visited[v] {
-
             continue;
         }
 
@@ -1928,18 +1212,9 @@ pub fn prim_mst<
 
         mst.push((u, v, weight));
 
-        if let Some(neighbors) =
-            graph.adj.get(v)
-        {
-
-            for &(
-                next_v,
-                ref next_weight,
-            ) in neighbors
-            {
-
+        if let Some(neighbors) = graph.adj.get(v) {
+            for &(next_v, ref next_weight) in neighbors {
                 if !visited[next_v] {
-
                     let cost = try_numeric_value(next_weight).unwrap_or(f64::INFINITY);
 
                     pq.push((
@@ -1971,18 +1246,10 @@ pub fn prim_mst<
 /// # Errors
 ///
 /// This function will return an error if the graph is not directed or contains a cycle.
-
-pub fn topological_sort_kahn<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn topological_sort_kahn<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>
 ) -> Result<Vec<usize>, String> {
-
     if !graph.is_directed {
-
         return Err("Topological \
                     sort is only \
                     defined for \
@@ -1994,37 +1261,22 @@ pub fn topological_sort_kahn<
 
     let mut in_degree = vec![0; n];
 
-    for (i, degree) in in_degree
-        .iter_mut()
-        .enumerate()
-    {
-
+    for (i, degree) in in_degree.iter_mut().enumerate() {
         *degree = graph.in_degree(i);
     }
 
-    let mut queue: VecDeque<usize> = (0
-        .. n)
-        .filter(|&i| in_degree[i] == 0)
-        .collect();
+    let mut queue: VecDeque<usize> = (0..n).filter(|&i| in_degree[i] == 0).collect();
 
     let mut sorted_order = Vec::new();
 
-    while let Some(u) =
-        queue.pop_front()
-    {
-
+    while let Some(u) = queue.pop_front() {
         sorted_order.push(u);
 
-        if let Some(neighbors) =
-            graph.adj.get(u)
-        {
-
+        if let Some(neighbors) = graph.adj.get(u) {
             for &(v, _) in neighbors {
-
                 in_degree[v] -= 1;
 
                 if in_degree[v] == 0 {
-
                     queue.push_back(v);
                 }
             }
@@ -2032,16 +1284,12 @@ pub fn topological_sort_kahn<
     }
 
     if sorted_order.len() == n {
-
         Ok(sorted_order)
     } else {
-
-        Err(
-            "Graph has a cycle, \
+        Err("Graph has a cycle, \
              topological sort is not \
              possible."
-                .to_string(),
-        )
+            .to_string())
     }
 }
 
@@ -2056,32 +1304,16 @@ pub fn topological_sort_kahn<
 /// # Returns
 /// A `Vec<usize>` containing the node IDs in topological order.
 #[must_use]
-
-pub fn topological_sort_dfs<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn topological_sort_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>
 ) -> Vec<usize> {
-
     let mut visited = HashSet::new();
 
     let mut stack = Vec::new();
 
-    for node_id in
-        0 .. graph.nodes.len()
-    {
-
+    for node_id in 0..graph.nodes.len() {
         if !visited.contains(&node_id) {
-
-            topo_dfs_util(
-                graph,
-                node_id,
-                &mut visited,
-                &mut stack,
-            );
+            topo_dfs_util(graph, node_id, &mut visited, &mut stack);
         }
     }
 
@@ -2090,34 +1322,18 @@ pub fn topological_sort_dfs<
     stack
 }
 
-pub(crate) fn topo_dfs_util<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub(crate) fn topo_dfs_util<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     u: usize,
     visited: &mut HashSet<usize>,
     stack: &mut Vec<usize>,
 ) {
-
     visited.insert(u);
 
-    if let Some(neighbors) =
-        graph.adj.get(u)
-    {
-
+    if let Some(neighbors) = graph.adj.get(u) {
         for &(v, _) in neighbors {
-
             if !visited.contains(&v) {
-
-                topo_dfs_util(
-                    graph,
-                    v,
-                    visited,
-                    stack,
-                );
+                topo_dfs_util(graph, v, visited, stack);
             }
         }
     }
@@ -2137,16 +1353,9 @@ pub(crate) fn topo_dfs_util<
 /// `Some(Vec<usize>)` containing the topologically sorted node IDs if the graph is a DAG.
 /// `None` if the graph contains a cycle.
 #[must_use]
-
-pub fn topological_sort<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn topological_sort<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>
 ) -> Option<Vec<usize>> {
-
     topological_sort_kahn(graph).ok()
 }
 
@@ -2164,82 +1373,48 @@ pub fn topological_sort<
 /// # Returns
 /// A `Vec<usize>` of node indices representing the minimum vertex cover.
 #[must_use]
-
-pub fn bipartite_minimum_vertex_cover<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn bipartite_minimum_vertex_cover<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     partition: &[i8],
     matching: &[(usize, usize)],
 ) -> Vec<usize> {
-
     let mut u_nodes = HashSet::new();
 
-    let mut matched_nodes_u =
-        HashSet::new();
+    let mut matched_nodes_u = HashSet::new();
 
-    for (i, &part) in partition
-        .iter()
-        .enumerate()
-    {
-
+    for (i, &part) in partition.iter().enumerate() {
         if part == 0 {
-
             u_nodes.insert(i);
         }
     }
 
     for &(u, v) in matching {
-
         if u_nodes.contains(&u) {
-
             matched_nodes_u.insert(u);
         } else {
-
             matched_nodes_u.insert(v);
         }
     }
 
-    let unmatched_u: Vec<_> = u_nodes
-        .difference(&matched_nodes_u)
-        .copied()
-        .collect();
+    let unmatched_u: Vec<_> = u_nodes.difference(&matched_nodes_u).copied().collect();
 
     let mut visited = HashSet::new();
 
-    let mut queue =
-        VecDeque::from(unmatched_u);
+    let mut queue = VecDeque::from(unmatched_u);
 
-    while let Some(u) =
-        queue.pop_front()
-    {
-
+    while let Some(u) = queue.pop_front() {
         if visited.contains(&u) {
-
             continue;
         }
 
         visited.insert(u);
 
-        if let Some(neighbors) =
-            graph.adj.get(u)
-        {
-
+        if let Some(neighbors) = graph.adj.get(u) {
             for &(v, _) in neighbors {
-
-                if !matching
-                    .contains(&(u, v))
-                    && !matching
-                        .contains(&(
-                            v, u,
-                        ))
-                    && !visited
-                        .contains(&v)
+                if !matching.contains(&(u, v))
+                    && !matching.contains(&(v, u))
+                    && !visited.contains(&v)
                 {
-
                     queue.push_back(v);
                 }
             }
@@ -2249,22 +1424,13 @@ pub fn bipartite_minimum_vertex_cover<
     let mut cover = Vec::new();
 
     for u in u_nodes {
-
         if !visited.contains(&u) {
-
             cover.push(u);
         }
     }
 
-    for (i, &part) in partition
-        .iter()
-        .enumerate()
-    {
-
-        if part == 1
-            && visited.contains(&i)
-        {
-
+    for (i, &part) in partition.iter().enumerate() {
+        if part == 1 && visited.contains(&i) {
             cover.push(i);
         }
     }
@@ -2287,28 +1453,16 @@ pub fn bipartite_minimum_vertex_cover<
 #[allow(unused_assignments)]
 #[allow(unused_variables)]
 #[must_use]
-
-pub fn hopcroft_karp_bipartite_matching<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn hopcroft_karp_bipartite_matching<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     partition: &[i8],
 ) -> Vec<(usize, usize)> {
-
     let n = graph.nodes.len();
 
     let mut u_nodes = Vec::new();
 
-    for (i, &part) in partition
-        .iter()
-        .enumerate()
-    {
-
+    for (i, &part) in partition.iter().enumerate() {
         if part == 0 {
-
             u_nodes.push(i);
         }
     }
@@ -2321,26 +1475,11 @@ pub fn hopcroft_karp_bipartite_matching<
 
     let mut matching = 0;
 
-    while hopcroft_karp_bfs(
-        graph,
-        &u_nodes,
-        &pair_u,
-        &pair_v,
-        &mut dist,
-    ) {
-
+    while hopcroft_karp_bfs(graph, &u_nodes, &pair_u, &pair_v, &mut dist) {
         for &u in &u_nodes {
-
             if pair_u[u].is_none()
-                && hopcroft_karp_dfs(
-                    graph,
-                    u,
-                    &mut pair_u,
-                    &mut pair_v,
-                    &mut dist,
-                )
+                && hopcroft_karp_dfs(graph, u, &mut pair_u, &mut pair_v, &mut dist)
             {
-
                 matching += 1;
             }
         }
@@ -2348,13 +1487,8 @@ pub fn hopcroft_karp_bipartite_matching<
 
     let mut result = Vec::new();
 
-    for (u, &v_opt) in pair_u
-        .iter()
-        .enumerate()
-    {
-
+    for (u, &v_opt) in pair_u.iter().enumerate() {
         if let Some(v) = v_opt {
-
             result.push((u, v));
         }
     }
@@ -2362,66 +1496,39 @@ pub fn hopcroft_karp_bipartite_matching<
     result
 }
 
-pub(crate) fn hopcroft_karp_bfs<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub(crate) fn hopcroft_karp_bfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     u_nodes: &[usize],
     pair_u: &[Option<usize>],
     pair_v: &[Option<usize>],
     dist: &mut [usize],
 ) -> bool {
-
     let mut queue = VecDeque::new();
 
     for &u in u_nodes {
-
         if pair_u[u].is_none() {
-
             dist[u] = 0;
 
             queue.push_back(u);
         } else {
-
             dist[u] = usize::MAX;
         }
     }
 
     let mut found_path = false;
 
-    while let Some(u) =
-        queue.pop_front()
-    {
-
-        if let Some(neighbors) =
-            graph.adj.get(u)
-        {
-
+    while let Some(u) = queue.pop_front() {
+        if let Some(neighbors) = graph.adj.get(u) {
             for &(v, _) in neighbors {
-
-                if let Some(
-                    next_u_opt,
-                ) = pair_v.get(v)
-                {
-
-                    if let Some(
-                        next_u,
-                    ) = next_u_opt
-                    {
-
+                if let Some(next_u_opt) = pair_v.get(v) {
+                    if let Some(next_u) = next_u_opt {
                         if dist[*next_u] == usize::MAX {
-
                             dist[*next_u] = dist[u] + 1;
 
                             queue.push_back(*next_u);
                         }
                     } else {
-
-                        found_path =
-                            true;
+                        found_path = true;
                     }
                 }
             }
@@ -2431,43 +1538,20 @@ pub(crate) fn hopcroft_karp_bfs<
     found_path
 }
 
-pub(crate) fn hopcroft_karp_dfs<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub(crate) fn hopcroft_karp_dfs<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     u: usize,
     pair_u: &mut [Option<usize>],
     pair_v: &mut [Option<usize>],
     dist: &mut [usize],
 ) -> bool {
-
-    if let Some(neighbors) =
-        graph.adj.get(u)
-    {
-
+    if let Some(neighbors) = graph.adj.get(u) {
         for &(v, _) in neighbors {
-
-            if let Some(next_u_opt) =
-                pair_v.get(v)
-            {
-
-                if let Some(next_u) =
-                    next_u_opt
-                {
-
+            if let Some(next_u_opt) = pair_v.get(v) {
+                if let Some(next_u) = next_u_opt {
                     if dist[*next_u] == dist[u] + 1
-                        && hopcroft_karp_dfs(
-                            graph,
-                            *next_u,
-                            pair_u,
-                            pair_v,
-                            dist,
-                        )
+                        && hopcroft_karp_dfs(graph, *next_u, pair_u, pair_v, dist)
                     {
-
                         pair_v[v] = Some(u);
 
                         pair_u[u] = Some(v);
@@ -2475,7 +1559,6 @@ pub(crate) fn hopcroft_karp_dfs<
                         return true;
                     }
                 } else {
-
                     pair_v[v] = Some(u);
 
                     pair_u[u] = Some(v);
@@ -2511,44 +1594,28 @@ pub(crate) fn hopcroft_karp_dfs<
 // We keep this unused here because it is makes it pretty easy to read and also easier to debug if a issue is here.
 #[allow(unused_assignments)]
 #[allow(unused_variables)]
-
-pub fn blossom_algorithm<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn blossom_algorithm<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>
-) -> Result<Vec<(usize, usize)>, String>
-{
-
+) -> Result<Vec<(usize, usize)>, String> {
     let n = graph.nodes.len();
 
     let mut matching = vec![None; n];
 
     let mut matches = 0;
 
-    for i in 0 .. n {
-
+    for i in 0..n {
         if matching[i].is_none() {
-
             let path = find_augmenting_path_with_blossoms(graph, i, &matching)?;
 
             if !path.is_empty() {
-
                 matches += 1;
 
                 let mut u = path[0];
 
-                for &v in
-                    path.iter().skip(1)
-                {
+                for &v in path.iter().skip(1) {
+                    matching[u] = Some(v);
 
-                    matching[u] =
-                        Some(v);
-
-                    matching[v] =
-                        Some(u);
+                    matching[v] = Some(u);
 
                     u = v;
                 }
@@ -2558,15 +1625,9 @@ pub fn blossom_algorithm<
 
     let mut result = Vec::new();
 
-    for (u, &matched_v) in matching
-        .iter()
-        .enumerate()
-    {
-
+    for (u, &matched_v) in matching.iter().enumerate() {
         if let Some(v) = matched_v {
-
             if u < v {
-
                 result.push((u, v));
             }
         }
@@ -2579,24 +1640,18 @@ pub fn blossom_algorithm<
 ///
 /// This function will return an error if `find_common_ancestor` fails, indicating
 /// an issue during blossom contraction.
-
 pub(crate) fn find_augmenting_path_with_blossoms<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
+    V: Eq + std::hash::Hash + Clone + std::fmt::Debug,
 >(
     graph: &Graph<V>,
     start_node: usize,
     matching: &[Option<usize>],
 ) -> Result<Vec<usize>, String> {
-
     let n = graph.nodes.len();
 
     let mut parent = vec![None; n];
 
-    let mut origin =
-        (0 .. n).collect::<Vec<_>>();
+    let mut origin = (0..n).collect::<Vec<_>>();
 
     let mut level = vec![-1; n];
 
@@ -2606,70 +1661,35 @@ pub(crate) fn find_augmenting_path_with_blossoms<
 
     queue.push_back(start_node);
 
-    while let Some(u) =
-        queue.pop_front()
-    {
-
-        if let Some(neighbors) =
-            graph.adj.get(u)
-        {
-
+    while let Some(u) = queue.pop_front() {
+        if let Some(neighbors) = graph.adj.get(u) {
             for &(v, _) in neighbors {
-
                 if level[v] == -1 {
-
-                    if let Some(w) =
-                        matching[v]
-                    {
-
-                        parent[v] =
-                            Some(u);
+                    if let Some(w) = matching[v] {
+                        parent[v] = Some(u);
 
                         level[v] = 1;
 
                         level[w] = 0;
 
-                        queue
-                            .push_back(
-                                w,
-                            );
+                        queue.push_back(w);
                     } else {
+                        parent[v] = Some(u);
 
-                        parent[v] =
-                            Some(u);
+                        let mut path = vec![v, u];
 
-                        let mut path =
-                            vec![v, u];
+                        let mut curr = u;
 
-                        let mut curr =
-                            u;
-
-                        while let Some(
-                            p,
-                        ) =
-                            parent[curr]
-                        {
-
-                            path.push(
-                                p,
-                            );
+                        while let Some(p) = parent[curr] {
+                            path.push(p);
 
                             curr = p;
                         }
 
-                        return Ok(
-                            path,
-                        );
+                        return Ok(path);
                     }
-                } else if level[v] == 0
-                {
-
-                    let base = find_common_ancestor(
-                        &origin,
-                        &parent,
-                        u,
-                        v,
-                    )?;
+                } else if level[v] == 0 {
+                    let base = find_common_ancestor(&origin, &parent, u, v)?;
 
                     let mut state = BlossomState {
                         queue: &mut queue,
@@ -2679,19 +1699,9 @@ pub(crate) fn find_augmenting_path_with_blossoms<
                         matching,
                     };
 
-                    contract_blossom(
-                        base,
-                        u,
-                        v,
-                        &mut state,
-                    );
+                    contract_blossom(base, u, v, &mut state);
 
-                    contract_blossom(
-                        base,
-                        v,
-                        u,
-                        &mut state,
-                    );
+                    contract_blossom(base, v, u, &mut state);
                 }
             }
         }
@@ -2704,52 +1714,40 @@ pub(crate) fn find_augmenting_path_with_blossoms<
 ///
 /// This function will return an error if a common ancestor cannot be found,
 /// indicating an internal inconsistency in the blossom algorithm's state.
-
 pub(crate) fn find_common_ancestor(
     origin: &[usize],
     parent: &[Option<usize>],
     mut u: usize,
     mut v: usize,
 ) -> Result<usize, String> {
-
-    let mut visited =
-        vec![false; origin.len()];
+    let mut visited = vec![false; origin.len()];
 
     loop {
-
         u = origin[u];
 
         visited[u] = true;
 
         if let Some(p) = parent[u] {
-
             u = p;
         } else {
-
             break;
         }
     }
 
     loop {
-
         v = origin[v];
 
         if visited[v] {
-
             return Ok(v);
         }
 
         if let Some(p) = parent[v] {
-
             v = p;
         } else {
-
-            return Err(
-                "Could not find a \
+            return Err("Could not find a \
                  common ancestor in \
                  blossom algorithm."
-                    .to_string(),
-            );
+                .to_string());
         }
     }
 }
@@ -2768,33 +1766,22 @@ pub(crate) fn contract_blossom(
     v: usize,
     state: &mut BlossomState<'_>,
 ) {
-
     while state.origin[u] != base {
-
         state.parent[u] = Some(v);
 
         state.origin[u] = base;
 
-        if let Some(w) =
-            state.matching[u]
-        {
-
+        if let Some(w) = state.matching[u] {
             if state.level[w] == -1 {
-
                 state.level[w] = 0;
 
-                state
-                    .queue
-                    .push_back(w);
+                state.queue.push_back(w);
             }
         }
 
-        if let Some(p) = state.parent[u]
-        {
-
+        if let Some(p) = state.parent[u] {
             u = p;
         } else {
-
             break;
         }
     }
@@ -2813,56 +1800,32 @@ pub(crate) fn contract_blossom(
 /// A `HashMap<usize, (usize, Option<usize>)>` where keys are node IDs and values are
 /// `(distance_from_start, predecessor_node_id)`.
 #[must_use]
-
-pub fn shortest_path_unweighted<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn shortest_path_unweighted<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     start_node: usize,
-) -> HashMap<
-    usize,
-    (usize, Option<usize>),
-> {
-
+) -> HashMap<usize, (usize, Option<usize>)> {
     let mut distances = HashMap::new();
 
-    let mut predecessors =
-        HashMap::new();
+    let mut predecessors = HashMap::new();
 
     let mut queue = VecDeque::new();
 
     distances.insert(start_node, 0);
 
-    predecessors
-        .insert(start_node, None);
+    predecessors.insert(start_node, None);
 
     queue.push_back(start_node);
 
-    while let Some(u) =
-        queue.pop_front()
-    {
-
-        let u_dist = if let Some(d) =
-            distances.get(&u)
-        {
-
+    while let Some(u) = queue.pop_front() {
+        let u_dist = if let Some(d) = distances.get(&u) {
             *d
         } else {
-
             continue;
         };
 
-        if let Some(neighbors) =
-            graph.adj.get(u)
-        {
-
+        if let Some(neighbors) = graph.adj.get(u) {
             for &(v, _) in neighbors {
-
                 if let std::collections::hash_map::Entry::Vacant(e) = distances.entry(v) {
-
                     e.insert(u_dist + 1);
 
                     predecessors.insert(v, Some(u));
@@ -2876,17 +1839,7 @@ pub fn shortest_path_unweighted<
     let mut result = HashMap::new();
 
     for (node, dist) in distances {
-
-        result.insert(
-            node,
-            (
-                dist,
-                predecessors
-                    .get(&node)
-                    .copied()
-                    .flatten(),
-            ),
-        );
+        result.insert(node, (dist, predecessors.get(&node).copied().flatten()));
     }
 
     result
@@ -2904,81 +1857,41 @@ pub fn shortest_path_unweighted<
 /// # Returns
 /// A `HashMap<usize, (Expr, Option<usize>)>` where keys are node IDs and values are
 /// `(shortest_distance, predecessor_node_id)`.
-
-pub fn dijkstra<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
+pub fn dijkstra<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(
     graph: &Graph<V>,
     start_node: usize,
-) -> HashMap<usize, (Expr, Option<usize>)>
-{
-
+) -> HashMap<usize, (Expr, Option<usize>)> {
     let mut dist = HashMap::new();
 
     let mut prev = HashMap::new();
 
     let mut pq = std::collections::BinaryHeap::new();
 
-    for node_id in
-        0 .. graph.nodes.len()
-    {
-
-        dist.insert(
-            node_id,
-            Expr::Infinity,
-        );
+    for node_id in 0..graph.nodes.len() {
+        dist.insert(node_id, Expr::Infinity);
     }
 
-    dist.insert(
-        start_node,
-        Expr::Constant(0.0),
-    );
+    dist.insert(start_node, Expr::Constant(0.0));
 
     prev.insert(start_node, None);
 
-    pq.push((
-        OrderedFloat(0.0),
-        start_node,
-    ));
+    pq.push((OrderedFloat(0.0), start_node));
 
-    while let Some((cost, u)) = pq.pop()
-    {
-
+    while let Some((cost, u)) = pq.pop() {
         let cost = -cost.0;
 
         if cost
             > dist
                 .get(&u)
-                .and_then(
-                    try_numeric_value,
-                )
-                .unwrap_or(
-                    f64::INFINITY,
-                )
+                .and_then(try_numeric_value)
+                .unwrap_or(f64::INFINITY)
         {
-
             continue;
         }
 
-        if let Some(neighbors) =
-            graph.adj.get(u)
-        {
-
-            for &(v, ref weight) in
-                neighbors
-            {
-
-                let new_dist = simplify(
-                    &Expr::new_add(
-                        Expr::Constant(
-                            cost,
-                        ),
-                        weight.clone(),
-                    ),
-                );
+        if let Some(neighbors) = graph.adj.get(u) {
+            for &(v, ref weight) in neighbors {
+                let new_dist = simplify(&Expr::new_add(Expr::Constant(cost), weight.clone()));
 
                 if try_numeric_value(&new_dist).unwrap_or(f64::INFINITY)
                     < dist
@@ -2986,17 +1899,12 @@ pub fn dijkstra<
                         .and_then(try_numeric_value)
                         .unwrap_or(f64::INFINITY)
                 {
-
                     dist.insert(v, new_dist.clone());
 
                     prev.insert(v, Some(u));
 
                     if let Some(cost) = try_numeric_value(&new_dist) {
-
-                        pq.push((
-                            OrderedFloat(-cost),
-                            v,
-                        ));
+                        pq.push((OrderedFloat(-cost), v));
                     }
                 }
             }
@@ -3006,16 +1914,7 @@ pub fn dijkstra<
     let mut result = HashMap::new();
 
     for (node, d) in dist {
-
-        result.insert(
-            node,
-            (
-                d,
-                prev.get(&node)
-                    .copied()
-                    .flatten(),
-            ),
-        );
+        result.insert(node, (d, prev.get(&node).copied().flatten()));
     }
 
     result
@@ -3033,80 +1932,32 @@ pub fn dijkstra<
 /// # Returns
 /// An `Expr::Matrix` where `M[i][j]` is the shortest distance from node `i` to node `j`.
 #[must_use]
-
-pub fn floyd_warshall<
-    V: Eq
-        + std::hash::Hash
-        + Clone
-        + std::fmt::Debug,
->(
-    graph: &Graph<V>
-) -> Expr {
-
+pub fn floyd_warshall<V: Eq + std::hash::Hash + Clone + std::fmt::Debug>(graph: &Graph<V>) -> Expr {
     let n = graph.nodes.len();
 
-    let mut dist = vec![
-            vec![Expr::Infinity; n];
-            n
-        ];
+    let mut dist = vec![vec![Expr::Infinity; n]; n];
 
-    for (i, row) in dist
-        .iter_mut()
-        .enumerate()
-    {
-
+    for (i, row) in dist.iter_mut().enumerate() {
         row[i] = Expr::Constant(0.0);
     }
 
-    for (u, row) in dist
-        .iter_mut()
-        .enumerate()
-    {
-
-        if let Some(neighbors) =
-            graph.adj.get(u)
-        {
-
-            for &(v, ref weight) in
-                neighbors
-            {
-
+    for (u, row) in dist.iter_mut().enumerate() {
+        if let Some(neighbors) = graph.adj.get(u) {
+            for &(v, ref weight) in neighbors {
                 row[v] = weight.clone();
             }
         }
     }
 
-    for k in 0 .. n {
+    for k in 0..n {
+        for i in 0..n {
+            for j in 0..n {
+                let new_dist = simplify(&Expr::new_add(dist[i][k].clone(), dist[k][j].clone()));
 
-        for i in 0 .. n {
-
-            for j in 0 .. n {
-
-                let new_dist = simplify(
-                    &Expr::new_add(
-                        dist[i][k]
-                            .clone(),
-                        dist[k][j]
-                            .clone(),
-                    ),
-                );
-
-                if try_numeric_value(
-                    &dist[i][j],
-                )
-                .unwrap_or(
-                    f64::INFINITY,
-                )
-                    > try_numeric_value(
-                        &new_dist,
-                    )
-                    .unwrap_or(
-                        f64::INFINITY,
-                    )
+                if try_numeric_value(&dist[i][j]).unwrap_or(f64::INFINITY)
+                    > try_numeric_value(&new_dist).unwrap_or(f64::INFINITY)
                 {
-
-                    dist[i][j] =
-                        new_dist;
+                    dist[i][j] = new_dist;
                 }
             }
         }
@@ -3135,11 +1986,7 @@ pub fn floyd_warshall<
 /// - The input `matrix` is not a valid matrix expression.
 /// - The matrix is not square.
 /// - The underlying eigenvalue decomposition algorithm fails.
-
-pub fn spectral_analysis(
-    matrix: &Expr
-) -> Result<(Expr, Expr), String> {
-
+pub fn spectral_analysis(matrix: &Expr) -> Result<(Expr, Expr), String> {
     crate::symbolic::matrix::eigen_decomposition(matrix)
 }
 
@@ -3159,70 +2006,37 @@ pub fn spectral_analysis(
 /// This function will return an error if:
 /// - The spectral analysis of the Laplacian matrix fails.
 /// - The graph has fewer than 2 nodes (and thus fewer than 2 eigenvalues).
-
-pub fn algebraic_connectivity<V>(
-    graph: &Graph<V>
-) -> Result<Expr, String>
+pub fn algebraic_connectivity<V>(graph: &Graph<V>) -> Result<Expr, String>
 where
     V: Clone + Debug + Eq + Hash,
 {
+    let laplacian = graph.to_laplacian_matrix();
 
-    let laplacian =
-        graph.to_laplacian_matrix();
+    let (eigenvalues, _) = spectral_analysis(&laplacian)?;
 
-    let (eigenvalues, _) =
-        spectral_analysis(&laplacian)?;
-
-    if let Expr::Matrix(eig_vec) =
-        eigenvalues
-    {
-
+    if let Expr::Matrix(eig_vec) = eigenvalues {
         if eig_vec.len() < 2 {
-
-            return Err(
-                "Graph has fewer than \
+            return Err("Graph has fewer than \
                  2 eigenvalues."
-                    .to_string(),
-            );
+                .to_string());
         }
 
-        let mut numerical_eigenvalues =
-            Vec::new();
+        let mut numerical_eigenvalues = Vec::new();
 
-        for val_expr in eig_vec
-            .iter()
-            .flatten()
-        {
-
-            if let Some(val) =
-                try_numeric_value(
-                    val_expr,
-                )
-            {
-
-                numerical_eigenvalues
-                    .push(val);
+        for val_expr in eig_vec.iter().flatten() {
+            if let Some(val) = try_numeric_value(val_expr) {
+                numerical_eigenvalues.push(val);
             } else {
-
                 return Err("Eigenvalues are not all numerical, cannot sort.".to_string());
             }
         }
 
-        numerical_eigenvalues.sort_by(|a, b| {
+        numerical_eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-            a.partial_cmp(b)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-
-        Ok(Expr::Constant(
-            numerical_eigenvalues[1],
-        ))
+        Ok(Expr::Constant(numerical_eigenvalues[1]))
     } else {
-
-        Err(
-            "Eigenvalue computation \
+        Err("Eigenvalue computation \
              did not return a vector."
-                .to_string(),
-        )
+            .to_string())
     }
 }

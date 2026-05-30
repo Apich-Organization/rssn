@@ -31,35 +31,22 @@ use crate::symbolic::core::Expr;
 /// # Errors
 ///
 /// Returns an error if the transformation rules cannot be found or if expression evaluation fails.
-
 pub fn transform_point(
     point: &[f64],
     from: CoordinateSystem,
     to: CoordinateSystem,
 ) -> Result<Vec<f64>, String> {
+    let point_expr: Vec<Expr> = point.iter().map(|&v| Expr::Constant(v)).collect();
 
-    let point_expr: Vec<Expr> = point
-        .iter()
-        .map(|&v| Expr::Constant(v))
-        .collect();
-
-    let transformed_expr =
-        coordinates::transform_point(
-            &point_expr,
-            from,
-            to,
-        )?;
+    let transformed_expr = coordinates::transform_point(&point_expr, from, to)?;
 
     let mut result = Vec::new();
 
     for expr in transformed_expr {
-
-        result.push(
-            crate::numerical::elementary::eval_expr(
-                &expr,
-                &HashMap::new(),
-            )?,
-        );
+        result.push(crate::numerical::elementary::eval_expr(
+            &expr,
+            &HashMap::new(),
+        )?);
     }
 
     Ok(result)
@@ -82,19 +69,16 @@ pub fn transform_point(
 /// # Errors
 ///
 /// Returns an error if the transformation rules cannot be found or if numerical gradient computation fails.
-
 pub fn numerical_jacobian(
     from: CoordinateSystem,
     to: CoordinateSystem,
     at_point: &[f64],
 ) -> Result<Matrix<f64>, String> {
-
     let (from_vars, _, rules) = coordinates::get_transform_rules(from, to)?;
 
     let mut jacobian_rows = Vec::new();
 
     for rule in &rules {
-
         let grad = gradient(
             rule,
             &from_vars
@@ -110,18 +94,12 @@ pub fn numerical_jacobian(
     let rows = jacobian_rows.len();
 
     let cols = if rows > 0 {
-
         jacobian_rows[0].len()
     } else {
-
         0
     };
 
-    Ok(Matrix::new(
-        rows,
-        cols,
-        jacobian_rows.concat(),
-    ))
+    Ok(Matrix::new(rows, cols, jacobian_rows.concat()))
 }
 
 /// Transforms a numerical point using direct `f64` calculations for high performance.
@@ -140,32 +118,24 @@ pub fn numerical_jacobian(
 /// # Errors
 ///
 /// Returns an error if the input point has an incorrect number of components for the specified coordinate systems.
-
 pub fn transform_point_pure(
     point: &[f64],
     from: CoordinateSystem,
     to: CoordinateSystem,
 ) -> Result<Vec<f64>, String> {
-
     if from == to {
-
         return Ok(point.to_vec());
     }
 
-    let cartesian_point =
-        to_cartesian_pure(point, from)?;
+    let cartesian_point = to_cartesian_pure(point, from)?;
 
-    from_cartesian_pure(
-        &cartesian_point,
-        to,
-    )
+    from_cartesian_pure(&cartesian_point, to)
 }
 
 pub(crate) fn to_cartesian_pure(
     point: &[f64],
     from: CoordinateSystem,
 ) -> Result<Vec<f64>, String> {
-
     /// Converts a numerical point from a given coordinate system to Cartesian coordinates.
     ///
     /// This is a helper function for `transform_point_pure`.
@@ -179,9 +149,7 @@ pub(crate) fn to_cartesian_pure(
     match from {
         | CoordinateSystem::Cartesian => Ok(point.to_vec()),
         | CoordinateSystem::Cylindrical => {
-
             if point.len() != 3 {
-
                 return Err("Cylindrical point must have 3 components (r, theta, z)".to_string());
             }
 
@@ -198,9 +166,7 @@ pub(crate) fn to_cartesian_pure(
             Ok(vec![x, y, z])
         },
         | CoordinateSystem::Spherical => {
-
             if point.len() != 3 {
-
                 return Err("Spherical point must have 3 components (rho, theta, phi)".to_string());
             }
 
@@ -225,7 +191,6 @@ pub(crate) fn from_cartesian_pure(
     point: &[f64],
     to: CoordinateSystem,
 ) -> Result<Vec<f64>, String> {
-
     /// Converts a numerical point from Cartesian coordinates to a given target coordinate system.
     ///
     /// This is a helper function for `transform_point_pure`.
@@ -239,9 +204,7 @@ pub(crate) fn from_cartesian_pure(
     match to {
         | CoordinateSystem::Cartesian => Ok(point.to_vec()),
         | CoordinateSystem::Cylindrical => {
-
             if point.len() < 2 {
-
                 return Err("Cartesian point must have at least 2 components (x, y)".to_string());
             }
 
@@ -256,16 +219,13 @@ pub(crate) fn from_cartesian_pure(
             let mut result = vec![r, theta];
 
             if point.len() > 2 {
-
                 result.push(point[2]);
             }
 
             Ok(result)
         },
         | CoordinateSystem::Spherical => {
-
             if point.len() != 3 {
-
                 return Err("Cartesian point must have 3 components (x, y, z)".to_string());
             }
 
@@ -275,20 +235,13 @@ pub(crate) fn from_cartesian_pure(
 
             let z = point[2];
 
-            let rho = z
-                .mul_add(
-                    z,
-                    y.mul_add(y, x.powi(2)),
-                )
-                .sqrt();
+            let rho = z.mul_add(z, y.mul_add(y, x.powi(2))).sqrt();
 
             let theta = y.atan2(x);
 
             let phi = (z / rho).acos();
 
-            Ok(vec![
-                rho, theta, phi,
-            ])
+            Ok(vec![rho, theta, phi])
         },
     }
 }

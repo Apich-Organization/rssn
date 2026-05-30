@@ -14,7 +14,6 @@
 //! ## Example
 //!
 //! ```rust
-//! 
 //! use rssn::symbolic::core::Expr;
 //! use rssn::symbolic::handles::HANDLE_MANAGER;
 //!
@@ -25,11 +24,7 @@
 //!
 //! // Retrieve the expression
 //! if let Some(expr_arc) = HANDLE_MANAGER.get(handle) {
-//!
-//!     println!(
-//!         "Expression: {}",
-//!         expr_arc
-//!     );
+//!     println!("Expression: {}", expr_arc);
 //! }
 //!
 //! // Free the handle when done
@@ -52,10 +47,8 @@ use crate::symbolic::core::Expr;
 ///
 /// Handles start at 1 (0 is reserved for null/invalid handles in FFI contexts).
 #[derive(Debug)]
-
 pub struct HandleManager {
-    expressions:
-        DashMap<usize, Arc<Expr>>,
+    expressions: DashMap<usize, Arc<Expr>>,
     next_handle: AtomicUsize,
 }
 
@@ -63,13 +56,10 @@ impl HandleManager {
     /// Creates a new, empty `HandleManager`.
     ///
     /// This is typically not called directly; use the global `HANDLE_MANAGER` instead.
-
     pub(crate) fn new() -> Self {
-
         Self {
             expressions: DashMap::new(),
-            next_handle:
-                AtomicUsize::new(1), /* Start at 1, reserve 0 for null */
+            next_handle: AtomicUsize::new(1), // Start at 1, reserve 0 for null
         }
     }
 
@@ -86,7 +76,6 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// 
     /// use rssn::symbolic::core::Expr;
     /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
@@ -96,24 +85,13 @@ impl HandleManager {
     ///
     /// assert!(handle > 0);
     /// ```
-
     pub fn insert(
         &self,
         expr: Expr,
     ) -> usize {
+        let handle = self.next_handle.fetch_add(1, Ordering::SeqCst);
 
-        let handle = self
-            .next_handle
-            .fetch_add(
-                1,
-                Ordering::SeqCst,
-            );
-
-        self.expressions
-            .insert(
-                handle,
-                Arc::new(expr),
-            );
+        self.expressions.insert(handle, Arc::new(expr));
 
         handle
     }
@@ -134,7 +112,6 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// 
     /// use rssn::symbolic::core::Expr;
     /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
@@ -143,25 +120,16 @@ impl HandleManager {
     /// let handle = HANDLE_MANAGER.insert(expr);
     ///
     /// if let Some(retrieved) = HANDLE_MANAGER.get(handle) {
-    ///
-    ///     println!(
-    ///         "Found: {}",
-    ///         retrieved
-    ///     );
+    ///     println!("Found: {}", retrieved);
     /// }
     /// ```
-
     pub fn get(
         &self,
         handle: usize,
     ) -> Option<Arc<Expr>> {
-
         self.expressions
             .get(&handle)
-            .map(|arc_expr| {
-
-                arc_expr.clone()
-            })
+            .map(|arc_expr| arc_expr.clone())
     }
 
     /// Retrieves a deep clone of the expression (not the Arc).
@@ -176,18 +144,13 @@ impl HandleManager {
     /// # Returns
     ///
     /// `Some(Expr)` if the handle exists, `None` otherwise.
-
     pub fn clone_expr(
         &self,
         handle: usize,
     ) -> Option<Expr> {
-
         self.expressions
             .get(&handle)
-            .map(|arc_expr| {
-
-                (**arc_expr).clone()
-            })
+            .map(|arc_expr| (**arc_expr).clone())
     }
 
     /// Removes an expression from the manager, freeing its memory if this was the last reference.
@@ -205,7 +168,6 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// 
     /// use rssn::symbolic::core::Expr;
     /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
@@ -219,22 +181,15 @@ impl HandleManager {
     /// assert!(freed.is_some());
     ///
     /// // Trying to get it again returns None
-    /// assert!(HANDLE_MANAGER
-    ///     .get(handle)
-    ///     .is_none());
+    /// assert!(HANDLE_MANAGER.get(handle).is_none());
     /// ```
-
     pub fn free(
         &self,
         handle: usize,
     ) -> Option<Arc<Expr>> {
-
         self.expressions
             .remove(&handle)
-            .map(|(_, arc_expr)| {
-
-                arc_expr
-            })
+            .map(|(_, arc_expr)| arc_expr)
     }
 
     /// Checks if a handle exists in the manager.
@@ -246,14 +201,11 @@ impl HandleManager {
     /// # Returns
     ///
     /// `true` if the handle exists, `false` otherwise.
-
     pub fn exists(
         &self,
         handle: usize,
     ) -> bool {
-
-        self.expressions
-            .contains_key(&handle)
+        self.expressions.contains_key(&handle)
     }
 
     /// Returns the number of expressions currently managed.
@@ -265,33 +217,21 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// 
     /// use rssn::symbolic::core::Expr;
     /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
     /// let initial_count = HANDLE_MANAGER.count();
     ///
-    /// let handle = HANDLE_MANAGER.insert(Expr::new_constant(
-    ///     1.0,
-    /// ));
+    /// let handle = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
     ///
-    /// assert_eq!(
-    ///     HANDLE_MANAGER.count(),
-    ///     initial_count + 1
-    /// );
+    /// assert_eq!(HANDLE_MANAGER.count(), initial_count + 1);
     ///
     /// HANDLE_MANAGER.free(handle);
     ///
-    /// assert_eq!(
-    ///     HANDLE_MANAGER.count(),
-    ///     initial_count
-    /// );
+    /// assert_eq!(HANDLE_MANAGER.count(), initial_count);
     /// ```
-
     pub fn count(&self) -> usize {
-
-        self.expressions
-            .len()
+        self.expressions.len()
     }
 
     /// Clears all expressions from the manager.
@@ -301,38 +241,23 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// 
     /// use rssn::symbolic::core::Expr;
     /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
-    /// let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
-    ///     1.0,
-    /// ));
+    /// let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
     ///
-    /// let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
-    ///     2.0,
-    /// ));
+    /// let h2 = HANDLE_MANAGER.insert(Expr::new_constant(2.0));
     ///
     /// HANDLE_MANAGER.clear();
     ///
-    /// assert_eq!(
-    ///     HANDLE_MANAGER.count(),
-    ///     0
-    /// );
+    /// assert_eq!(HANDLE_MANAGER.count(), 0);
     ///
-    /// assert!(HANDLE_MANAGER
-    ///     .get(h1)
-    ///     .is_none());
+    /// assert!(HANDLE_MANAGER.get(h1).is_none());
     ///
-    /// assert!(HANDLE_MANAGER
-    ///     .get(h2)
-    ///     .is_none());
+    /// assert!(HANDLE_MANAGER.get(h2).is_none());
     /// ```
-
     pub fn clear(&self) {
-
-        self.expressions
-            .clear();
+        self.expressions.clear();
     }
 
     /// Returns a vector of all active handles.
@@ -346,18 +271,13 @@ impl HandleManager {
     /// # Example
     ///
     /// ```rust
-    /// 
     /// use rssn::symbolic::core::Expr;
     /// use rssn::symbolic::handles::HANDLE_MANAGER;
     ///
     /// HANDLE_MANAGER.clear(); // Start fresh
-    /// let h1 = HANDLE_MANAGER.insert(Expr::new_constant(
-    ///     1.0,
-    /// ));
+    /// let h1 = HANDLE_MANAGER.insert(Expr::new_constant(1.0));
     ///
-    /// let h2 = HANDLE_MANAGER.insert(Expr::new_constant(
-    ///     2.0,
-    /// ));
+    /// let h2 = HANDLE_MANAGER.insert(Expr::new_constant(2.0));
     ///
     /// let handles = HANDLE_MANAGER.get_all_handles();
     ///
@@ -367,21 +287,13 @@ impl HandleManager {
     ///
     /// assert!(handles.contains(&h2));
     /// ```
-
-    pub fn get_all_handles(
-        &self
-    ) -> Vec<usize> {
-
-        self.expressions
-            .iter()
-            .map(|entry| *entry.key())
-            .collect()
+    pub fn get_all_handles(&self) -> Vec<usize> {
+        self.expressions.iter().map(|entry| *entry.key()).collect()
     }
 }
 
 impl Default for HandleManager {
     fn default() -> Self {
-
         Self::new()
     }
 }
@@ -394,22 +306,15 @@ impl Default for HandleManager {
 /// # Example
 ///
 /// ```rust
-/// 
 /// use rssn::symbolic::core::Expr;
 /// use rssn::symbolic::handles::HANDLE_MANAGER;
 ///
 /// // Use the global instance
-/// let handle = HANDLE_MANAGER.insert(Expr::new_variable(
-///     "x",
-/// ));
+/// let handle = HANDLE_MANAGER.insert(Expr::new_variable("x"));
 ///
 /// let expr = HANDLE_MANAGER.get(handle);
 ///
 /// HANDLE_MANAGER.free(handle);
 /// ```
-
-pub static HANDLE_MANAGER:
-    std::sync::LazyLock<HandleManager> =
-    std::sync::LazyLock::new(
-        HandleManager::new,
-    );
+pub static HANDLE_MANAGER: std::sync::LazyLock<HandleManager> =
+    std::sync::LazyLock::new(HandleManager::new);

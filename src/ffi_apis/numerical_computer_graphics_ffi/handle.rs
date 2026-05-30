@@ -4,7 +4,6 @@ use crate::numerical::computer_graphics;
 
 /// Computes the dot product of two 3D vectors.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_graphics_dot_product(
     x1: f64,
     y1: f64,
@@ -13,14 +12,11 @@ pub extern "C" fn rssn_num_graphics_dot_product(
     y2: f64,
     z2: f64,
 ) -> f64 {
-
     let v1 = computer_graphics::Vector3D::new(x1, y1, z1);
 
     let v2 = computer_graphics::Vector3D::new(x2, y2, z2);
 
-    computer_graphics::dot_product(
-        &v1, &v2,
-    )
+    computer_graphics::dot_product(&v1, &v2)
 }
 
 /// Computes the cross product of two 3D vectors.
@@ -28,8 +24,7 @@ pub extern "C" fn rssn_num_graphics_dot_product(
 ///
 /// # Safety
 /// Pointers must be valid.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -37,7 +32,7 @@ pub extern "C" fn rssn_num_graphics_dot_product(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_cross_product(
     x1: f64,
     y1: f64,
@@ -49,14 +44,8 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product(
     out_y: *mut f64,
     out_z: *mut f64,
 ) -> i32 {
-
     unsafe {
-
-        if out_x.is_null()
-            || out_y.is_null()
-            || out_z.is_null()
-        {
-
+        if out_x.is_null() || out_y.is_null() || out_z.is_null() {
             return -1;
         }
 
@@ -80,8 +69,7 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product(
 ///
 /// # Safety
 /// Pointers must be valid.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -89,7 +77,7 @@ pub unsafe extern "C" fn rssn_num_graphics_cross_product(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_normalize(
     x: f64,
     y: f64,
@@ -98,14 +86,8 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize(
     out_y: *mut f64,
     out_z: *mut f64,
 ) -> i32 {
-
     unsafe {
-
-        if out_x.is_null()
-            || out_y.is_null()
-            || out_z.is_null()
-        {
-
+        if out_x.is_null() || out_y.is_null() || out_z.is_null() {
             return -1;
         }
 
@@ -125,13 +107,11 @@ pub unsafe extern "C" fn rssn_num_graphics_normalize(
 
 /// Computes the magnitude of a 3D vector.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_graphics_magnitude(
     x: f64,
     y: f64,
     z: f64,
 ) -> f64 {
-
     let v = computer_graphics::Vector3D::new(x, y, z);
 
     v.magnitude()
@@ -141,8 +121,7 @@ pub extern "C" fn rssn_num_graphics_magnitude(
 ///
 /// # Safety
 /// Pointers must be valid.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -150,7 +129,7 @@ pub extern "C" fn rssn_num_graphics_magnitude(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_reflect(
     ix: f64,
     iy: f64,
@@ -162,14 +141,8 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect(
     out_y: *mut f64,
     out_z: *mut f64,
 ) -> i32 {
-
     unsafe {
-
-        if out_x.is_null()
-            || out_y.is_null()
-            || out_z.is_null()
-        {
-
+        if out_x.is_null() || out_y.is_null() || out_z.is_null() {
             return -1;
         }
 
@@ -177,11 +150,7 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect(
 
         let normal = computer_graphics::Vector3D::new(nx, ny, nz);
 
-        let result =
-            computer_graphics::reflect(
-                &incident,
-                &normal,
-            );
+        let result = computer_graphics::reflect(&incident, &normal);
 
         *out_x = result.x;
 
@@ -195,7 +164,6 @@ pub unsafe extern "C" fn rssn_num_graphics_reflect(
 
 /// Computes the angle between two 3D vectors in radians.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_graphics_angle_between(
     x1: f64,
     y1: f64,
@@ -204,33 +172,22 @@ pub extern "C" fn rssn_num_graphics_angle_between(
     y2: f64,
     z2: f64,
 ) -> f64 {
-
     let v1 = computer_graphics::Vector3D::new(x1, y1, z1);
 
     let v2 = computer_graphics::Vector3D::new(x2, y2, z2);
 
-    computer_graphics::angle_between(
-        &v1, &v2,
-    )
+    computer_graphics::angle_between(&v1, &v2)
 }
 
 /// Converts degrees to radians.
 #[unsafe(no_mangle)]
-
-pub const extern "C" fn rssn_num_graphics_degrees_to_radians(
-    degrees: f64
-) -> f64 {
-
+pub const extern "C" fn rssn_num_graphics_degrees_to_radians(degrees: f64) -> f64 {
     computer_graphics::degrees_to_radians(degrees)
 }
 
 /// Converts radians to degrees.
 #[unsafe(no_mangle)]
-
-pub const extern "C" fn rssn_num_graphics_radians_to_degrees(
-    radians: f64
-) -> f64 {
-
+pub const extern "C" fn rssn_num_graphics_radians_to_degrees(radians: f64) -> f64 {
     computer_graphics::radians_to_degrees(radians)
 }
 
@@ -238,8 +195,7 @@ pub const extern "C" fn rssn_num_graphics_radians_to_degrees(
 ///
 /// # Safety
 /// Pointers must be valid.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -247,7 +203,7 @@ pub const extern "C" fn rssn_num_graphics_radians_to_degrees(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
     w1: f64,
     x1: f64,
@@ -262,15 +218,8 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
     out_y: *mut f64,
     out_z: *mut f64,
 ) -> i32 {
-
     unsafe {
-
-        if out_w.is_null()
-            || out_x.is_null()
-            || out_y.is_null()
-            || out_z.is_null()
-        {
-
+        if out_w.is_null() || out_x.is_null() || out_y.is_null() || out_z.is_null() {
             return -1;
         }
 
@@ -297,8 +246,7 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
 ///
 /// # Safety
 /// `out_ptr` must point to at least 16 f64 values.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -306,25 +254,20 @@ pub unsafe extern "C" fn rssn_num_graphics_quaternion_multiply(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x(
     angle_rad: f64,
     out_ptr: *mut f64,
 ) -> i32 {
-
     unsafe {
-
         if out_ptr.is_null() {
-
             return -1;
         }
 
         let matrix = computer_graphics::rotation_matrix_x(angle_rad);
 
-        for i in 0 .. 16 {
-
-            *out_ptr.add(i) =
-                matrix.data()[i];
+        for i in 0..16 {
+            *out_ptr.add(i) = matrix.data()[i];
         }
 
         0
@@ -334,7 +277,6 @@ pub unsafe extern "C" fn rssn_num_graphics_rotation_matrix_x(
 /// Ray-sphere intersection.
 /// Returns t value or -1 if no intersection.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
     ray_ox: f64,
     ray_oy: f64,
@@ -347,26 +289,13 @@ pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
     sphere_cz: f64,
     sphere_r: f64,
 ) -> f64 {
-
     let ray = computer_graphics::Ray::new(
-        computer_graphics::Point3D::new(
-            ray_ox,
-            ray_oy,
-            ray_oz,
-        ),
-        computer_graphics::Vector3D::new(
-            ray_dx,
-            ray_dy,
-            ray_dz,
-        ),
+        computer_graphics::Point3D::new(ray_ox, ray_oy, ray_oz),
+        computer_graphics::Vector3D::new(ray_dx, ray_dy, ray_dz),
     );
 
     let sphere = computer_graphics::Sphere::new(
-        computer_graphics::Point3D::new(
-            sphere_cx,
-            sphere_cy,
-            sphere_cz,
-        ),
+        computer_graphics::Point3D::new(sphere_cx, sphere_cy, sphere_cz),
         sphere_r,
     );
 
@@ -380,8 +309,7 @@ pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
 ///
 /// # Safety
 /// Pointers must be valid.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -389,7 +317,7 @@ pub extern "C" fn rssn_num_graphics_ray_sphere_intersection(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic(
     p0x: f64,
     p0y: f64,
@@ -408,41 +336,20 @@ pub unsafe extern "C" fn rssn_num_graphics_bezier_cubic(
     out_y: *mut f64,
     out_z: *mut f64,
 ) -> i32 {
-
     unsafe {
-
-        if out_x.is_null()
-            || out_y.is_null()
-            || out_z.is_null()
-        {
-
+        if out_x.is_null() || out_y.is_null() || out_z.is_null() {
             return -1;
         }
 
-        let p0 =
-        computer_graphics::Point3D::new(
-            p0x, p0y, p0z,
-        );
+        let p0 = computer_graphics::Point3D::new(p0x, p0y, p0z);
 
-        let p1 =
-        computer_graphics::Point3D::new(
-            p1x, p1y, p1z,
-        );
+        let p1 = computer_graphics::Point3D::new(p1x, p1y, p1z);
 
-        let p2 =
-        computer_graphics::Point3D::new(
-            p2x, p2y, p2z,
-        );
+        let p2 = computer_graphics::Point3D::new(p2x, p2y, p2z);
 
-        let p3 =
-        computer_graphics::Point3D::new(
-            p3x, p3y, p3z,
-        );
+        let p3 = computer_graphics::Point3D::new(p3x, p3y, p3z);
 
-        let result =
-        computer_graphics::bezier_cubic(
-            &p0, &p1, &p2, &p3, t,
-        );
+        let result = computer_graphics::bezier_cubic(&p0, &p1, &p2, &p3, t);
 
         *out_x = result.x;
 

@@ -6,8 +6,7 @@ use crate::numerical::error_correction;
 ///
 /// # Safety
 /// `message_ptr` must be a valid pointer to `message_len` bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -15,7 +14,7 @@ use crate::numerical::error_correction;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
     message_ptr: *const u8,
     message_len: usize,
@@ -23,42 +22,25 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
     out_ptr: *mut u8,
     out_len: *mut usize,
 ) -> i32 {
-
     unsafe {
-
-        if message_ptr.is_null()
-            || out_ptr.is_null()
-            || out_len.is_null()
-        {
-
+        if message_ptr.is_null() || out_ptr.is_null() || out_len.is_null() {
             return -1;
         }
 
-        let message =
-            std::slice::from_raw_parts(
-                message_ptr,
-                message_len,
-            );
+        let message = std::slice::from_raw_parts(message_ptr, message_len);
 
         match error_correction::reed_solomon_encode(message, n_parity) {
-        | Ok(codeword) => {
+            | Ok(codeword) => {
+                let copy_len = codeword.len().min(*out_len);
 
-            let copy_len = codeword
-                .len()
-                .min(*out_len);
+                std::ptr::copy_nonoverlapping(codeword.as_ptr(), out_ptr, copy_len);
 
-            std::ptr::copy_nonoverlapping(
-                codeword.as_ptr(),
-                out_ptr,
-                copy_len,
-            );
+                *out_len = codeword.len();
 
-            *out_len = codeword.len();
-
-            0
-        },
-        | Err(_) => -2,
-    }
+                0
+            },
+            | Err(_) => -2,
+        }
     }
 }
 
@@ -66,8 +48,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
 ///
 /// # Safety
 /// `codeword_ptr` must be a valid pointer to `codeword_len` bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -75,30 +56,23 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_encode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_rs_decode(
     codeword_ptr: *mut u8,
     codeword_len: usize,
     n_parity: usize,
 ) -> i32 {
-
     unsafe {
-
         if codeword_ptr.is_null() {
-
             return -1;
         }
 
-        let codeword =
-        std::slice::from_raw_parts_mut(
-            codeword_ptr,
-            codeword_len,
-        );
+        let codeword = std::slice::from_raw_parts_mut(codeword_ptr, codeword_len);
 
         match error_correction::reed_solomon_decode(codeword, n_parity) {
-        | Ok(()) => 0,
-        | Err(_) => -2,
-    }
+            | Ok(()) => 0,
+            | Err(_) => -2,
+        }
     }
 }
 
@@ -106,8 +80,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode(
 ///
 /// # Safety
 /// `codeword_ptr` must be a valid pointer to `codeword_len` bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -115,25 +88,18 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_decode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_rs_check(
     codeword_ptr: *const u8,
     codeword_len: usize,
     n_parity: usize,
 ) -> i32 {
-
     unsafe {
-
         if codeword_ptr.is_null() {
-
             return -1;
         }
 
-        let codeword =
-            std::slice::from_raw_parts(
-                codeword_ptr,
-                codeword_len,
-            );
+        let codeword = std::slice::from_raw_parts(codeword_ptr, codeword_len);
 
         i32::from(error_correction::reed_solomon_check(codeword, n_parity))
     }
@@ -144,8 +110,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check(
 /// # Safety
 /// `data_ptr` must be a valid pointer to 4 bytes.
 /// `out_ptr` must be a valid pointer to at least 7 bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -153,40 +118,26 @@ pub unsafe extern "C" fn rssn_num_error_correction_rs_check(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
     data_ptr: *const u8,
     out_ptr: *mut u8,
 ) -> i32 {
-
     unsafe {
-
-        if data_ptr.is_null()
-            || out_ptr.is_null()
-        {
-
+        if data_ptr.is_null() || out_ptr.is_null() {
             return -1;
         }
 
-        let data =
-            std::slice::from_raw_parts(
-                data_ptr,
-                4,
-            );
+        let data = std::slice::from_raw_parts(data_ptr, 4);
 
         match error_correction::hamming_encode_numerical(data) {
-        | Some(codeword) => {
+            | Some(codeword) => {
+                std::ptr::copy_nonoverlapping(codeword.as_ptr(), out_ptr, 7);
 
-            std::ptr::copy_nonoverlapping(
-                codeword.as_ptr(),
-                out_ptr,
-                7,
-            );
-
-            0
-        },
-        | None => -2,
-    }
+                0
+            },
+            | None => -2,
+        }
     }
 }
 
@@ -196,8 +147,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
 /// `codeword_ptr` must be a valid pointer to 7 bytes.
 /// `out_ptr` must be a valid pointer to at least 4 bytes.
 /// `error_pos_ptr` must be a valid pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -205,44 +155,29 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_encode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
     codeword_ptr: *const u8,
     out_ptr: *mut u8,
     error_pos_ptr: *mut i32,
 ) -> i32 {
-
     unsafe {
-
-        if codeword_ptr.is_null()
-            || out_ptr.is_null()
-            || error_pos_ptr.is_null()
-        {
-
+        if codeword_ptr.is_null() || out_ptr.is_null() || error_pos_ptr.is_null() {
             return -1;
         }
 
-        let codeword =
-            std::slice::from_raw_parts(
-                codeword_ptr,
-                7,
-            );
+        let codeword = std::slice::from_raw_parts(codeword_ptr, 7);
 
         match error_correction::hamming_decode_numerical(codeword) {
-        | Ok((data, error_pos)) => {
+            | Ok((data, error_pos)) => {
+                std::ptr::copy_nonoverlapping(data.as_ptr(), out_ptr, 4);
 
-            std::ptr::copy_nonoverlapping(
-                data.as_ptr(),
-                out_ptr,
-                4,
-            );
+                *error_pos_ptr = error_pos.map_or(-1, |p| p as i32);
 
-            *error_pos_ptr = error_pos.map_or(-1, |p| p as i32);
-
-            0
-        },
-        | Err(_) => -2,
-    }
+                0
+            },
+            | Err(_) => -2,
+        }
     }
 }
 
@@ -250,8 +185,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
 ///
 /// # Safety
 /// `codeword_ptr` must be a valid pointer to 7 bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -259,23 +193,14 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_decode(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(
-    codeword_ptr: *const u8
-) -> i32 {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(codeword_ptr: *const u8) -> i32 {
     unsafe {
-
         if codeword_ptr.is_null() {
-
             return -1;
         }
 
-        let codeword =
-            std::slice::from_raw_parts(
-                codeword_ptr,
-                7,
-            );
+        let codeword = std::slice::from_raw_parts(codeword_ptr, 7);
 
         i32::from(error_correction::hamming_check_numerical(codeword))
     }
@@ -285,8 +210,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(
 ///
 /// # Safety
 /// `a_ptr` and `b_ptr` must be valid pointers to `len` bytes each.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -294,31 +218,20 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_check(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance(
     a_ptr: *const u8,
     b_ptr: *const u8,
     len: usize,
 ) -> i32 {
-
     unsafe {
-
-        if a_ptr.is_null()
-            || b_ptr.is_null()
-        {
-
+        if a_ptr.is_null() || b_ptr.is_null() {
             return -1;
         }
 
-        let a =
-            std::slice::from_raw_parts(
-                a_ptr, len,
-            );
+        let a = std::slice::from_raw_parts(a_ptr, len);
 
-        let b =
-            std::slice::from_raw_parts(
-                b_ptr, len,
-            );
+        let b = std::slice::from_raw_parts(b_ptr, len);
 
         error_correction::hamming_distance_numerical(a, b).map_or(-1, |d| d as i32)
     }
@@ -328,8 +241,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance(
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -337,24 +249,17 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_distance(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight(
     data_ptr: *const u8,
     len: usize,
 ) -> i32 {
-
     unsafe {
-
         if data_ptr.is_null() {
-
             return -1;
         }
 
-        let data =
-            std::slice::from_raw_parts(
-                data_ptr,
-                len,
-            );
+        let data = std::slice::from_raw_parts(data_ptr, len);
 
         error_correction::hamming_weight_numerical(data) as i32
     }
@@ -364,8 +269,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight(
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -373,24 +277,17 @@ pub unsafe extern "C" fn rssn_num_error_correction_hamming_weight(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_crc32(
     data_ptr: *const u8,
     len: usize,
 ) -> u32 {
-
     unsafe {
-
         if data_ptr.is_null() {
-
             return 0;
         }
 
-        let data =
-            std::slice::from_raw_parts(
-                data_ptr,
-                len,
-            );
+        let data = std::slice::from_raw_parts(data_ptr, len);
 
         error_correction::crc32_compute_numerical(data)
     }
@@ -400,8 +297,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32(
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -409,25 +305,18 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify(
     data_ptr: *const u8,
     len: usize,
     expected_crc: u32,
 ) -> i32 {
-
     unsafe {
-
         if data_ptr.is_null() {
-
             return -1;
         }
 
-        let data =
-            std::slice::from_raw_parts(
-                data_ptr,
-                len,
-            );
+        let data = std::slice::from_raw_parts(data_ptr, len);
 
         i32::from(error_correction::crc32_verify_numerical(data, expected_crc))
     }
@@ -437,8 +326,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify(
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -446,28 +334,19 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc32_verify(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_crc16(
     data_ptr: *const u8,
     len: usize,
 ) -> u16 {
-
     unsafe {
-
         if data_ptr.is_null() {
-
             return 0;
         }
 
-        let data =
-            std::slice::from_raw_parts(
-                data_ptr,
-                len,
-            );
+        let data = std::slice::from_raw_parts(data_ptr, len);
 
-        error_correction::crc16_compute(
-            data,
-        )
+        error_correction::crc16_compute(data)
     }
 }
 
@@ -475,8 +354,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16(
 ///
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -484,28 +362,19 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc16(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_crc8(
     data_ptr: *const u8,
     len: usize,
 ) -> u8 {
-
     unsafe {
-
         if data_ptr.is_null() {
-
             return 0;
         }
 
-        let data =
-            std::slice::from_raw_parts(
-                data_ptr,
-                len,
-            );
+        let data = std::slice::from_raw_parts(data_ptr, len);
 
-        error_correction::crc8_compute(
-            data,
-        )
+        error_correction::crc8_compute(data)
     }
 }
 
@@ -514,8 +383,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8(
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
 /// `out_ptr` must be a valid pointer to at least `len` bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -523,39 +391,23 @@ pub unsafe extern "C" fn rssn_num_error_correction_crc8(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_interleave(
     data_ptr: *const u8,
     len: usize,
     depth: usize,
     out_ptr: *mut u8,
 ) -> i32 {
-
     unsafe {
-
-        if data_ptr.is_null()
-            || out_ptr.is_null()
-        {
-
+        if data_ptr.is_null() || out_ptr.is_null() {
             return -1;
         }
 
-        let data =
-            std::slice::from_raw_parts(
-                data_ptr,
-                len,
-            );
+        let data = std::slice::from_raw_parts(data_ptr, len);
 
-        let result =
-        error_correction::interleave(
-            data, depth,
-        );
+        let result = error_correction::interleave(data, depth);
 
-        std::ptr::copy_nonoverlapping(
-            result.as_ptr(),
-            out_ptr,
-            result.len(),
-        );
+        std::ptr::copy_nonoverlapping(result.as_ptr(), out_ptr, result.len());
 
         0
     }
@@ -566,8 +418,7 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave(
 /// # Safety
 /// `data_ptr` must be a valid pointer to `len` bytes.
 /// `out_ptr` must be a valid pointer to at least `len` bytes.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -575,39 +426,23 @@ pub unsafe extern "C" fn rssn_num_error_correction_interleave(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_error_correction_deinterleave(
     data_ptr: *const u8,
     len: usize,
     depth: usize,
     out_ptr: *mut u8,
 ) -> i32 {
-
     unsafe {
-
-        if data_ptr.is_null()
-            || out_ptr.is_null()
-        {
-
+        if data_ptr.is_null() || out_ptr.is_null() {
             return -1;
         }
 
-        let data =
-            std::slice::from_raw_parts(
-                data_ptr,
-                len,
-            );
+        let data = std::slice::from_raw_parts(data_ptr, len);
 
-        let result =
-        error_correction::deinterleave(
-            data, depth,
-        );
+        let result = error_correction::deinterleave(data, depth);
 
-        std::ptr::copy_nonoverlapping(
-            result.as_ptr(),
-            out_ptr,
-            result.len(),
-        );
+        std::ptr::copy_nonoverlapping(result.as_ptr(), out_ptr, result.len());
 
         0
     }
@@ -615,31 +450,21 @@ pub unsafe extern "C" fn rssn_num_error_correction_deinterleave(
 
 /// Compute code rate.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_num_error_correction_code_rate(
     k: usize,
     n: usize,
 ) -> f64 {
-
     error_correction::code_rate(k, n)
 }
 
 /// Compute error correction capability from minimum distance.
 #[unsafe(no_mangle)]
-
-pub const extern "C" fn rssn_num_error_correction_capability(
-    min_distance: usize
-) -> usize {
-
+pub const extern "C" fn rssn_num_error_correction_capability(min_distance: usize) -> usize {
     error_correction::error_correction_capability(min_distance)
 }
 
 /// Compute error detection capability from minimum distance.
 #[unsafe(no_mangle)]
-
-pub const extern "C" fn rssn_num_error_detection_capability(
-    min_distance: usize
-) -> usize {
-
+pub const extern "C" fn rssn_num_error_detection_capability(min_distance: usize) -> usize {
     error_correction::error_detection_capability(min_distance)
 }

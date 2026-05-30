@@ -12,103 +12,57 @@ use rssn::symbolic::core::Expr;
 #[test]
 
 fn test_computation_creation() {
-
-    let expr =
-        Arc::new(Expr::Constant(1.0));
+    let expr = Arc::new(Expr::Constant(1.0));
 
     let computation = Computation {
         id: "test_id".to_string(),
         expr: expr.clone(),
-        status:
-            ComputationStatus::Pending,
+        status: ComputationStatus::Pending,
         progress: ComputationProgress {
             percentage: 0.0,
-            description: "Init"
-                .to_string(),
+            description: "Init".to_string(),
         },
         result: None,
         state: State::new(),
-        pause: Arc::new((
-            Mutex::new(false),
-            Condvar::new(),
-        )),
-        cancel_signal: Arc::new(
-            AtomicBool::new(false),
-        ),
+        pause: Arc::new((Mutex::new(false), Condvar::new())),
+        cancel_signal: Arc::new(AtomicBool::new(false)),
     };
 
-    assert_eq!(
-        computation.id,
-        "test_id"
-    );
+    assert_eq!(computation.id, "test_id");
 
-    assert_eq!(
-        computation.status,
-        ComputationStatus::Pending
-    );
+    assert_eq!(computation.status, ComputationStatus::Pending);
 
-    assert_eq!(
-        computation
-            .progress
-            .percentage,
-        0.0
-    );
+    assert_eq!(computation.progress.percentage, 0.0);
 }
 
 #[test]
 
 fn test_computation_serialization() {
-
-    let expr =
-        Arc::new(Expr::Constant(1.0));
+    let expr = Arc::new(Expr::Constant(1.0));
 
     let computation = Computation {
         id: "test_id".to_string(),
         expr: expr.clone(),
-        status:
-            ComputationStatus::Completed,
+        status: ComputationStatus::Completed,
         progress: ComputationProgress {
             percentage: 100.0,
-            description: "Done"
-                .to_string(),
+            description: "Done".to_string(),
         },
         result: Some("42".to_string()),
         state: State::new(),
-        pause: Arc::new((
-            Mutex::new(false),
-            Condvar::new(),
-        )),
-        cancel_signal: Arc::new(
-            AtomicBool::new(false),
-        ),
+        pause: Arc::new((Mutex::new(false), Condvar::new())),
+        cancel_signal: Arc::new(AtomicBool::new(false)),
     };
 
-    let serialized =
-        serde_json::to_string(
-            &computation,
-        )
-        .unwrap();
+    let serialized = serde_json::to_string(&computation).unwrap();
 
-    let deserialized: Computation =
-        serde_json::from_str(
-            &serialized,
-        )
-        .unwrap();
+    let deserialized: Computation = serde_json::from_str(&serialized).unwrap();
 
-    assert_eq!(
-        deserialized.id,
-        computation.id
-    );
+    assert_eq!(deserialized.id, computation.id);
 
-    assert_eq!(
-        deserialized.status,
-        computation.status
-    );
+    assert_eq!(deserialized.status, computation.status);
 
-    assert_eq!(
-        deserialized.result,
-        computation.result
-    );
+    assert_eq!(deserialized.result, computation.result);
     // Note: pause and cancel_signal are skipped in serialization, so they will be default/missing?
     // Wait, Computation doesn't implement Default.
     // serde will use Default::default() for skipped fields if they implement Default, or error if not?

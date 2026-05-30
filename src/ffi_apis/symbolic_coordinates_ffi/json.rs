@@ -34,30 +34,19 @@ use crate::symbolic::core::Expr;
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_transform_point(
     point_json: *const c_char,
     from: CoordinateSystem,
     to: CoordinateSystem,
 ) -> *mut c_char {
-
-    let point: Option<Vec<Expr>> =
-        from_json_string(point_json);
+    let point: Option<Vec<Expr>> = from_json_string(point_json);
 
     if let Some(p) = point {
-
-        match transform_point(
-            &p, from, to,
-        ) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+        match transform_point(&p, from, to) {
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
-
         std::ptr::null_mut()
     }
 }
@@ -80,30 +69,19 @@ pub extern "C" fn rssn_json_transform_point(
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_transform_expression(
     expr_json: *const c_char,
     from: CoordinateSystem,
     to: CoordinateSystem,
 ) -> *mut c_char {
-
-    let expr: Option<Expr> =
-        from_json_string(expr_json);
+    let expr: Option<Expr> = from_json_string(expr_json);
 
     if let Some(e) = expr {
-
-        match transform_expression(
-            &e, from, to,
-        ) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+        match transform_expression(&e, from, to) {
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
-
         std::ptr::null_mut()
     }
 }
@@ -123,18 +101,10 @@ pub extern "C" fn rssn_json_transform_expression(
 /// This function is unsafe because it is exposed as an FFI entry point and returns
 /// ownership of a heap-allocated C string.
 #[unsafe(no_mangle)]
-
-pub extern "C" fn rssn_json_coordinates_get_metric_tensor(
-    system: CoordinateSystem
-) -> *mut c_char {
-
+pub extern "C" fn rssn_json_coordinates_get_metric_tensor(system: CoordinateSystem) -> *mut c_char {
     match get_metric_tensor(system) {
-        | Ok(result) => {
-            to_json_string(&result)
-        },
-        | Err(_) => {
-            std::ptr::null_mut()
-        },
+        | Ok(result) => to_json_string(&result),
+        | Err(_) => std::ptr::null_mut(),
     }
 }
 
@@ -157,24 +127,19 @@ pub extern "C" fn rssn_json_coordinates_get_metric_tensor(
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_transform_contravariant_vector(
     comps_json: *const c_char,
     from: CoordinateSystem,
     to: CoordinateSystem,
 ) -> *mut c_char {
-
-    let comps: Option<Vec<Expr>> =
-        from_json_string(comps_json);
+    let comps: Option<Vec<Expr>> = from_json_string(comps_json);
 
     if let Some(c) = comps {
-
         match transform_contravariant_vector(&c, from, to) {
             | Ok(result) => to_json_string(&result),
             | Err(_) => std::ptr::null_mut(),
         }
     } else {
-
         std::ptr::null_mut()
     }
 }
@@ -198,30 +163,19 @@ pub extern "C" fn rssn_json_transform_contravariant_vector(
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_transform_covariant_vector(
     comps_json: *const c_char,
     from: CoordinateSystem,
     to: CoordinateSystem,
 ) -> *mut c_char {
-
-    let comps: Option<Vec<Expr>> =
-        from_json_string(comps_json);
+    let comps: Option<Vec<Expr>> = from_json_string(comps_json);
 
     if let Some(c) = comps {
-
-        match transform_covariant_vector(
-            &c, from, to,
-        ) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+        match transform_covariant_vector(&c, from, to) {
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
-
         std::ptr::null_mut()
     }
 }
@@ -242,34 +196,21 @@ pub extern "C" fn rssn_json_transform_covariant_vector(
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_json_transform_divergence(
     comps_json: *const c_char,
     from: CoordinateSystem,
 ) -> *mut c_char {
-
-    let comps: Option<Vec<Expr>> =
-        from_json_string(comps_json);
+    let comps: Option<Vec<Expr>> = from_json_string(comps_json);
 
     if let Some(c) = comps {
-
-        match transform_divergence(
-            &c, from,
-        ) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+        match transform_divergence(&c, from) {
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
-
         std::ptr::null_mut()
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the curl of a vector field in a given coordinate system using JSON serialization.
 ///
@@ -286,32 +227,22 @@ pub extern "C" fn rssn_json_transform_divergence(
 ///
 /// This function is unsafe because it dereferences a raw C string pointer and returns
 /// ownership of a heap-allocated C string.
-
+#[unsafe(no_mangle)]
 pub extern "C" fn rssn_json_transform_curl(
     comps_json: *const c_char,
     from: CoordinateSystem,
 ) -> *mut c_char {
-
-    let comps: Option<Vec<Expr>> =
-        from_json_string(comps_json);
+    let comps: Option<Vec<Expr>> = from_json_string(comps_json);
 
     if let Some(c) = comps {
-
         match transform_curl(&c, from) {
-            | Ok(result) => {
-                to_json_string(&result)
-            },
-            | Err(_) => {
-                std::ptr::null_mut()
-            },
+            | Ok(result) => to_json_string(&result),
+            | Err(_) => std::ptr::null_mut(),
         }
     } else {
-
         std::ptr::null_mut()
     }
 }
-
-#[unsafe(no_mangle)]
 
 /// Computes the gradient of a scalar field and transforms it between coordinate systems
 /// using JSON serialization.
@@ -332,33 +263,22 @@ pub extern "C" fn rssn_json_transform_curl(
 ///
 /// This function is unsafe because it dereferences raw C string pointers and returns
 /// ownership of a heap-allocated C string.
-
+#[unsafe(no_mangle)]
 pub extern "C" fn rssn_json_transform_gradient(
     scalar_json: *const c_char,
     vars_json: *const c_char,
     from: CoordinateSystem,
     to: CoordinateSystem,
 ) -> *mut c_char {
+    let scalar: Option<Expr> = from_json_string(scalar_json);
 
-    let scalar: Option<Expr> =
-        from_json_string(scalar_json);
-
-    let vars: Option<Vec<String>> =
-        from_json_string(vars_json);
+    let vars: Option<Vec<String>> = from_json_string(vars_json);
 
     match (scalar, vars) {
         | (Some(s), Some(v)) => {
-            match transform_gradient(
-                &s, &v, from, to,
-            ) {
-                | Ok(result) => {
-                    to_json_string(
-                        &result,
-                    )
-                },
-                | Err(_) => {
-                    std::ptr::null_mut()
-                },
+            match transform_gradient(&s, &v, from, to) {
+                | Ok(result) => to_json_string(&result),
+                | Err(_) => std::ptr::null_mut(),
             }
         },
         | _ => std::ptr::null_mut(),

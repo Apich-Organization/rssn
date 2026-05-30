@@ -10,26 +10,18 @@ use crate::symbolic::stats_inference::{
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
 unsafe fn collect_exprs(
     data: *const *const Expr,
     len: usize,
 ) -> Vec<Expr> {
-
     unsafe {
+        let mut exprs = Vec::with_capacity(len);
 
-        let mut exprs =
-            Vec::with_capacity(len);
-
-        for i in 0 .. len {
-
+        for i in 0..len {
             let ptr = *data.add(i);
 
             if !ptr.is_null() {
-
-                exprs.push(
-                    (*ptr).clone(),
-                );
+                exprs.push((*ptr).clone());
             }
         }
 
@@ -64,19 +56,12 @@ unsafe fn collect_exprs(
 // Tuple(stat, p_value, df) seems reasonable?
 
 /// Performs a one-sample t-test.
-
 ///
-
 /// Takes a raw pointer to an array of `Expr` (data), its length,
-
 /// and a raw pointer to an `Expr` (target mean).
-
 /// Returns a raw pointer to an `Expr` tuple containing the test statistic,
-
 /// p-value formula, and degrees of freedom.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -84,65 +69,44 @@ unsafe fn collect_exprs(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_one_sample_t_test(
     data: *const *const Expr,
     len: usize,
     target_mean: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
-
         if data.is_null() {
-
-            return std::ptr::null_mut(
-            );
+            return std::ptr::null_mut();
         }
 
-        let sample =
-            collect_exprs(data, len);
+        let sample = collect_exprs(data, len);
 
-        let target =
-            if target_mean.is_null() {
-
-                Expr::Constant(0.0)
-            } else {
-
-                (*target_mean).clone()
-            };
+        let target = if target_mean.is_null() {
+            Expr::Constant(0.0)
+        } else {
+            (*target_mean).clone()
+        };
 
         let result = stats_inference::one_sample_t_test_symbolic(&sample, &target);
 
         // Return Tuple(statistic, p_value_formula, df)
-        let df = result
-            .degrees_of_freedom
-            .unwrap_or(Expr::Constant(
-                0.0,
-            )); // 0 if None
-        Box::into_raw(Box::new(
-            Expr::Tuple(vec![
-                result.test_statistic,
-                result.p_value_formula,
-                df,
-            ]),
-        ))
+        let df = result.degrees_of_freedom.unwrap_or(Expr::Constant(0.0)); // 0 if None
+        Box::into_raw(Box::new(Expr::Tuple(vec![
+            result.test_statistic,
+            result.p_value_formula,
+            df,
+        ])))
     }
 }
 
 /// Performs a two-sample t-test.
-
 ///
-
 /// Takes raw pointers to two arrays of `Expr` (data sets), their lengths,
-
 /// and a raw pointer to an `Expr` (hypothesized difference in means).
-
 /// Returns a raw pointer to an `Expr` tuple containing the test statistic,
-
 /// p-value formula, and degrees of freedom.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -150,7 +114,7 @@ pub unsafe extern "C" fn rssn_one_sample_t_test(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_two_sample_t_test(
     data1: *const *const Expr,
     len1: usize,
@@ -158,68 +122,40 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
     len2: usize,
     mu_diff: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
-
-        if data1.is_null()
-            || data2.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if data1.is_null() || data2.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let sample1 =
-            collect_exprs(data1, len1);
+        let sample1 = collect_exprs(data1, len1);
 
-        let sample2 =
-            collect_exprs(data2, len2);
+        let sample2 = collect_exprs(data2, len2);
 
-        let diff = if mu_diff.is_null()
-        {
-
+        let diff = if mu_diff.is_null() {
             Expr::Constant(0.0)
         } else {
-
             (*mu_diff).clone()
         };
 
-        let result = stats_inference::two_sample_t_test_symbolic(
-        &sample1,
-        &sample2,
-        &diff,
-    );
+        let result = stats_inference::two_sample_t_test_symbolic(&sample1, &sample2, &diff);
 
-        let df = result
-            .degrees_of_freedom
-            .unwrap_or(Expr::Constant(
-                0.0,
-            ));
+        let df = result.degrees_of_freedom.unwrap_or(Expr::Constant(0.0));
 
-        Box::into_raw(Box::new(
-            Expr::Tuple(vec![
-                result.test_statistic,
-                result.p_value_formula,
-                df,
-            ]),
-        ))
+        Box::into_raw(Box::new(Expr::Tuple(vec![
+            result.test_statistic,
+            result.p_value_formula,
+            df,
+        ])))
     }
 }
 
 /// Performs a z-test.
-
 ///
-
 /// Takes a raw pointer to an array of `Expr` (data), its length,
-
 /// a raw pointer to an `Expr` (target mean), and a raw pointer to an `Expr` (population standard deviation).
-
 /// Returns a raw pointer to an `Expr` tuple containing the test statistic,
-
 /// p-value formula, and a placeholder for degrees of freedom.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -227,52 +163,35 @@ pub unsafe extern "C" fn rssn_two_sample_t_test(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_z_test(
     data: *const *const Expr,
     len: usize,
     target_mean: *const Expr,
     pop_std_dev: *const Expr,
 ) -> *mut Expr {
-
     unsafe {
-
-        if data.is_null()
-            || pop_std_dev.is_null()
-        {
-
-            return std::ptr::null_mut(
-            );
+        if data.is_null() || pop_std_dev.is_null() {
+            return std::ptr::null_mut();
         }
 
-        let sample =
-            collect_exprs(data, len);
+        let sample = collect_exprs(data, len);
 
-        let target =
-            if target_mean.is_null() {
+        let target = if target_mean.is_null() {
+            Expr::Constant(0.0)
+        } else {
+            (*target_mean).clone()
+        };
 
-                Expr::Constant(0.0)
-            } else {
+        let sigma = (*pop_std_dev).clone();
 
-                (*target_mean).clone()
-            };
-
-        let sigma =
-            (*pop_std_dev).clone();
-
-        let result = stats_inference::z_test_symbolic(
-        &sample,
-        &target,
-        &sigma,
-    );
+        let result = stats_inference::z_test_symbolic(&sample, &target, &sigma);
 
         // Z-test has no DF, so return Tuple(stat, p_value, null)
-        Box::into_raw(Box::new(
-            Expr::Tuple(vec![
-                result.test_statistic,
-                result.p_value_formula,
-                Expr::NoSolution, /* Placeholder for None */
-            ]),
-        ))
+        Box::into_raw(Box::new(Expr::Tuple(vec![
+            result.test_statistic,
+            result.p_value_formula,
+            Expr::NoSolution, // Placeholder for None
+        ])))
     }
 }

@@ -33,8 +33,7 @@ use crate::physics::physics_sim::fdtd_electrodynamics::{
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw C string pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -42,73 +41,41 @@ use crate::physics::physics_sim::fdtd_electrodynamics::{
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_json(
-    input: *const c_char
-) -> *mut c_char {
-
-    let params : FdtdParameters = match from_json_string(input) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_physics_sim_fdtd_run_json(input: *const c_char) -> *mut c_char {
+    let params: FdtdParameters = match from_json_string(input) {
         | Some(p) => p,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<Vec<f64>>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
     let snapshots = fdtd_electrodynamics::run_fdtd_simulation(&params);
 
     // Return only the last Ez field as Vec<Vec<f64>> for simplicity in JSON
-    if let Some(final_ez) =
-        snapshots.last()
-    {
+    if let Some(final_ez) = snapshots.last() {
+        let mut out = Vec::with_capacity(params.width);
 
-        let mut out =
-            Vec::with_capacity(
-                params.width,
-            );
-
-        for row in final_ez
-            .axis_iter(ndarray::Axis(0))
-        {
-
+        for row in final_ez.axis_iter(ndarray::Axis(0)) {
             out.push(row.to_vec());
         }
 
-        to_c_string(
-            serde_json::to_string(
-                &FfiResult::<
-                    Vec<Vec<f64>>,
-                    String,
-                >::ok(
-                    out
-                ),
-            )
-            .unwrap(),
-        )
+        to_c_string(serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String>::ok(out)).unwrap())
     } else {
-
         to_c_string(
-            serde_json::to_string(
-                &FfiResult::<
-                    Vec<Vec<f64>>,
-                    String,
-                >::err(
-                    "No snapshots"
-                        .to_string(),
-                ),
-            )
+            serde_json::to_string(&FfiResult::<Vec<Vec<f64>>, String>::err(
+                "No snapshots".to_string(),
+            ))
             .unwrap(),
         )
     }

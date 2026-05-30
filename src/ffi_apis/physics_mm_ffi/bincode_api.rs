@@ -9,7 +9,6 @@ use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_mm::SPHSystem;
 
 #[derive(Deserialize)]
-
 struct SphInput {
     system: SPHSystem,
     dt: f64,
@@ -36,8 +35,7 @@ struct SphInput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -45,31 +43,20 @@ struct SphInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_mm_sph_update_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let mut input : SphInput = match from_bincode_buffer(&buffer) {
+    let mut input: SphInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(&FfiResult::<
-                SPHSystem,
-                String,
-            >::err(
+            return to_bincode_buffer(&FfiResult::<SPHSystem, String>::err(
                 "Invalid Bincode".to_string(),
-            ))
+            ));
         },
     };
 
-    input
-        .system
-        .update(input.dt);
+    input.system.update(input.dt);
 
-    to_bincode_buffer(&FfiResult::<
-        SPHSystem,
-        String,
-    >::ok(
-        input.system
-    ))
+    to_bincode_buffer(&FfiResult::<SPHSystem, String>::ok(input.system))
 }

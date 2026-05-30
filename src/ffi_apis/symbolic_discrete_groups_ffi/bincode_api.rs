@@ -12,8 +12,7 @@ use crate::symbolic::discrete_groups::symmetric_group;
 ///
 /// # Returns
 /// A `BincodeBuffer` containing the serialized representation of the group.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -21,11 +20,8 @@ use crate::symbolic::discrete_groups::symmetric_group;
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_cyclic_group_create(
-    n: usize
-) -> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_cyclic_group_create(n: usize) -> BincodeBuffer {
     let group = cyclic_group(n);
 
     to_bincode_buffer(&group)
@@ -38,8 +34,7 @@ pub unsafe extern "C" fn rssn_bincode_cyclic_group_create(
 ///
 /// # Returns
 /// A `BincodeBuffer` containing the serialized representation of the group.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -47,11 +42,8 @@ pub unsafe extern "C" fn rssn_bincode_cyclic_group_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_dihedral_group_create(
-    n: usize
-) -> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_dihedral_group_create(n: usize) -> BincodeBuffer {
     let group = dihedral_group(n);
 
     to_bincode_buffer(&group)
@@ -64,8 +56,7 @@ pub unsafe extern "C" fn rssn_bincode_dihedral_group_create(
 ///
 /// # Returns
 /// A `BincodeBuffer` containing the serialized representation of the group, or an empty buffer if `n` is invalid.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -73,18 +64,11 @@ pub unsafe extern "C" fn rssn_bincode_dihedral_group_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_symmetric_group_create(
-    n: usize
-) -> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_symmetric_group_create(n: usize) -> BincodeBuffer {
     match symmetric_group(n) {
-        | Ok(group) => {
-            to_bincode_buffer(&group)
-        },
-        | Err(_) => {
-            BincodeBuffer::empty()
-        },
+        | Ok(group) => to_bincode_buffer(&group),
+        | Err(_) => BincodeBuffer::empty(),
     }
 }
 
@@ -92,8 +76,7 @@ pub unsafe extern "C" fn rssn_bincode_symmetric_group_create(
 ///
 /// # Returns
 /// A `BincodeBuffer` containing the serialized representation of the group.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -101,10 +84,8 @@ pub unsafe extern "C" fn rssn_bincode_symmetric_group_create(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
-pub unsafe extern "C" fn rssn_bincode_klein_four_group_create()
--> BincodeBuffer {
-
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_bincode_klein_four_group_create() -> BincodeBuffer {
     let group = klein_four_group();
 
     to_bincode_buffer(&group)

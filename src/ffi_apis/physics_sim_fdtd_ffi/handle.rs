@@ -8,7 +8,6 @@ use crate::physics::physics_sim::fdtd_electrodynamics::{
 
 /// Runs a 2D FDTD simulation and returns the final Ez field as a Matrix handle (`WxH`).
 #[unsafe(no_mangle)]
-
 pub extern "C" fn rssn_physics_sim_fdtd_run_2d(
     width: usize,
     height: usize,
@@ -17,39 +16,25 @@ pub extern "C" fn rssn_physics_sim_fdtd_run_2d(
     source_y: usize,
     source_freq: f64,
 ) -> *mut Matrix<f64> {
-
     let params = FdtdParameters {
         width,
         height,
         time_steps,
-        source_pos: (
-            source_x,
-            source_y,
-        ),
+        source_pos: (source_x, source_y),
         source_freq,
     };
 
     let snapshots = fdtd_electrodynamics::run_fdtd_simulation(&params);
 
-    if let Some(final_ez) =
-        snapshots.last()
-    {
-
+    if let Some(final_ez) = snapshots.last() {
         let rows = final_ez.nrows();
 
         let cols = final_ez.ncols();
 
-        let (data, _offset) = final_ez
-            .clone()
-            .into_raw_vec_and_offset();
+        let (data, _offset) = final_ez.clone().into_raw_vec_and_offset();
 
-        Box::into_raw(Box::new(
-            Matrix::new(
-                rows, cols, data,
-            ),
-        ))
+        Box::into_raw(Box::new(Matrix::new(rows, cols, data)))
     } else {
-
         std::ptr::null_mut()
     }
 }

@@ -15,7 +15,6 @@ use crate::numerical::graph::floyd_warshall;
 use crate::numerical::graph::page_rank;
 
 #[derive(Deserialize)]
-
 struct Edge {
     u: usize,
     v: usize,
@@ -23,7 +22,6 @@ struct Edge {
 }
 
 #[derive(Deserialize)]
-
 struct GraphDef {
     num_nodes: usize,
     edges: Vec<Edge>,
@@ -31,17 +29,10 @@ struct GraphDef {
 
 impl GraphDef {
     fn to_graph(&self) -> Graph {
-
-        let mut g =
-            Graph::new(self.num_nodes);
+        let mut g = Graph::new(self.num_nodes);
 
         for edge in &self.edges {
-
-            g.add_edge(
-                edge.u,
-                edge.v,
-                edge.w,
-            );
+            g.add_edge(edge.u, edge.v, edge.w);
         }
 
         g
@@ -49,21 +40,18 @@ impl GraphDef {
 }
 
 #[derive(Deserialize)]
-
 struct DijkstraInput {
     graph: GraphDef,
     start_node: usize,
 }
 
 #[derive(Serialize)]
-
 struct DijkstraOutput {
     dist: Vec<f64>,
     prev: Vec<Option<usize>>,
 }
 
 #[derive(Deserialize)]
-
 struct PageRankInput {
     graph: GraphDef,
     damping_factor: f64,
@@ -72,9 +60,7 @@ struct PageRankInput {
 }
 
 /// Computes Dijkstra's shortest path algorithm on a graph using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -82,58 +68,41 @@ struct PageRankInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : DijkstraInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(input_json: *const c_char) -> *mut c_char {
+    let input: DijkstraInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<DijkstraOutput, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<DijkstraOutput, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let g = input
-        .graph
-        .to_graph();
+    let g = input.graph.to_graph();
 
-    let (dist, prev) =
-        dijkstra(&g, input.start_node);
+    let (dist, prev) = dijkstra(&g, input.start_node);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(
-                    DijkstraOutput {
-                        dist,
-                        prev,
-                    },
-                ),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(DijkstraOutput { dist, prev }),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes Breadth-First Search (BFS) on a graph using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -141,53 +110,41 @@ pub unsafe extern "C" fn rssn_num_graph_dijkstra_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_graph_bfs_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : DijkstraInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_graph_bfs_json(input_json: *const c_char) -> *mut c_char {
+    let input: DijkstraInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<usize>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<usize>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let g = input
-        .graph
-        .to_graph();
+    let g = input.graph.to_graph();
 
-    let dist =
-        bfs(&g, input.start_node);
+    let dist = bfs(&g, input.start_node);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(dist),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(dist),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the `PageRank` scores for nodes in a graph using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -195,57 +152,41 @@ pub unsafe extern "C" fn rssn_num_graph_bfs_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
-pub unsafe extern "C" fn rssn_num_graph_page_rank_json(
-    input_json: *const c_char
-) -> *mut c_char {
-
-    let input : PageRankInput = match from_json_string(input_json) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rssn_num_graph_page_rank_json(input_json: *const c_char) -> *mut c_char {
+    let input: PageRankInput = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<f64>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let g = input
-        .graph
-        .to_graph();
+    let g = input.graph.to_graph();
 
-    let scores = page_rank(
-        &g,
-        input.damping_factor,
-        input.tolerance,
-        input.max_iter,
-    );
+    let scores = page_rank(&g, input.damping_factor, input.tolerance, input.max_iter);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(scores),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(scores),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the Floyd-Warshall all-pairs shortest path algorithm on a graph using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -253,28 +194,25 @@ pub unsafe extern "C" fn rssn_num_graph_page_rank_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : GraphDef = match from_json_string(input_json) {
+    let input: GraphDef = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<f64>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<f64>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -283,18 +221,15 @@ pub unsafe extern "C" fn rssn_num_graph_floyd_warshall_json(
     let mat = floyd_warshall(&g);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(mat),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(mat),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 #[derive(Serialize)]
-
 struct EdgeOut {
     u: usize,
     v: usize,
@@ -302,46 +237,29 @@ struct EdgeOut {
 }
 
 #[derive(Serialize)]
-
 struct GraphDefOut {
     num_nodes: usize,
     edges: Vec<EdgeOut>,
 }
 
 impl GraphDefOut {
-    fn from_graph(
-        graph: &Graph
-    ) -> Self {
-
-        let num_nodes =
-            graph.num_nodes();
+    fn from_graph(graph: &Graph) -> Self {
+        let num_nodes = graph.num_nodes();
 
         let mut edges = Vec::new();
 
-        for u in 0 .. num_nodes {
-
-            for &(v, w) in graph.adj(u)
-            {
-
-                edges.push(EdgeOut {
-                    u,
-                    v,
-                    w,
-                });
+        for u in 0..num_nodes {
+            for &(v, w) in graph.adj(u) {
+                edges.push(EdgeOut { u, v, w });
             }
         }
 
-        Self {
-            num_nodes,
-            edges,
-        }
+        Self { num_nodes, edges }
     }
 }
 
 /// Computes the connected components of a graph using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -349,28 +267,25 @@ impl GraphDefOut {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : GraphDef = match from_json_string(input_json) {
+    let input: GraphDef = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<Vec<usize>, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<Vec<usize>, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -379,20 +294,16 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
     let comp = crate::numerical::graph::connected_components(&g);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(comp),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(comp),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }
 
 /// Computes the Minimum Spanning Tree (MST) of a graph using JSON for serialization.
-
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -400,28 +311,25 @@ pub unsafe extern "C" fn rssn_num_graph_connected_components_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_json(
     input_json: *const c_char
 ) -> *mut c_char {
-
-    let input : GraphDef = match from_json_string(input_json) {
+    let input: GraphDef = match from_json_string(input_json) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(
-                    &FfiResult::<GraphDefOut, String> {
-                        ok : None,
-                        err : Some("Invalid JSON input".to_string()),
-                    },
-                )
+                serde_json::to_string(&FfiResult::<GraphDefOut, String> {
+                    ok: None,
+                    err: Some("Invalid JSON input".to_string()),
+                })
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -429,16 +337,13 @@ pub unsafe extern "C" fn rssn_num_graph_minimum_spanning_tree_json(
 
     let mst = crate::numerical::graph::minimum_spanning_tree(&g);
 
-    let mst_def =
-        GraphDefOut::from_graph(&mst);
+    let mst_def = GraphDefOut::from_graph(&mst);
 
     to_c_string(
-        serde_json::to_string(
-            &FfiResult {
-                ok: Some(mst_def),
-                err: None::<String>,
-            },
-        )
+        serde_json::to_string(&FfiResult {
+            ok: Some(mst_def),
+            err: None::<String>,
+        })
         .unwrap(),
     )
 }

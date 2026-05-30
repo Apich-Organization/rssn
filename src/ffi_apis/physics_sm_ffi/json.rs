@@ -13,7 +13,6 @@ use crate::physics::physics_sm::{
 };
 
 #[derive(Deserialize)]
-
 struct AdvectionDiffusion1DInput {
     initial_condition: Vec<f64>,
     dx: f64,
@@ -24,7 +23,6 @@ struct AdvectionDiffusion1DInput {
 }
 
 #[derive(Deserialize)]
-
 struct AdvectionDiffusion2DInput {
     initial_condition: Vec<f64>,
     config: AdvectionDiffusionConfig,
@@ -54,8 +52,7 @@ struct AdvectionDiffusion2DInput {
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw C string pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -63,28 +60,24 @@ struct AdvectionDiffusion2DInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : AdvectionDiffusion1DInput = match from_json_string(input) {
+    let input: AdvectionDiffusion1DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
@@ -97,15 +90,7 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
         input.steps,
     );
 
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(res),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
 }
 
 /// Solves the 2D advection-diffusion equation using spectral methods via JSON serialization.
@@ -134,8 +119,7 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
 /// # Safety
 ///
 /// This function is unsafe because it dereferences a raw C string pointer.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -143,43 +127,28 @@ pub unsafe extern "C" fn rssn_physics_sm_solve_advection_1d_json(
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+///
 /// # Panics
 ///
 /// This function may panic if the FFI input is malformed, null where not expected,
 /// or if internal state synchronization fails (e.g., poisoned locks).
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_sm_solve_advection_2d_json(
     input: *const c_char
 ) -> *mut c_char {
-
-    let input : AdvectionDiffusion2DInput = match from_json_string(input) {
+    let input: AdvectionDiffusion2DInput = match from_json_string(input) {
         | Some(i) => i,
         | None => {
             return to_c_string(
-                serde_json::to_string(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
+                serde_json::to_string(&FfiResult::<Vec<f64>, String>::err(
                     "Invalid JSON".to_string(),
                 ))
                 .unwrap(),
-            )
+            );
         },
     };
 
-    let res = physics_sm::solve_advection_diffusion_2d(
-        &input.initial_condition,
-        &input.config,
-    );
+    let res = physics_sm::solve_advection_diffusion_2d(&input.initial_condition, &input.config);
 
-    to_c_string(
-        serde_json::to_string(
-            &FfiResult::<
-                Vec<f64>,
-                String,
-            >::ok(res),
-        )
-        .unwrap(),
-    )
+    to_c_string(serde_json::to_string(&FfiResult::<Vec<f64>, String>::ok(res)).unwrap())
 }

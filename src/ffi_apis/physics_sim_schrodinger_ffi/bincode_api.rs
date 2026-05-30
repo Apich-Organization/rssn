@@ -3,9 +3,9 @@
 use num_complex::Complex;
 use serde::Deserialize;
 
+use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::common::from_bincode_buffer;
 use crate::ffi_apis::common::to_bincode_buffer;
-use crate::ffi_apis::common::BincodeBuffer;
 use crate::ffi_apis::ffi_api::FfiResult;
 use crate::physics::physics_sim::schrodinger_quantum::SchrodingerParameters;
 use crate::physics::physics_sim::schrodinger_quantum::{
@@ -13,7 +13,6 @@ use crate::physics::physics_sim::schrodinger_quantum::{
 };
 
 #[derive(Deserialize)]
-
 struct SchrodingerInput {
     params: SchrodingerParameters,
     initial_psi_re: Vec<f64>,
@@ -48,8 +47,7 @@ struct SchrodingerInput {
 ///
 /// This function is unsafe because it receives a raw bincode buffer that must be
 /// valid and properly encoded.
-#[unsafe(no_mangle)]
-
+///
 /// # Safety
 ///
 /// This function is unsafe because it dereferences raw pointers as part of the FFI boundary.
@@ -57,72 +55,38 @@ struct SchrodingerInput {
 /// 1. All pointer arguments are valid and point to initialized memory.
 /// 2. The memory layout of passed structures matches the expected C-ABI layout.
 /// 3. Any pointers returned by this function are managed according to the API's ownership rules.
-
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rssn_physics_sim_schrodinger_run_bincode(
     buffer: BincodeBuffer
 ) -> BincodeBuffer {
-
-    let input : SchrodingerInput = match from_bincode_buffer(&buffer) {
+    let input: SchrodingerInput = match from_bincode_buffer(&buffer) {
         | Some(i) => i,
         | None => {
-            return to_bincode_buffer(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
+            return to_bincode_buffer(&FfiResult::<Vec<f64>, String>::err(
                 "Invalid Bincode".to_string(),
-            ))
+            ));
         },
     };
 
-    let mut initial_psi: Vec<
-        Complex<f64>,
-    > = input
+    let mut initial_psi: Vec<Complex<f64>> = input
         .initial_psi_re
         .iter()
-        .zip(
-            input
-                .initial_psi_im
-                .iter(),
-        )
-        .map(|(&r, &i)| {
-
-            Complex::new(r, i)
-        })
+        .zip(input.initial_psi_im.iter())
+        .map(|(&r, &i)| Complex::new(r, i))
         .collect();
 
-    match schrodinger_quantum::run_schrodinger_simulation(
-        &input.params,
-        &mut initial_psi,
-    ) {
+    match schrodinger_quantum::run_schrodinger_simulation(&input.params, &mut initial_psi) {
         | Ok(snapshots) => {
             if let Some(final_state) = snapshots.last() {
-
-                to_bincode_buffer(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::ok(
-                    final_state
-                        .clone()
-                        .into_raw_vec_and_offset()
-                        .0,
+                to_bincode_buffer(&FfiResult::<Vec<f64>, String>::ok(
+                    final_state.clone().into_raw_vec_and_offset().0,
                 ))
             } else {
-
-                to_bincode_buffer(&FfiResult::<
-                    Vec<f64>,
-                    String,
-                >::err(
+                to_bincode_buffer(&FfiResult::<Vec<f64>, String>::err(
                     "No snapshots".to_string(),
                 ))
             }
         },
-        | Err(e) => {
-            to_bincode_buffer(&FfiResult::<
-                Vec<f64>,
-                String,
-            >::err(
-                e
-            ))
-        },
+        | Err(e) => to_bincode_buffer(&FfiResult::<Vec<f64>, String>::err(e)),
     }
 }
