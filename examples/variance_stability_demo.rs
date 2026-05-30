@@ -8,7 +8,10 @@ use rssn::numerical::stats::variance_with_type;
 struct RunningStats(f64, f64, f64);
 
 impl RunningStats {
-    fn push(&mut self, x: f64) {
+    fn push(
+        &mut self,
+        x: f64,
+    ) {
         let n1 = self.0;
         self.0 += 1.0;
         let delta = x - self.1;
@@ -17,6 +20,7 @@ impl RunningStats {
         self.1 += delta_n;
         self.2 += term1;
     }
+
     fn variance(&self) -> Option<f64> {
         if self.0 < 2.0 {
             None

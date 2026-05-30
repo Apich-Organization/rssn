@@ -55,7 +55,10 @@ pub enum VarianceType {
 /// # Returns
 /// `Some(variance)` if `data.len() >= 2`, otherwise `None`.
 #[must_use]
-pub fn variance_with_type(data: &[f64], var_type: VarianceType) -> Option<f64> {
+pub fn variance_with_type(
+    data: &[f64],
+    var_type: VarianceType,
+) -> Option<f64> {
     if data.len() < 2 {
         return None;
     }
@@ -73,8 +76,8 @@ pub fn variance_with_type(data: &[f64], var_type: VarianceType) -> Option<f64> {
     }
 
     let divisor = match var_type {
-        VarianceType::Population => n,
-        VarianceType::Sample => n - 1.0,
+        | VarianceType::Population => n,
+        | VarianceType::Sample => n - 1.0,
     };
 
     Some(m2 / divisor)

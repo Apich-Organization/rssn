@@ -24,10 +24,7 @@ fn test_variance() {
 
 #[test]
 fn test_variance_with_type() {
-    let data = vec![
-        2.0, 4.0, 4.0, 4.0, 5.0, 5.0,
-        7.0, 9.0,
-    ];
+    let data = vec![2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
 
     // Population variance (divided by n)
     let var_pop = variance_with_type(&data, VarianceType::Population);
@@ -40,11 +37,7 @@ fn test_variance_with_type() {
     assert!((var_samp.unwrap() - 32.0 / 7.0).abs() < 1e-10);
 
     // Shifted large numbers to test numerical stability (Welford's algorithm)
-    let shifted_data = vec![
-        1e12 + 1.0,
-        1e12 + 2.0,
-        1e12 + 3.0,
-    ];
+    let shifted_data = vec![1e12 + 1.0, 1e12 + 2.0, 1e12 + 3.0];
     let var_shifted = variance_with_type(&shifted_data, VarianceType::Sample);
     assert!(var_shifted.is_some());
     assert!((var_shifted.unwrap() - 1.0).abs() < 1e-10);
