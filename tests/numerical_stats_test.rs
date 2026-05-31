@@ -45,6 +45,7 @@ fn test_variance_with_type() {
     // Edge cases
     assert_eq!(variance_with_type(&[], VarianceType::Sample), None);
     assert_eq!(variance_with_type(&[1.0], VarianceType::Sample), None);
+    assert_eq!(variance_with_type(&[1.0], VarianceType::Population), Some(0.0));
 }
 
 #[test]

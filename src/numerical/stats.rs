@@ -59,7 +59,7 @@ pub fn variance_with_type(
     data: &[f64],
     var_type: VarianceType,
 ) -> Option<f64> {
-    if data.len() < 2 {
+    if data.is_empty() || (var_type == VarianceType::Sample && data.len() < 2) {
         return None;
     }
 
