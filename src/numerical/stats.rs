@@ -34,25 +34,65 @@ pub fn mean(data: &[f64]) -> f64 {
     data.iter().sum::<f64>() / (data.len() as f64)
 }
 
-/// Computes the variance of a slice of f64 values.
+/// Represents the type of variance to compute.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VarianceType {
+    /// Population variance (divided by n).
+    Population,
+    /// Sample variance (divided by n - 1).
+    Sample,
+}
+
+/// Computes the variance of a slice of data with a specified variance type (Population or Sample).
+///
+/// This implementation uses Welford's algorithm to compute the variance in a single pass,
+/// which is highly numerically stable even for very large numbers or shifted datasets.
 ///
 /// # Arguments
-/// * `data` - A unmutable slice of `f64` data points.
+/// * `data` - A slice of `f64` data points.
+/// * `var_type` - The type of variance to compute (Population or Sample).
+///
+/// # Returns
+/// `Some(variance)` if `data.len() >= 2`, otherwise `None`.
+#[must_use]
+pub fn variance_with_type(
+    data: &[f64],
+    var_type: VarianceType,
+) -> Option<f64> {
+    if data.is_empty() || (var_type == VarianceType::Sample && data.len() < 2) {
+        return None;
+    }
+
+    let mut n = 0.0;
+    let mut mean = 0.0;
+    let mut m2 = 0.0;
+
+    for &x in data {
+        n += 1.0;
+        let delta = x - mean;
+        let delta_n = delta / n;
+        m2 += delta * delta_n * (n - 1.0);
+        mean += delta_n;
+    }
+
+    let divisor = match var_type {
+        | VarianceType::Population => n,
+        | VarianceType::Sample => n - 1.0,
+    };
+
+    Some(m2 / divisor)
+}
+
+/// Computes the variance of a slice of f64 values (defaults to population variance).
+///
+/// # Arguments
+/// * `data` - An immutable slice of `f64` data points.
 ///
 /// # Returns
 /// The variance of the data as an `f64`.
 #[must_use]
 pub fn variance(data: &[f64]) -> f64 {
-    if data.is_empty() {
-        return 0.0;
-    }
-
-    let mean_val = mean(data);
-
-    data.iter()
-        .map(|&val| (val - mean_val).powi(2))
-        .sum::<f64>()
-        / (data.len() as f64)
+    variance_with_type(data, VarianceType::Population).unwrap_or(0.0)
 }
 
 /// Computes the standard deviation of a slice of data.

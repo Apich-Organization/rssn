@@ -23,6 +23,32 @@ fn test_variance() {
 }
 
 #[test]
+fn test_variance_with_type() {
+    let data = vec![2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
+
+    // Population variance (divided by n)
+    let var_pop = variance_with_type(&data, VarianceType::Population);
+    assert!(var_pop.is_some());
+    assert!((var_pop.unwrap() - 4.0).abs() < 1e-10);
+
+    // Sample variance (divided by n-1)
+    let var_samp = variance_with_type(&data, VarianceType::Sample);
+    assert!(var_samp.is_some());
+    assert!((var_samp.unwrap() - 32.0 / 7.0).abs() < 1e-10);
+
+    // Shifted large numbers to test numerical stability (Welford's algorithm)
+    let shifted_data = vec![1e12 + 1.0, 1e12 + 2.0, 1e12 + 3.0];
+    let var_shifted = variance_with_type(&shifted_data, VarianceType::Sample);
+    assert!(var_shifted.is_some());
+    assert!((var_shifted.unwrap() - 1.0).abs() < 1e-10);
+
+    // Edge cases
+    assert_eq!(variance_with_type(&[], VarianceType::Sample), None);
+    assert_eq!(variance_with_type(&[1.0], VarianceType::Sample), None);
+    assert_eq!(variance_with_type(&[1.0], VarianceType::Population), Some(0.0));
+}
+
+#[test]
 
 fn test_geometric_mean() {
     let data = vec![1.0, 2.0, 4.0, 8.0];
