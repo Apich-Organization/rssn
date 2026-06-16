@@ -2258,6 +2258,36 @@ pub(crate) fn integrate_by_rules(
 
             None
         },
+        // Linearity rules: Add, Sub, Neg, and constant multiple (Mul)
+        | Expr::Add(a, b) => {
+            Some(Expr::new_add(
+                integrate(a, var, None, None),
+                integrate(b, var, None, None),
+            ))
+        },
+        | Expr::Sub(a, b) => {
+            Some(Expr::new_sub(
+                integrate(a, var, None, None),
+                integrate(b, var, None, None),
+            ))
+        },
+        | Expr::Neg(a) => Some(Expr::new_neg(integrate(a, var, None, None))),
+        | Expr::Mul(a, b) => {
+            // Constant multiple rule: ∫ c·f(x) dx = c·∫ f(x) dx
+            if let Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) = &**a {
+                if !contains_var(a, var) {
+                    return Some(Expr::new_mul(a.as_ref().clone(), integrate(b, var, None, None)));
+                }
+            }
+
+            if let Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) = &**b {
+                if !contains_var(b, var) {
+                    return Some(Expr::new_mul(b.as_ref().clone(), integrate(a, var, None, None)));
+                }
+            }
+
+            None
+        },
         | _ => None,
     }
 }
