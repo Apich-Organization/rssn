@@ -2287,7 +2287,6 @@ pub(crate) fn integrate_by_rules(
             } else {
                 return None;
             }
-            None
         },
         | _ => None,
     }
