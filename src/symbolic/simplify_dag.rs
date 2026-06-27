@@ -315,6 +315,17 @@ pub(crate) fn apply_rules(node: &Arc<DagNode>) -> Arc<DagNode> {
             }
         },
 
+        | DagOp::IndefiniteSum(s) => {
+            if let Some(value) = apply_rules_indefinite_sum(node, s) {
+                return value;
+            }
+        },
+        | DagOp::IndefiniteProduct(s) => {
+            if let Some(value) = apply_rules_indefinite_product(node, s) {
+                return value;
+            }
+        },
+
         | _ => {}, // No rule matched for this operator
     }
 
@@ -2396,4 +2407,107 @@ pub fn substitute_patterns<S: std::hash::BuildHasher>(
         },
         | _ => template.clone(),
     }
+}
+
+pub(crate) fn apply_rules_indefinite_sum(
+    node: &Arc<DagNode>,
+    var: &str,
+) -> Option<Arc<DagNode>> {
+    if node.children.len() < 2 {
+        return Some(node.clone());
+    }
+    let body_node = &node.children[0];
+    let step_node = &node.children[1];
+
+    let body_expr = body_node.to_expr().ok()?;
+    let step_expr = step_node.to_expr().ok()?;
+
+    let is_step_one = match &step_expr {
+        | Expr::Constant(c) => (*c - 1.0).abs() < 1e-9,
+        | Expr::BigInt(i) => i.is_one(),
+        | _ => false,
+    };
+
+    if is_step_one {
+        if let Some(closed_form) =
+            crate::numerical::indefinite_sum::try_closed_form_sum(&body_expr, var)
+        {
+            if let Ok(dag_node) = DAG_MANAGER.get_or_create(&closed_form) {
+                return Some(dag_node);
+            }
+        }
+    } else {
+        // Step size is S. We substitute var -> u * S where u is a fresh variable name (e.g. "_u")
+        let u_var = "_u";
+        let u_expr = Expr::new_variable(u_var);
+        let replacement = Expr::new_mul(u_expr, step_expr.clone());
+        let substituted_body = crate::symbolic::calculus::substitute(&body_expr, var, &replacement);
+
+        if let Some(closed_form_u) =
+            crate::numerical::indefinite_sum::try_closed_form_sum(&substituted_body, u_var)
+        {
+            // Substitute u -> var / S in closed_form_u
+            let u_back = Expr::new_div(Expr::new_variable(var), step_expr);
+            let final_expr = crate::symbolic::calculus::substitute(&closed_form_u, u_var, &u_back);
+            let simplified_final = simplify(&final_expr);
+            if let Ok(dag_node) = DAG_MANAGER.get_or_create(&simplified_final) {
+                return Some(dag_node);
+            }
+        }
+    }
+
+    None
+}
+
+pub(crate) fn apply_rules_indefinite_product(
+    node: &Arc<DagNode>,
+    var: &str,
+) -> Option<Arc<DagNode>> {
+    if node.children.len() < 2 {
+        return Some(node.clone());
+    }
+    let body_node = &node.children[0];
+    let step_node = &node.children[1];
+
+    let body_expr = body_node.to_expr().ok()?;
+    let step_expr = step_node.to_expr().ok()?;
+
+    // Check if body is a constant (doesn't contain var)
+    if !crate::numerical::indefinite_sum::expr_contains_var(&body_expr, var) {
+        // c^(x/S)
+        let exponent = Expr::new_div(Expr::new_variable(var), step_expr.clone());
+        let result = Expr::new_pow(body_expr.clone(), exponent);
+        let simplified = simplify(&result);
+        if let Ok(dag_node) = DAG_MANAGER.get_or_create(&simplified) {
+            return Some(dag_node);
+        }
+    }
+
+    // Try log-sum reduction: exp( indefinite_sum( ln(body), var, step ) )
+    let ln_body = Expr::new_log(body_expr);
+    let sum_expr = Expr::new_indefinite_sum(ln_body, var.to_string(), step_expr);
+    let product_expr = Expr::new_exp(sum_expr);
+    let simplified = simplify(&product_expr);
+
+    // Only return if the simplified form does NOT contain IndefiniteSum
+    if !expr_contains_indefinite_sum(&simplified) {
+        if let Ok(dag_node) = DAG_MANAGER.get_or_create(&simplified) {
+            return Some(dag_node);
+        }
+    }
+
+    None
+}
+
+fn expr_contains_indefinite_sum(expr: &Expr) -> bool {
+    let mut contains = false;
+    expr.in_order_walk(&mut |e| {
+        if matches!(
+            e,
+            Expr::IndefiniteSum { .. } | Expr::IndefiniteProduct { .. }
+        ) {
+            contains = true;
+        }
+    });
+    contains
 }

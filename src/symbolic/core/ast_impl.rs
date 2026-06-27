@@ -244,6 +244,20 @@ impl Clone for Expr {
             | Self::UnaryList(s, a) => Self::UnaryList(s.clone(), a.clone()),
             | Self::BinaryList(s, a, b) => Self::BinaryList(s.clone(), a.clone(), b.clone()),
             | Self::NaryList(s, v) => Self::NaryList(s.clone(), v.clone()),
+            | Self::IndefiniteSum { body, var, step } => {
+                Self::IndefiniteSum {
+                    body: body.clone(),
+                    var: var.clone(),
+                    step: step.clone(),
+                }
+            },
+            | Self::IndefiniteProduct { body, var, step } => {
+                Self::IndefiniteProduct {
+                    body: body.clone(),
+                    var: var.clone(),
+                    step: step.clone(),
+                }
+            },
         }
     }
 }
@@ -666,6 +680,12 @@ impl fmt::Display for Expr {
             | Self::Substitute(a, b, c) => {
                 write!(f, "substitute({a}, {b}, {c})")
             },
+            | Self::IndefiniteSum { body, var, step } => {
+                write!(f, "IndefiniteSum({body}, {var}, {step})")
+            },
+            | Self::IndefiniteProduct { body, var, step } => {
+                write!(f, "IndefiniteProduct({body}, {var}, {step})")
+            },
         }
     }
 }
@@ -893,6 +913,8 @@ impl Expr {
             | Self::UnaryList(_, _) => 141,
             | Self::BinaryList(_, _, _) => 142,
             | Self::NaryList(_, _) => 143,
+            | Self::IndefiniteSum { .. } => 144,
+            | Self::IndefiniteProduct { .. } => 145,
         }
     }
 }

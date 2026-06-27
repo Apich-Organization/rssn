@@ -568,6 +568,12 @@ impl Expr {
                     e.pre_order_walk(f);
                 }
             },
+            | Self::IndefiniteSum { body, step, .. }
+            | Self::IndefiniteProduct { body, step, .. } => {
+                body.pre_order_walk(f);
+
+                step.pre_order_walk(f);
+            },
             | Self::UnaryList(_, a) => a.pre_order_walk(f),
             | Self::BinaryList(_, a, b) => {
                 a.pre_order_walk(f);
@@ -877,6 +883,12 @@ impl Expr {
                     e.post_order_walk(f);
                 }
             },
+            | Self::IndefiniteSum { body, step, .. }
+            | Self::IndefiniteProduct { body, step, .. } => {
+                body.post_order_walk(f);
+
+                step.post_order_walk(f);
+            },
             | Self::UnaryList(_, a) => a.post_order_walk(f),
             | Self::BinaryList(_, a, b) => {
                 a.post_order_walk(f);
@@ -1127,6 +1139,14 @@ impl Expr {
                 a.in_order_walk(f);
 
                 c.pre_order_walk(f);
+            },
+            | Self::IndefiniteSum { body, step, .. }
+            | Self::IndefiniteProduct { body, step, .. } => {
+                f(self);
+
+                body.in_order_walk(f);
+
+                step.in_order_walk(f);
             },
             | Self::Interval(a, b, _, _) => {
                 f(self);
@@ -1491,6 +1511,10 @@ impl Expr {
             | Self::AsymptoticExpansion(a, _, c, d) => {
                 vec![a.as_ref().clone(), c.as_ref().clone(), d.as_ref().clone()]
             },
+            | Self::IndefiniteSum { body, step, .. }
+            | Self::IndefiniteProduct { body, step, .. } => {
+                vec![body.as_ref().clone(), step.as_ref().clone()]
+            },
             | Self::Interval(a, b, _, _) => {
                 vec![a.as_ref().clone(), b.as_ref().clone()]
             },
@@ -1768,6 +1792,8 @@ impl Expr {
             | Self::Summation(_, s, _, _) => Ok(DagOp::Summation(s.clone())),
             | Self::Product(_, s, _, _) => Ok(DagOp::Product(s.clone())),
             | Self::AsymptoticExpansion(_, s, _, _) => Ok(DagOp::AsymptoticExpansion(s.clone())),
+            | Self::IndefiniteSum { var, .. } => Ok(DagOp::IndefiniteSum(var.clone())),
+            | Self::IndefiniteProduct { var, .. } => Ok(DagOp::IndefiniteProduct(var.clone())),
             | Self::Sec(_) => Ok(DagOp::Sec),
             | Self::Csc(_) => Ok(DagOp::Csc),
             | Self::Cot(_) => Ok(DagOp::Cot),

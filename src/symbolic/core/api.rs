@@ -732,6 +732,68 @@ impl Expr {
         Self::Dag(node)
     }
 
+    /// Creates a new `IndefiniteSum` expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the expression cannot be created in the DAG.
+    #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
+    pub fn new_indefinite_sum<A, B>(
+        body: A,
+        variable: String,
+        step: B,
+    ) -> Self
+    where
+        A: AsRef<Self>,
+        B: AsRef<Self>,
+    {
+        let dag_body = DAG_MANAGER
+            .get_or_create(body.as_ref())
+            .expect("Value is valid");
+
+        let dag_step = DAG_MANAGER
+            .get_or_create(step.as_ref())
+            .expect("Value is valid");
+
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::IndefiniteSum(variable), vec![dag_body, dag_step])
+            .expect("Value is valid");
+
+        Self::Dag(node)
+    }
+
+    /// Creates a new `IndefiniteProduct` expression, managed by the DAG.
+    ///
+    /// # Panics
+    /// Panics if the expression cannot be created in the DAG.
+    #[must_use]
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
+    pub fn new_indefinite_product<A, B>(
+        body: A,
+        variable: String,
+        step: B,
+    ) -> Self
+    where
+        A: AsRef<Self>,
+        B: AsRef<Self>,
+    {
+        let dag_body = DAG_MANAGER
+            .get_or_create(body.as_ref())
+            .expect("Value is valid");
+
+        let dag_step = DAG_MANAGER
+            .get_or_create(step.as_ref())
+            .expect("Value is valid");
+
+        let node = DAG_MANAGER
+            .get_or_create_normalized(DagOp::IndefiniteProduct(variable), vec![dag_body, dag_step])
+            .expect("Value is valid");
+
+        Self::Dag(node)
+    }
+
     /// Creates a new `SparsePolynomial` expression, managed by the DAG.
     ///
     /// # Panics

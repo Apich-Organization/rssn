@@ -270,6 +270,24 @@ pub enum Expr {
     ConvergenceAnalysis(Arc<Self>, String),
     /// An asymptotic expansion of a function.
     AsymptoticExpansion(Arc<Self>, String, Arc<Self>, Arc<Self>),
+    /// An indefinite sum (anti-difference) of `body` with variable `var` and step size `step`.
+    IndefiniteSum {
+        /// The expression to be summed.
+        body: Arc<Self>,
+        /// The summation variable.
+        var: String,
+        /// The step size.
+        step: Arc<Self>,
+    },
+    /// An indefinite product of `body` with variable `var` and step size `step`.
+    IndefiniteProduct {
+        /// The expression to be multiplied.
+        body: Arc<Self>,
+        /// The product variable.
+        var: String,
+        /// The step size.
+        step: Arc<Self>,
+    },
 
     // --- Trigonometric & Hyperbolic Functions (Extended) ---
     /// Secant function.

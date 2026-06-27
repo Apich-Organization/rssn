@@ -930,6 +930,31 @@ impl DagNode {
 
                         Expr::AsymptoticExpansion(arc!(0), s.clone(), arc!(1), arc!(2))
                     },
+                    | DagOp::IndefiniteSum(s) => {
+                        if children_exprs.len() < 2 {
+                            return Err(
+                                "IndefiniteSum operator requires at least 2 children".to_string()
+                            );
+                        }
+
+                        Expr::IndefiniteSum {
+                            body: arc!(0),
+                            var: s.clone(),
+                            step: arc!(1),
+                        }
+                    },
+                    | DagOp::IndefiniteProduct(s) => {
+                        if children_exprs.len() < 2 {
+                            return Err("IndefiniteProduct operator requires at least 2 children"
+                                .to_string());
+                        }
+
+                        Expr::IndefiniteProduct {
+                            body: arc!(0),
+                            var: s.clone(),
+                            step: arc!(1),
+                        }
+                    },
                     | DagOp::ParametricSolution => {
                         if children_exprs.len() < 2 {
                             return Err("ParametricSolution operator requires at least 2 children"

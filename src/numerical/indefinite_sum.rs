@@ -9,11 +9,12 @@
 //! Given a function `f(x)`, the indefinite sum `F(x) = Δ⁻¹ f(x)` satisfies:
 //!
 //! ```text
-//! F(x) - F(x - S) = f(x)     (recurrence relation)
+//! F(x + S) - F(x) = f(x)     (forward difference recurrence)
 //! ```
 //!
-//! where `S` is the step size (default 1). The **Nörlund principal solution** is the
-//! unique solution satisfying `F(h) = 0` for a chosen boundary point `h`.
+//! where `S` is the step size (default 1). This is the standard anti-difference
+//! with respect to the forward difference operator Δ. The **Nörlund principal solution**
+//! is normalized by `F(h) = 0` for a chosen boundary point `h`.
 //!
 //! ## Evaluation Strategy
 //!
@@ -48,7 +49,7 @@ pub struct IndefiniteSumConfig {
     /// Boundary / normalization point. F(h) = 0 by convention.
     pub h: f64,
 
-    /// Step size S for the recurrence F(x) - F(x-S) = f(x). Default: 1.0.
+    /// Step size S for the recurrence F(x+S) - F(x) = f(x). Default: 1.0.
     pub step: f64,
 
     /// Number of peak subintervals for the contour integral.
@@ -115,9 +116,85 @@ pub fn try_closed_form_sum(
         return Some(Expr::new_mul(body.clone(), Expr::new_variable(var)));
     }
 
+    // Linearity: Add(a, b)
+    if let Expr::Add(a, b) = body {
+        if let (Some(sa), Some(sb)) = (try_closed_form_sum(a, var), try_closed_form_sum(b, var)) {
+            return Some(Expr::new_add(sa, sb));
+        }
+    }
+
+    // Linearity: Sub(a, b)
+    if let Expr::Sub(a, b) = body {
+        if let (Some(sa), Some(sb)) = (try_closed_form_sum(a, var), try_closed_form_sum(b, var)) {
+            return Some(Expr::new_sub(sa, sb));
+        }
+    }
+
+    // Linearity: Neg(a)
+    if let Expr::Neg(a) = body {
+        if let Some(sa) = try_closed_form_sum(a, var) {
+            return Some(Expr::new_neg(sa));
+        }
+    }
+
+    // Linearity: Mul(a, b)
+    if let Expr::Mul(a, b) = body {
+        if !expr_contains_var(a, var) {
+            if let Some(sb) = try_closed_form_sum(b, var) {
+                return Some(Expr::new_mul(a.as_ref().clone(), sb));
+            }
+        } else if !expr_contains_var(b, var) {
+            if let Some(sa) = try_closed_form_sum(a, var) {
+                return Some(Expr::new_mul(sa, b.as_ref().clone()));
+            }
+        }
+    }
+
+    // Linearity: AddList(terms)
+    if let Expr::AddList(terms) = body {
+        let mut summed_terms = Vec::new();
+        let mut all_success = true;
+        for term in terms {
+            if let Some(st) = try_closed_form_sum(term, var) {
+                summed_terms.push(st);
+            } else {
+                all_success = false;
+                break;
+            }
+        }
+        if all_success {
+            return Some(Expr::AddList(summed_terms));
+        }
+    }
+
+    // Linearity: MulList(factors)
+    if let Expr::MulList(factors) = body {
+        let (const_factors, var_factors): (Vec<_>, Vec<_>) = factors
+            .iter()
+            .cloned()
+            .partition(|f| !expr_contains_var(f, var));
+        if !const_factors.is_empty() {
+            let rest = if var_factors.is_empty() {
+                Expr::Constant(1.0)
+            } else if var_factors.len() == 1 {
+                var_factors[0].clone()
+            } else {
+                Expr::MulList(var_factors)
+            };
+            if let Some(sum_rest) = try_closed_form_sum(&rest, var) {
+                let c = if const_factors.len() == 1 {
+                    const_factors[0].clone()
+                } else {
+                    Expr::MulList(const_factors)
+                };
+                return Some(Expr::new_mul(c, sum_rest));
+            }
+        }
+    }
+
     match body {
         // ---- a^x ----
-        | Expr::Power(base, exp) if matches!(exp.as_ref(), Expr::Variable(v) if v == var) => {
+        | Expr::Power(base, exp) if is_pure_var(exp.as_ref(), var) => {
             // f(x) = base^x  →  Δ⁻¹ f(x) = base^x / (base − 1)
             // Only valid if base ≠ 1 (i.e., not a constant 1)
             let a = base.as_ref().clone();
@@ -129,7 +206,7 @@ pub fn try_closed_form_sum(
         },
 
         // ---- e^x ----
-        | Expr::Exp(inner) if matches!(inner.as_ref(), Expr::Variable(v) if v == var) => {
+        | Expr::Exp(inner) if is_pure_var(inner.as_ref(), var) => {
             // f(x) = e^x  →  Δ⁻¹ f(x) = e^x / (e − 1)
             let e_minus_1 = Expr::new_constant(std::f64::consts::E - 1.0);
             Some(Expr::new_div(Expr::Exp(inner.clone()), e_minus_1))
@@ -188,7 +265,7 @@ pub fn try_closed_form_sum(
         },
 
         // ---- ln(x) ----
-        | Expr::Log(inner) if matches!(inner.as_ref(), Expr::Variable(v) if v == var) => {
+        | Expr::Log(inner) if is_pure_var(inner.as_ref(), var) => {
             // Δ⁻¹ ln(x) = ln Γ(x)  (log of gamma function)
             Some(Expr::Log(Arc::new(Expr::Gamma(Arc::new(
                 Expr::new_variable(var),
@@ -196,11 +273,10 @@ pub fn try_closed_form_sum(
         },
 
         // ---- x^n (integer power) via Hurwitz zeta ----
-        // Δ⁻¹ x^a = −ζ(−a, x+1)
-        // We represent this symbolically as:
-        //   BinaryList("hurwitz_zeta_antidiff", a, x)
-        // which means −ζ(−a, x+1)
-        | Expr::Power(base, exp) if matches!(base.as_ref(), Expr::Variable(v) if v == var) => {
+        // Δ⁻¹ x^a = ζ(−a, 1) − ζ(−a, x), satisfying F(x+1)−F(x) = x^a with F(1)=0.
+        // Represented symbolically as BinaryList("hurwitz_zeta_antidiff", a, x);
+        // eval_antidiff evaluates to hurwitz_zeta(−a, 1) − hurwitz_zeta(−a, x).
+        | Expr::Power(base, exp) if is_pure_var(base.as_ref(), var) => {
             Some(Expr::BinaryList(
                 "hurwitz_zeta_antidiff".to_string(),
                 exp.clone(),
@@ -211,7 +287,7 @@ pub fn try_closed_form_sum(
         // ---- 1/x ----
         | Expr::Div(num, den)
             if matches!(num.as_ref(), Expr::Constant(c) if (*c - 1.0).abs() < 1e-15)
-                && matches!(den.as_ref(), Expr::Variable(v) if v == var) =>
+                && is_pure_var(den.as_ref(), var) =>
         {
             // Δ⁻¹ (1/x) = ψ(x)
             Some(Expr::Digamma(Arc::new(Expr::new_variable(var))))
@@ -240,8 +316,9 @@ pub fn eval_antidiff(
     match anti_diff {
         | Expr::BinaryList(tag, a_arc, _) if tag == "hurwitz_zeta_antidiff" => {
             let a = eval_expr_single(a_arc, var, x_val)?;
-            // Δ⁻¹ x^a = −ζ(−a, x+1)
-            let result = -hurwitz_zeta(-a, x_val + 1.0);
+            // Δ⁻¹ x^a: forward convention F(x+1)−F(x) = x^a, normalized F(1) = 0.
+            // F(x) = ζ(−a, 1) − ζ(−a, x).
+            let result = hurwitz_zeta(-a, 1.0) - hurwitz_zeta(-a, x_val);
             Ok(result)
         },
         // ψ(x) (digamma)
@@ -286,8 +363,8 @@ pub fn eval_normalized(
 
 /// The Abel-Plana engine for numerical indefinite summation.
 ///
-/// Computes the Nörlund principal solution F(x) such that F(x)−F(x−S) = f(x)
-/// and F(h) = 0, using Gauss-Legendre quadrature over the Abel-Plana contour.
+/// Computes the Nörlund principal solution F(x) such that F(x+S)−F(x) = f(x)
+/// and F(h) = 0, using adaptive quadrature over the Abel-Plana contour.
 ///
 /// ## Feature Gate
 ///
@@ -476,8 +553,114 @@ pub fn series_antidiff(
 }
 
 // ============================================================================
+// Unified Numerical Evaluation Pipeline
+// ============================================================================
+
+/// Computes Taylor coefficients c_m = f^(m)(p)/m! numerically via forward differences.
+///
+/// Evaluates f at `n_terms` equally-spaced points `p, p+h, ..., p+(n`terms-1)*h`
+/// and applies the Newton forward-difference formula to approximate each coefficient.
+///
+/// # Arguments
+///
+/// * `expr` — Symbolic expression representing f.
+/// * `var` — The variable name.
+/// * `center` — Expansion point p.
+/// * `n_terms` — Number of Taylor terms to compute.
+#[must_use]
+pub fn compute_taylor_coeffs_numerical(
+    expr: &Expr,
+    var: &str,
+    center: f64,
+    n_terms: usize,
+) -> Vec<f64> {
+    let h = 1e-3;
+    let mut diffs: Vec<f64> = (0..n_terms)
+        .map(|k| eval_expr_single(expr, var, center + k as f64 * h).unwrap_or(f64::NAN))
+        .collect();
+
+    let mut coeffs = Vec::with_capacity(n_terms);
+    let mut h_pow = 1.0_f64;
+    let mut fact = 1.0_f64;
+
+    for m in 0..n_terms {
+        if m > 0 {
+            h_pow *= h;
+            fact *= m as f64;
+            for k in 0..(n_terms - m) {
+                diffs[k] = diffs[k + 1] - diffs[k];
+            }
+        }
+        coeffs.push(diffs[0] / (h_pow * fact));
+    }
+
+    coeffs
+}
+
+/// Evaluates the indefinite sum F(x) - F(h) using a three-strategy cascade:
+///
+/// 1. **Closed-form** symbolic rules (always tried first).
+/// 2. **Abel-Plana** numerical integration (requires `compute` feature).
+/// 3. **Series expansion** fallback via Taylor coefficients + Hurwitz zeta.
+///
+/// # Errors
+///
+/// Returns an error string if all strategies fail or produce invalid results.
+pub fn eval_indefinite_sum_numerical(
+    expr: &Expr,
+    var: &str,
+    x_val: f64,
+    config: &IndefiniteSumConfig,
+) -> Result<f64, String> {
+    let h = config.h;
+
+    // Strategy 1: closed-form symbolic rules
+    if let Some(anti_diff) = try_closed_form_sum(expr, var) {
+        let fx = eval_antidiff(&anti_diff, var, x_val)?;
+        let fh = eval_antidiff(&anti_diff, var, h)?;
+        return Ok(fx - fh);
+    }
+
+    // Strategy 2: Abel-Plana numerical integration
+    #[cfg(feature = "compute")]
+    {
+        let engine = AbelPlanaEngine::new(expr.clone(), var.to_string(), config.clone());
+        if let Ok(val) = engine.eval(x_val) {
+            return Ok(val);
+        }
+    }
+
+    // Strategy 3: Taylor series + Hurwitz zeta (expand around h)
+    let coeffs = compute_taylor_coeffs_numerical(expr, var, h, 8);
+    if coeffs.iter().any(|c| c.is_nan() || c.is_infinite()) {
+        return Err(format!(
+            "series fallback: Taylor coefficients invalid near x={h}"
+        ));
+    }
+    // series_antidiff(coeffs, p, z) is already normalized to zero at z = p = h
+    Ok(series_antidiff(&coeffs, h, x_val))
+}
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
+
+/// Returns `true` if `expr` is exactly the variable `var`, handling `Expr::Dag`
+/// wrappers that `Expr::new_variable` produces.
+fn is_pure_var(
+    expr: &Expr,
+    var: &str,
+) -> bool {
+    match expr {
+        | Expr::Variable(v) => v == var,
+        | Expr::Dag(node) => {
+            node.to_expr()
+                .map(|e| matches!(e, Expr::Variable(v) if v == var))
+                .unwrap_or(false)
+        },
+        | _ => false,
+    }
+}
 
 /// Returns `true` if the expression contains the named variable.
 #[must_use]
