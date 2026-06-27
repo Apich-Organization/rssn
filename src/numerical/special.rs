@@ -847,3 +847,180 @@ pub fn softplus(x: f64) -> f64 {
         x.exp().ln_1p()
     }
 }
+
+/// Computes the n-th Bernoulli number B_n.
+#[must_use]
+pub fn bernoulli_number(n: u32) -> f64 {
+    // Precomputed first few Bernoulli numbers
+    let precomputed = [
+        1.0,               // B_0
+        -0.5,              // B_1
+        1.0 / 6.0,         // B_2
+        0.0,               // B_3
+        -1.0 / 30.0,       // B_4
+        0.0,               // B_5
+        1.0 / 42.0,        // B_6
+        0.0,               // B_7
+        -1.0 / 30.0,       // B_8
+        0.0,               // B_9
+        5.0 / 66.0,        // B_10
+        0.0,               // B_11
+        -691.0 / 2730.0,   // B_12
+        0.0,               // B_13
+        7.0 / 6.0,         // B_14
+        0.0,               // B_15
+        -3617.0 / 510.0,   // B_16
+        0.0,               // B_17
+        43867.0 / 798.0,   // B_18
+        0.0,               // B_19
+        -174611.0 / 330.0, // B_20
+    ];
+
+    if (n as usize) < precomputed.len() {
+        return precomputed[n as usize];
+    }
+
+    if n % 2 == 1 {
+        return 0.0;
+    }
+
+    // Dynamic computation using recurrence:
+    // B_m = -1/(m+1) * Σ_{k=0}^{m-1} (m+1 choose k) B_k
+    let mut b = vec![0.0; (n + 1) as usize];
+    for i in 0..precomputed.len() {
+        b[i] = precomputed[i];
+    }
+
+    for m in precomputed.len()..=(n as usize) {
+        if m % 2 == 1 {
+            b[m] = 0.0;
+            continue;
+        }
+        let mut sum = 0.0;
+        let m_plus_1 = (m + 1) as u64;
+        for k in 0..m {
+            sum += binomial(m_plus_1, k as u64) * b[k];
+        }
+        b[m] = -sum / (m_plus_1 as f64);
+    }
+
+    b[n as usize]
+}
+
+/// Computes the n-th Bernoulli polynomial B_n(x).
+#[must_use]
+pub fn bernoulli_poly(
+    n: u32,
+    x: f64,
+) -> f64 {
+    if n == 0 {
+        return 1.0;
+    }
+    let mut sum = 0.0;
+    for k in 0..=n {
+        let coeff = binomial(n as u64, k as u64) * bernoulli_number(k);
+        sum += coeff * x.powi((n - k) as i32);
+    }
+    sum
+}
+
+/// Computes the Hurwitz zeta function ζ(s, q) for real s and q.
+/// Defined as Σ_{n=0}^∞ 1/(n+q)^s.
+#[must_use]
+pub fn hurwitz_zeta(
+    s: f64,
+    q: f64,
+) -> f64 {
+    if q <= 0.0 {
+        // If q is a non-positive integer, the function is undefined/infinite.
+        if q == q.round() {
+            return f64::NAN;
+        }
+        // Use the recurrence relation: ζ(s, q) = ζ(s, q+1) + q^(-s)
+        return hurwitz_zeta(s, q + 1.0) + q.powf(-s);
+    }
+
+    if (s - 1.0).abs() < 1e-15 {
+        return f64::INFINITY;
+    }
+
+    // If s is a non-positive integer, we can use Bernoulli polynomials:
+    // ζ(-n, q) = -B_{n+1}(q) / (n+1)
+    if s <= 0.0 && s == s.round() {
+        let n = (-s) as u32;
+        return -bernoulli_poly(n + 1, q) / f64::from(n + 1);
+    }
+
+    // For other cases, use Euler-Maclaurin summation.
+    // Choose M such that M + q >= 15.0
+    let m = if q >= 15.0 {
+        0
+    } else {
+        (15.0 - q).ceil() as usize
+    };
+
+    let mut sum = 0.0;
+    for j in 0..m {
+        sum += (j as f64).mul_add(1.0, q).powf(-s);
+    }
+
+    let s_val = (m as f64) + q;
+
+    // Euler-Maclaurin terms:
+    // term_1 = S^(1-s) / (s - 1)
+    let term1 = s_val.powf(1.0 - s) / (s - 1.0);
+    // term_2 = S^(-s) / 2
+    let term2 = 0.5 * s_val.powf(-s);
+
+    // Sum the Bernoulli number correction terms
+    let bernoulli_coeffs = [
+        1.0 / 12.0,                    // B_2 / 2!
+        -1.0 / 720.0,                  // B_4 / 4!
+        1.0 / 30240.0,                 // B_6 / 6!
+        -1.0 / 1209600.0,              // B_8 / 8!
+        1.0 / 47900160.0,              // B_10 / 10!
+        -691.0 / 1307674368000.0,      // B_12 / 12!
+        1.0 / 74724249600.0,           // B_14 / 14!
+        -3617.0 / 10670622842880000.0, // B_16 / 16!
+    ];
+
+    let mut correction = 0.0;
+    let mut rising_factorial = s;
+    let mut s_pow = s_val.powf(-s - 1.0); // S^(-s-1)
+    let s_val_sq_inv = 1.0 / (s_val * s_val);
+
+    for &coeff in &bernoulli_coeffs {
+        let term = coeff * rising_factorial * s_pow;
+        if !term.is_finite() || term.abs() < 1e-16 * (sum + term1 + term2).abs() {
+            if term.is_finite() {
+                correction += term;
+            }
+            break;
+        }
+        correction += term;
+        rising_factorial *= (s + 1.0) * (s + 2.0);
+        s_pow *= s_val_sq_inv;
+    }
+
+    sum + term1 + term2 + correction
+}
+
+/// Computes the polygamma function ψ^(n)(z) for real z > 0 and integer n >= 0.
+/// The 0-th polygamma is the digamma function.
+#[must_use]
+pub fn polygamma_numerical(
+    n: u32,
+    z: f64,
+) -> f64 {
+    if n == 0 {
+        return digamma_numerical(z);
+    }
+
+    if z <= 0.0 {
+        return f64::NAN;
+    }
+
+    let factor = if n % 2 == 0 { -1.0 } else { 1.0 };
+    let n_fact = factorial(n as u64);
+    factor * n_fact * hurwitz_zeta(f64::from(n + 1), z)
+}

@@ -18,6 +18,8 @@ pub mod fractal_geometry_and_chaos;
 pub mod functional_analysis;
 pub mod geometric_algebra;
 pub mod graph;
+/// Indefinite summation (anti-difference) and indefinite products.
+pub mod indefinite_sum;
 pub mod integrate;
 pub mod interpolate;
 pub mod matrix;

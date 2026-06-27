@@ -1,7 +1,8 @@
-use rssn::{
-    Expr, definite_integrate, output::typst::to_typst, parse_expr,
-    prelude::numeric_evaluate_numerical,
-};
+use rssn::Expr;
+use rssn::definite_integrate;
+use rssn::output::typst::to_typst;
+use rssn::parse_expr;
+use rssn::prelude::numeric_evaluate_numerical;
 
 #[test]
 fn test_definite_integral_parsed_expressions() {
