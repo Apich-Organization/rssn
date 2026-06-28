@@ -272,6 +272,16 @@ pub fn try_closed_form_sum(
             )))))
         },
 
+        // ---- x (bare variable = x^1) ----
+        // Δ⁻¹ x = ζ(−1,1) − ζ(−1,x) = x(x−1)/2
+        | Expr::Variable(v) if v == var => {
+            Some(Expr::BinaryList(
+                "hurwitz_zeta_antidiff".to_string(),
+                Arc::new(Expr::Constant(1.0)),
+                Arc::new(Expr::new_variable(var)),
+            ))
+        },
+
         // ---- x^n (integer power) via Hurwitz zeta ----
         // Δ⁻¹ x^a = ζ(−a, 1) − ζ(−a, x), satisfying F(x+1)−F(x) = x^a with F(1)=0.
         // Represented symbolically as BinaryList("hurwitz_zeta_antidiff", a, x);
