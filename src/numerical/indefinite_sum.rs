@@ -422,6 +422,9 @@ impl AbelPlanaEngine {
         x: f64,
     ) -> Result<f64, String> {
         let step = self.config.step;
+        if step == 0.0 {
+            return Err("Step size cannot be zero".to_string());
+        }
         let h = self.config.h;
         let tol = self.config.tolerance;
 
