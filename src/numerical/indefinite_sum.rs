@@ -194,7 +194,7 @@ pub fn try_closed_form_sum(
 
     match body {
         // ---- a^x ----
-        | Expr::Power(base, exp) if is_pure_var(exp.as_ref(), var) => {
+        | Expr::Power(base, exp) if is_pure_var(exp.as_ref(), var) && !expr_contains_var(base, var) => {
             // f(x) = base^x  →  Δ⁻¹ f(x) = base^x / (base − 1)
             // Only valid if base ≠ 1 (i.e., not a constant 1)
             let a = base.as_ref().clone();
