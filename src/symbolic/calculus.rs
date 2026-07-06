@@ -2328,25 +2328,19 @@ pub(crate) fn integrate_by_rules(
         | Expr::Neg(a) => Some(Expr::new_neg(integrate(a, var, None, None))),
         | Expr::Mul(a, b) => {
             // Constant multiple rule: ∫ c·f(x) dx = c·∫ f(x) dx
-            if let Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) = &**a {
-                if !contains_var(a, var) {
-                    return Some(Expr::new_mul(
-                        a.as_ref().clone(),
-                        integrate(b, var, None, None),
-                    ));
-                }
+            if !contains_var(a, var) {
+                return Some(Expr::new_mul(
+                    a.as_ref().clone(),
+                    integrate(b, var, None, None),
+                ));
+            } else if !contains_var(b, var) {
+                return Some(Expr::new_mul(
+                    b.as_ref().clone(),
+                    integrate(a, var, None, None),
+                ));
+            } else {
+                return None;
             }
-
-            if let Expr::Constant(_) | Expr::BigInt(_) | Expr::Rational(_) = &**b {
-                if !contains_var(b, var) {
-                    return Some(Expr::new_mul(
-                        b.as_ref().clone(),
-                        integrate(a, var, None, None),
-                    ));
-                }
-            }
-
-            None
         },
         | _ => None,
     }
