@@ -223,6 +223,10 @@ pub enum DagOp {
     Product(String),
     /// Asymptotic expansion.
     AsymptoticExpansion(String),
+    /// Indefinite sum (anti-difference).
+    IndefiniteSum(String),
+    /// Indefinite product.
+    IndefiniteProduct(String),
     /// Secant function.
     Sec,
     /// Cosecant function.

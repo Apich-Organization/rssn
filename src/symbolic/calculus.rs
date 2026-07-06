@@ -158,6 +158,26 @@ pub fn substitute(
                     children_pending = true;
                 }
             },
+            | Expr::IndefiniteSum {
+                body,
+                var: sum_var,
+                step,
+            }
+            | Expr::IndefiniteProduct {
+                body,
+                var: sum_var,
+                step,
+            } => {
+                // `sum_var` binds the summation variable — don't substitute into body if it shadows `var`
+                if sum_var != var && !cache.contains_key(body.as_ref()) {
+                    stack.push(body.as_ref().clone());
+                    children_pending = true;
+                }
+                if !cache.contains_key(step.as_ref()) {
+                    stack.push(step.as_ref().clone());
+                    children_pending = true;
+                }
+            },
             | _ => { // Terminals or expressions with no children to substitute into
             },
         }
@@ -239,6 +259,40 @@ pub fn substitute(
                     var: sum_var.clone(),
                     from: Arc::new(new_from),
                     to: Arc::new(new_to),
+                }
+            },
+            | Expr::IndefiniteSum {
+                body,
+                var: sum_var,
+                step,
+            } => {
+                let new_step = Arc::new(cache[step.as_ref()].clone());
+                let new_body = if sum_var == var {
+                    body.clone()
+                } else {
+                    Arc::new(cache[body.as_ref()].clone())
+                };
+                Expr::IndefiniteSum {
+                    body: new_body,
+                    var: sum_var.clone(),
+                    step: new_step,
+                }
+            },
+            | Expr::IndefiniteProduct {
+                body,
+                var: sum_var,
+                step,
+            } => {
+                let new_step = Arc::new(cache[step.as_ref()].clone());
+                let new_body = if sum_var == var {
+                    body.clone()
+                } else {
+                    Arc::new(cache[body.as_ref()].clone())
+                };
+                Expr::IndefiniteProduct {
+                    body: new_body,
+                    var: sum_var.clone(),
+                    step: new_step,
                 }
             },
             | _ => processed_expr.clone(),

@@ -237,6 +237,20 @@ pub(crate) fn build_expr_from_op_and_children(
         | DagOp::AsymptoticExpansion(s) => {
             Expr::AsymptoticExpansion(arc!(0), s.clone(), arc!(1), arc!(2))
         },
+        | DagOp::IndefiniteSum(s) => {
+            Expr::IndefiniteSum {
+                body: arc!(0),
+                var: s.clone(),
+                step: arc!(1),
+            }
+        },
+        | DagOp::IndefiniteProduct(s) => {
+            Expr::IndefiniteProduct {
+                body: arc!(0),
+                var: s.clone(),
+                step: arc!(1),
+            }
+        },
         | DagOp::Sec => Expr::Sec(arc!(0)),
         | DagOp::Csc => Expr::Csc(arc!(0)),
         | DagOp::Cot => Expr::Cot(arc!(0)),
@@ -497,6 +511,20 @@ pub(crate) fn simplify_with_cache(
                     from: Arc::new(simplify_with_cache(from, cache)),
                     to: Arc::new(simplify_with_cache(to, cache)),
                 }
+            },
+            | Expr::IndefiniteSum { body, var, step } => {
+                Expr::new_indefinite_sum(
+                    simplify_with_cache(body, cache),
+                    var.clone(),
+                    simplify_with_cache(step, cache),
+                )
+            },
+            | Expr::IndefiniteProduct { body, var, step } => {
+                Expr::new_indefinite_product(
+                    simplify_with_cache(body, cache),
+                    var.clone(),
+                    simplify_with_cache(step, cache),
+                )
             },
             // N-ary list variants
             | Expr::AddList(terms) => {
