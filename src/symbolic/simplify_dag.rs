@@ -2422,9 +2422,21 @@ pub(crate) fn apply_rules_indefinite_sum(
     let body_expr = body_node.to_expr().ok()?;
     let step_expr = step_node.to_expr().ok()?;
 
+    let is_step_zero = match &step_expr {
+        | Expr::Constant(c) => c.abs() < 1e-9,
+        | Expr::BigInt(i) => i.is_zero(),
+        | Expr::Rational(r) => r.is_zero(),
+        | _ => false,
+    };
+
+    if is_step_zero {
+        return None;
+    }
+
     let is_step_one = match &step_expr {
         | Expr::Constant(c) => (*c - 1.0).abs() < 1e-9,
         | Expr::BigInt(i) => i.is_one(),
+        | Expr::Rational(r) => r.is_one(),
         | _ => false,
     };
 

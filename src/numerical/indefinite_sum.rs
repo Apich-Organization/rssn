@@ -499,6 +499,9 @@ pub fn eval_indefinite_product_numerical(
     step: f64,
 ) -> Result<f64, String> {
     let n_steps = ((x_val - h) / step).round() as i64;
+    if step == 0.0 {
+        return Err("Step size cannot be zero".to_string());
+    }
     let mut log_sum = 0.0_f64;
 
     if n_steps >= 0 {
