@@ -2472,6 +2472,17 @@ pub(crate) fn apply_rules_indefinite_product(
     let body_expr = body_node.to_expr().ok()?;
     let step_expr = step_node.to_expr().ok()?;
 
+    let is_step_zero = match &step_expr {
+        | Expr::Constant(c) => c.abs() < 1e-9,
+        | Expr::BigInt(i) => i.is_zero(),
+        | Expr::Rational(r) => r.is_zero(),
+        | _ => false,
+    };
+
+    if is_step_zero {
+        return None;
+    }
+
     // Check if body is a constant (doesn't contain var)
     if !crate::numerical::indefinite_sum::expr_contains_var(&body_expr, var) {
         // c^(x/S)
