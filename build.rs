@@ -1,11 +1,11 @@
 use std::env;
 
-use vergen_gitcl::BuildBuilder;
-use vergen_gitcl::CargoBuilder;
+use vergen_gitcl::Build;
+use vergen_gitcl::Cargo;
 use vergen_gitcl::Emitter;
-use vergen_gitcl::GitclBuilder;
-use vergen_gitcl::RustcBuilder;
-use vergen_gitcl::SysinfoBuilder;
+use vergen_gitcl::Gitcl;
+use vergen_gitcl::Rustc;
+use vergen_gitcl::Sysinfo;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     const ENV_VAR_NAME: &str = "DEV";
@@ -14,19 +14,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut emitter = Emitter::default();
 
-    emitter.add_instructions(&BuildBuilder::all_build()?)?;
-
-    emitter.add_instructions(&CargoBuilder::all_cargo()?)?;
-
-    let git = GitclBuilder::default().all().dirty(true).build()?;
-
-    emitter.add_instructions(&git)?;
-
-    emitter.add_instructions(&RustcBuilder::all_rustc()?)?;
-
-    emitter.add_instructions(&SysinfoBuilder::all_sysinfo()?)?;
-
-    emitter.emit()?;
+    let build = Build::all_build();
+    let gitcl = Gitcl::all_git();
+    let si = Sysinfo::all_sysinfo();
+    let rustc = Rustc::all_rustc();
+    let cargo = Cargo::all_cargo();
+    emitter
+        .add_instructions(&gitcl)?
+        .add_instructions(&build)?
+        .add_instructions(&si)?
+        .add_instructions(&rustc)?
+        .add_instructions(&cargo)?
+        .emit()?;
 
     // 1. Attempt to get the environment variable's value.
     match env::var(ENV_VAR_NAME) {
