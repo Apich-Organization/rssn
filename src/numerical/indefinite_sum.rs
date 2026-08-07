@@ -194,7 +194,9 @@ pub fn try_closed_form_sum(
 
     match body {
         // ---- a^x ----
-        | Expr::Power(base, exp) if is_pure_var(exp.as_ref(), var) && !expr_contains_var(base, var) => {
+        | Expr::Power(base, exp)
+            if is_pure_var(exp.as_ref(), var) && !expr_contains_var(base, var) =>
+        {
             // f(x) = base^x  →  Δ⁻¹ f(x) = base^x / (base − 1)
             // Only valid if base ≠ 1 (i.e., not a constant 1)
             let a = base.as_ref().clone();
@@ -286,7 +288,9 @@ pub fn try_closed_form_sum(
         // Δ⁻¹ x^a = ζ(−a, 1) − ζ(−a, x), satisfying F(x+1)−F(x) = x^a with F(1)=0.
         // Represented symbolically as BinaryList("hurwitz_zeta_antidiff", a, x);
         // eval_antidiff evaluates to hurwitz_zeta(−a, 1) − hurwitz_zeta(−a, x).
-        | Expr::Power(base, exp) if is_pure_var(base.as_ref(), var) && !expr_contains_var(exp, var) => {
+        | Expr::Power(base, exp)
+            if is_pure_var(base.as_ref(), var) && !expr_contains_var(exp, var) =>
+        {
             Some(Expr::BinaryList(
                 "hurwitz_zeta_antidiff".to_string(),
                 exp.clone(),
