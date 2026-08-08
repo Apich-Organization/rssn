@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rustc = Rustc::all_rustc();
     let cargo = Cargo::all_cargo();
     emitter
-        //.add_instructions(&gitcl)?
+        .add_instructions(&gitcl)?
         .add_instructions(&build)?
         .add_instructions(&si)?
         .add_instructions(&rustc)?
