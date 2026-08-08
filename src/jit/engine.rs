@@ -7,6 +7,8 @@ use std::sync::atomic::Ordering;
 #[cfg(feature = "jit")]
 use cranelift_codegen::Context;
 #[cfg(feature = "jit")]
+use cranelift_codegen::cranelift_entity::EntityRef;
+#[cfg(feature = "jit")]
 use cranelift_codegen::ir::AbiParam;
 #[cfg(feature = "jit")]
 use cranelift_codegen::ir::InstBuilder;
