@@ -1,0 +1,151 @@
+//! Calculus: the operators of continuous analysis and their reduction
+//! kernels.
+//!
+//! `diff(f, x)` is an *identity transformation request*: a heavy node equal
+//! to the derivative of `f`. Kernels compete to reduce it — structurally
+//! when every operator in `f` has known partial derivatives, numerically by
+//! finite differences when a numeric answer is wanted and the structural
+//! route is blocked.
+
+mod diff;
+mod integrate;
+#[cfg(test)]
+mod tests;
+
+use crate::graph::Arity;
+use crate::graph::Facts;
+use crate::graph::OnReals;
+use crate::graph::OpDescriptor;
+use crate::graph::OpFlags;
+use crate::graph::Pat;
+use crate::graph::RuleError;
+use crate::graph::RuleSet;
+use crate::graph::Tier;
+use crate::graph::VarNames;
+use crate::graph::rule::Installer;
+
+use super::elementary::elementary;
+use super::poly::poly;
+
+pub use diff::Partials;
+
+/// The calculus rule set.
+#[must_use]
+pub fn calculus() -> RuleSet {
+    RuleSet::new("calculus", install).needs(elementary()).needs(poly())
+}
+
+/// Attaches the partial derivatives of operator `name`, one pattern per
+/// argument, written over the variables `?a`, `?b`, `?c`, `?d`.
+///
+/// Other rule sets call this to teach differentiation about their own
+/// operators.
+///
+/// # Errors
+/// Fails when the operator is unknown or a pattern does not parse.
+pub(crate) fn partials(
+    i: &mut Installer<'_>,
+    name: &str,
+    texts: &[&str],
+) -> Result<(), RuleError> {
+    let invalid = |reason: &'static str| RuleError::Invalid {
+        rule: format!("d/{name}"),
+        reason,
+    };
+    let op = i
+        .graph()
+        .ops()
+        .lookup(name)
+        .ok_or_else(|| invalid("unknown operator"))?;
+    let mut patterns = Vec::with_capacity(texts.len());
+    for text in texts {
+        let mut vars = VarNames::default();
+        for v in ["a", "b", "c", "d"] {
+            vars.index(v);
+        }
+        let pat = Pat::parse(text, i.graph(), &mut vars).map_err(|error| RuleError::Parse {
+            rule: format!("d/{name}: {text}"),
+            error,
+        })?;
+        if vars.len() > 4 {
+            return Err(invalid("partial derivatives may only use ?a, ?b, ?c, ?d"));
+        }
+        patterns.push(pat);
+    }
+    i.graph().ops_mut().set_attr(op, Partials(patterns));
+    Ok(())
+}
+
+fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
+    let diff_op = i.op(OpDescriptor::new("diff", Arity::Fixed(2))
+        .flags(OpFlags::HEAVY)
+        .cost(100))?;
+
+    partials(i, "pow", &["?b * ?a^(?b - 1)", "?a^?b * ln(?a)"])?;
+    partials(i, "exp", &["exp(?a)"])?;
+    partials(i, "ln", &["1/?a"])?;
+    partials(i, "sin", &["cos(?a)"])?;
+    partials(i, "cos", &["-sin(?a)"])?;
+    partials(i, "tan", &["1 + tan(?a)^2"])?;
+    partials(i, "asin", &["(1 - ?a^2)^(-1/2)"])?;
+    partials(i, "acos", &["-(1 - ?a^2)^(-1/2)"])?;
+    partials(i, "atan", &["1/(1 + ?a^2)"])?;
+    partials(i, "sinh", &["cosh(?a)"])?;
+    partials(i, "cosh", &["sinh(?a)"])?;
+    partials(i, "tanh", &["1 - tanh(?a)^2"])?;
+    partials(i, "sqrt", &["1/(2*sqrt(?a))"])?;
+    partials(i, "abs", &["?a/abs(?a)"])?;
+
+    i.kernel(
+        "calculus/diff",
+        Tier::Reduce,
+        diff::Differentiate { diff: diff_op },
+    );
+    i.kernel(
+        "calculus/diff-numeric",
+        Tier::Reduce,
+        diff::FiniteDifference { diff: diff_op },
+    );
+
+    // Integration. `integral(f, x)` is an antiderivative (x stays free);
+    // `defint(f, x, a, b)` binds x inside f.
+    let integral = i.op(OpDescriptor::new("integral", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
+    let defint =
+        i.op(OpDescriptor::new("defint", Arity::Fixed(4)).flags(OpFlags::HEAVY).cost(100).binder(1, 0b1))?;
+    let infinity = i.op(OpDescriptor::new("oo", Arity::Fixed(0)).eval(|_| f64::INFINITY))?;
+    i.graph().ops_mut().set_attr(infinity, OnReals(Facts::POSITIVE));
+    let lookup = |i: &mut Installer<'_>, name: &'static str| {
+        i.graph().ops().lookup(name).ok_or(RuleError::Invalid {
+            rule: format!("calculus needs `{name}`"),
+            reason: "operator of the elementary rule set is missing",
+        })
+    };
+    let functions = integrate::Functions {
+        diff: diff_op,
+        exp: lookup(i, "exp")?,
+        ln: lookup(i, "ln")?,
+        sin: lookup(i, "sin")?,
+        cos: lookup(i, "cos")?,
+        tan: lookup(i, "tan")?,
+        asin: lookup(i, "asin")?,
+        acos: lookup(i, "acos")?,
+        atan: lookup(i, "atan")?,
+        sinh: lookup(i, "sinh")?,
+        cosh: lookup(i, "cosh")?,
+        tanh: lookup(i, "tanh")?,
+        sqrt: lookup(i, "sqrt")?,
+    };
+    i.kernel("calculus/integral", Tier::Reduce, integrate::Antiderivative { integral, functions });
+    i.kernel("calculus/defint", Tier::Reduce, integrate::Definite { defint, functions });
+    i.kernel("calculus/quadrature", Tier::Reduce, integrate::Quadrature { defint });
+    i.rewrites(
+        Tier::Reduce,
+        &[
+            // The fundamental theorem, in the direction that removes both
+            // requests at once.
+            "calculus/ftc: diff(integral(?f, ?x), ?x) => ?f",
+            "calculus/defint-empty: defint(?f, ?x, ?a, ?a) => 0",
+        ],
+    )?;
+    Ok(())
+}
