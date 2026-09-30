@@ -15,7 +15,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::cos;
 use crate::symbolic::elementary::sin;
 use crate::symbolic::elementary::tan;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::vector::Vector;
 
 /// Generates a 3x3 2D translation matrix.

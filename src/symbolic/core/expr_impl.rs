@@ -1927,3 +1927,27 @@ pub(crate) fn get_numeric_value_efficient(e: &Expr) -> Option<f64> {
         | _ => None,
     }
 }
+
+impl From<num_bigint::BigInt> for Expr {
+    fn from(val: num_bigint::BigInt) -> Self {
+        Self::BigInt(val)
+    }
+}
+
+impl From<i64> for Expr {
+    fn from(val: i64) -> Self {
+        Self::BigInt(num_bigint::BigInt::from(val))
+    }
+}
+
+impl From<i32> for Expr {
+    fn from(val: i32) -> Self {
+        Self::BigInt(num_bigint::BigInt::from(val))
+    }
+}
+
+impl From<&Expr> for Expr {
+    fn from(val: &Expr) -> Self {
+        val.clone()
+    }
+}

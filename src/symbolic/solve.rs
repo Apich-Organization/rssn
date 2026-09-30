@@ -64,7 +64,7 @@ use crate::symbolic::polynomial::expr_to_sparse_poly;
 use crate::symbolic::polynomial::sparse_poly_to_expr;
 use crate::symbolic::simplify::collect_and_order_terms;
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Solves a single equation for a given variable.
 ///
@@ -87,10 +87,26 @@ pub fn solve(
     expr: &Expr,
     var: &str,
 ) -> Vec<Expr> {
+    let solve_expr = Expr::Solve(Arc::new(expr.clone()), var.to_string());
+    let res = crate::symbolic::egraph::simplify(&solve_expr);
+    match res {
+        Expr::Solutions(sols) => sols,
+        Expr::NoSolution => vec![],
+        Expr::Solve(eq, _) => solve_internal(&eq, var),
+        other => vec![other],
+    }
+}
+
+/// Internal equation solver engine, invoked as an Oracle by `SolveOracleRule`.
+#[must_use]
+pub fn solve_internal(
+    expr: &Expr,
+    var: &str,
+) -> Vec<Expr> {
     let equation = if let Expr::Eq(left, right) = expr {
         simplify(&Expr::new_sub(left.clone(), right.clone()))
     } else {
-        expr.clone()
+        simplify(expr)
     };
 
     if let Some(solutions) = solve_polynomial(&equation, var) {
@@ -106,19 +122,37 @@ pub fn solve(
 
 /// Solves a system of multivariate equations.
 ///
-/// This function acts as a dispatcher, attempting to solve the system using different strategies:
-/// - **Substitution**: Iteratively solves for variables and substitutes them into other equations.
-/// - **Grobner Bases**: For polynomial systems, computes a Grobner basis to simplify the system.
-///
-/// # Arguments
-/// * `equations` - A slice of `Expr` representing the equations in the system.
-/// * `vars` - A slice of string slices representing the variables to solve for.
-///
-/// # Returns
-/// An `Option<Vec<(String, Expr)>>` containing a vector of `(variable_name, solution_expression)`
-/// pairs if a solution is found, or `None` if the system cannot be solved by the implemented methods.
+/// Dispatches through the E-Graph heuristic saturation pipeline with `GrobnerOracleRule` and substitution.
 #[must_use]
 pub fn solve_system(
+    equations: &[Expr],
+    vars: &[&str],
+) -> Option<Vec<(Expr, Expr)>> {
+    let var_exprs: Vec<Expr> = vars.iter().map(|v| Expr::Variable(v.to_string())).collect();
+    let call = Expr::NaryList(
+        "solve_system".to_string(),
+        vec![Expr::System(equations.to_vec()), Expr::Tuple(var_exprs)],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if let Expr::Tuple(pairs) = res {
+        let mut results = Vec::new();
+        for p in pairs {
+            if let Expr::Tuple(pair) = p {
+                if pair.len() == 2 {
+                    results.push((pair[0].clone(), pair[1].clone()));
+                }
+            }
+        }
+        if !results.is_empty() {
+            return Some(results);
+        }
+    }
+    solve_system_internal(equations, vars)
+}
+
+/// Internal multivariate system solver engine, invoked as an Oracle by `SolveOracleRule`.
+#[must_use]
+pub fn solve_system_internal(
     equations: &[Expr],
     vars: &[&str],
 ) -> Option<Vec<(Expr, Expr)>> {
@@ -579,7 +613,7 @@ pub(crate) fn solve_system_by_substitution(
     while progress && !remaining_eqs.is_empty() {
         progress = false;
 
-        let mut solved_eq_index: Option<usize> = None;
+        let mut candidate: Option<(usize, Expr, Vec<&str>)> = None;
 
         for (i, eq) in remaining_eqs.iter().enumerate() {
             let mut current_eq = eq.clone();
@@ -587,6 +621,7 @@ pub(crate) fn solve_system_by_substitution(
             for (solved_var, solution_expr) in &solutions {
                 current_eq = substitute(&current_eq, &solved_var.to_string(), solution_expr);
             }
+            current_eq = simplify(&current_eq);
 
             let remaining_vars: Vec<&str> = vars
                 .iter()
@@ -594,27 +629,37 @@ pub(crate) fn solve_system_by_substitution(
                 .copied()
                 .collect();
 
-            if remaining_vars.len() == 1 {
-                let var_to_solve = remaining_vars[0];
+            let eq_str = format!("{:?}", current_eq);
+            let vars_in_eq: Vec<&str> = remaining_vars
+                .iter()
+                .filter(|v| eq_str.contains(*v))
+                .copied()
+                .collect();
 
+            if vars_in_eq.len() == 1 {
+                candidate = Some((i, current_eq, vars_in_eq));
+                break;
+            } else if candidate.is_none() && !vars_in_eq.is_empty() {
+                candidate = Some((i, current_eq, vars_in_eq));
+            }
+        }
+
+        if let Some((idx, current_eq, vars_in_eq)) = candidate {
+            for var_to_solve in &vars_in_eq {
                 let mut new_solutions = solve(&current_eq, var_to_solve);
 
-                if !new_solutions.is_empty() {
-                    let solution = new_solutions.remove(0);
+                if !new_solutions.is_empty() && !matches!(&new_solutions[0], Expr::Solve(..)) {
+                    let solution = simplify(&new_solutions.remove(0));
 
                     solutions.insert(Expr::Variable(var_to_solve.to_string()), solution);
 
-                    solved_eq_index = Some(i);
+                    remaining_eqs.remove(idx);
 
                     progress = true;
 
                     break;
                 }
             }
-        }
-
-        if let Some(index) = solved_eq_index {
-            remaining_eqs.remove(index);
         }
     }
 
@@ -628,9 +673,17 @@ pub(crate) fn solve_system_by_substitution(
         let var_expr = Expr::Variable(var_name_str.to_string());
 
         if let Some(mut solution) = solutions.get(&var_expr).cloned() {
-            for (solved_var, sol_expr) in &solutions {
-                if solved_var != &var_expr {
-                    solution = substitute(&solution, &solved_var.to_string(), sol_expr);
+            let mut changed = true;
+            while changed {
+                changed = false;
+                for (solved_var, sol_expr) in &solutions {
+                    if solved_var != &var_expr {
+                        let new_sol = substitute(&solution, &solved_var.to_string(), sol_expr);
+                        if new_sol != solution {
+                            solution = new_sol;
+                            changed = true;
+                        }
+                    }
                 }
             }
 
@@ -1122,6 +1175,15 @@ pub(crate) fn solve_transcendental_pattern(
 
             Some(solve(&Expr::Eq(arg.clone(), Arc::new(log_sol)), var))
         },
+        | Expr::Log(arg) => {
+            let exp_sol = Expr::new_exp(const_part.clone());
+            Some(solve(&Expr::Eq(arg.clone(), Arc::new(exp_sol)), var))
+        },
+        | Expr::Abs(arg) => {
+            let sol1 = solve(&Expr::Eq(arg.clone(), Arc::new(const_part.clone())), var);
+            let sol2 = solve(&Expr::Eq(arg.clone(), Arc::new(Expr::new_neg(const_part.clone()))), var);
+            Some([sol1, sol2].concat())
+        },
         | _ => None,
     }
 }
@@ -1256,6 +1318,10 @@ pub(crate) fn collect_coeffs(
             } else {
                 None
             }
+        },
+        | Expr::Div(a, b) if !contains_var(b, var) => {
+            let inv_b = simplify(&Expr::new_div(factor.clone(), b.as_ref().clone()));
+            collect_coeffs(a, var, coeffs, &inv_b)
         },
         | Expr::Neg(e) => collect_coeffs(e, var, coeffs, &simplify(&Expr::new_neg(factor.clone()))),
         | _ if !contains_var(expr, var) => {

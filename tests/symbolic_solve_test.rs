@@ -1,6 +1,3 @@
-use std::sync::Arc;
-
-use num_traits::ToPrimitive;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::numeric::evaluate_numerical;
 use rssn::symbolic::solve::solve;
@@ -146,22 +143,6 @@ fn test_solve_cubic() {
     let x = Expr::new_variable("x");
 
     let eq = Expr::new_add(
-        Expr::new_sub(
-            Expr::new_add(
-                Expr::new_pow(x.clone(), Expr::new_constant(3.0)),
-                Expr::new_mul(
-                    Expr::new_constant(-6.0),
-                    Expr::new_pow(x.clone(), Expr::new_constant(2.0)),
-                ),
-            ),
-            Expr::new_mul(Expr::new_constant(-11.0), x.clone()),
-        ),
-        Expr::new_constant(-6.0),
-    );
-
-    // Wait, x^3 - 6x^2 + 11x - 6 = 0
-    // + 11x, not -11x.
-    let eq = Expr::new_add(
         Expr::new_add(
             Expr::new_add(
                 Expr::new_pow(x.clone(), Expr::new_constant(3.0)),
@@ -178,8 +159,6 @@ fn test_solve_cubic() {
     let solutions = solve(&eq, "x");
 
     assert_eq!(solutions.len(), 3);
-
-    eprintln!("Solutions: {:?}", solutions);
 
     // Solutions might be in any order
     let mut vals: Vec<f64> = solutions

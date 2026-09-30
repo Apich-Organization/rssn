@@ -7,7 +7,7 @@
 use std::sync::Arc;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Computes the Dirac adjoint of a fermion field: `ψ̄ = ψ†γ⁰`.
 #[must_use]

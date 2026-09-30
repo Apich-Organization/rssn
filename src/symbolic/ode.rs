@@ -20,7 +20,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::polynomial::contains_var;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify::pattern_match;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_linear_system;
 use crate::symbolic::transforms;
@@ -65,14 +65,20 @@ pub(crate) fn parse_ode(
             return;
         }
 
-        if let Expr::Add(a, b) = expr {
+        if let Expr::Eq(a, b) = expr {
+            collect_terms(a, func, var, coeffs, remaining);
+
+            let neg_b = simplify(&Expr::new_neg(b.as_ref().clone()));
+
+            collect_terms(&neg_b, func, var, coeffs, remaining);
+        } else if let Expr::Add(a, b) = expr {
             collect_terms(a, func, var, coeffs, remaining);
 
             collect_terms(b, func, var, coeffs, remaining);
         } else if let Expr::Sub(a, b) = expr {
             collect_terms(a, func, var, coeffs, remaining);
 
-            let neg_b = simplify(&Expr::new_neg(b.clone()));
+            let neg_b = simplify(&Expr::new_neg(b.as_ref().clone()));
 
             collect_terms(&neg_b, func, var, coeffs, remaining);
         } else {
@@ -88,12 +94,18 @@ pub(crate) fn parse_ode(
         }
     }
 
+    let normalized = if let Expr::Eq(a, b) = equation {
+        simplify(&Expr::new_sub(a.as_ref().clone(), b.as_ref().clone()))
+    } else {
+        equation.clone()
+    };
+
     let mut coeffs = HashMap::new();
 
     let mut remaining_expr = Expr::Constant(0.0);
 
     collect_terms(
-        &simplify(&equation.clone()),
+        &normalized,
         func,
         var,
         &mut coeffs,
@@ -134,6 +146,11 @@ pub(crate) fn get_term_order_and_coeff(
             let (order, coeff) = get_term_order_and_coeff(inner, func, var);
 
             (order + 1, coeff)
+        },
+        | Expr::Neg(inner) => {
+            let (order, coeff) = get_term_order_and_coeff(inner, func, var);
+
+            (order, simplify(&Expr::new_neg(coeff)))
         },
         | Expr::Mul(a, b) => {
             let (order_a, _) = get_term_order_and_coeff(a, func, var);
@@ -179,6 +196,7 @@ pub(crate) fn find_constants(
         | Expr::Dag(node) => {
             find_constants(&node.to_expr().expect("Found Constants"), constants);
         },
+        | Expr::Eq(a, b)
         | Expr::Add(a, b)
         | Expr::Sub(a, b)
         | Expr::Mul(a, b)
@@ -242,6 +260,7 @@ pub(crate) fn find_derivatives(
                 derivatives,
             );
         },
+        | Expr::Eq(a, b)
         | Expr::Add(a, b)
         | Expr::Sub(a, b)
         | Expr::Mul(a, b)
@@ -285,7 +304,21 @@ pub fn solve_ode(
     var: &str,
     initial_conditions: Option<&[(Expr, u32, Expr)]>,
 ) -> Expr {
-    let general_solution_eq = solve_ode_system(std::slice::from_ref(ode), &[func], var)
+    if initial_conditions.is_some() {
+        return solve_ode_internal(ode, func, var, initial_conditions);
+    }
+    crate::symbolic::egraph::solve_ode(ode, func, var)
+}
+
+/// Internal ODE solving engine invoked by the E-Graph oracle.
+#[must_use]
+pub fn solve_ode_internal(
+    ode: &Expr,
+    func: &str,
+    var: &str,
+    initial_conditions: Option<&[(Expr, u32, Expr)]>,
+) -> Expr {
+    let general_solution_eq = solve_ode_system_internal(std::slice::from_ref(ode), &[func], var)
         .and_then(|mut solutions| solutions.pop())
         .map_or_else(
             || Expr::Solve(Arc::new(ode.clone()), func.to_string()),
@@ -301,22 +334,31 @@ pub fn solve_ode(
     general_solution_eq
 }
 
-/// Solves a system of coupled ordinary differential equations, including higher-order ones.
-///
-/// This function first reduces the system of higher-order ODEs to an equivalent first-order system.
-/// Then, it attempts to solve this first-order system sequentially by applying various ODE solvers
-/// to each equation.
-///
-/// # Arguments
-/// * `equations` - A slice of `Expr` representing the ODEs in the system.
-/// * `funcs` - A slice of string slices representing the names of the unknown functions (e.g., `["y", "z"]`).
-/// * `var` - The independent variable (e.g., "x").
-///
-/// # Returns
-/// An `Option<Vec<Expr>>` containing a vector of solutions for each function in `funcs`,
-/// or `None` if the system cannot be solved.
+/// Solves a system of coupled ordinary differential equations via E-Graph.
 #[must_use]
 pub fn solve_ode_system(
+    equations: &[Expr],
+    funcs: &[&str],
+    var: &str,
+) -> Option<Vec<Expr>> {
+    let eq_list = Expr::Tuple(equations.to_vec());
+    let fn_list = Expr::Tuple(funcs.iter().map(|f| Expr::Variable((*f).to_string())).collect());
+    let call = Expr::NaryList(
+        "solve_ode_system".to_string(),
+        vec![eq_list, fn_list, Expr::Variable(var.to_string())],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::Solutions(list) | Expr::Tuple(list) => Some(list),
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == "solve_ode_system" => None,
+        other => Some(vec![other]),
+    }
+}
+
+/// Internal engine for solving systems of ODEs.
+#[must_use]
+pub fn solve_ode_system_internal(
     equations: &[Expr],
     funcs: &[&str],
     var: &str,
@@ -353,17 +395,17 @@ pub(crate) fn try_all_solvers(
         equation.clone()
     };
 
-    if let Some(sol) = solve_first_order_linear_ode(&eq, func, var) {
+    if let Some(sol) = solve_first_order_linear_ode_internal(&eq, func, var) {
         return Some(sol);
     }
 
-    if let Some(sol) = solve_separable_ode(&eq, func, var) {
+    if let Some(sol) = solve_separable_ode_internal(&eq, func, var) {
         return Some(sol);
     }
 
-    solve_bernoulli_ode(&eq, func, var)
-        .or_else(|| solve_cauchy_euler_ode(&eq, func, var))
-        .or_else(|| solve_exact_ode(&eq, func, var))
+    solve_bernoulli_ode_internal(&eq, func, var)
+        .or_else(|| solve_cauchy_euler_ode_internal(&eq, func, var))
+        .or_else(|| solve_exact_ode_internal(&eq, func, var))
 }
 
 pub(crate) fn apply_initial_conditions(
@@ -696,9 +738,33 @@ pub fn solve_separable_ode(
     func: &str,
     var: &str,
 ) -> Option<Expr> {
+    let call = Expr::NaryList(
+        "solve_separable_ode".to_string(),
+        vec![equation.clone(), Expr::Variable(func.to_string()), Expr::Variable(var.to_string())],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == "solve_separable_ode" => None,
+        other => Some(other),
+    }
+}
+
+/// Internal implementation of separable ODE solver.
+#[must_use]
+pub fn solve_separable_ode_internal(
+    equation: &Expr,
+    func: &str,
+    var: &str,
+) -> Option<Expr> {
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
-        return solve_separable_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+        return solve_separable_ode_internal(&node.to_expr().expect("Unwrap DAG"), func, var);
+    }
+
+    if let Expr::Eq(l, r) = equation {
+        let sub = simplify(&Expr::new_sub(l.as_ref().clone(), r.as_ref().clone()));
+        return solve_separable_ode_internal(&sub, func, var);
     }
 
     let y_prime = Expr::Derivative(Arc::new(Expr::Variable(func.to_string())), var.to_string());
@@ -797,9 +863,28 @@ pub fn solve_first_order_linear_ode(
     func: &str,
     var: &str,
 ) -> Option<Expr> {
+    let call = Expr::NaryList(
+        "solve_first_order_linear_ode".to_string(),
+        vec![equation.clone(), Expr::Variable(func.to_string()), Expr::Variable(var.to_string())],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == "solve_first_order_linear_ode" => None,
+        other => Some(other),
+    }
+}
+
+/// Internal implementation of first-order linear ODE solver.
+#[must_use]
+pub fn solve_first_order_linear_ode_internal(
+    equation: &Expr,
+    func: &str,
+    var: &str,
+) -> Option<Expr> {
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
-        return solve_first_order_linear_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+        return solve_first_order_linear_ode_internal(&node.to_expr().expect("Unwrap DAG"), func, var);
     }
 
     let parsed = parse_ode(equation, func, var);
@@ -822,7 +907,22 @@ pub fn solve_first_order_linear_ode(
 
     let c = Expr::Variable("C1".to_string());
 
-    let solution = simplify(&Expr::new_div(Expr::new_add(rhs, c), mu));
+    let mut solution = simplify(&Expr::new_div(Expr::new_add(rhs, c), mu));
+
+    // Simplify C1 / exp(-x) to C1 * exp(x)
+    if let Expr::Div(top, bot) = &solution {
+        if let Expr::Exp(exp_arg) = bot.as_ref() {
+            if let Expr::Neg(inner) = exp_arg.as_ref() {
+                solution = simplify(&Expr::new_mul(top.as_ref().clone(), Expr::new_exp(inner.as_ref().clone())));
+            } else if let Expr::Mul(a, b) = exp_arg.as_ref() {
+                if let Expr::Constant(val) = a.as_ref() {
+                    if (*val + 1.0).abs() < 1e-9 {
+                        solution = simplify(&Expr::new_mul(top.as_ref().clone(), Expr::new_exp(b.as_ref().clone())));
+                    }
+                }
+            }
+        }
+    }
 
     Some(Expr::Eq(Arc::new(y_expr), Arc::new(solution)))
 }
@@ -853,9 +953,28 @@ pub fn solve_bernoulli_ode(
     func: &str,
     var: &str,
 ) -> Option<Expr> {
+    let call = Expr::NaryList(
+        "solve_bernoulli_ode".to_string(),
+        vec![equation.clone(), Expr::Variable(func.to_string()), Expr::Variable(var.to_string())],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == "solve_bernoulli_ode" => None,
+        other => Some(other),
+    }
+}
+
+/// Internal implementation of Bernoulli ODE solver.
+#[must_use]
+pub fn solve_bernoulli_ode_internal(
+    equation: &Expr,
+    func: &str,
+    var: &str,
+) -> Option<Expr> {
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
-        return solve_bernoulli_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+        return solve_bernoulli_ode_internal(&node.to_expr().expect("Unwrap DAG"), func, var);
     }
 
     let y = Expr::Variable(func.to_string());
@@ -897,7 +1016,7 @@ pub fn solve_bernoulli_ode(
             Expr::new_sub(Expr::new_mul(p_v, Expr::Variable("v".to_string())), q_v),
         );
 
-        let v_solution_eq = solve_first_order_linear_ode(&linear_ode_v, "v", var)?;
+        let v_solution_eq = solve_first_order_linear_ode_internal(&linear_ode_v, "v", var)?;
 
         let v_solution = if let Expr::Eq(_, sol) = v_solution_eq {
             sol
@@ -947,6 +1066,26 @@ pub fn solve_riccati_ode(
     var: &str,
     y1: &Expr,
 ) -> Option<Expr> {
+    let call = Expr::NaryList(
+        "solve_riccati_ode".to_string(),
+        vec![equation.clone(), Expr::Variable(func.to_string()), Expr::Variable(var.to_string()), y1.clone()],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == "solve_riccati_ode" => None,
+        other => Some(other),
+    }
+}
+
+/// Internal implementation of Riccati ODE solver.
+#[must_use]
+pub fn solve_riccati_ode_internal(
+    equation: &Expr,
+    func: &str,
+    var: &str,
+    y1: &Expr,
+) -> Option<Expr> {
     // Collect all additive terms
     fn collect_add_terms(
         expr: &Expr,
@@ -980,7 +1119,7 @@ pub fn solve_riccati_ode(
 
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
-        return solve_riccati_ode(&node.to_expr().expect("Unwrap DAG"), func, var, y1);
+        return solve_riccati_ode_internal(&node.to_expr().expect("Unwrap DAG"), func, var, y1);
     }
 
     // 1. Normalize to lhs - rhs
@@ -1008,11 +1147,6 @@ pub fn solve_riccati_ode(
     if contains_var(&a_x, func) {
         return None;
     }
-
-    // The equation is A*y' + B = 0 => y' = -B/A.
-    // B is eq_y_prime_0.
-    // We want y' = P + Qy + Ry^2.
-    // So P + Qy + Ry^2 = -B/A = -eq_y_prime_0 / a_x.
 
     let rhs_poly = simplify(&Expr::new_neg(Expr::new_div(eq_y_prime_0, a_x)));
 
@@ -1143,7 +1277,7 @@ pub fn solve_riccati_ode(
     let linear_ode = Expr::new_sub(Expr::new_add(v_prime, Expr::new_mul(p_v, v)), q_v);
 
     // Solve for v
-    let v_sol_eq = solve_first_order_linear_ode(&linear_ode, v_var, var)?;
+    let v_sol_eq = solve_first_order_linear_ode_internal(&linear_ode, v_var, var)?;
 
     let v_sol = if let Expr::Eq(_, sol) = v_sol_eq {
         sol
@@ -1190,9 +1324,28 @@ pub fn solve_cauchy_euler_ode(
     func: &str,
     var: &str,
 ) -> Option<Expr> {
+    let call = Expr::NaryList(
+        "solve_cauchy_euler_ode".to_string(),
+        vec![equation.clone(), Expr::Variable(func.to_string()), Expr::Variable(var.to_string())],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == "solve_cauchy_euler_ode" => None,
+        other => Some(other),
+    }
+}
+
+/// Internal implementation of Cauchy-Euler ODE solver.
+#[must_use]
+pub fn solve_cauchy_euler_ode_internal(
+    equation: &Expr,
+    func: &str,
+    var: &str,
+) -> Option<Expr> {
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
-        return solve_cauchy_euler_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+        return solve_cauchy_euler_ode_internal(&node.to_expr().expect("Unwrap DAG"), func, var);
     }
 
     let parsed = parse_ode(equation, func, var);
@@ -1290,9 +1443,29 @@ pub fn solve_by_reduction_of_order(
     var: &str,
     y1: &Expr,
 ) -> Option<Expr> {
+    let call = Expr::NaryList(
+        "solve_by_reduction_of_order".to_string(),
+        vec![equation.clone(), Expr::Variable(func.to_string()), Expr::Variable(var.to_string()), y1.clone()],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == "solve_by_reduction_of_order" => None,
+        other => Some(other),
+    }
+}
+
+/// Internal implementation of reduction of order ODE solver.
+#[must_use]
+pub fn solve_by_reduction_of_order_internal(
+    equation: &Expr,
+    func: &str,
+    var: &str,
+    y1: &Expr,
+) -> Option<Expr> {
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
-        return solve_by_reduction_of_order(&node.to_expr().expect("Unwrap DAG"), func, var, y1);
+        return solve_by_reduction_of_order_internal(&node.to_expr().expect("Unwrap DAG"), func, var, y1);
     }
 
     let parsed = parse_ode(equation, func, var);
@@ -1360,9 +1533,28 @@ pub fn solve_exact_ode(
     func: &str,
     var: &str,
 ) -> Option<Expr> {
+    let call = Expr::NaryList(
+        "solve_exact_ode".to_string(),
+        vec![equation.clone(), Expr::Variable(func.to_string()), Expr::Variable(var.to_string())],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == "solve_exact_ode" => None,
+        other => Some(other),
+    }
+}
+
+/// Internal implementation of exact ODE solver.
+#[must_use]
+pub fn solve_exact_ode_internal(
+    equation: &Expr,
+    func: &str,
+    var: &str,
+) -> Option<Expr> {
     // Handle DAG-wrapped expressions
     if let Expr::Dag(node) = equation {
-        return solve_exact_ode(&node.to_expr().expect("Unwrap DAG"), func, var);
+        return solve_exact_ode_internal(&node.to_expr().expect("Unwrap DAG"), func, var);
     }
 
     let y = Expr::Variable(func.to_string());
@@ -1426,6 +1618,39 @@ pub fn solve_exact_ode(
 /// or `None` if the method fails to find a solution.
 #[must_use]
 pub fn solve_ode_by_series(
+    equation: &Expr,
+    func: &str,
+    var: &str,
+    x0: &Expr,
+    order: u32,
+    initial_conditions: &[(u32, Expr)],
+) -> Option<Expr> {
+    let ics: Vec<Expr> = initial_conditions
+        .iter()
+        .map(|(k, v)| Expr::Tuple(vec![Expr::Constant(*k as f64), v.clone()]))
+        .collect();
+    let call = Expr::NaryList(
+        "solve_ode_by_series".to_string(),
+        vec![
+            equation.clone(),
+            Expr::Variable(func.to_string()),
+            Expr::Variable(var.to_string()),
+            x0.clone(),
+            Expr::Constant(order as f64),
+            Expr::Tuple(ics),
+        ],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == "solve_ode_by_series" => None,
+        other => Some(other),
+    }
+}
+
+/// Internal implementation of series ODE solver.
+#[must_use]
+pub fn solve_ode_by_series_internal(
     equation: &Expr,
     func: &str,
     var: &str,
@@ -1505,23 +1730,28 @@ pub fn solve_ode_by_series(
     Some(series_sum)
 }
 
-/// Solves a linear Ordinary Differential Equation using the Fourier Transform method.
-///
-/// This method transforms the ODE from the time domain to the frequency domain,
-/// converting differential operators into algebraic multiplications. The resulting
-/// algebraic equation is solved for the transformed function, and then the inverse
-/// Fourier Transform is applied to obtain the solution in the original domain.
-///
-/// # Arguments
-/// * `equation` - The ODE to solve.
-/// * `func` - The name of the unknown function (e.g., "y").
-/// * `var` - The independent variable (e.g., "t").
-///
-/// # Returns
-/// An `Option<Expr>` representing the solution, or `None` if the ODE type
-/// is not supported by this method.
+/// Solves a linear Ordinary Differential Equation using the Fourier Transform method via E-Graph.
 #[must_use]
 pub fn solve_ode_by_fourier(
+    equation: &Expr,
+    func: &str,
+    var: &str,
+) -> Option<Expr> {
+    let call = Expr::NaryList(
+        "solve_ode_by_fourier".to_string(),
+        vec![equation.clone(), Expr::Variable(func.to_string()), Expr::Variable(var.to_string())],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == "solve_ode_by_fourier" => None,
+        other => Some(other),
+    }
+}
+
+/// Internal implementation of Fourier ODE solver.
+#[must_use]
+pub fn solve_ode_by_fourier_internal(
     equation: &Expr,
     func: &str,
     var: &str,

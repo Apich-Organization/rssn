@@ -16,7 +16,7 @@ use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::path_integrate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::solve::solve;
 
 pub(crate) fn i_complex() -> Expr {
@@ -319,8 +319,27 @@ pub fn z_differentiation(
 ///
 /// # Returns
 /// An `Expr` representing the symbolic Fourier Transform.
+/// Computes the continuous Fourier Transform of an expression.
 #[must_use]
 pub fn fourier_transform(
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
+) -> Expr {
+    let tr = Expr::NaryList(
+        "fourier".to_string(),
+        vec![
+            expr.clone(),
+            Expr::Variable(in_var.to_string()),
+            Expr::Variable(out_var.to_string()),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&tr)
+}
+
+/// Internal continuous Fourier Transform implementation for E-Graph oracle.
+#[must_use]
+pub fn fourier_transform_internal(
     expr: &Expr,
     in_var: &str,
     out_var: &str,
@@ -340,19 +359,26 @@ pub fn fourier_transform(
 }
 
 /// Computes the inverse continuous Fourier Transform of an expression.
-///
-/// The inverse Fourier Transform `f(t)` of `F(ω)` is defined as:
-/// `f(t) = (1/(2π)) * ∫(-∞ to ∞) F(ω) * e^(jωt) dω`.
-///
-/// # Arguments
-/// * `expr` - The expression `F(ω)` to inverse transform.
-/// * `in_var` - The input frequency variable (e.g., "omega").
-/// * `out_var` - The output time variable (e.g., "t").
-///
-/// # Returns
-/// An `Expr` representing the symbolic inverse Fourier Transform.
 #[must_use]
 pub fn inverse_fourier_transform(
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
+) -> Expr {
+    let tr = Expr::NaryList(
+        "inv_fourier".to_string(),
+        vec![
+            expr.clone(),
+            Expr::Variable(in_var.to_string()),
+            Expr::Variable(out_var.to_string()),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&tr)
+}
+
+/// Internal inverse Fourier Transform implementation for E-Graph oracle.
+#[must_use]
+pub fn inverse_fourier_transform_internal(
     expr: &Expr,
     in_var: &str,
     out_var: &str,
@@ -382,19 +408,26 @@ pub fn inverse_fourier_transform(
 }
 
 /// Computes the unilateral Laplace Transform of an expression.
-///
-/// The Laplace Transform `F(s)` of a function `f(t)` is defined as:
-/// `F(s) = ∫(0 to ∞) f(t) * e^(-st) dt`.
-///
-/// # Arguments
-/// * `expr` - The expression `f(t)` to transform.
-/// * `in_var` - The input time variable (e.g., "t").
-/// * `out_var` - The output complex frequency variable (e.g., "s").
-///
-/// # Returns
-/// An `Expr` representing the symbolic Laplace Transform.
 #[must_use]
 pub fn laplace_transform(
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
+) -> Expr {
+    let tr = Expr::NaryList(
+        "laplace".to_string(),
+        vec![
+            expr.clone(),
+            Expr::Variable(in_var.to_string()),
+            Expr::Variable(out_var.to_string()),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&tr)
+}
+
+/// Internal Laplace Transform implementation for E-Graph oracle.
+#[must_use]
+pub fn laplace_transform_internal(
     expr: &Expr,
     in_var: &str,
     out_var: &str,
@@ -416,23 +449,26 @@ pub fn laplace_transform(
 }
 
 /// Computes the inverse Laplace Transform of an expression.
-///
-/// The inverse Laplace Transform `f(t)` of `F(s)` is defined by the Bromwich integral:
-/// `f(t) = (1/(2πj)) * ∫(c-j∞ to c+j∞) F(s) * e^(st) ds`.
-///
-/// This function attempts to use lookup tables and partial fraction decomposition first.
-/// If these methods are insufficient, it falls back to the Bromwich integral representation
-/// as a path integral.
-///
-/// # Arguments
-/// * `expr` - The expression `F(s)` to inverse transform.
-/// * `in_var` - The input complex frequency variable (e.g., "s").
-/// * `out_var` - The output time variable (e.g., "t").
-///
-/// # Returns
-/// An `Expr` representing the symbolic inverse Laplace Transform.
 #[must_use]
 pub fn inverse_laplace_transform(
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
+) -> Expr {
+    let tr = Expr::NaryList(
+        "inv_laplace".to_string(),
+        vec![
+            expr.clone(),
+            Expr::Variable(in_var.to_string()),
+            Expr::Variable(out_var.to_string()),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&tr)
+}
+
+/// Internal inverse Laplace Transform implementation for E-Graph oracle.
+#[must_use]
+pub fn inverse_laplace_transform_internal(
     expr: &Expr,
     in_var: &str,
     out_var: &str,
@@ -447,7 +483,7 @@ pub fn inverse_laplace_transform(
         for term in terms {
             result_expr = simplify(&Expr::new_add(
                 result_expr,
-                inverse_laplace_transform(&term, in_var, out_var),
+                inverse_laplace_transform_internal(&term, in_var, out_var),
             ));
         }
 
@@ -500,8 +536,27 @@ pub fn inverse_laplace_transform(
 ///
 /// # Returns
 /// An `Expr` representing the symbolic Z-Transform.
+/// Computes the unilateral Z-Transform of a discrete-time signal.
 #[must_use]
 pub fn z_transform(
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
+) -> Expr {
+    let tr = Expr::NaryList(
+        "z_transform".to_string(),
+        vec![
+            expr.clone(),
+            Expr::Variable(in_var.to_string()),
+            Expr::Variable(out_var.to_string()),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&tr)
+}
+
+/// Internal unilateral Z-Transform implementation for E-Graph oracle.
+#[must_use]
+pub fn z_transform_internal(
     expr: &Expr,
     in_var: &str,
     out_var: &str,
@@ -523,19 +578,26 @@ pub fn z_transform(
 }
 
 /// Computes the inverse Z-Transform of an expression.
-///
-/// The inverse Z-Transform `x[n]` of `X(z)` is defined by the contour integral:
-/// `x[n] = (1/(2πj)) * ∮(C) X(z) * z^(n-1) dz`.
-///
-/// # Arguments
-/// * `expr` - The expression `X(z)` to inverse transform.
-/// * `in_var` - The input complex frequency variable (e.g., "z").
-/// * `out_var` - The output discrete time variable (e.g., "n").
-///
-/// # Returns
-/// An `Expr` representing the symbolic inverse Z-Transform.
 #[must_use]
 pub fn inverse_z_transform(
+    expr: &Expr,
+    in_var: &str,
+    out_var: &str,
+) -> Expr {
+    let tr = Expr::NaryList(
+        "inv_z_transform".to_string(),
+        vec![
+            expr.clone(),
+            Expr::Variable(in_var.to_string()),
+            Expr::Variable(out_var.to_string()),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&tr)
+}
+
+/// Internal inverse Z-Transform implementation for E-Graph oracle.
+#[must_use]
+pub fn inverse_z_transform_internal(
     expr: &Expr,
     in_var: &str,
     out_var: &str,
@@ -591,11 +653,30 @@ pub fn partial_fraction_decomposition(
     expr: &Expr,
     var: &str,
 ) -> Option<Vec<Expr>> {
+    let call = Expr::BinaryList(
+        "partial_fraction_decomposition".to_string(),
+        Arc::new(expr.clone()),
+        Arc::new(Expr::Variable(var.to_string())),
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::Tuple(terms) => Some(terms),
+        Expr::NoSolution => None,
+        _ => partial_fraction_decomposition_internal(expr, var),
+    }
+}
+
+/// Internal implementation of partial fraction decomposition.
+#[must_use]
+pub fn partial_fraction_decomposition_internal(
+    expr: &Expr,
+    var: &str,
+) -> Option<Vec<Expr>> {
     if let Expr::Dag(node) = expr {
         return node
             .to_expr()
             .ok()
-            .and_then(|e| partial_fraction_decomposition(&e, var));
+            .and_then(|e| partial_fraction_decomposition_internal(&e, var));
     }
 
     if let Expr::Div(num, den) = expr {

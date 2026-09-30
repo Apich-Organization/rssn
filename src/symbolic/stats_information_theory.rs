@@ -6,7 +6,7 @@
 //! all expressed symbolically for discrete probability distributions.
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Computes the symbolic Shannon entropy of a discrete probability distribution.
 ///
@@ -17,10 +17,18 @@ use crate::symbolic::simplify_dag::simplify;
 /// # Arguments
 /// * `probs` - A slice of `Expr` representing the probabilities `p(x)`.
 ///
-/// # Returns
-/// An `Expr` representing the symbolic Shannon entropy.
+/// Computes the symbolic Shannon entropy of a discrete probability distribution.
+///
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn shannon_entropy(probs: &[Expr]) -> Expr {
+    let call = Expr::NaryList("shannon_entropy".to_string(), probs.to_vec());
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for Shannon entropy.
+#[must_use]
+pub fn shannon_entropy_internal(probs: &[Expr]) -> Expr {
     let log2 = Expr::new_log(Expr::Constant(2.0));
 
     let sum = probs
@@ -245,17 +253,16 @@ pub fn mutual_information(joint_probs: &Expr) -> Result<Expr, String> {
 
 /// Computes the symbolic Gini Impurity of a discrete probability distribution.
 ///
-/// Gini impurity `G` is a measure of the impurity or disorder of a set of elements.
-/// For a discrete distribution `p_i`, it is defined as `G = Σ p_i * (1 - p_i) = 1 - Σ p_i^2`.
-/// It is commonly used in decision tree algorithms.
-///
-/// # Arguments
-/// * `probs` - A slice of `Expr` representing the probabilities `p_i`.
-///
-/// # Returns
-/// An `Expr` representing the symbolic Gini impurity.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn gini_impurity(probs: &[Expr]) -> Expr {
+    let call = Expr::NaryList("gini_impurity".to_string(), probs.to_vec());
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for Gini impurity.
+#[must_use]
+pub fn gini_impurity_internal(probs: &[Expr]) -> Expr {
     let sum_of_squares = probs
         .iter()
         .map(|p| Expr::new_pow(p.clone(), Expr::Constant(2.0)))

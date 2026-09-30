@@ -8,7 +8,7 @@
 use crate::symbolic::calculus::definite_integrate;
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::vector::Vector;
 use crate::symbolic::vector::partial_derivative_vector;
 
@@ -56,14 +56,28 @@ pub struct Volume {
 ///
 /// The integral is `∫_C f ds = ∫_a^b f(r(t)) ||r'(t)|| dt`.
 ///
-/// # Arguments
-/// * `scalar_field` - The scalar field `f` as an `Expr`.
-/// * `curve` - The `ParametricCurve` representing the path of integration.
-///
-/// # Returns
-/// An `Expr` representing the symbolic line integral.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn line_integral_scalar(
+    scalar_field: &Expr,
+    curve: &ParametricCurve,
+) -> Expr {
+    let call = Expr::NaryList(
+        "line_integral_scalar".to_string(),
+        vec![
+            scalar_field.clone(),
+            Expr::Vector(vec![curve.r.x.clone(), curve.r.y.clone(), curve.r.z.clone()]),
+            Expr::Variable(curve.t_var.clone()),
+            curve.t_bounds.0.clone(),
+            curve.t_bounds.1.clone(),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for line integral of a scalar field.
+#[must_use]
+pub fn line_integral_scalar_internal(
     scalar_field: &Expr,
     curve: &ParametricCurve,
 ) -> Expr {
@@ -97,14 +111,28 @@ pub fn line_integral_scalar(
 ///
 /// The integral is `∫_C F · dr = ∫_a^b F(r(t)) · r'(t) dt`.
 ///
-/// # Arguments
-/// * `vector_field` - The vector field `F` as a `Vector`.
-/// * `curve` - The `ParametricCurve` representing the path of integration.
-///
-/// # Returns
-/// An `Expr` representing the symbolic line integral.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn line_integral_vector(
+    vector_field: &Vector,
+    curve: &ParametricCurve,
+) -> Expr {
+    let call = Expr::NaryList(
+        "line_integral_vector".to_string(),
+        vec![
+            Expr::Vector(vec![vector_field.x.clone(), vector_field.y.clone(), vector_field.z.clone()]),
+            Expr::Vector(vec![curve.r.x.clone(), curve.r.y.clone(), curve.r.z.clone()]),
+            Expr::Variable(curve.t_var.clone()),
+            curve.t_bounds.0.clone(),
+            curve.t_bounds.1.clone(),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for line integral of a vector field.
+#[must_use]
+pub fn line_integral_vector_internal(
     vector_field: &Vector,
     curve: &ParametricCurve,
 ) -> Expr {
@@ -140,14 +168,31 @@ pub fn line_integral_vector(
 ///
 /// The integral is `∫∫_S (F · dS) = ∫∫_D F(r(u,v)) · (r_u × r_v) du dv`.
 ///
-/// # Arguments
-/// * `field` - The vector field `F` as a `Vector`.
-/// * `surface` - The `ParametricSurface` representing the surface of integration.
-///
-/// # Returns
-/// An `Expr` representing the symbolic surface integral.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn surface_integral(
+    field: &Vector,
+    surface: &ParametricSurface,
+) -> Expr {
+    let call = Expr::NaryList(
+        "surface_integral".to_string(),
+        vec![
+            Expr::Vector(vec![field.x.clone(), field.y.clone(), field.z.clone()]),
+            Expr::Vector(vec![surface.r.x.clone(), surface.r.y.clone(), surface.r.z.clone()]),
+            Expr::Variable(surface.u_var.clone()),
+            surface.u_bounds.0.clone(),
+            surface.u_bounds.1.clone(),
+            Expr::Variable(surface.v_var.clone()),
+            surface.v_bounds.0.clone(),
+            surface.v_bounds.1.clone(),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for surface integral (flux).
+#[must_use]
+pub fn surface_integral_internal(
     field: &Vector,
     surface: &ParametricSurface,
 ) -> Expr {
@@ -190,14 +235,33 @@ pub fn surface_integral(
 ///
 /// The integral is `∫∫∫_V f dV = ∫_x1^x2 ∫_y1^y2 ∫_z1^z2 f(x,y,z) dz dy dx`.
 ///
-/// # Arguments
-/// * `scalar_field` - The scalar field `f` as an `Expr`.
-/// * `volume` - The `Volume` structure defining the integration domain and order.
-///
-/// # Returns
-/// An `Expr` representing the symbolic volume integral.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn volume_integral(
+    scalar_field: &Expr,
+    volume: &Volume,
+) -> Expr {
+    let call = Expr::NaryList(
+        "volume_integral".to_string(),
+        vec![
+            scalar_field.clone(),
+            Expr::Variable(volume.vars.0.clone()),
+            Expr::Variable(volume.vars.1.clone()),
+            Expr::Variable(volume.vars.2.clone()),
+            volume.x_bounds.0.clone(),
+            volume.x_bounds.1.clone(),
+            volume.y_bounds.0.clone(),
+            volume.y_bounds.1.clone(),
+            volume.z_bounds.0.clone(),
+            volume.z_bounds.1.clone(),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for volume integral.
+#[must_use]
+pub fn volume_integral_internal(
     scalar_field: &Expr,
     volume: &Volume,
 ) -> Expr {

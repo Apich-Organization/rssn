@@ -313,8 +313,7 @@
     html_favicon_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/favicon.ico"
 )]
 
-/// Computation engine and task management.
-#[cfg(feature = "compute")]
+/// Unified mathematical compute engine.
 pub mod compute;
 /// System and physical constants.
 pub mod constant;
@@ -360,6 +359,10 @@ use std::sync::Arc;
 
 #[cfg(feature = "input")]
 pub use crate::input::parser::*;
+pub use crate::compute::{
+    charpoly, compute, d, definite_integral, det, eigenvalues, gradient, indefinite_integral,
+    integral, matrix_inv, ComputeConfig, TargetRepresentation,
+};
 pub use crate::numerical::matrix::*;
 pub use crate::symbolic::calculus::*;
 pub use crate::symbolic::core::*;

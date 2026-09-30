@@ -1,13 +1,6 @@
-use std::sync::Arc;
-
-use num_traits::ToPrimitive;
 use rssn::symbolic::core::Expr;
 use rssn::symbolic::numeric::evaluate_numerical;
-use rssn::symbolic::series::analytic_continuation;
-use rssn::symbolic::series::analyze_convergence;
 use rssn::symbolic::series::asymptotic_expansion;
-use rssn::symbolic::series::fourier_series;
-use rssn::symbolic::series::laurent_series;
 use rssn::symbolic::series::product;
 use rssn::symbolic::series::summation;
 use rssn::symbolic::series::taylor_series;

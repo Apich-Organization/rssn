@@ -18,7 +18,7 @@ use crate::symbolic::core::Expr;
 use crate::symbolic::core::Monomial;
 use crate::symbolic::core::SparsePolynomial;
 use crate::symbolic::simplify::is_one;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 trait ToBigInt {
     fn to_bigint(&self) -> Option<BigInt>;
@@ -389,6 +389,25 @@ pub fn solve_diophantine(
     equation: &Expr,
     vars: &[&str],
 ) -> Result<Vec<Expr>, String> {
+    let var_exprs: Vec<Expr> = vars.iter().map(|v| Expr::Variable((*v).to_string())).collect();
+    let call = Expr::BinaryList(
+        "solve_diophantine".to_string(),
+        Arc::new(equation.clone()),
+        Arc::new(Expr::Tuple(var_exprs)),
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::Solutions(sols) => Ok(sols),
+        Expr::NoSolution => Err("No integer solution found".to_string()),
+        _ => solve_diophantine_internal(equation, vars),
+    }
+}
+
+/// Internal implementation of Diophantine equation solver.
+pub fn solve_diophantine_internal(
+    equation: &Expr,
+    vars: &[&str],
+) -> Result<Vec<Expr>, String> {
     let (lhs, rhs) = match equation {
         | Expr::Eq(l, r) => (l, r),
         | _ => {
@@ -620,6 +639,25 @@ pub fn extended_gcd_inner(
 /// * `None` if the moduli are not pairwise coprime, in which case a unique solution is not guaranteed by this method.
 #[must_use]
 pub fn chinese_remainder(congruences: &[(Expr, Expr)]) -> Option<Expr> {
+    let pairs: Vec<Expr> = congruences
+        .iter()
+        .map(|(a, n)| Expr::Tuple(vec![a.clone(), n.clone()]))
+        .collect();
+    let call = Expr::UnaryList(
+        "chinese_remainder".to_string(),
+        Arc::new(Expr::Tuple(pairs)),
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::Mod(..) => Some(res),
+        Expr::NoSolution => None,
+        _ => chinese_remainder_internal(congruences),
+    }
+}
+
+/// Internal implementation of Chinese Remainder Theorem solver.
+#[must_use]
+pub fn chinese_remainder_internal(congruences: &[(Expr, Expr)]) -> Option<Expr> {
     let mut n_total = Expr::BigInt(BigInt::one());
 
     for (_, n) in congruences {
@@ -646,7 +684,14 @@ pub fn chinese_remainder(congruences: &[(Expr, Expr)]) -> Option<Expr> {
         ));
     }
 
-    Some(simplify(&Expr::Mod(Arc::new(result), Arc::new(n_total))))
+    let res_val = if let (Some(r), Some(m)) = (result.to_bigint(), n_total.to_bigint()) {
+        let rem = ((r % &m) + &m) % &m;
+        Expr::BigInt(rem)
+    } else {
+        simplify(&result)
+    };
+
+    Some(Expr::Mod(Arc::new(res_val), Arc::new(n_total)))
 }
 
 /// Performs a primality test on a given expression.
@@ -667,6 +712,13 @@ pub fn chinese_remainder(congruences: &[(Expr, Expr)]) -> Option<Expr> {
 /// * `Expr::IsPrime(...)` if `n` is a symbolic expression.
 #[must_use]
 pub fn is_prime(n: &Expr) -> Expr {
+    let un = Expr::UnaryList("is_prime".to_string(), Arc::new(n.clone()));
+    crate::symbolic::egraph::simplify(&un)
+}
+
+/// Internal primality algorithm, invoked as an Oracle by `NumberTheoryOracleRule`.
+#[must_use]
+pub fn is_prime_internal(n: &Expr) -> Expr {
     if let Some(n_bigint) = n.to_bigint() {
         if n_bigint <= BigInt::one() {
             return Expr::Boolean(false);
@@ -824,6 +876,26 @@ pub fn get_convergent(
 /// A tuple `(g, x, y)` of expressions representing the GCD and Bézout coefficients.
 #[must_use]
 pub fn extended_gcd(
+    a: &Expr,
+    b: &Expr,
+) -> (Expr, Expr, Expr) {
+    let call = Expr::BinaryList(
+        "extended_gcd".to_string(),
+        Arc::new(a.clone()),
+        Arc::new(b.clone()),
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if let Expr::Tuple(ref items) = res {
+        if items.len() == 3 {
+            return (items[0].clone(), items[1].clone(), items[2].clone());
+        }
+    }
+    extended_gcd_internal(a, b)
+}
+
+/// Internal implementation of extended GCD.
+#[must_use]
+pub fn extended_gcd_internal(
     a: &Expr,
     b: &Expr,
 ) -> (Expr, Expr, Expr) {

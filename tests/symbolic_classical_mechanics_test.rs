@@ -87,7 +87,10 @@ fn test_euler_lagrange_harmonic_oscillator() {
 
     assert!(eq_str.contains("m"));
 
-    assert!(eq_str.contains("d/dt(d/dt(x))"));
+    assert!(
+        eq_str.contains("d/dt(d/dt(x))") || eq_str.contains("DerivativeN") || eq_str.contains("derivative_n") || eq_str.contains("d²/dt²"),
+        "Expected second derivative of x in equation, got: {}", eq_str
+    );
 
     assert!(eq_str.contains("k"));
 

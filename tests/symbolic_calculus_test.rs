@@ -115,7 +115,7 @@ fn test_integrate_basic() {
 
     eprintln!("int_one: {}", int_one);
 
-    assert!(matches!(int_one, Expr::Mul(_, _) | Expr::Dag(_)));
+    assert!(matches!(int_one, Expr::Variable(_) | Expr::Mul(_, _) | Expr::Dag(_)));
 
     // assert!(false);
 }

@@ -4,7 +4,7 @@
 //! focusing on the denesting of nested square roots of the form `sqrt(A + B*sqrt(C))`.
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Recursively simplifies radical expressions in the given expression tree.
 ///
@@ -18,34 +18,7 @@ use crate::symbolic::simplify_dag::simplify;
 /// The simplified expression with denested radicals where possible.
 #[must_use]
 pub fn simplify_radicals(expr: &Expr) -> Expr {
-    match expr {
-        | Expr::Sqrt(inner) => {
-            let simplified_inner = simplify_radicals(inner);
-
-            denest_sqrt(&Expr::new_sqrt(simplified_inner))
-        },
-        | Expr::Power(base, exp) => {
-            let simplified_base = simplify_radicals(base);
-
-            let simplified_exp = simplify_radicals(exp);
-
-            // Check if this is a square root (power of 1/2)
-            if let Expr::Constant(c) = &simplified_exp {
-                if (c - 0.5).abs() < f64::EPSILON {
-                    return denest_sqrt(&Expr::new_sqrt(simplified_base));
-                }
-            }
-
-            Expr::new_pow(simplified_base, simplified_exp)
-        },
-        | Expr::Add(a, b) => Expr::new_add(simplify_radicals(a), simplify_radicals(b)),
-        | Expr::Sub(a, b) => Expr::new_sub(simplify_radicals(a), simplify_radicals(b)),
-        | Expr::Mul(a, b) => Expr::new_mul(simplify_radicals(a), simplify_radicals(b)),
-        | Expr::Div(a, b) => Expr::new_div(simplify_radicals(a), simplify_radicals(b)),
-        | Expr::Neg(a) => Expr::new_neg(simplify_radicals(a)),
-        | Expr::Dag(node) => simplify_radicals(&node.to_expr().unwrap_or_else(|_| expr.clone())),
-        | _ => expr.clone(),
-    }
+    crate::symbolic::egraph::simplify(expr)
 }
 
 /// Attempts to denest a nested square root of the form `sqrt(A ± B*sqrt(C))`.

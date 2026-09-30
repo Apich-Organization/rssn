@@ -16,7 +16,7 @@ use crate::symbolic::ode::solve_ode;
 use crate::symbolic::simplify::collect_and_order_terms;
 use crate::symbolic::simplify::is_zero;
 use crate::symbolic::simplify::pattern_match;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::transforms;
 
 /// Main dispatcher for solving Partial Differential Equations.
@@ -45,6 +45,20 @@ pub fn solve_pde(
     vars: &[&str],
     conditions: Option<&[Expr]>,
 ) -> Expr {
+    if conditions.is_some() {
+        return solve_pde_internal(pde, func, vars, conditions);
+    }
+    crate::symbolic::egraph::solve_pde(pde, func, vars)
+}
+
+/// Internal PDE solving engine invoked by the E-Graph oracle.
+#[must_use]
+pub fn solve_pde_internal(
+    pde: &Expr,
+    func: &str,
+    vars: &[&str],
+    conditions: Option<&[Expr]>,
+) -> Expr {
     let equation = if let Expr::Eq(lhs, rhs) = pde {
         simplify(&Expr::new_sub(lhs.clone(), rhs.clone()))
     } else {
@@ -65,6 +79,50 @@ pub fn solve_pde(
         .unwrap_or_else(|| Expr::Solve(Arc::new(pde.clone()), func.to_string()))
 }
 
+fn pde_facade_call(op_name: &str, equation: &Expr, func: &str, vars: &[&str]) -> Option<Expr> {
+    let var_exprs: Vec<Expr> = vars.iter().map(|v| Expr::Variable((*v).to_string())).collect();
+    let call = Expr::NaryList(
+        op_name.to_string(),
+        vec![
+            equation.clone(),
+            Expr::Variable(func.to_string()),
+            Expr::Tuple(var_exprs),
+        ],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == op_name => None,
+        other => Some(other),
+    }
+}
+
+fn pde_facade_call_with_ic(
+    op_name: &str,
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+    conditions: Option<&[Expr]>,
+) -> Option<Expr> {
+    let var_exprs: Vec<Expr> = vars.iter().map(|v| Expr::Variable((*v).to_string())).collect();
+    let cond_expr = conditions.map_or_else(|| Expr::Tuple(Vec::new()), |c| Expr::Tuple(c.to_vec()));
+    let call = Expr::NaryList(
+        op_name.to_string(),
+        vec![
+            equation.clone(),
+            Expr::Variable(func.to_string()),
+            Expr::Tuple(var_exprs),
+            cond_expr,
+        ],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => None,
+        Expr::NaryList(ref name, _) if name == op_name => None,
+        other => Some(other),
+    }
+}
+
 /// Internal dispatcher that attempts various solving strategies.
 pub(crate) fn solve_pde_dispatch(
     equation: &Expr,
@@ -73,7 +131,7 @@ pub(crate) fn solve_pde_dispatch(
     conditions: Option<&[Expr]>,
 ) -> Option<Expr> {
     if let Some(conds) = conditions {
-        if let Some(solution) = solve_pde_by_separation_of_variables(equation, func, vars, conds) {
+        if let Some(solution) = solve_pde_by_separation_of_variables_internal(equation, func, vars, conds) {
             return Some(solution);
         }
     }
@@ -82,13 +140,13 @@ pub(crate) fn solve_pde_dispatch(
 
     match order {
         | 1 => {
-            solve_pde_by_characteristics(equation, func, vars)
-                .or_else(|| solve_burgers_equation(equation, func, vars, conditions))
+            solve_pde_by_characteristics_internal(equation, func, vars)
+                .or_else(|| solve_burgers_equation_internal(equation, func, vars, conditions))
         },
         | 2 => {
-            solve_second_order_pde(equation, func, vars)
-                .or_else(|| solve_pde_by_greens_function(equation, func, vars))
-                .or_else(|| solve_with_fourier_transform(equation, func, vars, conditions))
+            solve_second_order_pde_internal(equation, func, vars)
+                .or_else(|| solve_pde_by_greens_function_internal(equation, func, vars))
+                .or_else(|| solve_with_fourier_transform_internal(equation, func, vars, conditions))
         },
         | _ => None,
     }
@@ -132,6 +190,23 @@ pub struct BoundaryConditions {
 /// or conditions are not supported.
 #[must_use]
 pub fn solve_pde_by_separation_of_variables(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+    conditions: &[Expr],
+) -> Option<Expr> {
+    pde_facade_call_with_ic(
+        "solve_pde_by_separation_of_variables",
+        equation,
+        func,
+        vars,
+        Some(conditions),
+    )
+}
+
+/// Internal implementation of separation of variables solver.
+#[must_use]
+pub fn solve_pde_by_separation_of_variables_internal(
     equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -720,84 +795,98 @@ fn suggest_solution_methods(
 /// # Returns
 /// An `Option<Expr>` representing the solution, or `None` if the PDE does not match
 /// a recognizable first-order linear/quasi-linear form.
+fn unwrap_dag(expr: &Expr) -> Expr {
+    if let Expr::Dag(node) = expr {
+        node.to_expr().unwrap_or_else(|_| expr.clone())
+    } else {
+        expr.clone()
+    }
+}
+
+fn unpack_derivative(expr: &Expr) -> Option<(Expr, String, usize)> {
+    let expr = unwrap_dag(expr);
+    match expr {
+        Expr::Derivative(body, var) => {
+            let body_unwrapped = unwrap_dag(&body);
+            if let Some((base, inner_var, n)) = unpack_derivative(&body_unwrapped) {
+                if inner_var == var {
+                    return Some((base, var, n + 1));
+                }
+            }
+            Some((body_unwrapped, var, 1))
+        }
+        Expr::DerivativeN(body, var, n_expr) => {
+            let body_unwrapped = unwrap_dag(&body);
+            let n = match n_expr.as_ref() {
+                Expr::Constant(c) => *c as usize,
+                _ => 1,
+            };
+            Some((body_unwrapped, var, n))
+        }
+        _ => None,
+    }
+}
+
+fn expr_matches_target(term: &Expr, target: &Expr) -> bool {
+    let term = unwrap_dag(term);
+    let target = unwrap_dag(target);
+    if term == target {
+        return true;
+    }
+    if let (Some((b1, v1, n1)), Some((b2, v2, n2))) = (unpack_derivative(&term), unpack_derivative(&target)) {
+        return b1 == b2 && v1 == v2 && n1 == n2;
+    }
+    false
+}
+
 fn extract_coefficient(
     term: &Expr,
     var: &Expr,
 ) -> Option<Expr> {
-    // Unwrap DAG if present
-    let term = if let Expr::Dag(node) = term {
-        node.to_expr().ok()?
-    } else {
-        term.clone()
-    };
+    let term = unwrap_dag(term);
+    let var_unwrapped = unwrap_dag(var);
 
-    if &term == var {
+    if expr_matches_target(&term, &var_unwrapped) {
         return Some(Expr::Constant(1.0));
     }
 
     match &term {
-        | Expr::Neg(inner) => {
-            // Unwrap DAG in inner
-            let inner = if let Expr::Dag(node) = inner.as_ref() {
-                node.to_expr().ok()?
-            } else {
-                inner.as_ref().clone()
-            };
+        Expr::Neg(inner) => {
+            let inner = unwrap_dag(inner);
 
-            if &inner == var {
+            if expr_matches_target(&inner, &var_unwrapped) {
                 return Some(Expr::Constant(-1.0));
             }
 
-            if let Expr::Mul(a, b) = &inner {
-                // Unwrap DAG in a and b
-                let a_unwrapped = if let Expr::Dag(node) = a.as_ref() {
-                    node.to_expr().ok()?
-                } else {
-                    a.as_ref().clone()
-                };
-
-                let b_unwrapped = if let Expr::Dag(node) = b.as_ref() {
-                    node.to_expr().ok()?
-                } else {
-                    b.as_ref().clone()
-                };
-
-                if &a_unwrapped == var {
-                    return Some(Expr::new_neg(b_unwrapped));
-                }
-
-                if &b_unwrapped == var {
-                    return Some(Expr::new_neg(a_unwrapped));
-                }
+            if let Some(coeff) = extract_coefficient(&inner, &var_unwrapped) {
+                return Some(Expr::new_neg(coeff));
             }
 
             None
-        },
-        | Expr::Mul(a, b) => {
-            // Unwrap DAG in a and b
-            let a_unwrapped = if let Expr::Dag(node) = a.as_ref() {
-                node.to_expr().ok()?
-            } else {
-                a.as_ref().clone()
-            };
+        }
+        Expr::Mul(a, b) => {
+            let a_unwrapped = unwrap_dag(a);
+            let b_unwrapped = unwrap_dag(b);
 
-            let b_unwrapped = if let Expr::Dag(node) = b.as_ref() {
-                node.to_expr().ok()?
-            } else {
-                b.as_ref().clone()
-            };
-
-            if &a_unwrapped == var {
+            if expr_matches_target(&a_unwrapped, &var_unwrapped) {
                 return Some(b_unwrapped);
             }
 
-            if &b_unwrapped == var {
+            if expr_matches_target(&b_unwrapped, &var_unwrapped) {
                 return Some(a_unwrapped);
             }
 
+            if let Some(coeff) = extract_coefficient(&a_unwrapped, &var_unwrapped) {
+                return Some(Expr::new_mul(coeff, b_unwrapped));
+            }
+
+            if let Some(coeff) = extract_coefficient(&b_unwrapped, &var_unwrapped) {
+                return Some(Expr::new_mul(a_unwrapped, coeff));
+            }
+
             None
-        },
-        | _ => None,
+        }
+        _ => None,
     }
 }
 
@@ -852,6 +941,16 @@ fn collect_terms(expr: &Expr) -> Vec<Expr> {
 /// An `Option<Expr>` containing the solution if found.
 #[must_use]
 pub fn solve_pde_by_characteristics(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_pde_by_characteristics", equation, func, vars)
+}
+
+/// Internal implementation of method of characteristics solver.
+#[must_use]
+pub fn solve_pde_by_characteristics_internal(
     equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -950,6 +1049,16 @@ pub fn solve_pde_by_characteristics(
 /// operator is not recognized or its Green's function is not implemented.
 #[must_use]
 pub fn solve_pde_by_greens_function(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_pde_by_greens_function", equation, func, vars)
+}
+
+/// Internal implementation of Green's function PDE solver.
+#[must_use]
+pub fn solve_pde_by_greens_function_internal(
     equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -1077,6 +1186,16 @@ pub fn solve_second_order_pde(
     func: &str,
     vars: &[&str],
 ) -> Option<Expr> {
+    pde_facade_call("solve_second_order_pde", equation, func, vars)
+}
+
+/// Internal implementation of second-order PDE solver.
+#[must_use]
+pub fn solve_second_order_pde_internal(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
     if vars.len() != 2 {
         return None;
     }
@@ -1084,7 +1203,7 @@ pub fn solve_second_order_pde(
     let (_a, _b, _c, pde_type) = classify_second_order_pde(equation, func, vars);
 
     match pde_type.as_str() {
-        | "Hyperbolic" => solve_wave_equation_1d_dalembert(equation, func, vars),
+        | "Hyperbolic" => solve_wave_equation_1d_dalembert_internal(equation, func, vars),
         | _ => None,
     }
 }
@@ -1106,6 +1225,16 @@ pub fn solve_second_order_pde(
 /// does not match the 1D wave equation pattern.
 #[must_use]
 pub fn solve_wave_equation_1d_dalembert(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_wave_equation_1d_dalembert", equation, func, vars)
+}
+
+/// Internal implementation of D'Alembert wave equation solver.
+#[must_use]
+pub fn solve_wave_equation_1d_dalembert_internal(
     equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -1213,6 +1342,16 @@ pub fn solve_wave_equation_1d_dalembert(
 /// `u(x,t) = Σ A_n * exp(-α*n²*π²*t/L²) * sin(n*π*x/L)`
 #[must_use]
 pub fn solve_heat_equation_1d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_heat_equation_1d", equation, func, vars)
+}
+
+/// Internal implementation of 1D heat equation solver.
+#[must_use]
+pub fn solve_heat_equation_1d_internal(
     equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -1330,6 +1469,16 @@ pub fn solve_heat_equation_1d(
 /// as a Fourier series or in terms of separation of variables.
 #[must_use]
 pub fn solve_laplace_equation_2d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_laplace_equation_2d", equation, func, vars)
+}
+
+/// Internal implementation of 2D Laplace equation solver.
+#[must_use]
+pub fn solve_laplace_equation_2d_internal(
     equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -1452,6 +1601,16 @@ pub fn solve_laplace_equation_2d(
 /// * `vars` - Independent variables `["t", "x", "y", "z"]`
 #[must_use]
 pub fn solve_wave_equation_3d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_wave_equation_3d", equation, func, vars)
+}
+
+/// Internal implementation of 3D wave equation solver.
+#[must_use]
+pub fn solve_wave_equation_3d_internal(
     _equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -1470,6 +1629,16 @@ pub fn solve_wave_equation_3d(
 /// Solves the 3D heat equation `u_t = α(u_xx + u_yy + u_zz)`.
 #[must_use]
 pub fn solve_heat_equation_3d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_heat_equation_3d", equation, func, vars)
+}
+
+/// Internal implementation of 3D heat equation solver.
+#[must_use]
+pub fn solve_heat_equation_3d_internal(
     _equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -1488,6 +1657,16 @@ pub fn solve_heat_equation_3d(
 /// Solves the 3D Laplace equation `u_xx + u_yy + u_zz = 0`.
 #[must_use]
 pub fn solve_laplace_equation_3d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_laplace_equation_3d", equation, func, vars)
+}
+
+/// Internal implementation of 3D Laplace equation solver.
+#[must_use]
+pub fn solve_laplace_equation_3d_internal(
     _equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -1517,6 +1696,16 @@ pub fn solve_laplace_equation_3d(
 /// Solution using Green's function method
 #[must_use]
 pub fn solve_poisson_equation_2d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_poisson_equation_2d", equation, func, vars)
+}
+
+/// Internal implementation of 2D Poisson equation solver.
+#[must_use]
+pub fn solve_poisson_equation_2d_internal(
     equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -1624,6 +1813,16 @@ pub fn solve_poisson_equation_2d(
 /// Solves the 3D Poisson equation `u_xx + u_yy + u_zz = f(x,y,z)`.
 #[must_use]
 pub fn solve_poisson_equation_3d(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_poisson_equation_3d", equation, func, vars)
+}
+
+/// Internal implementation of 3D Poisson equation solver.
+#[must_use]
+pub fn solve_poisson_equation_3d_internal(
     _equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -1656,6 +1855,16 @@ pub fn solve_poisson_equation_3d(
 /// Solution using separation of variables or Green's function
 #[must_use]
 pub fn solve_helmholtz_equation(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_helmholtz_equation", equation, func, vars)
+}
+
+/// Internal implementation of Helmholtz equation solver.
+#[must_use]
+pub fn solve_helmholtz_equation_internal(
     equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -1728,6 +1937,16 @@ pub fn solve_schrodinger_equation(
     func: &str,
     vars: &[&str],
 ) -> Option<Expr> {
+    pde_facade_call("solve_schrodinger_equation", equation, func, vars)
+}
+
+/// Internal implementation of Schrödinger equation solver.
+#[must_use]
+pub fn solve_schrodinger_equation_internal(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
     if vars.len() < 2 {
         return None;
     }
@@ -1792,6 +2011,16 @@ pub fn solve_schrodinger_equation(
 /// Solution using plane wave decomposition or Green's function
 #[must_use]
 pub fn solve_klein_gordon_equation(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+) -> Option<Expr> {
+    pde_facade_call("solve_klein_gordon_equation", equation, func, vars)
+}
+
+/// Internal implementation of Klein-Gordon equation solver.
+#[must_use]
+pub fn solve_klein_gordon_equation_internal(
     equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -1876,6 +2105,17 @@ pub fn solve_burgers_equation(
     vars: &[&str],
     initial_conditions: Option<&[Expr]>,
 ) -> Option<Expr> {
+    pde_facade_call_with_ic("solve_burgers_equation", equation, func, vars, initial_conditions)
+}
+
+/// Internal implementation of Burgers' equation solver.
+#[must_use]
+pub fn solve_burgers_equation_internal(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+    initial_conditions: Option<&[Expr]>,
+) -> Option<Expr> {
     if vars.len() != 2 {
         return None;
     }
@@ -1932,6 +2172,17 @@ pub fn solve_burgers_equation(
 /// or conditions are not supported by this method.
 #[must_use]
 pub fn solve_with_fourier_transform(
+    equation: &Expr,
+    func: &str,
+    vars: &[&str],
+    initial_conditions: Option<&[Expr]>,
+) -> Option<Expr> {
+    pde_facade_call_with_ic("solve_with_fourier_transform", equation, func, vars, initial_conditions)
+}
+
+/// Internal implementation of Fourier Transform PDE solver.
+#[must_use]
+pub fn solve_with_fourier_transform_internal(
     equation: &Expr,
     func: &str,
     vars: &[&str],
@@ -2013,25 +2264,9 @@ pub(crate) fn get_pde_order(
     let mut max_order = 0;
 
     expr.pre_order_walk(&mut |sub_expr| {
-        if let Expr::Derivative(inner_expr, deriv_var) = sub_expr {
-            if vars.contains(&deriv_var.as_str()) {
-                let mut current_order = 1;
-
-                let mut current_inner = inner_expr.clone();
-
-                while let Expr::Derivative(next_inner, next_deriv_var) = &*current_inner {
-                    if vars.contains(&next_deriv_var.as_str()) {
-                        current_order += 1;
-
-                        current_inner = next_inner.clone();
-                    } else {
-                        break;
-                    }
-                }
-
-                if current_order > max_order {
-                    max_order = current_order;
-                }
+        if let Some((_, var, n)) = unpack_derivative(sub_expr) {
+            if vars.contains(&var.as_str()) && n > max_order {
+                max_order = n;
             }
         }
     });
@@ -2065,11 +2300,11 @@ pub(crate) fn classify_second_order_pde(
     let mut coeffs = HashMap::new();
 
     for (term, coeff) in &terms {
-        if *term == u_xx {
+        if expr_matches_target(term, &u_xx) {
             coeffs.insert("A", coeff.clone());
-        } else if *term == u_xy {
+        } else if expr_matches_target(term, &u_xy) {
             coeffs.insert("B", coeff.clone());
-        } else if *term == u_yy {
+        } else if expr_matches_target(term, &u_yy) {
             coeffs.insert("C", coeff.clone());
         }
     }

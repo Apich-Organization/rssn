@@ -6,13 +6,15 @@
 //! inversion, RREF (Reduced Row Echelon Form), null space computation, and eigenvalue
 //! decomposition.
 
+use std::sync::Arc;
+
 use num_bigint::BigInt;
 use num_traits::One;
 use num_traits::Zero;
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::solve::solve;
 
 /// Helper to get dimensions of a matrix `Expr`.
@@ -175,12 +177,24 @@ pub fn sub_matrices(
 ///
 /// # Arguments
 /// * `m1` - The first matrix as an `Expr::Matrix`.
-/// * `m2` - The second matrix as an `Expr::Matrix`.
+/// Multiplies two matrices symbolically.
+///
+/// # Arguments
+/// * `m1` - The first matrix.
+/// * `m2` - The second matrix.
 ///
 /// # Returns
-/// An `Expr::Matrix` representing the product, or an unevaluated `Expr::Mul` if dimensions are incompatible.
+/// An `Expr` representing the product evaluated through the E-Graph engine.
 #[must_use]
 pub fn mul_matrices(
+    m1: &Expr,
+    m2: &Expr,
+) -> Expr {
+    crate::symbolic::egraph::simplify(&Expr::MatrixMul(Arc::new(m1.clone()), Arc::new(m2.clone())))
+}
+
+/// Internal matrix multiplication calculation.
+pub fn mul_matrices_internal(
     m1: &Expr,
     m2: &Expr,
 ) -> Expr {
@@ -259,12 +273,17 @@ pub fn scalar_mul_matrix(
 /// Computes the transpose of a matrix.
 ///
 /// # Arguments
-/// * `matrix` - The matrix as an `Expr::Matrix`.
+/// * `matrix` - The matrix expression.
 ///
 /// # Returns
-/// An `Expr::Matrix` representing the transposed matrix, or an unevaluated `Expr::Power` if the matrix is invalid.
+/// An `Expr` representing the transposed matrix evaluated through the E-Graph engine.
 #[must_use]
 pub fn transpose_matrix(matrix: &Expr) -> Expr {
+    crate::symbolic::egraph::simplify(&Expr::Transpose(Arc::new(matrix.clone())))
+}
+
+/// Internal matrix transposition calculation.
+pub fn transpose_internal(matrix: &Expr) -> Expr {
     if let Some((r, c)) = get_matrix_dims(matrix) {
         let Expr::Matrix(rows) = matrix else {
             unreachable!()
@@ -286,16 +305,20 @@ pub fn transpose_matrix(matrix: &Expr) -> Expr {
 
 /// Computes the determinant of a square matrix.
 ///
-/// This function uses Laplace expansion (cofactor expansion) along the first row.
-/// It is computationally expensive for large matrices.
+/// Evaluated declaratively through the heuristic E-Graph saturation engine.
 ///
 /// # Arguments
-/// * `matrix` - The square matrix as an `Expr::Matrix`.
+/// * `matrix` - The square matrix.
 ///
 /// # Returns
-/// An `Expr` representing the determinant, or an error message if the matrix is not square.
+/// An `Expr` representing the simplified determinant.
 #[must_use]
 pub fn determinant(matrix: &Expr) -> Expr {
+    crate::symbolic::egraph::simplify(&Expr::UnaryList("det".to_string(), Arc::new(matrix.clone())))
+}
+
+/// Internal determinant calculation via Laplace expansion.
+pub fn determinant_internal(matrix: &Expr) -> Expr {
     if let Some((r, c)) = get_matrix_dims(matrix) {
         if r != c {
             return Expr::Variable(
@@ -351,7 +374,7 @@ pub fn determinant(matrix: &Expr) -> Expr {
                 Expr::BigInt(BigInt::from(-1))
             };
 
-            let term = simplify(&Expr::new_mul(row0j.clone(), determinant(&minor)));
+            let term = simplify(&Expr::new_mul(row0j.clone(), determinant_internal(&minor)));
 
             det = simplify(&Expr::new_add(det, Expr::new_mul(sign, term)));
         }
@@ -403,14 +426,23 @@ pub(crate) fn get_minor(
 /// The inverse of a matrix `A` is given by `A^-1 = (1/det(A)) * adj(A)`,
 /// where `adj(A)` is the adjugate matrix (transpose of the cofactor matrix).
 ///
+/// Computes the inverse of a square matrix.
+///
+/// Evaluated declaratively through the heuristic E-Graph saturation engine.
+///
 /// # Arguments
-/// * `matrix` - The square matrix as an `Expr::Matrix`.
+/// * `matrix` - The square matrix.
 ///
 /// # Returns
-/// An `Expr::Matrix` representing the inverse, or an error message if the matrix is singular or not square.
+/// An `Expr` representing the inverse matrix.
 #[must_use]
 pub fn inverse_matrix(matrix: &Expr) -> Expr {
-    let det = determinant(matrix);
+    crate::symbolic::egraph::simplify(&Expr::Inverse(Arc::new(matrix.clone())))
+}
+
+/// Internal matrix inversion using the adjugate method.
+pub fn inverse_internal(matrix: &Expr) -> Expr {
+    let det = determinant_internal(matrix);
 
     if let Expr::Variable(_) = det {
         return det;
@@ -447,7 +479,7 @@ pub fn inverse_matrix(matrix: &Expr) -> Expr {
                     Expr::BigInt(BigInt::from(-1))
                 };
 
-                let cofactor = simplify(&Expr::new_mul(sign, determinant(&minor)));
+                let cofactor = simplify(&Expr::new_mul(sign, determinant_internal(&minor)));
 
                 *adj_item = cofactor;
             }
@@ -488,6 +520,24 @@ pub fn inverse_matrix(matrix: &Expr) -> Expr {
 /// - The `rref` computation fails.
 /// - The `null_space` computation fails.
 pub fn solve_linear_system(
+    a: &Expr,
+    b: &Expr,
+) -> Result<Expr, String> {
+    let call = Expr::BinaryList(
+        "solve_linear_system".to_string(),
+        Arc::new(a.clone()),
+        Arc::new(b.clone()),
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::Matrix(..) => Ok(res),
+        Expr::NoSolution => Err("No solution found".to_string()),
+        _ => solve_linear_system_internal(a, b),
+    }
+}
+
+/// Internal implementation of linear system solver.
+pub fn solve_linear_system_internal(
     a: &Expr,
     b: &Expr,
 ) -> Result<Expr, String> {
@@ -596,27 +646,24 @@ pub fn solve_linear_system(
 }
 
 /// Computes the trace of a square matrix.
-/// Computes the trace of a square matrix.
 ///
-/// The trace of a square matrix is the sum of the elements on its main diagonal.
-///
-/// # Arguments
-/// * `matrix` - The square matrix as an `Expr::Matrix`.
-///
-/// # Returns
-/// A `Result` containing an `Expr` representing the trace.
-///
-/// # Errors
-///
-/// This function will return an error if the input `matrix` is not a valid matrix
-/// or if it is not a square matrix.
+/// Evaluated declaratively through the heuristic E-Graph saturation engine.
 pub fn trace(matrix: &Expr) -> Result<Expr, String> {
     let (rows, cols) = get_matrix_dims(matrix).ok_or("Invalid matrix")?;
 
     if rows != cols {
-        return Err("Matrix must be \
-                    square"
-            .to_string());
+        return Err("Matrix must be square".to_string());
+    }
+
+    Ok(crate::symbolic::egraph::simplify(&Expr::UnaryList("trace".to_string(), Arc::new(matrix.clone()))))
+}
+
+/// Internal trace calculation.
+pub fn trace_internal(matrix: &Expr) -> Result<Expr, String> {
+    let (rows, cols) = get_matrix_dims(matrix).ok_or("Invalid matrix")?;
+
+    if rows != cols {
+        return Err("Matrix must be square".to_string());
     }
 
     let Expr::Matrix(mat) = matrix else {
@@ -650,6 +697,26 @@ pub fn trace(matrix: &Expr) -> Result<Expr, String> {
 /// This function will return an error if the input `matrix` is not a valid matrix
 /// or if it is not a square matrix.
 pub fn characteristic_polynomial(
+    matrix: &Expr,
+    lambda_var: &str,
+) -> Result<Expr, String> {
+    let call = Expr::BinaryList(
+        "characteristic_polynomial".to_string(),
+        Arc::new(matrix.clone()),
+        Arc::new(Expr::Variable(lambda_var.to_string())),
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::NoSolution => Err("characteristic_polynomial failed".to_string()),
+        Expr::BinaryList(ref name, _, _) if name == "characteristic_polynomial" => {
+            characteristic_polynomial_internal(matrix, lambda_var)
+        }
+        other => Ok(other),
+    }
+}
+
+/// Internal implementation of characteristic polynomial calculation.
+pub fn characteristic_polynomial_internal(
     matrix: &Expr,
     lambda_var: &str,
 ) -> Result<Expr, String> {
@@ -848,6 +915,17 @@ pub fn qr_decomposition(matrix: &Expr) -> Result<(Expr, Expr), String> {
 ///
 /// This function will return an error if the input `matrix` is not a valid matrix.
 pub fn rref(matrix: &Expr) -> Result<Expr, String> {
+    let call = Expr::UnaryList("rref".to_string(), Arc::new(matrix.clone()));
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::Matrix(..) => Ok(res),
+        Expr::NoSolution => Err("rref failed".to_string()),
+        _ => rref_internal(matrix),
+    }
+}
+
+/// Internal implementation of reduced row echelon form (RREF).
+pub fn rref_internal(matrix: &Expr) -> Result<Expr, String> {
     let (rows, cols) = get_matrix_dims(matrix).ok_or("Invalid matrix for RREF")?;
 
     let Expr::Matrix(mut mat) = matrix.clone() else {
@@ -927,6 +1005,17 @@ pub fn rref(matrix: &Expr) -> Result<Expr, String> {
 /// This function will return an error if the input `matrix` is not a valid matrix
 /// or if the `rref` computation fails.
 pub fn null_space(matrix: &Expr) -> Result<Expr, String> {
+    let call = Expr::UnaryList("null_space".to_string(), Arc::new(matrix.clone()));
+    let res = crate::symbolic::egraph::simplify(&call);
+    match res {
+        Expr::Matrix(..) => Ok(res),
+        Expr::NoSolution => Err("null_space failed".to_string()),
+        _ => null_space_internal(matrix),
+    }
+}
+
+/// Internal implementation of null space calculation.
+pub fn null_space_internal(matrix: &Expr) -> Result<Expr, String> {
     let (_rows, cols) = get_matrix_dims(matrix).ok_or(
         "Invalid matrix for null \
              space",

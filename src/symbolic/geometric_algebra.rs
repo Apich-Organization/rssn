@@ -14,7 +14,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Represents a multivector in a Clifford algebra.
 ///

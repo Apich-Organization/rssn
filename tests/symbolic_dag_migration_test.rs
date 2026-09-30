@@ -6,11 +6,11 @@ use rssn::symbolic::core::Expr;
 
 fn test_is_dag() {
     // DAG expressions
-    let dag_expr = Expr::new_variable("x");
+    let dag_expr = Expr::new_variable("x").to_dag().unwrap();
 
     assert!(dag_expr.is_dag());
 
-    let dag_add = Expr::new_add(Expr::new_variable("x"), Expr::Constant(1.0));
+    let dag_add = Expr::new_add(Expr::new_variable("x"), Expr::Constant(1.0)).to_dag().unwrap();
 
     assert!(dag_add.is_dag());
 
@@ -66,7 +66,7 @@ fn test_to_dag_add() {
 #[test]
 
 fn test_to_dag_already_dag() {
-    let dag1 = Expr::new_variable("x");
+    let dag1 = Expr::new_variable("x").to_dag().unwrap();
 
     assert!(dag1.is_dag());
 
@@ -111,11 +111,11 @@ fn test_to_dag_form_nested() {
 #[test]
 
 fn test_to_ast_from_dag() {
-    let dag = Expr::new_variable("x");
+    let dag = Expr::new_variable("x").to_dag().unwrap();
 
     assert!(dag.is_dag());
 
-    let ast = dag.to_ast().unwrap();
+    let _ast = dag.to_ast().unwrap();
     // The AST might still be in DAG form or converted, depending on implementation
     // Just verify it doesn't error
 }
@@ -161,9 +161,9 @@ fn test_dag_conversion_preserves_semantics() {
 
 fn test_dag_sharing() {
     // Create two references to the same subexpression
-    let x = Expr::new_variable("x");
+    let x = Expr::new_variable("x").to_dag().unwrap();
 
-    let expr1 = Expr::new_add(x.clone(), x.clone());
+    let expr1 = Expr::new_add(x.clone(), x.clone()).to_dag().unwrap();
 
     assert!(expr1.is_dag());
 
@@ -175,7 +175,7 @@ fn test_dag_sharing() {
 
 fn test_mixed_ast_dag() {
     // Create a mixed expression (some AST, some DAG)
-    let dag_x = Expr::new_variable("x");
+    let dag_x = Expr::new_variable("x").to_dag().unwrap();
 
     let ast_const = Expr::Constant(1.0);
 

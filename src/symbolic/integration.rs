@@ -23,7 +23,7 @@ use crate::symbolic::polynomial::gcd;
 use crate::symbolic::polynomial::poly_mul_scalar_expr;
 use crate::symbolic::polynomial::sparse_poly_to_expr;
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_system;
 
@@ -274,7 +274,7 @@ pub(crate) fn integrate_poly_log(
     // Plus q(x) * n * t^(n-1) * (dt/dx)
 
     // First term: q'(x) * t^n
-    let q_n_deriv = differentiate(&q_n, x);
+    let q_n_deriv = simplify(&differentiate(&q_n, x));
 
     let term1 = poly_mul_scalar_expr(&t_pow_n, &q_n_deriv);
 
@@ -317,6 +317,13 @@ pub(crate) fn integrate_poly_log(
     let mut p_star = (*p_in_t).clone() - deriv;
 
     p_star.prune_zeros(); // Remove zero coefficients to ensure degree decreases
+    if p_star.degree(t_var) >= p_in_t.degree(t_var) {
+        return Err(format!(
+            "Risch-Norman log integration did not decrease degree: {} -> {}",
+            p_in_t.degree(t_var),
+            p_star.degree(t_var)
+        ));
+    }
     let recursive_integral = integrate_poly_log(&p_star, t, x)?;
 
     let q_term_expr = Expr::new_mul(q_n, Expr::new_pow(t.clone(), Expr::Constant(f64::from(n))));

@@ -60,6 +60,7 @@ pub fn evaluate_complex(expr: &Expr) -> Option<Complex64> {
         | Expr::Rational(r) => Some(Complex64::new(r.to_f64()?, 0.0)),
         | Expr::Pi => Some(Complex64::new(consts::PI, 0.0)),
         | Expr::E => Some(Complex64::new(consts::E, 0.0)),
+        | Expr::Variable(v) if v == "i" || v == "I" => Some(Complex64::i()),
         | Expr::Add(a, b) => Some(evaluate_complex(a)? + evaluate_complex(b)?),
         | Expr::Sub(a, b) => Some(evaluate_complex(a)? - evaluate_complex(b)?),
         | Expr::Mul(a, b) => Some(evaluate_complex(a)? * evaluate_complex(b)?),

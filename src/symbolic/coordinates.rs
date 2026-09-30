@@ -14,7 +14,7 @@ use crate::symbolic::matrix;
 use crate::symbolic::matrix::inverse_matrix;
 use crate::symbolic::matrix::mul_matrices;
 use crate::symbolic::matrix::transpose_matrix;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// A tuple representing coordinate transformation rules: (`source_vars`, `target_vars`, formulas).
 pub type TransformationRules = (Vec<String>, Vec<String>, Vec<Expr>);

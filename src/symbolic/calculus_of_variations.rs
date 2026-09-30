@@ -9,10 +9,8 @@
 
 use std::sync::Arc;
 
-use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::ode::solve_ode;
-use crate::symbolic::simplify_dag::simplify;
 
 /// # Euler-Lagrange Equation
 ///
@@ -67,31 +65,35 @@ pub fn euler_lagrange(
     func: &str,
     var: &str,
 ) -> Expr {
+    let el = Expr::NaryList(
+        "euler_lagrange".to_string(),
+        vec![
+            lagrangian.clone(),
+            Expr::Variable(func.to_string()),
+            Expr::Variable(var.to_string()),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&el)
+}
+
+/// Internal calculus of variations engine for deriving Euler-Lagrange equations.
+#[must_use]
+pub fn euler_lagrange_internal(
+    lagrangian: &Expr,
+    func: &str,
+    var: &str,
+) -> Expr {
     let q = Expr::Variable(func.to_string());
-
     let q_prime_str = format!("{func}__prime");
-
     let q_prime_var = Expr::Variable(q_prime_str.clone());
+    let q_prime_expr = Expr::Derivative(std::sync::Arc::new(q), var.to_string());
 
-    // We need to substitute q' (which appears as Derivative(q, var) in the expression)
-    // with a temporary variable q_prime_var to perform partial differentiation.
-    let q_prime_expr = Expr::Derivative(Arc::new(q), var.to_string());
-
-    let lagrangian_sub =
-        crate::symbolic::calculus::substitute_expr(lagrangian, &q_prime_expr, &q_prime_var);
-
-    let dl_dq = differentiate(&lagrangian_sub, func);
-
-    let dl_dq_prime = differentiate(&lagrangian_sub, &q_prime_str);
-
-    // Substitute q' back into the partial derivative result
-    let dl_dq_prime_full =
-        crate::symbolic::calculus::substitute_expr(&dl_dq_prime, &q_prime_var, &q_prime_expr);
-
-    // Now take the total time derivative: d/dt (dl/dq')
-    let d_dt_dl_dq_prime = differentiate(&dl_dq_prime_full, var);
-
-    simplify(&Expr::new_sub(d_dt_dl_dq_prime, dl_dq))
+    let lagrangian_sub = crate::symbolic::calculus::substitute_expr(lagrangian, &q_prime_expr, &q_prime_var);
+    let dl_dq = crate::symbolic::egraph::diff(&lagrangian_sub, func);
+    let dl_dq_prime = crate::symbolic::egraph::diff(&lagrangian_sub, &q_prime_str);
+    let dl_dq_prime_full = crate::symbolic::calculus::substitute_expr(&dl_dq_prime, &q_prime_var, &q_prime_expr);
+    let d_dt_dl_dq_prime = crate::symbolic::egraph::diff(&dl_dq_prime_full, var);
+    Expr::new_sub(d_dt_dl_dq_prime, dl_dq)
 }
 
 /// # Solve Euler-Lagrange Equation
@@ -99,7 +101,7 @@ pub fn euler_lagrange(
 /// Automatically generates and attempts to solve the Euler-Lagrange equation for a system.
 ///
 /// This is a convenience function that computes the Euler-Lagrange equation as an ODE
-/// and immediately passes it to the `solve_ode` engine.
+/// and passes it to the `solve_ode` engine via the E-Graph pipeline.
 ///
 /// ## Arguments
 /// * `lagrangian` - The Lagrangian functional.
@@ -114,10 +116,26 @@ pub fn solve_euler_lagrange(
     func: &str,
     var: &str,
 ) -> Expr {
+    let el = Expr::NaryList(
+        "solve_euler_lagrange".to_string(),
+        vec![
+            lagrangian.clone(),
+            Expr::Variable(func.to_string()),
+            Expr::Variable(var.to_string()),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&el)
+}
+
+/// Internal solver for Euler-Lagrange ODE system.
+#[must_use]
+pub fn solve_euler_lagrange_internal(
+    lagrangian: &Expr,
+    func: &str,
+    var: &str,
+) -> Expr {
     let el_equation = euler_lagrange(lagrangian, func, var);
-
     let ode_to_solve = Expr::Eq(Arc::new(el_equation), Arc::new(Expr::Constant(0.0)));
-
     solve_ode(&ode_to_solve, func, var, None)
 }
 

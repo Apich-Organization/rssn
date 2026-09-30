@@ -156,6 +156,21 @@ pub fn solve_ode_system_rk4(
     x_range: (f64, f64),
     num_steps: usize,
 ) -> Result<Vec<Vec<f64>>, String> {
+    solve_ode_system_rk4_named(funcs, "x", &[], y0, x_range, num_steps)
+}
+
+/// Solves an ODE system using RK4 with custom variable and function names.
+///
+/// # Errors
+/// Returns an error if symbolic expression evaluation fails.
+pub fn solve_ode_system_rk4_named(
+    funcs: &[Expr],
+    var_name: &str,
+    func_names: &[&str],
+    y0: &[f64],
+    x_range: (f64, f64),
+    num_steps: usize,
+) -> Result<Vec<Vec<f64>>, String> {
     let (x0, x_end) = x_range;
 
     let h = (x_end - x0) / (num_steps as f64);
@@ -169,24 +184,30 @@ pub fn solve_ode_system_rk4(
     let mut vars = HashMap::new();
 
     for _ in 0..num_steps {
-        let k1 = eval_f(funcs, x, &y_vec, &mut vars)?;
+        let k1 = eval_f_named(funcs, var_name, func_names, x, &y_vec, &mut vars)?;
 
-        let k2 = eval_f(
+        let k2 = eval_f_named(
             funcs,
+            var_name,
+            func_names,
             x + h / 2.0,
             &add_vec(&y_vec, &scale_vec(&k1, h / 2.0)),
             &mut vars,
         )?;
 
-        let k3 = eval_f(
+        let k3 = eval_f_named(
             funcs,
+            var_name,
+            func_names,
             x + h / 2.0,
             &add_vec(&y_vec, &scale_vec(&k2, h / 2.0)),
             &mut vars,
         )?;
 
-        let k4 = eval_f(
+        let k4 = eval_f_named(
             funcs,
+            var_name,
+            func_names,
             x + h,
             &add_vec(&y_vec, &scale_vec(&k3, h)),
             &mut vars,
@@ -216,16 +237,25 @@ pub fn solve_ode_system_rk4(
     Ok(results)
 }
 
-pub(crate) fn eval_f(
+pub(crate) fn eval_f_named(
     funcs: &[Expr],
+    var_name: &str,
+    func_names: &[&str],
     x: f64,
     y_vec: &[f64],
     vars: &mut HashMap<String, f64>,
 ) -> Result<Vec<f64>, String> {
     vars.insert("x".to_string(), x);
+    vars.insert(var_name.to_string(), x);
 
     for (i, y_val) in y_vec.iter().enumerate() {
         vars.insert(format!("y{i}"), *y_val);
+        if i < func_names.len() {
+            vars.insert(func_names[i].to_string(), *y_val);
+        }
+    }
+    if y_vec.len() == 1 {
+        vars.insert("y".to_string(), y_vec[0]);
     }
 
     let mut results = Vec::new();
@@ -235,6 +265,15 @@ pub(crate) fn eval_f(
     }
 
     Ok(results)
+}
+
+pub(crate) fn eval_f(
+    funcs: &[Expr],
+    x: f64,
+    y_vec: &[f64],
+    vars: &mut HashMap<String, f64>,
+) -> Result<Vec<f64>, String> {
+    eval_f_named(funcs, "x", &[], x, y_vec, vars)
 }
 
 pub(crate) fn add_vec(

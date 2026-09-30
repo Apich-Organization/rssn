@@ -62,7 +62,7 @@ use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::infinity;
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Represents the result of a convergence test.
 #[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

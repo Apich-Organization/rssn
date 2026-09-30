@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Represents the First Law of Thermodynamics: $dU = dQ - dW$.
 ///

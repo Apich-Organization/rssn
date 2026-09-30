@@ -318,7 +318,7 @@ pub(crate) fn substitute_map(
         result = crate::symbolic::calculus::substitute(&result, var, &Expr::Constant(*val));
     }
 
-    crate::symbolic::simplify_dag::simplify(&result)
+    crate::symbolic::egraph::simplify(&result)
 }
 
 /// Computes the Sylvester matrix of two polynomials with respect to a given variable.

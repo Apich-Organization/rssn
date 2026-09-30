@@ -14,7 +14,7 @@ use crate::symbolic::core::DagOp;
 use crate::symbolic::core::Expr;
 use crate::symbolic::series;
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::solve::extract_polynomial_coeffs;
 use crate::symbolic::solve::solve;
 use crate::symbolic::solve::solve_linear_system;
@@ -90,10 +90,8 @@ pub fn permutations(
     n: Expr,
     k: Expr,
 ) -> Expr {
-    simplify(&Expr::new_div(
-        Expr::Factorial(Arc::new(n.clone())),
-        Expr::Factorial(Arc::new(Expr::new_sub(n, k))),
-    ))
+    let perm = Expr::Permutation(Arc::new(n), Arc::new(k));
+    crate::symbolic::egraph::simplify(&perm)
 }
 
 /// Calculates the number of combinations of `n` items taken `k` at a time, C(n, k).
@@ -111,10 +109,8 @@ pub fn combinations(
     n: &Expr,
     k: Expr,
 ) -> Expr {
-    simplify(&Expr::new_div(
-        permutations(n.clone(), k.clone()),
-        Expr::Factorial(Arc::new(k)),
-    ))
+    let comb = Expr::Combination(Arc::new(n.clone()), Arc::new(k));
+    crate::symbolic::egraph::simplify(&comb)
 }
 
 /// Solves a linear recurrence relation with constant coefficients.

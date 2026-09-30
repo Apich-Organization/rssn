@@ -3982,20 +3982,6 @@ pub use crate::constant::COMMIT_SHA as constant_COMMIT_SHA;
 pub use crate::constant::RUSTC_VERSION as constant_RUSTC_VERSION;
 pub use crate::constant::SYSTEM_INFO as constant_SYSTEM_INFO;
 
-/// Prelude for the compute module
-#[cfg(feature = "compute")]
-pub mod compute {
-
-    pub use crate::compute::cache::ComputationResultCache;
-    pub use crate::compute::cache::ParsingCache;
-    pub use crate::compute::computable::Computable;
-    pub use crate::compute::computation::Computation;
-    pub use crate::compute::computation::ComputationProgress;
-    pub use crate::compute::computation::ComputationStatus;
-    pub use crate::compute::computation::Value;
-    pub use crate::compute::engine::ComputeEngine;
-    pub use crate::compute::state::State;
-}
 
 pub use crate::constant::get_build_date;
 pub use crate::constant::get_cargo_target_triple;
@@ -5251,7 +5237,7 @@ pub use crate::symbolic::simplify::pattern_match as symbolic_pattern_match;
 pub use crate::symbolic::simplify::simplify as symbolic_simplify;
 pub use crate::symbolic::simplify::substitute_patterns as symbolic_substitute_patterns;
 pub use crate::symbolic::simplify_dag::pattern_match;
-pub use crate::symbolic::simplify_dag::simplify;
+pub use crate::symbolic::egraph::simplify;
 pub use crate::symbolic::simplify_dag::substitute_patterns;
 pub use crate::symbolic::solid_state_physics::CrystalLattice as symbolic_CrystalLattice;
 pub use crate::symbolic::solid_state_physics::bloch_theorem as symbolic_bloch_theorem;

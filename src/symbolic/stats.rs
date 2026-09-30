@@ -4,21 +4,22 @@
 //! It includes basic descriptive statistics such as mean, variance, standard deviation,
 //! covariance, and correlation, all expressed symbolically.
 
+use num_bigint::BigInt;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Computes the symbolic mean of a set of expressions.
 ///
-/// The mean (average) is a measure of central tendency. For a set of `n` data points `x_i`,
-/// it is defined as `(1/n) * Σx_i`.
-///
-/// # Arguments
-/// * `data` - A slice of `Expr` representing the data points.
-///
-/// # Returns
-/// An `Expr` representing the symbolic mean.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn mean(data: &[Expr]) -> Expr {
+    let call = Expr::NaryList("stats_mean".to_string(), data.to_vec());
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for symbolic mean.
+#[must_use]
+pub fn mean_internal(data: &[Expr]) -> Expr {
     let n = data.len();
 
     if n == 0 {
@@ -36,23 +37,23 @@ pub fn mean(data: &[Expr]) -> Expr {
 
 /// Computes the symbolic variance of a set of expressions.
 ///
-/// The variance is a measure of the spread or dispersion of a set of data.
-/// For a set of `n` data points `x_i` with mean `μ`, it is defined as `(1/n) * Σ(x_i - μ)²`.
-///
-/// # Arguments
-/// * `data` - A slice of `Expr` representing the data points.
-///
-/// # Returns
-/// An `Expr` representing the symbolic variance.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn variance(data: &[Expr]) -> Expr {
+    let call = Expr::NaryList("stats_variance".to_string(), data.to_vec());
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for symbolic variance.
+#[must_use]
+pub fn variance_internal(data: &[Expr]) -> Expr {
     let n = data.len();
 
     if n == 0 {
         return Expr::Constant(0.0);
     }
 
-    let mu = mean(data);
+    let mu = mean_internal(data);
 
     let squared_diffs = data
         .iter()
@@ -69,33 +70,37 @@ pub fn variance(data: &[Expr]) -> Expr {
 
 /// Computes the symbolic standard deviation of a set of expressions.
 ///
-/// The standard deviation is the square root of the variance, providing a measure
-/// of data dispersion in the same units as the data itself.
-///
-/// # Arguments
-/// * `data` - A slice of `Expr` representing the data points.
-///
-/// # Returns
-/// An `Expr` representing the symbolic standard deviation.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn std_dev(data: &[Expr]) -> Expr {
-    simplify(&Expr::new_sqrt(variance(data)))
+    let call = Expr::NaryList("stats_std_dev".to_string(), data.to_vec());
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for symbolic standard deviation.
+#[must_use]
+pub fn std_dev_internal(data: &[Expr]) -> Expr {
+    simplify(&Expr::new_sqrt(variance_internal(data)))
 }
 
 /// Computes the symbolic covariance of two sets of expressions.
 ///
-/// Covariance measures the joint variability of two random variables. For two sets
-/// of `n` data points `x_i` and `y_i` with means `μ_x` and `μ_y`, it is defined as
-/// `(1/n) * Σ((x_i - μ_x) * (y_i - μ_y))`.
-///
-/// # Arguments
-/// * `data1` - The first set of data points.
-/// * `data2` - The second set of data points.
-///
-/// # Returns
-/// An `Expr` representing the symbolic covariance.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn covariance(
+    data1: &[Expr],
+    data2: &[Expr],
+) -> Expr {
+    let mut args = vec![Expr::BigInt(BigInt::from(data1.len()))];
+    args.extend(data1.iter().cloned());
+    args.extend(data2.iter().cloned());
+    let call = Expr::NaryList("stats_covariance".to_string(), args);
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for symbolic covariance.
+#[must_use]
+pub fn covariance_internal(
     data1: &[Expr],
     data2: &[Expr],
 ) -> Expr {
@@ -105,9 +110,9 @@ pub fn covariance(
 
     let n = data1.len();
 
-    let mu_x = mean(data1);
+    let mu_x = mean_internal(data1);
 
-    let mu_y = mean(data2);
+    let mu_y = mean_internal(data2);
 
     let sum_of_products = data1
         .iter()
@@ -127,26 +132,30 @@ pub fn covariance(
 
 /// Computes the symbolic Pearson correlation coefficient.
 ///
-/// The Pearson correlation coefficient `ρ` measures the linear correlation between
-/// two sets of data. It is defined as `cov(X, Y) / (σ_x * σ_y)`,
-/// where `cov` is the covariance and `σ` is the standard deviation.
-///
-/// # Arguments
-/// * `data1` - The first set of data points.
-/// * `data2` - The second set of data points.
-///
-/// # Returns
-/// An `Expr` representing the symbolic Pearson correlation coefficient.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn correlation(
     data1: &[Expr],
     data2: &[Expr],
 ) -> Expr {
-    let cov_xy = covariance(data1, data2);
+    let mut args = vec![Expr::BigInt(BigInt::from(data1.len()))];
+    args.extend(data1.iter().cloned());
+    args.extend(data2.iter().cloned());
+    let call = Expr::NaryList("stats_correlation".to_string(), args);
+    crate::symbolic::egraph::simplify(&call)
+}
 
-    let std_dev_x = std_dev(data1);
+/// Internal solver for symbolic Pearson correlation coefficient.
+#[must_use]
+pub fn correlation_internal(
+    data1: &[Expr],
+    data2: &[Expr],
+) -> Expr {
+    let cov_xy = covariance_internal(data1, data2);
 
-    let std_dev_y = std_dev(data2);
+    let std_dev_x = std_dev_internal(data1);
+
+    let std_dev_y = std_dev_internal(data2);
 
     simplify(&Expr::new_div(cov_xy, Expr::new_mul(std_dev_x, std_dev_y)))
 }

@@ -226,7 +226,7 @@ impl Representation {
     }
 }
 
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Computes the character of a representation.
 #[must_use]

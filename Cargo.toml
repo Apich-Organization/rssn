@@ -170,7 +170,6 @@ vergen-gitcl = { version = "10.0", features = [
 
 [features]
 default = []
-compute = []
 input = ["dep:nom"]
 output = ["dep:plotters", "dep:ndarray-npy"]
 physics = []
@@ -193,7 +192,6 @@ full = [
     "output",
     "physics",
     "plugins",
-    "compute",
     "ffi_blinding",
     "jit",
     "input",

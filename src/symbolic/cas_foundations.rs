@@ -341,6 +341,12 @@ pub fn expand(expr: Expr) -> Expr {
 /// Factorizes an expression by extracting common factors from sums.
 #[must_use]
 pub fn factorize(expr: Expr) -> Expr {
+    crate::symbolic::egraph::factor(&expr)
+}
+
+/// Internal factorization engine invoked by the E-Graph oracle.
+#[must_use]
+pub fn factorize_internal(expr: Expr) -> Expr {
     let expanded = expand(expr);
 
     let expanded_unwrapped = match &expanded {
@@ -366,10 +372,10 @@ pub fn factorize(expr: Expr) -> Expr {
             factorize_terms(flat_terms)
         },
         | Expr::Mul(a, b) => {
-            Expr::new_mul(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
+            Expr::new_mul(factorize_internal(a.as_ref().clone()), factorize_internal(b.as_ref().clone()))
         },
         | Expr::MulList(factors) => {
-            let new_factors: Vec<Expr> = factors.iter().map(|f| factorize(f.clone())).collect();
+            let new_factors: Vec<Expr> = factors.iter().map(|f| factorize_internal(f.clone())).collect();
 
             // Reconstruct MulList or Mul
             // For simplicity, just fold
@@ -386,9 +392,9 @@ pub fn factorize(expr: Expr) -> Expr {
             }
         },
         | Expr::Power(a, b) => {
-            Expr::new_pow(factorize(a.as_ref().clone()), factorize(b.as_ref().clone()))
+            Expr::new_pow(factorize_internal(a.as_ref().clone()), factorize_internal(b.as_ref().clone()))
         },
-        | Expr::Neg(a) => Expr::new_neg(factorize(a.as_ref().clone())),
+        | Expr::Neg(a) => Expr::new_neg(factorize_internal(a.as_ref().clone())),
         | e => e,
     }
 }
@@ -546,12 +552,33 @@ pub fn cylindrical_algebraic_decomposition(
 /// * `expr` - The expression to simplify.
 /// * `relations` - A slice of expressions representing the polynomial relations (e.g., `x^2 + y^2 - 1`).
 /// * `vars` - A slice of variable names to establish an ordering for the polynomial ring.
-/// * `order` - The monomial ordering to use for the Gröbner basis computation.
+/// Simplifies an expression using a set of polynomial side-relations.
 ///
-/// # Returns
-/// A new, simplified `Expr`. Returns the original expression if any step fails.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn simplify_with_relations(
+    expr: &Expr,
+    relations: &[Expr],
+    vars: &[&str],
+    order: MonomialOrder,
+) -> Expr {
+    let mut args = vec![expr.clone()];
+    args.push(Expr::Vector(relations.to_vec()));
+    for &v in vars {
+        args.push(Expr::Variable(v.to_string()));
+    }
+    let call = Expr::NaryList("simplify_with_relations".to_string(), args);
+    let res = crate::symbolic::egraph::simplify(&call);
+    if res != call {
+        res
+    } else {
+        simplify_with_relations_internal(expr, relations, vars, order)
+    }
+}
+
+/// Internal solver for Gröbner-basis relation simplification.
+#[must_use]
+pub fn simplify_with_relations_internal(
     expr: &Expr,
     relations: &[Expr],
     vars: &[&str],

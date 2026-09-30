@@ -44,7 +44,7 @@ use crate::symbolic::calculus::evaluate_at_point;
 use crate::symbolic::calculus::factorial;
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Computes the Taylor series expansion of an expression around a given center.
 ///
@@ -61,6 +61,17 @@ use crate::symbolic::simplify_dag::simplify;
 /// An `Expr` representing the truncated Taylor series.
 #[must_use]
 pub fn taylor_series(
+    expr: &Expr,
+    var: &str,
+    center: &Expr,
+    order: usize,
+) -> Expr {
+    crate::symbolic::egraph::series(expr, var, center, order)
+}
+
+/// Internal Taylor series computation engine invoked by the E-Graph oracle.
+#[must_use]
+pub fn taylor_series_internal(
     expr: &Expr,
     var: &str,
     center: &Expr,
@@ -141,8 +152,36 @@ pub fn calculate_taylor_coefficients(
 ///
 /// # Returns
 /// An `Expr` representing the truncated Laurent series.
+/// Computes the Laurent series expansion around a point.
+///
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn laurent_series(
+    expr: &Expr,
+    var: &str,
+    center: &Expr,
+    order: usize,
+) -> Expr {
+    let call = Expr::NaryList(
+        "laurent_series".to_string(),
+        vec![
+            expr.clone(),
+            Expr::Variable(var.to_string()),
+            center.clone(),
+            Expr::BigInt(BigInt::from(order)),
+        ],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if res != call {
+        res
+    } else {
+        laurent_series_internal(expr, var, center, order)
+    }
+}
+
+/// Internal solver for Laurent series expansion.
+#[must_use]
+pub fn laurent_series_internal(
     expr: &Expr,
     var: &str,
     center: &Expr,
@@ -184,7 +223,7 @@ pub fn laurent_series(
         }
     }
 
-    let taylor_part = taylor_series(&g_z, var, center, order);
+    let taylor_part = taylor_series_internal(&g_z, var, center, order);
 
     let divisor = Expr::new_pow(
         Expr::new_sub(Expr::Variable(var.to_string()), center.clone()),
@@ -207,8 +246,36 @@ pub fn laurent_series(
 ///
 /// # Returns
 /// An `Expr` representing the truncated Fourier series.
+/// Computes the Fourier series expansion of a periodic expression.
+///
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn fourier_series(
+    expr: &Expr,
+    var: &str,
+    period: &Expr,
+    order: usize,
+) -> Expr {
+    let call = Expr::NaryList(
+        "fourier_series".to_string(),
+        vec![
+            expr.clone(),
+            Expr::Variable(var.to_string()),
+            period.clone(),
+            Expr::BigInt(BigInt::from(order)),
+        ],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if res != call {
+        res
+    } else {
+        fourier_series_internal(expr, var, period, order)
+    }
+}
+
+/// Internal solver for Fourier series expansion.
+#[must_use]
+pub fn fourier_series_internal(
     expr: &Expr,
     var: &str,
     period: &Expr,
@@ -278,8 +345,33 @@ pub fn fourier_series(
 ///
 /// # Returns
 /// An `Expr` representing the sum.
+/// Computes the symbolic summation of an expression over a given range.
+///
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn summation(
+    expr: &Expr,
+    var: &str,
+    lower_bound: &Expr,
+    upper_bound: &Expr,
+) -> Expr {
+    let call = Expr::Summation(
+        Arc::new(expr.clone()),
+        var.to_string(),
+        Arc::new(lower_bound.clone()),
+        Arc::new(upper_bound.clone()),
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if res != call {
+        res
+    } else {
+        summation_internal(expr, var, lower_bound, upper_bound)
+    }
+}
+
+/// Internal solver for summation.
+#[must_use]
+pub fn summation_internal(
     expr: &Expr,
     var: &str,
     lower_bound: &Expr,
@@ -348,19 +440,31 @@ pub fn summation(
 
 /// Computes the symbolic product of an expression over a given range.
 ///
-/// This function attempts to evaluate finite products directly. For products
-/// with symbolic bounds, it returns a symbolic `Expr::Product`.
-///
-/// # Arguments
-/// * `expr` - The expression to multiply.
-/// * `var` - The product variable.
-/// * `lower_bound` - The lower bound of the product.
-/// * `upper_bound` - The upper bound of the product.
-///
-/// # Returns
-/// An `Expr` representing the product.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn product(
+    expr: &Expr,
+    var: &str,
+    lower_bound: &Expr,
+    upper_bound: &Expr,
+) -> Expr {
+    let call = Expr::Product(
+        Arc::new(expr.clone()),
+        var.to_string(),
+        Arc::new(lower_bound.clone()),
+        Arc::new(upper_bound.clone()),
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if res != call {
+        res
+    } else {
+        product_internal(expr, var, lower_bound, upper_bound)
+    }
+}
+
+/// Internal solver for product.
+#[must_use]
+pub fn product_internal(
     expr: &Expr,
     var: &str,
     lower_bound: &Expr,
@@ -442,6 +546,82 @@ pub fn analyze_convergence(
 /// * `order` - The maximum order of the expansion.
 ///
 /// # Returns
+fn invert_poly_to_y(expr: &Expr, var: &str, y_var: &str, d: i64) -> Expr {
+    match expr {
+        Expr::Add(a, b) => Expr::new_add(
+            invert_poly_to_y(a, var, y_var, d),
+            invert_poly_to_y(b, var, y_var, d),
+        ),
+        Expr::Sub(a, b) => Expr::new_sub(
+            invert_poly_to_y(a, var, y_var, d),
+            invert_poly_to_y(b, var, y_var, d),
+        ),
+        Expr::Neg(a) => Expr::new_neg(invert_poly_to_y(a, var, y_var, d)),
+        Expr::Mul(a, b) => {
+            if !crate::symbolic::calculus::contains_var(a, var) {
+                Expr::new_mul(a.as_ref().clone(), invert_poly_to_y(b, var, y_var, d))
+            } else if !crate::symbolic::calculus::contains_var(b, var) {
+                Expr::new_mul(b.as_ref().clone(), invert_poly_to_y(a, var, y_var, d))
+            } else {
+                Expr::new_mul(
+                    Expr::new_pow(Expr::Variable(y_var.to_string()), Expr::Constant(d as f64)),
+                    substitute(expr, var, &Expr::new_div(Expr::Constant(1.0), Expr::Variable(y_var.to_string()))),
+                )
+            }
+        }
+        Expr::Variable(v) if v == var => {
+            let rem_exp = d - 1;
+            if rem_exp == 0 {
+                Expr::Constant(1.0)
+            } else if rem_exp == 1 {
+                Expr::Variable(y_var.to_string())
+            } else {
+                Expr::new_pow(Expr::Variable(y_var.to_string()), Expr::Constant(rem_exp as f64))
+            }
+        }
+        Expr::Power(base, exp) if matches!(&**base, Expr::Variable(v) if v == var) => {
+            let k = exp.to_f64().unwrap_or(0.0) as i64;
+            let rem_exp = d - k;
+            if rem_exp == 0 {
+                Expr::Constant(1.0)
+            } else if rem_exp == 1 {
+                Expr::Variable(y_var.to_string())
+            } else {
+                Expr::new_pow(Expr::Variable(y_var.to_string()), Expr::Constant(rem_exp as f64))
+            }
+        }
+        _ => {
+            if !crate::symbolic::calculus::contains_var(expr, var) {
+                if d == 0 {
+                    expr.clone()
+                } else if d == 1 {
+                    Expr::new_mul(expr.clone(), Expr::Variable(y_var.to_string()))
+                } else {
+                    Expr::new_mul(
+                        expr.clone(),
+                        Expr::new_pow(Expr::Variable(y_var.to_string()), Expr::Constant(d as f64)),
+                    )
+                }
+            } else {
+                expr.clone()
+            }
+        }
+    }
+}
+
+/// Computes the asymptotic expansion of an expression around a given point (e.g., infinity).
+///
+/// An asymptotic expansion is a series that approximates a function as its argument
+/// approaches a particular value (often infinity). It is not necessarily convergent,
+/// but provides a good approximation for large arguments.
+///
+/// # Arguments
+/// * `expr` - The expression to expand.
+/// * `var` - The variable to expand with respect to.
+/// * `point` - The point around which to expand (e.g., `Expr::Infinity`).
+/// * `order` - The maximum order of the expansion.
+///
+/// # Returns
 /// An `Expr` representing the asymptotic expansion.
 #[must_use]
 pub fn asymptotic_expansion(
@@ -454,23 +634,21 @@ pub fn asymptotic_expansion(
         return expr.clone();
     }
 
-    if let Expr::Div(_p, _q) = expr {
-        let y = Expr::Variable("y".to_string());
-
-        let one_over_y = Expr::new_div(Expr::Constant(1.0), y);
-
-        let substituted_expr = substitute(expr, var, &one_over_y);
-
-        let simplified_expr_in_y = simplify(&substituted_expr);
-
-        let taylor_series_in_y =
-            taylor_series(&simplified_expr_in_y, "y", &Expr::Constant(0.0), order);
-
-        let one_over_x = Expr::new_div(Expr::Constant(1.0), Expr::Variable(var.to_string()));
-
-        let final_series = substitute(&taylor_series_in_y, "y", &one_over_x);
-
-        return simplify(&final_series);
+    if let Expr::Div(p, q) = expr {
+        let dp = crate::symbolic::polynomial::polynomial_degree(p, var);
+        let dq = crate::symbolic::polynomial::polynomial_degree(q, var);
+        if dp >= 0 && dq >= 0 {
+            let d = dp.max(dq);
+            let y_var = "y";
+            let p_y = invert_poly_to_y(p, var, y_var, d);
+            let q_y = invert_poly_to_y(q, var, y_var, d);
+            let simplified_expr_in_y = simplify(&Expr::new_div(p_y, q_y));
+            let taylor_series_in_y =
+                taylor_series_internal(&simplified_expr_in_y, y_var, &Expr::Constant(0.0), order);
+            let one_over_x = Expr::new_div(Expr::Constant(1.0), Expr::Variable(var.to_string()));
+            let final_series = substitute(&taylor_series_in_y, y_var, &one_over_x);
+            return simplify(&final_series);
+        }
     }
 
     let _ = Arc::new(expr.clone());
@@ -507,7 +685,7 @@ pub fn analytic_continuation(
     new_center: &Expr,
     order: usize,
 ) -> Expr {
-    let series_representation = taylor_series(expr, var, original_center, order + 5);
+    let series_representation = taylor_series_internal(expr, var, original_center, order + 5);
 
-    taylor_series(&series_representation, var, new_center, order)
+    taylor_series_internal(&series_representation, var, new_center, order)
 }

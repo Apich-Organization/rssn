@@ -16,7 +16,7 @@ use serde::Serialize;
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Represents a symbolic vector in 3D space.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -277,12 +277,24 @@ pub fn gradient(
     scalar_field: &Expr,
     vars: (&str, &str, &str),
 ) -> Vector {
+    let call = Expr::NaryList(
+        "gradient".to_string(),
+        vec![
+            scalar_field.clone(),
+            Expr::Variable(vars.0.to_string()),
+            Expr::Variable(vars.1.to_string()),
+            Expr::Variable(vars.2.to_string()),
+        ],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if let Expr::Vector(comps) = res {
+        if comps.len() >= 3 {
+            return Vector::new(comps[0].clone(), comps[1].clone(), comps[2].clone());
+        }
+    }
     let df_dx = differentiate(scalar_field, vars.0);
-
     let df_dy = differentiate(scalar_field, vars.1);
-
     let df_dz = differentiate(scalar_field, vars.2);
-
     Vector::new(df_dx, df_dy, df_dz)
 }
 
@@ -302,13 +314,16 @@ pub fn divergence(
     vector_field: &Vector,
     vars: (&str, &str, &str),
 ) -> Expr {
-    let d_fx_dx = differentiate(&vector_field.x, vars.0);
-
-    let d_fy_dy = differentiate(&vector_field.y, vars.1);
-
-    let d_fz_dz = differentiate(&vector_field.z, vars.2);
-
-    simplify(&Expr::new_add(Expr::new_add(d_fx_dx, d_fy_dy), d_fz_dz))
+    let call = Expr::NaryList(
+        "divergence".to_string(),
+        vec![
+            Expr::Vector(vec![vector_field.x.clone(), vector_field.y.clone(), vector_field.z.clone()]),
+            Expr::Variable(vars.0.to_string()),
+            Expr::Variable(vars.1.to_string()),
+            Expr::Variable(vars.2.to_string()),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&call)
 }
 
 /// Computes the curl of a vector field `F = (Fx, Fy, Fz)`.
@@ -328,25 +343,49 @@ pub fn curl(
     vector_field: &Vector,
     vars: (&str, &str, &str),
 ) -> Vector {
+    let call = Expr::NaryList(
+        "curl".to_string(),
+        vec![
+            Expr::Vector(vec![vector_field.x.clone(), vector_field.y.clone(), vector_field.z.clone()]),
+            Expr::Variable(vars.0.to_string()),
+            Expr::Variable(vars.1.to_string()),
+            Expr::Variable(vars.2.to_string()),
+        ],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if let Expr::Vector(comps) = res {
+        if comps.len() >= 3 {
+            return Vector::new(comps[0].clone(), comps[1].clone(), comps[2].clone());
+        }
+    }
     let d_fz_dy = differentiate(&vector_field.z, vars.1);
-
     let d_fy_dz = differentiate(&vector_field.y, vars.2);
-
     let d_fx_dz = differentiate(&vector_field.x, vars.2);
-
     let d_fz_dx = differentiate(&vector_field.z, vars.0);
-
     let d_fy_dx = differentiate(&vector_field.y, vars.0);
-
     let d_fx_dy = differentiate(&vector_field.x, vars.1);
-
-    let x_comp = simplify(&Expr::new_sub(d_fz_dy, d_fy_dz));
-
-    let y_comp = simplify(&Expr::new_sub(d_fx_dz, d_fz_dx));
-
-    let z_comp = simplify(&Expr::new_sub(d_fy_dx, d_fx_dy));
-
+    let x_comp = crate::symbolic::egraph::simplify(&Expr::new_sub(d_fz_dy, d_fy_dz));
+    let y_comp = crate::symbolic::egraph::simplify(&Expr::new_sub(d_fx_dz, d_fz_dx));
+    let z_comp = crate::symbolic::egraph::simplify(&Expr::new_sub(d_fy_dx, d_fx_dy));
     Vector::new(x_comp, y_comp, z_comp)
+}
+
+/// Computes the Laplacian of a scalar field `f`.
+#[must_use]
+pub fn laplacian(
+    scalar_field: &Expr,
+    vars: (&str, &str, &str),
+) -> Expr {
+    let call = Expr::NaryList(
+        "laplacian".to_string(),
+        vec![
+            scalar_field.clone(),
+            Expr::Variable(vars.0.to_string()),
+            Expr::Variable(vars.1.to_string()),
+            Expr::Variable(vars.2.to_string()),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&call)
 }
 
 /// Computes the directional derivative of a scalar field `f` in the direction of a vector `v`.

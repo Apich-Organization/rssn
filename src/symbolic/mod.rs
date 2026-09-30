@@ -33,6 +33,7 @@ pub mod core;
 pub mod cryptography;
 pub mod differential_geometry;
 pub mod discrete_groups;
+pub mod egraph;
 pub mod electromagnetism;
 pub mod elementary;
 pub mod error_correction;

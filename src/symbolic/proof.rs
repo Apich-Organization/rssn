@@ -17,7 +17,7 @@ use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 const TOLERANCE: f64 = 1e-6;
 

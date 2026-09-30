@@ -17,7 +17,7 @@ use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::elementary::sqrt;
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Represents a Hilbert space, a complete inner product space.
 /// This implementation specifically models L^2([a, b]), the space of square-integrable
@@ -122,9 +122,31 @@ impl LinearOperator {
 ///
 /// For the L^2([a, b]) space, the inner product is defined as:
 /// `<f, g> = ∫_a^b f(x)g*(x) dx`.
-/// For simplicity with real functions, this implementation computes `∫_a^b f(x)g(x) dx`.
+/// Computes the inner product of two functions, `f` and `g`, in a given Hilbert space.
+///
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn inner_product(
+    space: &HilbertSpace,
+    f: &Expr,
+    g: &Expr,
+) -> Expr {
+    let call = Expr::NaryList(
+        "hilbert_inner_product".to_string(),
+        vec![
+            f.clone(),
+            g.clone(),
+            Expr::Variable(space.var.clone()),
+            space.lower_bound.clone(),
+            space.upper_bound.clone(),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for Hilbert inner product.
+#[must_use]
+pub fn inner_product_internal(
     space: &HilbertSpace,
     f: &Expr,
     g: &Expr,
@@ -141,10 +163,27 @@ pub fn inner_product(
 
 /// Computes the norm of a function `f` in a given Hilbert space.
 ///
-/// The norm is a measure of the "length" of the function and is induced by the inner product:
-/// `||f|| = sqrt(<f, f>)`.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn norm(
+    space: &HilbertSpace,
+    f: &Expr,
+) -> Expr {
+    let call = Expr::NaryList(
+        "hilbert_norm".to_string(),
+        vec![
+            f.clone(),
+            Expr::Variable(space.var.clone()),
+            space.lower_bound.clone(),
+            space.upper_bound.clone(),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for Hilbert norm.
+#[must_use]
+pub fn norm_internal(
     space: &HilbertSpace,
     f: &Expr,
 ) -> Expr {
@@ -155,9 +194,28 @@ pub fn norm(
 
 /// Computes the L^p norm of a function `f` in a given Banach space.
 ///
-/// The L^p norm is defined as: `||f||_p = (∫_a^b |f(x)|^p dx)^(1/p)`.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn banach_norm(
+    space: &BanachSpace,
+    f: &Expr,
+) -> Expr {
+    let call = Expr::NaryList(
+        "banach_norm".to_string(),
+        vec![
+            f.clone(),
+            Expr::Variable(space.var.clone()),
+            space.lower_bound.clone(),
+            space.upper_bound.clone(),
+            space.p.clone(),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for Banach L^p norm.
+#[must_use]
+pub fn banach_norm_internal(
     space: &BanachSpace,
     f: &Expr,
 ) -> Expr {
@@ -191,10 +249,29 @@ pub fn are_orthogonal(
 
 /// Computes the projection of function `f` onto function `g` in a given Hilbert space.
 ///
-/// The projection of `f` onto `g` finds the component of `f` that lies in the direction of `g`.
-/// Formula: `proj_g(f) = (<f, g> / <g, g>) * g`.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn project(
+    space: &HilbertSpace,
+    f: &Expr,
+    g: &Expr,
+) -> Expr {
+    let call = Expr::NaryList(
+        "hilbert_project".to_string(),
+        vec![
+            f.clone(),
+            g.clone(),
+            Expr::Variable(space.var.clone()),
+            space.lower_bound.clone(),
+            space.upper_bound.clone(),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for function projection in a Hilbert space.
+#[must_use]
+pub fn project_internal(
     space: &HilbertSpace,
     f: &Expr,
     g: &Expr,

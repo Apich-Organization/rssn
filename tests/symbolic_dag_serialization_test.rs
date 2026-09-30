@@ -6,7 +6,7 @@ use rssn::symbolic::core::Expr;
 
 fn test_dag_serialization_json() {
     // Create a DAG expression
-    let expr = Expr::new_add(Expr::new_variable("x"), Expr::Constant(1.0));
+    let expr = Expr::new_add(Expr::new_variable("x"), Expr::Constant(1.0)).to_dag().unwrap();
 
     assert!(expr.is_dag());
 
@@ -29,7 +29,7 @@ fn test_dag_serialization_json() {
 
 fn test_dag_serialization_bincode() {
     // Create a DAG expression
-    let expr = Expr::new_add(Expr::new_variable("x"), Expr::Constant(1.0));
+    let expr = Expr::new_add(Expr::new_variable("x"), Expr::Constant(1.0)).to_dag().unwrap();
 
     assert!(expr.is_dag());
 
@@ -57,7 +57,9 @@ fn test_nested_dag_serialization() {
     let expr = Expr::new_mul(
         Expr::new_add(Expr::new_variable("x"), Expr::Constant(1.0)),
         Expr::new_add(Expr::new_variable("y"), Expr::Constant(2.0)),
-    );
+    )
+    .to_dag()
+    .unwrap();
 
     assert!(expr.is_dag());
 
@@ -98,7 +100,7 @@ fn test_dag_with_sharing() {
     // Create an expression with shared subexpressions
     let x = Expr::new_variable("x");
 
-    let expr = Expr::new_add(x.clone(), x.clone());
+    let expr = Expr::new_add(x.clone(), x.clone()).to_dag().unwrap();
 
     assert!(expr.is_dag());
 

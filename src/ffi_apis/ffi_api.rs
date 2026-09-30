@@ -221,7 +221,7 @@ pub unsafe extern "C" fn expr_to_string(handle: *mut Expr) -> *mut c_char {
 }
 
 use crate::symbolic::handles::HANDLE_MANAGER;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::unit_unification::unify_expression;
 
 /// Creates an expression from a JSON string and returns a thread-safe handle.

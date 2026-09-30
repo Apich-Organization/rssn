@@ -84,7 +84,7 @@ use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::factorial;
 use crate::symbolic::core::Expr;
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 // ============================================================================
 // Gamma and Related Functions

@@ -6,89 +6,12 @@
 //! It includes capabilities for simplifying logical formulas, converting them to
 //! normal forms (CNF, DNF), and a basic SAT solver for quantifier-free predicate logic.
 
-use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
 
-/// Checks if a variable occurs freely in an expression.
-///
-/// # Panics
-///
-/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an an
-/// internal inconsistency in the expression representation. This should ideally
-/// not happen in a well-formed expression DAG.
-pub(crate) fn free_vars(
-    expr: &Expr,
-    free: &mut BTreeSet<String>,
-    bound: &mut BTreeSet<String>,
-) {
-    match expr {
-        | Expr::Dag(node) => {
-            free_vars(&node.to_expr().expect("Free Vars"), free, bound);
-        },
-        | Expr::Variable(s) => {
-            if !bound.contains(s) {
-                free.insert(s.clone());
-            }
-        },
-        | Expr::Add(a, b)
-        | Expr::Sub(a, b)
-        | Expr::Mul(a, b)
-        | Expr::Div(a, b)
-        | Expr::Power(a, b)
-        | Expr::Eq(a, b)
-        | Expr::Lt(a, b)
-        | Expr::Gt(a, b)
-        | Expr::Le(a, b)
-        | Expr::Ge(a, b)
-        | Expr::Xor(a, b)
-        | Expr::Implies(a, b)
-        | Expr::Equivalent(a, b) => {
-            free_vars(a, free, bound);
-
-            free_vars(b, free, bound);
-        },
-        | Expr::Neg(a) | Expr::Not(a) => {
-            free_vars(a, free, bound);
-        },
-        | Expr::And(v) | Expr::Or(v) => {
-            for sub_expr in v {
-                free_vars(sub_expr, free, bound);
-            }
-        },
-        | Expr::ForAll(var, body) | Expr::Exists(var, body) => {
-            bound.insert(var.clone());
-
-            free_vars(body, free, bound);
-
-            bound.remove(var);
-        },
-        | Expr::Predicate { args, .. } => {
-            for arg in args {
-                free_vars(arg, free, bound);
-            }
-        },
-        | _ => {},
-    }
-}
-
-/// Helper to check if an expression contains a specific free variable.
-pub(crate) fn has_free_var(
-    expr: &Expr,
-    var: &str,
-) -> bool {
-    let mut free = BTreeSet::new();
-
-    let mut bound = BTreeSet::new();
-
-    free_vars(expr, &mut free, &mut bound);
-
-    free.contains(var)
-}
 
 /// Simplifies a logical expression by applying a set of transformation rules.
 ///
@@ -115,199 +38,13 @@ pub(crate) fn has_free_var(
 /// not happen in a well-formed expression DAG.
 /// Panics if a unique term cannot be extracted from a `BTreeSet` when `And` or `Or`
 /// clauses are reduced to a single term, indicating a logic error.
+/// Simplifies a logical expression using the heuristic E-Graph saturation engine.
+///
+/// Handles double negation elimination, De Morgan's laws, excluded middle, contradiction detection,
+/// quantifier duality, and truth-table constant folding.
 #[must_use]
 pub fn simplify_logic(expr: &Expr) -> Expr {
-    match expr {
-        | Expr::Dag(node) => simplify_logic(&node.to_expr().expect("Simplify Logic")),
-        | Expr::Not(inner) => {
-            match simplify_logic(inner) {
-                | Expr::Boolean(b) => Expr::Boolean(!b),
-                | Expr::Not(sub) => (*sub).clone(),
-                | Expr::ForAll(var, body) => {
-                    Expr::Exists(var, Arc::new(simplify_logic(&Expr::new_not(body))))
-                },
-                | Expr::Exists(var, body) => {
-                    Expr::ForAll(var, Arc::new(simplify_logic(&Expr::new_not(body))))
-                },
-                | simplified_inner => Expr::new_not(simplified_inner),
-            }
-        },
-        | Expr::And(v) => {
-            let mut new_terms = Vec::new();
-
-            for term in v {
-                let simplified = simplify_logic(term);
-
-                match simplified {
-                    | Expr::Boolean(false) => return Expr::Boolean(false),
-                    | Expr::Boolean(true) => continue,
-                    | Expr::And(mut sub_terms) => new_terms.append(&mut sub_terms),
-                    | _ => new_terms.push(simplified),
-                }
-            }
-
-            let mut unique_terms = BTreeSet::new();
-
-            for term in new_terms {
-                unique_terms.insert(term);
-            }
-
-            for term in &unique_terms {
-                if unique_terms.contains(&Expr::new_not(term.clone())) {
-                    return Expr::Boolean(false);
-                }
-            }
-
-            if unique_terms.is_empty() {
-                Expr::Boolean(true)
-            } else if unique_terms.len() == 1 {
-                unique_terms
-                    .into_iter()
-                    .next()
-                    .expect("Unique Term Parsing Failed")
-            } else {
-                Expr::And(unique_terms.into_iter().collect())
-            }
-        },
-        | Expr::Or(v) => {
-            let mut new_terms = Vec::new();
-
-            for term in v {
-                let simplified = simplify_logic(term);
-
-                match simplified {
-                    | Expr::Boolean(true) => return Expr::Boolean(true),
-                    | Expr::Boolean(false) => continue,
-                    | Expr::Or(mut sub_terms) => new_terms.append(&mut sub_terms),
-                    | _ => new_terms.push(simplified),
-                }
-            }
-
-            let mut unique_terms = BTreeSet::new();
-
-            for term in new_terms {
-                unique_terms.insert(term);
-            }
-
-            for term in &unique_terms {
-                if unique_terms.contains(&Expr::new_not(term.clone())) {
-                    return Expr::Boolean(true);
-                }
-            }
-
-            if unique_terms.is_empty() {
-                Expr::Boolean(false)
-            } else if unique_terms.len() == 1 {
-                unique_terms
-                    .into_iter()
-                    .next()
-                    .expect("Unique Term Parsing Failed")
-            } else {
-                Expr::Or(unique_terms.into_iter().collect())
-            }
-        },
-        | Expr::Implies(a, b) => {
-            simplify_logic(&Expr::Or(vec![
-                Expr::Not(Arc::new(a.as_ref().clone())),
-                b.as_ref().clone(),
-            ]))
-        },
-        | Expr::Equivalent(a, b) => {
-            simplify_logic(&Expr::And(vec![
-                Expr::Implies(a.clone(), b.clone()),
-                Expr::Implies(b.clone(), a.clone()),
-            ]))
-        },
-        | Expr::Xor(a, b) => {
-            simplify_logic(&Expr::And(vec![
-                Expr::Or(vec![a.as_ref().clone(), b.as_ref().clone()]),
-                Expr::Not(Arc::new(Expr::And(vec![
-                    a.as_ref().clone(),
-                    b.as_ref().clone(),
-                ]))),
-            ]))
-        },
-        | Expr::ForAll(var, body) => {
-            let simplified_body = simplify_logic(body);
-
-            if !has_free_var(&simplified_body, var) {
-                return simplified_body;
-            }
-
-            if let Expr::And(terms) = &simplified_body {
-                let mut with_var = vec![];
-
-                let mut without_var = vec![];
-
-                for term in terms {
-                    if has_free_var(term, var) {
-                        with_var.push(term.clone());
-                    } else {
-                        without_var.push(term.clone());
-                    }
-                }
-
-                if !without_var.is_empty() {
-                    let forall_part = if with_var.is_empty() {
-                        Expr::Boolean(true)
-                    } else {
-                        Expr::ForAll(var.clone(), Arc::new(Expr::And(with_var)))
-                    };
-
-                    without_var.push(simplify_logic(&forall_part));
-
-                    return simplify_logic(&Expr::And(without_var));
-                }
-            }
-
-            Expr::ForAll(var.clone(), Arc::new(simplified_body))
-        },
-        | Expr::Exists(var, body) => {
-            let simplified_body = simplify_logic(body);
-
-            if !has_free_var(&simplified_body, var) {
-                return simplified_body;
-            }
-
-            if let Expr::Or(terms) = &simplified_body {
-                let mut with_var = vec![];
-
-                let mut without_var = vec![];
-
-                for term in terms {
-                    if has_free_var(term, var) {
-                        with_var.push(term.clone());
-                    } else {
-                        without_var.push(term.clone());
-                    }
-                }
-
-                if !without_var.is_empty() {
-                    let exists_part = if with_var.is_empty() {
-                        Expr::Boolean(false)
-                    } else {
-                        Expr::Exists(var.clone(), Arc::new(Expr::Or(with_var)))
-                    };
-
-                    without_var.push(simplify_logic(&exists_part));
-
-                    return simplify_logic(&Expr::Or(without_var));
-                }
-            }
-
-            Expr::Exists(var.clone(), Arc::new(simplified_body))
-        },
-        | Expr::Predicate { name, args } => {
-            Expr::Predicate {
-                name: name.clone(),
-                args: args
-                    .iter()
-                    .map(|expr: &Expr| simplify(&expr.clone()))
-                    .collect(),
-            }
-        },
-        | _ => expr.clone(),
-    }
+    crate::symbolic::egraph::simplify(expr)
 }
 
 /// # Panics
@@ -317,7 +54,6 @@ pub fn simplify_logic(expr: &Expr) -> Expr {
 /// not happen in a well-formed expression DAG.
 pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
     match expr {
-        | Expr::Dag(node) => to_basic_logic_ops(&node.to_expr().expect("To Basic Logic Ops")),
         | Expr::Implies(a, b) => {
             Expr::Or(vec![
                 Expr::Not(Arc::new(to_basic_logic_ops(a))),
@@ -352,14 +88,8 @@ pub(crate) fn to_basic_logic_ops(expr: &Expr) -> Expr {
     }
 }
 
-/// # Panics
-///
-/// Panics if a `Dag` node cannot be converted to an `Expr`, which indicates an
-/// internal inconsistency in the expression representation. This should ideally
-/// not happen in a well-formed expression DAG.
 pub(crate) fn move_not_inwards(expr: &Expr) -> Expr {
     match expr {
-        | Expr::Dag(node) => move_not_inwards(&node.to_expr().expect("Move not Inwards")),
         | Expr::Not(a) => {
             match &**a {
                 | Expr::And(v) => {
@@ -456,8 +186,18 @@ pub(crate) fn distribute_or_over_and(expr: &Expr) -> Expr {
 ///
 /// # Returns
 /// An equivalent expression in Conjunctive Normal Form.
+/// Converts a logical expression into Conjunctive Normal Form (CNF).
+///
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn to_cnf(expr: &Expr) -> Expr {
+    let call = Expr::UnaryList("to_cnf".to_string(), Arc::new(expr.clone()));
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for CNF conversion.
+#[must_use]
+pub fn to_cnf_internal(expr: &Expr) -> Expr {
     let simplified = simplify_logic(expr);
 
     let basic_ops = to_basic_logic_ops(&simplified);
@@ -471,24 +211,19 @@ pub fn to_cnf(expr: &Expr) -> Expr {
 
 /// Converts a logical expression into Disjunctive Normal Form (DNF).
 ///
-/// DNF is a standardized representation of a logical formula which is a disjunction
-/// of one or more clauses, where each clause is a conjunction of literals.
-/// This implementation cleverly achieves the conversion by using the `to_cnf` function:
-/// 1.  The input expression `expr` is negated: `Not(expr)`.
-/// 2.  The negated expression is converted to CNF: `cnf(Not(expr))`.
-/// 3.  The resulting CNF is negated again, and De Morgan's laws are applied implicitly
-///     by `simplify_logic`, resulting in the DNF of the original expression.
-///
-/// # Arguments
-/// * `expr` - The logical expression to convert.
-///
-/// # Returns
-/// An equivalent expression in Disjunctive Normal Form.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn to_dnf(expr: &Expr) -> Expr {
+    let call = Expr::UnaryList("to_dnf".to_string(), Arc::new(expr.clone()));
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for DNF conversion.
+#[must_use]
+pub fn to_dnf_internal(expr: &Expr) -> Expr {
     let not_expr = simplify_logic(&Expr::new_not(expr.clone()));
 
-    let cnf_of_not = to_cnf(&not_expr);
+    let cnf_of_not = to_cnf_internal(&not_expr);
 
     simplify_logic(&Expr::new_not(cnf_of_not))
 }

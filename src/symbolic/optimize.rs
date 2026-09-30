@@ -14,7 +14,7 @@ use serde::Serialize;
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::eigen_decomposition;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::solve::solve_system;
 
 /// The classification of a critical point of a function.
@@ -136,7 +136,6 @@ pub(crate) fn evaluate_constant_expr(expr: &Expr) -> Option<f64> {
         | Expr::Neg(a) => Some(-evaluate_constant_expr(a)?),
         | Expr::Power(a, b) => Some(evaluate_constant_expr(a)?.powf(evaluate_constant_expr(b)?)),
         | Expr::Sqrt(a) => Some(evaluate_constant_expr(a)?.sqrt()),
-        | Expr::Dag(node) => evaluate_constant_expr(&node.to_expr().ok()?),
         | _ => None,
     }
 }
@@ -147,14 +146,25 @@ pub(crate) fn evaluate_constant_expr(expr: &Expr) -> Option<f64> {
 /// scalar-valued function. `H_ij = ∂²f / ∂x_i ∂x_j`.
 /// It is used in multivariate calculus for classifying critical points.
 ///
-/// # Arguments
-/// * `f` - The multivariate function as an `Expr`.
-/// * `vars` - A slice of string slices representing the independent variables.
+/// Computes the Hessian matrix (matrix of second partial derivatives) of a function.
 ///
-/// # Returns
-/// An `Expr::Matrix` representing the Hessian matrix.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn hessian_matrix(
+    f: &Expr,
+    vars: &[&str],
+) -> Expr {
+    let mut args = vec![f.clone()];
+    for &v in vars {
+        args.push(Expr::Variable(v.to_string()));
+    }
+    let call = Expr::NaryList("hessian_matrix".to_string(), args);
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for Hessian matrix.
+#[must_use]
+pub fn hessian_matrix_internal(
     f: &Expr,
     vars: &[&str],
 ) -> Expr {

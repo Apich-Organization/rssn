@@ -157,7 +157,7 @@ use crate::symbolic::grobner::subtract_poly;
 use crate::symbolic::real_roots::eval_expr;
 use crate::symbolic::simplify::as_f64;
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Adds two sparse polynomials.
 ///
@@ -403,6 +403,10 @@ pub fn polynomial_degree(
         s_expr
     };
 
+    if !is_polynomial(&s_expr, var) {
+        return -1;
+    }
+
     match s_expr {
         | Expr::Add(a, b) | Expr::Sub(a, b) => {
             std::cmp::max(polynomial_degree(&a, var), polynomial_degree(&b, var))
@@ -548,16 +552,45 @@ pub fn leading_coefficient(
 /// * `var` - The variable of the polynomials.
 ///
 /// # Returns
-/// A tuple `(quotient, remainder)` where both are `Expr`.
+/// Performs polynomial long division on expressions `n` and `d` with respect to variable `var`.
+///
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn polynomial_long_division(
     n: &Expr,
     d: &Expr,
     var: &str,
 ) -> (Expr, Expr) {
+    let call = Expr::NaryList(
+        "polynomial_long_division".to_string(),
+        vec![n.clone(), d.clone(), Expr::Variable(var.to_string())],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if let Expr::Tuple(ref items) = res {
+        if items.len() == 2 {
+            return (items[0].clone(), items[1].clone());
+        }
+    } else if let Expr::Vector(ref items) = res {
+        if items.len() == 2 {
+            return (items[0].clone(), items[1].clone());
+        }
+    }
+    polynomial_long_division_internal(n, d, var)
+}
+
+/// Internal solver for polynomial long division.
+#[must_use]
+pub fn polynomial_long_division_internal(
+    n: &Expr,
+    d: &Expr,
+    var: &str,
+) -> (Expr, Expr) {
+    if let Ok((quot, rem)) = polynomial_long_division_coeffs(n, d, var) {
+        return (quot, rem);
+    }
+
     pub(crate) fn is_zero_local(expr: &Expr) -> bool {
         match expr {
-            | Expr::Dag(node) => is_zero_local(&node.to_expr().expect("Is Zero")),
             | Expr::Constant(c) => *c == 0.0,
             | Expr::BigInt(i) => i.is_zero(),
             | Expr::Rational(r) => r.is_zero(),
@@ -699,13 +732,19 @@ pub(crate) fn collect_coeffs_recursive(
             result_map
         },
         | Expr::Power(base, exp) => {
-            if let (Expr::Variable(v), Expr::BigInt(n)) = (base.as_ref(), exp.as_ref()) {
+            if let Expr::Variable(v) = base.as_ref() {
                 if v == var {
-                    let mut map = BTreeMap::new();
-
-                    map.insert(n.to_u32().unwrap_or(0), Expr::BigInt(BigInt::one()));
-
-                    return map;
+                    let deg = match exp.as_ref() {
+                        Expr::BigInt(n) => n.to_u32(),
+                        Expr::Constant(c) if c.fract() == 0.0 && *c >= 0.0 => Some(*c as u32),
+                        Expr::Rational(r) if r.is_integer() && r >= &num_rational::BigRational::zero() => r.to_integer().to_u32(),
+                        _ => None,
+                    };
+                    if let Some(d) = deg {
+                        let mut map = BTreeMap::new();
+                        map.insert(d, Expr::BigInt(BigInt::one()));
+                        return map;
+                    }
                 }
             }
 
@@ -881,6 +920,17 @@ pub fn polynomial_long_division_coeffs(
 
     let den_deg = den_coeffs.len() - 1;
 
+    while num_coeffs
+        .last()
+        .is_some_and(|c| is_zero(&simplify(&c.clone())))
+    {
+        num_coeffs.pop();
+    }
+
+    if num_coeffs.is_empty() {
+        return Ok((Expr::BigInt(BigInt::zero()), Expr::BigInt(BigInt::zero())));
+    }
+
     let mut num_deg = num_coeffs.len() - 1;
 
     if num_deg < den_deg {
@@ -1014,6 +1064,15 @@ pub(crate) fn collect_terms_recursive(
                 let entry = terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
 
                 *entry = simplify(&Expr::new_add(entry.clone(), coeff));
+            }
+        },
+        | Expr::Div(a, b) if vars.iter().all(|v| !contains_var(b, v)) => {
+            let inv_b = simplify(&Expr::new_div(Expr::BigInt(BigInt::one()), b.as_ref().clone()));
+            let mut sub_terms = BTreeMap::new();
+            collect_terms_recursive(a, vars, &mut sub_terms);
+            for (mono, coeff) in sub_terms {
+                let entry = terms.entry(mono).or_insert_with(|| Expr::Constant(0.0));
+                *entry = simplify(&Expr::new_add(entry.clone(), Expr::new_mul(coeff, inv_b.clone())));
             }
         },
         | Expr::Power(base, exp) => {
@@ -1448,8 +1507,10 @@ impl SparsePolynomial {
 
     /// Removes terms with zero coefficients from the polynomial.
     pub fn prune_zeros(&mut self) {
-        self.terms
-            .retain(|_, coeff| !is_zero(&simplify(&coeff.clone())));
+        for coeff in self.terms.values_mut() {
+            *coeff = simplify(coeff);
+        }
+        self.terms.retain(|_, coeff| !is_zero(coeff));
     }
 }
 

@@ -24,7 +24,7 @@ use ordered_float::OrderedFloat;
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::graph::Graph;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Helper function to extract a numeric value from a symbolic expression for comparison purposes.
 /// This is used internally by algorithms that need to compare weights.

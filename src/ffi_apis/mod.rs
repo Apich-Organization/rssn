@@ -17,12 +17,6 @@ pub mod macros;
 
 /// Common FFI utilities.
 pub mod common;
-/// FFI for compute cache.
-#[cfg(feature = "compute")]
-pub mod compute_cache_ffi;
-/// FFI for compute state.
-#[cfg(feature = "compute")]
-pub mod compute_state_ffi;
 /// FFI for constants.
 pub mod constant_ffi;
 /// General FFI API (deprecated).

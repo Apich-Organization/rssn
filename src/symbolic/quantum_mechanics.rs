@@ -18,7 +18,7 @@ use serde::Serialize;
 
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::solve::solve;
 
 /// Represents a quantum state using Dirac notation (Ket).
@@ -42,12 +42,29 @@ pub struct Bra {
 /// Computes the inner product of a Bra and a Ket, `<Bra|Ket>`.
 ///
 /// This is a symbolic representation of the inner product over all space,
-/// typically defined as `∫ ψ*(x)φ(x) dx`.
+/// Computes the inner product of a Bra and a Ket, `<Bra|Ket>`.
 ///
-/// # Returns
-/// An `Expr` representing `∫ bra.state * ket.state dx`.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn bra_ket(
+    bra: &Bra,
+    ket: &Ket,
+) -> Expr {
+    let call = Expr::NaryList(
+        "quantum_bra_ket".to_string(),
+        vec![bra.state.clone(), ket.state.clone()],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if res != call {
+        res
+    } else {
+        bra_ket_internal(bra, ket)
+    }
+}
+
+/// Internal solver for bra-ket inner product.
+#[must_use]
+pub fn bra_ket_internal(
     bra: &Bra,
     ket: &Ket,
 ) -> Expr {
@@ -94,23 +111,60 @@ impl Operator {
 
 /// Computes the commutator of two operators: `[A, B] = AB - BA`.
 ///
-/// When applied to a state `|ψ>`, it returns `A(B|ψ>) - B(A|ψ>)`.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn commutator(
     a: &Operator,
     b: &Operator,
     ket: &Ket,
 ) -> Expr {
+    let call = Expr::NaryList(
+        "quantum_commutator".to_string(),
+        vec![a.op.clone(), b.op.clone(), ket.state.clone()],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if res != call {
+        res
+    } else {
+        commutator_internal(a, b, ket)
+    }
+}
+
+/// Internal solver for quantum operator commutator.
+#[must_use]
+pub fn commutator_internal(
+    a: &Operator,
+    b: &Operator,
+    ket: &Ket,
+) -> Expr {
     let ab_psi = a.apply(&b.apply(ket));
-
     let ba_psi = b.apply(&a.apply(ket));
-
-    simplify(&Expr::new_sub(ab_psi.state, ba_psi.state))
+    crate::symbolic::egraph::simplify(&Expr::new_sub(ab_psi.state, ba_psi.state))
 }
 
 /// Computes the expectation value of an operator: `<A> = <ψ|A|ψ> / <ψ|ψ>`.
+///
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn expectation_value(
+    op: &Operator,
+    psi: &Ket,
+) -> Expr {
+    let call = Expr::NaryList(
+        "quantum_expectation_value".to_string(),
+        vec![op.op.clone(), psi.state.clone()],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if res != call {
+        res
+    } else {
+        expectation_value_internal(op, psi)
+    }
+}
+
+/// Internal solver for expectation value.
+#[must_use]
+pub fn expectation_value_internal(
     op: &Operator,
     psi: &Ket,
 ) -> Expr {

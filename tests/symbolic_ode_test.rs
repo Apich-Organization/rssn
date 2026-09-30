@@ -8,7 +8,6 @@ use rssn::symbolic::ode::solve_ode;
 use rssn::symbolic::ode::solve_ode_system;
 use rssn::symbolic::ode::solve_riccati_ode;
 use rssn::symbolic::ode::solve_separable_ode;
-use rssn::symbolic::simplify_dag::simplify;
 
 fn var(name: &str) -> Expr {
     Expr::Variable(name.to_string())
@@ -24,8 +23,7 @@ fn test_separable_ode() {
     // y' = y
     // dy/dx = y => dy/y = dx => ln|y| = x + C => y = C*e^x
     let y = var("y");
-
-    let x = var("x");
+    let _x = var("x");
 
     let y_prime = Expr::Derivative(Arc::new(y.clone()), "x".to_string());
 
@@ -136,8 +134,7 @@ fn test_solve_ode_dispatcher() {
     // Test that solve_ode correctly dispatches to linear solver
     // y' + y = 0 => y = C * e^-x
     let y = var("y");
-
-    let x = var("x");
+    let _x = var("x");
 
     let y_prime = Expr::Derivative(Arc::new(y.clone()), "x".to_string());
 

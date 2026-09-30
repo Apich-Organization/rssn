@@ -279,6 +279,45 @@ pub fn eval_expr<S: ::std::hash::BuildHasher>(
         // Comparison/Selection
         | Expr::Max(a, b) => Ok(eval_expr(a, vars)?.max(eval_expr(b, vars)?)),
 
+        // Calculus Operators
+        | Expr::Integral {
+            integrand,
+            var,
+            lower_bound,
+            upper_bound,
+        } => {
+            let var_name = match &**var {
+                Expr::Variable(name) => name.clone(),
+                _ => var.to_string(),
+            };
+            let a = eval_expr(lower_bound, vars)?;
+            let b = eval_expr(upper_bound, vars)?;
+            if (a - b).abs() < f64::EPSILON {
+                return Ok(0.0);
+            }
+            let res = crate::numerical::integrate::adaptive_quadrature(
+                |x: f64| -> f64 {
+                    let mut inner_vars: HashMap<String, f64> = vars.iter().map(|(k, v)| (k.clone(), *v)).collect();
+                    inner_vars.insert(var_name.clone(), x);
+                    eval_expr(integrand, &inner_vars).unwrap_or(f64::NAN)
+                },
+                (a, b),
+                1e-6,
+            );
+            if res.is_nan() {
+                Err("Numerical integration failed to converge".to_string())
+            } else {
+                Ok(res)
+            }
+        }
+        | Expr::Derivative(body, var) => {
+            if let Some(&x_val) = vars.get(var) {
+                crate::numerical::calculus::partial_derivative(body, var, x_val)
+            } else {
+                Err(format!("Variable {var} not found in vars map for derivative evaluation"))
+            }
+        }
+
         // Fallback or Unimplemented
         | _ => Err(format!("Numerical evaluation of {expr:?} is not supported")),
     }

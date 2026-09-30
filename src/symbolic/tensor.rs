@@ -15,7 +15,7 @@ use serde::Serialize;
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix::inverse_matrix;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Represents a symbolic tensor of arbitrary rank.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -198,3 +198,152 @@ pub fn solve_nonlinear_system(
          converge."
         .to_string())
 }
+
+/// Solves for a single root of `func = 0` with respect to `var` using the Newton-Raphson method.
+///
+/// # Arguments
+/// * `func` - An expression representing the function whose root is sought.
+/// * `var` - The variable name to solve for.
+/// * `start_point` - The initial guess.
+/// * `tolerance` - The desired error tolerance.
+/// * `max_iter` - The maximum number of iterations.
+///
+/// # Errors
+/// Returns an error if evaluation fails, derivative is near zero, or convergence is not achieved.
+pub fn solve_root_newton(
+    func: &Expr,
+    var: &str,
+    start_point: f64,
+    tolerance: f64,
+    max_iter: usize,
+) -> Result<f64, String> {
+    let mut x_n = start_point;
+    let mut vars_map = HashMap::new();
+
+    for _ in 0..max_iter {
+        vars_map.insert(var.to_string(), x_n);
+        let f_val = eval_expr(func, &vars_map)?;
+
+        if f_val.abs() < tolerance {
+            return Ok(x_n);
+        }
+
+        // Numerical derivative via central differences
+        let h = 1e-6;
+        vars_map.insert(var.to_string(), x_n + h);
+        let f_plus = eval_expr(func, &vars_map)?;
+        vars_map.insert(var.to_string(), x_n - h);
+        let f_minus = eval_expr(func, &vars_map)?;
+        let df = (f_plus - f_minus) / (2.0 * h);
+
+        if df.abs() < 1e-12 {
+            return Err("Derivative too close to zero in Newton's method.".to_string());
+        }
+
+        let delta = f_val / df;
+        x_n -= delta;
+
+        if delta.abs() < tolerance {
+            return Ok(x_n);
+        }
+    }
+
+    vars_map.insert(var.to_string(), x_n);
+    let final_val = eval_expr(func, &vars_map)?;
+    if final_val.abs() < tolerance * 100.0 {
+        Ok(x_n)
+    } else {
+        Err("Newton's method did not converge.".to_string())
+    }
+}
+
+/// Solves for a single root of `func = 0` with respect to `var` using the bisection method.
+///
+/// # Arguments
+/// * `func` - An expression representing the function.
+/// * `var` - The variable name.
+/// * `interval` - `(a, b)` bracketing interval such that `f(a) * f(b) <= 0`.
+/// * `tolerance` - Convergence tolerance.
+/// * `max_iter` - Maximum iterations.
+pub fn solve_root_bisection(
+    func: &Expr,
+    var: &str,
+    interval: (f64, f64),
+    tolerance: f64,
+    max_iter: usize,
+) -> Result<f64, String> {
+    let (mut a, mut b) = interval;
+    let mut vars_map = HashMap::new();
+
+    vars_map.insert(var.to_string(), a);
+    let fa = eval_expr(func, &vars_map)?;
+    vars_map.insert(var.to_string(), b);
+    let fb = eval_expr(func, &vars_map)?;
+
+    if fa.abs() < tolerance {
+        return Ok(a);
+    }
+    if fb.abs() < tolerance {
+        return Ok(b);
+    }
+
+    if fa * fb > 0.0 {
+        return Err(format!("Interval [{a}, {b}] does not bracket a root"));
+    }
+
+    for _ in 0..max_iter {
+        let mid = f64::midpoint(a, b);
+        vars_map.insert(var.to_string(), mid);
+        let f_mid = eval_expr(func, &vars_map)?;
+
+        if f_mid.abs() < tolerance || (b - a).abs() < tolerance {
+            return Ok(mid);
+        }
+
+        vars_map.insert(var.to_string(), a);
+        let fa = eval_expr(func, &vars_map)?;
+        if fa * f_mid < 0.0 {
+            b = mid;
+        } else {
+            a = mid;
+        }
+    }
+
+    Ok(f64::midpoint(a, b))
+}
+
+/// Universal 1D root finder combining Newton-Raphson and Bisection fallbacks.
+pub fn solve_root(
+    func: &Expr,
+    var: &str,
+    start_guess: Option<f64>,
+    tolerance: f64,
+    max_iter: usize,
+) -> Result<f64, String> {
+    let guess = start_guess.unwrap_or(1.0);
+
+    // 1. Try Newton's method from guess
+    if let Ok(root) = solve_root_newton(func, var, guess, tolerance, max_iter) {
+        return Ok(root);
+    }
+
+    // 2. Try alternative starting points
+    for alt_guess in [0.0, -1.0, 2.0, 0.5, -0.5, 10.0] {
+        if (alt_guess - guess).abs() > 1e-5 {
+            if let Ok(root) = solve_root_newton(func, var, alt_guess, tolerance, max_iter) {
+                return Ok(root);
+            }
+        }
+    }
+
+    // 3. Try Bisection search over brackets around guess
+    for span in [2.0, 5.0, 10.0, 50.0, 100.0] {
+        let interval = (guess - span, guess + span);
+        if let Ok(root) = solve_root_bisection(func, var, interval, tolerance, max_iter) {
+            return Ok(root);
+        }
+    }
+
+    Err("Failed to find numerical root.".to_string())
+}
+

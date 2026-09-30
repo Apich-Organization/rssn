@@ -50,16 +50,26 @@ pub fn lie_bracket(
     x: &Expr,
     y: &Expr,
 ) -> Result<Expr, String> {
+    let call = Expr::BinaryList("lie_bracket".to_string(), Arc::new(x.clone()), Arc::new(y.clone()));
+    let res = crate::symbolic::egraph::simplify(&call);
+    if matches!(res, Expr::Matrix(_)) {
+        Ok(res)
+    } else {
+        lie_bracket_internal(x, y)
+    }
+}
+
+/// Internal solver for Lie bracket commutator [X, Y] = XY - YX.
+pub fn lie_bracket_internal(
+    x: &Expr,
+    y: &Expr,
+) -> Result<Expr, String> {
     let xy = matrix::mul_matrices(x, y);
 
     let yx = matrix::mul_matrices(y, x);
 
     if !matches!(xy, Expr::Matrix(_)) || !matches!(yx, Expr::Matrix(_)) {
-        return Err("Operands for \
-                    lie_bracket \
-                    must be valid \
-                    matrices."
-            .to_string());
+        return Err("Operands for lie_bracket must be valid matrices.".to_string());
     }
 
     Ok(matrix::sub_matrices(&xy, &yx))

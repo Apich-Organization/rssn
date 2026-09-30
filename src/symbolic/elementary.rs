@@ -12,7 +12,6 @@ use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
 
 /// Creates a sine expression: `sin(expr)`.
 #[must_use]
@@ -221,12 +220,14 @@ pub const fn e() -> Expr {
 /// A new, expanded `Expr`.
 #[must_use]
 pub fn expand(expr: Expr) -> Expr {
-    simplify(&expand_internal(expr))
+    let un = Expr::UnaryList("expand".to_string(), Arc::new(expr));
+    crate::symbolic::egraph::simplify(&un)
 }
 
-pub(crate) fn expand_internal(expr: Expr) -> Expr {
+/// Internal expansion algorithm invoked by the Elementary Algebra E-Graph Oracle.
+#[must_use]
+pub fn expand_internal(expr: Expr) -> Expr {
     match expr {
-        | Expr::Dag(node) => expand_internal(node.to_expr().expect("Expand")),
         | Expr::Complex(re, im) => {
             // Convert Complex(re, im) to Add(re, Mul(im, i)) for expansion
             let i = Expr::Variable("i".to_string());
@@ -421,9 +422,9 @@ pub(crate) fn expand_exp(arg: &Arc<Expr>) -> Expr {
 
     match arg_exp {
         | Expr::Add(a, b) => {
-            Expr::Mul(
-                Arc::new(expand_internal(Expr::Exp(a))),
-                Arc::new(expand_internal(Expr::Exp(b))),
+            expand_mul(
+                expand_internal(Expr::Exp(a)),
+                expand_internal(Expr::Exp(b)),
             )
         },
         | Expr::Mul(a, b) => {

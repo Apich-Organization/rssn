@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use crate::symbolic::core::Expr;
 use crate::symbolic::matrix;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::solve::solve_system;
 use crate::symbolic::stats::covariance;
 use crate::symbolic::stats::mean;

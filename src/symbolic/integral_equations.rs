@@ -12,7 +12,7 @@ use crate::symbolic::calculus::differentiate;
 use crate::symbolic::calculus::integrate;
 use crate::symbolic::calculus::substitute;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::solve::solve_linear_system;
 
 /// Represents a Fredholm integral equation of the second kind.
@@ -441,6 +441,24 @@ impl VolterraEquation {
 /// An `Expr` representing the solution `y(x)` with a constant of integration `C`.
 #[must_use]
 pub fn solve_airfoil_equation(
+    f_x: &Expr,
+    var_x: &str,
+    var_t: &str,
+) -> Expr {
+    let call = Expr::NaryList(
+        "solve_airfoil_equation".to_string(),
+        vec![
+            f_x.clone(),
+            Expr::Variable(var_x.to_string()),
+            Expr::Variable(var_t.to_string()),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&call)
+}
+
+/// Internal solver for airfoil singular integral equation.
+#[must_use]
+pub fn solve_airfoil_equation_internal(
     f_x: &Expr,
     var_x: &str,
     var_t: &str,

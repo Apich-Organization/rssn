@@ -306,7 +306,7 @@ use crate::symbolic::core::SparsePolynomial;
 use crate::symbolic::polynomial::add_poly;
 use crate::symbolic::polynomial::mul_poly;
 use crate::symbolic::simplify::is_zero;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Defines the monomial ordering to be used in polynomial division.
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]

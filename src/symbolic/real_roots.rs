@@ -248,7 +248,7 @@ pub(crate) fn root_bound(
         | None => unreachable!(),
     };
 
-    let simplified_lc = crate::symbolic::simplify_dag::simplify(&leading_coeff_expr.clone());
+    let simplified_lc = crate::symbolic::egraph::simplify(&leading_coeff_expr.clone());
 
     let lc = as_f64(&simplified_lc).ok_or(
         "Leading coefficient is \
@@ -265,7 +265,7 @@ pub(crate) fn root_bound(
         .iter()
         .skip(1)
         .map(|c| {
-            as_f64(&crate::symbolic::simplify_dag::simplify(&c.clone()))
+            as_f64(&crate::symbolic::egraph::simplify(&c.clone()))
                 .unwrap_or(0.0)
                 .abs()
         })

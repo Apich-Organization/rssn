@@ -12,6 +12,7 @@ use std::ops::Mul;
 use std::ops::Neg;
 use std::ops::Rem;
 use std::ops::Sub;
+use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::RwLock;
 
@@ -39,8 +40,7 @@ impl AsRef<Self> for Expr {
 // --- Helper Macros ---
 macro_rules! unary_constructor {
     ($name:ident, $op:ident) => {
-        /// Creates a new
-        /// expression, managed by the DAG.
+        /// Creates a new expression.
         #[doc = stringify!($op)]
         #[allow(clippy::inline_always)]
         #[inline(always)]
@@ -48,23 +48,14 @@ macro_rules! unary_constructor {
         where
             A: AsRef<Expr>,
         {
-            let dag_a = DAG_MANAGER
-                .get_or_create(a.as_ref())
-                .expect("DAG manager get_or_create failed");
-
-            let node = DAG_MANAGER
-                .get_or_create_normalized(DagOp::$op, vec![dag_a])
-                .expect("DAG manager get_or_create_normalized failed");
-
-            Expr::Dag(node)
+            Expr::$op(std::sync::Arc::new(a.as_ref().clone()))
         }
     };
 }
 
 macro_rules! binary_constructor {
     ($name:ident, $op:ident) => {
-        /// Creates a new
-        /// expression, managed by the DAG.
+        /// Creates a new expression.
         #[doc = stringify!($op)]
         #[allow(clippy::inline_always)]
         #[inline(always)]
@@ -76,27 +67,17 @@ macro_rules! binary_constructor {
             A: AsRef<Expr>,
             B: AsRef<Expr>,
         {
-            let dag_a = DAG_MANAGER
-                .get_or_create(a.as_ref())
-                .expect("DAG manager get_or_create failed");
-
-            let dag_b = DAG_MANAGER
-                .get_or_create(b.as_ref())
-                .expect("DAG manager get_or_create failed");
-
-            let node = DAG_MANAGER
-                .get_or_create_normalized(DagOp::$op, vec![dag_a, dag_b])
-                .expect("DAG manager get_or_create_normalized failed");
-
-            Expr::Dag(node)
+            Expr::$op(
+                std::sync::Arc::new(a.as_ref().clone()),
+                std::sync::Arc::new(b.as_ref().clone()),
+            )
         }
     };
 }
 
 macro_rules! n_ary_constructor {
     ($name:ident, $op:ident) => {
-        /// Creates a new
-        /// expression, managed by the DAG.
+        /// Creates a new expression.
         #[doc = stringify!($op)]
         #[allow(clippy::inline_always)]
         #[inline(always)]
@@ -105,20 +86,12 @@ macro_rules! n_ary_constructor {
             I: IntoIterator<Item = T>,
             T: AsRef<Expr>,
         {
-            let children_nodes = elements
-                .into_iter()
-                .map(|child| {
-                    DAG_MANAGER
-                        .get_or_create(child.as_ref())
-                        .expect("DAG manager get_or_create failed")
-                })
-                .collect::<Vec<_>>();
-
-            let node = DAG_MANAGER
-                .get_or_create_normalized(DagOp::$op, children_nodes)
-                .expect("DAG manager get_or_create_normalized failed");
-
-            Expr::Dag(node)
+            Expr::$op(
+                elements
+                    .into_iter()
+                    .map(|child| child.as_ref().clone())
+                    .collect(),
+            )
         }
     };
 }
@@ -387,131 +360,75 @@ impl Expr {
     n_ary_constructor_deprecated!(new_custom_vec_five, CustomVecFive);
 
     // --- Leaf Node Constructors ---
-    /// Creates a new Constant expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the value cannot be created in the DAG.
+    /// Creates a new Constant expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_constant(c: f64) -> Self {
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Constant(OrderedFloat(c)), vec![])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::Constant(c)
     }
 
-    /// Creates a new Variable expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the variable cannot be created in the DAG.
+    /// Creates a new Variable expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_variable(name: &str) -> Self {
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Variable(name.to_string()), vec![])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::Variable(name.to_string())
     }
 
-    /// Creates a new `BigInt` expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the value cannot be created in the DAG.
+    /// Creates a new `BigInt` expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_bigint(i: BigInt) -> Self {
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::BigInt(i), vec![])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::BigInt(i)
     }
 
-    /// Creates a new Rational expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the value cannot be created in the DAG.
+    /// Creates a new Rational expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_rational(r: BigRational) -> Self {
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Rational(r), vec![])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::Rational(r)
     }
 
-    /// Creates a new Pi expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the value cannot be created in the DAG.
+    /// Creates a new Pi expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_pi() -> Self {
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Pi, vec![])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::Pi
     }
 
-    /// Creates a new E expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the value cannot be created in the DAG.
+    /// Creates a new E expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_e() -> Self {
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::E, vec![])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::E
     }
 
-    /// Creates a new Infinity expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the value cannot be created in the DAG.
+    /// Creates a new Infinity expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_infinity() -> Self {
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Infinity, vec![])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::Infinity
     }
 
-    /// Creates a new `NegativeInfinity` expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the value cannot be created in the DAG.
+    /// Creates a new `NegativeInfinity` expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_negative_infinity() -> Self {
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::NegativeInfinity, vec![])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::NegativeInfinity
     }
 
     // --- Special Constructors ---
-    /// Creates a new Matrix expression, managed by the DAG.
+    /// Creates a new Matrix expression.
     ///
     /// # Panics
-    /// Panics if the matrix rows have inconsistent length or if elements cannot be created in the DAG.
+    /// Panics if the matrix rows have inconsistent length.
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_matrix<I, J, T>(elements: I) -> Self
@@ -520,49 +437,28 @@ impl Expr {
         J: IntoIterator<Item = T>,
         T: AsRef<Self>,
     {
-        let mut flat_children_nodes = Vec::new();
-
-        let mut rows = 0;
-
         let mut cols = 0;
+        let mut matrix_data = Vec::new();
 
         for row_iter in elements {
-            rows += 1;
-
             let mut current_cols = 0;
-
+            let mut row_data = Vec::new();
             for element in row_iter {
-                let node = DAG_MANAGER
-                    .get_or_create(element.as_ref())
-                    .expect("Value is valid");
-
-                flat_children_nodes.push(node);
-
+                row_data.push(element.as_ref().clone());
                 current_cols += 1;
             }
-
             if cols == 0 {
                 cols = current_cols;
             } else if current_cols != cols {
-                panic!(
-                    "Matrix rows must \
-                     have consistent \
-                     length"
-                );
+                panic!("Matrix rows must have consistent length");
             }
+            matrix_data.push(row_data);
         }
 
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Matrix { rows, cols }, flat_children_nodes)
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::Matrix(matrix_data)
     }
 
-    /// Creates a new Predicate expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the predicate or its arguments cannot be created in the DAG.
+    /// Creates a new Predicate expression.
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_predicate<I, T>(
@@ -573,31 +469,18 @@ impl Expr {
         I: IntoIterator<Item = T>,
         T: AsRef<Self>,
     {
-        let children_nodes = args
+        let children = args
             .into_iter()
-            .map(|child| {
-                DAG_MANAGER
-                    .get_or_create(child.as_ref())
-                    .expect("Value is valid")
-            })
+            .map(|child| child.as_ref().clone())
             .collect::<Vec<_>>();
 
-        let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Predicate {
-                    name: name.to_string(),
-                },
-                children_nodes,
-            )
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::Predicate {
+            name: name.to_string(),
+            args: children,
+        }
     }
 
-    /// Creates a new `ForAll` quantifier expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the expression cannot be created in the DAG.
+    /// Creates a new `ForAll` quantifier expression.
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_forall<A>(
@@ -607,21 +490,10 @@ impl Expr {
     where
         A: AsRef<Self>,
     {
-        let child_node = DAG_MANAGER
-            .get_or_create(expr.as_ref())
-            .expect("Value is valid");
-
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::ForAll(var.to_string()), vec![child_node])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::ForAll(var.to_string(), Arc::new(expr.as_ref().clone()))
     }
 
-    /// Creates a new Exists quantifier expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the expression cannot be created in the DAG.
+    /// Creates a new Exists quantifier expression.
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_exists<A>(
@@ -631,21 +503,10 @@ impl Expr {
     where
         A: AsRef<Self>,
     {
-        let child_node = DAG_MANAGER
-            .get_or_create(expr.as_ref())
-            .expect("Value is valid");
-
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Exists(var.to_string()), vec![child_node])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::Exists(var.to_string(), Arc::new(expr.as_ref().clone()))
     }
 
-    /// Creates a new Interval expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the interval boundaries cannot be created in the DAG.
+    /// Creates a new Interval expression.
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_interval<A, B>(
@@ -658,28 +519,15 @@ impl Expr {
         A: AsRef<Self>,
         B: AsRef<Self>,
     {
-        let dag_lower = DAG_MANAGER
-            .get_or_create(lower.as_ref())
-            .expect("Value is valid");
-
-        let dag_upper = DAG_MANAGER
-            .get_or_create(upper.as_ref())
-            .expect("Value is valid");
-
-        let node = DAG_MANAGER
-            .get_or_create_normalized(
-                DagOp::Interval(incl_lower, incl_upper),
-                vec![dag_lower, dag_upper],
-            )
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::Interval(
+            Arc::new(lower.as_ref().clone()),
+            Arc::new(upper.as_ref().clone()),
+            incl_lower,
+            incl_upper,
+        )
     }
 
-    /// Creates a new `Derivative` expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the polynomial cannot be created in the DAG.
+    /// Creates a new `Derivative` expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
@@ -690,21 +538,10 @@ impl Expr {
     where
         A: AsRef<Self>,
     {
-        let dag_function = DAG_MANAGER
-            .get_or_create(function.as_ref())
-            .expect("Value is valid");
-
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::Derivative(variable), vec![dag_function])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::Derivative(Arc::new(function.as_ref().clone()), variable)
     }
 
-    /// Creates a new `DerivativeN` expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the polynomial cannot be created in the DAG.
+    /// Creates a new `DerivativeN` expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
@@ -717,25 +554,14 @@ impl Expr {
         A: AsRef<Self>,
         B: AsRef<Self>,
     {
-        let dag_function = DAG_MANAGER
-            .get_or_create(function.as_ref())
-            .expect("Value is valid");
-
-        let dag_grades = DAG_MANAGER
-            .get_or_create(grades.as_ref())
-            .expect("Value is valid");
-
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::DerivativeN(variable), vec![dag_function, dag_grades])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::DerivativeN(
+            Arc::new(function.as_ref().clone()),
+            variable,
+            Arc::new(grades.as_ref().clone()),
+        )
     }
 
-    /// Creates a new `IndefiniteSum` expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the expression cannot be created in the DAG.
+    /// Creates a new `IndefiniteSum` expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
@@ -748,25 +574,14 @@ impl Expr {
         A: AsRef<Self>,
         B: AsRef<Self>,
     {
-        let dag_body = DAG_MANAGER
-            .get_or_create(body.as_ref())
-            .expect("Value is valid");
-
-        let dag_step = DAG_MANAGER
-            .get_or_create(step.as_ref())
-            .expect("Value is valid");
-
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::IndefiniteSum(variable), vec![dag_body, dag_step])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::IndefiniteSum {
+            body: Arc::new(body.as_ref().clone()),
+            var: variable,
+            step: Arc::new(step.as_ref().clone()),
+        }
     }
 
-    /// Creates a new `IndefiniteProduct` expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the expression cannot be created in the DAG.
+    /// Creates a new `IndefiniteProduct` expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
@@ -779,34 +594,19 @@ impl Expr {
         A: AsRef<Self>,
         B: AsRef<Self>,
     {
-        let dag_body = DAG_MANAGER
-            .get_or_create(body.as_ref())
-            .expect("Value is valid");
-
-        let dag_step = DAG_MANAGER
-            .get_or_create(step.as_ref())
-            .expect("Value is valid");
-
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::IndefiniteProduct(variable), vec![dag_body, dag_step])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::IndefiniteProduct {
+            body: Arc::new(body.as_ref().clone()),
+            var: variable,
+            step: Arc::new(step.as_ref().clone()),
+        }
     }
 
-    /// Creates a new `SparsePolynomial` expression, managed by the DAG.
-    ///
-    /// # Panics
-    /// Panics if the polynomial cannot be created in the DAG.
+    /// Creates a new `SparsePolynomial` expression.
     #[must_use]
     #[allow(clippy::inline_always)]
     #[inline(always)]
     pub fn new_sparse_polynomial(p: SparsePolynomial) -> Self {
-        let node = DAG_MANAGER
-            .get_or_create_normalized(DagOp::SparsePolynomial(p), vec![])
-            .expect("Value is valid");
-
-        Self::Dag(node)
+        Self::SparsePolynomial(p)
     }
 
     // --- Custom Constructors ---

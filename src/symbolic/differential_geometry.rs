@@ -15,7 +15,7 @@ use serde::Serialize;
 use crate::symbolic::calculus::definite_integrate;
 use crate::symbolic::calculus::differentiate;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 use crate::symbolic::vector::Vector;
 
 /// Represents a differential k-form.

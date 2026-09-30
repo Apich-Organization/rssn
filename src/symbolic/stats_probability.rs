@@ -12,7 +12,7 @@ use std::sync::Arc;
 use crate::symbolic::combinatorics::combinations;
 use crate::symbolic::core::Distribution;
 use crate::symbolic::core::Expr;
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 /// Represents a Normal (Gaussian) distribution with symbolic parameters.
 #[derive(Debug, Clone)]

@@ -523,7 +523,7 @@ impl SimplicialComplex {
         let mut result_chain = SymbolicChain::new(k - 1);
 
         for (i, row) in output_vec.iter().enumerate() {
-            let coeff = crate::symbolic::simplify_dag::simplify(&row[0]);
+            let coeff = crate::symbolic::egraph::simplify(&row[0]);
 
             if !crate::symbolic::simplify::is_zero(&coeff) {
                 result_chain

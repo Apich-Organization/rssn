@@ -24,7 +24,7 @@ use crate::symbolic::series::taylor_series;
 use crate::symbolic::series::{
     self,
 };
-use crate::symbolic::simplify_dag::simplify;
+use crate::symbolic::egraph::simplify;
 
 // ============================================================================
 // Analytic Continuation
@@ -295,24 +295,53 @@ pub fn calculate_residue(
     var: &str,
     singularity: &Expr,
 ) -> Expr {
-    // For a simple pole: Res = lim_{z→z0} (z-z0)f(z)
+    let res = Expr::NaryList(
+        "residue".to_string(),
+        vec![
+            func.clone(),
+            Expr::Variable(var.to_string()),
+            singularity.clone(),
+        ],
+    );
+    crate::symbolic::egraph::simplify(&res)
+}
+
+/// Internal solver for residue calculation.
+#[must_use]
+pub fn calculate_residue_internal(
+    func: &Expr,
+    var: &str,
+    singularity: &Expr,
+) -> Expr {
     let z = Expr::Variable(var.to_string());
-
     let factor = Expr::new_sub(z, singularity.clone());
-
     let product = Expr::new_mul(factor, func.clone());
-
-    // Evaluate limit as z → singularity
-    // Substitute and simplify
-    simplify(&substitute(&product, var, singularity))
+    crate::symbolic::egraph::limit(&product, var, singularity)
 }
 
 /// Evaluates a contour integral using the residue theorem.
 ///
-/// ∮_C f(z) dz = 2πi Σ Res(f, `z_k`)
-/// where `z_k` are the singularities inside the contour C.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn contour_integral_residue_theorem(
+    func: &Expr,
+    var: &str,
+    singularities: &[Expr],
+) -> Expr {
+    let mut args = vec![func.clone(), Expr::Variable(var.to_string())];
+    args.extend(singularities.iter().cloned());
+    let call = Expr::NaryList("contour_integral_residue_theorem".to_string(), args);
+    let res = crate::symbolic::egraph::simplify(&call);
+    if res != call {
+        res
+    } else {
+        contour_integral_residue_theorem_internal(func, var, singularities)
+    }
+}
+
+/// Internal solver for contour integral via residue theorem.
+#[must_use]
+pub fn contour_integral_residue_theorem_internal(
     func: &Expr,
     var: &str,
     singularities: &[Expr],
@@ -440,27 +469,38 @@ impl MobiusTransformation {
 
 /// Evaluates f(z0) using Cauchy's integral formula.
 ///
-/// f(z0) = (1/2πi) ∮_C f(z)/(z-z0) dz
-///
-/// This is a symbolic representation.
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn cauchy_integral_formula(
     func: &Expr,
     var: &str,
     z0: &Expr,
 ) -> Expr {
-    // Return symbolic representation
-    let z = Expr::Variable(var.to_string());
+    let call = Expr::NaryList(
+        "cauchy_integral_formula".to_string(),
+        vec![func.clone(), Expr::Variable(var.to_string()), z0.clone()],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if res != call {
+        res
+    } else {
+        cauchy_integral_formula_internal(func, var, z0)
+    }
+}
 
-    let _integrand = Expr::new_div(func.clone(), Expr::new_sub(z, z0.clone()));
-
-    // The result is just f(z0) by Cauchy's formula
+/// Internal solver for Cauchy's integral formula.
+#[must_use]
+pub fn cauchy_integral_formula_internal(
+    func: &Expr,
+    var: &str,
+    z0: &Expr,
+) -> Expr {
     simplify(&substitute(func, var, z0))
 }
 
 /// Computes the n-th derivative using Cauchy's formula for derivatives.
 ///
-/// f^(n)(z0) = (n!/2πi) ∮_C f(z)/(z-z0)^(n+1) dz
+/// Encapsulated as an E-Graph Facade evaluated via the saturation pipeline.
 #[must_use]
 pub fn cauchy_derivative_formula(
     func: &Expr,
@@ -468,7 +508,31 @@ pub fn cauchy_derivative_formula(
     z0: &Expr,
     n: usize,
 ) -> Expr {
-    // Simply use differentiation
+    let call = Expr::NaryList(
+        "cauchy_derivative_formula".to_string(),
+        vec![
+            func.clone(),
+            Expr::Variable(var.to_string()),
+            z0.clone(),
+            Expr::BigInt(BigInt::from(n)),
+        ],
+    );
+    let res = crate::symbolic::egraph::simplify(&call);
+    if res != call {
+        res
+    } else {
+        cauchy_derivative_formula_internal(func, var, z0, n)
+    }
+}
+
+/// Internal solver for Cauchy derivative formula.
+#[must_use]
+pub fn cauchy_derivative_formula_internal(
+    func: &Expr,
+    var: &str,
+    z0: &Expr,
+    n: usize,
+) -> Expr {
     let mut result = func.clone();
 
     for _ in 0..n {
