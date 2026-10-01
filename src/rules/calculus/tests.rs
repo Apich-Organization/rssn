@@ -415,3 +415,28 @@ fn expansions_at_infinity() {
     assert!(reduced, "{text}");
     assert!((eval(&rules, &text, &[("x", 20.0)]) - (1.0 + 0.05 + 0.00125)).abs() < 1e-12, "{text}");
 }
+
+/// Definite hypergeometric sums with a symbolic bound, by a fitted and
+/// verified first-order recurrence.
+#[test]
+fn binomial_sums_by_recurrence() {
+    let rules = crate::rules::standard();
+    assert_eq!(simplify(&rules, "sum(binomial(n, k), k, 0, n)"), "2^n");
+    assert_eq!(simplify(&rules, "sum(binomial(n, k)*x^k, k, 0, n)"), "(x + 1)^n");
+    assert_eq!(simplify(&rules, "sum(k*binomial(n, k), k, 0, n)"), "n*2^(n - 1)");
+    assert_eq!(simplify(&rules, "sum(binomial(n + k, k)/2^k, k, 0, n)"), "2^n");
+    // Vandermonde and Σ C(n,k)² = C(2n, n), checked numerically.
+    for (sum, closed) in [
+        ("sum(binomial(n, k)*binomial(m, k), k, 0, n)", "binomial(m + n, n)"),
+        ("sum(binomial(n, k)^2, k, 0, n)", "binomial(2*n, n)"),
+        ("sum(k^2*binomial(n, k), k, 0, n)", "n*(n + 1)*2^(n - 2)"),
+    ] {
+        let (got, reduced) = reduce_with(&rules, sum, &[]);
+        assert!(reduced, "{sum}: {got}");
+        for n in [3.0, 7.0] {
+            let at = [("n", n), ("m", 5.0)];
+            let (a, b) = (eval(&rules, &got, &at), eval(&rules, closed, &at));
+            assert!((a - b).abs() < 1e-8 * b.abs().max(1.0), "{sum} = {got}: {a} vs {b}");
+        }
+    }
+}

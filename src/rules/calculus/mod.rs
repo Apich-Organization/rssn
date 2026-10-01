@@ -12,6 +12,7 @@ mod gosper;
 mod integrate;
 mod limits;
 mod powerseries;
+mod recurrence;
 pub(crate) use powerseries::laurent_expansion;
 mod series;
 #[cfg(test)]

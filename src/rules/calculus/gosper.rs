@@ -75,25 +75,25 @@ fn shift(
 /// A rational function of one parameter γ over `Q`: numerator and
 /// denominator in `Q[γ]`.
 #[derive(Clone, Debug, PartialEq)]
-struct Frac {
-    n: QPoly,
-    d: QPoly,
+pub(super) struct Frac {
+    pub(super) n: QPoly,
+    pub(super) d: QPoly,
 }
 
 impl Frac {
-    fn zero() -> Self {
+    pub(super) fn zero() -> Self {
         Self { n: Vec::new(), d: vec![BigRational::one()] }
     }
 
-    fn poly(p: QPoly) -> Self {
+    pub(super) fn poly(p: QPoly) -> Self {
         Self { n: trim(p), d: vec![BigRational::one()] }
     }
 
-    const fn is_zero(&self) -> bool {
+    pub(super) const fn is_zero(&self) -> bool {
         self.n.is_empty()
     }
 
-    fn reduce(self) -> Self {
+    pub(super) fn reduce(self) -> Self {
         if self.n.is_empty() {
             return Self::zero();
         }
@@ -106,7 +106,7 @@ impl Frac {
         Self { n: n.iter().map(|c| c / &lead).collect(), d: d.iter().map(|c| c / &lead).collect() }
     }
 
-    fn sub(
+    pub(super) fn sub(
         &self,
         o: &Self,
     ) -> Self {
@@ -114,14 +114,14 @@ impl Frac {
         Self { n, d: univariate::mul(&self.d, &o.d) }.reduce()
     }
 
-    fn mul(
+    pub(super) fn mul(
         &self,
         o: &Self,
     ) -> Self {
         Self { n: univariate::mul(&self.n, &o.n), d: univariate::mul(&self.d, &o.d) }.reduce()
     }
 
-    fn div(
+    pub(super) fn div(
         &self,
         o: &Self,
     ) -> Option<Self> {
@@ -134,7 +134,7 @@ impl Frac {
 
 /// A solution of `rows · x = rhs` over `Q(γ)` (free unknowns set to 0),
 /// or `None` if the system is inconsistent.
-fn solve(
+pub(super) fn solve(
     mut rows: Vec<Vec<Frac>>,
     mut rhs: Vec<Frac>,
     n: usize,

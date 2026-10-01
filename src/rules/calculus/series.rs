@@ -425,7 +425,11 @@ fn symbolic_sum(
     }
     let from_nonnegative = cx.graph.number_of(lower).is_some_and(|n| !n.is_negative());
     let Some(big_t) = super::gosper::antidifference(cx, term, k, from_nonnegative) else {
-        return rational_sum(cx, term, k, lower, Some(upper));
+        if let Some(found) = rational_sum(cx, term, k, lower, Some(upper)) {
+            return Some(found);
+        }
+        // Definite sums such as Σ binomial(n, k) x^k: a fitted recurrence.
+        return super::recurrence::sum_by_recurrence(cx, term, k, lower, upper);
     };
     let graph = &mut *cx.graph;
     let one = graph.int(1);
