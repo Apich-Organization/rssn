@@ -242,8 +242,9 @@ impl Collapse {
                 && graph.children(f).first().is_some_and(|&b| graph.op(b) == core::ADD)
                 && graph.children(f).get(1).and_then(|&e| graph.number_of(e)).is_some_and(Number::is_negative)
         });
+        let has_sum = graph.children(term).iter().any(|&f| graph.op(f) == core::ADD);
         let before = tree_size(graph, term, CAP);
-        if !divides_by_sum || before > CAP {
+        if !(divides_by_sum || has_sum) || before > CAP {
             return Outcome::Pass;
         }
         match Self::canonical(graph, term) {

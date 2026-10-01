@@ -287,6 +287,9 @@ impl Integrator<'_, '_> {
         if let Some(found) = self.rational(f) {
             return Some(found);
         }
+        if let Some(found) = self.distribute(f, depth) {
+            return Some(found);
+        }
         if let Some(found) = self.trig_powers(f, depth) {
             return Some(found);
         }
@@ -753,6 +756,35 @@ impl Integrator<'_, '_> {
         let expanded = self.cx.simplify(product);
         let expanded = self.expand(expanded)?;
         if expanded == f {
+            return None;
+        }
+        self.integrate(expanded, depth + 1)
+    }
+
+    /// A product with a sum among its factors, `x (1 - x) sin(a x)`:
+    /// multiplied out and integrated term by term.
+    fn distribute(
+        &mut self,
+        f: NodeId,
+        depth: usize,
+    ) -> Option<NodeId> {
+        let graph = &*self.cx.graph;
+        let has_sum = |n: NodeId| {
+            graph.op(n) == core::ADD
+                || (graph.op(n) == core::POW
+                    && graph.children(n).first().is_some_and(|&b| graph.op(b) == core::ADD)
+                    && graph.children(n).get(1).and_then(|&e| graph.number_of(e)).is_some_and(|e| e.is_integer() && !e.is_negative()))
+        };
+        if graph.op(f) != core::MUL || !graph.children(f).iter().any(|&c| has_sum(c)) {
+            return None;
+        }
+        let mut gens = Gens::default();
+        let poly = from_term(self.cx.graph, &mut gens, f, Limits { terms: 64, exponent: 12 })?;
+        if poly.len() < 2 {
+            return None;
+        }
+        let expanded = to_term(self.cx.graph, &gens, &poly);
+        if self.cx.graph.op(expanded) != core::ADD {
             return None;
         }
         self.integrate(expanded, depth + 1)
