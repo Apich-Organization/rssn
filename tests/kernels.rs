@@ -52,3 +52,5 @@ mod error_correction;
 mod computer_graphics;
 #[path = "kernels/fractal_geometry_and_chaos.rs"]
 mod fractal_geometry_and_chaos;
+#[path = "kernels/topology.rs"]
+mod topology;

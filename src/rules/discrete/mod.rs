@@ -32,10 +32,10 @@
 //! | [`coding`] | `hamming_distance`, `hamming_weight`, `hamming_encode`, `hamming_check`, `hamming_decode`, `rs_encode`, `rs_check`, `rs_decode`, `rs_error_count`, `bch_encode`, `bch_decode`, `crc32`, `crc32_verify`, `crc32_update`, `crc32_finalize`, `crc16`, `crc8`, `gf256_*`, `gf256_poly_*` |
 //! | [`finite_field`] | `gf_*` (prime field), `gfp_*` (polynomials over GF(p)), `gfx_*` (extension fields GF(p)\[x\]/(m)) |
 //! | [`graphs`] | `graph`/`digraph` terms, `graph_*` queries, traversals, shortest paths, spanning trees, flows, matchings, colouring, isomorphism, products |
-//! | [`topology`] | `sc_*` simplicial complexes |
+//! | [`topology`] | `sc`, `sc_complex`, `sc_dimension`, `sc_simplices`, `sc_euler_characteristic`, `sc_boundary`, `sc_boundary_matrix`, `sc_coboundary_matrix`, `sc_chain_boundary`, `sc_betti`, `sc_cohomology_betti`, `sc_verify_boundary`, `sc_verify_coboundary`, `sc_components`, `sc_grid`, `sc_torus`, `vietoris_rips`, `vietoris_rips_filtration`, `betti_at_radius`, `persistence`, `euclidean_distance` |
 //! | [`fractal`] | `mandelbrot_*`, `julia_escape`, `logistic_*`, `ifs_apply`, `similarity_dimension`, `dyn_*`, `lorenz`, `box_counting` |
 //! | [`graphics`] | `translation_2d`, `rotation_3d_x`, `perspective`, `look_at`, `bezier`, `bspline`, quaternions, meshes |
-//! | [`groups`] | `cyclic_group`, `dihedral_group`, `symmetric_group`, `klein_four_group`, `group_*`, `perm_*` |
+//! | [`groups`] | `group` term; `cyclic_group`, `dihedral_group`, `symmetric_group`, `klein_four_group`, `group_from_table`; `group_elements`, `group_order`, `group_identity`, `group_mul`, `group_inverse`, `group_is_abelian`, `group_element_order`, `group_conjugacy_classes`, `group_center`, `group_is_valid`, `group_subgroups`, `group_cosets`, `group_is_normal`; `representation_is_valid`, `group_character`; `perm_compose`, `perm_inverse`, `perm_order`, `perm_cycles`, `perm_sign` |
 //!
 //! See the documentation of each module for the exact term formats.
 
@@ -179,7 +179,7 @@ impl Kernel for Fun {
         };
         let result = value.build(cx.graph);
         let head = cx.graph.op(result);
-        let structured = head == core::LIST || matches!(&*cx.graph.ops().get(head).name, "graph" | "digraph" | "group");
+        let structured = head == core::LIST || matches!(&*cx.graph.ops().get(head).name, "graph" | "digraph" | "group" | "sc");
         if self.pin && structured {
             Outcome::Pinned(result)
         } else {
