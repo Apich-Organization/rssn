@@ -63,6 +63,7 @@ use super::solve::solve_linear;
 
 mod lie;
 mod reduce;
+mod series_method;
 mod systems;
 
 /// The differential-equation rule set.
@@ -75,6 +76,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let dsolve = i.op(OpDescriptor::new("dsolve", Arity::Variadic).flags(OpFlags::HEAVY).cost(100))?;
     let odeint = i.op(OpDescriptor::new("odeint", Arity::Fixed(6)).flags(OpFlags::HEAVY).cost(100))?;
     i.kernel("ode/dsolve", Tier::Reduce, Dsolve { dsolve });
+    let series = i.op(OpDescriptor::new("ode_series", Arity::Fixed(4)).flags(OpFlags::HEAVY).cost(100))?;
+    let rsolve = i.op(OpDescriptor::new("rsolve_z", Arity::Variadic).flags(OpFlags::HEAVY).cost(100))?;
+    let classify = i.op(OpDescriptor::new("ode_classify", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("ode/extras", Tier::Reduce, Extras { series, rsolve, classify });
     i.kernel("ode/odeint", Tier::Reduce, Odeint { odeint });
     Ok(())
 }
@@ -1125,7 +1130,10 @@ impl Kernel for Dsolve {
             return systems::solve_system(cx, equation, unknown).map_or(Outcome::Pass, Outcome::Pinned);
         }
         let Some((problem, answer)) = solve_equation(cx, equation, unknown, 0) else {
-            return Outcome::Pass;
+            // Discontinuous forcing: the Laplace transform.
+            return conditions
+                .and_then(|c| series_method::laplace_ivp(cx, equation, unknown, c))
+                .map_or(Outcome::Pass, Outcome::Pinned);
         };
         match conditions {
             | None => Outcome::Pinned(answer),
@@ -1134,6 +1142,127 @@ impl Kernel for Dsolve {
             },
         }
     }
+}
+
+/// `ode_series`, `rsolve` and `ode_classify`.
+struct Extras {
+    series: OpId,
+    rsolve: OpId,
+    classify: OpId,
+}
+
+impl Kernel for Extras {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.series, self.rsolve, self.classify]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let op = cx.graph.op(node);
+        let args = cx.graph.children(node).to_vec();
+        let found = if op == self.series {
+            match *args.as_slice() {
+                | [e, u, x0, n] => series_method::series_solution(cx, e, u, x0, n),
+                | _ => None,
+            }
+        } else if op == self.rsolve {
+            match *args.as_slice() {
+                | [e, u] => series_method::rsolve(cx, e, u, None),
+                | [e, u, c] => series_method::rsolve(cx, e, u, Some(c)),
+                | _ => None,
+            }
+        } else {
+            match *args.as_slice() {
+                | [e, u] => classify(cx, e, u),
+                | _ => None,
+            }
+        };
+        found.map_or(Outcome::Pass, Outcome::Pinned)
+    }
+}
+
+/// The classes an equation belongs to, as a list of symbols, in the
+/// order the solver tries them: `order_n`, `linear`, `constant_coefficients`,
+/// `cauchy_euler`, `separable`, `exact`, `homogeneous`, `bernoulli`,
+/// `riccati`, `autonomous`, `missing_y`, `scale_invariant`, `lie_symmetry`.
+fn classify(
+    cx: &mut Cx<'_>,
+    equation: NodeId,
+    unknown: NodeId,
+) -> Option<NodeId> {
+    let mut problem = parse(cx.graph, equation, unknown)?;
+    let order = problem.order();
+    let mut classes = vec![format!("order_{order}")];
+    let x = problem.x;
+    let y = problem.stand[0];
+    // Linear: the equation has degree one in y and its derivatives jointly.
+    let mut linear = true;
+    let mut constant = true;
+    let mut rest = problem.expr;
+    for k in (0..=order).rev() {
+        match coefficients_in(cx.graph, rest, problem.stand[k]).as_deref() {
+            | Some(&[c0, c1]) => {
+                if problem.stand.iter().any(|&s| occurs(cx.graph, c1, s)) {
+                    linear = false;
+                }
+                if problem.depends_on_x(cx.graph, c1) {
+                    constant = false;
+                }
+                rest = c0;
+            },
+            | Some(&[c0]) => rest = c0,
+            | _ => {
+                linear = false;
+                break;
+            },
+        }
+    }
+    if linear {
+        classes.push("linear".to_owned());
+        if constant {
+            classes.push("constant_coefficients".to_owned());
+        }
+    }
+    if order == 1 {
+        let dy = problem.stand[1];
+        if let Some(rhs) = solve_for(cx.graph, problem.expr, dy, 0).and_then(|v| v.first().copied()) {
+            let rhs = cx.simplify(rhs);
+            if let Some(c) = coefficients_in(cx.graph, rhs, y) {
+                match c.len() {
+                    | 2 => {},
+                    | 3 => classes.push("riccati".to_owned()),
+                    | n if n > 3 => classes.push("bernoulli".to_owned()),
+                    | _ => {},
+                }
+            }
+            let saved = problem.constants;
+            if separable(cx, &mut problem, rhs).is_some() {
+                classes.push("separable".to_owned());
+            }
+            if homogeneous(cx, &mut problem, rhs).is_some() {
+                classes.push("homogeneous".to_owned());
+            }
+            if exact(cx, &mut problem).is_some() {
+                classes.push("exact".to_owned());
+            }
+            if !lie::first_order_symmetries(cx, x, y, rhs, 2).is_empty() {
+                classes.push("lie_symmetry".to_owned());
+            }
+            problem.constants = saved;
+        }
+    } else {
+        if !problem.depends_on_x(cx.graph, problem.expr) {
+            classes.push("autonomous".to_owned());
+        }
+        if !occurs(cx.graph, problem.expr, y) {
+            classes.push("missing_y".to_owned());
+        }
+    }
+    let items: Vec<NodeId> = classes.iter().map(|c| cx.graph.sym(c)).collect();
+    Some(cx.graph.node(core::LIST, &items))
 }
 
 /// Numeric initial value problems.
@@ -1373,6 +1502,35 @@ mod tests {
         assert!(reduced && text.contains("exp(4*t)") && text.contains("C2"), "{text}");
         let three = run("dsolve(list(diff(a(t), t) = b(t), diff(b(t), t) = c(t), diff(c(t), t) = a(t)), list(a(t), b(t), c(t)))");
         assert!(three.contains("exp(t)") && three.contains("C3"), "{three}");
+    }
+
+    #[test]
+    fn series_and_transform_methods() {
+        let rules = crate::rules::standard();
+        // Airy-type y'' = x y about 0: 1 + x^3/6 + … and x + x^4/12 + ….
+        let series = simplify(&rules, "ode_series(diff(diff(y(x), x), x) = x*y(x), y(x), 0, 5)");
+        assert_eq!(series, "y(x) = 1/12*C2*x^4 + 1/6*C1*x^3 + C2*x + C1");
+        // A non-linear equation: y' = 1 + y^2, y = tan(x) + …
+        let tangent = simplify(&rules, "ode_series(diff(y(x), x) = 1 + y(x)^2, y(x), 0, 5)");
+        assert!(tangent.contains("x^3*(C1^4 + 4/3*C1^2 + 1/3)"), "{tangent}");
+        // Discontinuous forcing through the Laplace transform.
+        let (text, reduced) = reduce_with(
+            &rules,
+            "dsolve(diff(y(t), t) + y(t) = heaviside(t - 1), y(t), list(y(0) = 0))",
+            &[],
+        );
+        assert!(reduced && text.contains("heaviside(t - 1)"), "{text}");
+        // Recurrences by the z-transform: Fibonacci and a forced one.
+        let fib = simplify(&rules, "rsolve_z(y(n + 2) = y(n + 1) + y(n), y(n), list(y(0) = 0, y(1) = 1))");
+        for (n, want) in [(5.0, 5.0), (10.0, 55.0)] {
+            let got = eval(&rules, fib.trim_start_matches("y(n) = "), &[("n", n)]);
+            assert!((got - want).abs() < 1e-6, "{fib}");
+        }
+        let geometric = simplify(&rules, "rsolve_z(y(n + 1) = 2*y(n) + 1, y(n), list(y(0) = 0))");
+        assert_eq!(geometric, "y(n) = 2^n - 1");
+        // Classification.
+        let classes = simplify(&rules, "ode_classify(diff(y(x), x) = x*y(x), y(x))");
+        assert!(classes.contains("linear") && classes.contains("separable"), "{classes}");
     }
 
     #[test]
