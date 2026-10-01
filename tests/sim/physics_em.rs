@@ -130,7 +130,7 @@ fn undamped_oscillator_scenario_shows_forward_euler_energy_growth() {
     let energy = |y: &[f64]| y[1] * y[1] + (2.0 * std::f64::consts::PI).powi(2) * y[0] * y[0];
     let (e0, e1) = (
         energy(&res[0].1),
-        energy(&res.last().map_or(&[0.0, 0.0][..], |r| &r.1[..])),
+        energy(res.last().map_or(&[0.0, 0.0][..], |r| &r.1[..])),
     );
     let growth = (1.0 + (2.0 * std::f64::consts::PI * 0.01f64).powi(2)).powi(res.len() as i32 - 1);
     assert!(e1 > 2.0 * e0);

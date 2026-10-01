@@ -842,7 +842,7 @@ mod strengthened {
         let (t_end, x_end, y_end, ..) =
             *traj.last().unwrap_or(&(0.0, f64::NAN, f64::NAN, 0.0, 0.0));
         assert!((x_end - range).abs() < 0.05, "range {x_end} vs {range}");
-        assert!(y_end >= 0.0 && y_end < 0.01);
+        assert!((0.0..0.01).contains(&y_end));
         // Flight time 2 v0 sin(theta) / g
         assert!((t_end - 2.0 * 20.0 * (PI / 4.0).sin() / STANDARD_GRAVITY).abs() < 0.01);
         // Peak height v0^2 sin^2 / (2 g)
@@ -1123,7 +1123,7 @@ mod strengthened {
     #[test]
     fn wave_equation_validates_arguments() {
         let u = vec![0.0; 10];
-        assert!(solve_wave_equation_1d(&u, &vec![0.0; 9], 1.0, 0.1, 0.05, 5).is_err());
+        assert!(solve_wave_equation_1d(&u, &[0.0; 9], 1.0, 0.1, 0.05, 5).is_err());
         assert!(solve_wave_equation_1d(&[0.0, 0.0], &[0.0, 0.0], 1.0, 0.1, 0.05, 5).is_err());
         // CFL number 2 is rejected, 1 is accepted.
         assert!(solve_wave_equation_1d(&u, &u, 1.0, 0.1, 0.2, 5).is_err());
