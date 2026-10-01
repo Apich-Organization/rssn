@@ -84,7 +84,7 @@ fn x_poly() -> Poly {
 }
 
 /// A non-zero constant (after normalisation).
-fn is_constant(f: &Poly) -> bool {
+const fn is_constant(f: &Poly) -> bool {
     f.len() == 1
 }
 
@@ -229,7 +229,7 @@ fn ddf(
 struct Rng(u64);
 
 impl Rng {
-    fn word(&mut self) -> u64 {
+    const fn word(&mut self) -> u64 {
         self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
         let mut z = self.0;
         z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
@@ -369,6 +369,7 @@ fn split_cantor_zassenhaus(
 // ---------------- Berlekamp ----------------
 
 /// A basis of `{v : M v = 0}` over GF(p) for an `n x n` matrix.
+#[allow(clippy::needless_range_loop)] // rows and columns are indexed together
 fn nullspace(
     mut m: Vec<Vec<BigInt>>,
     p: &BigInt,
@@ -772,7 +773,7 @@ mod tests {
     #[derive(Debug, Clone, PartialEq)]
     enum Tree {
         Num(i64),
-        List(Vec<Tree>),
+        List(Vec<Self>),
     }
 
     fn parse(text: &str) -> Tree {

@@ -47,7 +47,6 @@ use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_rational::Ratio;
 use num_traits::One;
-use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
@@ -670,7 +669,7 @@ impl Units<'_, '_> {
     }
 
     /// The value in coherent SI units.
-    fn to_si(
+    fn coherent(
         &mut self,
         val: &Val,
     ) -> Option<NodeId> {
@@ -804,7 +803,7 @@ impl Kernel for Request1 {
         let mut units = Units { cx, quantity: self.quantity };
         let result = match (self.request, args.as_slice()) {
             | (Request::Unify, &[e]) => units.eval(e, 0).map(|v| units.finish(&v)),
-            | (Request::Simplify, &[e]) => units.eval(e, 0).and_then(|v| units.to_si(&v)),
+            | (Request::Simplify, &[e]) => units.eval(e, 0).and_then(|v| units.coherent(&v)),
             | (Request::Convert, &[q, u]) => units.convert(q, u),
             | (Request::Dimension, &[q]) => units.dimension(q),
             | _ => None,

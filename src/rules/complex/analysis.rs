@@ -479,6 +479,16 @@ impl Kernel for Analysis {
     }
 }
 
+/// Where a cut starts in the plane of a function's argument.
+#[derive(Copy, Clone)]
+enum Start {
+    Zero,
+    One,
+    MinusOne,
+    I,
+    MinusI,
+}
+
 /// A closed contour.
 #[derive(Clone, Debug)]
 enum Contour {
@@ -968,14 +978,6 @@ impl Analysis {
         let arg_op = named(cx.graph, "arg")?;
         // Cuts in the plane of the argument: (start, angle in units of
         // pi/2), the start as a multiple of 1 or I.
-        #[derive(Copy, Clone)]
-        enum Start {
-            Zero,
-            One,
-            MinusOne,
-            I,
-            MinusI,
-        }
         let ln = self.ops.ln;
         let mut found: Vec<(NodeId, Vec<(Start, i64)>)> = Vec::new();
         let mut stack = vec![term];
@@ -1178,7 +1180,8 @@ fn desugar(
                 | _ if op == ops.im => b,
                 | _ if op == ops.conj => build::complex(graph, ops.unit, a, minus_b),
                 | _ if op == ops.abs => {
-                    let (a2, b2) = (build::powi(graph, a, 2), build::powi(graph, b, 2));
+                    let a2 = build::powi(graph, a, 2);
+                    let b2 = build::powi(graph, b, 2);
                     let sum = build::add(graph, &[a2, b2]);
                     // sqrt(a^2 + b^2) as exp(ln(.)/2): the splitter reads the
                     // principal value of that.
@@ -1201,7 +1204,7 @@ fn desugar(
             let &[base, exponent] = rebuilt.as_slice() else {
                 return None;
             };
-            if graph.number_of(exponent).is_some_and(|e| e.is_integer()) {
+            if graph.number_of(exponent).is_some_and(Number::is_integer) {
                 graph.try_node(op, &rebuilt)
             } else {
                 let ln = build::call(graph, ops.ln, &[base]);
@@ -1437,7 +1440,7 @@ mod tests {
     fn argument_principle_over_polygons() {
         let square = "polygon(list(-2 - 2*I, 2 - 2*I, 2 + 2*I, -2 + 2*I))";
         assert_eq!(run(&format!("count_zeros_poles(z^5 - 1, z, {square})")), "5");
-        assert_eq!(run(&format!("count_zeros_poles(z^5 - 1, z, polygon(list(-1/2 - I/2, 1/2 - I/2, 1/2 + I/2, -1/2 + I/2)))")), "0");
+        assert_eq!(run("count_zeros_poles(z^5 - 1, z, polygon(list(-1/2 - I/2, 1/2 - I/2, 1/2 + I/2, -1/2 + I/2)))"), "0");
         assert_eq!(run("count_zeros_poles((z - 1/2)*(z - 3)/(z^2 + 1/4), z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))"), "-1");
         assert_eq!(run("count_zeros_poles((z - 1/2)*(z - 3)/(z^2 + 1/4), z, polygon(list(-1 - I, -1 + I, 1 + I, 1 - I)))"), "1");
         assert_eq!(run("count_zeros_poles(1/z^3, z, polygon(list(-1 - I, 1 - I, 1 + I, -1 + I)))"), "-3");
