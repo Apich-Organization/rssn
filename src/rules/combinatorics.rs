@@ -1151,7 +1151,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         | [n] => Some(Value::Int(derangements(nat(n, MAX_FACTORIAL)?))),
         | _ => None,
     })?;
-    exact(i, set, unary("harmonic"), |a| match a {
+    exact(i, set, unary("harmonic").eval(|a| match a {
+        // H(x) = ψ(x + 1) + γ, the analytic continuation.
+        | [x] => crate::kernels::special::digamma_numerical(x + 1.0) + 0.577_215_664_901_532_9,
+        | _ => f64::NAN,
+    }), |a| match a {
         | [n] => Some(Value::Rat(harmonic(nat(n, 1000)?))),
         | _ => None,
     })?;

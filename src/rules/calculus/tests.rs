@@ -374,3 +374,21 @@ fn gosper_sums() {
     assert_eq!(simplify(&rules, "sum(1/(k*(k+1)), k, 1, n)"), "1 - 1/(n + 1)");
     assert_eq!(simplify(&rules, "sum(factorial(k)*k, k, 0, n)"), "factorial(n + 1) - 1");
 }
+
+/// Rational sums Gosper cannot close: partial fractions and polygamma.
+#[test]
+fn rational_sums_by_polygamma() {
+    let rules = crate::rules::standard();
+    assert_eq!(simplify(&rules, "sum(1/k, k, 1, n)"), "harmonic(n)");
+    assert_eq!(simplify(&rules, "sum(1/(k*(k+2)), k, 1, oo)"), "3/4");
+    assert_eq!(simplify(&rules, "sum(1/(k+1)^2, k, 0, oo)"), "1/6*pi^2");
+    for (summand, from) in [("1/k", 1), ("1/(k^2*(k+1))", 1), ("(k^2 + 1)/(k*(2*k + 1))", 1), ("1/(k + 1/2)", 0)] {
+        let (closed, reduced) = reduce_with(&rules, &format!("sum({summand}, k, {from}, n)"), &[]);
+        assert!(reduced, "sum of {summand}: {closed}");
+        for n in [4, 9] {
+            let got = eval(&rules, &closed, &[("n", f64::from(n))]);
+            let want: f64 = (from..=n).map(|k| eval(&rules, summand, &[("k", f64::from(k))])).sum();
+            assert!((got - want).abs() < 1e-9 * (1.0 + want.abs()), "sum of {summand} = {closed}: {got} vs {want}");
+        }
+    }
+}

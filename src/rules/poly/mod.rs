@@ -330,6 +330,25 @@ impl Kernel for PolyKernel {
     }
 }
 
+/// `e` as a quotient of univariate polynomials in `x` with rational
+/// coefficients (lowest degree first), or `None` when it is not a rational
+/// function of `x` alone.
+pub(crate) fn rational_function_in(
+    graph: &mut Graph,
+    e: NodeId,
+    x: NodeId,
+) -> Option<(QPoly, QPoly)> {
+    let term = best(graph, e)?;
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let r = ratio(graph, &mut gens, term, Limits::default())?;
+    if gens.len() != 1 {
+        return None;
+    }
+    let as_q = |p: &Poly| -> Option<QPoly> { p.univariate_in(gx)?.iter().map(Number::to_rational).collect() };
+    Some((as_q(&r.numer)?, as_q(&r.denom)?))
+}
+
 /// Partial fractions of a rational function of `x` over `Q`:
 /// `polynomial + sum numerator / factor^power`.
 fn apart_term(

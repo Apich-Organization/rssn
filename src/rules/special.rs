@@ -138,7 +138,7 @@ fn zeta(s: f64) -> f64 {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // name, arity, semantics, what is known of the value for real arguments
-    let functions: [(&str, u8, EvalFn, Facts); 23] = [
+    let functions: [(&str, u8, EvalFn, Facts); 26] = [
         (
             "gamma",
             1,
@@ -284,6 +284,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             |a| a.first().map_or(f64::NAN, |&x| step(x, 0.0, 0.5, 1.0)),
             Facts::NONNEGATIVE,
         ),
+        ("floor", 1, |a| a.first().map_or(f64::NAN, |x| x.floor()), Facts::INTEGER),
+        ("ceil", 1, |a| a.first().map_or(f64::NAN, |x| x.ceil()), Facts::INTEGER),
+        ("round", 1, |a| a.first().map_or(f64::NAN, |x| x.round()), Facts::INTEGER),
         (
             "sign",
             1,
@@ -363,6 +366,20 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     }
     i.kernel("special/exact", Tier::Normalize, Exact { gamma, zeta, pi });
     i.kernel("special/step", Tier::Normalize, Step { sign, heaviside });
+    let euler_gamma =
+        i.op(OpDescriptor::new("euler_gamma", Arity::Fixed(0)).cost(3).eval(|_| 0.577_215_664_901_532_9))?;
+    i.graph().ops_mut().set_attr(euler_gamma, OnReals(Facts::POSITIVE));
+    if let (Some(digamma), Some(polygamma)) = (op_named("digamma"), op_named("polygamma")) {
+        i.kernel(
+            "special/polygamma-exact",
+            Tier::Normalize,
+            PolygammaExact { digamma, polygamma, zeta, euler_gamma, pi },
+        );
+    }
+    if let (Some(floor), Some(ceil), Some(round)) = (op_named("floor"), op_named("ceil"), op_named("round")) {
+        i.kernel("special/rounding", Tier::Normalize, Rounding { floor, ceil, round });
+    }
+
     i.kernel(
         "special/orthogonal",
         Tier::Normalize,
@@ -400,6 +417,16 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "special/bessely-negative-order: bessely(?n, ?x) => (-1)^?n * bessely(-?n, ?x) if integer(?n), negative(?n)",
             "special/besseli-negative-order: besseli(?n, ?x) => besseli(-?n, ?x) if integer(?n), negative(?n)",
             "special/erfcinv-1: erfcinv(1) => 0",
+            "special/digamma-half: digamma(1/2) => -euler_gamma - 2*ln(2)",
+            "special/digamma-shift: digamma(?x + 1) - digamma(?x) => 1/?x",
+            "special/floor-integer: floor(?n) => ?n if integer(?n)",
+            "special/ceil-integer: ceil(?n) => ?n if integer(?n)",
+            "special/round-integer: round(?n) => ?n if integer(?n)",
+            "special/floor-shift: floor(?x + ?n) => floor(?x) + ?n if integer(?n)",
+            "special/ceil-shift: ceil(?x + ?n) => ceil(?x) + ?n if integer(?n)",
+            "special/round-shift: round(?x + ?n) => round(?x) + ?n if integer(?n)",
+            "special/ceil-floor: ceil(-?x) => -floor(?x)",
+            "special/floor-ceil: floor(-?x) => -ceil(?x)",
         ],
     )?;
     i.rewrites(
@@ -413,6 +440,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         i.kernel("special/laguerre-gen", Tier::Normalize, GeneralizedLaguerre { op });
     }
     i.define(&[
+        "frac(x) := x - floor(x)",
         "ln_factorial(n) := lgamma(n + 1)",
         "bessel_k0(x) := besselk(0, x)",
         "bessel_k1(x) := besselk(1, x)",
@@ -624,6 +652,140 @@ impl Kernel for Exact {
 }
 
 /// `sign` and `heaviside` where the sign of the argument is known.
+/// `digamma(n) = H_{n-1} - γ` and
+/// `polygamma(m, n) = (-1)^{m+1} m! (ζ(m+1) - Σ_{j<n} j^{-(m+1)})` at
+/// positive integers `n`.
+struct PolygammaExact {
+    digamma: OpId,
+    polygamma: OpId,
+    zeta: OpId,
+    euler_gamma: OpId,
+    pi: OpId,
+}
+
+impl Kernel for PolygammaExact {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.digamma, self.polygamma]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let args = graph.children(node).to_vec();
+        let (order, at) = match args.as_slice() {
+            | &[x] if graph.op(node) == self.digamma => (0, x),
+            | &[m, x] => match graph.number_of(m).and_then(Number::to_i64) {
+                | Some(m) if (1..=60).contains(&m) => (m, x),
+                | _ => return Outcome::Pass,
+            },
+            | _ => return Outcome::Pass,
+        };
+        let Some(n) = graph.number_of(at).and_then(Number::to_i64).filter(|n| (1..=10_000).contains(n)) else {
+            return Outcome::Pass;
+        };
+        let power = order.saturating_add(1);
+        let mut partial = BigRational::zero();
+        for j in 1..n {
+            let mut denominator = BigInt::one();
+            for _ in 0..power {
+                denominator *= BigInt::from(j);
+            }
+            partial += BigRational::new(BigInt::one(), denominator);
+        }
+        if order == 0 {
+            let constant = graph.node(self.euler_gamma, &[]);
+            let minus_one = graph.int(-1);
+            let negated = graph.node(core::MUL, &[minus_one, constant]);
+            let h = graph.num(Number::rat(partial));
+            return Outcome::Pinned(graph.node(core::ADD, &[h, negated]));
+        }
+        let mut factorial = BigInt::one();
+        for j in 2..=order {
+            factorial *= BigInt::from(j);
+        }
+        let sign = if order % 2 == 1 { BigInt::one() } else { -BigInt::one() };
+        let scale = BigRational::from_integer(sign * factorial);
+        let leading = match zeta_even(&BigInt::from(power)) {
+            | Some(c) => times_pi_power(graph, self.pi, &(&scale * c), Number::from(power)),
+            | None => {
+                let s = graph.int(power);
+                let zeta = graph.node(self.zeta, &[s]);
+                let scale_term = graph.num(Number::rat(scale.clone()));
+                graph.node(core::MUL, &[scale_term, zeta])
+            },
+        };
+        if partial.is_zero() {
+            return Outcome::Pinned(leading);
+        }
+        let correction = graph.num(Number::rat(-(scale * partial)));
+        Outcome::Pinned(graph.node(core::ADD, &[leading, correction]))
+    }
+}
+
+/// `floor`, `ceil` and `round` (half away from zero) of a value: exact
+/// for rational literals, and for other constant terms whenever the
+/// numeric value is far enough from a rounding boundary to be certain.
+struct Rounding {
+    floor: OpId,
+    ceil: OpId,
+    round: OpId,
+}
+
+impl Kernel for Rounding {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.floor, self.ceil, self.round]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let Some(&arg) = graph.children(node).first() else {
+            return Outcome::Pass;
+        };
+        let op = graph.op(node);
+        if let Some(r) = graph.as_number(arg).and_then(Number::to_rational) {
+            let rounded = if op == self.floor {
+                r.floor()
+            } else if op == self.ceil {
+                r.ceil()
+            } else {
+                r.round()
+            };
+            return Outcome::Equal(graph.num(Number::rat(rounded)));
+        }
+        if !graph.free_symbols(graph.find(arg)).is_empty() {
+            return Outcome::Pass;
+        }
+        let Some(value) = graph.eval(arg, &crate::graph::Env::numeric(0.0)) else {
+            return Outcome::Pass;
+        };
+        if !value.is_finite() || value.abs() > 1e15 {
+            return Outcome::Pass;
+        }
+        // The distance to the nearest boundary must dwarf the evaluation error.
+        let boundary = if op == self.round { (value - 0.5).round() + 0.5 } else { value.round() };
+        if (value - boundary).abs() <= 1e-9 * value.abs().max(1.0) {
+            return Outcome::Pass;
+        }
+        let rounded = if op == self.floor {
+            value.floor()
+        } else if op == self.ceil {
+            value.ceil()
+        } else {
+            value.round()
+        };
+        rounded
+            .to_i64()
+            .map_or(Outcome::Pass, |v| Outcome::Equal(graph.int(v)))
+    }
+}
+
 struct Step {
     sign: OpId,
     heaviside: OpId,
@@ -817,6 +979,40 @@ mod tests {
     use crate::rules::testing::numeric;
     use crate::rules::testing::reduce_with;
     use crate::rules::testing::simplify;
+
+    #[test]
+    fn polygamma_at_integers() {
+        let sets = [special()];
+        assert_eq!(simplify(&sets, "digamma(1)"), "-euler_gamma");
+        assert_eq!(simplify(&sets, "digamma(4)"), "11/6 - euler_gamma");
+        assert_eq!(simplify(&sets, "polygamma(1, 1)"), "1/6*pi^2");
+        assert_eq!(simplify(&sets, "polygamma(1, 3)"), "1/6*pi^2 - 5/4");
+        let value = |src: &str| numeric(&sets, src, &[], 1e-12).0;
+        assert!((value("polygamma(2, 2)") + 2.0 * (1.202_056_903_159_594 - 1.0)).abs() < 1e-9);
+        assert!((value("digamma(1/2)") + 1.963_510_026_021_423).abs() < 1e-9);
+    }
+
+    #[test]
+    fn rounding() {
+        let sets = [special()];
+        for (src, want) in [
+            ("floor(7/2)", "3"),
+            ("ceil(7/2)", "4"),
+            ("round(7/2)", "4"),
+            ("round(-7/2)", "-4"),
+            ("floor(-7/2)", "-4"),
+            ("floor(pi)", "3"),
+            ("ceil(exp(1))", "3"),
+            ("round(2^(1/2)*10)", "14"),
+            ("floor(x + 3)", "floor(x) + 3"),
+            ("ceil(-x)", "-floor(x)"),
+            ("frac(5/2)", "1/2"),
+        ] {
+            assert_eq!(simplify(&sets, src), want, "{src}");
+        }
+        let (text, reduced) = reduce_with(&[crate::rules::standard()].concat(), "floor(n)", &[("n", Facts::INTEGER)]);
+        assert!(reduced && text == "n", "{text}");
+    }
 
     #[test]
     fn bessel_functions_of_any_order() {

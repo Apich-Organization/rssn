@@ -390,12 +390,15 @@ fn symbolic_sum(
             }
         }
     }
-    // Hypergeometric terms: Gosper's antidifference.
+    // Hypergeometric terms: Gosper's antidifference; rational terms that
+    // are not Gosper-summable: partial fractions and polygamma.
     if infinite_upper {
-        return None;
+        return rational_sum(cx, term, k, lower, None);
     }
     let from_nonnegative = cx.graph.number_of(lower).is_some_and(|n| !n.is_negative());
-    let big_t = super::gosper::antidifference(cx, term, k, from_nonnegative)?;
+    let Some(big_t) = super::gosper::antidifference(cx, term, k, from_nonnegative) else {
+        return rational_sum(cx, term, k, lower, Some(upper));
+    };
     let graph = &mut *cx.graph;
     let one = graph.int(1);
     let after = graph.node(core::ADD, &[upper, one]);
@@ -403,6 +406,112 @@ fn symbolic_sum(
     let at_start = graph.substitute(big_t, k, lower);
     let difference = sub(graph, at_end, at_start);
     Some(cx.simplify(difference))
+}
+
+/// `sum_{k=lower}^{upper} r(k)` for a rational function `r` over `Q` whose
+/// denominator splits into linear factors, by partial fractions:
+/// `sum 1/(k + a)^m` is a difference of polygamma values (harmonic numbers
+/// for `m = 1` and integer `a`). `upper = None` sums to infinity, which
+/// requires the residues of the simple poles to cancel.
+fn rational_sum(
+    cx: &mut Cx<'_>,
+    term: NodeId,
+    k: NodeId,
+    lower: NodeId,
+    upper: Option<NodeId>,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let (numer, denom) = crate::rules::poly::rational_function_in(graph, term, k)?;
+    if denom.len() < 2 {
+        return None;
+    }
+    let parts = crate::rules::poly::apart::apart(&numer, &denom)?;
+    if !parts.quotient.is_empty() && upper.is_none() {
+        return None;
+    }
+    let polygamma = graph.ops().lookup("polygamma")?;
+    let digamma = graph.ops().lookup("digamma")?;
+    let harmonic = graph.ops().lookup("harmonic");
+    let one = graph.int(1);
+    // Simple poles must have residues summing to zero for convergence.
+    let mut residue_sum = BigRational::zero();
+    let mut pieces = Vec::new();
+    for piece in &parts.pieces {
+        // factor = p1 k + p0 = p1 (k + alpha); numerator c' constant.
+        let ([p0, p1], [c]) = (piece.factor.as_slice(), piece.numerator.as_slice()) else {
+            return None;
+        };
+        let alpha = p0 / p1;
+        let mut scale = BigRational::one();
+        for _ in 0..piece.power {
+            scale /= p1;
+        }
+        let c = c * scale;
+        let m = i64::from(piece.power);
+        if m == 1 {
+            residue_sum += &c;
+        }
+        let alpha_term = graph.num(Number::rat(alpha.clone()));
+        let start = graph.node(core::ADD, &[lower, alpha_term]);
+        let integer_shift = alpha.is_integer();
+        // S(z) = sum_{j >= 0} 1/(z + j)^m, up to a constant for m = 1.
+        let tail = |graph: &mut Graph, z: NodeId| -> NodeId {
+            if m == 1 {
+                // -digamma(z), or -harmonic(z - 1) for an integer shift.
+                let value = match harmonic {
+                    | Some(h) if integer_shift => {
+                        let minus_one = graph.int(-1);
+                        let before = graph.node(core::ADD, &[z, minus_one]);
+                        graph.node(h, &[before])
+                    },
+                    | _ => graph.node(digamma, &[z]),
+                };
+                let minus_one = graph.int(-1);
+                graph.node(core::MUL, &[minus_one, value])
+            } else {
+                let order = graph.int(m - 1);
+                let value = graph.node(polygamma, &[order, z]);
+                let mut factorial = BigInt::one();
+                for j in 2..m {
+                    factorial *= BigInt::from(j);
+                }
+                let sign = if m % 2 == 0 { BigInt::one() } else { -BigInt::one() };
+                let coefficient = graph.num(Number::rat(BigRational::new(sign, factorial)));
+                graph.node(core::MUL, &[coefficient, value])
+            }
+        };
+        let from = tail(graph, start);
+        let span = match upper {
+            | Some(b) => {
+                let after = graph.node(core::ADD, &[b, alpha_term, one]);
+                let to = tail(graph, after);
+                sub(graph, from, to)
+            },
+            | None => from,
+        };
+        let c = graph.num(Number::rat(c));
+        pieces.push(graph.node(core::MUL, &[c, span]));
+    }
+    if upper.is_none() && !residue_sum.is_zero() {
+        return None;
+    }
+    if let Some(b) = upper {
+        if !parts.quotient.is_empty() {
+            let before = sub(graph, lower, one);
+            for (p, coefficient) in parts.quotient.iter().enumerate() {
+                if coefficient.is_zero() {
+                    continue;
+                }
+                let c = graph.num(Number::rat(coefficient.clone()));
+                let up_to_upper = power_sum(graph, p, b);
+                let up_to_before = power_sum(graph, p, before);
+                let span = sub(graph, up_to_upper, up_to_before);
+                pieces.push(graph.node(core::MUL, &[c, span]));
+            }
+        }
+    }
+    let total = add(graph, &pieces);
+    Some(cx.simplify(total))
 }
 
 /// The integer bounds of a sum or product if both are literal and the
