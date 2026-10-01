@@ -106,7 +106,7 @@ use crate::graph::RuleSet;
 /// Every rule set shipped with rssn.
 #[must_use]
 pub fn standard() -> Vec<RuleSet> {
-    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), discrete()]
+    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), discrete()]
 }
 
 #[cfg(test)]

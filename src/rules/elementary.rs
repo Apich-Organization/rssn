@@ -242,6 +242,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "elementary/cos-acos: cos(acos(?x)) => ?x",
             "elementary/tan-atan: tan(atan(?x)) => ?x",
             "elementary/cosh-acosh: cosh(acosh(?x)) => ?x",
+            "elementary/atan2-right: atan2(?y, ?x) => atan(?y / ?x) if positive(?x)",
+            "elementary/atan2-up: atan2(?y, 0) => pi / 2 if positive(?y)",
+            "elementary/atan2-down: atan2(?y, 0) => -pi / 2 if negative(?y)",
+            "elementary/atan2-left-up: atan2(?y, ?x) => atan(?y / ?x) + pi if negative(?x), nonnegative(?y)",
+            "elementary/atan2-left-down: atan2(?y, ?x) => atan(?y / ?x) - pi if negative(?x), negative(?y)",
         ],
     )
 }

@@ -567,6 +567,26 @@ fn scale_factors(
     sys: System,
     vars: &[NodeId],
 ) -> Option<Vec<NodeId>> {
+    // The textbook scale factors, valid on the usual coordinate ranges
+    // (r ≥ 0, 0 ≤ θ ≤ π), where sqrt(g_ii) has a sign-free closed form.
+    let one = cx.graph.int(1);
+    match (sys, vars) {
+        | (System::Cartesian, _) => return Some(vec![one; vars.len()]),
+        | (System::Polar, &[r, _]) | (System::Cylindrical, &[r, _, _]) => {
+            let mut h = vec![one, r];
+            if vars.len() == 3 {
+                h.push(one);
+            }
+            return Some(h);
+        },
+        | (System::Spherical, &[r, t, _]) => {
+            let sin = cx.graph.ops().lookup("sin")?;
+            let s = cx.graph.node(sin, &[t]);
+            let rs = mul(cx.graph, &[r, s]);
+            return Some(vec![one, r, rs]);
+        },
+        | _ => {},
+    }
     let g = metric(cx, sys, vars)?;
     for (a, row) in g.iter().enumerate() {
         for (b, &entry) in row.iter().enumerate() {
@@ -1194,17 +1214,6 @@ mod tests {
         engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
         let term = Extractor::new(&g, &[root], &SizeCost).build(&mut g, root).unwrap_or(root);
         g.display(term)
-    }
-
-    #[test]
-    fn dbg_metric() {
-        eprintln!("DBG {}", run_positive("metric_dbg"));
-        let (t, _) = crate::rules::testing::reduce_with(&[geometry()], "jacobian(to_cartesian(spherical, list(r, t, p)), list(r, t, p))", &[]);
-        eprintln!("DBG J {t}");
-        let (t, _) = crate::rules::testing::reduce_with(&[geometry()], "r^2*cos(t)^2*cos(p)^2 + r^2*cos(t)^2*sin(p)^2 + r^2*sin(t)^2", &[]);
-        eprintln!("DBG S {t}");
-        let (t, _) = crate::rules::testing::reduce_with(&[geometry()], "r*cos(p)^2*cos(t)*sin(t) + r*cos(t)*sin(p)^2*sin(t) - r*cos(t)*sin(t)", &[]);
-        eprintln!("DBG O {t}");
     }
 
     #[test]
