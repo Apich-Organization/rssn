@@ -66,37 +66,14 @@ fn degree_and_point(args: &[f64]) -> Option<(u32, f64)> {
     (n >= 0.0 && n <= f64::from(u32::MAX) && n.fract() == 0.0).then(|| (n.to_u32().unwrap_or(0), x))
 }
 
-/// Order-0 or order-1 Bessel function, from the two available numerical
-/// implementations; other orders have none.
-fn bessel(
+/// A two-argument evaluation `f(order, x)`.
+fn order_and_point(
     args: &[f64],
-    order0: fn(f64) -> f64,
-    order1: fn(f64) -> f64,
+    f: fn(f64, f64) -> f64,
 ) -> f64 {
-    let [n, x] = args else {
-        return f64::NAN;
-    };
-    if n.fract() != 0.0 {
-        return f64::NAN;
-    }
-    match n.to_i64() {
-        | Some(0) => order0(*x),
-        | Some(1) => order1(*x),
+    match args {
+        | [n, x] => f(*n, *x),
         | _ => f64::NAN,
-    }
-}
-
-/// `f(x)` for `|x| >= 8` only. The order-1 fits of `J` and `Y` in
-/// `kernels::special` have wrong coefficients below that (the large-argument
-/// branch is right), and no value is better than a wrong one.
-fn large_only(
-    f: fn(f64) -> f64,
-    x: f64,
-) -> f64 {
-    if x.abs() >= 8.0 {
-        f(x)
-    } else {
-        f64::NAN
     }
 }
 
@@ -161,7 +138,7 @@ fn zeta(s: f64) -> f64 {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // name, arity, semantics, what is known of the value for real arguments
-    let functions: [(&str, u8, EvalFn, Facts); 18] = [
+    let functions: [(&str, u8, EvalFn, Facts); 23] = [
         (
             "gamma",
             1,
@@ -210,20 +187,60 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         (
             "besselj",
             2,
-            |a| bessel(a, num::bessel_j0, |x| large_only(num::bessel_j1, x)),
+            |a| order_and_point(a, num::bessel_j),
             Facts::NONE,
         ),
         (
             "bessely",
             2,
-            |a| bessel(a, num::bessel_y0, |x| large_only(num::bessel_y1, x)),
+            |a| order_and_point(a, num::bessel_y),
             Facts::NONE,
         ),
         (
             "besseli",
             2,
-            |a| bessel(a, num::bessel_i0, num::bessel_i1),
+            |a| order_and_point(a, num::bessel_i),
             Facts::NONE,
+        ),
+        (
+            "besselk",
+            2,
+            |a| order_and_point(a, num::bessel_k),
+            Facts::NONE,
+        ),
+        (
+            "erfi",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::erfi(x)),
+            Facts::REAL,
+        ),
+        (
+            "erfcinv",
+            1,
+            |a| a.first().map_or(f64::NAN, |&x| num::inverse_erfc(x)),
+            Facts::REAL,
+        ),
+        (
+            "polygamma",
+            2,
+            |a| match a {
+                | [n, x] if *n >= 0.0 && n.fract() == 0.0 && *n <= f64::from(u32::MAX) => {
+                    num::polygamma_numerical(n.to_u32().unwrap_or(0), *x)
+                },
+                | _ => f64::NAN,
+            },
+            Facts::REAL,
+        ),
+        (
+            "laguerre_gen",
+            3,
+            |a| match a {
+                | [n, alpha, x] if *n >= 0.0 && n.fract() == 0.0 && *n <= 1e6 => {
+                    num::generalized_laguerre(n.to_u32().unwrap_or(0), *alpha, *x)
+                },
+                | _ => f64::NAN,
+            },
+            Facts::REAL,
         ),
         (
             "legendre",
@@ -316,6 +333,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ],
     )?;
     partials(i, "sinc", &["(cos(pi * ?a) - sinc(?a)) / ?a"])?;
+    partials(i, "digamma", &["polygamma(1, ?a)"])?;
+    partials(i, "polygamma", &["", "polygamma(?a + 1, ?b)"])?;
+    partials(i, "erfi", &["2/pi^(1/2) * exp(?a^2)"])?;
+    partials(i, "besselj", &["", "(besselj(?a - 1, ?b) - besselj(?a + 1, ?b))/2"])?;
+    partials(i, "bessely", &["", "(bessely(?a - 1, ?b) - bessely(?a + 1, ?b))/2"])?;
+    partials(i, "besseli", &["", "(besseli(?a - 1, ?b) + besseli(?a + 1, ?b))/2"])?;
+    partials(i, "besselk", &["", "-(besselk(?a - 1, ?b) + besselk(?a + 1, ?b))/2"])?;
+    at_infinity(i, "erfi", Some("oo"), Some("-oo"))?;
     at_infinity(i, "erf", Some("1"), Some("-1"))?;
     at_infinity(i, "erfc", Some("0"), Some("2"))?;
     at_infinity(i, "heaviside", Some("1"), Some("0"))?;
@@ -359,6 +384,22 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "special/sinc-0: sinc(0) => 1",
             "special/sinc-even: sinc(-?x) => sinc(?x)",
             "special/sign-odd: sign(-?x) => -sign(?x)",
+            "special/erfi-0: erfi(0) => 0",
+            "special/erfi-odd: erfi(-?x) => -erfi(?x)",
+            "special/polygamma-0: polygamma(0, ?x) => digamma(?x)",
+            "special/besselj-half: besselj(1/2, ?x) => (2/(pi*?x))^(1/2) * sin(?x) if positive(?x)",
+            "special/besselj-minus-half: besselj(-1/2, ?x) => (2/(pi*?x))^(1/2) * cos(?x) if positive(?x)",
+            "special/bessely-half: bessely(1/2, ?x) => -(2/(pi*?x))^(1/2) * cos(?x) if positive(?x)",
+            "special/besseli-half: besseli(1/2, ?x) => (2/(pi*?x))^(1/2) * sinh(?x) if positive(?x)",
+            "special/besselk-half: besselk(1/2, ?x) => (pi/(2*?x))^(1/2) * exp(-?x) if positive(?x)",
+            "special/besselk-minus-half: besselk(-1/2, ?x) => (pi/(2*?x))^(1/2) * exp(-?x) if positive(?x)",
+            "special/besselk-even: besselk(-?n, ?x) => besselk(?n, ?x)",
+            "special/besselj-0-at-0: besselj(0, 0) => 1",
+            "special/besseli-0-at-0: besseli(0, 0) => 1",
+            "special/besselj-negative-order: besselj(?n, ?x) => (-1)^?n * besselj(-?n, ?x) if integer(?n), negative(?n)",
+            "special/bessely-negative-order: bessely(?n, ?x) => (-1)^?n * bessely(-?n, ?x) if integer(?n), negative(?n)",
+            "special/besseli-negative-order: besseli(?n, ?x) => besseli(-?n, ?x) if integer(?n), negative(?n)",
+            "special/erfcinv-1: erfcinv(1) => 0",
         ],
     )?;
     i.rewrites(
@@ -367,7 +408,73 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "special/beta: beta(?a, ?b) => gamma(?a) * gamma(?b) / gamma(?a + ?b)",
             "special/lgamma: lgamma(?x) => ln(gamma(?x)) if positive(?x)",
         ],
-    )
+    )?;
+    if let Some(op) = op_named("laguerre_gen") {
+        i.kernel("special/laguerre-gen", Tier::Normalize, GeneralizedLaguerre { op });
+    }
+    i.define(&[
+        "ln_factorial(n) := lgamma(n + 1)",
+        "bessel_k0(x) := besselk(0, x)",
+        "bessel_k1(x) := besselk(1, x)",
+        "inverse_erfc(x) := erfcinv(x)",
+        "legendre_rodrigues(n, x) := diffn((x^2 - 1)^n, x, n) / (2^n * gamma(n + 1))",
+        "hermite_rodrigues(n, x) := (-1)^n * exp(x^2) * diffn(exp(-x^2), x, n)",
+        "laguerre_rodrigues(n, x) := exp(x) / gamma(n + 1) * diffn(exp(-x) * x^n, x, n)",
+        "bessel_differential_equation(y, x, n) := x^2 * diff(diff(y, x), x) + x * diff(y, x) + (x^2 - n^2) * y = 0",
+        "legendre_differential_equation(y, x, n) := (1 - x^2) * diff(diff(y, x), x) - 2 * x * diff(y, x) + n * (n + 1) * y = 0",
+        "laguerre_differential_equation(y, x, n) := x * diff(diff(y, x), x) + (1 - x) * diff(y, x) + n * y = 0",
+        "hermite_differential_equation(y, x, n) := diff(diff(y, x), x) - 2 * x * diff(y, x) + 2 * n * y = 0",
+        "chebyshev_differential_equation(y, x, n) := (1 - x^2) * diff(diff(y, x), x) - x * diff(y, x) + n^2 * y = 0",
+    ])
+}
+
+/// `L_n^{(α)}(x) = Σ_k (-1)^k C(n + α, n - k) x^k / k!` for a literal
+/// degree `n`, with any `α`.
+struct GeneralizedLaguerre {
+    op: OpId,
+}
+
+impl Kernel for GeneralizedLaguerre {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let &[degree, alpha, x] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let Some(n) = integer(graph, degree).and_then(|d| d.to_u32()).filter(|&d| d <= MAX_DEGREE) else {
+            return Outcome::Pass;
+        };
+        let mut terms = Vec::new();
+        for k in 0..=n {
+            // C(n + α, n - k) = Π_{j=1}^{n-k} (α + k + j) / (n - k)!
+            let mut factors = Vec::new();
+            for j in 1..=n - k {
+                let shift = graph.int(i64::from(k + j));
+                factors.push(graph.node(core::ADD, &[alpha, shift]));
+            }
+            let denominator = factorial(n - k) * factorial(k);
+            let sign = if k % 2 == 0 { BigInt::one() } else { -BigInt::one() };
+            let c = graph.num(Number::rat(BigRational::new(sign, denominator)));
+            factors.push(c);
+            if k > 0 {
+                let e = graph.int(i64::from(k));
+                factors.push(graph.node(core::POW, &[x, e]));
+            }
+            terms.push(if factors.len() == 1 { factors[0] } else { graph.node(core::MUL, &factors) });
+        }
+        let sum = if terms.len() == 1 { terms[0] } else { graph.node(core::ADD, &terms) };
+        let polynomial = cx.simplify(sum);
+        // Like the other orthogonal polynomials: the expansion is the
+        // requested form, a number at a numeric point.
+        if cx.graph.number_of(polynomial).is_some() { Outcome::Equal(polynomial) } else { Outcome::Pinned(polynomial) }
+    }
 }
 
 /// `below`, `at` or `above` according to the sign of `x`.
@@ -712,6 +819,47 @@ mod tests {
     use crate::rules::testing::simplify;
 
     #[test]
+    fn bessel_functions_of_any_order() {
+        let sets = [special()];
+        let value = |src: &str| numeric(&sets, src, &[], 1e-12).0;
+        assert!((value("besselj(2, 1)") - 0.114_903_484_9).abs() < 1e-9);
+        assert!((value("besselk(0, 1)") - 0.421_024_438_2).abs() < 1e-9);
+        assert!((value("bessel_k1(2)") - 0.139_865_881_8).abs() < 1e-9);
+        // d/dx J_0 = -J_1 and the defining equation holds numerically.
+        assert_eq!(simplify(&sets, "diff(besselj(0, x), x)"), "besselj(-1, x)");
+        assert_eq!(simplify(&sets, "besselj(-1, x) + besselj(1, x)"), "0");
+        let residual = simplify(&sets, "x^2*diff(diff(besselj(3, x), x), x) + x*diff(besselj(3, x), x) + (x^2 - 9)*besselj(3, x)");
+        assert!(eval(&sets, &residual, &[("x", 2.7)]).abs() < 1e-10, "{residual}");
+        assert!(simplify(&sets, "bessel_differential_equation(y(x), x, n)").ends_with("= 0"));
+    }
+
+    #[test]
+    fn polygamma_erfi_and_relatives() {
+        let sets = [special()];
+        assert_eq!(simplify(&sets, "polygamma(0, x)"), "digamma(x)");
+        assert_eq!(simplify(&sets, "diff(digamma(x), x)"), "polygamma(1, x)");
+        let value = |src: &str| numeric(&sets, src, &[], 1e-12).0;
+        // ψ'(1) = π²/6
+        assert!((value("polygamma(1, 1)") - std::f64::consts::PI.powi(2) / 6.0).abs() < 1e-10);
+        assert!((value("erfi(1)") - 1.650_425_758_797_542_8).abs() < 1e-12);
+        assert!((value("erfc(inverse_erfc(0.3))") - 0.3).abs() < 1e-12);
+        assert!((value("ln_factorial(5)") - 120.0_f64.ln()).abs() < 1e-12);
+        assert_eq!(simplify(&sets, "integral(exp(x^2), x)"), "1/2*erfi(x)*pi^(1/2)");
+    }
+
+    #[test]
+    fn rodrigues_formulas_and_generalized_laguerre() {
+        let sets = [special()];
+        assert_eq!(simplify(&sets, "legendre_rodrigues(3, x)"), simplify(&sets, "legendre(3, x)"));
+        assert_eq!(simplify(&sets, "hermite_rodrigues(3, x)"), simplify(&sets, "hermite(3, x)"));
+        assert_eq!(simplify(&sets, "laguerre_rodrigues(2, x)"), simplify(&sets, "laguerre(2, x)"));
+        assert_eq!(simplify(&sets, "laguerre_gen(2, 1, x)"), "1/2*x^2 - 3*x + 3");
+        assert_eq!(simplify(&sets, "laguerre_gen(1, a, x)"), simplify(&sets, "1 + a - x"));
+        let (v, _) = numeric(&sets, "laguerre_gen(3, 0.5, 1.2)", &[], 1e-12);
+        assert!((v - crate::kernels::special::generalized_laguerre(3, 0.5, 1.2)).abs() < 1e-12);
+    }
+
+    #[test]
     fn gaussian_integrals() {
         let sets = [special()];
         let run = |src: &str| simplify(&sets, src);
@@ -872,11 +1020,12 @@ mod tests {
         agree(at("besseli", 1.0, 1.0), 0.565_159_103_992_485_1, 5e-7);
         agree(at("besseli", 0.0, 5.0) / 27.239_871_823_604_442, 1.0, 5e-7);
         agree(at("besseli", 1.0, 5.0), 24.335_642_142_450_52, 5e-7);
-        // Order 1 below |x| = 8 has no correct implementation available.
-        assert!(at("besselj", 1.0, 1.0).is_nan());
-        assert!(at("bessely", 1.0, 1.0).is_nan());
-        assert!(at("besselj", 2.0, 1.0).is_nan());
-        assert!(at("besselj", 0.5, 1.0).is_nan());
+        // Any order, small arguments included.
+        agree(at("besselj", 1.0, 1.0), 0.440_050_585_744_933_5, 1e-12);
+        agree(at("bessely", 1.0, 1.0), -0.781_212_821_300_288_7, 1e-9);
+        agree(at("besselj", 2.0, 1.0), 0.114_903_484_931_900_5, 1e-9);
+        let half = (2.0 / std::f64::consts::PI).sqrt() * 1.0_f64.sin();
+        agree(at("besselj", 0.5, 1.0), half, 1e-12);
     }
 
     #[test]
@@ -1237,8 +1386,11 @@ fn gaussian_integral(
     let pow = |graph: &mut Graph, b: NodeId, e: NodeId| graph.node(core::POW, &[b, e]);
     let half = graph.num(Number::fraction(1, 2)?);
     let minus_one = int(graph, -1);
-    // I0 = sqrt(pi) / (2 sqrt(-a)) * exp(c - b²/(4a)) * erf(sqrt(-a) (x + b/(2a)))
-    let minus_a = mul(graph, &[minus_one, a]);
+    // I0 = sqrt(pi) / (2 sqrt(-a)) * exp(c - b²/(4a)) * erf(sqrt(-a) (x + b/(2a))),
+    // or with erfi and sqrt(a) when a is known positive.
+    let growing = graph.facts(a).has(Facts::POSITIVE);
+    let erf = if growing { graph.ops().lookup("erfi")? } else { erf };
+    let minus_a = if growing { a } else { mul(graph, &[minus_one, a]) };
     let root = pow(graph, minus_a, half);
     let pi_node = graph.node(pi, &[]);
     let root_pi = pow(graph, pi_node, half);

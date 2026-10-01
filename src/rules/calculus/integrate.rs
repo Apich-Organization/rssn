@@ -972,9 +972,41 @@ pub(super) fn antiderivative(
 ) -> Option<NodeId> {
     let symbol = cx.graph.symbol_of(variable)?;
     let term = cx.simplify(integrand);
+    if opaque_in(cx.graph, term, symbol, functions.diff) {
+        return None;
+    }
     let mut integrator = Integrator { cx, f: functions, x: variable, symbol, fuel: FUEL };
     let candidate = integrator.integrate(term, 0)?;
     integrator.verified(term, candidate).then_some(candidate)
+}
+
+/// Whether `term` contains an undetermined function of `x` (`A(x)`) but
+/// no derivative of one: such an integrand has no antiderivative the
+/// heuristics could find, and searching for one is expensive. (With a
+/// derivative present, `∫ f(x) f'(x) dx`, substitution may succeed.)
+fn opaque_in(
+    graph: &Graph,
+    term: NodeId,
+    x: SymbolId,
+    diff: OpId,
+) -> bool {
+    let mut stack = vec![term];
+    let mut seen = std::collections::HashSet::new();
+    let mut found = false;
+    while let Some(n) = stack.pop() {
+        if !seen.insert(n) {
+            continue;
+        }
+        let op = graph.op(n);
+        if op == diff {
+            return false;
+        }
+        if op == core::APPLY && graph.depends_on(graph.find(n), x) {
+            found = true;
+        }
+        stack.extend_from_slice(graph.children(n));
+    }
+    found
 }
 
 /// Symbolic kernel for `integral(f, x)`.

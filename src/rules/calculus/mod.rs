@@ -119,6 +119,10 @@ pub(crate) fn partials(
         .ok_or_else(|| invalid("unknown operator"))?;
     let mut patterns = Vec::with_capacity(texts.len());
     for text in texts {
+        if text.is_empty() {
+            patterns.push(None);
+            continue;
+        }
         let mut vars = VarNames::default();
         for v in ["a", "b", "c", "d"] {
             vars.index(v);
@@ -130,7 +134,7 @@ pub(crate) fn partials(
         if vars.len() > 4 {
             return Err(invalid("partial derivatives may only use ?a, ?b, ?c, ?d"));
         }
-        patterns.push(pat);
+        patterns.push(Some(pat));
     }
     i.graph().ops_mut().set_attr(op, Partials(patterns));
     Ok(())
@@ -178,6 +182,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         Tier::Reduce,
         diff::Differentiate { diff: diff_op },
     );
+    // diffn(f, x, n): the n-th derivative for a literal n.
+    let diffn = i.op(OpDescriptor::new("diffn", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("calculus/diffn", Tier::Reduce, diff::Repeated { diffn, diff: diff_op });
     i.kernel(
         "calculus/diff-numeric",
         Tier::Reduce,

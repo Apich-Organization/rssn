@@ -167,10 +167,13 @@ impl Kernel for Collapse {
         if !hides_a_sum || before > CAP {
             return Outcome::Pass;
         }
-        match Self::canonical(graph, term) {
-            | Some(expanded) if tree_size(graph, expanded, CAP) < before => Outcome::Equal(expanded),
-            | _ => Outcome::Pass,
-        }
+        let Some(expanded) = Self::canonical(graph, term) else {
+            return Outcome::Pass;
+        };
+        // The other rules may simplify the expanded terms further
+        // (exp(a)·exp(-a) = 1).
+        let simplified = cx.simplify(expanded);
+        if tree_size(cx.graph, simplified, CAP) < before { Outcome::Equal(simplified) } else { Outcome::Pass }
     }
 }
 
@@ -247,10 +250,11 @@ impl Collapse {
         if !(divides_by_sum || has_sum) || before > CAP {
             return Outcome::Pass;
         }
-        match Self::canonical(graph, term) {
-            | Some(result) if tree_size(graph, result, CAP) < before => Outcome::Equal(result),
-            | _ => Outcome::Pass,
-        }
+        let Some(result) = Self::canonical(graph, term) else {
+            return Outcome::Pass;
+        };
+        let simplified = cx.simplify(result);
+        if tree_size(cx.graph, simplified, CAP) < before { Outcome::Equal(simplified) } else { Outcome::Pass }
     }
 }
 

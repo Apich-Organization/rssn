@@ -19,12 +19,14 @@ use crate::graph::op::core;
 
 /// Operator attribute: the partial derivative with respect to each
 /// argument, as a pattern over the arguments (`?a` is argument 0, `?b`
-/// argument 1, ...).
+/// argument 1, ...); `None` for an argument the operator cannot be
+/// differentiated in (the order of a Bessel function), which is fine as
+/// long as that argument does not depend on the variable.
 ///
 /// Attaching this to an operator is all it takes to teach the
 /// differentiation kernel about it.
 #[derive(Clone, Debug)]
-pub struct Partials(pub Vec<Pat>);
+pub struct Partials(pub Vec<Option<Pat>>);
 
 /// Structural differentiation: sum rule, n-ary product rule, and the chain
 /// rule through every operator that has [`Partials`].
@@ -161,6 +163,7 @@ impl Differentiate {
                     }
                     let partial = partials
                         .get(i)
+                        .and_then(Option::as_ref)
                         .and_then(|p| p.instantiate(graph, &children));
                     let term = match partial {
                         | Some(p) if d == one => p,
@@ -273,4 +276,35 @@ fn richardson(
         mid: best,
         rad: (best - e2).abs().max(f64::EPSILON * best.abs()),
     })
+}
+
+/// `diffn(f, x, n)`: `n` nested `diff` requests for a literal `n ≥ 0`.
+pub(super) struct Repeated {
+    pub(super) diffn: OpId,
+    pub(super) diff: OpId,
+}
+
+impl Kernel for Repeated {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.diffn]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let &[f, x, n] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let Some(n) = graph.number_of(n).and_then(crate::graph::Number::to_i64).filter(|n| (0..=64).contains(n)) else {
+            return Outcome::Pass;
+        };
+        let mut term = f;
+        for _ in 0..n {
+            term = graph.node(self.diff, &[term, x]);
+        }
+        Outcome::Equal(term)
+    }
 }
