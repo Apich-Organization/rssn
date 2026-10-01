@@ -836,6 +836,23 @@ mod tests {
         (lead, factors)
     }
 
+    /// Whether `g` (monic) divides `f` over GF(p), by schoolbook division.
+    fn divides(
+        f: &[i64],
+        g: &[i64],
+        p: i64,
+    ) -> bool {
+        let mut r: Vec<i64> = f.iter().map(|c| c.rem_euclid(p)).collect();
+        while r.len() >= g.len() {
+            let lead = r[0];
+            for (k, gc) in g.iter().enumerate() {
+                r[k] = (r[k] - lead * gc).rem_euclid(p);
+            }
+            r.remove(0);
+        }
+        r.iter().all(|&c| c == 0)
+    }
+
     /// Brute-force irreducibility: no monic divisor of degree `1..=n/2`.
     fn brute_irreducible(
         f: &[i64],
@@ -854,8 +871,7 @@ mod tests {
                 }
                 tail.reverse();
                 g.extend(tail);
-                let dm = s(&format!("gfp_divmod({}, {}, {p})", poly(f), poly(&g)));
-                if dm.ends_with(", list())") {
+                if divides(f, &g, p) {
                     return false;
                 }
             }
