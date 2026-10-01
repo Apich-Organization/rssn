@@ -17,14 +17,14 @@
 //! | `gfp_add(f, g, p)`, `gfp_sub`, `gfp_mul` | polynomial arithmetic |
 //! | `gfp_divmod(f, g, p)` | `list(quotient, remainder)` |
 //! | `gfp_gcd(f, g, p)`, `gfp_egcd(f, g, p)` | monic gcd; `list(d, s, t)` with `s f + t g = d` |
-//! | `gfp_eval(f, x, p)`, `gfp_isirreducible(f, p)` | value at `x`; irreducibility of `f` for prime `p` (by trial division, small cases) |
+//! | `gfp_eval(f, x, p)`, `gfp_isirreducible(f, p)` | value at `x`; irreducibility of `f` for prime `p` (Rabin's test) |
+//! | `gfp_powmod`, `gfp_invmod`, `gfp_squarefree`, `gfp_ddf`, `gfp_edf`, `gfp_factor`, `gfp_berlekamp`, `factor_mod` | see [`gf_factor`](super::gf_factor) |
 //! | `gfx_reduce(a, m, p)`, `gfx_add(a, b, m, p)`, `gfx_sub`, `gfx_mul`, `gfx_neg(a, m, p)` | extension field arithmetic |
 //! | `gfx_inv(a, m, p)`, `gfx_div(a, b, m, p)`, `gfx_pow(a, e, m, p)` | inverse, quotient, power |
 
 use num_bigint::BigInt;
 use num_traits::One;
 use num_traits::Signed;
-use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 use super::big;
@@ -39,10 +39,10 @@ use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::RuleError;
 
-type Poly = Vec<BigInt>;
+pub(super) type Poly = Vec<BigInt>;
 
 /// Reduces the coefficients modulo `p` and strips leading zeros.
-fn norm(
+pub(super) fn norm(
     mut f: Poly,
     p: &BigInt,
 ) -> Poly {
@@ -54,7 +54,7 @@ fn norm(
     f
 }
 
-fn padd(
+pub(super) fn padd(
     f: &Poly,
     g: &Poly,
     p: &BigInt,
@@ -77,7 +77,7 @@ fn pneg(
     norm(f.iter().map(|c| -c).collect(), p)
 }
 
-fn psub(
+pub(super) fn psub(
     f: &Poly,
     g: &Poly,
     p: &BigInt,
@@ -85,7 +85,7 @@ fn psub(
     padd(f, &pneg(g, p), p)
 }
 
-fn pmul(
+pub(super) fn pmul(
     f: &Poly,
     g: &Poly,
     p: &BigInt,
@@ -104,7 +104,7 @@ fn pmul(
 
 /// `(quotient, remainder)`; `None` for a zero divisor or one whose leading
 /// coefficient is not invertible.
-fn pdivmod(
+pub(super) fn pdivmod(
     f: &Poly,
     g: &Poly,
     p: &BigInt,
@@ -126,7 +126,7 @@ fn pdivmod(
 }
 
 /// `(d, s, t)` with `s f + t g = d`, `d` a gcd (not normalised).
-fn pegcd(
+pub(super) fn pegcd(
     f: &Poly,
     g: &Poly,
     p: &BigInt,
@@ -145,7 +145,7 @@ fn pegcd(
     Some((r0, s0, t0))
 }
 
-fn monic(
+pub(super) fn monic(
     f: &Poly,
     p: &BigInt,
 ) -> Option<Poly> {
@@ -171,11 +171,11 @@ fn modulus(
     big(cx.graph, n).filter(|p| *p > BigInt::one())
 }
 
-fn poly_value(f: Poly) -> V {
+pub(super) fn poly_value(f: Poly) -> V {
     V::ints(f)
 }
 
-fn read_poly(
+pub(super) fn read_poly(
     cx: &Cx<'_>,
     n: NodeId,
     p: &BigInt,
@@ -314,41 +314,6 @@ fn gfp_eval(
     Some(V::Int(peval(&f, &big(cx.graph, *x)?, &p)))
 }
 
-/// Trial division by every monic polynomial of degree `1..=deg/2`.
-fn irreducible(
-    f: &Poly,
-    p: &BigInt,
-) -> Option<bool> {
-    let deg = f.len().checked_sub(1)?;
-    if deg == 0 {
-        return Some(false);
-    }
-    let p_small = p.to_u64()?;
-    let mut budget = 300_000_u64;
-    for d in 1..=deg / 2 {
-        let count = p_small.checked_pow(u32::try_from(d).ok()?)?;
-        if count > budget {
-            return None;
-        }
-        budget -= count;
-        for code in 0..count {
-            let mut coeffs = vec![BigInt::one()];
-            let mut c = code;
-            let mut tail = Vec::with_capacity(d);
-            for _ in 0..d {
-                tail.push(BigInt::from(c % p_small));
-                c /= p_small;
-            }
-            tail.reverse();
-            coeffs.extend(tail);
-            if pdivmod(f, &coeffs, p)?.1.is_empty() {
-                return Some(false);
-            }
-        }
-    }
-    Some(true)
-}
-
 fn gfp_isirreducible(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -356,7 +321,10 @@ fn gfp_isirreducible(
     let [f, p] = a else { return None };
     let p = modulus(cx, *p)?;
     let f = read_poly(cx, *f, &p)?;
-    irreducible(&f, &p).map(V::Bool)
+    if !crate::rules::number_theory::is_prime(&p) {
+        return None;
+    }
+    super::gf_factor::is_irreducible(&f, &p).map(V::Bool)
 }
 
 // ---------------- extension fields ----------------
@@ -371,7 +339,7 @@ fn field(
     (m.len() >= 2).then_some((m, p))
 }
 
-fn reduce(
+pub(super) fn reduce(
     f: &Poly,
     m: &Poly,
     p: &BigInt,
@@ -415,7 +383,7 @@ fn xmul(x: &Poly, y: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
 
 /// The inverse of `x` modulo `m` over GF(p): `s x + t m = d` with `d` a
 /// non-zero constant.
-fn xinv(x: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
+pub(super) fn xinv(x: &Poly, m: &Poly, p: &BigInt) -> Option<Poly> {
     let x = reduce(x, m, p)?;
     let (d, s, _) = pegcd(&x, m, p)?;
     if d.len() != 1 {

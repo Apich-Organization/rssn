@@ -129,6 +129,8 @@ pub(crate) struct Ops {
     pub(crate) cosh: OpId,
     pub(crate) atan2: OpId,
     pub(crate) abs: OpId,
+    pub(crate) conj: OpId,
+    pub(crate) arg: OpId,
 }
 
 impl Ops {
@@ -146,6 +148,8 @@ impl Ops {
             cosh: get("cosh")?,
             atan2: get("atan2")?,
             abs: get("abs")?,
+            conj: get("conj")?,
+            arg: get("arg")?,
         })
     }
 }
@@ -353,6 +357,33 @@ fn split_term(
                 } else {
                     (mul(graph, &[cosh_a, cos_b]), mul(graph, &[sinh_a, sin_b]))
                 })
+            },
+            | (op, &[y, x]) if op == ops.atan2 => {
+                // real for real arguments
+                let (_, by) = part(graph, y)?;
+                let (_, bx) = part(graph, x)?;
+                let zero_part = |graph: &Graph, n: NodeId| graph.number_of(n).is_some_and(Number::is_zero);
+                (zero_part(graph, by) && zero_part(graph, bx)).then_some((term, zero))
+            },
+            | (op, &[w]) if op == ops.re => {
+                let (a, _) = part(graph, w)?;
+                Some((a, zero))
+            },
+            | (op, &[w]) if op == ops.im => {
+                let (_, b) = part(graph, w)?;
+                Some((b, zero))
+            },
+            | (op, &[w]) if op == ops.conj => {
+                let (a, b) = part(graph, w)?;
+                Some((a, neg(graph, b)))
+            },
+            | (op, &[w]) if op == ops.abs => {
+                let (a, b) = part(graph, w)?;
+                Some((modulus(graph, a, b), zero))
+            },
+            | (op, &[w]) if op == ops.arg => {
+                let (a, b) = part(graph, w)?;
+                Some((call(graph, ops.atan2, &[b, a]), zero))
             },
             | _ => None,
         }

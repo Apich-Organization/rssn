@@ -31,6 +31,7 @@
 //! | [`crypto`] | `ec_curve`, `ec_on_curve`, `ec_neg`, `ec_double`, `ec_add`, `ec_mul`, `ec_order`, `ec_is_infinity`, `ec_x`, `ec_y`, `ecdh_public`, `ecdh_shared`, `ec_compress`, `ec_decompress`, `ecdsa_sign`, `ecdsa_verify`, `rsa_keygen`, `rsa_encrypt`, `rsa_decrypt` |
 //! | [`coding`] | `hamming_distance`, `hamming_weight`, `hamming_encode`, `hamming_check`, `hamming_decode`, `rs_encode`, `rs_check`, `rs_decode`, `rs_error_count`, `bch_encode`, `bch_decode`, `crc32`, `crc32_verify`, `crc32_update`, `crc32_finalize`, `crc16`, `crc8`, `gf256_*`, `gf256_poly_*` |
 //! | [`finite_field`] | `gf_*` (prime field), `gfp_*` (polynomials over GF(p)), `gfx_*` (extension fields GF(p)\[x\]/(m)) |
+//! | [`gf_factor`] | factorisation over GF(p): `gfp_squarefree`, `gfp_ddf`, `gfp_edf`, `gfp_factor`, `gfp_berlekamp`, `factor_mod`, `gfp_powmod`, `gfp_invmod` |
 //! | [`graphs`] | `graph`/`digraph` terms, `graph_*` queries, traversals, shortest paths, spanning trees, flows, matchings, colouring, isomorphism, products |
 //! | [`topology`] | `sc`, `sc_complex`, `sc_dimension`, `sc_simplices`, `sc_euler_characteristic`, `sc_boundary`, `sc_boundary_matrix`, `sc_coboundary_matrix`, `sc_chain_boundary`, `sc_betti`, `sc_cohomology_betti`, `sc_verify_boundary`, `sc_verify_coboundary`, `sc_components`, `sc_grid`, `sc_torus`, `vietoris_rips`, `vietoris_rips_filtration`, `betti_at_radius`, `persistence`, `euclidean_distance` |
 //! | [`fractal`] | `mandelbrot_escape`, `julia_escape`, `burning_ship_escape`, `multibrot_escape`, `newton_fractal_root`, `mandelbrot_iterate`, `mandelbrot_orbit`, `mandelbrot_fixed_points`, `mandelbrot_stability`, `complex_map_fixed_points`, `complex_map_stability`, `map_fixed_points`, `map_stability`, `lyapunov_exponent`, `logistic_iterate`, `logistic_bifurcation`, `logistic_lyapunov`, `lorenz`, `lorenz_orbit`, `lorenz_lyapunov`, `rossler_orbit`, `henon_orbit`, `tinkerbell_orbit`, `ifs_apply`, `ifs_generate`, `similarity_dimension`, `moran_dimension`, `box_counting`, `correlation_dimension`, `orbit_density`, `orbit_entropy` |
@@ -43,6 +44,7 @@
 pub mod coding;
 pub mod crypto;
 pub mod finite_field;
+pub mod gf_factor;
 pub mod fractal;
 pub mod graphics;
 pub mod graphs;
@@ -89,6 +91,7 @@ pub fn discrete() -> RuleSet {
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     crypto::install(i)?;
     finite_field::install(i)?;
+    gf_factor::install(i)?;
     coding::install(i)?;
     graphs::install(i)?;
     topology::install(i)?;
