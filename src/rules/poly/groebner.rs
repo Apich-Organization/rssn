@@ -87,7 +87,9 @@ impl GPoly {
         self.terms.is_empty()
     }
 
-    fn leading(&self) -> Option<&Term> {
+    /// The leading term, if any.
+    #[must_use]
+    pub fn leading(&self) -> Option<&Term> {
         self.terms.first()
     }
 

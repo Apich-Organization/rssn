@@ -89,6 +89,8 @@
     // `mul_add` is a slow libm call on targets without hardware FMA, and
     // fused rounding changes results across targets.
     clippy::suboptimal_flops,
+    // Fires on `&[a, b]` built from separately computed bindings.
+    clippy::tuple_array_conversions,
     clippy::inline_always,
     unused_doc_comments,
     clippy::many_single_char_names,

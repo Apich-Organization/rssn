@@ -8,6 +8,7 @@
 //! form, so that extraction returns it verbatim instead of whatever
 //! spelling happens to be cheapest.
 
+pub mod algebra;
 pub mod apart;
 pub mod groebner;
 pub mod repr;
@@ -98,6 +99,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new("groebner", Arity::Variadic).flags(OpFlags::HEAVY).cost(100))?;
     i.kernel("poly/groebner", Tier::Reduce, PolyKernel { op, request: Request::Groebner });
     i.kernel("poly/collapse", Tier::Normalize, Collapse);
+    algebra::install(i)?;
     Ok(())
 }
 
@@ -385,6 +387,14 @@ fn apart_term(
         | [only] => *only,
         | _ => graph.node(core::ADD, &terms),
     })
+}
+
+/// The expanded polynomial form of `e`, for other modules.
+pub(crate) fn expand_form(
+    graph: &mut Graph,
+    e: NodeId,
+) -> Option<NodeId> {
+    expand(graph, e)
 }
 
 fn expand(

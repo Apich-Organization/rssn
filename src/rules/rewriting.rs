@@ -77,7 +77,7 @@ enum Head {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 enum T {
     Var(u32),
-    App(Head, Vec<T>),
+    App(Head, Vec<Self>),
 }
 
 type Subst = HashMap<u32, T>;
