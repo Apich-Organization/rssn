@@ -446,6 +446,7 @@ fn gk15(
 /// estimate drops below `tolerance` or `max_panels` panels exist. The
 /// returned [`Quadrature::error`] is the sum of the panel estimates, so a
 /// caller can tell a converged result from an exhausted budget.
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn gauss_kronrod(
     f: impl Fn(f64) -> f64,
     a: f64,

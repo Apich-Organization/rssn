@@ -369,6 +369,7 @@ impl Tx<'_, '_> {
 
     /// `L[prod factors](y)`.
     #[allow(clippy::too_many_lines)]
+    #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
     fn laplace_product(
         &mut self,
         factors: &[NodeId],
@@ -894,6 +895,7 @@ impl Tx<'_, '_> {
         Some(mul(self.cx.graph, &all))
     }
 
+    #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
     fn fourier_single(
         &mut self,
         g: NodeId,
@@ -994,6 +996,7 @@ impl Tx<'_, '_> {
 
     /// Products: modulation by `exp(I a t)`, `cos(a t)`, `sin(a t)`,
     /// multiplication by `t`, and `heaviside(t) exp(-a t)`.
+    #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
     fn fourier_product(
         &mut self,
         factors: &[NodeId],
@@ -1113,6 +1116,7 @@ impl Tx<'_, '_> {
         Some(mul(self.cx.graph, &all))
     }
 
+    #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
     fn z_product(
         &mut self,
         factors: &[NodeId],

@@ -134,7 +134,7 @@ proptest! {
         prop_assume!(s.abs() > 1e-6);
         let p = Polynomial { coeffs: cs };
         let back = (p.clone() * s).div_scalar(s).map_err(TestCaseError::fail)?;
-        for x in [0.0, 0.618_033_988_7, -3.14159] {
+        for x in [0.0, 0.618_033_988_7, -std::f64::consts::PI] {
             let scale = p.eval(x).abs().max(1.0);
             prop_assert!((p.eval(x) - back.eval(x)).abs() < 1e-9 * scale);
         }

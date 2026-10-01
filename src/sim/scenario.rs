@@ -1,3 +1,5 @@
+//! Scenarios by name, with JSON parameters and results.
+//!
 //! The unified simulation entry point: a scenario name plus JSON
 //! parameters in, JSON results out. This is what the C interface and other
 //! language bindings call; Rust code can use the typed functions of

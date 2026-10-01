@@ -131,16 +131,16 @@ fn test_floyd_warshall() {
     let n = 4;
 
     // 0 to 3: 0->1->2->3 = 1+2+3 = 6
-    assert_eq!(dist[0 * n + 3], 6.0);
+    assert_eq!(dist[3], 6.0);
 
     // 3 to 0: 3->0 = 10
     assert_eq!(dist[3 * n], 10.0);
 
     // 0 to 2: 0->1->2 = 3
-    assert_eq!(dist[0 * n + 2], 3.0);
+    assert_eq!(dist[2], 3.0);
 
     // Diagonal
-    assert_eq!(dist[0 * n], 0.0);
+    assert_eq!(dist[0], 0.0);
 
     // Unconnected: 1 -> 0 ? 1->2->3->0 = 2+3+10 = 15
     assert_eq!(dist[n], 15.0);

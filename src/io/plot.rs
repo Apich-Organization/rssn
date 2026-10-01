@@ -177,6 +177,7 @@ fn check_range(
 }
 
 /// Min and max of the finite values, widened when they coincide.
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 fn extent(values: impl Iterator<Item = f64>) -> Option<(f64, f64)> {
     let (lo, hi) = values
         .filter(|v| v.is_finite())

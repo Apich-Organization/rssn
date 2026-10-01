@@ -906,7 +906,7 @@ mod strengthened {
 
         /// The main cardioid interior never escapes: c = w/2 - w^2/4 for |w| < 1.
         #[test]
-        fn prop_cardioid_interior_is_in_the_set(rad in 0.0..0.9f64, ang in 0.0..6.283f64) {
+        fn prop_cardioid_interior_is_in_the_set(rad in 0.0..0.9f64, ang in 0.0..std::f64::consts::TAU) {
             let (wr, wi) = (rad * ang.cos(), rad * ang.sin());
             let (c_re, c_im) = (wr / 2.0 - (wr * wr - wi * wi) / 4.0, wi / 2.0 - (2.0 * wr * wi) / 4.0);
             prop_assert_eq!(mandelbrot_escape_time(c_re, c_im, 500), 500);

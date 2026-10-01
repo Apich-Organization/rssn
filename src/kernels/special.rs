@@ -253,6 +253,7 @@ pub fn erfc_numerical(x: f64) -> f64 {
 /// iterations on `erfc(y) = 1 - x` (for x ≥ 0.5, where `1 - x` is exact and
 /// the tail keeps full relative precision) or on `erf(y) = x` otherwise.
 #[must_use]
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn inverse_erf_numerical(x: f64) -> f64 {
     if x.is_nan() {
         return f64::NAN;
@@ -1109,6 +1110,7 @@ pub fn bernoulli_poly(
 /// Defined as Σ_{n=0}^∞ 1/(n+q)^s.
 #[must_use]
 #[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn hurwitz_zeta(
     s: f64,
     q: f64,
@@ -1251,6 +1253,7 @@ fn is_integer_order(nu: f64) -> bool {
 /// ∫_0^∞ e^{-x sinh t - νt} dt`, evaluated by adaptive quadrature —
 /// accurate to about 1e-13 absolute for moderate arguments.
 #[must_use]
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn bessel_j(
     nu: f64,
     x: f64,
@@ -1321,6 +1324,7 @@ pub fn bessel_y(
 /// `(1/π)∫_0^π e^{x cos θ} cos νθ dθ - (sin νπ/π)∫_0^∞ e^{-x cosh t - νt}
 /// dt` (`x < 0` for integer orders by parity).
 #[must_use]
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn bessel_i(
     nu: f64,
     x: f64,
@@ -1413,6 +1417,7 @@ pub fn erfi(x: f64) -> f64 {
 /// steps on `erfc` refine the inverse of `erf(1 - p)`, which keeps full
 /// relative accuracy for small `p`.
 #[must_use]
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn inverse_erfc(p: f64) -> f64 {
     if !(0.0..=2.0).contains(&p) || p.is_nan() {
         return f64::NAN;

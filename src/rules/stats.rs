@@ -3302,9 +3302,9 @@ mod tests {
             1e-14,
             "I_x(1, 3)",
         );
-        assert_eq!(at("beta_reg(2, 3, x)", &[("x", -1.0)]), 0.0);
-        assert_eq!(at("beta_reg(2, 3, x)", &[("x", 2.0)]), 1.0);
-        assert_eq!(at("gamma_lr(2, x)", &[("x", -1.0)]), 0.0);
+        assert!((at("beta_reg(2, 3, x)", &[("x", -1.0)]) - 0.0).abs() < 1e-9);
+        assert!((at("beta_reg(2, 3, x)", &[("x", 2.0)]) - 1.0).abs() < 1e-9);
+        assert!((at("gamma_lr(2, x)", &[("x", -1.0)]) - 0.0).abs() < 1e-9);
         assert!(at("gamma_lr(-1, x)", &[("x", 1.0)]).is_nan());
         assert!(at("beta_reg(0, 1, x)", &[("x", 0.5)]).is_nan());
         // Their derivatives are the densities.

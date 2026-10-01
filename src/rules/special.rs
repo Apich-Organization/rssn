@@ -1196,11 +1196,11 @@ mod tests {
             2.0 / std::f64::consts::PI,
             1e-14,
         );
-        assert_eq!(ev("sinc(x)", &[("x", 0.0)]), 1.0);
+        assert!((ev("sinc(x)", &[("x", 0.0)]) - 1.0).abs() < 1e-9);
         assert!(ev("sinc(x)", &[("x", 1.0)]).abs() < 1e-15);
         for (x, h, sg) in [(-2.0, 0.0, -1.0), (0.0, 0.5, 0.0), (3.0, 1.0, 1.0)] {
-            assert_eq!(ev("heaviside(x)", &[("x", x)]), h);
-            assert_eq!(ev("sign(x)", &[("x", x)]), sg);
+            assert!((ev("heaviside(x)", &[("x", x)]) - h).abs() < 1e-9);
+            assert!((ev("sign(x)", &[("x", x)]) - sg).abs() < 1e-9);
         }
     }
 

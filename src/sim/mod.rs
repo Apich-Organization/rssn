@@ -31,5 +31,4 @@ pub mod physics_mtm;
 pub mod physics_rkm;
 /// Spectral methods.
 pub mod physics_sm;
-/// Scenarios by name, with JSON parameters and results.
 pub mod scenario;

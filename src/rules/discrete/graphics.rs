@@ -224,6 +224,7 @@ fn fixed_vec<const N: usize>(
 // ----------------------------------------------------------------------
 
 /// `I` with the last column's first `t.len()` entries replaced by `t`.
+#[allow(clippy::unnecessary_wraps)] // signature fixed by the rule-table function type
 fn translation(
     cx: &mut Cx<'_>,
     t: &[NodeId],
@@ -236,6 +237,7 @@ fn translation(
 }
 
 /// A diagonal matrix with `d` followed by 1.
+#[allow(clippy::unnecessary_wraps)] // signature fixed by the rule-table function type
 fn diagonal(
     cx: &mut Cx<'_>,
     d: &[NodeId],

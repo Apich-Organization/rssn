@@ -1020,7 +1020,7 @@ mod tests {
     fn orbit_density_and_entropy() {
         assert_eq!(s("orbit_density(list(list(0.1, 0.1), list(0.9, 0.9), list(0.2, 0.1)), 2, 2, 0, 1, 0, 1)"), "list(list(2, 0), list(0, 1))");
         assert!((value("orbit_entropy(list(list(1, 1), list(1, 1)))") - 4.0_f64.ln()).abs() < 1e-12);
-        assert_eq!(value("orbit_entropy(list(list(5, 0), list(0, 0)))"), 0.0);
+        assert!((value("orbit_entropy(list(list(5, 0), list(0, 0)))") - 0.0).abs() < 1e-9);
         assert!(s("orbit_density(list(list(0, 0)), 0, 2, 0, 1, 0, 1)").starts_with("orbit_density("));
     }
 }

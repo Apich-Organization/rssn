@@ -1293,37 +1293,37 @@ mod tests {
     #[test]
     fn operators_on_literals() {
         let t = |src: &str| ev(src, &[]);
-        assert_eq!(t("and(true, true)"), 1.0);
-        assert_eq!(t("and(true, false)"), 0.0);
-        assert_eq!(t("and()"), 1.0);
-        assert_eq!(t("or(false, false)"), 0.0);
-        assert_eq!(t("or(false, true, false)"), 1.0);
-        assert_eq!(t("or()"), 0.0);
-        assert_eq!(t("xor(true, true)"), 0.0);
-        assert_eq!(t("xor(true, true, true)"), 1.0);
-        assert_eq!(t("not(true)"), 0.0);
-        assert_eq!(t("not(false)"), 1.0);
-        assert_eq!(t("implies(true, false)"), 0.0);
-        assert_eq!(t("implies(false, false)"), 1.0);
-        assert_eq!(t("implies(true, true)"), 1.0);
-        assert_eq!(t("iff(false, false)"), 1.0);
-        assert_eq!(t("iff(true, false)"), 0.0);
-        assert_eq!(t("true"), 1.0);
-        assert_eq!(t("false"), 0.0);
+        assert!((t("and(true, true)") - 1.0).abs() < 1e-9);
+        assert!((t("and(true, false)") - 0.0).abs() < 1e-9);
+        assert!((t("and()") - 1.0).abs() < 1e-9);
+        assert!((t("or(false, false)") - 0.0).abs() < 1e-9);
+        assert!((t("or(false, true, false)") - 1.0).abs() < 1e-9);
+        assert!((t("or()") - 0.0).abs() < 1e-9);
+        assert!((t("xor(true, true)") - 0.0).abs() < 1e-9);
+        assert!((t("xor(true, true, true)") - 1.0).abs() < 1e-9);
+        assert!((t("not(true)") - 0.0).abs() < 1e-9);
+        assert!((t("not(false)") - 1.0).abs() < 1e-9);
+        assert!((t("implies(true, false)") - 0.0).abs() < 1e-9);
+        assert!((t("implies(false, false)") - 1.0).abs() < 1e-9);
+        assert!((t("implies(true, true)") - 1.0).abs() < 1e-9);
+        assert!((t("iff(false, false)") - 1.0).abs() < 1e-9);
+        assert!((t("iff(true, false)") - 0.0).abs() < 1e-9);
+        assert!((t("true") - 1.0).abs() < 1e-9);
+        assert!((t("false") - 0.0).abs() < 1e-9);
         // Any non-zero value counts as true, and results are exactly 0 or 1.
-        assert_eq!(ev("and(x, y)", &[("x", 2.5), ("y", -3.0)]), 1.0);
-        assert_eq!(ev("not(x)", &[("x", 2.5)]), 0.0);
+        assert!((ev("and(x, y)", &[("x", 2.5), ("y", -3.0)]) - 1.0).abs() < 1e-9);
+        assert!((ev("not(x)", &[("x", 2.5)]) - 0.0).abs() < 1e-9);
     }
 
     #[test]
     fn comparison_operators_evaluate() {
         let b = [("x", 1.0), ("y", 2.0)];
-        assert_eq!(ev("lt(x, y)", &b), 1.0);
-        assert_eq!(ev("le(x, x)", &b), 1.0);
-        assert_eq!(ev("gt(x, y)", &b), 0.0);
-        assert_eq!(ev("ge(y, x)", &b), 1.0);
-        assert_eq!(ev("ne(x, y)", &b), 1.0);
-        assert_eq!(ev("ne(x, x)", &b), 0.0);
+        assert!((ev("lt(x, y)", &b) - 1.0).abs() < 1e-9);
+        assert!((ev("le(x, x)", &b) - 1.0).abs() < 1e-9);
+        assert!((ev("gt(x, y)", &b) - 0.0).abs() < 1e-9);
+        assert!((ev("ge(y, x)", &b) - 1.0).abs() < 1e-9);
+        assert!((ev("ne(x, y)", &b) - 1.0).abs() < 1e-9);
+        assert!((ev("ne(x, x)", &b) - 0.0).abs() < 1e-9);
     }
 
     #[test]
@@ -1584,8 +1584,8 @@ mod tests {
 
     #[test]
     fn requests_evaluate_as_identity() {
-        assert_eq!(ev("cnf(x)", &[("x", 1.0)]), 1.0);
-        assert_eq!(ev("simplify_logic(x)", &[("x", 0.0)]), 0.0);
+        assert!((ev("cnf(x)", &[("x", 1.0)]) - 1.0).abs() < 1e-9);
+        assert!((ev("simplify_logic(x)", &[("x", 0.0)]) - 0.0).abs() < 1e-9);
     }
 
     #[test]

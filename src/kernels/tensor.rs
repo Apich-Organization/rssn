@@ -307,7 +307,7 @@ mod tests {
         // Standard matrix multiplication
         assert_eq!(res.shape(), &[2, 2]);
 
-        assert_eq!(res[[0, 0]], 1.0 * 5.0 + 2.0 * 7.0);
+        assert!((res[[0, 0]] - 1.0 * 5.0 + 2.0 * 7.0).abs() < 1e-9);
     }
 
     #[test]
@@ -320,8 +320,8 @@ mod tests {
 
         assert_eq!(res.shape(), &[2, 2]);
 
-        assert_eq!(res[[0, 0]], 3.0);
+        assert!((res[[0, 0]] - 3.0).abs() < 1e-9);
 
-        assert_eq!(res[[1, 1]], 8.0);
+        assert!((res[[1, 1]] - 8.0).abs() < 1e-9);
     }
 }

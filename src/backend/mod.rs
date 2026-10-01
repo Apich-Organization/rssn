@@ -291,7 +291,9 @@ mod tests {
         let ys = [10.0, 20.0, 30.0];
         let mut out = [0.0; 3];
         f.call_batch(&[&xs, &ys], &mut out);
-        assert_eq!(out, [11.0, 24.0, 39.0]);
+        for (got, want) in out.iter().zip([11.0, 24.0, 39.0]) {
+            assert!((got - want).abs() < 1e-9);
+        }
     }
 
     #[test]
@@ -305,7 +307,7 @@ mod tests {
         let f = Interpreter
             .compile(&g, node, &inputs)
             .unwrap_or_else(|e| panic!("{e}"));
-        assert_eq!(f.call(&[1.0, 0.0]), 1.0);
+        assert!((f.call(&[1.0, 0.0]) - 1.0).abs() < 1e-9);
     }
 
     #[test]
