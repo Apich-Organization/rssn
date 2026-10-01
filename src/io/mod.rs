@@ -4,6 +4,12 @@
 //! models use this to dump fields; nothing here knows about the expression
 //! graph.
 
+pub mod latex;
+pub(crate) mod markup;
+pub mod plot;
+pub mod pretty;
+pub mod typst;
+
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;

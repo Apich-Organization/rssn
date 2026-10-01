@@ -543,6 +543,25 @@ impl<'s> Term<'s> {
         self.as_number().map(|n| n.to_f64())
     }
 
+    /// The term as LaTeX math (see [`crate::io::latex::to_latex`]).
+    #[must_use]
+    pub fn to_latex(self) -> String {
+        crate::io::latex::to_latex(&self.session.inner.borrow().graph, self.node)
+    }
+
+    /// The term as Typst math (see [`crate::io::typst::to_typst`]).
+    #[must_use]
+    pub fn to_typst(self) -> String {
+        crate::io::typst::to_typst(&self.session.inner.borrow().graph, self.node)
+    }
+
+    /// The term as a multi-line Unicode drawing (see
+    /// [`crate::io::pretty::to_pretty`]).
+    #[must_use]
+    pub fn to_pretty(self) -> String {
+        crate::io::pretty::to_pretty(&self.session.inner.borrow().graph, self.node)
+    }
+
     /// Evaluates the term numerically under the given bindings, without
     /// running any rules.
     #[must_use]
