@@ -43,7 +43,7 @@ fn euler_operator(
         }
         let d = jets.total_multi(cx, partial, &index)?;
         let order: u32 = index.iter().sum();
-        let sign = cx.graph.int(if order % 2 == 0 { 1 } else { -1 });
+        let sign = cx.graph.int(if order.is_multiple_of(2) { 1 } else { -1 });
         terms.push(mul(cx.graph, &[sign, d]));
     }
     let sum = add(cx.graph, &terms);

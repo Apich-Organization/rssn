@@ -37,9 +37,15 @@
 //! | `pde_similarity(eq, u(x, t), list(ξ, τ, φ))` | similarity reduction by a scaling/translation symmetry |
 //! | `noether_current(L, u(x, t), list(ξ, τ, φ))` | the conserved current `list(J^x, J^t)` of a variational symmetry |
 //! | `conservation_laws(eq, u(x, t))` | `list(list(Λ, T, X), …)`: multipliers with density and flux (`D_t T + D_x X = 0`) |
+//! | `laplace_disk(f(θ), R, r, θ)`, `laplace_ball(f(θ), R, r, θ)` | harmonic functions in a disk / ball (axisymmetric) with boundary values `f` |
+//!
+//! `pdsolve` also handles drift–diffusion–reaction equations with sources
+//! on the line and half-line (gauge transformation, heat kernel, Duhamel,
+//! images) and waves on the half-line (odd/even extensions).
 
 use std::collections::HashMap;
 
+mod classical;
 mod conservation;
 mod symmetry;
 
@@ -128,6 +134,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let similarity = i.op(heavy("pde_similarity", Arity::Fixed(3)))?;
     let noether = i.op(heavy("noether_current", Arity::Fixed(3)))?;
     let laws = i.op(heavy("conservation_laws", Arity::Fixed(2)))?;
+    let disk = i.op(heavy("laplace_disk", Arity::Fixed(4)))?;
+    let ball = i.op(heavy("laplace_ball", Arity::Fixed(4)))?;
+    i.kernel("pde/harmonic", Tier::Reduce, Harmonic { disk, ball });
     i.kernel("pde/symmetry", Tier::Reduce, Symmetry { symmetries, traveling, similarity, noether, laws });
     i.kernel("pde/at", Tier::Reduce, Pde { op: at, request: Request::At });
     let table = [
@@ -215,6 +224,34 @@ impl Kernel for Pde {
 }
 
 /// `at(f, x, a)`: substitution once `f` is free of requests involving `x`.
+/// `laplace_disk` and `laplace_ball`.
+struct Harmonic {
+    disk: OpId,
+    ball: OpId,
+}
+
+impl Kernel for Harmonic {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.disk, self.ball]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let &[f, radius, r, theta] = cx.graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let found = if cx.graph.op(node) == self.disk {
+            classical::laplace_disk(cx, f, radius, r, theta)
+        } else {
+            classical::laplace_ball(cx, f, radius, r, theta)
+        };
+        found.map_or(Outcome::Pass, Outcome::Pinned)
+    }
+}
+
 /// `pde_symmetries`, `pde_traveling_wave`, `pde_similarity` and
 /// `noether_current`.
 struct Symmetry {
@@ -874,6 +911,9 @@ fn solve(
     {
         solution = green(cx, p);
     }
+    if solution.is_none() && method == Any {
+        solution = classical::drift_diffusion(cx, p, conditions).or_else(|| classical::wave_half_line(cx, p, conditions));
+    }
     let solution = solution?;
     Some(cx.graph.node(core::EQ, &[p.unknown, solution]))
 }
@@ -1137,6 +1177,10 @@ fn dalembert(
         return None;
     }
     let (t, x, time, _) = time_space(p, &e)?;
+    // Boundary conditions in space are not the free-space problem.
+    if conditions.0.iter().any(|c| c.on != time) {
+        return None;
+    }
     let half = cx.graph.num(Number::fraction(1, 2)?);
     let c = pow(cx.graph, e.speed, half);
     let c = cx.simplify(c);
@@ -2052,6 +2096,42 @@ mod tests {
 
     fn any(src: &str) -> String {
         reduce_with(&[pde()], src, &ASSUME).0
+    }
+
+    #[test]
+    fn classical_extensions() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| crate::rules::testing::simplify(&rules, src);
+        let value = |src: &str, at: &[(&str, f64)]| crate::rules::testing::eval(&rules, src, at);
+        // Advection–diffusion of a Gaussian: the peak drifts with speed 2.
+        let drift = run("pdsolve(diff(u(x, t), t) + 2*diff(u(x, t), x) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-x^2)))");
+        let rhs = drift.trim_start_matches("u(x, t) = ");
+        let exact = "exp(-(x - 2*t)^2/(1 + 4*t))/(1 + 4*t)^(1/2)";
+        for (x, t) in [(0.3, 0.2), (1.5, 0.7)] {
+            let (a, b) = (value(rhs, &[("x", x), ("t", t)]), value(exact, &[("x", x), ("t", t)]));
+            assert!((a - b).abs() < 1e-6, "{drift}: {a} vs {b}");
+        }
+        // Heat on the half-line with u(0, t) = 0 by an odd image.
+        let half = run("pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = x*exp(-x^2), u(0, t) = 0))");
+        let rhs = half.trim_start_matches("u(x, t) = ");
+        let exact = "x*exp(-x^2/(1 + 4*t))/(1 + 4*t)^(3/2)";
+        for (x, t) in [(0.4, 0.3), (1.1, 1.0)] {
+            let (a, _) = crate::rules::testing::numeric(&rules, rhs, &[("x", x), ("t", t)], 1e-9);
+            let b = value(exact, &[("x", x), ("t", t)]);
+            assert!((a - b).abs() < 1e-6, "{half}: {a} vs {b}");
+        }
+        // Wave on the half-line with a fixed end: the reflected pulse.
+        let wave = run("pdsolve(diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-(x - 3)^2), at(diff(u(x, t), t), t, 0) = 0, u(0, t) = 0))");
+        let rhs = wave.trim_start_matches("u(x, t) = ");
+        assert!((value(rhs, &[("x", 2.0), ("t", 5.0)]) + 0.5).abs() < 1e-6, "{wave}");
+        // Harmonic functions in a disk and a ball.
+        assert_eq!(run("laplace_disk(cos(2*q), 2, r, q)"), "1/4*r^2*cos(2*q)");
+        let ball = run("laplace_ball(cos(q)^2, 1, r, q)");
+        let at = value(&ball, &[("r", 0.5), ("q", 0.7)]);
+        // f = 1/3 + 2/3 P2(cos θ): u = 1/3 + 2/3 r² P2(cos θ)
+        let c = 0.7_f64.cos();
+        let want = 1.0 / 3.0 + 2.0 / 3.0 * 0.25 * (1.5 * c * c - 0.5);
+        assert!((at - want).abs() < 1e-12, "{ball}");
     }
 
     #[test]

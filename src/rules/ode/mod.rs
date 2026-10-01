@@ -1072,6 +1072,22 @@ pub(crate) fn occurs_in(
     occurs(graph, term, needle)
 }
 
+/// Whether some node of `term` has operator `op`.
+pub(crate) fn occurs_op(
+    graph: &Graph,
+    term: NodeId,
+    op: OpId,
+) -> bool {
+    let mut stack = vec![term];
+    while let Some(n) = stack.pop() {
+        if graph.op(n) == op {
+            return true;
+        }
+        stack.extend_from_slice(graph.children(n));
+    }
+    false
+}
+
 /// The solutions of a homogeneous linear identity in `unknowns` that must
 /// hold for all values of every other generator (see the Lie module).
 pub(crate) fn solve_linear_identity(
