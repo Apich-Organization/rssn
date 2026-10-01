@@ -15,9 +15,9 @@ the transforms/complex/finite-field/units branch and is not to be started here.
 
 | status | rows |
 |---|---|
-| done | 1453 |
+| done | 1502 |
 | dropped | 140 |
-| partial | 63 (14 missing functionality, 49 missing a test; 4 in progress) |
+| partial | 14 (14 missing functionality, 0 missing a test; 4 in progress) |
 | pending | 19 (9 in progress) |
 | total | 1675 |
 
@@ -1202,7 +1202,7 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `euler_lagrange_internal` | `rules::variational` operator `euler_lagrange` (tests rules::variational::tests) | done |
 | `solve_euler_lagrange` | `rules::variational` operator `solve_euler_lagrange` (tests rules::variational::tests) | done |
 | `solve_euler_lagrange_internal` | `rules::variational` operator `solve_euler_lagrange` (tests rules::variational::tests) | done |
-| `hamiltons_principle` | `rules::variational` operator `hamiltons_principle` | partial (no test: `hamiltons_principle` is defined but no test exercises it) |
+| `hamiltons_principle` | `rules::variational` operator `hamiltons_principle` (test `hamiltons_principle_gives_the_equations_of_motion`) | done |
 
 ## `src/symbolic/cas_foundations.rs` (12)
 
@@ -1226,22 +1226,22 @@ The remaining `pending` and `partial` rows are listed by domain in
 | legacy function | new home | status |
 |---|---|---|
 | `new` | `rules::physics` operator `kinematics` (test rules::physics::tests) | done |
-| `newtons_second_law` | `rules::physics` operator `newtons_second_law` | partial (no test: `newtons_second_law` is defined but no test exercises it) |
+| `newtons_second_law` | `rules::physics` operator `newtons_second_law` (test `newtonian_formula_library`) | done |
 | `momentum` | `rules::physics` operator `momentum` (test rules::physics::tests) | done |
 | `kinetic_energy` | `rules::physics` operator `kinetic_energy` (test rules::physics::tests) | done |
-| `potential_energy_gravity_uniform` | `rules::physics` operator `potential_energy_gravity_uniform` | partial (no test: `potential_energy_gravity_uniform` is defined but no test exercises it) |
+| `potential_energy_gravity_uniform` | `rules::physics` operator `potential_energy_gravity_uniform` (test `newtonian_formula_library`) | done |
 | `potential_energy_gravity_universal` | `rules::physics` operator `potential_energy_gravity_universal` (test rules::physics::tests) | done |
 | `potential_energy_spring` | `rules::physics` operator `potential_energy_spring` (test rules::physics::tests) | done |
 | `work_constant_force` | `rules::physics` operator `work_constant_force` (test rules::physics::tests) | done |
-| `work_line_integral` | `rules::physics` operator `work_line_integral` | partial (no test: `work_line_integral` is defined but no test exercises it) |
+| `work_line_integral` | `rules::physics` operator `work_line_integral` (test `work_along_a_curve`) | done |
 | `power` | `rules::physics` operator `power` (test rules::physics::tests) | done |
 | `torque` | `rules::physics` operator `torque` (test rules::physics::tests) | done |
-| `angular_momentum` | `rules::physics` operator `angular_momentum` | partial (no test: `angular_momentum` is defined but no test exercises it) |
-| `centripetal_acceleration` | `rules::physics` operator `centripetal_acceleration` | partial (no test: `centripetal_acceleration` is defined but no test exercises it) |
-| `moment_of_inertia_point_mass` | `rules::physics` operator `moment_of_inertia_point_mass` | partial (no test: `moment_of_inertia_point_mass` is defined but no test exercises it) |
-| `rotational_kinetic_energy` | `rules::physics` operator `rotational_kinetic_energy` | partial (no test: `rotational_kinetic_energy` is defined but no test exercises it) |
+| `angular_momentum` | `rules::physics` operator `angular_momentum` (test `newtonian_formula_library`) | done |
+| `centripetal_acceleration` | `rules::physics` operator `centripetal_acceleration` (test `newtonian_formula_library`) | done |
+| `moment_of_inertia_point_mass` | `rules::physics` operator `moment_of_inertia_point_mass` (test `newtonian_formula_library`) | done |
+| `rotational_kinetic_energy` | `rules::physics` operator `rotational_kinetic_energy` (test `newtonian_formula_library`) | done |
 | `lagrangian` | `rules::physics` operator `lagrangian` (test rules::physics::tests) | done |
-| `hamiltonian` | `rules::physics` operator `hamiltonian` | partial (no test: `hamiltonian` is defined but no test exercises it) |
+| `hamiltonian` | `rules::physics` operator `hamiltonian` (test `newtonian_formula_library`) | done |
 | `euler_lagrange_equation` | `rules::physics` operator `euler_lagrange_equation` (test rules::physics::tests) | done |
 | `poisson_bracket` | `rules::physics` operator `poisson_bracket` (test rules::physics::tests) | done |
 
@@ -1480,12 +1480,12 @@ The remaining `pending` and `partial` rows are listed by domain in
 |---|---|---|
 | `new` | `rules::physics` operator `maxwell_equations` (test rules::physics::tests) | done |
 | `lorentz_force` | `rules::physics` operator `lorentz_force` (test rules::physics::tests) | done |
-| `electric_field_from_potentials` | `rules::physics` operator `electric_field_from_potentials` | partial (no test: `electric_field_from_potentials` is defined but no test exercises it) |
+| `electric_field_from_potentials` | `rules::physics` operator `electric_field_from_potentials` (test `electromagnetic_formula_library`) | done |
 | `electric_field_from_potential` | `rules::physics` operator `electric_field_from_potential` (test rules::physics::tests) | done |
 | `magnetic_field_from_vector_potential` | `rules::physics` operator `magnetic_field_from_vector_potential` (test rules::physics::tests) | done |
 | `poynting_vector` | `rules::physics` operator `poynting_vector` (test rules::physics::tests) | done |
-| `energy_density` | `rules::physics` operator `em_energy_density` | partial (no test: `em_energy_density` is defined but no test exercises it) |
-| `coulombs_law` | `rules::physics` operator `coulombs_law` | partial (no test: `coulombs_law` is defined but no test exercises it) |
+| `energy_density` | `rules::physics` operator `em_energy_density` (test `electromagnetic_formula_library`) | done |
+| `coulombs_law` | `rules::physics` operator `coulombs_law` (test `electromagnetic_formula_library`) | done |
 
 ## `src/symbolic/elementary.rs` (34)
 
@@ -1755,8 +1755,8 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `solve_separable_kernel` | `rules::functional` operator `fredholm_separable` (tests rules::functional::tests) | done |
 | `solve_successive_approximations` | `rules::functional` operator `volterra_successive` (tests rules::functional::tests) | done |
 | `solve_by_differentiation` | `rules::functional` operator `volterra_to_ode` (tests rules::functional::tests) (with `volterra_solve`) | done |
-| `solve_airfoil_equation` | `rules::functional` operator `airfoil_equation` | partial (no test: `airfoil_equation` is defined but no test exercises it) |
-| `solve_airfoil_equation_internal` | `rules::functional` operator `airfoil_equation` | partial (no test: `airfoil_equation` is defined but no test exercises it) |
+| `solve_airfoil_equation` | `rules::functional` operator `airfoil_equation` (test `airfoil_equation_is_the_tricomi_inversion`) | done |
+| `solve_airfoil_equation_internal` | `rules::functional` operator `airfoil_equation` (test `airfoil_equation_is_the_tricomi_inversion`) | done |
 
 ## `src/symbolic/integration.rs` (8)
 
@@ -2020,18 +2020,18 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `dirac_adjoint` | `rules::physics` operator `dirac_adjoint` (test rules::physics::tests) | done |
 | `feynman_slash` | `rules::physics` operator `feynman_slash` (test rules::physics::tests) | done |
 | `scalar_field_lagrangian` | `rules::physics` operator `scalar_field_lagrangian` (test rules::physics::tests) | done |
-| `qed_lagrangian` | `rules::physics` operator `qed_lagrangian` | partial (no test: `qed_lagrangian` is defined but no test exercises it) |
-| `qcd_lagrangian` | `rules::physics` operator `qcd_lagrangian` | partial (no test: `qcd_lagrangian` is defined but no test exercises it) |
-| `propagator` | `rules::physics` operator `propagator` | partial (no test: `propagator` is defined but no test exercises it) |
-| `scattering_cross_section` | `rules::physics` operator `scattering_cross_section` | partial (no test: `scattering_cross_section` is defined but no test exercises it) |
-| `feynman_propagator_position_space` | `rules::physics` operator `feynman_propagator_position_space` | partial (no test: `feynman_propagator_position_space` is defined but no test exercises it) |
+| `qed_lagrangian` | `rules::physics` operator `qed_lagrangian` (test `field_theory_lagrangians`) | done |
+| `qcd_lagrangian` | `rules::physics` operator `qcd_lagrangian` (test `field_theory_lagrangians`) | done |
+| `propagator` | `rules::physics` operator `propagator` (test `field_theory_lagrangians`) | done |
+| `scattering_cross_section` | `rules::physics` operator `scattering_cross_section` (test `field_theory_lagrangians`) | done |
+| `feynman_propagator_position_space` | `rules::physics` operator `feynman_propagator_position_space` (test `field_theory_lagrangians`) | done |
 
 ## `src/symbolic/quantum_mechanics.rs` (21)
 
 | legacy function | new home | status |
 |---|---|---|
 | `bra_ket` | `rules::physics` operator `braket` (test rules::physics::tests) | done |
-| `bra_ket_internal` | `rules::physics` operator `braket_on` | partial (no test: `braket_on` is defined but no test exercises it) |
+| `bra_ket_internal` | `rules::physics` operator `braket_on` (test `quantum_formula_library`) | done |
 | `new` | `rules::physics` operator `op_mul` (with `op_d`, `op_add`, `op_compose`, ... from rules::functional) (test rules::physics::tests) | done |
 | `apply` | `rules::physics` operator `qm_apply` (test rules::physics::tests) | done |
 | `commutator` | `rules::physics` operator `commutator` (test rules::physics::tests) | done |
@@ -2040,17 +2040,17 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `expectation_value_internal` | `rules::physics` operator `expectation_value` (test rules::physics::tests) | done |
 | `uncertainty` | `rules::physics` operator `uncertainty` (test rules::physics::tests) | done |
 | `probability_density` | `rules::physics` operator `probability_density` (test rules::physics::tests) | done |
-| `hamiltonian_free_particle` | `rules::physics` operator `hamiltonian_free_particle` | partial (no test: `hamiltonian_free_particle` is defined but no test exercises it) |
+| `hamiltonian_free_particle` | `rules::physics` operator `hamiltonian_free_particle` (test `quantum_formula_library`) | done |
 | `hamiltonian_harmonic_oscillator` | `rules::physics` operator `hamiltonian_harmonic_oscillator` (test rules::physics::tests) | done |
-| `angular_momentum_z` | `rules::physics` operator `angular_momentum_z` | partial (no test: `angular_momentum_z` is defined but no test exercises it) |
-| `pauli_matrices` | `rules::physics` operator `pauli_matrices` | partial (no test: `pauli_matrices` is defined but no test exercises it) |
+| `angular_momentum_z` | `rules::physics` operator `angular_momentum_z` (test `quantum_formula_library`) | done |
+| `pauli_matrices` | `rules::physics` operator `pauli_matrices` (test `quantum_formula_library`) | done |
 | `spin_operator` | `rules::physics` operator `spin_operator` (test rules::physics::tests) | done |
-| `solve_time_independent_schrodinger` | `rules::physics` operator `solve_time_independent_schrodinger` | partial (no test: `solve_time_independent_schrodinger` is defined but no test exercises it) |
-| `time_dependent_schrodinger_equation` | `rules::physics` operator `time_dependent_schrodinger_equation` | partial (no test: `time_dependent_schrodinger_equation` is defined but no test exercises it) |
+| `solve_time_independent_schrodinger` | `rules::physics` operator `solve_time_independent_schrodinger` (test `quantum_formula_library`) | done |
+| `time_dependent_schrodinger_equation` | `rules::physics` operator `time_dependent_schrodinger_equation` (test `quantum_formula_library`) | done |
 | `dirac_equation` | `rules::physics` operator `dirac_equation` (test rules::physics::tests) | done |
 | `klein_gordon_equation` | `rules::physics` operator `klein_gordon_equation` (test rules::physics::tests) | done |
-| `first_order_energy_correction` | `rules::physics` operator `first_order_energy_correction` | partial (no test: `first_order_energy_correction` is defined but no test exercises it) |
-| `scattering_amplitude` | `rules::physics` operator `scattering_amplitude` | partial (no test: `scattering_amplitude` is defined but no test exercises it) |
+| `first_order_energy_correction` | `rules::physics` operator `first_order_energy_correction` (test `quantum_formula_library`) | done |
+| `scattering_amplitude` | `rules::physics` operator `scattering_amplitude` (test `quantum_formula_library`) | done |
 
 ## `src/symbolic/radicals.rs` (2)
 
@@ -2077,10 +2077,10 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `velocity_addition` | `rules::physics` operator `velocity_addition` (test rules::physics::tests) | done |
 | `mass_energy_equivalence` | `rules::physics` operator `mass_energy_equivalence` (test rules::physics::tests) | done |
 | `relativistic_momentum` | `rules::physics` operator `relativistic_momentum` (test rules::physics::tests) | done |
-| `doppler_effect` | `rules::physics` operator `doppler_effect` | partial (no test: `doppler_effect` is defined but no test exercises it) |
+| `doppler_effect` | `rules::physics` operator `doppler_effect` (test `relativistic_formula_library`) | done |
 | `schwarzschild_radius` | `rules::physics` operator `schwarzschild_radius` (test rules::physics::tests) | done |
-| `gravitational_time_dilation` | `rules::physics` operator `gravitational_time_dilation` | partial (no test: `gravitational_time_dilation` is defined but no test exercises it) |
-| `einstein_tensor` | `rules::physics` operator `einstein_tensor_from` | partial (no test: `einstein_tensor_from` is defined but no test exercises it) |
+| `gravitational_time_dilation` | `rules::physics` operator `gravitational_time_dilation` (test `relativistic_formula_library`) | done |
+| `einstein_tensor` | `rules::physics` operator `einstein_tensor_from` (test `relativistic_formula_library`) | done |
 | `geodesic_acceleration` | `rules::physics` operator `geodesic_acceleration` (test rules::physics::tests) | done |
 | `lorentz_transformation` | legacy alias of lorentz_transformation_x | dropped |
 | `einstein_field_equations` | legacy placeholder, superseded by einstein_tensor | dropped |
@@ -2141,16 +2141,16 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `new` | `rules::physics` operator `lattice_volume` (test rules::physics::tests) | done |
 | `volume` | `rules::physics` operator `lattice_volume` (test rules::physics::tests) | done |
 | `reciprocal_lattice_vectors` | `rules::physics` operator `reciprocal_lattice_vectors` (test rules::physics::tests) | done |
-| `bloch_theorem` | `rules::physics` operator `bloch_wave` | partial (no test: `bloch_wave` is defined but no test exercises it) |
+| `bloch_theorem` | `rules::physics` operator `bloch_wave` (test `solid_state_formula_library`) | done |
 | `energy_band` | `rules::physics` operator `energy_band` (test rules::physics::tests) | done |
-| `density_of_states_3d` | `rules::physics` operator `density_of_states_3d` | partial (no test: `density_of_states_3d` is defined but no test exercises it) |
-| `fermi_energy_3d` | `rules::physics` operator `fermi_energy_3d` | partial (no test: `fermi_energy_3d` is defined but no test exercises it) |
-| `drude_conductivity` | `rules::physics` operator `drude_conductivity` | partial (no test: `drude_conductivity` is defined but no test exercises it) |
+| `density_of_states_3d` | `rules::physics` operator `density_of_states_3d` (test `solid_state_formula_library`) | done |
+| `fermi_energy_3d` | `rules::physics` operator `fermi_energy_3d` (test `solid_state_formula_library`) | done |
+| `drude_conductivity` | `rules::physics` operator `drude_conductivity` (test `solid_state_formula_library`) | done |
 | `hall_coefficient` | `rules::physics` operator `hall_coefficient` (test rules::physics::tests) | done |
-| `debye_frequency` | `rules::physics` operator `debye_frequency` | partial (no test: `debye_frequency` is defined but no test exercises it) |
+| `debye_frequency` | `rules::physics` operator `debye_frequency` (test `solid_state_formula_library`) | done |
 | `einstein_heat_capacity` | `rules::physics` operator `einstein_heat_capacity` (test rules::physics::tests) | done |
-| `plasma_frequency` | `rules::physics` operator `plasma_frequency` | partial (no test: `plasma_frequency` is defined but no test exercises it) |
-| `london_penetration_depth` | `rules::physics` operator `london_penetration_depth` | partial (no test: `london_penetration_depth` is defined but no test exercises it) |
+| `plasma_frequency` | `rules::physics` operator `plasma_frequency` (test `solid_state_formula_library`) | done |
+| `london_penetration_depth` | `rules::physics` operator `london_penetration_depth` (test `solid_state_formula_library`) | done |
 
 ## `src/symbolic/solve.rs` (9)
 
@@ -2223,12 +2223,12 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `chebyshev_t` | `rules::special` `legendre`/`laguerre`/`hermite`/`chebyshevt`/`chebyshevu` (tests polynomials_of_any_degree_match_the_recurrence) | done |
 | `chebyshev_u` | `rules::special` `legendre`/`laguerre`/`hermite`/`chebyshevt`/`chebyshevu` (tests polynomials_of_any_degree_match_the_recurrence) | done |
 | `bessel_differential_equation` | `rules::special` definition `bessel_differential_equation(y, x, n)` (tests rules::special::tests) | done |
-| `legendre_differential_equation` | `rules::special` definition `legendre_differential_equation(y, x, n)` | partial (no test: `legendre_differential_equation` is defined but no test exercises it) |
+| `legendre_differential_equation` | `rules::special` definition `legendre_differential_equation(y, x, n)` (test `classical_orthogonal_polynomials_solve_their_equations`) | done |
 | `legendre_rodrigues_formula` | `rules::special` definition `legendre_rodrigues(n, x)` (tests rules::special::tests) | done |
-| `laguerre_differential_equation` | `rules::special` definition `laguerre_differential_equation(y, x, n)` | partial (no test: `laguerre_differential_equation` is defined but no test exercises it) |
-| `hermite_differential_equation` | `rules::special` definition `hermite_differential_equation(y, x, n)` | partial (no test: `hermite_differential_equation` is defined but no test exercises it) |
+| `laguerre_differential_equation` | `rules::special` definition `laguerre_differential_equation(y, x, n)` (test `classical_orthogonal_polynomials_solve_their_equations`) | done |
+| `hermite_differential_equation` | `rules::special` definition `hermite_differential_equation(y, x, n)` (test `classical_orthogonal_polynomials_solve_their_equations`) | done |
 | `hermite_rodrigues_formula` | `rules::special` definition `hermite_rodrigues(n, x)` (tests rules::special::tests) | done |
-| `chebyshev_differential_equation` | `rules::special` definition `chebyshev_differential_equation(y, x, n)` | partial (no test: `chebyshev_differential_equation` is defined but no test exercises it) |
+| `chebyshev_differential_equation` | `rules::special` definition `chebyshev_differential_equation(y, x, n)` (test `classical_orthogonal_polynomials_solve_their_equations`) | done |
 
 ## `src/symbolic/stats.rs` (10)
 
@@ -2290,7 +2290,7 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `to_matrix_expr` | tensors are nested lists, so a rank-2 tensor already is a matrix term for `rules::linalg` (`matmul`, `det`, ...) | done |
 | `raise_index` | `rules::geometry` operator `raise_index` (tests rules::geometry::tests) | done |
 | `lower_index` | `rules::geometry` operator `lower_index` (tests rules::geometry::tests) | done |
-| `christoffel_symbols_first_kind` | `rules::geometry` operator `christoffel1` | partial (no test: `christoffel1` is defined but no test exercises it) |
+| `christoffel_symbols_first_kind` | `rules::geometry` operator `christoffel1` (test `christoffel_symbols_of_the_first_kind`) | done |
 | `christoffel_symbols_second_kind` | `rules::geometry` operator `christoffel` (tests rules::geometry::tests) | done |
 | `riemann_curvature_tensor` | `rules::geometry` operator `riemann` (tests rules::geometry::tests) | done |
 | `covariant_derivative_vector` | `rules::geometry` operator `covariant_derivative` (tests rules::geometry::tests) | done |
@@ -2299,18 +2299,18 @@ The remaining `pending` and `partial` rows are listed by domain in
 
 | legacy function | new home | status |
 |---|---|---|
-| `first_law_thermodynamics` | `rules::physics` operator `first_law_thermodynamics` | partial (no test: `first_law_thermodynamics` is defined but no test exercises it) |
-| `ideal_gas_law` | `rules::physics` operator `ideal_gas_law` | partial (no test: `ideal_gas_law` is defined but no test exercises it) |
+| `first_law_thermodynamics` | `rules::physics` operator `first_law_thermodynamics` (test `thermodynamic_formula_library`) | done |
+| `ideal_gas_law` | `rules::physics` operator `ideal_gas_law` (test `thermodynamic_formula_library`) | done |
 | `enthalpy` | `rules::physics` operator `enthalpy` (test rules::physics::tests) | done |
-| `helmholtz_free_energy` | `rules::physics` operator `helmholtz_free_energy` | partial (no test: `helmholtz_free_energy` is defined but no test exercises it) |
+| `helmholtz_free_energy` | `rules::physics` operator `helmholtz_free_energy` (test `thermodynamic_formula_library`) | done |
 | `gibbs_free_energy` | `rules::physics` operator `gibbs_free_energy` (test rules::physics::tests) | done |
-| `boltzmann_entropy` | `rules::physics` operator `boltzmann_entropy` | partial (no test: `boltzmann_entropy` is defined but no test exercises it) |
+| `boltzmann_entropy` | `rules::physics` operator `boltzmann_entropy` (test `thermodynamic_formula_library`) | done |
 | `carnot_efficiency` | `rules::physics` operator `carnot_efficiency` (test rules::physics::tests) | done |
-| `boltzmann_distribution` | `rules::physics` operator `boltzmann_distribution` | partial (no test: `boltzmann_distribution` is defined but no test exercises it) |
+| `boltzmann_distribution` | `rules::physics` operator `boltzmann_distribution` (test `thermodynamic_formula_library`) | done |
 | `partition_function` | `rules::physics` operator `partition_function` (test rules::physics::tests) | done |
 | `fermi_dirac_distribution` | `rules::physics` operator `fermi_dirac_distribution` (test rules::physics::tests) | done |
-| `bose_einstein_distribution` | `rules::physics` operator `bose_einstein_distribution` | partial (no test: `bose_einstein_distribution` is defined but no test exercises it) |
-| `work_isothermal_expansion` | `rules::physics` operator `work_isothermal_expansion` | partial (no test: `work_isothermal_expansion` is defined but no test exercises it) |
+| `bose_einstein_distribution` | `rules::physics` operator `bose_einstein_distribution` (test `thermodynamic_formula_library`) | done |
+| `work_isothermal_expansion` | `rules::physics` operator `work_isothermal_expansion` (test `thermodynamic_formula_library`) | done |
 | `verify_maxwell_relation_helmholtz` | `rules::physics` operator `verify_maxwell_relation_helmholtz` (test rules::physics::tests) | done |
 
 ## `src/symbolic/topology.rs` (19)
