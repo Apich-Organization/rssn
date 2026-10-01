@@ -7,14 +7,22 @@
 
 pub mod calculus;
 pub mod combinatorics;
+/// Coordinate transformations between Cartesian, polar, cylindrical and spherical systems.
+pub mod coordinates;
+/// Sequence and series convergence acceleration (Aitken, Richardson, Wynn).
+pub mod convergence;
 pub mod complex;
 pub mod computer_graphics;
 pub mod error_correction;
 pub mod finite_field;
 pub mod fractal_geometry_and_chaos;
+/// Curvature of a metric given as a closure: Christoffel symbols, Riemann and Ricci tensors.
+pub mod differential_geometry;
 pub mod functional_analysis;
 pub mod geometric_algebra;
 pub mod graph;
+/// Indefinite sums and products at non-integer arguments.
+pub mod indefinite_sum;
 pub mod integrate;
 pub mod interpolate;
 pub mod matrix;

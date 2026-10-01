@@ -2,6 +2,9 @@
 //!
 //! Partial sums, and infinite sums with convergence acceleration.
 
+use crate::kernels::convergence::richardson_extrapolation_with;
+use crate::kernels::convergence::wynn_epsilon;
+
 /// Result of summing an infinite series numerically.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SeriesSum {
@@ -11,6 +14,18 @@ pub struct SeriesSum {
     pub error: f64,
     /// Number of terms evaluated.
     pub terms: usize,
+}
+
+/// Evaluates the power series `sum_n coefficients[n] * (x - center)^n` by
+/// Horner's scheme. An empty coefficient list gives 0.
+#[must_use]
+pub fn evaluate_power_series(
+    coefficients: &[f64],
+    center: f64,
+    x: f64,
+) -> f64 {
+    let dx = x - center;
+    coefficients.iter().rev().fold(0.0, |acc, &c| acc.mul_add(dx, c))
 }
 
 /// Sum of `term(k)` for `k` from `from` to `to` inclusive, with Kahan
@@ -31,62 +46,6 @@ pub fn sum_range(
         k += 1;
     }
     sum
-}
-
-/// Wynn's epsilon algorithm on a sequence of partial sums: returns the
-/// accelerated limit estimate.
-fn wynn_epsilon(partial: &[f64]) -> f64 {
-    let n = partial.len();
-    let mut previous = vec![0.0_f64; n + 1];
-    let mut current: Vec<f64> = partial.to_vec();
-    let mut best = partial.last().copied().unwrap_or(0.0);
-    let mut column = 1;
-    while current.len() > 1 {
-        let mut next = Vec::with_capacity(current.len() - 1);
-        for i in 0..current.len() - 1 {
-            let delta = current[i + 1] - current[i];
-            if delta == 0.0 {
-                // The sequence has converged exactly at this point.
-                return if column % 2 == 1 { current[i + 1] } else { best };
-            }
-            next.push(previous[i + 1] + 1.0 / delta);
-        }
-        previous = current;
-        current = next;
-        column += 1;
-        if column % 2 == 1 {
-            // Odd columns (counting the partial sums as column 1) hold
-            // the accelerated estimates.
-            if let Some(&last) = current.last() {
-                if last.is_finite() {
-                    best = last;
-                }
-            }
-        }
-    }
-    best
-}
-
-/// Richardson extrapolation of partial sums taken at `n, 2n, 4n, ...`
-/// terms, for series whose remainder has an expansion in powers of `1/n`
-/// (`1/k^2`, rational summands). Returns the estimate and the difference
-/// between the last two extrapolants.
-fn richardson(partial_at_doublings: &[f64]) -> (f64, f64) {
-    let mut row: Vec<f64> = partial_at_doublings.to_vec();
-    let mut diagonal = vec![row.first().copied().unwrap_or(0.0)];
-    let mut power = 2.0_f64;
-    while row.len() > 1 {
-        row = row.windows(2).map(|w| (power * w[1] - w[0]) / (power - 1.0)).collect();
-        if let Some(&first) = row.first() {
-            diagonal.push(first);
-        }
-        power *= 2.0;
-    }
-    match diagonal.as_slice() {
-        | [.., previous, last] => (*last, (last - previous).abs()),
-        | [only] => (*only, f64::INFINITY),
-        | [] => (0.0, f64::INFINITY),
-    }
 }
 
 /// Sum of `term(k)` for `k = from, from + 1, ...` to infinity.
@@ -128,8 +87,11 @@ pub fn sum_to_infinity(
             }
         }
         checkpoints.push(sum);
-        let wynn = wynn_epsilon(&recent);
-        let (rich, _) = richardson(&checkpoints);
+        let wynn = wynn_epsilon(&recent).last().copied().unwrap_or(0.0);
+        let rich = richardson_extrapolation_with(&checkpoints, 2.0)
+            .last()
+            .copied()
+            .unwrap_or(0.0);
         // Each extrapolation is judged by how much it moved since the
         // previous checkpoint.
         let candidates = [(wynn, (wynn - previous.0).abs()), (rich, (rich - previous.1).abs())];
@@ -151,6 +113,16 @@ pub fn sum_to_infinity(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn power_series_evaluation() {
+        // 1 + x + x^2/2 at x = 1 around 0.
+        assert!((evaluate_power_series(&[1.0, 1.0, 0.5], 0.0, 1.0) - 2.5).abs() < 1e-15);
+        // (x - 2)^2 expanded around 2: 0 + 0 x + 1 x^2 at x = 5.
+        assert_eq!(evaluate_power_series(&[0.0, 0.0, 1.0], 2.0, 5.0), 9.0);
+        assert_eq!(evaluate_power_series(&[], 1.0, 3.0), 0.0);
+        assert_eq!(evaluate_power_series(&[4.0], 1.0, 3.0), 4.0);
+    }
 
     #[test]
     fn finite_sums() {

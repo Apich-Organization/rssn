@@ -54,3 +54,13 @@ mod computer_graphics;
 mod fractal_geometry_and_chaos;
 #[path = "kernels/topology.rs"]
 mod topology;
+#[path = "kernels/coordinates.rs"]
+mod coordinates;
+#[path = "kernels/differential_geometry.rs"]
+mod differential_geometry;
+#[path = "kernels/convergence.rs"]
+mod convergence;
+#[path = "kernels/series.rs"]
+mod series;
+#[path = "kernels/indefinite_sum.rs"]
+mod indefinite_sum;

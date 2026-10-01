@@ -9,14 +9,12 @@ use argmin::core::Error;
 use argmin::core::Executor;
 use argmin::core::Gradient;
 use argmin::core::IterState;
-use argmin::core::Operator;
 use argmin::core::OptimizationResult;
 use argmin::core::PopulationState;
 use argmin::core::Solver;
 use argmin::core::State;
 use argmin::solver::gradientdescent::SteepestDescent;
 use argmin::solver::linesearch::MoreThuenteLineSearch;
-use argmin::solver::linesearch::condition::ArmijoCondition;
 use argmin::solver::particleswarm::ParticleSwarm;
 use argmin::solver::quasinewton::BFGS;
 use argmin_math::ArgminConj;
@@ -405,9 +403,6 @@ impl EquationOptimizer {
     ///
     /// # Errors
     /// Returns an error if the optimization process fails.
-    ///
-    /// # Panics
-    /// Panics if the internal Armijo condition fails to initialize.
     pub fn auto_solve_conjugate_gradient<C>(
         cost_function: C,
         init_param: P,
@@ -415,8 +410,7 @@ impl EquationOptimizer {
     ) -> AutoSolveResult<C, P, G, F, Error>
     where
         C: CostFunction<Param = P, Output = F>
-            + Gradient<Param = P, Gradient = G>
-            + Operator<Param = P, Output = P>,
+            + Gradient<Param = P, Gradient = G>,
         P: ArgminDot<P, F>
             + ArgminScaledAdd<P, F, P>
             + ArgminSub<P, P>
@@ -427,9 +421,6 @@ impl EquationOptimizer {
         G: ArgminL2Norm<F>,
         F: ArgminFloat + ArgminL2Norm<F>,
     {
-        let _linesearch_condition: ArmijoCondition<F> =
-            ArmijoCondition::new(0.0001).expect("Failed to create Armijo condition");
-
         let linesearch: MThLineSearch = MoreThuenteLineSearch::new();
 
         let solver: SteepestDescent<MThLineSearch> = SteepestDescent::new(linesearch);

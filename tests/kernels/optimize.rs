@@ -218,3 +218,44 @@ fn auto_solve_runs_a_population_solver() {
     );
     assert_eq!(res.state.get_iter(), 200);
 }
+
+#[test]
+fn auto_solve_runs_steepest_descent_with_line_search() {
+    use argmin::solver::gradientdescent::SteepestDescent;
+    use argmin::solver::linesearch::MoreThuenteLineSearch;
+    let solver = SteepestDescent::new(MoreThuenteLineSearch::new());
+    let res = EquationOptimizer::auto_solve(Sphere, solver, |s| {
+        s.param(Array1::from(vec![3.0, -2.0]))
+            .max_iters(100)
+            .target_cost(1e-10)
+    })
+    .unwrap_or_else(|e| panic!("{e}"));
+    assert!(res.state.get_best_cost() < 1e-10);
+}
+
+#[test]
+fn auto_solve_conjugate_gradient_minimises_sphere() {
+    let cfg = config(ProblemType::Sphere, 200, 1e-10, 3);
+    let res = EquationOptimizer::auto_solve_conjugate_gradient(
+        Sphere,
+        Array1::from(vec![2.0, -1.0, 4.0]),
+        &cfg,
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    assert!(res.state.get_best_cost() < 1e-8);
+    let best = res.state.get_best_param().cloned().unwrap_or_default();
+    assert!(best.iter().all(|v| v.abs() < 1e-3), "best {best:?}");
+}
+
+#[test]
+fn auto_solve_conjugate_gradient_improves_rosenbrock() {
+    let cfg = config(ProblemType::Rosenbrock, 300, 1e-10, 2);
+    let start = Array1::from(vec![-1.2, 1.0]);
+    let initial = Rosenbrock::default()
+        .cost(&start)
+        .unwrap_or_else(|e| panic!("{e}"));
+    let res =
+        EquationOptimizer::auto_solve_conjugate_gradient(Rosenbrock::default(), start, &cfg)
+            .unwrap_or_else(|e| panic!("{e}"));
+    assert!(res.state.get_best_cost() < initial);
+}

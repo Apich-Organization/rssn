@@ -105,3 +105,16 @@ proptest! {
         prop_assert!((p.effective_potential(r, 0.0) + m / r).abs() < 1e-12);
     }
 }
+
+#[test]
+fn black_hole_scenario_writes_one_csv_per_orbit() {
+    let dir = std::env::temp_dir().join(format!("rssn_geodesic_{}", std::process::id()));
+    simulate_black_hole_orbits_scenario(&dir).unwrap_or_else(|e| panic!("{e}"));
+    for name in ["stable_orbit", "plunging_orbit", "photon_orbit"] {
+        let file = dir.join(format!("orbit_{name}.csv"));
+        let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file:?}: {e}"));
+        assert!(text.starts_with("x,y\n"), "{name}");
+        assert!(text.lines().count() > 2, "{name} has no path points");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
