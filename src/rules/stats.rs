@@ -2733,7 +2733,7 @@ mod tests {
         );
         // Only the symbols that occur in the data remain in the formulas.
         assert_eq!(s("mean(list(a, b))"), "1/2*(a + b)");
-        assert_eq!(s("mean(list(a, 3, 5))"), "1/3*a + 8/3");
+        assert_eq!(s("mean(list(a, 3, 5))"), "1/3*(a + 8)");
         assert_eq!(s("mean(list(a, a, a))"), "a");
         // Symbolic data is generic: the formula holds for other values too.
         let other = [("a", -3.5), ("b", 0.25), ("c", 8.0)];

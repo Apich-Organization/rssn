@@ -84,6 +84,11 @@ fn base_cost(
 ) -> u64 {
     let op = graph.op(node);
     let mut cost = u64::from(graph.ops().get(op).cost);
+    // A fraction is a little more complex than an integer: between two
+    // spellings of one size, `-2^(1/2)` beats `-1/2*2^(3/2)`.
+    if op == super::op::core::LIT && graph.as_number(node).is_some_and(|n| !n.is_integer()) {
+        cost = cost.saturating_add(1);
+    }
     if (op == super::op::core::ADD || op == super::op::core::MUL)
         && graph
             .children(node)

@@ -127,7 +127,8 @@ impl OpDescriptor {
     ///
     /// Its cost is 3: a named function weighs more than an arithmetic
     /// operator (cost 1) with a literal operand (cost 1), so `-x` is
-    /// preferred to `abs(x)` when both are known to be equal.
+    /// preferred to `abs(x)` when both are known to be equal. A nullary
+    /// operator (a named constant) costs 1, like a symbol.
     #[must_use]
     pub fn new(
         name: &str,
@@ -137,7 +138,8 @@ impl OpDescriptor {
             name: Arc::from(name),
             arity,
             flags: OpFlags::NONE,
-            cost: 3,
+            // A named constant (`pi`, `hbar`) is as simple as a symbol.
+            cost: if matches!(arity, Arity::Fixed(0)) { 1 } else { 3 },
             binder: None,
             eval: None,
         }

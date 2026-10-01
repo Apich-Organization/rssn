@@ -76,6 +76,7 @@ pub mod linalg;
 pub mod logic;
 pub mod number_theory;
 pub mod ode;
+pub mod optimize;
 pub mod pde;
 pub mod physics;
 pub mod poly;
@@ -84,6 +85,7 @@ pub mod special;
 pub mod stats;
 pub mod transforms;
 pub mod variational;
+pub mod verify;
 #[cfg(test)]
 pub(crate) mod testing;
 
@@ -98,6 +100,7 @@ pub use linalg::linalg;
 pub use logic::logic;
 pub use number_theory::number_theory;
 pub use ode::ode;
+pub use optimize::optimize;
 pub use pde::pde;
 pub use physics::physics;
 pub use poly::poly;
@@ -106,13 +109,14 @@ pub use special::special;
 pub use stats::stats;
 pub use transforms::transforms;
 pub use variational::variational;
+pub use verify::verify;
 
 use crate::graph::RuleSet;
 
 /// Every rule set shipped with rssn.
 #[must_use]
 pub fn standard() -> Vec<RuleSet> {
-    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), variational(), pde(), physics(), discrete()]
+    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), variational(), pde(), physics(), optimize(), verify(), discrete()]
 }
 
 #[cfg(test)]

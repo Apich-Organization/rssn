@@ -106,7 +106,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     }
     let pi = i.op(OpDescriptor::new("pi", Arity::Fixed(0)).eval(|_| std::f64::consts::PI))?;
     i.graph().ops_mut().set_attr(pi, OnReals(Facts::POSITIVE));
-    let euler = i.op(OpDescriptor::new("E", Arity::Fixed(0)).eval(|_| std::f64::consts::E))?;
+    // Cost 3, not 1: `exp(x)` is the preferred spelling of `E^x`.
+    let euler = i.op(OpDescriptor::new("E", Arity::Fixed(0)).cost(3).eval(|_| std::f64::consts::E))?;
     i.graph().ops_mut().set_attr(euler, OnReals(Facts::POSITIVE));
     i.op(OpDescriptor::new("atan2", Arity::Fixed(2)).eval(|a| match a {
         | [y, x] => y.atan2(*x),

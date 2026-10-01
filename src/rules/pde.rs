@@ -2036,7 +2036,7 @@ mod tests {
         );
         assert_eq!(
             run("pdsolve(diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = 0, at(diff(u(x, t), t), t, 0) = cos(x)))"),
-            "u(x, t) = 1/2*sin(t + x) - 1/2*sin(x - t)"
+            "u(x, t) = 1/2*(sin(t + x) - sin(x - t))"
         );
     }
 

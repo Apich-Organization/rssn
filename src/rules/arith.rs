@@ -34,6 +34,7 @@ pub fn arith() -> RuleSet {
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("arith/fold", Tier::Normalize, Fold);
     i.kernel("arith/float", Tier::Normalize, FloatContagion);
+    i.kernel("arith/radical", Tier::Normalize, Radical);
     i.pass(Collect);
     i.rewrites(
         Tier::Normalize,
@@ -582,5 +583,211 @@ mod tests {
             simplify("f(x + x) + g(x + x)"),
             "f(2*x) + g(2*x)"
         );
+    }
+}
+
+/// Exact powers of integers and fractions with rational exponents in
+/// their normal form `c * m^(r/q)`: the integer part of the exponent split
+/// off (`2^(3/2) = 2 * 2^(1/2)`), perfect powers taken out of the base
+/// (`12^(1/2) = 2 * 3^(1/2)`) and fractions split (`(2/3)^(1/2) =
+/// 2^(1/2) * 3^(-1/2)`).
+struct Radical;
+
+/// Largest `c` with `c^q | n` and the cofactor `n / c^q`, by trial
+/// division (bases up to 10^12 only).
+fn extract_power(
+    n: u64,
+    q: u32,
+) -> Option<(u64, u64)> {
+    if n > 1_000_000_000_000 || q < 2 {
+        return None;
+    }
+    let (mut remaining, mut root, mut kept) = (n, 1_u64, 1_u64);
+    let mut p = 2_u64;
+    while p.checked_mul(p)? <= remaining {
+        let mut count = 0_u32;
+        while remaining % p == 0 {
+            remaining /= p;
+            count += 1;
+        }
+        root = root.checked_mul(p.checked_pow(count / q)?)?;
+        kept = kept.checked_mul(p.checked_pow(count % q)?)?;
+        p += 1;
+    }
+    Some((root, kept.checked_mul(remaining)?))
+}
+
+/// `n^e` for a positive integer `n` and rational non-integer `e` as
+/// `(c, m, r/q)` with `n^e = c * m^(r/q)`, `0 < r < q`, `m` free of
+/// `q`-th powers (`m = 1` when the power is exact).
+fn radical_form(
+    n: &num_bigint::BigInt,
+    e: &num_rational::BigRational,
+) -> Option<(num_rational::BigRational, u64, num_rational::BigRational)> {
+    use num_traits::ToPrimitive;
+    let n = n.to_u64()?;
+    let q = e.denom().to_u32()?;
+    let p = e.numer().clone();
+    let k = num_integer::Integer::div_floor(&p, &num_bigint::BigInt::from(q));
+    let r = &p - &k * num_bigint::BigInt::from(q);
+    let (root, rest) = extract_power(n, q)?;
+    let r_u32 = r.to_u32()?;
+    let coefficient = num_rational::BigRational::from_integer(num_bigint::BigInt::from(n)).pow(k.to_i32()?)
+        * num_rational::BigRational::from_integer(num_bigint::BigInt::from(root).pow(r_u32));
+    let rest = if r_u32 == 0 { 1 } else { rest };
+    Some((coefficient, rest, num_rational::BigRational::new(r, num_bigint::BigInt::from(q))))
+}
+
+impl Radical {
+    /// `c * n1^e1 * n2^e2 * ... * rest` with every radical in normal form
+    /// and all rational factors in `c`.
+    fn product(
+        graph: &mut Graph,
+        node: NodeId,
+    ) -> Outcome {
+        use num_traits::One;
+        use num_traits::Signed;
+        let children = graph.children(node).to_vec();
+        let mut coefficient = Number::from(1);
+        let mut others = Vec::new();
+        let mut radicals = Vec::new();
+        let mut changed = false;
+        for &c in &children {
+            if let Some(n) = graph.as_number(c) {
+                coefficient = coefficient.mul(n);
+                continue;
+            }
+            let normal = (graph.op(c) == core::POW)
+                .then(|| {
+                    let &[b, e] = graph.children(c) else {
+                        return None;
+                    };
+                    let b = graph.as_number(b)?.to_rational()?;
+                    let e = graph.as_number(e)?.to_rational()?;
+                    if !b.is_integer() || !b.is_positive() || e.is_integer() {
+                        return None;
+                    }
+                    radical_form(&b.to_integer(), &e)
+                })
+                .flatten();
+            match normal {
+                | Some((c_part, rest, frac)) => {
+                    if !c_part.is_one() {
+                        changed = true;
+                    }
+                    coefficient = coefficient.mul(&Number::rat(c_part));
+                    if rest != 1 {
+                        radicals.push((rest, frac));
+                    } else {
+                        changed = true;
+                    }
+                },
+                | None => others.push(c),
+            }
+        }
+        if !changed || matches!(coefficient, Number::Float(_)) {
+            return Outcome::Pass;
+        }
+        let mut factors = Vec::new();
+        if !coefficient.is_one() {
+            factors.push(graph.num(coefficient));
+        }
+        for (rest, frac) in radicals {
+            let base = graph.int(i64::try_from(rest).unwrap_or(i64::MAX));
+            let e = graph.num(Number::rat(frac));
+            factors.push(graph.node(core::POW, &[base, e]));
+        }
+        factors.extend(others);
+        Outcome::Equal(match factors.as_slice() {
+            | [] => graph.int(1),
+            | [only] => *only,
+            | _ => graph.node(core::MUL, &factors),
+        })
+    }
+}
+
+impl Kernel for Radical {
+    fn ops(&self) -> Vec<OpId> {
+        vec![core::POW, core::MUL]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        use num_traits::Signed;
+        use num_traits::ToPrimitive;
+        use num_traits::Zero;
+        let graph = &mut *cx.graph;
+        if graph.op(node) == core::MUL {
+            return Self::product(graph, node);
+        }
+        let &[base, exponent] = graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let (Some(b), Some(e)) = (graph.number_of(base).cloned(), graph.number_of(exponent).cloned()) else {
+            return Outcome::Pass;
+        };
+        let (Some(b), Some(e)) = (b.to_rational(), e.to_rational()) else {
+            return Outcome::Pass;
+        };
+        if e.is_integer() || !b.is_positive() {
+            return Outcome::Pass;
+        }
+        // A fraction: numerator and denominator separately.
+        if !b.is_integer() {
+            let numer = graph.num(Number::rat(num_rational::BigRational::from_integer(b.numer().clone())));
+            let denom = graph.num(Number::rat(num_rational::BigRational::from_integer(b.denom().clone())));
+            let minus = graph.num(Number::rat(-e.clone()));
+            let top = if b.numer() == &num_bigint::BigInt::from(1) { None } else { Some(graph.node(core::POW, &[numer, exponent])) };
+            let bottom = graph.node(core::POW, &[denom, minus]);
+            return Outcome::Equal(match top {
+                | Some(t) => graph.node(core::MUL, &[t, bottom]),
+                | None => bottom,
+            });
+        }
+        let (Some(n), Some(q)) = (b.to_integer().to_u64(), e.denom().to_u32()) else {
+            return Outcome::Pass;
+        };
+        let p = e.numer().clone();
+        // e = k + r/q with 0 <= r < q
+        let k = num_integer::Integer::div_floor(&p, &num_bigint::BigInt::from(q));
+        let r = &p - &k * num_bigint::BigInt::from(q);
+        let Some((root, rest)) = extract_power(n, q) else {
+            return Outcome::Pass;
+        };
+        if k.is_zero() && root == 1 {
+            return Outcome::Pass;
+        }
+        // n^(p/q) = n^k * root^r * rest^(r/q)
+        let Some(r_u32) = r.to_u32() else {
+            return Outcome::Pass;
+        };
+        let coefficient = num_rational::BigRational::from_integer(num_bigint::BigInt::from(n)).pow(k.to_i32().unwrap_or(0))
+            * num_rational::BigRational::from_integer(num_bigint::BigInt::from(root).pow(r_u32));
+        let c = graph.num(Number::rat(coefficient));
+        if rest == 1 || r.is_zero() {
+            return Outcome::Equal(c);
+        }
+        let rest_node = graph.int(i64::try_from(rest).unwrap_or(i64::MAX));
+        let fraction = graph.num(Number::rat(num_rational::BigRational::new(r, num_bigint::BigInt::from(q))));
+        let radical = graph.node(core::POW, &[rest_node, fraction]);
+        Outcome::Equal(graph.node(core::MUL, &[c, radical]))
+    }
+}
+
+#[cfg(test)]
+mod radical_tests {
+    use crate::rules::testing::simplify;
+
+    #[test]
+    fn radicals_in_normal_form() {
+        let run = |s: &str| simplify(&[super::arith()], s);
+        assert_eq!(run("-1/2*2^(3/2)"), "-2^(1/2)");
+        assert_eq!(run("3*12^(1/2)"), "6*3^(1/2)");
+        assert_eq!(run("8^(2/3)"), "4");
+        assert_eq!(run("2*2^(-1/2)"), "2^(1/2)");
+        assert_eq!(run("x*18^(1/2)/3"), "2^(1/2)*x");
     }
 }

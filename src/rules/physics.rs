@@ -989,11 +989,16 @@ mod tests {
         text
     }
 
+    /// `a` and `b` reduce to the same term, or at least to terms whose
+    /// difference simplifies to zero.
     fn same(
         a: &str,
         b: &str,
     ) {
-        assert_eq!(run(a), run(b), "{a} != {b}");
+        let (left, right) = (run(a), run(b));
+        if left != right {
+            assert_eq!(run(&format!("({left}) - ({right})")), "0", "{a} = {left} != {b} = {right}");
+        }
     }
 
     fn value(src: &str) -> f64 {
