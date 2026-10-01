@@ -106,7 +106,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "complex/euler: exp(I * ?x) <=> cos(?x) + I * sin(?x)",
         ],
     )?;
-    let ops = Ops::of(i.graph()).ok_or(RuleError::Invalid { rule: "complex".into(), reason: "needs elementary" })?;
+    let ops = Ops::of(i.graph()).ok_or_else(|| RuleError::Invalid { rule: "complex".into(), reason: "needs elementary" })?;
     branches::install(i)?;
     analysis::install(i)?;
     i.kernel("complex/unit-power", Tier::Normalize, UnitPower { unit });

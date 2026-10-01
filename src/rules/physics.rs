@@ -145,7 +145,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(0)).eval(eval))?;
         i.graph().ops_mut().set_attr(op, OnReals(Facts::POSITIVE));
     }
-    let algebra = op_algebra(i.graph()).ok_or(RuleError::Invalid {
+    let algebra = op_algebra(i.graph()).ok_or_else(|| RuleError::Invalid {
         rule: "physics".to_owned(),
         reason: "needs the functional analysis rule set",
     })?;

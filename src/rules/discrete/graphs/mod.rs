@@ -873,7 +873,10 @@ fn edmonds_karp(
         let mut v = t;
         while v != s {
             let c = cap[parent[v]][v].clone();
-            bottleneck = Some(bottleneck.map_or(c.clone(), |b| b.min(c)));
+            bottleneck = Some(match bottleneck {
+                | Some(b) => b.min(c),
+                | None => c,
+            });
             v = parent[v];
         }
         let bottleneck = bottleneck.unwrap_or_else(BigRational::zero);
@@ -1034,7 +1037,10 @@ fn graph_min_cost_flow(
         while v != s {
             let id = via[v];
             let c = arcs[id].cap.clone();
-            bottleneck = Some(bottleneck.map_or(c.clone(), |b| b.min(c)));
+            bottleneck = Some(match bottleneck {
+                | Some(b) => b.min(c),
+                | None => c,
+            });
             v = arcs[id ^ 1].to;
         }
         let bottleneck = bottleneck?;
@@ -1228,7 +1234,7 @@ fn graph_shortest_path_unweighted(
                 V::List(vec![
                     V::uint(v),
                     V::uint(dist[v].unwrap_or(0)),
-                    V::Int(prev[v].map_or(BigInt::from(-1), BigInt::from)),
+                    V::Int(prev[v].map_or_else(|| BigInt::from(-1), BigInt::from)),
                 ])
             })
             .collect(),

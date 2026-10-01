@@ -200,7 +200,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let infinity = i.op(OpDescriptor::new("oo", Arity::Fixed(0)).eval(|_| f64::INFINITY))?;
     i.graph().ops_mut().set_attr(infinity, OnReals(Facts::POSITIVE));
     let lookup = |i: &mut Installer<'_>, name: &'static str| {
-        i.graph().ops().lookup(name).ok_or(RuleError::Invalid {
+        i.graph().ops().lookup(name).ok_or_else(|| RuleError::Invalid {
             rule: format!("calculus needs `{name}`"),
             reason: "operator of the elementary rule set is missing",
         })

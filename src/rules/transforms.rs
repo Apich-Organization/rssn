@@ -137,7 +137,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         registered.push((i.op(request(name, kind != Request::Convolve))?, kind));
     }
     let get = |i: &mut Installer<'_>, name: &str| {
-        i.graph().ops().lookup(name).ok_or(RuleError::Invalid { rule: format!("transforms/{name}"), reason: "missing operator" })
+        i.graph().ops().lookup(name).ok_or_else(|| RuleError::Invalid { rule: format!("transforms/{name}"), reason: "missing operator" })
     };
     let ops = Ops {
         laplace: registered[0].0,
@@ -1257,7 +1257,7 @@ impl Tx<'_, '_> {
                     // with complex roots rho e^(± I theta).
                     let (p, q) = (p / lead, q / lead);
                     let zero = BigRational::zero();
-                    let big_b = piece.numerator.get(1).cloned().unwrap_or(zero.clone()) / lead;
+                    let big_b = piece.numerator.get(1).cloned().unwrap_or_else(|| zero.clone()) / lead;
                     let big_c = piece.numerator.first().cloned().unwrap_or(zero) / lead;
                     if (&p * &p - BigRational::from_integer(BigInt::from(4)) * &q).is_positive() || !q.is_positive() {
                         return None;

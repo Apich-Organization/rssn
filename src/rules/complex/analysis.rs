@@ -103,7 +103,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("mobius_compose", 2, Request::MobiusCompose),
         ("mobius_inverse", 1, Request::MobiusInverse),
     ];
-    let ops = Ops::of(i.graph()).ok_or(RuleError::Invalid { rule: "complex/analysis".into(), reason: "needs elementary" })?;
+    let ops = Ops::of(i.graph()).ok_or_else(|| RuleError::Invalid { rule: "complex/analysis".into(), reason: "needs elementary" })?;
     for (name, arity, request) in table {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
         i.kernel(&format!("complex/{name}"), Tier::Reduce, Analysis { op, request, ops });

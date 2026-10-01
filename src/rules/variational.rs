@@ -61,11 +61,11 @@ enum Request {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let heavy = |name: &str, arity: u8| OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100);
-    let diff = i.graph().ops().lookup("diff").ok_or(RuleError::Invalid {
+    let diff = i.graph().ops().lookup("diff").ok_or_else(|| RuleError::Invalid {
         rule: "variational".to_owned(),
         reason: "needs the calculus rule set",
     })?;
-    let defint = i.graph().ops().lookup("defint").ok_or(RuleError::Invalid {
+    let defint = i.graph().ops().lookup("defint").ok_or_else(|| RuleError::Invalid {
         rule: "variational".to_owned(),
         reason: "needs the calculus rule set",
     })?;

@@ -299,7 +299,7 @@ fn gf256_log(
     a: &[NodeId],
 ) -> Option<V> {
     let x = byte(cx, *a.first()?)?;
-    (1..255_u64).find(|&k| ff::gf256_pow(2, k) == x).or((x == 1).then_some(0)).map(|k| V::Int(BigInt::from(k)))
+    (1..255_u64).find(|&k| ff::gf256_pow(2, k) == x).or_else(|| (x == 1).then_some(0)).map(|k| V::Int(BigInt::from(k)))
 }
 
 type Bytes = Vec<u8>;

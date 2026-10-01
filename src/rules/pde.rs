@@ -397,7 +397,7 @@ impl Problem {
         self.vars
             .iter()
             .position(|&v| graph.symbol_of(v).is_some_and(|s| graph.interner().symbol_name(s) == "t"))
-            .unwrap_or(self.vars.len().saturating_sub(1))
+            .unwrap_or_else(|| self.vars.len().saturating_sub(1))
     }
 
     fn homogeneous(

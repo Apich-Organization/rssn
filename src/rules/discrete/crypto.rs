@@ -509,7 +509,7 @@ mod tests {
     }
 
     fn pt(p: Option<(i64, i64)>) -> String {
-        p.map_or("list()".to_string(), |(x, y)| format!("list({x}, {y})"))
+        p.map_or_else(|| "list()".to_string(), |(x, y)| format!("list({x}, {y})"))
     }
 
     #[test]
