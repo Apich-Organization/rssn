@@ -1098,6 +1098,7 @@ fn dispatch(
         reduce::missing_dependent,
         reduce::autonomous,
         reduce::scale_invariant,
+        reduce::equidimensional_in_x,
     ] {
         if let Some(found) = attempt(cx, problem, method) {
             return Some(found);
@@ -1473,6 +1474,9 @@ mod tests {
         check("diff(diff(y(x), x), x) = 2*y(x)*diff(y(x), x)", 2);
         // Scale invariant in y: u = y'/y.
         check("y(x)*diff(diff(y(x), x), x) - diff(y(x), x)^2 = 0", 2);
+        // Equidimensional in x: x = e^t makes it autonomous.
+        let (text, reduced) = reduce_with(&[ode()], "dsolve(x^2*diff(diff(y(x), x), x) = x*y(x)*diff(y(x), x), y(x))", &[]);
+        assert!(reduced && text.contains("C1"), "{text}");
         // Variable coefficients with a polynomial / exponential solution.
         check("x*diff(diff(y(x), x), x) - (x + 1)*diff(y(x), x) + y(x) = 0", 2);
         check("(1 - x^2)*diff(diff(y(x), x), x) - 2*x*diff(y(x), x) + 2*y(x) = 0", 2);

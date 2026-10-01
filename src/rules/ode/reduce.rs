@@ -208,6 +208,84 @@ pub(super) fn scale_invariant(
     Some(explicit(cx, problem, solution))
 }
 
+/// Equations invariant under `x → λ x` (equidimensional in `x`, e.g.
+/// non-linear Euler equations): with `x = e^t`, `x y' = ẏ` and
+/// `x² y'' = ÿ - ẏ`, the equation becomes autonomous in `t`.
+pub(super) fn equidimensional_in_x(
+    cx: &mut Cx<'_>,
+    problem: &mut Problem,
+    depth: u32,
+) -> Option<NodeId> {
+    let order = problem.order();
+    if order != 2 || !problem.depends_on_x(cx.graph, problem.expr) || !scale_invariant_in_x(cx, problem) {
+        return None;
+    }
+    let x = problem.x;
+    let t_symbol = cx.graph.interner_mut().fresh_symbol("t");
+    let t = cx.graph.symbol_node(t_symbol);
+    let w = fresh_function(cx.graph, "w", t);
+    let d = chain(cx.graph, w, t, 2)?;
+    // At x = 1 (the equation is homogeneous in x): y' = ẇ, y'' = ẅ - ẇ.
+    let one = cx.graph.int(1);
+    let second = sub(cx.graph, d[2], d[1]);
+    let mut reduced = cx.graph.substitute(problem.expr, problem.stand[2], second);
+    reduced = cx.graph.substitute(reduced, problem.stand[1], d[1]);
+    reduced = cx.graph.substitute(reduced, problem.stand[0], w);
+    reduced = cx.graph.substitute(reduced, x, one);
+    let zero = cx.graph.int(0);
+    let equation = cx.graph.node(core::EQ, &[reduced, zero]);
+    let (_, answer) = solve_equation(cx, equation, w, depth + 1)?;
+    problem.constants = problem.constants.max(constants_in(cx.graph, answer));
+    let ln = cx.graph.ops().lookup("ln")?;
+    let log = cx.graph.node(ln, &[x]);
+    let back = cx.graph.substitute(answer, t, log);
+    // w(ln x) = …  →  y(x) = …, or the implicit relation in y(x).
+    let w_at = cx.graph.substitute(w, t, log);
+    let back = cx.graph.replace_subterm(back, w_at, problem.y_of_x);
+    let back = cx.simplify(back);
+    Some(back)
+}
+
+fn scale_invariant_in_x(
+    cx: &Cx<'_>,
+    problem: &Problem,
+) -> bool {
+    let Some(x_symbol) = cx.graph.symbol_of(problem.x) else {
+        return false;
+    };
+    let stands: Vec<_> = problem.stand.iter().filter_map(|&s| cx.graph.symbol_of(s)).collect();
+    let value = |lambda: f64, point: f64| -> Option<f64> {
+        let mut env = Env::numeric(0.0);
+        env.bind(x_symbol, lambda * (1.1 + point));
+        for (k, &s) in stands.iter().enumerate() {
+            let k32 = i32::try_from(k).unwrap_or(0);
+            env.bind(s, (0.6 + 0.3 * f64::from(k32) + point) / lambda.powi(k32));
+        }
+        for &s in cx.graph.free_symbols(cx.graph.find(problem.expr)) {
+            if s != x_symbol && !stands.contains(&s) {
+                env.bind(s, 0.8 + point);
+            }
+        }
+        cx.graph.eval(problem.expr, &env).filter(|v| v.is_finite() && v.abs() > 1e-12)
+    };
+    let mut degree = None;
+    for point in [0.0, 0.37, 1.2] {
+        let (Some(a), Some(b)) = (value(1.0, point), value(2.0, point)) else {
+            return false;
+        };
+        let ratio = b / a;
+        if ratio <= 0.0 {
+            return false;
+        }
+        let k = ratio.log2();
+        if (k - k.round()).abs() > 1e-9 || degree.is_some_and(|d: f64| (d - k).abs() > 1e-9) {
+            return false;
+        }
+        degree = Some(k);
+    }
+    degree.is_some()
+}
+
 /// Whether the equation is homogeneous in `y` and its derivatives:
 /// scaling them all by λ multiplies it by a power of λ (checked
 /// numerically).
