@@ -59,6 +59,11 @@ impl OpFlags {
     /// is shared. Local normalisation of arithmetic needs to see the
     /// structure of `x * x^(-1)` whether or not `x^(-1)` is used elsewhere.
     pub const TRANSPARENT: Self = Self(1 << 4);
+    /// A heavy operator that is irreducible — and so a closed form — when
+    /// its first argument is an undetermined function `f(x, ...)` or
+    /// another such application: `diff(y(x), x)` cannot be computed any
+    /// further, it *is* the answer.
+    pub const OPAQUE_ON_APPLY: Self = Self(1 << 6);
     /// No flags.
     pub const NONE: Self = Self(0);
 

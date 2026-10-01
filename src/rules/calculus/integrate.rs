@@ -74,9 +74,28 @@ struct Integrator<'c, 'a> {
     f: Functions,
     x: NodeId,
     symbol: SymbolId,
+    /// Remaining work: every attempt and every nested simplification
+    /// spends one unit. The heuristic search is exponential in the worst
+    /// case; a failed search must give up in bounded time and leave the
+    /// integral to the numeric kernels.
+    fuel: usize,
 }
 
+/// Work units an antiderivative search may spend.
+const FUEL: usize = 600;
+
 impl Integrator<'_, '_> {
+    /// Spends one unit of work; `false` once the search is out of fuel.
+    fn spend(&mut self) -> bool {
+        match self.fuel.checked_sub(1) {
+            | Some(rest) => {
+                self.fuel = rest;
+                true
+            },
+            | None => false,
+        }
+    }
+
     fn depends(
         &self,
         node: NodeId,
@@ -208,7 +227,7 @@ impl Integrator<'_, '_> {
         f: NodeId,
         depth: usize,
     ) -> Option<NodeId> {
-        if depth > MAX_DEPTH {
+        if depth > MAX_DEPTH || !self.spend() {
             return None;
         }
         if !self.depends(f) {
@@ -732,8 +751,10 @@ impl Integrator<'_, '_> {
         integrand: NodeId,
         depth: usize,
     ) -> Option<NodeId> {
-        let mut inner = Integrator { cx: &mut *self.cx, f: self.f, x: variable, symbol };
-        inner.integrate(integrand, depth)
+        let mut inner = Integrator { cx: &mut *self.cx, f: self.f, x: variable, symbol, fuel: self.fuel };
+        let result = inner.integrate(integrand, depth);
+        self.fuel = inner.fuel;
+        result
     }
 
     /// Candidate inner functions for a substitution: arguments of
@@ -778,6 +799,9 @@ impl Integrator<'_, '_> {
         depth: usize,
     ) -> Option<NodeId> {
         for u in self.candidates(f) {
+            if !self.spend() {
+                return None;
+            }
             let du = self.derivative(u);
             let du = self.cx.simplify(du);
             if self.number(du).is_some_and(|n| n.is_zero()) || self.cx.graph.op(du) == self.f.diff {
@@ -892,7 +916,7 @@ pub(super) fn antiderivative(
 ) -> Option<NodeId> {
     let symbol = cx.graph.symbol_of(variable)?;
     let term = cx.simplify(integrand);
-    let mut integrator = Integrator { cx, f: functions, x: variable, symbol };
+    let mut integrator = Integrator { cx, f: functions, x: variable, symbol, fuel: FUEL };
     let candidate = integrator.integrate(term, 0)?;
     integrator.verified(term, candidate).then_some(candidate)
 }

@@ -25,18 +25,19 @@
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 
 use super::extract::ClosedForm;
+use super::extract::CostModel;
 use super::extract::Extractor;
 use super::extract::SizeCost;
 use super::extract::reachable;
 use super::id::NodeId;
 use super::id::OpId;
 use super::op::OpFlags;
+use super::op::core;
 use super::rule::Action;
 use super::rule::Cx;
 use super::rule::Env;
@@ -183,8 +184,38 @@ pub struct Report {
 struct RuleState {
     banned_until: usize,
     times_banned: u32,
-    visited: HashSet<NodeId>,
+    /// Nodes a non-revisiting kernel has seen, with how many of their
+    /// arguments looked fully reduced at the time. A node is shown to the
+    /// kernel again when that number grows: a request whose argument was
+    /// itself an unreduced request gets a second chance once the inner one
+    /// is resolved.
+    visited: HashMap<NodeId, usize>,
     applied: usize,
+}
+
+/// Whether the class of `node` has a member free of heavy operators,
+/// looking at most `depth` levels down (deeper levels are assumed fine).
+fn looks_reduced(
+    graph: &Graph,
+    node: NodeId,
+    depth: u8,
+) -> bool {
+    if depth == 0 {
+        return true;
+    }
+    let closed = ClosedForm;
+    graph.enodes(graph.find(node)).any(|n| {
+        closed.cost(graph, n).is_some()
+            && graph.children(n).iter().all(|&c| looks_reduced(graph, c, depth.saturating_sub(1)))
+    })
+}
+
+/// How many arguments of `node` look fully reduced.
+fn reduced_arguments(
+    graph: &Graph,
+    node: NodeId,
+) -> usize {
+    graph.children(node).iter().filter(|&&c| looks_reduced(graph, c, 4)).count()
 }
 
 /// A program together with the scheduling logic that runs it.
@@ -427,6 +458,11 @@ impl Engine {
             if tier == Tier::Reduce && graph.enodes(class).any(|n| !heavy(graph, n)) {
                 continue;
             }
+            // Rules have nothing to gain on a class already equal to a
+            // literal (see `reachable`).
+            if graph.enodes(class).any(|n| graph.op(n) == core::LIT) {
+                continue;
+            }
             for enode in graph.enodes(class) {
                 candidates.entry(graph.op(enode)).or_default().push(enode);
             }
@@ -486,8 +522,14 @@ impl Engine {
                     };
                     {
                         for node in nodes {
-                            if !revisit && !state.visited.insert(node) {
-                                continue;
+                            if !revisit {
+                                let ready = reduced_arguments(graph, node);
+                                match state.visited.get(&node) {
+                                    | Some(&seen) if seen >= ready => continue,
+                                    | _ => {
+                                        state.visited.insert(node, ready);
+                                    },
+                                }
                             }
                             let outcome = kernel.reduce(&mut Cx { graph, env, engine: self }, node);
                             let fired = match outcome {

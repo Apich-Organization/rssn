@@ -84,8 +84,26 @@ impl CostModel for ClosedForm {
         node: NodeId,
     ) -> Option<u64> {
         let desc = graph.ops().get(graph.op(node));
-        (!desc.flags.has(OpFlags::HEAVY)).then_some(u64::from(desc.cost))
+        (!desc.flags.has(OpFlags::HEAVY) || opaque_on_apply(graph, node, 8)).then_some(u64::from(desc.cost))
     }
+}
+
+/// Whether `node` is an [`OpFlags::OPAQUE_ON_APPLY`] request applied to an
+/// undetermined function (directly or through a chain of such requests).
+fn opaque_on_apply(
+    graph: &Graph,
+    node: NodeId,
+    depth: u8,
+) -> bool {
+    if depth == 0 || !graph.ops().get(graph.op(node)).flags.has(OpFlags::OPAQUE_ON_APPLY) {
+        return false;
+    }
+    let Some(&first) = graph.children(node).first() else {
+        return false;
+    };
+    graph.enodes(graph.find(first)).any(|n| {
+        graph.op(n) == super::op::core::APPLY || opaque_on_apply(graph, n, depth.saturating_sub(1))
+    })
 }
 
 /// Classes reachable from `roots` through e-node children, in discovery
@@ -103,6 +121,13 @@ pub fn reachable(
             continue;
         }
         order.push(class);
+        // A class holding a literal is fully known: its other members
+        // (`sin(pi)`, `x - x`, a reduced request ...) lead nowhere useful,
+        // and following them would turn every constant into a hub that
+        // makes the whole graph reachable from any term mentioning it.
+        if graph.enodes(class).any(|n| graph.op(n) == super::op::core::LIT) {
+            continue;
+        }
         for enode in graph.enodes(class) {
             for &child in graph.children(enode) {
                 let child_class = graph.find(child);

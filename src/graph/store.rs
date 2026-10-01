@@ -786,6 +786,9 @@ impl Graph {
                     buf.push(c);
                 }
             }
+            if op == core::ADD || op == core::MUL {
+                self.merge_literals(op, &mut buf);
+            }
             if let [only] = buf.as_slice() {
                 return Some(*only);
             }
@@ -796,6 +799,37 @@ impl Graph {
             buf.sort_unstable();
         }
         Some(self.intern(op, PayloadId::NONE, &buf))
+    }
+
+    /// Combines the literal operands of a sum or product into one and
+    /// drops it when it is the identity element: `2 * x * 3` is built as
+    /// `6 * x`, `(-1) * (-1) * x` as `x`. An identity of the operator, and
+    /// without it repeated negation piles up ever longer products of `-1`
+    /// in one class.
+    fn merge_literals(
+        &mut self,
+        op: OpId,
+        buf: &mut Vec<NodeId>,
+    ) {
+        let literals = buf.iter().filter(|&&c| self.as_number(c).is_some()).count();
+        let identity = Number::from(i64::from(op == core::MUL));
+        let has_identity = buf.iter().any(|&c| self.as_number(c) == Some(&identity));
+        if literals < 2 && !has_identity {
+            return;
+        }
+        let mut value = identity.clone();
+        let mut rest = Vec::with_capacity(buf.len());
+        for &c in buf.iter() {
+            match self.as_number(c) {
+                | Some(n) => value = if op == core::ADD { value.add(n) } else { value.mul(n) },
+                | None => rest.push(c),
+            }
+        }
+        if value != identity || rest.is_empty() {
+            let literal = self.num(value);
+            rest.insert(0, literal);
+        }
+        *buf = rest;
     }
 
     fn intern(

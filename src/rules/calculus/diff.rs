@@ -89,7 +89,10 @@ impl Differentiate {
             if done.contains_key(&node) {
                 continue;
             }
-            if !graph.depends_on(graph.find(node), x) {
+            // Lists and equations are differentiated elementwise, keeping
+            // their shape even where an element is constant.
+            let elementwise = matches!(graph.op(node), core::LIST | core::EQ);
+            if !elementwise && !graph.depends_on(graph.find(node), x) {
                 done.insert(node, zero);
                 continue;
             }
@@ -98,7 +101,8 @@ impl Differentiate {
                 continue;
             }
             let op = graph.op(node);
-            let structural = op == core::ADD
+            let structural = elementwise
+                || op == core::ADD
                 || op == core::MUL
                 || graph.ops().attr::<super::Partials>(op).is_some();
             if !structural {
@@ -121,6 +125,11 @@ impl Differentiate {
                 .iter()
                 .map(|c| done.get(c).copied().unwrap_or(zero))
                 .collect();
+            if elementwise {
+                let mapped = graph.node(op, &derivs);
+                done.insert(node, mapped);
+                continue;
+            }
             let mut terms: Vec<NodeId> = Vec::new();
             if op == core::ADD {
                 terms.extend(derivs.iter().copied().filter(|&d| d != zero));

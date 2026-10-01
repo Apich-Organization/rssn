@@ -983,7 +983,7 @@ mod tests {
     }
 
     #[test]
-    fn undetermined_functions_stay_unreduced_but_make_progress() {
+    fn derivatives_of_undetermined_functions_are_closed_forms() {
         let s = Session::new();
         let term = s
             .parse("diff(x * f(x), x)")
@@ -991,7 +991,8 @@ mod tests {
         let answer = s
             .compute(term, &Config::new())
             .unwrap_or_else(|e| panic!("{e}"));
-        assert!(!answer.reduced);
+        // `diff(f(x), x)` cannot be computed any further: it is the answer.
+        assert!(answer.reduced);
         assert_eq!(
             answer.term.to_string(),
             "x*diff(f(x), x) + f(x)"

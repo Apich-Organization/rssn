@@ -132,7 +132,10 @@ mod tests {
         let mut g = Graph::new();
         assert_eq!(subst(&mut g, "x^2 + f(x, y)", "x", "a + 1"), "(a + 1)^2 + f(a + 1, y)");
         assert_eq!(subst(&mut g, "x + y", "z", "1"), "x + y");
-        assert_eq!(subst(&mut g, "x * x", "x", "3"), "3*3", "substitution does not simplify");
+        // Building a product merges its literal operands; nothing else is
+        // simplified.
+        assert_eq!(subst(&mut g, "x * x", "x", "3"), "9");
+        assert_eq!(subst(&mut g, "x^2 * x", "x", "3"), "3*3^2", "substitution does not simplify");
     }
 
     #[test]

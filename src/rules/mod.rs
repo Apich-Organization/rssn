@@ -81,6 +81,7 @@ pub mod solve;
 pub mod special;
 pub mod stats;
 pub mod transforms;
+pub mod variational;
 #[cfg(test)]
 pub(crate) mod testing;
 
@@ -100,6 +101,7 @@ pub use solve::solve;
 pub use special::special;
 pub use stats::stats;
 pub use transforms::transforms;
+pub use variational::variational;
 
 use crate::graph::RuleSet;
 

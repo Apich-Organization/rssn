@@ -613,6 +613,78 @@ impl<'g> Installer<'g> {
         Ok(())
     }
 
+    /// Adds *definitions*: operators whose meaning is a formula in their
+    /// arguments, one per entry:
+    ///
+    /// ```text
+    /// kinetic_energy(m, v) := m * v^2 / 2
+    /// lorentz_factor(v) := (1 - v^2 / c_0^2)^(-1/2)
+    /// ```
+    ///
+    /// Each name is registered as a heavy operator of the given arity and
+    /// reduced by instantiating its body, so a definition may use any
+    /// operator installed before it — including requests such as `diff`,
+    /// which are then reduced in turn. Identifiers in the body that are
+    /// not parameters are ordinary symbols (or nullary operators).
+    ///
+    /// # Errors
+    /// Fails when an entry is malformed, its body does not parse, or the
+    /// name clashes with an operator of a different signature.
+    pub fn define(
+        &mut self,
+        texts: &[&str],
+    ) -> Result<(), RuleError> {
+        for text in texts {
+            self.definition(text)?;
+        }
+        Ok(())
+    }
+
+    fn definition(
+        &mut self,
+        text: &str,
+    ) -> Result<(), RuleError> {
+        let invalid = |reason: &'static str| RuleError::Invalid {
+            rule: text.to_owned(),
+            reason,
+        };
+        let (head, body) = text.split_once(":=").ok_or_else(|| invalid("missing `:=`"))?;
+        let head = head.trim();
+        let (name, params) = match head.split_once('(') {
+            | Some((name, rest)) => {
+                let inner = rest.trim_end().strip_suffix(')').ok_or_else(|| invalid("missing `)` in the head"))?;
+                let params: Vec<&str> = inner.split(',').map(str::trim).filter(|p| !p.is_empty()).collect();
+                (name.trim(), params)
+            },
+            | None => (head, Vec::new()),
+        };
+        let is_ident = |s: &str| {
+            s.chars().next().is_some_and(|c| c.is_alphabetic() || c == '_')
+                && s.chars().all(|c| c.is_alphanumeric() || c == '_')
+        };
+        if !is_ident(name) || !params.iter().all(|p| is_ident(p)) {
+            return Err(invalid("the head must be `name(param, ...)`"));
+        }
+        let arity = u8::try_from(params.len()).map_err(|_| invalid("too many parameters"))?;
+        let op = self.op(OpDescriptor::new(name, super::op::Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
+        let mut vars = VarNames::default();
+        for p in &params {
+            vars.index(p);
+        }
+        let marked = mark_parameters(body, &params);
+        let mut parser = Parser::new(&marked, self.graph, &mut vars, false);
+        let parse_err = |error: ParseError| RuleError::Parse { rule: text.to_owned(), error };
+        let pat = parser.expr().map_err(parse_err)?;
+        if !parser.at_end() {
+            return Err(parse_err(ParseError { message: "unexpected trailing input".to_owned(), offset: parser.offset() }));
+        }
+        if vars.len() != params.len() {
+            return Err(invalid("the body uses a pattern variable that is not a parameter"));
+        }
+        self.kernel(&format!("define/{name}"), Tier::Reduce, Definition { op, body: pat });
+        Ok(())
+    }
+
     /// Adds a procedural kernel.
     pub fn kernel(
         &mut self,
@@ -633,6 +705,61 @@ impl<'g> Installer<'g> {
         pass: impl WindowPass + 'static,
     ) {
         self.program.passes.push(Arc::new(pass));
+    }
+}
+
+/// Prefixes every parameter name occurring as an identifier in `body`
+/// with `?`, turning it into a pattern variable. An identifier directly
+/// followed by `(` is a function name and left alone.
+fn mark_parameters(
+    body: &str,
+    params: &[&str],
+) -> String {
+    let mut out = String::with_capacity(body.len().saturating_add(8));
+    let chars: Vec<char> = body.chars().collect();
+    let mut k = 0;
+    while k < chars.len() {
+        let c = chars[k];
+        let starts_ident = (c.is_alphabetic() || c == '_')
+            && (k == 0 || !(chars[k - 1].is_alphanumeric() || chars[k - 1] == '_' || chars[k - 1] == '?'))
+            && (k == 0 || !chars[k - 1].is_ascii_digit());
+        if !starts_ident {
+            out.push(c);
+            k += 1;
+            continue;
+        }
+        let start = k;
+        while k < chars.len() && (chars[k].is_alphanumeric() || chars[k] == '_') {
+            k += 1;
+        }
+        let ident: String = chars[start..k].iter().collect();
+        let next = chars[k..].iter().find(|c| !c.is_whitespace());
+        if params.contains(&ident.as_str()) && next != Some(&'(') {
+            out.push('?');
+        }
+        out.push_str(&ident);
+    }
+    out
+}
+
+/// The kernel behind [`Installer::define`].
+struct Definition {
+    op: OpId,
+    body: Pat,
+}
+
+impl Kernel for Definition {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let args = cx.graph.children(node).to_vec();
+        self.body.instantiate(cx.graph, &args).map_or(Outcome::Pass, Outcome::Equal)
     }
 }
 
@@ -842,6 +969,25 @@ mod tests {
             !rw.admits(&g, &[two, two]),
             "2 is not a symbol, so free_of cannot be established"
         );
+    }
+
+    #[test]
+    fn definitions_expand() {
+        let set = RuleSet::new("s", |i| {
+            i.op(OpDescriptor::new("sin", Arity::Fixed(1)))?;
+            i.define(&["sq(x) := x * x", "wave(a, x) := list(a, sin(x), x_0)", "two := 2"])
+        })
+        .needs(RuleSet::new("arith", |_| Ok(())));
+        let mut g = Graph::new();
+        let engine = Engine::install(&mut g, &[set]).unwrap_or_else(|e| panic!("{e}"));
+        let root = g.parse("wave(sq(y), two)").unwrap_or(NodeId::NONE);
+        engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
+        let expected = g.parse("list(y * y, sin(2), x_0)").unwrap_or(NodeId::NONE);
+        assert!(g.same(root, expected));
+        for bad in ["nohead x", "f(x := x", "f(1) := 1", "f(x) := ?y"] {
+            let set = RuleSet::new("s", move |i| i.define(&[bad]));
+            assert!(install(&set).is_err(), "`{bad}` should be rejected");
+        }
     }
 
     #[test]

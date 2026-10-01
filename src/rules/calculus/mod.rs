@@ -85,7 +85,7 @@ pub(crate) fn partials(
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let diff_op = i.op(OpDescriptor::new("diff", Arity::Fixed(2))
-        .flags(OpFlags::HEAVY)
+        .flags(OpFlags::HEAVY.with(OpFlags::OPAQUE_ON_APPLY))
         .cost(100))?;
 
     partials(i, "pow", &["?b * ?a^(?b - 1)", "?a^?b * ln(?a)"])?;
