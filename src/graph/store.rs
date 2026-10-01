@@ -1027,7 +1027,9 @@ impl Graph {
             free: Vec::new(),
             approx: None,
             pin: NodeId::NONE,
-            leaf: if node.child_len == 0 {
+            // A nullary *request* (a defined constant such as a matrix)
+            // is not a final answer and must not hide what it reduces to.
+            leaf: if node.child_len == 0 && !self.ops.get(node.op).flags.has(OpFlags::HEAVY) {
                 id
             } else {
                 NodeId::NONE

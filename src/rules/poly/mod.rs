@@ -97,12 +97,160 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // of the symbols `lex`, `grlex`, `grevlex`.
     let op = i.op(OpDescriptor::new("groebner", Arity::Variadic).flags(OpFlags::HEAVY).cost(100))?;
     i.kernel("poly/groebner", Tier::Reduce, PolyKernel { op, request: Request::Groebner });
+    i.kernel("poly/collapse", Tier::Normalize, Collapse);
     Ok(())
 }
 
 struct PolyKernel {
     op: OpId,
     request: Request,
+}
+
+/// Expands a sum whose terms hide a cancellation behind a common factor —
+/// `I*h*(x*f' + f) - I*h*x*f'` — and keeps the expansion when it is
+/// smaller. Distribution is not a rewrite rule because it usually makes
+/// terms larger; here it is tried once per sum and only kept when it pays.
+struct Collapse;
+
+/// Number of nodes of a term, counted as a tree, up to `cap`.
+fn tree_size(
+    graph: &Graph,
+    node: NodeId,
+    cap: usize,
+) -> usize {
+    let mut count = 0_usize;
+    let mut stack = vec![node];
+    while let Some(n) = stack.pop() {
+        count += 1;
+        if count > cap {
+            break;
+        }
+        stack.extend_from_slice(graph.children(n));
+    }
+    count
+}
+
+impl Kernel for Collapse {
+    fn ops(&self) -> Vec<OpId> {
+        vec![core::ADD, core::MUL]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        const CAP: usize = 240;
+        if cx.graph.op(node) == core::MUL {
+            return Self::quotient(cx, node);
+        }
+        let graph = &mut *cx.graph;
+        // This sum with each term in its closed form: the class as a whole
+        // may still be best spelled by a request that produced it.
+        let mut terms = Vec::new();
+        for &child in graph.children(node).to_vec().iter() {
+            let closed = Extractor::new(graph, &[child], &crate::graph::ClosedForm).build(graph, child);
+            let Some(t) = closed.or_else(|| best(graph, child)) else {
+                return Outcome::Pass;
+            };
+            terms.push(t);
+        }
+        let term = graph.node(core::ADD, &terms);
+        if graph.op(term) != core::ADD {
+            return Outcome::Pass;
+        }
+        // Only sums with a product of a sum somewhere in them can gain.
+        let hides_a_sum = graph.children(term).iter().any(|&t| {
+            graph.op(t) == core::MUL && graph.children(t).iter().any(|&f| graph.op(f) == core::ADD)
+        });
+        let before = tree_size(graph, term, CAP);
+        if !hides_a_sum || before > CAP {
+            return Outcome::Pass;
+        }
+        match Self::canonical(graph, term) {
+            | Some(expanded) if tree_size(graph, expanded, CAP) < before => Outcome::Equal(expanded),
+            | _ => Outcome::Pass,
+        }
+    }
+}
+
+impl Collapse {
+    /// The rational normal form of `term`: one numerator over one
+    /// denominator, common monomials and exact polynomial factors
+    /// cancelled.
+    fn canonical(
+        graph: &mut Graph,
+        term: NodeId,
+    ) -> Option<NodeId> {
+        let limits = Limits { terms: 64, exponent: 8 };
+        let mut gens = Gens::default();
+        let r = ratio(graph, &mut gens, term, limits)?;
+        if r.denom.is_zero() {
+            return None;
+        }
+        if r.numer.is_zero() {
+            return Some(graph.int(0));
+        }
+        let (mut numer, mut denom) = (r.numer, r.denom);
+        // Common monomial factor.
+        let (cn, cd) = (numer.monomial_content(), denom.monomial_content());
+        let common: crate::rules::poly::repr::Mono = cn
+            .iter()
+            .filter_map(|&(g, e)| cd.iter().find(|&&(h, _)| h == g).map(|&(_, f)| (g, e.min(f))))
+            .collect();
+        if !common.is_empty() {
+            numer = numer.div_monomial(&common);
+            denom = denom.div_monomial(&common);
+        }
+        // One side dividing the other.
+        if denom.len() > 1 || numer.len() > 1 {
+            if let Some(q) = numer.div_exact(&denom, 64) {
+                numer = q;
+                denom = Poly::constant(Number::from(1));
+            } else if let Some(q) = denom.div_exact(&numer, 64) {
+                denom = q;
+                numer = Poly::constant(Number::from(1));
+            }
+        }
+        let top = to_term(graph, &gens, &numer);
+        if let Some(c) = denom.as_constant() {
+            let inverse = graph.num(c.recip()?);
+            return Some(if c.is_one() { top } else { graph.node(core::MUL, &[inverse, top]) });
+        }
+        let bottom = to_term(graph, &gens, &denom);
+        let minus_one = graph.int(-1);
+        let inverse = graph.node(core::POW, &[bottom, minus_one]);
+        Some(if graph.number_of(top).is_some_and(Number::is_one) { inverse } else { graph.node(core::MUL, &[top, inverse]) })
+    }
+
+    /// A product with a sum in a denominator: cancel what can be
+    /// cancelled, keep the result when it is smaller.
+    fn quotient(
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        const CAP: usize = 160;
+        let graph = &mut *cx.graph;
+        let Some(term) = best(graph, node) else {
+            return Outcome::Pass;
+        };
+        if graph.op(term) != core::MUL {
+            return Outcome::Pass;
+        }
+        let divides_by_sum = graph.children(term).iter().any(|&f| {
+            graph.op(f) == core::POW
+                && graph.children(f).first().is_some_and(|&b| graph.op(b) == core::ADD)
+                && graph.children(f).get(1).and_then(|&e| graph.number_of(e)).is_some_and(Number::is_negative)
+        });
+        let before = tree_size(graph, term, CAP);
+        if !divides_by_sum || before > CAP {
+            return Outcome::Pass;
+        }
+        match Self::canonical(graph, term) {
+            | Some(result) if tree_size(graph, result, CAP) < before => Outcome::Equal(result),
+            | _ => Outcome::Pass,
+        }
+    }
 }
 
 /// The best known concrete form of `node`.

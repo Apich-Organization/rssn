@@ -86,6 +86,16 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "complex/im-real: im(?x) => 0 if real(?x)",
             "complex/conj-real: conj(?x) => ?x if real(?x)",
             "complex/conj-conj: conj(conj(?x)) => ?x",
+            // Conjugation is a field automorphism and commutes with every
+            // function whose power series has real coefficients.
+            "complex/conj-add: conj(?a + ?b) => conj(?a) + conj(?b)",
+            "complex/conj-mul: conj(?a * ?b) => conj(?a) * conj(?b)",
+            "complex/conj-pow: conj(?a ^ ?n) => conj(?a) ^ ?n if integer(?n)",
+            "complex/conj-exp: conj(exp(?a)) => exp(conj(?a))",
+            "complex/conj-sin: conj(sin(?a)) => sin(conj(?a))",
+            "complex/conj-cos: conj(cos(?a)) => cos(conj(?a))",
+            "complex/conj-sinh: conj(sinh(?a)) => sinh(conj(?a))",
+            "complex/conj-cosh: conj(cosh(?a)) => cosh(conj(?a))",
             "complex/arg-positive: arg(?x) => 0 if positive(?x)",
             "complex/arg-negative: arg(?x) => pi if negative(?x)",
         ],

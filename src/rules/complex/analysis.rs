@@ -5,7 +5,7 @@
 //! | operator | value |
 //! |---|---|
 //! | `poles(f, z)` | `list(list(p, order), ...)` |
-//! | `zeros(f, z)` | `list(list(q, order), ...)` for a polynomial numerator |
+//! | `zeros_of(f, z)` | `list(list(q, order), ...)` for a polynomial numerator |
 //! | `residue(f, z, a)` | the residue of `f` at `a` |
 //! | `singularity(f, z, a)` | `regular`, `removable`, `list(pole, m)` or `essential` |
 //! | `contour_integral(f, z, C)` | `C = circle(c, r)` (counter-clockwise) or `path(g(t), t, t0, t1)` |
@@ -90,7 +90,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.rewrites(Tier::Normalize, &["complex/distance: distance(?a, ?b) => abs(?a - ?b)"])?;
     let table: [(&str, u8, Request); 13] = [
         ("poles", 2, Request::Poles),
-        ("zeros", 2, Request::Zeros),
+        ("zeros_of", 2, Request::Zeros),
         ("residue", 3, Request::Residue),
         ("singularity", 3, Request::Singularity),
         ("contour_integral", 3, Request::Contour),
@@ -852,7 +852,7 @@ mod tests {
         assert_eq!(run("poles(1/(z^2 + 1), z)"), "list(list(I, 1), list(-I, 1))");
         assert_eq!(run("poles(z/(z^3 - z^2), z)"), "list(list(1, 1), list(0, 1))");
         assert_eq!(run("poles(sin(z)/(z - 1)^2, z)"), "list(list(1, 2))");
-        assert_eq!(run("zeros(z^2 - 4, z)"), "list(list(2, 1), list(-2, 1))");
+        assert_eq!(run("zeros_of(z^2 - 4, z)"), "list(list(2, 1), list(-2, 1))");
     }
 
     #[test]

@@ -53,7 +53,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "arith/pow-merge-1: ?a * ?a ^ ?n => ?a ^ (?n + 1)",
             "arith/pow-merge: ?a ^ ?m * ?a ^ ?n => ?a ^ (?m + ?n)",
             "arith/pow-pow: (?a ^ ?m) ^ ?n => ?a ^ (?m * ?n) if integer(?n)",
+            "arith/pow-pow-positive: (?a ^ ?m) ^ ?n => ?a ^ (?m * ?n) if positive(?a), real(?m)",
             "arith/pow-positive-factor: (?c * ?a) ^ ?e => ?c ^ ?e * ?a ^ ?e if number(?c), positive(?c)",
+            "arith/pow-integer-factor: (?c * ?a) ^ ?n => ?c ^ ?n * ?a ^ ?n if number(?c), integer(?n)",
         ],
     )
 }

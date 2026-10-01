@@ -213,9 +213,7 @@ impl Kernel for Broadcast {
                 mul(graph, &factors)
             })
             .collect();
-        // Pinned: `c * list(a, b)` is shorter than `list(c*a, c*b)`, but a
-        // vector should read as a vector.
-        Outcome::Pinned(list(graph, &items))
+        Outcome::Equal(list(graph, &items))
     }
 
     fn revisit(&self) -> bool {

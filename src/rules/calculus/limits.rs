@@ -469,8 +469,18 @@ impl Limiter<'_, '_> {
             }
             count
         };
+        // An exponential that vanishes goes underneath instead
+        // (x·exp(-x²) becomes x / exp(x²)): differentiating the exponential
+        // never makes it simpler, so it must end up where it only grows.
+        let exp = self.f.exp;
+        let decaying = numer
+            .iter()
+            .position(|&n| self.cx.graph.op(n) == exp && matches!(self.probe(n), Probe::Finite(v) if v.abs() < 1e-6));
         let graph = &mut *self.cx.graph;
-        let (index, _) = numer.iter().enumerate().min_by_key(|&(_, &n)| size(graph, n))?;
+        let (index, _) = match decaying {
+            | Some(k) => (k, 0),
+            | None => numer.iter().enumerate().map(|(k, &n)| (k, size(graph, n))).min_by_key(|&(_, s)| s)?,
+        };
         let simplest = *numer.get(index)?;
         let rest: Vec<NodeId> = numer.iter().enumerate().filter(|&(i, _)| i != index).map(|(_, &n)| n).collect();
         let minus_one = graph.int(-1);

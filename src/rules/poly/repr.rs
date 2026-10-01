@@ -112,6 +112,49 @@ fn mono_mul(
     }
 }
 
+/// Lexicographic monomial order: the exponent of the generator with the
+/// smaller index decides first.
+fn lex_cmp(
+    a: &Mono,
+    b: &Mono,
+) -> std::cmp::Ordering {
+    let (mut i, mut j) = (0, 0);
+    loop {
+        match (a.get(i), b.get(j)) {
+            | (Some(&(ga, ea)), Some(&(gb, eb))) => {
+                if ga == gb {
+                    if ea != eb {
+                        return ea.cmp(&eb);
+                    }
+                    i += 1;
+                    j += 1;
+                } else if ga < gb {
+                    return std::cmp::Ordering::Greater;
+                } else {
+                    return std::cmp::Ordering::Less;
+                }
+            },
+            | (Some(_), None) => return std::cmp::Ordering::Greater,
+            | (None, Some(_)) => return std::cmp::Ordering::Less,
+            | (None, None) => return std::cmp::Ordering::Equal,
+        }
+    }
+}
+
+/// `a / b` if the monomial `b` divides `a`.
+fn mono_div(
+    a: &Mono,
+    b: &Mono,
+) -> Option<Mono> {
+    let mut out = a.clone();
+    for &(g, e) in b {
+        let slot = out.iter_mut().find(|(h, _)| *h == g)?;
+        slot.1 = slot.1.checked_sub(e)?;
+    }
+    out.retain(|&(_, e)| e > 0);
+    Some(out)
+}
+
 impl Poly {
     /// The zero polynomial.
     #[must_use]
@@ -287,6 +330,67 @@ impl Poly {
             }
         }
         Some(result)
+    }
+
+    /// The leading term in the lexicographic order of the generators.
+    #[must_use]
+    pub fn leading(&self) -> Option<(&Mono, &Number)> {
+        self.terms.iter().max_by(|a, b| lex_cmp(a.0, b.0))
+    }
+
+    /// The largest monomial dividing every term (the empty monomial for
+    /// zero).
+    #[must_use]
+    pub fn monomial_content(&self) -> Mono {
+        let mut iter = self.terms.keys();
+        let Some(first) = iter.next() else {
+            return Vec::new();
+        };
+        let mut content = first.clone();
+        for m in iter {
+            content.retain_mut(|(g, e)| match m.iter().find(|(h, _)| h == g) {
+                | Some(&(_, f)) => {
+                    *e = (*e).min(f);
+                    true
+                },
+                | None => false,
+            });
+        }
+        content
+    }
+
+    /// Every term divided by the monomial `m`, which must divide them all.
+    #[must_use]
+    pub fn div_monomial(
+        &self,
+        m: &Mono,
+    ) -> Self {
+        Self { terms: self.terms.iter().filter_map(|(k, c)| Some((mono_div(k, m)?, c.clone()))).collect() }
+    }
+
+    /// The exact quotient `self / d`, or `None` if `d` does not divide
+    /// `self` (or the division needs more than `cap` steps).
+    #[must_use]
+    pub fn div_exact(
+        &self,
+        d: &Self,
+        cap: usize,
+    ) -> Option<Self> {
+        let (lead_mono, lead_coeff) = d.leading()?;
+        let (lead_mono, inverse) = (lead_mono.clone(), lead_coeff.recip()?);
+        let mut quotient = Self::zero();
+        let mut rest = self.clone();
+        for _ in 0..cap {
+            let Some((mono, coeff)) = rest.leading() else {
+                return Some(quotient);
+            };
+            let factor = mono_div(mono, &lead_mono)?;
+            let c = coeff.mul(&inverse);
+            let term = Self::monomial(factor, c);
+            rest = rest.sub(&term.mul(d, cap.saturating_mul(4))?);
+            quotient = quotient.add(&term);
+        }
+        rest.is_zero().then_some(quotient)
     }
 
     /// Degree in generator `gen`; zero for the zero polynomial.

@@ -478,7 +478,6 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
 #[cfg(test)]
 mod tests {
     use super::super::discrete;
-    use super::*;
     use crate::rules::testing::reduce_with;
     use crate::rules::testing::simplify;
 
