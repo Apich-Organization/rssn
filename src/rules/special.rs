@@ -1676,4 +1676,46 @@ mod tests {
         agree(ev("legendre(3, 0.5)", &[]), -0.437_5, 1e-14);
         assert_eq!(s("legendre(2, 0.5)"), format!("{}", -0.125));
     }
+
+    /// The residual of a defining equation `lhs = 0` evaluated at `x`, for the
+    /// solution `y` of the family and its order `n`.
+    fn ode_residual(
+        equation: &str,
+        y: &str,
+        n: u32,
+        x: f64,
+    ) -> f64 {
+        let sets = [special()];
+        let text = simplify(&sets, &format!("{equation}({y}, x, {n})"));
+        let lhs = text.strip_suffix(" = 0").unwrap_or_else(|| panic!("not an equation `= 0`: {text}"));
+        eval(&sets, lhs, &[("x", x)])
+    }
+
+    #[test]
+    fn classical_orthogonal_polynomials_solve_their_equations() {
+        for n in 0..=5 {
+            for x in [-0.8, -0.3, 0.2, 0.9] {
+                let tol = 1e-8;
+                let r = ode_residual("legendre_differential_equation", &format!("legendre({n}, x)"), n, x);
+                assert!(r.abs() < tol, "Legendre {n} at {x}: {r}");
+                let r = ode_residual("hermite_differential_equation", &format!("hermite({n}, x)"), n, x);
+                assert!(r.abs() < tol, "Hermite {n} at {x}: {r}");
+                let r = ode_residual("chebyshev_differential_equation", &format!("chebyshevt({n}, x)"), n, x);
+                assert!(r.abs() < tol, "Chebyshev T {n} at {x}: {r}");
+                let r = ode_residual("laguerre_differential_equation", &format!("laguerre({n}, x)"), n, x + 1.0);
+                assert!(r.abs() < tol, "Laguerre {n} at {x}: {r}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_wrong_degree_does_not_solve_the_equation() {
+        // P_3 solves the degree-3 equation but not the degree-2 one, and likewise for the others.
+        assert!(ode_residual("legendre_differential_equation", "legendre(3, x)", 2, 0.4).abs() > 1e-3);
+        assert!(ode_residual("hermite_differential_equation", "hermite(3, x)", 2, 0.4).abs() > 1e-3);
+        assert!(ode_residual("chebyshev_differential_equation", "chebyshevt(3, x)", 2, 0.4).abs() > 1e-3);
+        assert!(ode_residual("laguerre_differential_equation", "laguerre(3, x)", 2, 0.4).abs() > 1e-3);
+        // U_3 is not a solution of Chebyshev's first-kind equation.
+        assert!(ode_residual("chebyshev_differential_equation", "chebyshevu(3, x)", 3, 0.4).abs() > 1e-3);
+    }
 }

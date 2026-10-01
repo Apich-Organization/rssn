@@ -14,83 +14,16 @@ Legacy dropped-by-design areas (Expr/DAG/handle/FFI/plugin/JIT/config plumbing) 
 
 | domain | pending | partial | partial (no test) | in progress |
 |---|---|---|---|---|
-| Physics formula libraries (symbolic) | 0 | 0 | 41 | 0 |
 | Symbolic ODEs | 6 | 2 | 0 | 0 |
 | Polynomials, factorisation and algebraic geometry | 6 | 1 | 0 | 6 |
-| Special functions | 0 | 0 | 4 | 0 |
 | Integral transforms and convolution | 0 | 4 | 0 | 4 |
 | Calculus, integration and series | 0 | 3 | 0 | 0 |
-| Integral equations and calculus of variations | 0 | 0 | 3 | 0 |
 | Linear algebra, statistics and combinatorics | 0 | 3 | 0 | 0 |
-| Differential geometry, tensors and coordinates | 2 | 0 | 1 | 0 |
+| Differential geometry, tensors and coordinates | 2 | 0 | 0 | 0 |
 | Rewriting, units, radicals | 3 | 0 | 0 | 1 |
 | Complex analysis | 2 | 0 | 0 | 2 |
 | Indefinite sums and products | 0 | 1 | 0 | 0 |
-| **total** | 19 | 14 | 49 | 13 |
-
-## Physics formula libraries (symbolic) (41)
-
-### `src/symbolic/classical_mechanics.rs`
-
-- `newtons_second_law`: Calculates the force `F` using Newton's second law, `F = m * a`. **partial (no test)**: `rules::physics` operator `newtons_second_law`
-- `potential_energy_gravity_uniform`: Calculates the gravitational potential energy near Earth's surface, `V = m * g * h`. **partial (no test)**: `rules::physics` operator `potential_energy_gravity_uniform`
-- `work_line_integral`: Calculates the work done by a variable force field along a path. **partial (no test)**: `rules::physics` operator `work_line_integral`
-- `angular_momentum`: Calculates the angular momentum, `L = r × p`. **partial (no test)**: `rules::physics` operator `angular_momentum`
-- `centripetal_acceleration`: Calculates the centripetal acceleration, `a_c = v^2 / r`. **partial (no test)**: `rules::physics` operator `centripetal_acceleration`
-- `moment_of_inertia_point_mass`: Calculates the moment of inertia for a point mass, `I = m * r^2`. **partial (no test)**: `rules::physics` operator `moment_of_inertia_point_mass`
-- `rotational_kinetic_energy`: Calculates the rotational kinetic energy, `T_rot = 1/2 * I * ω^2`. **partial (no test)**: `rules::physics` operator `rotational_kinetic_energy`
-- `hamiltonian`: Calculates the Hamiltonian `H = T + V`. **partial (no test)**: `rules::physics` operator `hamiltonian`
-
-### `src/symbolic/electromagnetism.rs`
-
-- `electric_field_from_potentials`: Calculates the electric field $\mathbf{E}$ from scalar potential $V$ and vector potential $\mathbf{A}$. **partial (no test)**: `rules::physics` operator `electric_field_from_potentials`
-- `energy_density`: Calculates the electromagnetic energy density $u$. **partial (no test)**: `rules::physics` operator `em_energy_density`
-- `coulombs_law`: Represents Coulomb's Law for the electric field produced by a point charge. **partial (no test)**: `rules::physics` operator `coulombs_law`
-
-### `src/symbolic/quantum_field_theory.rs`
-
-- `qed_lagrangian`: Lagrangian density for Quantum Electrodynamics (QED): **partial (no test)**: `rules::physics` operator `qed_lagrangian`
-- `qcd_lagrangian`: Lagrangian density for Quantum Chromodynamics (QCD): **partial (no test)**: `rules::physics` operator `qcd_lagrangian`
-- `propagator`: Represents a propagator for a particle in QFT. **partial (no test)**: `rules::physics` operator `propagator`
-- `scattering_cross_section`: Scattering cross-section: **partial (no test)**: `rules::physics` operator `scattering_cross_section`
-- `feynman_propagator_position_space`: Feynman propagator in position space (symbolic integral representation). **partial (no test)**: `rules::physics` operator `feynman_propagator_position_space`
-
-### `src/symbolic/quantum_mechanics.rs`
-
-- `bra_ket_internal`: internal solver of `bra_ket` **partial (no test)**: `rules::physics` operator `braket_on`
-- `hamiltonian_free_particle`: Hamiltonian for a free particle: **partial (no test)**: `rules::physics` operator `hamiltonian_free_particle`
-- `angular_momentum_z`: Angular momentum operator `L_z`: **partial (no test)**: `rules::physics` operator `angular_momentum_z`
-- `pauli_matrices`: Returns the Pauli matrices: **partial (no test)**: `rules::physics` operator `pauli_matrices`
-- `solve_time_independent_schrodinger`: Solves the time-independent Schrödinger equation: **partial (no test)**: `rules::physics` operator `solve_time_independent_schrodinger`
-- `time_dependent_schrodinger_equation`: Time-dependent Schrödinger equation: **partial (no test)**: `rules::physics` operator `time_dependent_schrodinger_equation`
-- `first_order_energy_correction`: Computes the first-order energy correction in perturbation theory: **partial (no test)**: `rules::physics` operator `first_order_energy_correction`
-- `scattering_amplitude`: Scattering amplitude in quantum mechanics: **partial (no test)**: `rules::physics` operator `scattering_amplitude`
-
-### `src/symbolic/relativity.rs`
-
-- `doppler_effect`: Calculates the Relativistic Doppler Effect for source and observer moving apart. **partial (no test)**: `rules::physics` operator `doppler_effect`
-- `gravitational_time_dilation`: Calculates gravitational time dilation in the Schwarzschild metric. **partial (no test)**: `rules::physics` operator `gravitational_time_dilation`
-- `einstein_tensor`: Represents the simplified Einstein Field Equations (LHS). **partial (no test)**: `rules::physics` operator `einstein_tensor_from`
-
-### `src/symbolic/solid_state_physics.rs`
-
-- `bloch_theorem`: Represents Bloch's Theorem: **partial (no test)**: `rules::physics` operator `bloch_wave`
-- `density_of_states_3d`: Computes the Density of States (DOS) for a 3D electron gas. **partial (no test)**: `rules::physics` operator `density_of_states_3d`
-- `fermi_energy_3d`: Fermi Energy for a 3D electron gas: **partial (no test)**: `rules::physics` operator `fermi_energy_3d`
-- `drude_conductivity`: Drude model electrical conductivity: **partial (no test)**: `rules::physics` operator `drude_conductivity`
-- `debye_frequency`: Debye Frequency: **partial (no test)**: `rules::physics` operator `debye_frequency`
-- `plasma_frequency`: Plasma Frequency: **partial (no test)**: `rules::physics` operator `plasma_frequency`
-- `london_penetration_depth`: London penetration depth: **partial (no test)**: `rules::physics` operator `london_penetration_depth`
-
-### `src/symbolic/thermodynamics.rs`
-
-- `first_law_thermodynamics`: Represents the First Law of Thermodynamics: **partial (no test)**: `rules::physics` operator `first_law_thermodynamics`
-- `ideal_gas_law`: Represents the Ideal Gas Law: **partial (no test)**: `rules::physics` operator `ideal_gas_law`
-- `helmholtz_free_energy`: Calculates Helmholtz Free Energy: **partial (no test)**: `rules::physics` operator `helmholtz_free_energy`
-- `boltzmann_entropy`: Calculates Entropy via Boltzmann's formula: **partial (no test)**: `rules::physics` operator `boltzmann_entropy`
-- `boltzmann_distribution`: Represents the Boltzmann Distribution: **partial (no test)**: `rules::physics` operator `boltzmann_distribution`
-- `bose_einstein_distribution`: Represents the Bose-Einstein Distribution for bosons. **partial (no test)**: `rules::physics` operator `bose_einstein_distribution`
-- `work_isothermal_expansion`: Calculates the work done during an isothermal expansion: **partial (no test)**: `rules::physics` operator `work_isothermal_expansion`
+| **total** | 19 | 14 | 0 | 13 |
 
 ## Symbolic ODEs (8)
 
@@ -120,15 +53,6 @@ Legacy dropped-by-design areas (Expr/DAG/handle/FFI/plugin/JIT/config plumbing) 
 - `cantor_zassenhaus`: Factors a square-free polynomial over a large prime field using Cantor-Zassenhaus algorithm. **pending** (in progress on the transforms/complex/finite-field/units branch): no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q
 - `distinct_degree_factorization`: Performs Distinct-Degree Factorization (DDF) of a polynomial over a finite field. **pending** (in progress on the transforms/complex/finite-field/units branch): no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q
 
-## Special functions (4)
-
-### `src/symbolic/special_functions.rs`
-
-- `legendre_differential_equation`: Represents Legendre's differential equation: **partial (no test)**: `rules::special` definition `legendre_differential_equation(y, x, n)`
-- `laguerre_differential_equation`: Represents Laguerre's differential equation: **partial (no test)**: `rules::special` definition `laguerre_differential_equation(y, x, n)`
-- `hermite_differential_equation`: Represents Hermite's differential equation: **partial (no test)**: `rules::special` definition `hermite_differential_equation(y, x, n)`
-- `chebyshev_differential_equation`: Represents Chebyshev's differential equation: **partial (no test)**: `rules::special` definition `chebyshev_differential_equation(y, x, n)`
-
 ## Integral transforms and convolution (4)
 
 ### `src/symbolic/transforms.rs`
@@ -149,17 +73,6 @@ Legacy dropped-by-design areas (Expr/DAG/handle/FFI/plugin/JIT/config plumbing) 
 - `risch_norman_integrate`: Main entry point for Risch-Norman style integration. **partial**: `rules::calculus` `integral` staged heuristics (table, partial fractions, substitution, by parts, verified by differentiation); no Risch-Norman undetermined-coefficients ansatz
 - `integrate_poly_exp`: Integrates the polynomial part of a transcendental function extension F(t). **partial**: `integral` by_parts stage integrates polynomial*exp(a x) (test by_parts) and `erfi`/`erf` for Gaussians; no general exp-extension (towers `exp(g(x))` with polynomial-in-t coefficients, `g` non-linear) integrator
 
-## Integral equations and calculus of variations (3)
-
-### `src/symbolic/calculus_of_variations.rs`
-
-- `hamiltons_principle`: Euler-Lagrange equations for the action of a Lagrangian **partial (no test)**: `rules::variational` operator `hamiltons_principle`
-
-### `src/symbolic/integral_equations.rs`
-
-- `solve_airfoil_equation`: Solves the airfoil singular integral equation. **partial (no test)**: `rules::functional` operator `airfoil_equation`
-- `solve_airfoil_equation_internal`: internal solver of `solve_airfoil_equation` **partial (no test)**: `rules::functional` operator `airfoil_equation`
-
 ## Linear algebra, statistics and combinatorics (3)
 
 ### `src/symbolic/combinatorics.rs`
@@ -174,16 +87,12 @@ Legacy dropped-by-design areas (Expr/DAG/handle/FFI/plugin/JIT/config plumbing) 
 
 - `polynomial_regression_symbolic`: Computes the symbolic coefficients for a polynomial regression `y = c0 + c1*x + ... **partial**: `polynomial_regression` (rules::stats): exact and float data only; symbolic (non-numeric) data points are not supported
 
-## Differential geometry, tensors and coordinates (3)
+## Differential geometry, tensors and coordinates (2)
 
 ### `src/symbolic/differential_geometry.rs`
 
 - `boundary`: Represents the boundary of a domain, denoted as `∂M` for a manifold `M`. **pending**: no symbolic region/manifold boundary term `∂M`; the concrete theorems take explicit bounds (rectangle, box, parametrised surface)
 - `generalized_stokes_theorem`: Represents the generalized Stokes' Theorem. **pending**: no operator stating `∫_M dω = ∫_∂M ω` for a symbolic manifold; `greens_theorem`, `gauss_theorem`, `stokes_theorem` cover the concrete cases
-
-### `src/symbolic/tensor.rs`
-
-- `christoffel_symbols_first_kind`: Computes the Christoffel symbols of the first kind `Γ_{ijk}`. **partial (no test)**: `rules::geometry` operator `christoffel1`
 
 ## Rewriting, units, radicals (3)
 

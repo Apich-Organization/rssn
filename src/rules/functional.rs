@@ -699,4 +699,39 @@ mod tests {
         assert_eq!(conv, "sin(x)");
         assert_eq!(run("volterra_to_ode(1, 1, 1, x, t, 0, y(x))"), "diff(y(x), x) = y(x)");
     }
+
+    #[test]
+    fn airfoil_equation_is_the_tricomi_inversion() {
+        // f = 0: only the free constant of the homogeneous solution is left.
+        assert_eq!(run("airfoil_equation(0, x, t)"), run("C/(1 - x^2)^(1/2)"));
+        // The principal-value integral is not elementary, so the operator stays symbolic; check that it
+        // is exactly the Tricomi formula by putting both forms in one e-class.
+        let mut g = crate::graph::Graph::new();
+        let engine = crate::graph::Engine::install(&mut g, &[functional()]).unwrap_or_else(|e| panic!("{e}"));
+        let named = g.parse("airfoil_equation(1, x, t)").unwrap_or_else(|e| panic!("{e}"));
+        let written = g
+            .parse("-1/(pi*(1 - x^2)^(1/2)) * defint((1 - t^2)^(1/2) * 1/(t - x), t, -1, 1) + C/(1 - x^2)^(1/2)")
+            .unwrap_or_else(|e| panic!("{e}"));
+        engine.run(&mut g, &[named, written], &crate::graph::Env::symbolic(), &crate::graph::Saturate, &crate::graph::Budget::default());
+        assert_eq!(g.find(named), g.find(written));
+        // For f = 1 the formula gives y = (x + C)/sqrt(1 - x²): PV ∫ sqrt(1 - t²)/(t - x) dt = -π x.
+        // Evaluate the principal value by subtracting the pole: ∫ (s(t) - s(x))/(t - x) dt + s(x) ln((1 - x)/(1 + x)).
+        let x = 0.3_f64;
+        let s = |t: f64| (1.0 - t * t).sqrt();
+        // Substitute t = sin(u) to remove the endpoint singularity of the square root.
+        let steps = 400_000;
+        let (lo, hi) = (-std::f64::consts::FRAC_PI_2, std::f64::consts::FRAC_PI_2);
+        let h = (hi - lo) / f64::from(steps);
+        let mut smooth = 0.0;
+        for k in 0..steps {
+            let u = lo + (f64::from(k) + 0.5) * h;
+            let t = u.sin();
+            let slope = if (t - x).abs() < 1e-9 { -x / s(x) } else { (s(t) - s(x)) / (t - x) };
+            smooth += slope * u.cos() * h;
+        }
+        let pv = smooth + s(x) * ((1.0 - x) / (1.0 + x)).ln();
+        assert!((pv + std::f64::consts::PI * x).abs() < 1e-6, "{pv}");
+        let y = -pv / (std::f64::consts::PI * s(x));
+        assert!((y - x / s(x)).abs() < 1e-6, "{y}");
+    }
 }

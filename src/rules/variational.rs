@@ -325,4 +325,31 @@ mod tests {
         assert_eq!(run("action(diff(y(t), t)^2/2, y(t), t, t, 0, 1)"), "1/2");
         assert_eq!(run("first_integral(diff(y(x), x)^2 - y(x)^2, y(x), x)"), run("-diff(y(x), x)^2 - y(x)^2"));
     }
+
+    #[test]
+    fn hamiltons_principle_gives_the_equations_of_motion() {
+        // The spring: m q'' + k q = 0.
+        assert_eq!(
+            run("hamiltons_principle(m*diff(q(t), t)^2/2 - k*q(t)^2/2, q(t), t)"),
+            run("k*q(t) + m*diff(diff(q(t), t), t)")
+        );
+        // The pendulum: m l² θ'' + m g l sin θ = 0.
+        assert_eq!(
+            run("hamiltons_principle(m*l^2*diff(th(t), t)^2/2 + m*g*l*cos(th(t)), th(t), t)"),
+            run("m*l^2*diff(diff(th(t), t), t) + g*l*m*sin(th(t))")
+        );
+        // A free particle in a uniform field: m x'' + m g = 0 (x up, V = m g x).
+        assert_eq!(
+            run("hamiltons_principle(m*diff(x(t), t)^2/2 - m*g*x(t), x(t), t)"),
+            run("m*g + m*diff(diff(x(t), t), t)")
+        );
+        // No dependence on q: the momentum is conserved, so only q'' remains.
+        assert_eq!(run("hamiltons_principle(m*diff(x(t), t)^2/2, x(t), t)"), run("m*diff(diff(x(t), t), t)"));
+        // It is the same operator as the Euler–Lagrange one.
+        let lagrangian = "diff(x(t), t)^2/2 + diff(y(t), t)^2/2 - x(t)*y(t)";
+        assert_eq!(
+            run(&format!("hamiltons_principle({lagrangian}, list(x(t), y(t)), t)")),
+            run(&format!("euler_lagrange({lagrangian}, list(x(t), y(t)), t)"))
+        );
+    }
 }

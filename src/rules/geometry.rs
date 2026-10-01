@@ -1324,4 +1324,34 @@ mod tests {
         // Stokes on the unit disc (z = 0): circulation of (-y, x, 0) = 2 pi.
         assert_eq!(run("stokes_theorem(list(-y, x, 0), list(u*cos(v), u*sin(v), 0), u, v, 0, 1, 0, 2*pi)"), "2*pi");
     }
+
+    #[test]
+    fn christoffel_symbols_of_the_first_kind() {
+        // The plane in polar coordinates: Γ_{rθθ} = -r, Γ_{θrθ} = Γ_{θθr} = r.
+        let g = "list(list(1, 0), list(0, r^2))";
+        assert_eq!(
+            run(&format!("christoffel1({g}, list(r, theta))")),
+            "list(list(list(0, 0), list(0, -r)), list(list(0, r), list(r, 0)))"
+        );
+        // A constant metric has none.
+        assert_eq!(
+            run("christoffel1(list(list(1, 2), list(2, 5)), list(x, y))"),
+            "list(list(list(0, 0), list(0, 0)), list(list(0, 0), list(0, 0)))"
+        );
+        // The sphere: Γ_{θφφ} = -a² sinθ cosθ, Γ_{φθφ} = a² sinθ cosθ.
+        let sphere = "list(list(a^2, 0), list(0, a^2*sin(theta)^2))";
+        let vars = "list(theta, phi)";
+        let value = |i: u8, j: u8, k: u8| {
+            numeric(&[geometry()], &format!("component(christoffel1({sphere}, {vars}), list({i}, {j}, {k}))"), &[("a", 2.0), ("theta", 0.7)], 1e-12).0
+        };
+        let expected = 4.0 * 0.7_f64.sin() * 0.7_f64.cos();
+        assert!((value(1, 2, 2) + expected).abs() < 1e-12);
+        assert!((value(2, 1, 2) - expected).abs() < 1e-12);
+        assert!((value(2, 2, 1) - expected).abs() < 1e-12);
+        assert!(value(1, 1, 1).abs() < 1e-12);
+        // Γ^φ_θφ = g^{φφ} Γ_{φθφ} = cot θ.
+        let second = numeric(&[geometry()], &format!("component(christoffel({sphere}, {vars}), list(2, 1, 2))"), &[("a", 2.0), ("theta", 0.7)], 1e-12).0;
+        assert!((second - 1.0 / 0.7_f64.tan()).abs() < 1e-12);
+        assert!((second - value(2, 1, 2) / (4.0 * 0.7_f64.sin().powi(2))).abs() < 1e-12);
+    }
 }
