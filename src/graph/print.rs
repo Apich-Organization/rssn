@@ -16,12 +16,12 @@ use super::op::Arity;
 use super::payload::Payload;
 use super::store::Graph;
 
-const PREC_EQ: u8 = 0;
-const PREC_ADD: u8 = 1;
-const PREC_MUL: u8 = 2;
-const PREC_NEG: u8 = 3;
-const PREC_POW: u8 = 4;
-const PREC_ATOM: u8 = 5;
+pub(crate) const PREC_EQ: u8 = 0;
+pub(crate) const PREC_ADD: u8 = 1;
+pub(crate) const PREC_MUL: u8 = 2;
+pub(crate) const PREC_NEG: u8 = 3;
+pub(crate) const PREC_POW: u8 = 4;
+pub(crate) const PREC_ATOM: u8 = 5;
 
 impl Graph {
     /// A total order on concrete terms that is independent of node ids:
@@ -74,7 +74,7 @@ impl Graph {
     }
 
     /// Children of `node` in canonical print order.
-    fn ordered_children(
+    pub(crate) fn ordered_children(
         &self,
         node: NodeId,
     ) -> Vec<NodeId> {
@@ -104,7 +104,7 @@ impl Graph {
 
     /// Splits `b^e` with a literal exponent into `(b, e)`; anything else is
     /// its own base with exponent one.
-    fn base_and_exponent(
+    pub(crate) fn base_and_exponent(
         &self,
         node: NodeId,
     ) -> (NodeId, f64) {
@@ -130,7 +130,7 @@ impl Graph {
 
     /// Splits a product into `(coefficient, other factors)` when it has a
     /// literal numeric factor.
-    fn split_coefficient(
+    pub(crate) fn split_coefficient(
         &self,
         node: NodeId,
     ) -> Option<(Number, Vec<NodeId>)> {
@@ -206,7 +206,7 @@ impl Graph {
         }
     }
 
-    fn precedence(
+    pub(crate) fn precedence(
         &self,
         node: NodeId,
     ) -> u8 {
@@ -252,6 +252,33 @@ impl Graph {
         node: NodeId,
         out: &mut String,
     ) {
+        let terms = self.ordered_terms(node);
+        for (i, &term) in terms.iter().enumerate() {
+            let negated = self.negated(term);
+            match (i, &negated) {
+                | (0, Some(_)) => out.push('-'),
+                | (0, None) => {},
+                | (_, Some(_)) => out.push_str(" - "),
+                | (_, None) => out.push_str(" + "),
+            }
+            match negated {
+                | Some(Negated::Number(n)) => {
+                    let _ = write!(out, "{n}");
+                },
+                | Some(Negated::Product(coeff, factors)) => {
+                    self.write_factors(&coeff, &factors, out);
+                },
+                | None => self.write_term(term, PREC_MUL, out),
+            }
+        }
+    }
+
+    /// The terms of a sum in canonical print order: descending degree,
+    /// leading with a positive term when there is one.
+    pub(crate) fn ordered_terms(
+        &self,
+        node: NodeId,
+    ) -> Vec<NodeId> {
         // Descending degree, the constant term last: `x^2 + x + 1`.
         let mut terms = self.children(node).to_vec();
         terms.sort_by(|&a, &b| {
@@ -280,24 +307,7 @@ impl Graph {
                 terms.insert(0, positive);
             }
         }
-        for (i, &term) in terms.iter().enumerate() {
-            let negated = self.negated(term);
-            match (i, &negated) {
-                | (0, Some(_)) => out.push('-'),
-                | (0, None) => {},
-                | (_, Some(_)) => out.push_str(" - "),
-                | (_, None) => out.push_str(" + "),
-            }
-            match negated {
-                | Some(Negated::Number(n)) => {
-                    let _ = write!(out, "{n}");
-                },
-                | Some(Negated::Product(coeff, factors)) => {
-                    self.write_factors(&coeff, &factors, out);
-                },
-                | None => self.write_term(term, PREC_MUL, out),
-            }
-        }
+        terms
     }
 
     /// A rough polynomial degree used only to order the terms of a sum.
@@ -336,7 +346,7 @@ impl Graph {
 
     /// If `term` is a negative number or has a negative coefficient, returns
     /// its negation in a printable form.
-    fn negated(
+    pub(crate) fn negated(
         &self,
         term: NodeId,
     ) -> Option<Negated> {
@@ -428,7 +438,8 @@ impl Graph {
     }
 }
 
-enum Negated {
+/// A negative term in printable form.
+pub(crate) enum Negated {
     Number(Number),
     Product(Number, Vec<NodeId>),
 }
