@@ -79,6 +79,50 @@ pub type TableFn = fn(&mut Cx<'_>, NodeId, NodeId) -> Option<NodeId>;
 #[derive(Clone, Debug, Default)]
 pub struct IntegralTable(pub Vec<TableFn>);
 
+/// The square root of a polynomial that is a perfect square with a
+/// positive leading coefficient, by the schoolbook algorithm on the
+/// polynomial's term order.
+fn poly_sqrt(p: &Poly) -> Option<Poly> {
+    let rational_sqrt = |c: &BigRational| -> Option<BigRational> {
+        if c.numer().sign() == num_bigint::Sign::Minus {
+            return None;
+        }
+        let (n, d) = (c.numer().sqrt(), c.denom().sqrt());
+        (&n * &n == *c.numer() && &d * &d == *c.denom()).then(|| BigRational::new(n, d))
+    };
+    let (mono, coeff) = p.leading()?;
+    if mono.iter().any(|&(_, e)| e % 2 != 0) {
+        return None;
+    }
+    let half: Vec<(u32, u32)> = mono.iter().map(|&(g, e)| (g, e / 2)).collect();
+    let lead_root = Poly::monomial(half.clone(), Number::rat(rational_sqrt(&coeff.to_rational()?)?));
+    let twice_lead = lead_root.scale(&Number::from(2));
+    let mut root = lead_root;
+    for _ in 0..64 {
+        let rest = p.sub(&root.mul(&root, 4096)?);
+        let Some((m, c)) = rest.leading() else {
+            return Some(root);
+        };
+        let (tm, tc) = twice_lead.leading()?;
+        let mut exponents = Vec::new();
+        for &(g, e) in m {
+            let lower = tm.iter().find(|&&(h, _)| h == g).map_or(0, |&(_, f)| f);
+            if e < lower {
+                return None;
+            }
+            if e > lower {
+                exponents.push((g, e - lower));
+            }
+        }
+        if tm.iter().any(|&(g, _)| !m.iter().any(|&(h, _)| h == g)) {
+            return None;
+        }
+        let term = Poly::monomial(exponents, c.mul(&tc.recip()?));
+        root = root.add(&term);
+    }
+    None
+}
+
 /// One integration problem: the variable and the tools.
 struct Integrator<'c, 'a> {
     cx: &'c mut Cx<'a>,
@@ -285,6 +329,9 @@ impl Integrator<'_, '_> {
             return Some(found);
         }
         if let Some(found) = self.rational(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.rational_parametric(f) {
             return Some(found);
         }
         if let Some(found) = self.distribute(f, depth) {
@@ -550,6 +597,208 @@ impl Integrator<'_, '_> {
             pieces.push(self.partial_fraction(&piece.factor, base, piece.power, &piece.numerator)?);
         }
         Some(self.add(&pieces))
+    }
+
+    /// Rational functions whose coefficients involve parameters, with a
+    /// denominator of degree one or two in `x`: long division, then a
+    /// logarithm for a linear denominator, and completing the square for
+    /// a quadratic one (`atan` or a logarithm by the sign of the
+    /// discriminant, decided exactly when it is a number and at generic
+    /// parameter values otherwise).
+    fn rational_parametric(
+        &mut self,
+        f: NodeId,
+    ) -> Option<NodeId> {
+        let mut gens = Gens::default();
+        let x = self.x;
+        let gx = gens.index(self.cx.graph, x);
+        let fraction = ratio(self.cx.graph, &mut gens, f, Limits::default())?;
+        for g in fraction.numer.support().into_iter().chain(fraction.denom.support()) {
+            if g != gx && gens.node(g).is_some_and(|n| self.depends(n)) {
+                return None;
+            }
+        }
+        let terms_of = |this: &mut Self, p: &Poly| -> Vec<NodeId> {
+            let mut c = p.coefficients_in(gx);
+            while c.last().is_some_and(Poly::is_zero) {
+                c.pop();
+            }
+            c.iter().map(|q| to_term(this.cx.graph, &gens, q)).collect()
+        };
+        let mut numer = terms_of(self, &fraction.numer);
+        let denom = terms_of(self, &fraction.denom);
+        // √Δ as a polynomial when the discriminant is a perfect square (the
+        // forms below are invariant under the sign of the root).
+        let exact_root = {
+            let mut c = fraction.denom.coefficients_in(gx);
+            while c.last().is_some_and(Poly::is_zero) {
+                c.pop();
+            }
+            match c.as_slice() {
+                | [c0, b, a] => (|| {
+                    let four_ac = a.mul(c0, 4096)?.scale(&Number::from(4));
+                    let delta = four_ac.sub(&b.mul(b, 4096)?);
+                    if let Some(r) = poly_sqrt(&delta) {
+                        return Some((1, to_term(self.cx.graph, &gens, &r)));
+                    }
+                    poly_sqrt(&delta.neg()).map(|r| (-1, to_term(self.cx.graph, &gens, &r)))
+                })(),
+                | _ => None,
+            }
+        };
+        if !(2..=3).contains(&denom.len()) || numer.is_empty() {
+            return None;
+        }
+        // Long division by the denominator over the field of expressions.
+        let lead = *denom.last()?;
+        let mut quotient = vec![self.int(0); numer.len().saturating_sub(denom.len() - 1).max(1)];
+        while numer.len() >= denom.len() {
+            let shift = numer.len() - denom.len();
+            let top = *numer.last()?;
+            let c = self.div(top, lead);
+            let c = self.cx.simplify(c);
+            quotient[shift] = c;
+            for (i, &d) in denom.iter().enumerate() {
+                let product = self.mul(&[c, d]);
+                let difference = {
+                    let negated = self.neg(product);
+                    self.add(&[numer[shift + i], negated])
+                };
+                numer[shift + i] = self.cx.simplify(difference);
+            }
+            numer.pop();
+        }
+        while numer.last().is_some_and(|&c| self.cx.is_zero(c)) {
+            numer.pop();
+        }
+        let mut pieces = Vec::new();
+        for (k, &c) in quotient.iter().enumerate() {
+            if self.cx.is_zero(c) {
+                continue;
+            }
+            let e = self.int(i64::try_from(k + 1).ok()?);
+            let power = self.pow(x, e);
+            let scale = self.frac(1, i64::try_from(k + 1).ok()?);
+            pieces.push(self.mul(&[scale, c, power]));
+        }
+        let ln = self.f.ln;
+        let denominator = {
+            let mut terms = Vec::new();
+            for (k, &c) in denom.iter().enumerate() {
+                let e = self.int(i64::try_from(k).ok()?);
+                let power = self.pow(x, e);
+                terms.push(self.mul(&[c, power]));
+            }
+            self.add(&terms)
+        };
+        match (denom.as_slice(), numer.as_slice()) {
+            | (_, []) => {},
+            | (&[_, a], &[r]) => {
+                // ∫ r / (a x + b) = r/a ln(a x + b)
+                let log = self.call(ln, denominator);
+                let scale = self.div(r, a);
+                pieces.push(self.mul(&[scale, log]));
+            },
+            | (&[c, b, a], numer) => {
+                let q = *numer.first()?;
+                let p = numer.get(1).copied().unwrap_or_else(|| self.int(0));
+                // (p x + q)/(a x² + b x + c) = p/(2a) D'/D + (q - p b/(2a))/D
+                let two = self.int(2);
+                let two_a = self.mul(&[two, a]);
+                let half_slope = self.div(p, two_a);
+                let log = self.call(ln, denominator);
+                pieces.push(self.mul(&[half_slope, log]));
+                let pb = self.mul(&[half_slope, b]);
+                let neg_pb = self.neg(pb);
+                let rest = self.add(&[q, neg_pb]);
+                let rest = self.cx.simplify(rest);
+                if !self.cx.is_zero(rest) {
+                    let four = self.int(4);
+                    let four_ac = self.mul(&[four, a, c]);
+                    let b_sq = self.pow(b, two);
+                    let neg_b_sq = self.neg(b_sq);
+                    let delta = self.add(&[four_ac, neg_b_sq]);
+                    let delta = self.cx.simplify(delta);
+                    let sign = match exact_root {
+                        | Some((sign, _)) => sign,
+                        | None => self.sign_of(delta)?,
+                    };
+                    let slope = self.mul(&[two_a, x]);
+                    let linear = self.add(&[slope, b]);
+                    let half = self.frac(1, 2);
+                    let piece = match sign {
+                        | 1 => {
+                            // 2/√Δ atan((2ax + b)/√Δ)
+                            let root = match exact_root {
+                                | Some((_, r)) => r,
+                                | None => self.pow(delta, half),
+                            };
+                            let argument = self.div(linear, root);
+                            let atan = self.call(self.f.atan, argument);
+                            let factor = self.div(two, root);
+                            self.mul(&[factor, atan])
+                        },
+                        | -1 => {
+                            // 1/√(-Δ) ln((2ax + b - √(-Δ))/(2ax + b + √(-Δ)))
+                            let minus_delta = self.neg(delta);
+                            let root = match exact_root {
+                                | Some((_, r)) => r,
+                                | None => self.pow(minus_delta, half),
+                            };
+                            let neg_root = self.neg(root);
+                            let low = self.add(&[linear, neg_root]);
+                            let high = self.add(&[linear, root]);
+                            let quotient = self.div(low, high);
+                            let log = self.call(ln, quotient);
+                            self.div(log, root)
+                        },
+                        | _ => {
+                            // A perfect square: -2/(2ax + b)
+                            let minus_two = self.int(-2);
+                            self.div(minus_two, linear)
+                        },
+                    };
+                    pieces.push(self.mul(&[rest, piece]));
+                }
+            },
+            | _ => return None,
+        }
+        Some(self.add(&pieces))
+    }
+
+    /// The sign of a term free of `x`: exact for a number, otherwise at a
+    /// few generic parameter values (which must agree).
+    fn sign_of(
+        &mut self,
+        t: NodeId,
+    ) -> Option<i32> {
+        if let Some(n) = self.number(t) {
+            return Some(if n.is_zero() {
+                0
+            } else if n.is_negative() {
+                -1
+            } else {
+                1
+            });
+        }
+        let symbols = self.cx.graph.free_symbols(self.cx.graph.find(t)).to_vec();
+        let mut seen = None;
+        for shift in [0.0, 0.37, 1.9] {
+            let mut env = crate::graph::Env::numeric(0.0);
+            for (i, &s) in symbols.iter().enumerate() {
+                let facts = self.cx.graph.assumption(s);
+                let base = 0.7 + 0.31 * f64::from(u32::try_from(i).unwrap_or(0)) + shift;
+                let value = if facts.has(crate::graph::Facts::NONPOSITIVE) { -base } else { base };
+                env.bind(s, value);
+            }
+            let v = self.cx.graph.eval(t, &env)?;
+            let sign = if v.abs() < 1e-12 { 0 } else if v < 0.0 { -1 } else { 1 };
+            if seen.is_some_and(|s| s != sign) {
+                return None;
+            }
+            seen = Some(sign);
+        }
+        seen
     }
 
     /// `∫ numerator / factor^power dx` for a linear or irreducible

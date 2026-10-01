@@ -61,6 +61,8 @@ use super::solve::solve;
 use super::solve::solve_for;
 use super::solve::solve_linear;
 
+mod lie;
+
 /// The differential-equation rule set.
 #[must_use]
 pub fn ode() -> RuleSet {
@@ -348,7 +350,11 @@ fn first_order(
     if let Some(found) = separable(cx, problem, rhs) {
         return Some(found);
     }
-    homogeneous(cx, problem, rhs)
+    if let Some(found) = homogeneous(cx, problem, rhs) {
+        return Some(found);
+    }
+    // Lie point symmetries cover what the classical recipes miss.
+    lie::first_order(cx, problem, rhs)
 }
 
 /// Wraps an explicit solution as the equation `y(x) = solution`.
@@ -1216,6 +1222,19 @@ mod tests {
         check("diff(y(x), x) = 1 + y(x)^2 - 2*y(x)", 1);
         check("diff(y(x), x) = (x + y(x))/x", 1);
         check("(2*x*y(x) + 1) + (x^2 + 2*y(x))*diff(y(x), x) = 0", 1);
+    }
+
+    #[test]
+    fn lie_symmetries() {
+        // y' = F(x + y) (translation), linear fractional, and equations
+        // with a scaling symmetry beyond the classical recipes.
+        check("diff(y(x), x) = (x + y(x))^2", 1);
+        // Linear fractional: an implicit solution (log + atan about the
+        // centre of the scaling symmetry).
+        let (text, reduced) = reduce_with(&[ode()], "dsolve(diff(y(x), x) = (x + y(x) + 1)/(x - y(x) + 3), y(x))", &[]);
+        assert!(reduced && text.contains("atan") && text.contains("C1"), "{text}");
+        check("diff(y(x), x) = y(x)/x + x^2/y(x)", 1);
+        check("diff(y(x), x) = y(x)/(x + y(x)^2)", 1);
     }
 
     #[test]
