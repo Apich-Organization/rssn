@@ -83,7 +83,7 @@ impl GPoly {
 
     /// Whether this is the zero polynomial.
     #[must_use]
-    pub fn is_zero(&self) -> bool {
+    pub const fn is_zero(&self) -> bool {
         self.terms.is_empty()
     }
 

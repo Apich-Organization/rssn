@@ -89,7 +89,7 @@ impl Frac {
         Self { n: trim(p), d: vec![BigRational::one()] }
     }
 
-    fn is_zero(&self) -> bool {
+    const fn is_zero(&self) -> bool {
         self.n.is_empty()
     }
 
@@ -232,7 +232,7 @@ fn hypergeometric_ratio(
 /// The index is an integer; with `nonnegative` it is also known to be
 /// at least zero (sums from a non-negative lower limit), which lets
 /// factorial and binomial ratios simplify.
-pub(crate) fn antidifference(
+pub fn antidifference(
     cx: &mut Cx<'_>,
     t: NodeId,
     k: NodeId,
@@ -304,13 +304,13 @@ fn gosper(
             let right = univariate::mul(&rk, &monomial);
             for (m, coefficient) in left.iter().enumerate() {
                 if m < size {
-                    let term = univariate::mul(&gamma, &[coefficient.clone()]);
+                    let term = univariate::mul(&gamma, std::slice::from_ref(coefficient));
                     rows[m][i] = Frac::poly(univariate::add(&rows[m][i].n, &term));
                 }
             }
             for (m, coefficient) in right.iter().enumerate() {
                 if m < size {
-                    rows[m][i] = Frac::poly(univariate::sub(&rows[m][i].n, &[coefficient.clone()]));
+                    rows[m][i] = Frac::poly(univariate::sub(&rows[m][i].n, std::slice::from_ref(coefficient)));
                 }
             }
         }

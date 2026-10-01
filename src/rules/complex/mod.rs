@@ -152,9 +152,9 @@ impl Ops {
 
 /// Term builders shared by the complex kernels.
 pub(crate) mod build {
-    use super::*;
+    use super::{Graph, NodeId, core, OpId};
 
-    pub(crate) fn add(
+    pub fn add(
         graph: &mut Graph,
         terms: &[NodeId],
     ) -> NodeId {
@@ -165,7 +165,7 @@ pub(crate) mod build {
         }
     }
 
-    pub(crate) fn mul(
+    pub fn mul(
         graph: &mut Graph,
         factors: &[NodeId],
     ) -> NodeId {
@@ -176,7 +176,7 @@ pub(crate) mod build {
         }
     }
 
-    pub(crate) fn neg(
+    pub fn neg(
         graph: &mut Graph,
         x: NodeId,
     ) -> NodeId {
@@ -184,7 +184,7 @@ pub(crate) mod build {
         mul(graph, &[minus_one, x])
     }
 
-    pub(crate) fn sub(
+    pub fn sub(
         graph: &mut Graph,
         a: NodeId,
         b: NodeId,
@@ -193,7 +193,7 @@ pub(crate) mod build {
         add(graph, &[a, negated])
     }
 
-    pub(crate) fn pow(
+    pub fn pow(
         graph: &mut Graph,
         base: NodeId,
         exponent: NodeId,
@@ -201,7 +201,7 @@ pub(crate) mod build {
         graph.node(core::POW, &[base, exponent])
     }
 
-    pub(crate) fn powi(
+    pub fn powi(
         graph: &mut Graph,
         base: NodeId,
         exponent: i64,
@@ -210,7 +210,7 @@ pub(crate) mod build {
         pow(graph, base, e)
     }
 
-    pub(crate) fn call(
+    pub fn call(
         graph: &mut Graph,
         op: OpId,
         args: &[NodeId],
@@ -219,7 +219,7 @@ pub(crate) mod build {
     }
 
     /// `a + b*I`.
-    pub(crate) fn complex(
+    pub fn complex(
         graph: &mut Graph,
         unit: OpId,
         re: NodeId,

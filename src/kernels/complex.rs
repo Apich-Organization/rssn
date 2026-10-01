@@ -297,7 +297,7 @@ mod tests {
         let z = Complex64::new(0.3, 0.7);
         let d = complex_derivative(&|w: Complex64| w.sin(), z);
         assert!(close(d, z.cos(), 1e-8));
-        let d3 = cauchy_derivative(|w| w.exp(), z, 3, 1.0, 64);
+        let d3 = cauchy_derivative(num_complex::Complex::exp, z, 3, 1.0, 64);
         assert!(close(d3, z.exp(), 1e-12));
     }
 

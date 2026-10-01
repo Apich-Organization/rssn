@@ -32,7 +32,7 @@ fn trim<T: Zero>(mut p: Vec<T>) -> Vec<T> {
 
 /// Degree, or `None` for the zero polynomial.
 #[must_use]
-pub fn degree<T>(p: &[T]) -> Option<usize> {
+pub const fn degree<T>(p: &[T]) -> Option<usize> {
     p.len().checked_sub(1)
 }
 
@@ -246,7 +246,7 @@ type PPoly = Vec<u64>;
 struct Fp(u64);
 
 impl Fp {
-    fn pow(
+    const fn pow(
         self,
         mut base: u64,
         mut exp: u64,
@@ -263,7 +263,7 @@ impl Fp {
         acc
     }
 
-    fn inv(
+    const fn inv(
         self,
         x: u64,
     ) -> u64 {
@@ -886,7 +886,7 @@ mod tests {
             let mut expected: Vec<ZPoly> = Vec::new();
             for piece in pieces {
                 seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
-                if (seed >> 40) % 2 == 0 {
+                if (seed >> 40).is_multiple_of(2) {
                     p = mul(&p, &q(piece));
                     expected.push(z(piece));
                 }

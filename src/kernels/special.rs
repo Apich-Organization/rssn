@@ -439,7 +439,7 @@ fn bessel_j_miller(
     x: f64,
     m: usize,
 ) -> Vec<f64> {
-    debug_assert!(m % 2 == 0);
+    debug_assert!(m.is_multiple_of(2));
 
     let start = m + 2 * (x as usize + 30);
 
@@ -472,7 +472,7 @@ fn bessel_j_miller(
 }
 
 /// Number of Bessel orders needed for the Neumann series for `Y` at `x`.
-fn neumann_order(x: f64) -> usize {
+const fn neumann_order(x: f64) -> usize {
     let m = x as usize + 40;
 
     m + m % 2
@@ -1097,7 +1097,7 @@ pub fn bernoulli_poly(
     }
     let mut sum = 0.0;
     for k in 0..=n {
-        let coeff = binomial(n as u64, k as u64) * bernoulli_number(k);
+        let coeff = binomial(u64::from(n), u64::from(k)) * bernoulli_number(k);
         sum += coeff * x.powi((n - k) as i32);
     }
     sum
@@ -1203,8 +1203,8 @@ pub fn polygamma_numerical(
         return f64::NAN;
     }
 
-    let factor = if n % 2 == 0 { -1.0 } else { 1.0 };
-    let n_fact = factorial(n as u64);
+    let factor = if n.is_multiple_of(2) { -1.0 } else { 1.0 };
+    let n_fact = factorial(u64::from(n));
     factor * n_fact * hurwitz_zeta(f64::from(n + 1), z)
 }
 
@@ -1528,6 +1528,6 @@ mod arbitrary_order_bessel_tests {
         }
         assert!((ln_factorial(10.0) - 3_628_800.0_f64.ln()).abs() < 1e-12);
         // L_2^{(1)}(x) = (x² - 6x + 6)/2.
-        assert!((generalized_laguerre(2, 1.0, 0.7) - (0.49 - 4.2 + 6.0) / 2.0).abs() < 1e-14);
+        assert!((generalized_laguerre(2, 1.0, 0.7) - f64::midpoint(0.49 - 4.2, 6.0)).abs() < 1e-14);
     }
 }

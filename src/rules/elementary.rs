@@ -433,14 +433,14 @@ impl Kernel for ParityKernel {
                 let factors = graph.children(arg).to_vec();
                 let Some(index) = factors
                     .iter()
-                    .position(|&f| graph.as_number(f).is_some_and(|n| n.is_negative()))
+                    .position(|&f| graph.as_number(f).is_some_and(super::super::graph::number::Number::is_negative))
                 else {
                     return Outcome::Pass;
                 };
                 let mut flipped = factors.clone();
                 let negated = graph
                     .as_number(factors[index])
-                    .map_or_else(|| 0.into(), |n| n.neg());
+                    .map_or_else(|| 0.into(), super::super::graph::number::Number::neg);
                 flipped[index] = graph.num(negated);
                 graph.node(core::MUL, &flipped)
             } else {

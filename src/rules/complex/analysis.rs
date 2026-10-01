@@ -582,7 +582,7 @@ impl Analysis {
                 // a, removable otherwise.
                 let at = cx.graph.substitute(f, z, a);
                 let at = best(cx.graph, at)?;
-                let defined = value_of(cx.graph, at).is_some_and(|v| v.is_finite());
+                let defined = value_of(cx.graph, at).is_some_and(num_complex::Complex::is_finite);
                 Some(cx.graph.sym(if defined { "regular" } else { "removable" }))
             },
             | Request::Contour => {

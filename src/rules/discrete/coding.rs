@@ -579,7 +579,7 @@ mod tests {
         // (by chance) decodes to another valid codeword's data.
         let data = [1, 2, 3, 4, 5, 6];
         let cw = nums(&s(&format!("rs_encode({}, 4)", word(&data))));
-        let mut bad = cw.clone();
+        let mut bad = cw;
         bad[0] ^= 5;
         bad[3] ^= 9;
         bad[7] ^= 77;

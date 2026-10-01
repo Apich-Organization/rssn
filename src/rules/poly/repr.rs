@@ -705,7 +705,7 @@ mod tests {
         let right = a.pow(2, cap).and_then(|p| p.mul(&b, cap));
         assert_eq!(left, right);
         assert!(a.sub(&a).is_zero());
-        assert_eq!(a.pow(0, cap), Some(one.clone()));
+        assert_eq!(a.pow(0, cap), Some(one));
         assert_eq!(a.scale(&Number::from(0)), Poly::zero());
         assert_eq!(Poly::from_univariate(0, &[Number::from(1), Number::from(1)]), a);
     }

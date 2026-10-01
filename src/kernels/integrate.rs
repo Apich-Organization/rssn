@@ -76,7 +76,7 @@ where
 
     let h = (b - a) / (n_steps as f64);
 
-    let mut sum = 0.5 * (f(a) + f(b));
+    let mut sum = f64::midpoint(f(a), f(b));
 
     for i in 1..n_steps {
         let x = (i as f64).mul_add(h, a);
@@ -417,7 +417,7 @@ const KRONROD_WEIGHTS: [f64; 8] = [
 ];
 // Gauss weights for the odd-indexed nodes (1, 3, 5, 7).
 const GAUSS_WEIGHTS: [f64; 4] =
-    [0.129_484_966_168_869_7, 0.279_705_391_489_276_64, 0.381_830_050_505_118_95, 0.417_959_183_673_469_4];
+    [0.129_484_966_168_869_7, 0.279_705_391_489_276_64, 0.381_830_050_505_118_9, 0.417_959_183_673_469_4];
 
 /// One Gauss–Kronrod 7/15 panel on `[a, b]`: `(estimate, error estimate)`.
 fn gk15(

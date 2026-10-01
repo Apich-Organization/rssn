@@ -1477,7 +1477,7 @@ impl LinalgKernel {
                 }
                 let ru_node = list(cx.graph, &ru);
                 let rv_node = list(cx.graph, &rv);
-                let normal = LinalgKernel { op: self.op, request: Request::Cross }.compute(cx, &[ru_node, rv_node])?;
+                let normal = Self { op: self.op, request: Request::Cross }.compute(cx, &[ru_node, rv_node])?;
                 let normal = vector(cx.graph, normal)?;
                 let squared = dot(cx.graph, &normal, &normal);
                 let squared = cx.simplify(squared);

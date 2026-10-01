@@ -987,7 +987,7 @@ fn graph_operations() {
                 let (in1, in2) = (u < n1, v < n1);
                 let expected_du = if in1 && in2 { a1[u][v] } else if !in1 && !in2 { a2[u - n1][v - n1] } else { 0 };
                 assert_eq!(du[u][v], expected_du);
-                let expected_join = if in1 != in2 { 1 } else { expected_du };
+                let expected_join = if in1 == in2 { expected_du } else { 1 };
                 assert_eq!(join[u][v], expected_join);
             }
         }

@@ -49,7 +49,7 @@ struct Expander<'c, 'a> {
 const MAX_DEPTH: usize = 64;
 
 impl Expander<'_, '_> {
-    fn graph(&mut self) -> &mut Graph {
+    const fn graph(&mut self) -> &mut Graph {
         self.cx.graph
     }
 
@@ -538,7 +538,7 @@ enum Weights {
 /// The Laurent expansion of `f` about `x = a` up to and including
 /// `(x - a)^order`: returns the valuation and the simplified coefficients
 /// from that power upward.
-pub(crate) fn laurent_expansion(
+pub fn laurent_expansion(
     cx: &mut Cx<'_>,
     f: NodeId,
     x: NodeId,

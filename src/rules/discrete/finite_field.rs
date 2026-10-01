@@ -538,7 +538,7 @@ mod tests {
             }
         }
         // big modulus
-        assert_eq!(s("gf_mul(2^100, 3, 2^127 - 1)"), format!("{}", (3_u128 << 100) % ((1_u128 << 127) - 1)));
+        assert_eq!(s("gf_mul(2^100, 3, 2^127 - 1)"), format!("{}", (3_u128 << 100)));
     }
 
     #[test]

@@ -20,7 +20,7 @@ use crate::graph::print::PREC_POW;
 
 /// Greek letter names and their LaTeX commands. Capitals that have no
 /// distinct LaTeX glyph map to the Latin letter.
-pub(crate) const GREEK: &[(&str, &str)] = &[
+pub const GREEK: &[(&str, &str)] = &[
     ("alpha", r"\alpha"),
     ("beta", r"\beta"),
     ("gamma", r"\gamma"),
@@ -71,13 +71,13 @@ pub(crate) const GREEK: &[(&str, &str)] = &[
 
 /// A `sum` or `product` binder.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum BigOp {
+pub enum BigOp {
     Sum,
     Product,
 }
 
 /// A chain of derivatives, already rendered.
-pub(crate) struct Deriv {
+pub struct Deriv {
     /// Partial (`∂`) rather than total (`d`) derivatives.
     pub partial: bool,
     /// Total order.
@@ -91,7 +91,7 @@ pub(crate) struct Deriv {
 }
 
 /// The concrete syntax of a target markup language.
-pub(crate) trait Dialect {
+pub trait Dialect {
     fn symbol(
         &self,
         name: &str,
@@ -199,7 +199,7 @@ pub(crate) trait Dialect {
 }
 
 /// Splits `name` into a base and an optional subscript at the first `_`.
-pub(crate) fn split_subscript(name: &str) -> (&str, Option<&str>) {
+pub fn split_subscript(name: &str) -> (&str, Option<&str>) {
     match name.split_once('_') {
         | Some((base, sub)) if !base.is_empty() && !sub.is_empty() => (base, Some(sub)),
         | _ => (name, None),
@@ -207,7 +207,7 @@ pub(crate) fn split_subscript(name: &str) -> (&str, Option<&str>) {
 }
 
 /// Renders `node` in the syntax of `dialect`.
-pub(crate) fn render<D: Dialect>(
+pub fn render<D: Dialect>(
     graph: &Graph,
     dialect: &D,
     node: NodeId,
@@ -390,7 +390,7 @@ impl<D: Dialect> Walker<'_, D> {
         }
         match (name, children) {
             | ("not", &[x]) => self.d.not(&self.term(x, PREC_NEG)),
-            | ("exp", &[x]) => self.d.pow(&self.d.constant("E").unwrap_or("e").to_owned(), &self.term(x, PREC_EQ)),
+            | ("exp", &[x]) => self.d.pow(self.d.constant("E").unwrap_or("e"), &self.term(x, PREC_EQ)),
             | ("sqrt", &[x]) => self.d.sqrt(&self.term(x, PREC_EQ), None),
             | ("abs", &[x]) => self.d.abs(&self.term(x, PREC_EQ)),
             | ("conj", &[x]) => self.d.conj(&self.term(x, PREC_EQ)),

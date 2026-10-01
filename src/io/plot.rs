@@ -34,7 +34,7 @@ struct Svg {
 }
 
 impl Svg {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self { body: String::new() }
     }
 
@@ -580,8 +580,8 @@ fn colorbar(
     let (x, top, h) = (WIDTH - 24.0, 60.0, 200.0);
     let steps = 40;
     for i in 0..steps {
-        let t = 1.0 - (i as f64 + 0.5) / steps as f64;
-        svg.rect((x, top + h * i as f64 / steps as f64), (10.0, h / steps as f64 + 0.5), &colormap(t));
+        let t = 1.0 - (f64::from(i) + 0.5) / f64::from(steps);
+        svg.rect((x, top + h * f64::from(i) / f64::from(steps)), (10.0, h / f64::from(steps) + 0.5), &colormap(t));
     }
     svg.text((x + 5.0, top - 6.0), "middle", &format_tick(range.1));
     svg.text((x + 5.0, top + h + 14.0), "middle", &format_tick(range.0));

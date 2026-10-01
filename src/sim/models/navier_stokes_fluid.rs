@@ -481,9 +481,9 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
 
     for j in 0..ny {
         for i in 0..nx {
-            u_centered[[j, i]] = 0.5 * (u[[j, i]] + u[[j, i + 1]]);
+            u_centered[[j, i]] = f64::midpoint(u[[j, i]], u[[j, i + 1]]);
 
-            v_centered[[j, i]] = 0.5 * (v[[j, i]] + v[[j + 1, i]]);
+            v_centered[[j, i]] = f64::midpoint(v[[j, i]], v[[j + 1, i]]);
         }
     }
 

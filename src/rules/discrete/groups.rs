@@ -154,7 +154,7 @@ fn read_group(
 }
 
 impl Grp {
-    fn n(&self) -> usize {
+    const fn n(&self) -> usize {
         self.elems.len()
     }
 
@@ -712,7 +712,7 @@ fn perm_sign(
     a: &[NodeId],
 ) -> Option<V> {
     let p = read_perm(cx.graph, *a.first()?)?;
-    Some(V::int(if (p.len() - cycles(&p).len()) % 2 == 0 { 1 } else { -1 }))
+    Some(V::int(if (p.len() - cycles(&p).len()).is_multiple_of(2) { 1 } else { -1 }))
 }
 
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {

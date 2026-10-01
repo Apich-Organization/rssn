@@ -87,11 +87,11 @@ impl Block {
         }
     }
 
-    fn height(&self) -> usize {
+    const fn height(&self) -> usize {
         self.lines.len()
     }
 
-    fn below(&self) -> usize {
+    const fn below(&self) -> usize {
         self.height().saturating_sub(self.base)
     }
 

@@ -97,7 +97,7 @@ const FUEL: usize = 600;
 
 impl Integrator<'_, '_> {
     /// Spends one unit of work; `false` once the search is out of fuel.
-    fn spend(&mut self) -> bool {
+    const fn spend(&mut self) -> bool {
         match self.fuel.checked_sub(1) {
             | Some(rest) => {
                 self.fuel = rest;

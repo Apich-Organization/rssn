@@ -3452,7 +3452,7 @@ mod tests {
         let (wl, wu) = (at(&wide[0], &[]), at(&wide[1], &[]));
         let (nl, nu) = (at(&narrow[0], &[]), at(&narrow[1], &[]));
         assert!(wl < nl && nu < wu);
-        close((wl + wu) / 2.0, mean_of(&A), 1e-12, "centre");
+        close(f64::midpoint(wl, wu), mean_of(&A), 1e-12, "centre");
     }
 
     #[test]

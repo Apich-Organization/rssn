@@ -862,11 +862,11 @@ fn floats3(v: (f64, f64, f64)) -> V {
     V::List(vec![V::Float(v.0), V::Float(v.1), V::Float(v.2)])
 }
 
-fn vector3(v: (f64, f64, f64)) -> cg::Vector3D {
+const fn vector3(v: (f64, f64, f64)) -> cg::Vector3D {
     cg::Vector3D::new(v.0, v.1, v.2)
 }
 
-fn point3(v: (f64, f64, f64)) -> cg::Point3D {
+const fn point3(v: (f64, f64, f64)) -> cg::Point3D {
     cg::Point3D::new(v.0, v.1, v.2)
 }
 
@@ -975,10 +975,10 @@ fn reflect(
 
 /// Registers the graphics operators.
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    def(i, "translation_2d", Arity::Fixed(2), |cx, a| translation(cx, a))?;
-    def(i, "translation_3d", Arity::Fixed(3), |cx, a| translation(cx, a))?;
-    def(i, "scaling_2d", Arity::Fixed(2), |cx, a| diagonal(cx, a))?;
-    def(i, "scaling_3d", Arity::Fixed(3), |cx, a| diagonal(cx, a))?;
+    def(i, "translation_2d", Arity::Fixed(2), translation)?;
+    def(i, "translation_3d", Arity::Fixed(3), translation)?;
+    def(i, "scaling_2d", Arity::Fixed(2), diagonal)?;
+    def(i, "scaling_3d", Arity::Fixed(3), diagonal)?;
     def(i, "shear_2d", Arity::Fixed(2), shear_2d)?;
     def(i, "rotation_2d", Arity::Fixed(1), |cx, a| {
         let [t] = arg(a)?;

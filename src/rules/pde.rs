@@ -366,7 +366,7 @@ impl Problem {
         self.jets.iter().map(|(i, _)| i.iter().sum::<u32>()).max().unwrap_or(0)
     }
 
-    fn dimension(&self) -> usize {
+    const fn dimension(&self) -> usize {
         self.vars.len()
     }
 
@@ -570,7 +570,7 @@ impl Conditions {
         self.0.iter().find(|c| c.on == on && c.derivative == derivative && point.is_none_or(|p| graph.same(p, c.point)))
     }
 
-    fn is_empty(&self) -> bool {
+    const fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
@@ -640,7 +640,7 @@ fn kind(
     }
     // All pure second derivatives with one sign, no mixed or first ones.
     let mut signs = Vec::new();
-    let mut allowed = vec![zero_index.clone()];
+    let mut allowed = vec![zero_index];
     for k in 0..p.dimension() {
         let index = p.unit(k, 2);
         let c = p.coefficient(cx.graph, &index);
@@ -767,7 +767,7 @@ fn solve(
     conditions: &Conditions,
     method: Method,
 ) -> Option<NodeId> {
-    use Method::*;
+    use Method::{Any, Characteristics, Burgers, Separation, SecondOrder, Dalembert, Wave3, Heat1, Fourier, Heat3, Schrodinger, KleinGordon, Laplace2, Laplace3, Green, Poisson2, Poisson3, Helmholtz};
     let kind = kind(cx, p);
     let try_method = |m: Method| method == Any || method == m;
     let mut solution = None;

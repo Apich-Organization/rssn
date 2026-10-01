@@ -676,10 +676,10 @@ fn moran_dimension(
         }
     }
     for _ in 0..200 {
-        let mid = 0.5 * (lo + hi);
+        let mid = f64::midpoint(lo, hi);
         if f(mid) > 0.0 { lo = mid } else { hi = mid }
     }
-    Some(V::Float(0.5 * (lo + hi)))
+    Some(V::Float(f64::midpoint(lo, hi)))
 }
 
 /// The least-squares slope of `ys` against `xs`.
@@ -980,7 +980,7 @@ mod tests {
         assert_eq!(s("similarity_dimension(list(1/2, 1/2, 1/2, 1/2))"), "ln(4)/ln(2)");
         assert_eq!(s("similarity_dimension(list(1/3, 1/3, 1/3, 1/3, 1/3, 1/3, 1/3, 1/3))"), "ln(8)/ln(3)");
         let eq = s("similarity_dimension(list(1/2, 1/3))");
-        assert!(eq.contains("D") && eq.contains('='), "{eq}");
+        assert!(eq.contains('D') && eq.contains('='), "{eq}");
         assert!((value("moran_dimension(list(1/3, 1/3))") - 2.0_f64.ln() / 3.0_f64.ln()).abs() < 1e-12);
         assert!((value("moran_dimension(list(1/2, 1/2, 1/2))") - 3.0_f64.ln() / 2.0_f64.ln()).abs() < 1e-12);
         let d = value("moran_dimension(list(1/2, 1/4))");

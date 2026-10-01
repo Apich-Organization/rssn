@@ -149,7 +149,7 @@ pub unsafe extern "C" fn rssn_string_free(text: *mut c_char) {
 
 /// The crate version, e.g. `"0.3.0"`. Static; do not free.
 #[unsafe(no_mangle)]
-pub extern "C" fn rssn_version() -> *const c_char {
+pub const extern "C" fn rssn_version() -> *const c_char {
     concat!(env!("CARGO_PKG_VERSION"), "\0").as_ptr().cast()
 }
 

@@ -1019,7 +1019,7 @@ pub fn hamming_decode_numerical(codeword: &[u8]) -> Result<(Vec<u8>, Option<usiz
 /// # Returns
 /// `true` if the codeword is valid (no errors), `false` otherwise.
 #[must_use]
-pub fn hamming_check_numerical(codeword: &[u8]) -> bool {
+pub const fn hamming_check_numerical(codeword: &[u8]) -> bool {
     if codeword.len() != 7 {
         return false;
     }

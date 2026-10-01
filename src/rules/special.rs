@@ -804,6 +804,167 @@ impl Kernel for Orthogonal {
     }
 }
 
+// ----------------------------------------------------------------------
+// Antiderivatives involving the error function
+// ----------------------------------------------------------------------
+
+fn depends(
+    graph: &Graph,
+    node: NodeId,
+    x: crate::graph::SymbolId,
+) -> bool {
+    graph.depends_on(graph.find(node), x)
+}
+
+/// `∫ x^n exp(a x² + b x + c) dx` for a literal `n ≥ 0`: the Gaussian
+/// `n = 0` through the error function, higher moments by the reduction
+/// `I_n = (x^(n-1) e^q - (n-1) I_(n-2) - b I_(n-1)) / (2a)`.
+fn gaussian_integral(
+    cx: &mut KernelCx<'_>,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let symbol = graph.symbol_of(x)?;
+    let (exp, erf, pi) = (graph.ops().lookup("exp")?, graph.ops().lookup("erf")?, graph.ops().lookup("pi")?);
+    let factors = if graph.op(f) == core::MUL { graph.children(f).to_vec() } else { vec![f] };
+    let mut n: u32 = 0;
+    let mut exponent = None;
+    for factor in factors {
+        if graph.symbol_of(factor) == Some(symbol) {
+            n = n.checked_add(1)?;
+        } else if let (true, &[base, e]) = (graph.op(factor) == core::POW, graph.children(factor)) {
+            if graph.symbol_of(base) != Some(symbol) {
+                return None;
+            }
+            n = n.checked_add(integer(graph, e)?.to_u32()?)?;
+        } else if graph.op(factor) == exp && exponent.is_none() {
+            exponent = graph.children(factor).first().copied();
+        } else {
+            return None;
+        }
+    }
+    let q = exponent?;
+    if n > 12 {
+        return None;
+    }
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let poly = from_term(graph, &mut gens, q, Limits::default())?;
+    for g in poly.support() {
+        if g != gx && gens.node(g).is_some_and(|node| depends(graph, node, symbol)) {
+            return None;
+        }
+    }
+    if poly.degree_in(gx) != 2 {
+        return None;
+    }
+    let coefficients = poly.coefficients_in(gx);
+    let a = to_term(graph, &gens, coefficients.get(2)?);
+    let b = to_term(graph, &gens, coefficients.get(1)?);
+    let c = to_term(graph, &gens, coefficients.first()?);
+    let int = |graph: &mut Graph, v: i64| graph.int(v);
+    let mul = |graph: &mut Graph, f: &[NodeId]| graph.node(core::MUL, f);
+    let add = |graph: &mut Graph, t: &[NodeId]| graph.node(core::ADD, t);
+    let pow = |graph: &mut Graph, b: NodeId, e: NodeId| graph.node(core::POW, &[b, e]);
+    let half = graph.num(Number::fraction(1, 2)?);
+    let minus_one = int(graph, -1);
+    // I0 = sqrt(pi) / (2 sqrt(-a)) * exp(c - b²/(4a)) * erf(sqrt(-a) (x + b/(2a))),
+    // or with erfi and sqrt(a) when a is known positive.
+    let growing = graph.facts(a).has(Facts::POSITIVE);
+    let erf = if growing { graph.ops().lookup("erfi")? } else { erf };
+    let minus_a = if growing { a } else { mul(graph, &[minus_one, a]) };
+    let root = pow(graph, minus_a, half);
+    let pi_node = graph.node(pi, &[]);
+    let root_pi = pow(graph, pi_node, half);
+    let two = int(graph, 2);
+    let inv_two_root = {
+        let d = mul(graph, &[two, root]);
+        pow(graph, d, minus_one)
+    };
+    let b2 = pow(graph, b, two);
+    let four_a = {
+        let four = int(graph, 4);
+        mul(graph, &[four, a])
+    };
+    let inv_four_a = pow(graph, four_a, minus_one);
+    let shift_exp = {
+        let t = mul(graph, &[minus_one, b2, inv_four_a]);
+        let e = add(graph, &[c, t]);
+        graph.node(exp, &[e])
+    };
+    let two_a = mul(graph, &[two, a]);
+    let inv_two_a = pow(graph, two_a, minus_one);
+    let shifted = {
+        let t = mul(graph, &[b, inv_two_a]);
+        let s = add(graph, &[x, t]);
+        mul(graph, &[root, s])
+    };
+    let error = graph.node(erf, &[shifted]);
+    let i0 = mul(graph, &[root_pi, inv_two_root, shift_exp, error]);
+    let e_q = graph.node(exp, &[q]);
+    let mut moments = vec![i0];
+    for k in 1..=n {
+        // I_k = (x^(k-1) e^q - (k-1) I_(k-2) - b I_(k-1)) / (2a)
+        let k1 = int(graph, i64::from(k) - 1);
+        let xk = pow(graph, x, k1);
+        let mut terms = vec![mul(graph, &[xk, e_q])];
+        if k >= 2 {
+            let coefficient = int(graph, -(i64::from(k) - 1));
+            terms.push(mul(graph, &[coefficient, moments[(k - 2) as usize]]));
+        }
+        terms.push(mul(graph, &[minus_one, b, moments[(k - 1) as usize]]));
+        let sum = add(graph, &terms);
+        moments.push(mul(graph, &[sum, inv_two_a]));
+    }
+    moments.pop()
+}
+
+/// `∫ erf(a x + b) dx = ((a x + b) erf(a x + b) + exp(-(a x + b)²)/√π) / a`,
+/// and the same for `erfc` with the sign of the second term flipped.
+fn erf_integral(
+    cx: &mut KernelCx<'_>,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let symbol = graph.symbol_of(x)?;
+    let (exp, erf, erfc, pi) =
+        (graph.ops().lookup("exp")?, graph.ops().lookup("erf")?, graph.ops().lookup("erfc")?, graph.ops().lookup("pi")?);
+    let op = graph.op(f);
+    if op != erf && op != erfc {
+        return None;
+    }
+    let &[u] = graph.children(f) else {
+        return None;
+    };
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let poly = from_term(graph, &mut gens, u, Limits::default())?;
+    for g in poly.support() {
+        if g != gx && gens.node(g).is_some_and(|node| depends(graph, node, symbol)) {
+            return None;
+        }
+    }
+    if poly.degree_in(gx) != 1 {
+        return None;
+    }
+    let a = to_term(graph, &gens, poly.coefficients_in(gx).get(1)?);
+    let (minus_one, two) = (graph.int(-1), graph.int(2));
+    let half = graph.num(Number::fraction(-1, 2)?);
+    let square = graph.node(core::POW, &[u, two]);
+    let negated = graph.node(core::MUL, &[minus_one, square]);
+    let gauss = graph.node(exp, &[negated]);
+    let pi_node = graph.node(pi, &[]);
+    let inv_root_pi = graph.node(core::POW, &[pi_node, half]);
+    let sign = graph.int(if op == erf { 1 } else { -1 });
+    let tail = graph.node(core::MUL, &[sign, gauss, inv_root_pi]);
+    let head = graph.node(core::MUL, &[u, f]);
+    let sum = graph.node(core::ADD, &[head, tail]);
+    let inv_a = graph.node(core::POW, &[a, minus_one]);
+    Some(graph.node(core::MUL, &[sum, inv_a]))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1319,165 +1480,4 @@ mod tests {
         agree(ev("legendre(3, 0.5)", &[]), -0.437_5, 1e-14);
         assert_eq!(s("legendre(2, 0.5)"), format!("{}", -0.125));
     }
-}
-
-// ----------------------------------------------------------------------
-// Antiderivatives involving the error function
-// ----------------------------------------------------------------------
-
-fn depends(
-    graph: &Graph,
-    node: NodeId,
-    x: crate::graph::SymbolId,
-) -> bool {
-    graph.depends_on(graph.find(node), x)
-}
-
-/// `∫ x^n exp(a x² + b x + c) dx` for a literal `n ≥ 0`: the Gaussian
-/// `n = 0` through the error function, higher moments by the reduction
-/// `I_n = (x^(n-1) e^q - (n-1) I_(n-2) - b I_(n-1)) / (2a)`.
-fn gaussian_integral(
-    cx: &mut KernelCx<'_>,
-    f: NodeId,
-    x: NodeId,
-) -> Option<NodeId> {
-    let graph = &mut *cx.graph;
-    let symbol = graph.symbol_of(x)?;
-    let (exp, erf, pi) = (graph.ops().lookup("exp")?, graph.ops().lookup("erf")?, graph.ops().lookup("pi")?);
-    let factors = if graph.op(f) == core::MUL { graph.children(f).to_vec() } else { vec![f] };
-    let mut n: u32 = 0;
-    let mut exponent = None;
-    for factor in factors {
-        if graph.symbol_of(factor) == Some(symbol) {
-            n = n.checked_add(1)?;
-        } else if let (true, &[base, e]) = (graph.op(factor) == core::POW, graph.children(factor)) {
-            if graph.symbol_of(base) != Some(symbol) {
-                return None;
-            }
-            n = n.checked_add(integer(graph, e)?.to_u32()?)?;
-        } else if graph.op(factor) == exp && exponent.is_none() {
-            exponent = graph.children(factor).first().copied();
-        } else {
-            return None;
-        }
-    }
-    let q = exponent?;
-    if n > 12 {
-        return None;
-    }
-    let mut gens = Gens::default();
-    let gx = gens.index(graph, x);
-    let poly = from_term(graph, &mut gens, q, Limits::default())?;
-    for g in poly.support() {
-        if g != gx && gens.node(g).is_some_and(|node| depends(graph, node, symbol)) {
-            return None;
-        }
-    }
-    if poly.degree_in(gx) != 2 {
-        return None;
-    }
-    let coefficients = poly.coefficients_in(gx);
-    let a = to_term(graph, &gens, coefficients.get(2)?);
-    let b = to_term(graph, &gens, coefficients.get(1)?);
-    let c = to_term(graph, &gens, coefficients.first()?);
-    let int = |graph: &mut Graph, v: i64| graph.int(v);
-    let mul = |graph: &mut Graph, f: &[NodeId]| graph.node(core::MUL, f);
-    let add = |graph: &mut Graph, t: &[NodeId]| graph.node(core::ADD, t);
-    let pow = |graph: &mut Graph, b: NodeId, e: NodeId| graph.node(core::POW, &[b, e]);
-    let half = graph.num(Number::fraction(1, 2)?);
-    let minus_one = int(graph, -1);
-    // I0 = sqrt(pi) / (2 sqrt(-a)) * exp(c - b²/(4a)) * erf(sqrt(-a) (x + b/(2a))),
-    // or with erfi and sqrt(a) when a is known positive.
-    let growing = graph.facts(a).has(Facts::POSITIVE);
-    let erf = if growing { graph.ops().lookup("erfi")? } else { erf };
-    let minus_a = if growing { a } else { mul(graph, &[minus_one, a]) };
-    let root = pow(graph, minus_a, half);
-    let pi_node = graph.node(pi, &[]);
-    let root_pi = pow(graph, pi_node, half);
-    let two = int(graph, 2);
-    let inv_two_root = {
-        let d = mul(graph, &[two, root]);
-        pow(graph, d, minus_one)
-    };
-    let b2 = pow(graph, b, two);
-    let four_a = {
-        let four = int(graph, 4);
-        mul(graph, &[four, a])
-    };
-    let inv_four_a = pow(graph, four_a, minus_one);
-    let shift_exp = {
-        let t = mul(graph, &[minus_one, b2, inv_four_a]);
-        let e = add(graph, &[c, t]);
-        graph.node(exp, &[e])
-    };
-    let two_a = mul(graph, &[two, a]);
-    let inv_two_a = pow(graph, two_a, minus_one);
-    let shifted = {
-        let t = mul(graph, &[b, inv_two_a]);
-        let s = add(graph, &[x, t]);
-        mul(graph, &[root, s])
-    };
-    let error = graph.node(erf, &[shifted]);
-    let i0 = mul(graph, &[root_pi, inv_two_root, shift_exp, error]);
-    let e_q = graph.node(exp, &[q]);
-    let mut moments = vec![i0];
-    for k in 1..=n {
-        // I_k = (x^(k-1) e^q - (k-1) I_(k-2) - b I_(k-1)) / (2a)
-        let k1 = int(graph, i64::from(k) - 1);
-        let xk = pow(graph, x, k1);
-        let mut terms = vec![mul(graph, &[xk, e_q])];
-        if k >= 2 {
-            let coefficient = int(graph, -(i64::from(k) - 1));
-            terms.push(mul(graph, &[coefficient, moments[(k - 2) as usize]]));
-        }
-        terms.push(mul(graph, &[minus_one, b, moments[(k - 1) as usize]]));
-        let sum = add(graph, &terms);
-        moments.push(mul(graph, &[sum, inv_two_a]));
-    }
-    moments.pop()
-}
-
-/// `∫ erf(a x + b) dx = ((a x + b) erf(a x + b) + exp(-(a x + b)²)/√π) / a`,
-/// and the same for `erfc` with the sign of the second term flipped.
-fn erf_integral(
-    cx: &mut KernelCx<'_>,
-    f: NodeId,
-    x: NodeId,
-) -> Option<NodeId> {
-    let graph = &mut *cx.graph;
-    let symbol = graph.symbol_of(x)?;
-    let (exp, erf, erfc, pi) =
-        (graph.ops().lookup("exp")?, graph.ops().lookup("erf")?, graph.ops().lookup("erfc")?, graph.ops().lookup("pi")?);
-    let op = graph.op(f);
-    if op != erf && op != erfc {
-        return None;
-    }
-    let &[u] = graph.children(f) else {
-        return None;
-    };
-    let mut gens = Gens::default();
-    let gx = gens.index(graph, x);
-    let poly = from_term(graph, &mut gens, u, Limits::default())?;
-    for g in poly.support() {
-        if g != gx && gens.node(g).is_some_and(|node| depends(graph, node, symbol)) {
-            return None;
-        }
-    }
-    if poly.degree_in(gx) != 1 {
-        return None;
-    }
-    let a = to_term(graph, &gens, poly.coefficients_in(gx).get(1)?);
-    let (minus_one, two) = (graph.int(-1), graph.int(2));
-    let half = graph.num(Number::fraction(-1, 2)?);
-    let square = graph.node(core::POW, &[u, two]);
-    let negated = graph.node(core::MUL, &[minus_one, square]);
-    let gauss = graph.node(exp, &[negated]);
-    let pi_node = graph.node(pi, &[]);
-    let inv_root_pi = graph.node(core::POW, &[pi_node, half]);
-    let sign = graph.int(if op == erf { 1 } else { -1 });
-    let tail = graph.node(core::MUL, &[sign, gauss, inv_root_pi]);
-    let head = graph.node(core::MUL, &[u, f]);
-    let sum = graph.node(core::ADD, &[head, tail]);
-    let inv_a = graph.node(core::POW, &[a, minus_one]);
-    Some(graph.node(core::MUL, &[sum, inv_a]))
 }

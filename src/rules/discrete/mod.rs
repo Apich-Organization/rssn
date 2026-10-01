@@ -113,7 +113,7 @@ pub(crate) enum V {
     /// A float.
     Float(f64),
     /// `list(...)`.
-    List(Vec<V>),
+    List(Vec<Self>),
 }
 
 impl V {
@@ -551,12 +551,12 @@ pub(crate) mod test_util {
     use crate::rules::testing::simplify;
 
     /// The closed form of `src`.
-    pub(crate) fn s(src: &str) -> String {
+    pub fn s(src: &str) -> String {
         simplify(&[discrete()], src)
     }
 
     /// A small deterministic generator.
-    pub(crate) struct Lcg(pub u64);
+    pub struct Lcg(pub u64);
 
     impl Lcg {
         pub(crate) fn next(
@@ -569,7 +569,7 @@ pub(crate) mod test_util {
     }
 
     /// Every integer in `text`, in order.
-    pub(crate) fn nums(text: &str) -> Vec<i64> {
+    pub fn nums(text: &str) -> Vec<i64> {
         text.split(|c: char| !(c.is_ascii_digit() || c == '-'))
             .filter(|t| !t.is_empty() && *t != "-")
             .filter_map(|t| t.parse().ok())
@@ -577,7 +577,7 @@ pub(crate) mod test_util {
     }
 
     /// The rows of a `list(list(..), list(..))`.
-    pub(crate) fn nested(text: &str) -> Vec<Vec<i64>> {
+    pub fn nested(text: &str) -> Vec<Vec<i64>> {
         let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
         inner.split("list(").skip(1).map(nums).collect()
     }
