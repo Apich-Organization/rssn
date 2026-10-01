@@ -332,3 +332,17 @@ fn fourier_series_of_simple_functions() {
     assert!((got - want).abs() < 1e-9, "{series}: {got} vs {want}");
 }
 
+
+#[test]
+fn improper_integrals() {
+    assert_eq!(run("defint(exp(-x), x, 0, oo)"), "1");
+    assert_eq!(run("defint(x*exp(-x), x, 0, oo)"), "1");
+    assert_eq!(run("defint(1/(1 + x^2), x, -oo, oo)"), "pi");
+    assert_eq!(run("defint(1/x^2, x, 1, oo)"), "1");
+}
+
+#[test]
+fn derivatives_map_over_lists_and_equations() {
+    assert_eq!(run("diff(list(t^2, 3, sin(t)), t)"), "list(2*t, 0, cos(t))");
+    assert_eq!(run("diff(x^2 = y, x)"), "2*x = 0");
+}

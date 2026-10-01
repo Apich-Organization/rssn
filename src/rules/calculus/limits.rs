@@ -387,7 +387,11 @@ impl Limiter<'_, '_> {
                 Some(self.infinite(true))
             },
             | "sinh" | "asinh" => Some(self.infinite(up)),
-            | _ => None,
+            | _ => {
+                let known = graph.ops().attr::<super::AtInfinity>(op)?;
+                let pattern = if up { known.plus.clone() } else { known.minus.clone() }?;
+                pattern.instantiate(graph, &[])
+            },
         }
     }
 

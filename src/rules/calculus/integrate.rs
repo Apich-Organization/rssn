@@ -68,6 +68,17 @@ pub struct Functions {
 
 const MAX_DEPTH: usize = 6;
 
+/// An antiderivative rule contributed by another rule set: given the
+/// integrand and the variable, a candidate antiderivative (which the
+/// integrator verifies like its own).
+pub type TableFn = fn(&mut Cx<'_>, NodeId, NodeId) -> Option<NodeId>;
+
+/// Operator attribute on `integral`: the antiderivative rules other rule
+/// sets have taught the integrator (Gaussians and the error function,
+/// for instance, belong to the special functions).
+#[derive(Clone, Debug, Default)]
+pub struct IntegralTable(pub Vec<TableFn>);
+
 /// One integration problem: the variable and the tools.
 struct Integrator<'c, 'a> {
     cx: &'c mut Cx<'a>,
@@ -256,6 +267,19 @@ impl Integrator<'_, '_> {
         }
         if let Some(found) = self.table(f) {
             return Some(found);
+        }
+        let extensions = self
+            .cx
+            .graph
+            .ops()
+            .lookup("integral")
+            .and_then(|op| self.cx.graph.ops().attr::<IntegralTable>(op))
+            .map(|t| t.0.clone())
+            .unwrap_or_default();
+        for rule in extensions {
+            if let Some(found) = rule(self.cx, f, self.x) {
+                return Some(found);
+            }
         }
         if let Some(found) = self.exponential_times_trig(f) {
             return Some(found);
@@ -944,7 +968,8 @@ impl Kernel for Antiderivative {
     }
 }
 
-/// Symbolic kernel for `defint(f, x, a, b)` with finite limits.
+/// Symbolic kernel for `defint(f, x, a, b)`: the antiderivative at the
+/// limits, or its limits at infinite ends.
 pub(super) struct Definite {
     pub(super) defint: OpId,
     pub(super) functions: Functions,
@@ -967,15 +992,22 @@ impl Kernel for Definite {
         let infinite = |graph: &Graph, n: NodeId| {
             graph.eval(n, &Env::numeric(0.0)).is_some_and(f64::is_infinite)
         };
-        if infinite(cx.graph, lower) || infinite(cx.graph, upper) {
-            return Outcome::Pass;
-        }
+        let (lower_infinite, upper_infinite) = (infinite(cx.graph, lower), infinite(cx.graph, upper));
         let Some(primitive) = antiderivative(cx, self.functions, integrand, variable) else {
             return Outcome::Pass;
         };
         let graph = &mut *cx.graph;
-        let at_upper = graph.substitute(primitive, variable, upper);
-        let at_lower = graph.substitute(primitive, variable, lower);
+        // An improper integral is the difference of the antiderivative's
+        // limits at the infinite ends.
+        let limit = graph.ops().lookup("limit");
+        let at = |graph: &mut Graph, bound: NodeId, is_infinite: bool| match (is_infinite, limit) {
+            | (true, Some(limit)) => Some(graph.node(limit, &[primitive, variable, bound])),
+            | (true, None) => None,
+            | (false, _) => Some(graph.substitute(primitive, variable, bound)),
+        };
+        let (Some(at_upper), Some(at_lower)) = (at(graph, upper, upper_infinite), at(graph, lower, lower_infinite)) else {
+            return Outcome::Pass;
+        };
         let minus_one = graph.int(-1);
         let negated = graph.node(core::MUL, &[minus_one, at_lower]);
         Outcome::Equal(graph.node(core::ADD, &[at_upper, negated]))

@@ -150,7 +150,77 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100))?;
         i.kernel(&format!("linalg/{name}"), Tier::Reduce, LinalgKernel { op, request });
     }
+    i.kernel("linalg/broadcast", Tier::Normalize, Broadcast);
     Ok(())
+}
+
+/// Arithmetic on lists is elementwise: a sum of lists of one length is
+/// the list of sums, and a product with exactly one list factor scales
+/// every element. Nested lists (matrices, tensors) follow, one level per
+/// application.
+struct Broadcast;
+
+impl Broadcast {
+    fn as_list(
+        graph: &Graph,
+        node: NodeId,
+    ) -> Option<NodeId> {
+        graph.enodes(graph.find(node)).find(|&n| graph.op(n) == core::LIST)
+    }
+}
+
+impl Kernel for Broadcast {
+    fn ops(&self) -> Vec<OpId> {
+        vec![core::ADD, core::MUL]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let graph = &mut *cx.graph;
+        let children = graph.children(node).to_vec();
+        let lists: Vec<Option<NodeId>> = children.iter().map(|&c| Self::as_list(graph, c)).collect();
+        if graph.op(node) == core::ADD {
+            let Some(lists) = lists.into_iter().collect::<Option<Vec<NodeId>>>() else {
+                return Outcome::Pass;
+            };
+            let len = graph.children(lists[0]).len();
+            if lists.iter().any(|&l| graph.children(l).len() != len) {
+                return Outcome::Pass;
+            }
+            let items: Vec<NodeId> = (0..len)
+                .map(|k| {
+                    let terms: Vec<NodeId> = lists.iter().map(|&l| graph.children(l)[k]).collect();
+                    add(graph, &terms)
+                })
+                .collect();
+            return Outcome::Equal(list(graph, &items));
+        }
+        let mut found = lists.iter().enumerate().filter_map(|(k, l)| l.map(|l| (k, l)));
+        let (Some((at, l)), None) = (found.next(), found.next()) else {
+            return Outcome::Pass;
+        };
+        let others: Vec<NodeId> = children.iter().enumerate().filter(|&(k, _)| k != at).map(|(_, &c)| c).collect();
+        let items: Vec<NodeId> = graph
+            .children(l)
+            .to_vec()
+            .into_iter()
+            .map(|item| {
+                let mut factors = others.clone();
+                factors.push(item);
+                mul(graph, &factors)
+            })
+            .collect();
+        // Pinned: `c * list(a, b)` is shorter than `list(c*a, c*b)`, but a
+        // vector should read as a vector.
+        Outcome::Pinned(list(graph, &items))
+    }
+
+    fn revisit(&self) -> bool {
+        true
+    }
 }
 
 // ----------------------------------------------------------------------
@@ -185,6 +255,34 @@ fn matrix(
     }
     let width = out.first().map_or(0, Vec::len);
     out.iter().all(|r| r.len() == width).then_some(out)
+}
+
+/// A matrix or a vector operand.
+enum Operand {
+    Matrix(Vec<Vec<NodeId>>),
+    Vector(Vec<NodeId>),
+}
+
+/// Reads a list of lists as a matrix and a list of scalars as a vector.
+fn operand(
+    graph: &mut Graph,
+    node: NodeId,
+) -> Option<Operand> {
+    if let Some(m) = matrix(graph, node) {
+        if !m.is_empty() {
+            return Some(Operand::Matrix(m));
+        }
+    }
+    let items = vector(graph, node)?;
+    let mut scalars = Vec::with_capacity(items.len());
+    for item in items {
+        let item = best(graph, item)?;
+        if graph.op(item) == core::LIST {
+            return None;
+        }
+        scalars.push(item);
+    }
+    Some(Operand::Vector(scalars))
 }
 
 fn list(
@@ -1006,13 +1104,55 @@ impl LinalgKernel {
         let arg = |i: usize| args.get(i).copied();
         match self.request {
             | Request::Matmul => {
-                let mut acc = matrix(cx.graph, arg(0)?)?;
-                for &next in args.get(1..)? {
-                    let b = matrix(cx.graph, next)?;
-                    acc = matmul(cx.graph, &acc, &b)?;
+                // A vector is a row on the left of a product and a column
+                // anywhere else; the result of a product with a vector is
+                // a vector again.
+                let last = args.len().saturating_sub(1);
+                let mut flat = false;
+                let mut acc = Vec::new();
+                for (k, &next) in args.iter().enumerate() {
+                    let b = match operand(cx.graph, next)? {
+                        | Operand::Matrix(m) => m,
+                        | Operand::Vector(v) if k == 0 && last > 0 => {
+                            flat = true;
+                            vec![v]
+                        },
+                        | Operand::Vector(v) => {
+                            flat = true;
+                            v.into_iter().map(|e| vec![e]).collect()
+                        },
+                    };
+                    acc = if k == 0 { b } else { matmul(cx.graph, &acc, &b)? };
                 }
                 normalise_entries(cx, &mut acc);
+                if flat && (acc.len() == 1 || acc.iter().all(|r| r.len() == 1)) {
+                    let items: Vec<NodeId> = acc.into_iter().flatten().collect();
+                    return Some(list(cx.graph, &items));
+                }
                 Some(matrix_term(cx.graph, &acc))
+            },
+            | Request::Madd if operand(cx.graph, arg(0)?).is_some_and(|o| matches!(o, Operand::Vector(_))) => {
+                let mut acc = vector(cx.graph, arg(0)?)?;
+                for &next in args.get(1..)? {
+                    let Operand::Vector(b) = operand(cx.graph, next)? else {
+                        return None;
+                    };
+                    if b.len() != acc.len() {
+                        return None;
+                    }
+                    for (x, y) in acc.iter_mut().zip(b) {
+                        *x = add(cx.graph, &[*x, y]);
+                    }
+                }
+                let mut rows = vec![acc];
+                normalise_entries(cx, &mut rows);
+                Some(list(cx.graph, &rows[0]))
+            },
+            | Request::Smul if operand(cx.graph, arg(1)?).is_some_and(|o| matches!(o, Operand::Vector(_))) => {
+                let c = arg(0)?;
+                let v = vector(cx.graph, arg(1)?)?;
+                let scaled: Vec<NodeId> = v.iter().map(|&e| mul(cx.graph, &[c, e])).collect();
+                Some(list(cx.graph, &scaled))
             },
             | Request::Madd => {
                 let mut acc = matrix(cx.graph, arg(0)?)?;

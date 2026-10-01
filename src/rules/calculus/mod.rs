@@ -35,6 +35,59 @@ use super::elementary::elementary;
 use super::poly::poly;
 
 pub use diff::Partials;
+pub use integrate::IntegralTable;
+pub use integrate::TableFn;
+
+/// Operator attribute: the limits of a one-argument function as its
+/// argument tends to `+∞` and `-∞`, as nullary patterns. The limit kernel
+/// consults it for functions it has no built-in knowledge of.
+#[derive(Clone, Debug)]
+pub struct AtInfinity {
+    /// Limit at `+∞`.
+    pub plus: Option<Pat>,
+    /// Limit at `-∞`.
+    pub minus: Option<Pat>,
+}
+
+/// Teaches the limit kernel the values of `name` at `±∞` (`None` where
+/// there is no finite limit or it is not known).
+///
+/// # Errors
+/// Fails when the operator is unknown or a value does not parse.
+pub(crate) fn at_infinity(
+    i: &mut Installer<'_>,
+    name: &str,
+    plus: Option<&str>,
+    minus: Option<&str>,
+) -> Result<(), RuleError> {
+    let op = i.graph().ops().lookup(name).ok_or_else(|| RuleError::Invalid {
+        rule: format!("limits of {name}"),
+        reason: "unknown operator",
+    })?;
+    let mut parse = |text: Option<&str>| -> Result<Option<Pat>, RuleError> {
+        text.map(|t| {
+            Pat::parse(t, i.graph(), &mut VarNames::default())
+                .map_err(|error| RuleError::Parse { rule: format!("limits of {name}: {t}"), error })
+        })
+        .transpose()
+    };
+    let plus = parse(plus)?;
+    let minus = parse(minus)?;
+    i.graph().ops_mut().set_attr(op, AtInfinity { plus, minus });
+    Ok(())
+}
+
+/// Teaches the integrator an antiderivative rule.
+pub(crate) fn integral_rule(
+    i: &mut Installer<'_>,
+    rule: TableFn,
+) {
+    if let Some(op) = i.graph().ops().lookup("integral") {
+        let mut table = i.graph().ops().attr::<IntegralTable>(op).cloned().unwrap_or_default();
+        table.0.push(rule);
+        i.graph().ops_mut().set_attr(op, table);
+    }
+}
 
 /// The calculus rule set.
 #[must_use]
