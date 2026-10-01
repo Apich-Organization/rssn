@@ -159,7 +159,7 @@ impl Field for f64 {
 
         let u = lu.U();
 
-        if (0..n).any(|i| !(u.get(i, i).abs() > tol)) {
+        if (0..n).any(|i| u.get(i, i).abs().partial_cmp(&tol) != Some(std::cmp::Ordering::Greater)) {
             return None;
         }
 

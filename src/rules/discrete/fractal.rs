@@ -669,6 +669,7 @@ fn moran_dimension(
     }
     let f = |d: f64| r.iter().map(|x| x.powf(d)).sum::<f64>() - 1.0;
     let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+    #[allow(clippy::while_float)] // bracket doubling, bounded by the `hi > 1e6` bail-out
     while f(hi) > 0.0 {
         hi *= 2.0;
         if hi > 1e6 {

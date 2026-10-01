@@ -290,6 +290,7 @@ pub fn inverse_erf_numerical(x: f64) -> f64 {
 
     let t = 2.0 / (std::f64::consts::PI * a) + ln1 / 2.0;
 
+    #[allow(clippy::suspicious_operation_groupings)] // t^2 - ln1/a is the intended discriminant
     let mut y = ((t * t - ln1 / a).sqrt() - t).sqrt();
 
     let two_over_sqrt_pi = 2.0 / std::f64::consts::PI.sqrt();
@@ -1066,9 +1067,7 @@ pub fn bernoulli_number(n: u32) -> f64 {
     // Dynamic computation using recurrence:
     // B_m = -1/(m+1) * Σ_{k=0}^{m-1} (m+1 choose k) B_k
     let mut b = vec![0.0; (n + 1) as usize];
-    for i in 0..precomputed.len() {
-        b[i] = precomputed[i];
-    }
+    b[..precomputed.len()].copy_from_slice(&precomputed[..]);
 
     for m in precomputed.len()..=(n as usize) {
         if m % 2 == 1 {

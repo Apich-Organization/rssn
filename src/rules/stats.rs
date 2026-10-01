@@ -3071,6 +3071,7 @@ mod tests {
         let uniform = Uniform::new(-1.0, 2.0).unwrap_or_else(|e| panic!("{e}"));
         let chi = ChiSquared::new(5.0).unwrap_or_else(|e| panic!("{e}"));
         for t in [-0.6, -0.1, 0.2, 0.4] {
+            #[allow(clippy::type_complexity)] // one-off table of (name, integrand, lo, hi)
             let cases: [(&str, Box<dyn Fn(f64) -> f64>, f64, f64); 5] = [
                 (
                     "normal(0.5, 1.5)",

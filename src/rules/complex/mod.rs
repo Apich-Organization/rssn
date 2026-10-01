@@ -624,6 +624,7 @@ fn register_complex_evals(graph: &mut Graph) {
 /// Evaluates the concrete term `node` over the complex numbers; see
 /// [`Graph::eval_complex`].
 #[must_use]
+#[allow(clippy::implicit_hasher)] // delegates to `Graph::eval_complex`, which fixes the default hasher
 pub fn eval_complex(
     graph: &Graph,
     node: NodeId,

@@ -87,16 +87,20 @@ fn mono_mul(
     loop {
         match (a.get(i), b.get(j)) {
             | (Some(&(ga, ea)), Some(&(gb, eb))) => {
-                if ga == gb {
-                    out.push((ga, ea.saturating_add(eb)));
-                    i += 1;
-                    j += 1;
-                } else if ga < gb {
-                    out.push((ga, ea));
-                    i += 1;
-                } else {
-                    out.push((gb, eb));
-                    j += 1;
+                match ga.cmp(&gb) {
+                    | std::cmp::Ordering::Equal => {
+                        out.push((ga, ea.saturating_add(eb)));
+                        i += 1;
+                        j += 1;
+                    },
+                    | std::cmp::Ordering::Less => {
+                        out.push((ga, ea));
+                        i += 1;
+                    },
+                    | std::cmp::Ordering::Greater => {
+                        out.push((gb, eb));
+                        j += 1;
+                    },
                 }
             },
             | (Some(&x), None) => {
@@ -122,16 +126,16 @@ fn lex_cmp(
     loop {
         match (a.get(i), b.get(j)) {
             | (Some(&(ga, ea)), Some(&(gb, eb))) => {
-                if ga == gb {
-                    if ea != eb {
-                        return ea.cmp(&eb);
-                    }
-                    i += 1;
-                    j += 1;
-                } else if ga < gb {
-                    return std::cmp::Ordering::Greater;
-                } else {
-                    return std::cmp::Ordering::Less;
+                match ga.cmp(&gb) {
+                    | std::cmp::Ordering::Equal => {
+                        if ea != eb {
+                            return ea.cmp(&eb);
+                        }
+                        i += 1;
+                        j += 1;
+                    },
+                    | std::cmp::Ordering::Less => return std::cmp::Ordering::Greater,
+                    | std::cmp::Ordering::Greater => return std::cmp::Ordering::Less,
                 }
             },
             | (Some(_), None) => return std::cmp::Ordering::Greater,

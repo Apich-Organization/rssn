@@ -458,7 +458,6 @@ fn circle(
 impl Analysis {
     /// The residue of `f` at the pole `root`, checked numerically.
     fn residue_at(
-        &self,
         cx: &mut Cx<'_>,
         f: NodeId,
         q: &Quotient,
@@ -505,7 +504,7 @@ impl Analysis {
                 return None;
             }
             if distance < radius {
-                residues.push(self.residue_at(cx, f, &q, root, &poles, z)?);
+                residues.push(Self::residue_at(cx, f, &q, root, &poles, z)?);
             }
         }
         let sum = build::add(cx.graph, &residues);
@@ -555,7 +554,7 @@ impl Analysis {
                     let poles = poles_of(cx, self.ops, &q)?;
                     let at = at?;
                     return match poles.iter().find(|r| (r.value - at).norm() < 1e-9 * (1.0 + at.norm())) {
-                        | Some(root) => self.residue_at(cx, f, &q, &root.clone(), &poles, z),
+                        | Some(root) => Self::residue_at(cx, f, &q, &root.clone(), &poles, z),
                         | None => Some(cx.graph.int(0)),
                     };
                 }

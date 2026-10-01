@@ -589,12 +589,12 @@ fn symbol_term(
 fn boolean(
     graph: &mut Graph,
     value: bool,
-) -> Option<NodeId> {
+) -> NodeId {
     let op = graph.ops().lookup(if value { "true" } else { "false" });
-    Some(match op {
+    match op {
         | Some(op) => graph.node(op, &[]),
         | None => graph.int(i64::from(value)),
-    })
+    }
 }
 
 /// The type of the equation, by the usual names.
@@ -749,8 +749,8 @@ fn classify_term(
     let kind_node = symbol_term(graph, kind);
     let order = graph.int(i64::from(p.order()));
     let dimension = graph.int(i64::try_from(p.dimension()).ok()?);
-    let linear = boolean(graph, !p.nonlinear)?;
-    let homogeneous = boolean(graph, p.homogeneous(graph))?;
+    let linear = boolean(graph, !p.nonlinear);
+    let homogeneous = boolean(graph, p.homogeneous(graph));
     let character = symbol_term(graph, character);
     let methods: Vec<NodeId> = methods.iter().map(|m| symbol_term(graph, m)).collect();
     let methods = graph.node(core::LIST, &methods);
@@ -770,10 +770,11 @@ fn solve(
     use Method::{Any, Characteristics, Burgers, Separation, SecondOrder, Dalembert, Wave3, Heat1, Fourier, Heat3, Schrodinger, KleinGordon, Laplace2, Laplace3, Green, Poisson2, Poisson3, Helmholtz};
     let kind = kind(cx, p);
     let try_method = |m: Method| method == Any || method == m;
-    let mut solution = None;
-    if p.order() == 1 && (try_method(Characteristics) || try_method(Burgers)) {
-        solution = characteristics(cx, p, conditions);
-    }
+    let mut solution = if p.order() == 1 && (try_method(Characteristics) || try_method(Burgers)) {
+        characteristics(cx, p, conditions)
+    } else {
+        None
+    };
     if solution.is_none() && kind == "wave" {
         if !conditions.is_empty() && (try_method(Separation) || try_method(SecondOrder)) {
             solution = separation(cx, p, conditions);
@@ -1593,6 +1594,9 @@ fn agree(
     cx.graph.eval(difference, &env).is_some_and(|v| v.is_finite() && v.abs() <= 1e-9 * scale)
 }
 
+/// Builds the time-dependent factor of a mode from its coefficients.
+type TimeFactor<'a> = dyn Fn(&mut Cx<'_>, NodeId, Option<NodeId>) -> Option<NodeId> + 'a;
+
 /// When the data are sums of eigenmodes with literal mode numbers, the
 /// solution is the corresponding finite sum.
 #[allow(clippy::too_many_arguments)]
@@ -1604,7 +1608,7 @@ fn finite_modes(
     mode: NodeId,
     n: NodeId,
     first: i64,
-    time_factor: &dyn Fn(&mut Cx<'_>, NodeId, Option<NodeId>) -> Option<NodeId>,
+    time_factor: &TimeFactor<'_>,
 ) -> Option<NodeId> {
     let _ = p;
     // Candidate modes: n = first .. first + 16; project the data on each by

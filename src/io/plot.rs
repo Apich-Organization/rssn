@@ -532,6 +532,9 @@ impl Scene {
     }
 }
 
+/// A projected quad: depth, outline, height fraction.
+type Quad = (f64, Vec<(f64, f64)>, f64);
+
 /// Paints the grid `z[row][col]` over the given axes as coloured quads.
 fn draw_surface(
     svg: &mut Svg,
@@ -544,7 +547,7 @@ fn draw_surface(
     let yr = (ys.first().copied().unwrap_or(0.0), ys.last().copied().unwrap_or(1.0));
     let scene = Scene::new([xr, yr, zr]);
     scene.draw_box(svg);
-    let mut quads: Vec<(f64, Vec<(f64, f64)>, f64)> = Vec::new();
+    let mut quads: Vec<Quad> = Vec::new();
     for (r, pair) in z.windows(2).enumerate() {
         for c in 0..xs.len().saturating_sub(1) {
             let corners = [(r, c), (r, c + 1), (r + 1, c + 1), (r + 1, c)];
@@ -708,6 +711,9 @@ pub fn plot_3d_path_from_points(
     write_svg(svg, path)
 }
 
+/// A projected arrow: depth, tail, tip, relative magnitude.
+type Arrow = (f64, (f64, f64), (f64, f64), f64);
+
 /// Plots the 3D vector field `f(x, y, z) = (u, v, w)` as arrows on a
 /// `grid`^3 lattice over the three ranges, coloured by magnitude.
 ///
@@ -743,7 +749,7 @@ pub fn plot_vector_field_3d(
     let mut svg = Svg::new();
     scene.draw_box(&mut svg);
     let reach = 0.8 * ranges.iter().map(|r| r.1 - r.0).fold(f64::INFINITY, f64::min) / (grid - 1) as f64;
-    let mut arrows: Vec<(f64, (f64, f64), (f64, f64), f64)> = field
+    let mut arrows: Vec<Arrow> = field
         .iter()
         .filter_map(|(p, d)| {
             let m = d[0].hypot(d[1]).hypot(d[2]);

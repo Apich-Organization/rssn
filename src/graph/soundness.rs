@@ -91,6 +91,7 @@ impl Lcg {
 
 /// What the guards of a rule require of one variable.
 #[derive(Copy, Clone, Default)]
+#[allow(clippy::struct_excessive_bools)] // independent guard flags, not a state machine
 struct Need {
     number: bool,
     integer: bool,

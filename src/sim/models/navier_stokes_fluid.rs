@@ -71,6 +71,10 @@ pub type NavierStokesOutput = Result<(Array2<f64>, Array2<f64>, Array2<f64>), St
 /// Returns an error if the grid is smaller than 3 points, not square, or if
 /// the obstacle mask does not have shape `(ny, nx)`; also if the multigrid
 /// solver rejects the grid size.
+///
+/// # Panics
+/// Panics if an intermediate array is not contiguous, which cannot happen for
+/// arrays this function allocates itself.
 pub fn run_channel_flow(
     nx: usize,
     ny: usize,

@@ -225,6 +225,7 @@ impl Mobius {
 
     /// `self ∘ other`.
     #[must_use]
+    #[allow(clippy::suspicious_operation_groupings)] // 2x2 matrix product, indices are intentional
     pub fn compose(
         &self,
         other: &Self,

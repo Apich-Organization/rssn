@@ -376,11 +376,9 @@ impl Limiter<'_, '_> {
                 let half = graph.num(Number::fraction(1, 2)?);
                 Some(graph.node(core::MUL, &[sign, half, pi]))
             },
-            | "tanh" => Some(sign),
-            | "acot" | "sech" | "csch" => Some(graph.int(0)),
-            | "coth" => Some(sign),
+            | "tanh" | "coth" => Some(sign),
             | "exp" if up => Some(self.infinite(true)),
-            | "exp" => Some(graph.int(0)),
+            | "acot" | "sech" | "csch" | "exp" => Some(graph.int(0)),
             | "ln" | "sqrt" | "cosh" | "abs" | "asinh" | "acosh" if up || name == "cosh" || name == "abs" => {
                 Some(self.infinite(true))
             },

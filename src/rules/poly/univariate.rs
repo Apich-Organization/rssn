@@ -542,7 +542,7 @@ fn hensel_pair(
     // Pin the leading coefficient of h to that of f so that f - g*h has
     // lower degree than f at every step.
     if let (Some(slot), Some(lead)) = (big_h.last_mut(), f.last()) {
-        *slot = lead.clone();
+        slot.clone_from(lead);
     }
     let mut modulus = p.clone();
     while modulus < *target {

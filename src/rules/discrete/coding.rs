@@ -582,7 +582,7 @@ mod tests {
         let mut bad = cw;
         bad[0] ^= 5;
         bad[3] ^= 9;
-        bad[7] ^= 77;
+        bad[7] ^= 0x4D;
         let out = s(&format!("rs_decode({}, 4)", word(&bad)));
         assert!(out.starts_with("rs_decode") || out != word(&data));
         assert_eq!(s("rs_encode(list(1), 255)"), "rs_encode(list(1), 255)");

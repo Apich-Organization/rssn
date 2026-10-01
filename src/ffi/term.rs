@@ -52,6 +52,9 @@ pub unsafe extern "C" fn rssn_session_free(session: *mut RssnSession) {
 
 /// Borrows the session behind a pointer.
 ///
+/// # Errors
+/// `NullArgument` when `session` is null.
+///
 /// # Safety
 /// `session` must be null or a live session pointer.
 pub unsafe fn borrow_session<'a>(session: *const RssnSession) -> Result<&'a Session, RssnStatus> {
@@ -62,6 +65,9 @@ pub unsafe fn borrow_session<'a>(session: *const RssnSession) -> Result<&'a Sess
 }
 
 /// Resolves a term handle.
+///
+/// # Errors
+/// The status describing why `id` does not name a live term.
 pub fn resolve(
     session: &Session,
     id: u32,

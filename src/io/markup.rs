@@ -269,10 +269,9 @@ impl<D: Dialect> Walker<'_, D> {
         }
         match self.name(node) {
             | "not" => PREC_NEG,
-            | "exp" => PREC_POW,
+            | "exp" | "factorial" => PREC_POW,
             | "sqrt" => PREC_ATOM,
             | "diff" | "diffn" | "integral" | "defint" | "sum" | "product" | "limit" => PREC_MUL,
-            | "factorial" => PREC_POW,
             | _ => self.g.precedence(node),
         }
     }

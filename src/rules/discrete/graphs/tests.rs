@@ -103,7 +103,6 @@ fn union_find_components(
     skip_edge: Option<usize>,
     skip_vertex: Option<usize>,
 ) -> usize {
-    let mut parent: Vec<usize> = (0..n).collect();
     fn find(
         p: &mut [usize],
         x: usize,
@@ -114,6 +113,7 @@ fn union_find_components(
         }
         p[x]
     }
+    let mut parent: Vec<usize> = (0..n).collect();
     for (i, &(u, v, _)) in edges.iter().enumerate() {
         if Some(i) == skip_edge || Some(u) == skip_vertex || Some(v) == skip_vertex {
             continue;
@@ -417,9 +417,6 @@ fn brute_force_min_cost_flow(
     n: usize,
     edges: &[(usize, usize, i64, i64)],
 ) -> (i64, i64) {
-    let mut best = (0_i64, 0_i64);
-    let m = edges.len();
-    let mut f = vec![0_i64; m];
     fn go(
         i: usize,
         n: usize,
@@ -447,6 +444,9 @@ fn brute_force_min_cost_flow(
             go(i + 1, n, edges, f, best);
         }
     }
+    let mut best = (0_i64, 0_i64);
+    let m = edges.len();
+    let mut f = vec![0_i64; m];
     go(0, n, edges, &mut f, &mut best);
     best
 }
@@ -797,8 +797,6 @@ fn brute_force_isomorphic(
     a: &[Edge],
     b: &[Edge],
 ) -> bool {
-    let (ma, mb) = (adjacency(n, a, false), adjacency(n, b, false));
-    let mut perm: Vec<usize> = (0..n).collect();
     fn next_permutation(p: &mut [usize]) -> bool {
         let n = p.len();
         let Some(i) = (1..n).rev().find(|&i| p[i - 1] < p[i]) else { return false };
@@ -807,6 +805,8 @@ fn brute_force_isomorphic(
         p[i..].reverse();
         true
     }
+    let (ma, mb) = (adjacency(n, a, false), adjacency(n, b, false));
+    let mut perm: Vec<usize> = (0..n).collect();
     loop {
         if (0..n).all(|u| (0..n).all(|v| ma[u][v] == mb[perm[u]][perm[v]])) {
             return true;

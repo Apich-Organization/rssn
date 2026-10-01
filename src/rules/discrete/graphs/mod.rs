@@ -685,7 +685,7 @@ struct Bridges {
     time: usize,
     disc: Vec<Option<usize>>,
     low: Vec<usize>,
-    bridges: Vec<(usize, usize)>,
+    cuts: Vec<(usize, usize)>,
     ap: Vec<bool>,
 }
 
@@ -711,7 +711,7 @@ fn bridge_visit(
             bridge_visit(gr, v, Some(e.id), s);
             s.low[u] = s.low[u].min(s.low[v]);
             if Some(s.low[v]) > s.disc[u] {
-                s.bridges.push((u, v));
+                s.cuts.push((u, v));
             }
             if parent_edge.is_some() && Some(s.low[v]) >= s.disc[u] {
                 s.ap[u] = true;
@@ -732,7 +732,7 @@ fn graph_bridges(
         time: 0,
         disc: vec![None; gr.n],
         low: vec![0; gr.n],
-        bridges: Vec::new(),
+        cuts: Vec::new(),
         ap: vec![false; gr.n],
     };
     for u in 0..gr.n {
@@ -741,7 +741,7 @@ fn graph_bridges(
         }
     }
     let aps: Vec<usize> = (0..gr.n).filter(|&u| s.ap[u]).collect();
-    Some(V::List(vec![V::List(s.bridges.iter().map(|&(u, v)| pair(u, v)).collect()), indices(&aps)]))
+    Some(V::List(vec![V::List(s.cuts.iter().map(|&(u, v)| pair(u, v)).collect()), indices(&aps)]))
 }
 
 // ---------------- spanning trees ----------------

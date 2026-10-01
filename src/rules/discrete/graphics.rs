@@ -197,8 +197,8 @@ fn identity(
 fn done(
     cx: &mut Cx<'_>,
     rows: &[Row],
-) -> Option<V> {
-    Some(V::Node(matrix(cx.graph, rows)))
+) -> V {
+    V::Node(matrix(cx.graph, rows))
 }
 
 fn point(
@@ -232,7 +232,7 @@ fn translation(
     for (i, &x) in t.iter().enumerate() {
         m[i][t.len()] = x;
     }
-    done(cx, &m)
+    Some(done(cx, &m))
 }
 
 /// A diagonal matrix with `d` followed by 1.
@@ -244,7 +244,7 @@ fn diagonal(
     for (i, &x) in d.iter().enumerate() {
         m[i][i] = x;
     }
-    done(cx, &m)
+    Some(done(cx, &m))
 }
 
 fn shear_2d(
@@ -255,7 +255,7 @@ fn shear_2d(
     let mut m = identity(cx, 3);
     m[0][1] = shx;
     m[1][0] = shy;
-    done(cx, &m)
+    Some(done(cx, &m))
 }
 
 /// `(cos a, sin a, -sin a)`.
@@ -283,7 +283,7 @@ fn plane_rotation(
     m[j][j] = c;
     m[i][j] = if flip { s } else { ns };
     m[j][i] = if flip { ns } else { s };
-    done(cx, &m)
+    Some(done(cx, &m))
 }
 
 fn rotation_axis_angle(
@@ -311,7 +311,7 @@ fn rotation_axis_angle(
             };
         }
     }
-    done(cx, &m)
+    Some(done(cx, &m))
 }
 
 fn reflection_2d(
@@ -328,7 +328,7 @@ fn reflection_2d(
     m[0][1] = s;
     m[1][0] = s;
     m[1][1] = nc;
-    done(cx, &m)
+    Some(done(cx, &m))
 }
 
 fn reflection_3d(
@@ -352,7 +352,7 @@ fn reflection_3d(
             };
         }
     }
-    done(cx, &m)
+    Some(done(cx, &m))
 }
 
 // ----------------------------------------------------------------------
@@ -380,7 +380,7 @@ fn perspective(
     m[2][3] = quot(cx, two_nf, range);
     m[3][2] = int(cx, -1);
     m[3][3] = int(cx, 0);
-    done(cx, &m)
+    Some(done(cx, &m))
 }
 
 fn orthographic(
@@ -399,7 +399,7 @@ fn orthographic(
         m[k][k] = if k == 2 { negate(cx, scale) } else { scale };
         m[k][3] = negate(cx, shift);
     }
-    done(cx, &m)
+    Some(done(cx, &m))
 }
 
 fn look_at(
@@ -428,7 +428,7 @@ fn look_at(
     m[0][3] = negate(cx, se);
     m[1][3] = negate(cx, ue);
     m[2][3] = dot(cx, &f, &eye);
-    done(cx, &m)
+    Some(done(cx, &m))
 }
 
 // ----------------------------------------------------------------------
@@ -838,7 +838,7 @@ fn quat_to_matrix(
     m[1][2] = sub(cx, yz, wx);
     m[2][0] = sub(cx, xz, wy);
     m[2][1] = add(cx, yz, wx);
-    done(cx, &m)
+    Some(done(cx, &m))
 }
 
 // ----------------------------------------------------------------------
