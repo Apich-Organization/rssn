@@ -256,6 +256,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "calculus/defint-empty: defint(?f, ?x, ?a, ?a) => 0",
         ],
     )?;
+    i.define(&["asymptotic(f, x, n) := laurent(f, x, oo, n)"])?;
     Ok(())
 }
 

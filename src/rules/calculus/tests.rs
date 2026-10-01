@@ -312,6 +312,15 @@ fn convergence_tests() {
     assert_eq!(run("converges(2^k/k^5, k)"), "false");
     assert_eq!(run("converges(1/k^2, k)"), "true");
     assert_eq!(run("converges(1/k, k)"), "false");
+    // Root test, alternating series, p-series and condensation.
+    assert_eq!(run("converges((k/(2*k + 1))^k, k)"), "true");
+    assert_eq!(run("converges((-1)^k/k, k)"), "true");
+    assert_eq!(run("converges((-1)^k/k^(1/2), k)"), "true");
+    assert_eq!(run("converges(1/k^(1/2), k)"), "false");
+    assert_eq!(run("converges(1/(k^2 + 1), k)"), "true");
+    assert_eq!(run("converges(k/(k + 1), k)"), "false");
+    assert_eq!(run("converges(1/(k*ln(k)^2), k)"), "true");
+    assert_eq!(run("converges(1/(k*ln(k)), k)"), "false");
 }
 
 #[test]
@@ -391,4 +400,18 @@ fn rational_sums_by_polygamma() {
             assert!((got - want).abs() < 1e-9 * (1.0 + want.abs()), "sum of {summand} = {closed}: {got} vs {want}");
         }
     }
+}
+
+#[test]
+fn expansions_at_infinity() {
+    let rules = crate::rules::standard();
+    assert_eq!(simplify(&rules, "laurent(x/(x - 1), x, oo, 3)"), "1 + 1/x + 1/x^2 + 1/x^3");
+    let (text, reduced) = reduce_with(&rules, "asymptotic((x^2 + 1)^(1/2) - x, x, 3)", &[]);
+    assert!(reduced, "{text}");
+    // sqrt(x^2 + 1) - x = 1/(2x) - 1/(8x^3) + ...
+    let at = |x: f64| eval(&rules, &text, &[("x", x)]);
+    assert!((at(10.0) - (101.0_f64.sqrt() - 10.0)).abs() < 1e-6, "{text}");
+    let (text, reduced) = reduce_with(&rules, "asymptotic(exp(1/x), x, 2)", &[]);
+    assert!(reduced, "{text}");
+    assert!((eval(&rules, &text, &[("x", 20.0)]) - (1.0 + 0.05 + 0.00125)).abs() < 1e-12, "{text}");
 }

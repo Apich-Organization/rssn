@@ -1,15 +1,16 @@
 //! Series, sums and products.
 //!
 //! * `taylor(f, x, a, n)` and `laurent(f, x, a, n)`: expansions about `a`
-//!   up to `(x - a)^n`, returned in that form (pinned).
+//!   up to `(x - a)^n`, returned in that form (pinned). `laurent(f, x, oo,
+//!   n)` (alias `asymptotic(f, x, n)`) expands in powers of `1/x`.
 //! * `fourier_series(f, x, L, n)`: the first `n` harmonics of `f` on
 //!   `[-L, L]`.
 //! * `sum(f, k, a, b)` and `product(f, k, a, b)`: finite sums are written
 //!   out; polynomial, geometric and a few classical infinite summands have
 //!   closed forms; anything else is summed numerically, with convergence
 //!   acceleration, when a number is wanted.
-//! * `converges(f, k)`: the ratio test for the series with general term
-//!   `f`.
+//! * `converges(f, k)`: divergence, ratio, root, alternating, p-series and
+//!   condensation tests for the series with general term `f`.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -194,6 +195,30 @@ fn taylor(
     Some(power_series(cx.graph, &coefficients, x, a, 0))
 }
 
+/// The expansion of `f` in powers of `1/x` as `x → ∞`, through
+/// `x^(-n)`: `f(1/t)` is expanded about `t = 0` (a positive `t`, so
+/// `sqrt(t^2) = t`) and `t = 1/x` substituted back.
+fn at_infinity(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    x: NodeId,
+    n: usize,
+) -> Option<NodeId> {
+    let fresh = cx.graph.interner_mut().fresh_symbol("t");
+    cx.graph.assume(fresh, crate::graph::Facts::POSITIVE);
+    let t = cx.graph.symbol_node(fresh);
+    let minus_one = cx.graph.int(-1);
+    let inverse_t = cx.graph.node(core::POW, &[t, minus_one]);
+    let substituted = cx.graph.substitute(f, x, inverse_t);
+    let g = cx.simplify(substituted);
+    let zero = cx.graph.int(0);
+    let (valuation, coefficients) = laurent_expansion(cx, g, t, zero, i64::try_from(n).ok()?)?;
+    let series = power_series(cx.graph, &coefficients, t, zero, valuation);
+    let inverse_x = cx.graph.node(core::POW, &[x, minus_one]);
+    let back = cx.graph.substitute(series, t, inverse_x);
+    Some(cx.simplify(back))
+}
+
 fn laurent(
     cx: &mut Cx<'_>,
     ops: SeriesOps,
@@ -204,6 +229,9 @@ fn laurent(
     };
     let n = order(cx.graph, n)?;
     let a = best(cx.graph, a)?;
+    if cx.graph.op(a) == ops.infinity {
+        return at_infinity(cx, f, x, n);
+    }
     if let Some((valuation, coefficients)) = laurent_expansion(cx, f, x, a, i64::try_from(n).ok()?) {
         return Some(power_series(cx.graph, &coefficients, x, a, valuation));
     }
@@ -586,8 +614,27 @@ fn product(
     None
 }
 
-/// Ratio test: the limit of `|a_{k+1} / a_k|` decides convergence unless
-/// it equals one.
+/// The numeric value of `lim_{k→∞} e`, if the limit engine finds one.
+fn limit_value(
+    cx: &mut Cx<'_>,
+    ops: SeriesOps,
+    e: NodeId,
+    k: NodeId,
+) -> Option<f64> {
+    let infinity = cx.graph.node(ops.infinity, &[]);
+    let limit = limit_at(cx, ops.functions, ops.infinity, e, k, infinity, Side::Both)?;
+    cx.graph.eval(limit, &Env::numeric(0.0))
+}
+
+/// Whether `sum_k a_k` converges, by a battery of tests in order of cost:
+///
+/// 1. divergence test: `a_k ↛ 0` diverges;
+/// 2. ratio test and 3. root test (decisive away from 1);
+/// 4. alternating series (Leibniz): `(-1)^k b_k` with `b_k ↓ 0`;
+/// 5. limit comparison with `k^-p`, `p = lim -ln|a_k| / ln k`;
+/// 6. Cauchy condensation for terms with logarithms
+///    (`sum a_k` ~ `sum 2^k a_{2^k}` for decreasing positive terms),
+///    which decides the borderline `p = 1` cases such as `1/(k ln(k)^2)`.
 fn converges(
     cx: &mut Cx<'_>,
     ops: SeriesOps,
@@ -596,37 +643,216 @@ fn converges(
     let &[f, k] = args else {
         return None;
     };
+    // The index is a positive integer, which lets `abs` and `ln` simplify.
+    let fresh = cx.graph.interner_mut().fresh_symbol("k");
+    cx.graph.assume(fresh, crate::graph::Facts::POSITIVE | crate::graph::Facts::INTEGER);
+    let index = cx.graph.symbol_node(fresh);
+    let f = cx.graph.substitute(f, k, index);
+    let verdict = convergence(cx, ops, f, index, 0)?;
+    Some(cx.graph.lit(Payload::Bool(verdict)))
+}
+
+fn convergence(
+    cx: &mut Cx<'_>,
+    ops: SeriesOps,
+    f: NodeId,
+    k: NodeId,
+    depth: u32,
+) -> Option<bool> {
     let term = cx.simplify(f);
-    let graph = &mut *cx.graph;
-    let abs = graph.ops().lookup("abs")?;
-    let one = graph.int(1);
-    let next_index = graph.node(core::ADD, &[k, one]);
-    let next = graph.substitute(term, k, next_index);
-    let minus_one = graph.int(-1);
-    let inverse = graph.node(core::POW, &[term, minus_one]);
-    let quotient = graph.node(core::MUL, &[next, inverse]);
-    let ratio = graph.node(abs, &[quotient]);
-    let infinity = graph.node(ops.infinity, &[]);
-    let limit = limit_at(cx, ops.functions, ops.infinity, ratio, k, infinity, Side::Both)?;
-    let value = cx.graph.eval(limit, &Env::numeric(0.0))?;
-    if (value - 1.0).abs() < 1e-9 {
-        // Inconclusive: compare with a p-series through k^2 * a_k.
-        let two = cx.graph.int(2);
-        let square = cx.graph.node(core::POW, &[k, two]);
-        let scaled = cx.graph.node(core::MUL, &[square, term]);
-        let bounded = limit_at(cx, ops.functions, ops.infinity, scaled, k, infinity, Side::Both)
-            .and_then(|l| cx.graph.eval(l, &Env::numeric(0.0)))
-            .is_some_and(f64::is_finite);
-        if bounded {
-            return Some(cx.graph.lit(Payload::Bool(true)));
+    let abs = cx.graph.ops().lookup("abs")?;
+    let ln = cx.graph.ops().lookup("ln")?;
+    // |a_k|: the term itself (or its negative) when its sign is eventually
+    // fixed, which keeps it simplifiable; `abs` otherwise.
+    let same_sign = eventually_one_sign(cx, term, k);
+    let magnitude = match sample_sign(cx, term, k) {
+        | Some(true) if same_sign => term,
+        | Some(false) if same_sign => {
+            let minus_one = cx.graph.int(-1);
+            let negated = cx.graph.node(core::MUL, &[minus_one, term]);
+            cx.simplify(negated)
+        },
+        | _ => cx.graph.node(abs, &[term]),
+    };
+
+    // 1. Divergence test.
+    if let Some(v) = limit_value(cx, ops, magnitude, k) {
+        if v.is_nan() || v > 1e-12 {
+            return (!v.is_nan()).then_some(false);
         }
-        let weighted = cx.graph.node(core::MUL, &[k, term]);
-        let harmonic_like = limit_at(cx, ops.functions, ops.infinity, weighted, k, infinity, Side::Both)
-            .and_then(|l| cx.graph.eval(l, &Env::numeric(0.0)))
-            .is_some_and(|v| v != 0.0);
-        return harmonic_like.then(|| cx.graph.lit(Payload::Bool(false)));
     }
-    Some(cx.graph.lit(Payload::Bool(value < 1.0)))
+
+    // 2./3. Ratio and root tests. Both quantities are first estimated
+    // numerically far out, which decides clear cases cheaply; the symbolic
+    // limit is taken only when that is inconclusive. A term whose base and
+    // exponent both vary with k (`(k/(2k+1))^k`) goes to the root test
+    // first, where it simplifies.
+    let graph = &mut *cx.graph;
+    let one = graph.int(1);
+    let minus_one = graph.int(-1);
+    let next_index = graph.node(core::ADD, &[k, one]);
+    let next = graph.substitute(magnitude, k, next_index);
+    let inverse = graph.node(core::POW, &[magnitude, minus_one]);
+    let quotient = graph.node(core::MUL, &[next, inverse]);
+    let ratio = cx.simplify(quotient);
+    let graph = &mut *cx.graph;
+    let reciprocal = graph.node(core::POW, &[k, minus_one]);
+    let raw_root = graph.node(core::POW, &[magnitude, reciprocal]);
+    let root = cx.simplify(raw_root);
+    for test in [ratio, root] {
+        if let Some(v) = settled_value(cx, test, k) {
+            if (v - 1.0).abs() > 0.05 {
+                return Some(v < 1.0);
+            }
+        }
+    }
+    let tests = if varying_power(cx.graph, term, k) { [root, ratio] } else { [ratio, root] };
+    for test in tests {
+        if let Some(v) = limit_value(cx, ops, test, k) {
+            if (v - 1.0).abs() > 1e-9 {
+                return Some(v < 1.0);
+            }
+        }
+    }
+
+    // 4. Alternating series test: the sign alternates and |a_k| decreases
+    // to zero (checked on a long stretch of indices).
+    if alternates_and_decreases(cx, term, k) {
+        return Some(true);
+    }
+
+    // 5. Limit comparison with a p-series.
+    let graph = &mut *cx.graph;
+    let minus_one = graph.int(-1);
+    let log_magnitude = graph.node(ln, &[magnitude]);
+    let log_k = graph.node(ln, &[k]);
+    let inverse_log_k = graph.node(core::POW, &[log_k, minus_one]);
+    let neg = graph.node(core::MUL, &[minus_one, log_magnitude, inverse_log_k]);
+    let exponent = limit_value(cx, ops, neg, k);
+    if let Some(p) = exponent.filter(|p| p.is_finite()) {
+        if p > 1.0 + 1e-9 {
+            return Some(true);
+        }
+        if p < 1.0 - 1e-9 && same_sign {
+            return Some(false);
+        }
+    }
+
+    // p = 1 exactly: compare with 1/k directly, then condense.
+    if same_sign {
+        let weighted = cx.graph.node(core::MUL, &[k, magnitude]);
+        if let Some(v) = limit_value(cx, ops, weighted, k) {
+            if v.is_finite() && v > 1e-12 {
+                return Some(false);
+            }
+        }
+        if depth < 2 {
+            let graph = &mut *cx.graph;
+            let two = graph.int(2);
+            let power = graph.node(core::POW, &[two, k]);
+            let at_power = graph.substitute(magnitude, k, power);
+            let condensed = graph.node(core::MUL, &[power, at_power]);
+            return convergence(cx, ops, condensed, k, depth.saturating_add(1));
+        }
+    }
+    None
+}
+
+/// Samples of `e` at integer `k` from `from` on.
+fn samples(
+    cx: &Cx<'_>,
+    e: NodeId,
+    k: NodeId,
+    from: i32,
+    count: i32,
+) -> Option<Vec<f64>> {
+    let symbol = cx.graph.symbol_of(k)?;
+    (from..from.saturating_add(count))
+        .map(|i| {
+            let mut env = Env::numeric(0.0);
+            env.bind(symbol, f64::from(i));
+            cx.graph.eval(e, &env).filter(|v| v.is_finite())
+        })
+        .collect()
+}
+
+/// The value `e` settles to at large `k`, judged from samples at
+/// `k = 10^3 .. 10^6`: `None` unless they agree to within 1%.
+fn settled_value(
+    cx: &Cx<'_>,
+    e: NodeId,
+    k: NodeId,
+) -> Option<f64> {
+    let symbol = cx.graph.symbol_of(k)?;
+    let values: Option<Vec<f64>> = [1e3, 1e4, 1e5, 1e6]
+        .iter()
+        .map(|&at| {
+            let mut env = Env::numeric(0.0);
+            env.bind(symbol, at);
+            cx.graph.eval(e, &env).filter(|v| v.is_finite())
+        })
+        .collect();
+    let values = values?;
+    let last = *values.last()?;
+    let spread = values.iter().map(|v| (v - last).abs()).fold(0.0, f64::max);
+    (spread <= 0.01 * last.abs().max(1e-3)).then_some(last)
+}
+
+/// Whether `e` contains a power whose base and exponent both depend on `k`.
+fn varying_power(
+    graph: &Graph,
+    e: NodeId,
+    k: NodeId,
+) -> bool {
+    let Some(symbol) = graph.symbol_of(k) else {
+        return false;
+    };
+    let depends = |n: NodeId| graph.depends_on(graph.find(n), symbol);
+    let mut stack = vec![e];
+    let mut seen = std::collections::HashSet::new();
+    while let Some(n) = stack.pop() {
+        if !seen.insert(n) {
+            continue;
+        }
+        if let (true, &[base, exponent]) = (graph.op(n) == core::POW, graph.children(n)) {
+            if depends(base) && depends(exponent) {
+                return true;
+            }
+        }
+        stack.extend_from_slice(graph.children(n));
+    }
+    false
+}
+
+/// Whether `e` is positive at a large index.
+fn sample_sign(
+    cx: &Cx<'_>,
+    e: NodeId,
+    k: NodeId,
+) -> Option<bool> {
+    samples(cx, e, k, 100, 1).and_then(|v| v.first().map(|x| *x > 0.0))
+}
+
+fn eventually_one_sign(
+    cx: &Cx<'_>,
+    term: NodeId,
+    k: NodeId,
+) -> bool {
+    samples(cx, term, k, 50, 200).is_some_and(|v| v.iter().all(|x| *x > 0.0) || v.iter().all(|x| *x < 0.0))
+}
+
+fn alternates_and_decreases(
+    cx: &Cx<'_>,
+    term: NodeId,
+    k: NodeId,
+) -> bool {
+    let Some(values) = samples(cx, term, k, 20, 400) else {
+        return false;
+    };
+    values.windows(2).all(|w| {
+        let (a, b) = (w[0], w[1]);
+        a * b < 0.0 && b.abs() <= a.abs()
+    }) && values.last().is_some_and(|v| v.abs() < values[0].abs())
 }
 
 /// Symbolic kernel for every request of this module.
