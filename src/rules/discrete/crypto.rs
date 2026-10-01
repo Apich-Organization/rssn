@@ -305,6 +305,7 @@ fn ec_is_infinity(
     Some(V::Bool(list.is_empty()))
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn ec_coord(
     cx: &mut Cx<'_>,
     a: &[NodeId],

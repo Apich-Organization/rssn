@@ -1,5 +1,7 @@
 //! Elementary functions: exponentials, logarithms, trigonometric and
-//! hyperbolic functions, together with the identities that never enlarge a
+//! hyperbolic functions.
+//!
+//! Also the identities that never enlarge a
 //! term. Structure-changing identities (angle addition, double angles) are
 //! in the exploring tier.
 

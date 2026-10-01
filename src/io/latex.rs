@@ -58,7 +58,9 @@ pub fn to_latex(
     render(graph, &Latex, node)
 }
 
-/// Renders `node` as LaTeX, wrapped in `\left( .. \right)` when the term is
+/// Renders `node` as LaTeX, parenthesised when `precedence` demands it.
+///
+/// The result is wrapped in `\left( .. \right)` when the term is
 /// a sum, a difference, a negative number or an equation and `precedence`
 /// asks for more than additive binding (`precedence > 1`, the legacy
 /// convention where sums and differences bind at 1 and everything else

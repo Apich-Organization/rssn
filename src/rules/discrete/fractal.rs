@@ -280,6 +280,7 @@ fn mandelbrot_orbit(
     Some(V::nodes(&out))
 }
 
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 fn mandelbrot_fixed_points(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -347,6 +348,7 @@ fn stability(
 }
 
 /// `(1/n) sum ln abs(f'(x_k))`, evaluated in floating point.
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn numeric_lyapunov(
     cx: &mut Cx<'_>,
     f: NodeId,

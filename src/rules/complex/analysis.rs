@@ -516,6 +516,7 @@ impl Analysis {
     }
 
     #[allow(clippy::too_many_lines)]
+    #[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
     fn compute(
         &self,
         cx: &mut Cx<'_>,

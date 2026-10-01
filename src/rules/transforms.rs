@@ -285,6 +285,7 @@ impl Tx<'_, '_> {
     }
 
     /// Splits a product into the factors free of the variable and the rest.
+    #[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
     fn factors(
         &mut self,
         f: NodeId,
@@ -1313,6 +1314,7 @@ impl Tx<'_, '_> {
 
     /// Bindings for the free symbols of `nodes` other than `skip`: fixed
     /// moderate values, positive so that assumptions hold.
+    #[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
     fn sample_bindings(
         &mut self,
         nodes: &[NodeId],
@@ -1486,6 +1488,7 @@ impl Tx<'_, '_> {
     }
 
     /// Partial sums of `f(n) z0^-n` against `F(z0)`.
+    #[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
     fn z_series_agrees(
         &mut self,
         sequence: NodeId,

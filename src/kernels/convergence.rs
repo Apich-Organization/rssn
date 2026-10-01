@@ -27,7 +27,9 @@ pub fn sum_series_numerical(
     sum
 }
 
-/// One pass of Aitken's delta-squared process over `sequence`: entry `i` is
+/// One pass of Aitken's delta-squared process over `sequence`.
+///
+/// Entry `i` is
 /// `s_i - (s_{i+1} - s_i)^2 / (s_{i+2} - 2 s_{i+1} + s_i)`. Entries whose
 /// second difference is below `1e-9` in magnitude (already converged, or
 /// numerically meaningless) are skipped, so the result can be shorter than
@@ -73,8 +75,10 @@ pub fn find_sequence_limit(
     Err("convergence not found".to_string())
 }
 
-/// Richardson extrapolation of approximations `A(h), A(h/2), A(h/4), ...`
-/// whose error has an expansion in powers of `h^2` (Romberg integration,
+/// Richardson extrapolation of approximations `A(h), A(h/2), A(h/4), ...`.
+///
+/// The error of the approximations is assumed to have an expansion in powers of `h^2`; the
+/// error has an expansion in powers of `h^2` (Romberg integration,
 /// central differences): the standard factors `4^j`. The result holds the
 /// diagonal of the extrapolation table, the last entry being the highest
 /// order estimate.
@@ -83,7 +87,9 @@ pub fn richardson_extrapolation(sequence: &[f64]) -> Vec<f64> {
     richardson_extrapolation_with(sequence, 4.0)
 }
 
-/// Richardson extrapolation with column `j` of the table eliminating one
+/// Richardson extrapolation with a configurable error-term growth factor.
+///
+/// Column `j` of the table eliminates one
 /// error term by the factor `growth^j`: `growth = 4` for errors in `h^2,
 /// h^4, ...` as `h` halves, `growth = 2` for errors in `1/n, 1/n^2, ...` as
 /// the number of terms `n` doubles. Returns the diagonal of the table.

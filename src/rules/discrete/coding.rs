@@ -213,6 +213,7 @@ fn crc8(
     Some(V::Int(BigInt::from(ec::crc8_compute(&data))))
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn interleave(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -260,6 +261,7 @@ fn byte(
     u8::try_from(small(cx.graph, n)?).ok()
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn gf256_binary(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -380,6 +382,7 @@ fn pgcd(
     a
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn poly_pair(
     cx: &mut Cx<'_>,
     a: &[NodeId],

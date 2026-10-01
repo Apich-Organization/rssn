@@ -439,6 +439,7 @@ fn eigenvalue(
 // ----------------------------------------------------------------------
 
 /// `{f, g} = Σ ∂f/∂q ∂g/∂p - ∂f/∂p ∂g/∂q`.
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 fn poisson_bracket(
     cx: &mut Cx<'_>,
     args: &[NodeId],
@@ -597,6 +598,7 @@ fn gamma_matrix(
     Some(rows)
 }
 
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 fn mat_vec(
     graph: &mut Graph,
     m: &[Vec<NodeId>],

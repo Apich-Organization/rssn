@@ -730,7 +730,9 @@ fn factor_square_free(f: &[BigInt]) -> Vec<ZPoly> {
     out
 }
 
-/// Complete factorisation over `Q`: `p = content * prod factor_i^e_i` with
+/// Complete factorisation over `Q`.
+///
+/// `p = content * prod factor_i^e_i` with
 /// each factor primitive over `Z`, irreducible, and with positive leading
 /// coefficient. Factors are ordered by degree, then by coefficients.
 #[must_use]

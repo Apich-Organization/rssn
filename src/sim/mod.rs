@@ -1,6 +1,8 @@
 //! # Simulation
 //!
-//! Time stepping, discretised fields and particle systems: the part of
+//! Time stepping, discretised fields and particle systems.
+//!
+//! This is the part of
 //! scientific computing that is not an identity transformation. A
 //! simulation consumes closed-form terms (compiled through a
 //! [`Backend`](crate::backend::Backend)) and produces data, not terms.

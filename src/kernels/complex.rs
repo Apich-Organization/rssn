@@ -88,9 +88,10 @@ where
     circle_integral(f, z0, radius, n) / (2.0 * PI * I)
 }
 
-/// The number of zeros minus the number of poles of `f` inside the circle
-/// `|z - center| = radius` (argument principle), as the winding number of
-/// `f` around the origin. Robust: it follows the continuous argument of
+/// The number of zeros minus the number of poles of `f` inside a circle.
+///
+/// The circle is `|z - center| = radius` (argument principle), and the count
+/// is the winding number of `f` around the origin. Robust: it follows the continuous argument of
 /// `f` instead of integrating `f'/f`. `None` if `f` vanishes or is not
 /// finite on the contour, or the sampling is too coarse to follow it.
 #[must_use]

@@ -910,6 +910,7 @@ fn eigenvectors(
 }
 
 /// `P A = L U` with partial pivoting (pivot on the first non-zero entry).
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 fn lu(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
@@ -951,6 +952,7 @@ fn lu(
 }
 
 /// `A = Q R` by Gram–Schmidt on the columns (full column rank).
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 fn qr(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],

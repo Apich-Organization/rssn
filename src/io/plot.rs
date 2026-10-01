@@ -672,6 +672,7 @@ fn bounds_3d(points: &[[f64; 3]]) -> Result<[(f64, f64); 3], String> {
 /// # Errors
 /// Fails for an invalid range, fewer than two samples, no finite point, or
 /// when the file cannot be written.
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 pub fn plot_parametric_curve_3d(
     f: impl Fn(f64) -> (f64, f64, f64),
     range: (f64, f64),

@@ -446,6 +446,7 @@ impl Integrator<'_, '_> {
     }
 
     /// `exp(u) * sin(v)` and `exp(u) * cos(v)` with linear `u`, `v`.
+    #[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
     fn exponential_times_trig(
         &mut self,
         f: NodeId,
