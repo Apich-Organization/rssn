@@ -696,7 +696,7 @@ mod tests {
         let root = g.parse("exp(I*z) * (1 + I)^2 + ln(z)").unwrap_or_else(|e| panic!("{e}"));
         let z = g.interner_mut().symbol("z");
         let at = Complex64::new(0.3, -0.4);
-        let bindings: HashMap<SymbolId, Complex64> = [(z, at)].into_iter().collect();
+        let bindings: HashMap<SymbolId, Complex64> = std::iter::once((z, at)).collect();
         let got = eval_complex(&g, root, &bindings).unwrap_or_default();
         let i = Complex64::new(0.0, 1.0);
         let want = (i * at).exp() * (1.0 + i) * (1.0 + i) + at.ln();

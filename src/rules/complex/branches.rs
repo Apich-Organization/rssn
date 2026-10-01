@@ -146,7 +146,7 @@ mod tests {
         let engine = Engine::install(&mut g, &[complex()]).unwrap_or_else(|e| panic!("{e}"));
         let z = g.interner_mut().symbol("z");
         let point = Complex64::new(-0.7, 0.4);
-        let bindings: HashMap<_, _> = [(z, point)].into_iter().collect();
+        let bindings: HashMap<_, _> = std::iter::once((z, point)).collect();
         for k in -2..=2 {
             let cases = [
                 (format!("exp(log_branch(z, {k}))"), point),

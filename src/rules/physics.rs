@@ -604,6 +604,7 @@ fn mat_vec(
 ) -> Vec<NodeId> {
     m.iter()
         .map(|row| {
+            #[allow(clippy::needless_collect)] // collect ends the shared borrow of `graph` before `mul` needs it mutably
             let nonzero: Vec<(NodeId, NodeId)> = row
                 .iter()
                 .zip(v)

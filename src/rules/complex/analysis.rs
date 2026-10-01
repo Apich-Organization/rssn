@@ -380,7 +380,7 @@ fn numeric_function(
     }
     let snapshot = graph.clone();
     Some(move |at: Complex64| {
-        let bindings: HashMap<SymbolId, Complex64> = [(z, at)].into_iter().collect();
+        let bindings: HashMap<SymbolId, Complex64> = std::iter::once((z, at)).collect();
         eval_complex(&snapshot, term, &bindings).unwrap_or(Complex64::new(f64::NAN, f64::NAN))
     })
 }

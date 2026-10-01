@@ -927,7 +927,7 @@ mod tests {
     #[test]
     fn logistic_map() {
         assert_eq!(s("logistic_iterate(2, 0.5, 3)"), "list(0.5, 0.5, 0.5, 0.5)");
-        close("logistic_iterate(2.5, 0.25, 2)", &[0.25, 0.46875, 0.62255859375]);
+        close("logistic_iterate(2.5, 0.25, 2)", &[0.25, 0.46875, 0.622_558_593_75]);
         assert_eq!(floats(&s("logistic_iterate(3.7, 0.2, 10)")).len(), 11);
         // Below r = 3 every start settles on the fixed point 1 - 1/r.
         let b = floats(&s("logistic_bifurcation(2.5, 2.5001, 2, 200, 3)"));
@@ -944,7 +944,7 @@ mod tests {
         assert_eq!(s("lorenz(10, 28, 8/3)"), "list(10*y - 10*x, x*(28 - z) - y, x*y - 8/3*z)");
         let std = s("lorenz_orbit(list(1, 1, 1), 0.01, 2)");
         assert_eq!(std, s("lorenz_orbit(list(1, 1, 1), 0.01, 2, 10, 28, 8/3)"));
-        close("lorenz_orbit(list(1, 1, 1), 0.01, 2)", &[1.0, 1.26, 0.9833333333333333, 1.026, 1.5175666666666667, 0.9697111111111111]);
+        close("lorenz_orbit(list(1, 1, 1), 0.01, 2)", &[1.0, 1.26, 0.983_333_333_333_333_3, 1.026, 1.517_566_666_666_666_7, 0.969_711_111_111_111_1]);
         close("rossler_orbit(list(1, 1, 1), 0.01, 1, 0.2, 0.2, 5.7)", &[0.98, 1.012, 0.955]);
         close("henon_orbit(list(0, 0), 2, 1.4, 0.3)", &[1.0, 0.0, -0.4, 0.3]);
         assert_eq!(floats(&s("tinkerbell_orbit(list(-0.72, -0.64), 5, 0.9, -0.6013, 2, 0.5)")).len(), 10);
