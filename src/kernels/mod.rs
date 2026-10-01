@@ -34,5 +34,7 @@ pub mod sparse;
 pub mod special;
 pub mod stats;
 pub mod tensor;
+/// Computational topology: simplicial complexes, Betti numbers, persistence.
+pub mod topology;
 pub mod transforms;
 pub mod vector;
