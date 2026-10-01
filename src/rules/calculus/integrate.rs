@@ -95,7 +95,7 @@ fn poly_sqrt(p: &Poly) -> Option<Poly> {
         return None;
     }
     let half: Vec<(u32, u32)> = mono.iter().map(|&(g, e)| (g, e / 2)).collect();
-    let lead_root = Poly::monomial(half.clone(), Number::rat(rational_sqrt(&coeff.to_rational()?)?));
+    let lead_root = Poly::monomial(half, Number::rat(rational_sqrt(&coeff.to_rational()?)?));
     let twice_lead = lead_root.scale(&Number::from(2));
     let mut root = lead_root;
     for _ in 0..64 {
@@ -769,7 +769,7 @@ impl Integrator<'_, '_> {
     /// The sign of a term free of `x`: exact for a number, otherwise at a
     /// few generic parameter values (which must agree).
     fn sign_of(
-        &mut self,
+        &self,
         t: NodeId,
     ) -> Option<i32> {
         if let Some(n) = self.number(t) {

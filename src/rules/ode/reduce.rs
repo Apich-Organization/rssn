@@ -212,7 +212,7 @@ pub(super) fn scale_invariant(
 /// scaling them all by λ multiplies it by a power of λ (checked
 /// numerically).
 fn homogeneous_in_y(
-    cx: &mut Cx<'_>,
+    cx: &Cx<'_>,
     problem: &Problem,
 ) -> bool {
     if !occurs(cx.graph, problem.expr, problem.stand[0]) {
