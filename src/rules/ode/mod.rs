@@ -62,6 +62,8 @@ use super::solve::solve_for;
 use super::solve::solve_linear;
 
 mod lie;
+mod reduce;
+mod systems;
 
 /// The differential-equation rule set.
 #[must_use]
@@ -143,8 +145,59 @@ fn call(
     graph.try_node(op, &[arg])
 }
 
+/// `exp(e)` with logarithms taken out: `exp(Σ cᵢ ln uᵢ + r) = ∏ uᵢ^cᵢ exp(r)`
+/// for rational `cᵢ`, which keeps integrating factors and Abel's formula
+/// rational where they are.
+fn exp_of(
+    cx: &mut Cx<'_>,
+    e: NodeId,
+) -> Option<NodeId> {
+    let (exp, ln) = (cx.graph.ops().lookup("exp")?, cx.graph.ops().lookup("ln")?);
+    let e = cx.simplify(e);
+    // c·(a + b + …) → c·a + c·b + … for a numeric c.
+    let pair = match cx.graph.children(e).to_vec().as_slice() {
+        | &[a, b] if cx.graph.number_of(a).is_some() => Some((a, b)),
+        | &[a, b] if cx.graph.number_of(b).is_some() => Some((b, a)),
+        | _ => None,
+    };
+    let terms: Vec<NodeId> = match (cx.graph.op(e), pair) {
+        | (op, Some((c, sum))) if op == core::MUL && cx.graph.op(sum) == core::ADD => {
+            cx.graph.children(sum).to_vec().iter().map(|&t| mul(cx.graph, &[c, t])).collect()
+        },
+        | (op, _) if op == core::ADD => cx.graph.children(e).to_vec(),
+        | _ => vec![e],
+    };
+    let mut factors = Vec::new();
+    let mut rest = Vec::new();
+    for t in terms {
+        let (coefficient, inner) = match (cx.graph.op(t), cx.graph.children(t).to_vec().as_slice()) {
+            | (op, &[u]) if op == ln => (cx.graph.int(1), Some(u)),
+            | (op, children) if op == core::MUL => {
+                let numbers: Vec<NodeId> = children.iter().copied().filter(|&c| cx.graph.number_of(c).is_some()).collect();
+                let logs: Vec<NodeId> = children.iter().copied().filter(|&c| cx.graph.op(c) == ln).collect();
+                if numbers.len() == 1 && logs.len() == 1 && children.len() == 2 {
+                    (numbers[0], cx.graph.children(logs[0]).first().copied())
+                } else {
+                    (cx.graph.int(1), None)
+                }
+            },
+            | _ => (cx.graph.int(1), None),
+        };
+        match inner {
+            | Some(u) => factors.push(cx.graph.node(core::POW, &[u, coefficient])),
+            | None => rest.push(t),
+        }
+    }
+    if !rest.is_empty() {
+        let sum = add(cx.graph, &rest);
+        factors.push(cx.graph.node(exp, &[sum]));
+    }
+    let product = mul(cx.graph, &factors);
+    Some(cx.simplify(product))
+}
+
 /// One ODE problem with the unknown function replaced by symbols.
-struct Problem {
+pub(super) struct Problem {
     /// The independent variable.
     x: NodeId,
     x_symbol: SymbolId,
@@ -995,6 +1048,59 @@ fn apply_conditions(
     Some(explicit(cx, problem, result))
 }
 
+/// Parses and solves one equation for `unknown`: the general solution
+/// (explicit or implicit), verified against the equation. Reduction
+/// methods call this again on the reduced equation, so every method is
+/// available at every stage.
+pub(super) fn solve_equation(
+    cx: &mut Cx<'_>,
+    equation: NodeId,
+    unknown: NodeId,
+    depth: u32,
+) -> Option<(Problem, NodeId)> {
+    if depth > 3 {
+        return None;
+    }
+    let mut problem = parse(cx.graph, equation, unknown)?;
+    let answer = dispatch(cx, &mut problem, depth)?;
+    Some((problem, answer))
+}
+
+/// The method pipeline, cheapest and most specific first.
+fn dispatch(
+    cx: &mut Cx<'_>,
+    problem: &mut Problem,
+    depth: u32,
+) -> Option<NodeId> {
+    // Every candidate is checked; a failed one does not stop the search.
+    let attempt = |cx: &mut Cx<'_>, problem: &mut Problem, method: fn(&mut Cx<'_>, &mut Problem, u32) -> Option<NodeId>| {
+        let saved = problem.constants;
+        let found = method(cx, problem, depth).filter(|&answer| verified(cx, problem, answer));
+        if found.is_none() {
+            problem.constants = saved;
+        }
+        found
+    };
+    if problem.order() == 1 {
+        if let Some(found) = attempt(cx, problem, |cx, p, _| first_order(cx, p)) {
+            return Some(found);
+        }
+    }
+    for method in [
+        (|cx: &mut Cx<'_>, p: &mut Problem, _| linear_higher_order(cx, p)) as fn(&mut Cx<'_>, &mut Problem, u32) -> Option<NodeId>,
+        reduce::special_function_equation,
+        reduce::variable_coefficients,
+        reduce::missing_dependent,
+        reduce::autonomous,
+        reduce::scale_invariant,
+    ] {
+        if let Some(found) = attempt(cx, problem, method) {
+            return Some(found);
+        }
+    }
+    None
+}
+
 struct Dsolve {
     dsolve: OpId,
 }
@@ -1015,20 +1121,12 @@ impl Kernel for Dsolve {
             | [e, u, c] => (e, u, Some(c)),
             | _ => return Outcome::Pass,
         };
-        let Some(mut problem) = parse(cx.graph, equation, unknown) else {
-            return Outcome::Pass;
-        };
-        let answer = if problem.order() == 1 {
-            first_order(cx, &mut problem).or_else(|| linear_higher_order(cx, &mut problem))
-        } else {
-            linear_higher_order(cx, &mut problem)
-        };
-        let Some(answer) = answer else {
-            return Outcome::Pass;
-        };
-        if !verified(cx, &problem, answer) {
-            return Outcome::Pass;
+        if cx.graph.op(unknown) == core::LIST {
+            return systems::solve_system(cx, equation, unknown).map_or(Outcome::Pass, Outcome::Pinned);
         }
+        let Some((problem, answer)) = solve_equation(cx, equation, unknown, 0) else {
+            return Outcome::Pass;
+        };
         match conditions {
             | None => Outcome::Pinned(answer),
             | Some(conditions) => {
@@ -1235,6 +1333,46 @@ mod tests {
         assert!(reduced && text.contains("atan") && text.contains("C1"), "{text}");
         check("diff(y(x), x) = y(x)/x + x^2/y(x)", 1);
         check("diff(y(x), x) = y(x)/(x + y(x)^2)", 1);
+    }
+
+    #[test]
+    fn reductions_of_order() {
+        // y missing: p = y'.
+        check("x*diff(diff(y(x), x), x) + diff(y(x), x) = 0", 2);
+        check("diff(diff(y(x), x), x) = diff(y(x), x)^2", 2);
+        // Autonomous: y'' = p dp/dy.
+        check("diff(diff(y(x), x), x) = 2*y(x)*diff(y(x), x)", 2);
+        // Scale invariant in y: u = y'/y.
+        check("y(x)*diff(diff(y(x), x), x) - diff(y(x), x)^2 = 0", 2);
+        // Variable coefficients with a polynomial / exponential solution.
+        check("x*diff(diff(y(x), x), x) - (x + 1)*diff(y(x), x) + y(x) = 0", 2);
+        check("(1 - x^2)*diff(diff(y(x), x), x) - 2*x*diff(y(x), x) + 2*y(x) = 0", 2);
+    }
+
+    #[test]
+    fn special_function_equations() {
+        let run = |src: &str| simplify(&crate::rules::standard(), src);
+        let solved = run("dsolve(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + (x^2 - 4)*y(x) = 0, y(x))");
+        assert_eq!(solved, "y(x) = C1*besselj(2, x) + C2*bessely(2, x)");
+        let modified = run("dsolve(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - (9*x^2 + 1)*y(x) = 0, y(x))");
+        assert_eq!(modified, "y(x) = C1*besseli(1, 3*x) + C2*besselk(1, 3*x)");
+        // exp(x²) by the exp(λx²) family, the second solution through erf.
+        let gaussian = run("dsolve(diff(diff(y(x), x), x) - 2*x*diff(y(x), x) - 2*y(x) = 0, y(x))");
+        assert!(gaussian.contains("exp(x^2)") && gaussian.contains("erf(x)"), "{gaussian}");
+    }
+
+    #[test]
+    fn linear_systems() {
+        let rotation = run("dsolve(list(diff(u(t), t) = w(t), diff(w(t), t) = -u(t)), list(u(t), w(t)))");
+        assert!(rotation.contains("cos(t)") && rotation.contains("sin(t)"), "{rotation}");
+        let (text, reduced) = reduce_with(
+            &crate::rules::standard(),
+            "dsolve(list(diff(u(t), t) = u(t) + 2*w(t) + t, diff(w(t), t) = 3*u(t) + 2*w(t)), list(u(t), w(t)))",
+            &[],
+        );
+        assert!(reduced && text.contains("exp(4*t)") && text.contains("C2"), "{text}");
+        let three = run("dsolve(list(diff(a(t), t) = b(t), diff(b(t), t) = c(t), diff(c(t), t) = a(t)), list(a(t), b(t), c(t)))");
+        assert!(three.contains("exp(t)") && three.contains("C3"), "{three}");
     }
 
     #[test]

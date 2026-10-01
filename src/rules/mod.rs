@@ -155,3 +155,13 @@ mod tests {
         assert!(untested.is_empty(), "rules that were never actually tested: {untested:?}");
     }
 }
+#[cfg(test)]
+mod dbg_probe {
+    #[test]
+    fn probe() {
+        for s in ["integral(-2*x/(1 - x^2), x)", "exp(-ln(1 - x^2))", "exp(-ln(x^2 - 1))", "integral(1/((1 - x^2)*x^2), x)", "exp(2*ln(x))", "exp(ln(x)/2 + x)"] {
+            let (t, r) = crate::rules::testing::reduce_with(&crate::rules::standard(), s, &[]);
+            eprintln!("DBG {s} -> {t} {r}");
+        }
+    }
+}
