@@ -403,7 +403,7 @@ fn is_prime_u64(n: u64) -> bool {
     true
 }
 
-fn is_prime(n: &BigInt) -> bool {
+pub(crate) fn is_prime(n: &BigInt) -> bool {
     if let Some(small) = n.to_u64() {
         return is_prime_u64(small);
     }
