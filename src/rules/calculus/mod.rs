@@ -8,6 +8,7 @@
 //! route is blocked.
 
 mod diff;
+mod gosper;
 mod integrate;
 mod limits;
 mod powerseries;
@@ -242,6 +243,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         converges: i.op(request("converges", 2).binder(1, 0b1))?,
     };
     i.kernel("calculus/series", Tier::Reduce, series::SeriesKernel { ops });
+    // antidifference(t, k): T with T(k+1) - T(k) = t(k).
+    let antidifference = i.op(request("antidifference", 2))?;
+    i.kernel("calculus/antidifference", Tier::Reduce, Antidifference { op: antidifference });
     i.kernel("calculus/sum-numeric", Tier::Reduce, series::NumericSum { sum: ops.sum, product: ops.product });
     i.rewrites(
         Tier::Reduce,
@@ -279,4 +283,26 @@ pub fn derivative(
     let diff = graph.ops().lookup("diff")?;
     let symbol = graph.symbol_of(x)?;
     Some(diff::Differentiate { diff }.derive(graph, f, symbol, x))
+}
+
+/// Kernel for `antidifference(t, k)`, by Gosper's algorithm.
+struct Antidifference {
+    op: crate::graph::OpId,
+}
+
+impl crate::graph::Kernel for Antidifference {
+    fn ops(&self) -> Vec<crate::graph::OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> crate::graph::Outcome {
+        let &[t, k] = cx.graph.children(node) else {
+            return crate::graph::Outcome::Pass;
+        };
+        gosper::antidifference(cx, t, k, true).map_or(crate::graph::Outcome::Pass, crate::graph::Outcome::Equal)
+    }
 }

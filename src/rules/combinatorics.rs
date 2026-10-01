@@ -1199,6 +1199,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
              => permutations(?n, ?k) if nonnegative(?n), nonnegative(?k)",
             "combinatorics/factorial-ratio: factorial(?n + 1) / factorial(?n) => ?n + 1 \
              if nonnegative(?n)",
+            "combinatorics/factorial-ratio-inverse: factorial(?n) / factorial(?n + 1) => 1/(?n + 1) \
+             if nonnegative(?n)",
+            "combinatorics/binomial-ratio-k: binomial(?n, ?k + 1) / binomial(?n, ?k) => (?n - ?k)/(?k + 1) \
+             if integer(?k), nonnegative(?k), nonnegative(?n)",
+            "combinatorics/binomial-ratio-n: binomial(?n + 1, ?k) / binomial(?n, ?k) => (?n + 1)/(?n + 1 - ?k) \
+             if integer(?k), nonnegative(?k), nonnegative(?n)",
         ],
     )
 }

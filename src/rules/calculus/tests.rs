@@ -355,3 +355,22 @@ fn polynomials_given_as_powers_of_sums() {
     assert_eq!(run("defint(abs(x), x, 0, 2)"), "2");
     assert_eq!(run("defint((x^2)^(1/2), x, -3, 0)"), "9/2");
 }
+
+/// Gosper's algorithm closes hypergeometric sums that are not polynomial or
+/// geometric: each closed form is checked against the written-out sum.
+#[test]
+fn gosper_sums() {
+    let rules = crate::rules::standard();
+    for (summand, from) in [("1/(k*(k+1))", 1), ("k*2^k", 0), ("factorial(k)*k", 0), ("k^3*3^k", 1), ("1/(4*k^2-1)", 1)] {
+        let (closed, reduced) = reduce_with(&rules, &format!("sum({summand}, k, {from}, n)"), &[]);
+        assert!(reduced, "sum of {summand}: {closed}");
+        assert!(!closed.contains("sum("), "sum of {summand}: {closed}");
+        for n in [5, 8] {
+            let got = eval(&rules, &closed, &[("n", f64::from(n))]);
+            let want: f64 = (from..=n).map(|k| eval(&rules, summand, &[("k", f64::from(k))])).sum();
+            assert!((got - want).abs() < 1e-9 * (1.0 + want.abs()), "sum of {summand} = {closed}: {got} vs {want}");
+        }
+    }
+    assert_eq!(simplify(&rules, "sum(1/(k*(k+1)), k, 1, n)"), "1 - 1/(n + 1)");
+    assert_eq!(simplify(&rules, "sum(factorial(k)*k, k, 0, n)"), "factorial(n + 1) - 1");
+}

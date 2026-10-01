@@ -390,7 +390,19 @@ fn symbolic_sum(
             }
         }
     }
-    None
+    // Hypergeometric terms: Gosper's antidifference.
+    if infinite_upper {
+        return None;
+    }
+    let from_nonnegative = cx.graph.number_of(lower).is_some_and(|n| !n.is_negative());
+    let big_t = super::gosper::antidifference(cx, term, k, from_nonnegative)?;
+    let graph = &mut *cx.graph;
+    let one = graph.int(1);
+    let after = graph.node(core::ADD, &[upper, one]);
+    let at_end = graph.substitute(big_t, k, after);
+    let at_start = graph.substitute(big_t, k, lower);
+    let difference = sub(graph, at_end, at_start);
+    Some(cx.simplify(difference))
 }
 
 /// The integer bounds of a sum or product if both are literal and the
