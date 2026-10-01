@@ -85,6 +85,7 @@ pub mod solve;
 pub mod special;
 pub mod stats;
 pub mod transforms;
+pub mod units;
 pub mod variational;
 pub mod verify;
 #[cfg(test)]
@@ -110,6 +111,7 @@ pub use solve::solve;
 pub use special::special;
 pub use stats::stats;
 pub use transforms::transforms;
+pub use units::units;
 pub use variational::variational;
 pub use verify::verify;
 
@@ -118,7 +120,7 @@ use crate::graph::RuleSet;
 /// Every rule set shipped with rssn.
 #[must_use]
 pub fn standard() -> Vec<RuleSet> {
-    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), variational(), pde(), functional(), physics(), optimize(), verify(), discrete()]
+    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), variational(), pde(), functional(), physics(), optimize(), verify(), discrete(), units()]
 }
 
 #[cfg(test)]
