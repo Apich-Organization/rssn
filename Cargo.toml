@@ -122,6 +122,10 @@ criterion = { version = "0.8", features = ["html_reports"] }
 proptest = "1.9"
 assert_approx_eq = "1.1"
 
+[[bench]]
+name = "engine"
+harness = false
+
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--html-in-header", "doc-header.html"]

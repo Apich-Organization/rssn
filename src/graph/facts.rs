@@ -39,6 +39,22 @@ impl Facts {
     /// The value is an integer.
     pub const INTEGER: Self = Self(1 | 1 << 4);
 
+    /// The facts encoded by `bits`, as returned by [`Facts::bits`]:
+    /// bit 0 real, 1 nonzero, 2 nonnegative, 3 nonpositive, 4 integer.
+    /// Bits beyond these are ignored, and a sign or integer bit implies
+    /// reality.
+    #[must_use]
+    pub const fn from_bits(bits: u8) -> Self {
+        let bits = bits & 0x1f;
+        if bits & 0b1_1100 != 0 { Self(bits | 1) } else { Self(bits) }
+    }
+
+    /// The bit encoding of these facts (see [`Facts::from_bits`]).
+    #[must_use]
+    pub const fn bits(self) -> u8 {
+        self.0
+    }
+
     /// Whether every fact in `other` is known.
     #[must_use]
     pub const fn has(

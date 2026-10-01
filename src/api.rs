@@ -154,6 +154,12 @@ impl Config {
         self
     }
 
+    /// The search budget in effect.
+    #[must_use]
+    pub fn current_budget(&self) -> Budget {
+        self.budget.clone()
+    }
+
     /// Replaces the search budget.
     #[must_use]
     pub fn budget(
@@ -357,6 +363,17 @@ impl Session {
         self.term(self.inner.borrow_mut().graph.float(value))
     }
 
+    /// The term with handle `id` (see [`Term::id`]); `None` when this
+    /// session has no such term.
+    #[must_use]
+    pub fn term_by_id(
+        &self,
+        id: u32,
+    ) -> Option<Term<'_>> {
+        let node = NodeId::from_raw(id);
+        (node.index() < self.inner.borrow().graph.len()).then(|| self.term(node))
+    }
+
     /// Parses a term from infix text.
     ///
     /// # Errors
@@ -535,6 +552,52 @@ impl<'s> Term<'s> {
             .graph
             .as_number(self.node)
             .cloned()
+    }
+
+    /// A stable handle for this term within its session, for language
+    /// bindings that cannot hold a borrowed [`Term`]; turn it back into a
+    /// term with [`Session::term_by_id`].
+    #[must_use]
+    pub const fn id(self) -> u32 {
+        self.node.raw()
+    }
+
+    /// The term as a dense numeric array: a literal number is a scalar
+    /// (empty shape), a `list` of numbers a vector, a list of equally long
+    /// lists a matrix, and so on. `None` when an entry is not a number or
+    /// the nesting is ragged. Data is row-major.
+    #[must_use]
+    pub fn as_tensor(self) -> Option<(Vec<usize>, Vec<f64>)> {
+        fn walk(
+            graph: &Graph,
+            node: NodeId,
+            depth: usize,
+            shape: &mut Vec<usize>,
+            data: &mut Vec<f64>,
+        ) -> Option<()> {
+            if let Some(n) = graph.as_number(node) {
+                return (depth == shape.len()).then(|| data.push(n.to_f64()));
+            }
+            if graph.op(node) != core::LIST {
+                return None;
+            }
+            let items = graph.children(node);
+            match shape.get(depth) {
+                | Some(&len) if len != items.len() => return None,
+                | Some(_) => {},
+                | None if depth == shape.len() && data.is_empty() => shape.push(items.len()),
+                | None => return None,
+            }
+            for &item in items {
+                walk(graph, item, depth.saturating_add(1), shape, data)?;
+            }
+            Some(())
+        }
+        let inner = self.session.inner.borrow();
+        let mut shape = Vec::new();
+        let mut data = Vec::new();
+        walk(&inner.graph, self.node, 0, &mut shape, &mut data)?;
+        Some((shape, data))
     }
 
     /// The term as a float if it is a literal number.

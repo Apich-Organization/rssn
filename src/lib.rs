@@ -116,6 +116,7 @@ pub mod api;
 pub mod backend;
 /// Build metadata and mathematical constants.
 pub mod constant;
+pub mod ffi;
 pub mod graph;
 pub mod io;
 pub mod kernels;
@@ -124,3 +125,8 @@ pub mod rules;
 pub mod sim;
 
 pub use api::Session;
+
+/// The README's code blocks, compiled and run as doctests.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+pub struct ReadmeDoctests;
