@@ -36,9 +36,11 @@
 //! | `pde_traveling_wave(eq, u(x, t), c)` | `u = F(x - c t)`: the solution, or `list(ansatz, ODE)` |
 //! | `pde_similarity(eq, u(x, t), list(ξ, τ, φ))` | similarity reduction by a scaling/translation symmetry |
 //! | `noether_current(L, u(x, t), list(ξ, τ, φ))` | the conserved current `list(J^x, J^t)` of a variational symmetry |
+//! | `conservation_laws(eq, u(x, t))` | `list(list(Λ, T, X), …)`: multipliers with density and flux (`D_t T + D_x X = 0`) |
 
 use std::collections::HashMap;
 
+mod conservation;
 mod symmetry;
 
 use crate::graph::op::core;
@@ -125,7 +127,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let traveling = i.op(heavy("pde_traveling_wave", Arity::Fixed(3)))?;
     let similarity = i.op(heavy("pde_similarity", Arity::Fixed(3)))?;
     let noether = i.op(heavy("noether_current", Arity::Fixed(3)))?;
-    i.kernel("pde/symmetry", Tier::Reduce, Symmetry { symmetries, traveling, similarity, noether });
+    let laws = i.op(heavy("conservation_laws", Arity::Fixed(2)))?;
+    i.kernel("pde/symmetry", Tier::Reduce, Symmetry { symmetries, traveling, similarity, noether, laws });
     i.kernel("pde/at", Tier::Reduce, Pde { op: at, request: Request::At });
     let table = [
         ("pdsolve", Method::Any),
@@ -219,11 +222,12 @@ struct Symmetry {
     traveling: OpId,
     similarity: OpId,
     noether: OpId,
+    laws: OpId,
 }
 
 impl Kernel for Symmetry {
     fn ops(&self) -> Vec<OpId> {
-        vec![self.symmetries, self.traveling, self.similarity, self.noether]
+        vec![self.symmetries, self.traveling, self.similarity, self.noether, self.laws]
     }
 
     fn reduce(
@@ -241,6 +245,9 @@ impl Kernel for Symmetry {
             let (&equation, rest) = args.split_first()?;
             let (&unknown, extra) = rest.split_first()?;
             let p = Problem::parse(cx, equation, unknown)?;
+            if op == self.laws {
+                return conservation::conservation_laws(cx, &p);
+            }
             if op == self.symmetries {
                 let generators = symmetry::symmetries(cx, &p)?;
                 let items: Vec<NodeId> = generators.iter().map(|g| cx.graph.node(core::LIST, g)).collect();
@@ -2074,6 +2081,13 @@ mod tests {
         // Heat equation similarity solution z = x/√t: error-function profile.
         let similar = run("pde_similarity(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(x, 2*t, 0))");
         assert!(similar.contains("erf"), "{similar}");
+        // Conservation laws: KdV has mass, momentum, energy and the
+        // Galilean law; Burgers its mass.
+        let kdv = run("conservation_laws(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) + diff(diff(diff(u(x, t), x), x), x) = 0, u(x, t))");
+        assert!(kdv.contains("list(1, u(x, t), 1/2*u(x, t)^2 + diff(diff(u(x, t), x), x))"), "{kdv}");
+        assert!(kdv.matches("list(").count() >= 5, "{kdv}");
+        let burgers_laws = run("conservation_laws(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = diff(diff(u(x, t), x), x), u(x, t))");
+        assert!(burgers_laws.contains("list(1, u(x, t),"), "{burgers_laws}");
         // Noether: time translation of the wave Lagrangian gives the energy.
         let current = run("noether_current(diff(u(x, t), t)^2/2 - diff(u(x, t), x)^2/2, u(x, t), list(0, 1, 0))");
         assert!(current.contains("diff(u(x, t), t)*diff(u(x, t), x)"), "{current}");
