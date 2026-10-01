@@ -526,7 +526,15 @@ impl Integrator<'_, '_> {
         };
         let (numer, denom) = (as_q(&fraction.numer)?, as_q(&fraction.denom)?);
         if denom.len() < 2 {
-            return None;
+            // A polynomial, (x^2 - 1)^2 say: integrate its coefficients.
+            let scale = denom.first()?.clone();
+            if scale.is_zero() || numer.len() < 2 {
+                return None;
+            }
+            let integrated: QPoly = std::iter::once(BigRational::zero())
+                .chain(numer.iter().enumerate().map(|(k, c)| c / (&scale * BigRational::from_integer(BigInt::from(k + 1)))))
+                .collect();
+            return Some(self.polynomial(&integrated));
         }
         let parts = apart(&numer, &denom)?;
         let mut pieces = Vec::new();
@@ -1057,6 +1065,29 @@ impl Kernel for Definite {
             graph.eval(n, &Env::numeric(0.0)).is_some_and(f64::is_infinite)
         };
         let (lower_infinite, upper_infinite) = (infinite(cx.graph, lower), infinite(cx.graph, upper));
+        // Inside the integral the variable ranges over the interval: a
+        // fresh symbol carries what is known about it (real, and its sign
+        // when the interval lies on one side of zero), so that |x| or
+        // sqrt(x^2) can be resolved.
+        let (variable, integrand) = match (cx.graph.eval(lower, &Env::numeric(0.0)), cx.graph.eval(upper, &Env::numeric(0.0))) {
+            | (Some(lo), Some(hi)) if lo <= hi && cx.graph.symbol_of(variable).is_some() => {
+                // The end points are a null set: the open interval is
+                // what matters to the value of the integral.
+                let mut facts = crate::graph::Facts::REAL;
+                if lo >= 0.0 && hi > lo {
+                    facts = facts | crate::graph::Facts::POSITIVE;
+                }
+                if hi <= 0.0 && hi > lo {
+                    facts = facts | crate::graph::Facts::NEGATIVE;
+                }
+                let fresh = cx.graph.interner_mut().fresh_symbol("x");
+                cx.graph.assume(fresh, facts);
+                let local = cx.graph.symbol_node(fresh);
+                let body = best(cx.graph, integrand).unwrap_or(integrand);
+                (local, cx.graph.substitute(body, variable, local))
+            },
+            | _ => (variable, integrand),
+        };
         let Some(primitive) = antiderivative(cx, self.functions, integrand, variable) else {
             return Outcome::Pass;
         };

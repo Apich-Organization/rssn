@@ -346,3 +346,12 @@ fn derivatives_map_over_lists_and_equations() {
     assert_eq!(run("diff(list(t^2, 3, sin(t)), t)"), "list(2*t, 0, cos(t))");
     assert_eq!(run("diff(x^2 = y, x)"), "2*x = 0");
 }
+
+#[test]
+fn polynomials_given_as_powers_of_sums() {
+    assert_eq!(run("integral((x^2 - 1)^2, x)"), "1/5*x^5 - 2/3*x^3 + x");
+    assert_eq!(run("defint((x^2 + x)^2, x, -1, 1)"), "16/15");
+    // The variable of a definite integral knows its range.
+    assert_eq!(run("defint(abs(x), x, 0, 2)"), "2");
+    assert_eq!(run("defint((x^2)^(1/2), x, -3, 0)"), "9/2");
+}

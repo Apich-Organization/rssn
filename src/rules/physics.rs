@@ -72,6 +72,10 @@ use crate::rules::poly::repr::Limits;
 
 use super::calculus::derivative;
 use super::complex::complex;
+use super::functional::apply;
+use super::functional::functional;
+use super::functional::op_algebra;
+use super::functional::OpAlgebra;
 use super::geometry::geometry;
 use super::special::special;
 use super::variational::variational;
@@ -80,6 +84,7 @@ use super::variational::variational;
 #[must_use]
 pub fn physics() -> RuleSet {
     RuleSet::new("physics", install)
+        .needs(functional())
         .needs(variational())
         .needs(geometry())
         .needs(complex())
@@ -117,7 +122,6 @@ macro_rules! constant_eval {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Request {
-    Apply,
     Eigenvalue,
     PoissonBracket,
     GeodesicAcceleration,
@@ -133,19 +137,6 @@ enum Request {
     PartitionFunction,
 }
 
-/// The operator-algebra constructors.
-#[derive(Copy, Clone, Debug)]
-struct OpAlgebra {
-    mul: OpId,
-    d: OpId,
-    laplacian: OpId,
-    identity: OpId,
-    add: OpId,
-    scale: OpId,
-    compose: OpId,
-    power: OpId,
-    matmul: OpId,
-}
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, eval) in constant_eval!(
@@ -154,24 +145,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(0)).eval(eval))?;
         i.graph().ops_mut().set_attr(op, OnReals(Facts::POSITIVE));
     }
-    let plain = |name: &str, arity: Arity| OpDescriptor::new(name, arity);
-    let algebra = OpAlgebra {
-        mul: i.op(plain("op_mul", Arity::Fixed(1)))?,
-        d: i.op(plain("op_d", Arity::Fixed(1)))?,
-        laplacian: i.op(plain("op_laplacian", Arity::Fixed(1)))?,
-        identity: i.op(plain("op_identity", Arity::Fixed(0)))?,
-        add: i.op(plain("op_add", Arity::Variadic))?,
-        scale: i.op(plain("op_scale", Arity::Fixed(2)))?,
-        compose: i.op(plain("op_compose", Arity::Variadic))?,
-        power: i.op(plain("op_power", Arity::Fixed(2)))?,
-        matmul: i.graph().ops().lookup("matmul").ok_or(RuleError::Invalid {
-            rule: "physics".to_owned(),
-            reason: "needs the linear algebra rule set",
-        })?,
-    };
+    let algebra = op_algebra(i.graph()).ok_or(RuleError::Invalid {
+        rule: "physics".to_owned(),
+        reason: "needs the functional analysis rule set",
+    })?;
     let heavy = |name: &str, arity: u8| OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100);
     for (name, arity, request) in [
-        ("qm_apply", 2, Request::Apply),
         ("energy_eigenvalue", 3, Request::Eigenvalue),
         ("poisson_bracket", 4, Request::PoissonBracket),
         ("geodesic_acceleration", 2, Request::GeodesicAcceleration),
@@ -250,7 +229,8 @@ const RELATIVITY: [&str; 12] = [
     "minkowski_metric := list(list(1, 0, 0, 0), list(0, -1, 0, 0), list(0, 0, -1, 0), list(0, 0, 0, -1))",
 ];
 
-const QUANTUM: [&str; 27] = [
+const QUANTUM: [&str; 28] = [
+    "qm_apply(A, psi) := op_apply(A, psi)",
     "position_operator(x) := op_mul(x)",
     "momentum_operator(x) := op_scale(-I * hbar, op_d(x))",
     "kinetic_operator(m, x) := op_scale(-hbar^2 / (2 * m), op_compose(op_d(x), op_d(x)))",
@@ -347,7 +327,6 @@ impl Kernel for Physics {
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
         let result = match self.request {
-            | Request::Apply => args.get(..2).and_then(|a| apply(cx, self.algebra, a[0], a[1], 0)),
             | Request::Eigenvalue => eigenvalue(cx, self.algebra, &args),
             | Request::PoissonBracket => poisson_bracket(cx, &args),
             | Request::GeodesicAcceleration => geodesic_acceleration(cx, &args),
@@ -409,100 +388,10 @@ fn matrix_term(
     list(graph, &rows)
 }
 
-fn is_heavy(
-    graph: &Graph,
-    node: NodeId,
-) -> bool {
-    let mut stack = vec![node];
-    let mut seen = std::collections::HashSet::new();
-    while let Some(n) = stack.pop() {
-        if !seen.insert(n) {
-            continue;
-        }
-        if graph.ops().get(graph.op(n)).flags.has(OpFlags::HEAVY) {
-            return true;
-        }
-        stack.extend_from_slice(graph.children(n));
-    }
-    false
-}
 
 // ----------------------------------------------------------------------
 // Quantum operators
 // ----------------------------------------------------------------------
-
-/// `A psi` for an operator term `A`.
-fn apply(
-    cx: &mut Cx<'_>,
-    algebra: OpAlgebra,
-    a: NodeId,
-    psi: NodeId,
-    depth: usize,
-) -> Option<NodeId> {
-    if depth > 32 {
-        return None;
-    }
-    let a = best(cx.graph, a)?;
-    let psi = best(cx.graph, psi)?;
-    let op = cx.graph.op(a);
-    let args = cx.graph.children(a).to_vec();
-    let graph = &mut *cx.graph;
-    if op == algebra.mul {
-        return Some(mul(graph, &[args[0], psi]));
-    }
-    if op == algebra.d {
-        graph.symbol_of(args[0])?;
-        return derivative(graph, psi, args[0]);
-    }
-    if op == algebra.identity {
-        return Some(psi);
-    }
-    if op == algebra.laplacian {
-        let vars = vector(graph, args[0])?;
-        let mut terms = Vec::with_capacity(vars.len());
-        for x in vars {
-            graph.symbol_of(x)?;
-            let first = derivative(graph, psi, x)?;
-            terms.push(derivative(graph, first, x)?);
-        }
-        return Some(add(graph, &terms));
-    }
-    if op == algebra.add {
-        let mut terms = Vec::with_capacity(args.len());
-        for part in args {
-            terms.push(apply(cx, algebra, part, psi, depth + 1)?);
-        }
-        return Some(add(cx.graph, &terms));
-    }
-    if op == algebra.scale {
-        let inner = apply(cx, algebra, args[1], psi, depth + 1)?;
-        return Some(mul(cx.graph, &[args[0], inner]));
-    }
-    if op == algebra.compose {
-        let mut state = psi;
-        for &part in args.iter().rev() {
-            state = apply(cx, algebra, part, state, depth + 1)?;
-        }
-        return Some(state);
-    }
-    if op == algebra.power {
-        let n = graph.number_of(args[1]).and_then(crate::graph::Number::to_i64).filter(|n| (0..=16).contains(n))?;
-        let mut state = psi;
-        for _ in 0..n {
-            state = apply(cx, algebra, args[0], state, depth + 1)?;
-        }
-        return Some(state);
-    }
-    if op == core::LIST {
-        return Some(graph.node(algebra.matmul, &[a, psi]));
-    }
-    // Any other term multiplies, once it is a closed form (an operator
-    // definition that has not been expanded yet is not a multiplier).
-    if is_heavy(graph, a) {
-        return None;
-    }
-    Some(mul(graph, &[a, psi]))
-}
 
 /// `E` with `H psi = E psi`, when `H psi / psi` is free of the position
 /// variables.

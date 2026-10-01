@@ -170,14 +170,31 @@ impl Kernel for Collapse {
         let Some(expanded) = Self::canonical(graph, term) else {
             return Outcome::Pass;
         };
-        // The other rules may simplify the expanded terms further
-        // (exp(a)·exp(-a) = 1).
-        let simplified = cx.simplify(expanded);
-        if tree_size(cx.graph, simplified, CAP) < before { Outcome::Equal(simplified) } else { Outcome::Pass }
+        Self::accept(cx, expanded, before)
     }
 }
 
 impl Collapse {
+    /// Keeps `candidate` when it is smaller than `before` nodes, or — in a
+    /// top-level run only, to keep nested simplifications from recursing
+    /// into each other — when the other rules make it smaller
+    /// (`exp(a)·exp(-a) = 1` after multiplying out).
+    fn accept(
+        cx: &mut Cx<'_>,
+        candidate: NodeId,
+        before: usize,
+    ) -> Outcome {
+        const CAP: usize = 240;
+        if tree_size(cx.graph, candidate, CAP) < before {
+            return Outcome::Equal(candidate);
+        }
+        if cx.env.depth > 0 {
+            return Outcome::Pass;
+        }
+        let simplified = cx.simplify(candidate);
+        if tree_size(cx.graph, simplified, CAP) < before { Outcome::Equal(simplified) } else { Outcome::Pass }
+    }
+
     /// The rational normal form of `term`: one numerator over one
     /// denominator, common monomials and exact polynomial factors
     /// cancelled.
@@ -253,8 +270,7 @@ impl Collapse {
         let Some(result) = Self::canonical(graph, term) else {
             return Outcome::Pass;
         };
-        let simplified = cx.simplify(result);
-        if tree_size(cx.graph, simplified, CAP) < before { Outcome::Equal(simplified) } else { Outcome::Pass }
+        Self::accept(cx, result, before)
     }
 }
 

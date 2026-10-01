@@ -71,6 +71,7 @@ pub mod combinatorics;
 pub mod complex;
 pub mod discrete;
 pub mod elementary;
+pub mod functional;
 pub mod geometry;
 pub mod linalg;
 pub mod logic;
@@ -95,6 +96,7 @@ pub use combinatorics::combinatorics;
 pub use complex::complex;
 pub use discrete::discrete;
 pub use elementary::elementary;
+pub use functional::functional;
 pub use geometry::geometry;
 pub use linalg::linalg;
 pub use logic::logic;
@@ -116,7 +118,7 @@ use crate::graph::RuleSet;
 /// Every rule set shipped with rssn.
 #[must_use]
 pub fn standard() -> Vec<RuleSet> {
-    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), variational(), pde(), physics(), optimize(), verify(), discrete()]
+    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), variational(), pde(), functional(), physics(), optimize(), verify(), discrete()]
 }
 
 #[cfg(test)]
