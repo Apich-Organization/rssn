@@ -196,6 +196,7 @@ fn padded(range: (f64, f64)) -> (f64, f64) {
 }
 
 /// A viridis-like colour map; `t` is clamped to `[0, 1]`.
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 fn colormap(t: f64) -> String {
     const STOPS: [(f64, f64, f64); 5] = [
         (68.0, 1.0, 84.0),

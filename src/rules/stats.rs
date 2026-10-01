@@ -3725,6 +3725,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
     fn entropy_of_probability_lists() {
         assert_eq!(s("entropy(list(1/2, 1/2))"), "ln(2)");
         assert_eq!(s("entropy(list(1/4, 1/4, 1/4, 1/4))"), "2*ln(2)");
@@ -3883,6 +3884,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
     fn gini_impurity() {
         assert_eq!(s("gini(list(1/2, 1/4, 1/4))"), "5/8");
         assert_eq!(s("gini(list(1))"), "0");

@@ -1730,6 +1730,7 @@ fn laplace_box(
             projection = mul(cx.graph, &[projection, m]);
         }
         let mut factors = Vec::new();
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for j in 0..d - 1 {
             projection = cx.graph.node(defint, &[projection, p.vars[j], zero, lengths[j]]);
             let two = cx.graph.int(2);

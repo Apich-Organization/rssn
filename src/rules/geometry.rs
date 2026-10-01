@@ -329,8 +329,11 @@ fn christoffel_first(
     }
     let mut out = Tensor::zeros(cx.graph, vec![n, n, n]);
     let h = half(cx.graph);
+    #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
     for k in 0..n {
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for i in 0..n {
+            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
             for j in 0..n {
                 let first = add(cx.graph, &[dg[j][k][i], dg[i][k][j]]);
                 let difference = sub(cx.graph, first, dg[i][j][k]);
@@ -352,6 +355,7 @@ fn christoffel_second(
     let first = christoffel_first(cx, g, vars)?;
     let inverse = invert(cx, g)?;
     let mut out = Tensor::zeros(cx.graph, vec![n, n, n]);
+    #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
     for k in 0..n {
         for i in 0..n {
             for j in 0..n {
@@ -411,7 +415,9 @@ fn ricci(
     let n = vars.len();
     let r = riemann(cx, g, vars)?;
     let mut out = vec![vec![NodeId::NONE; n]; n];
+    #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
     for s in 0..n {
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for v in 0..n {
             let terms: Vec<NodeId> = (0..n).map(|k| r.get(&[k, s, k, v])).collect();
             let sum = add(cx.graph, &terms);
@@ -684,6 +690,7 @@ fn product(
     let mut out = Vec::with_capacity(a.len());
     for row in a {
         let mut line = Vec::with_capacity(cols);
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for c in 0..cols {
             let terms: Vec<NodeId> = (0..inner).map(|k| mul(cx.graph, &[row[k], b[k][c]])).collect();
             let sum = add(cx.graph, &terms);
@@ -931,6 +938,7 @@ impl Geometry {
                 for i in 0..n {
                     for k in 0..n {
                         let mut terms = vec![d(cx, v[i], vars[k])?];
+                        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
                         for j in 0..n {
                             terms.push(mul(cx.graph, &[gamma.get(&[i, k, j]), v[j]]));
                         }

@@ -153,6 +153,7 @@ fn solve(
                 continue;
             }
             let factor = rows[r][col].div(&rows[row][col])?;
+            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
             for c in col..n {
                 let delta = factor.mul(&rows[row][c]);
                 rows[r][c] = rows[r][c].sub(&delta);

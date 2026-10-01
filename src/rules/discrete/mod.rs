@@ -484,6 +484,7 @@ pub(crate) fn matmul(
             return None;
         }
         let mut new_row = Vec::with_capacity(cols);
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for j in 0..cols {
             let terms: Vec<NodeId> = (0..inner)
                 .map(|k| prod(cx.graph, &[row[k], b[k][j]]))

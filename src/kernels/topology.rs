@@ -249,6 +249,7 @@ pub fn integer_rank(m: &[Vec<i64>]) -> usize {
                 continue;
             }
             let f = &a[r][c] / &pivot;
+            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
             for k in c..cols {
                 let d = &f * &a[rank][k];
                 a[r][k] -= d;

@@ -436,6 +436,7 @@ fn bessel_y_asymptotic(
 /// `J_{n-1} = (2n/x) J_n - J_{n+1}`, normalised with `J₀ + 2 Σ J_{2k} = 1`
 /// (A&S 9.1.46). Backward recurrence is stable for n > x, and the start index
 /// is far beyond x so the (arbitrary) starting values are damped out.
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 fn bessel_j_miller(
     x: f64,
     m: usize,
@@ -473,6 +474,7 @@ fn bessel_j_miller(
 }
 
 /// Number of Bessel orders needed for the Neumann series for `Y` at `x`.
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 const fn neumann_order(x: f64) -> usize {
     let m = x as usize + 40;
 
@@ -1076,6 +1078,7 @@ pub fn bernoulli_number(n: u32) -> f64 {
         }
         let mut sum = 0.0;
         let m_plus_1 = (m + 1) as u64;
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for k in 0..m {
             sum += binomial(m_plus_1, k as u64) * b[k];
         }
@@ -1105,6 +1108,7 @@ pub fn bernoulli_poly(
 /// Computes the Hurwitz zeta function ζ(s, q) for real s and q.
 /// Defined as Σ_{n=0}^∞ 1/(n+q)^s.
 #[must_use]
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 pub fn hurwitz_zeta(
     s: f64,
     q: f64,

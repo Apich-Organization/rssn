@@ -459,10 +459,12 @@ fn graph_laplacian(
     let zero = cx.graph.int(0);
     let cells = cells(&gr);
     let mut rows = Vec::with_capacity(gr.n);
+    #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
     for u in 0..gr.n {
         let degree: Vec<NodeId> = gr.adj[u].iter().map(|e| e.w).collect();
         let degree = sum(cx.graph, &degree);
         let mut row = Vec::with_capacity(gr.n);
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for v in 0..gr.n {
             let cell = if cells[u][v].is_empty() { zero } else { sum(cx.graph, &cells[u][v]) };
             let minus = neg(cx.graph, cell);
@@ -1398,6 +1400,7 @@ fn graph_hopcroft_karp(
         dist: vec![0; gr.n],
     };
     while hk.bfs() {
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for u in 0..gr.n {
             if part[u] == 0 && hk.mate[u].is_none() {
                 hk.dfs(u);
@@ -1691,6 +1694,7 @@ fn symmetric_eigenvalues(mut m: Vec<Vec<f64>>) -> Vec<f64> {
                     row[p] = c * kp - s * kq;
                     row[q] = s * kp + c * kq;
                 }
+                #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
                 for k in 0..n {
                     let (pk, qk) = (m[p][k], m[q][k]);
                     m[p][k] = c * pk - s * qk;
