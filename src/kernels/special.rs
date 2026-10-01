@@ -253,6 +253,7 @@ pub fn erfc_numerical(x: f64) -> f64 {
 /// iterations on `erfc(y) = 1 - x` (for x ≥ 0.5, where `1 - x` is exact and
 /// the tail keeps full relative precision) or on `erf(y) = x` otherwise.
 #[must_use]
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn inverse_erf_numerical(x: f64) -> f64 {
     if x.is_nan() {
         return f64::NAN;
@@ -290,6 +291,7 @@ pub fn inverse_erf_numerical(x: f64) -> f64 {
 
     let t = 2.0 / (std::f64::consts::PI * a) + ln1 / 2.0;
 
+    #[allow(clippy::suspicious_operation_groupings)] // t^2 - ln1/a is the intended discriminant
     let mut y = ((t * t - ln1 / a).sqrt() - t).sqrt();
 
     let two_over_sqrt_pi = 2.0 / std::f64::consts::PI.sqrt();
@@ -435,11 +437,12 @@ fn bessel_y_asymptotic(
 /// `J_{n-1} = (2n/x) J_n - J_{n+1}`, normalised with `J₀ + 2 Σ J_{2k} = 1`
 /// (A&S 9.1.46). Backward recurrence is stable for n > x, and the start index
 /// is far beyond x so the (arbitrary) starting values are damped out.
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 fn bessel_j_miller(
     x: f64,
     m: usize,
 ) -> Vec<f64> {
-    debug_assert!(m % 2 == 0);
+    debug_assert!(m.is_multiple_of(2));
 
     let start = m + 2 * (x as usize + 30);
 
@@ -472,7 +475,8 @@ fn bessel_j_miller(
 }
 
 /// Number of Bessel orders needed for the Neumann series for `Y` at `x`.
-fn neumann_order(x: f64) -> usize {
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
+const fn neumann_order(x: f64) -> usize {
     let m = x as usize + 40;
 
     m + m % 2
@@ -1052,7 +1056,7 @@ pub fn bernoulli_number(n: u32) -> f64 {
         0.0,               // B_17
         43867.0 / 798.0,   // B_18
         0.0,               // B_19
-        -174611.0 / 330.0, // B_20
+        -174_611.0 / 330.0, // B_20
     ];
 
     if (n as usize) < precomputed.len() {
@@ -1066,9 +1070,7 @@ pub fn bernoulli_number(n: u32) -> f64 {
     // Dynamic computation using recurrence:
     // B_m = -1/(m+1) * Σ_{k=0}^{m-1} (m+1 choose k) B_k
     let mut b = vec![0.0; (n + 1) as usize];
-    for i in 0..precomputed.len() {
-        b[i] = precomputed[i];
-    }
+    b[..precomputed.len()].copy_from_slice(&precomputed[..]);
 
     for m in precomputed.len()..=(n as usize) {
         if m % 2 == 1 {
@@ -1077,6 +1079,7 @@ pub fn bernoulli_number(n: u32) -> f64 {
         }
         let mut sum = 0.0;
         let m_plus_1 = (m + 1) as u64;
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for k in 0..m {
             sum += binomial(m_plus_1, k as u64) * b[k];
         }
@@ -1097,7 +1100,7 @@ pub fn bernoulli_poly(
     }
     let mut sum = 0.0;
     for k in 0..=n {
-        let coeff = binomial(n as u64, k as u64) * bernoulli_number(k);
+        let coeff = binomial(u64::from(n), u64::from(k)) * bernoulli_number(k);
         sum += coeff * x.powi((n - k) as i32);
     }
     sum
@@ -1106,6 +1109,8 @@ pub fn bernoulli_poly(
 /// Computes the Hurwitz zeta function ζ(s, q) for real s and q.
 /// Defined as Σ_{n=0}^∞ 1/(n+q)^s.
 #[must_use]
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn hurwitz_zeta(
     s: f64,
     q: f64,
@@ -1156,11 +1161,11 @@ pub fn hurwitz_zeta(
         1.0 / 12.0,                    // B_2 / 2!
         -1.0 / 720.0,                  // B_4 / 4!
         1.0 / 30240.0,                 // B_6 / 6!
-        -1.0 / 1209600.0,              // B_8 / 8!
-        1.0 / 47900160.0,              // B_10 / 10!
-        -691.0 / 1307674368000.0,      // B_12 / 12!
-        1.0 / 74724249600.0,           // B_14 / 14!
-        -3617.0 / 10670622842880000.0, // B_16 / 16!
+        -1.0 / 1_209_600.0,              // B_8 / 8!
+        1.0 / 47_900_160.0,              // B_10 / 10!
+        -691.0 / 1_307_674_368_000.0,      // B_12 / 12!
+        1.0 / 74_724_249_600.0,           // B_14 / 14!
+        -3617.0 / 10_670_622_842_880_000.0, // B_16 / 16!
     ];
 
     let mut correction = 0.0;
@@ -1203,8 +1208,8 @@ pub fn polygamma_numerical(
         return f64::NAN;
     }
 
-    let factor = if n % 2 == 0 { -1.0 } else { 1.0 };
-    let n_fact = factorial(n as u64);
+    let factor = if n.is_multiple_of(2) { -1.0 } else { 1.0 };
+    let n_fact = factorial(u64::from(n));
     factor * n_fact * hurwitz_zeta(f64::from(n + 1), z)
 }
 
@@ -1248,6 +1253,7 @@ fn is_integer_order(nu: f64) -> bool {
 /// ∫_0^∞ e^{-x sinh t - νt} dt`, evaluated by adaptive quadrature —
 /// accurate to about 1e-13 absolute for moderate arguments.
 #[must_use]
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn bessel_j(
     nu: f64,
     x: f64,
@@ -1318,6 +1324,7 @@ pub fn bessel_y(
 /// `(1/π)∫_0^π e^{x cos θ} cos νθ dθ - (sin νπ/π)∫_0^∞ e^{-x cosh t - νt}
 /// dt` (`x < 0` for integer orders by parity).
 #[must_use]
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn bessel_i(
     nu: f64,
     x: f64,
@@ -1410,6 +1417,7 @@ pub fn erfi(x: f64) -> f64 {
 /// steps on `erfc` refine the inverse of `erf(1 - p)`, which keeps full
 /// relative accuracy for small `p`.
 #[must_use]
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 pub fn inverse_erfc(p: f64) -> f64 {
     if !(0.0..=2.0).contains(&p) || p.is_nan() {
         return f64::NAN;
@@ -1528,6 +1536,6 @@ mod arbitrary_order_bessel_tests {
         }
         assert!((ln_factorial(10.0) - 3_628_800.0_f64.ln()).abs() < 1e-12);
         // L_2^{(1)}(x) = (x² - 6x + 6)/2.
-        assert!((generalized_laguerre(2, 1.0, 0.7) - (0.49 - 4.2 + 6.0) / 2.0).abs() < 1e-14);
+        assert!((generalized_laguerre(2, 1.0, 0.7) - f64::midpoint(0.49 - 4.2, 6.0)).abs() < 1e-14);
     }
 }

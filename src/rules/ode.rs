@@ -159,7 +159,7 @@ struct Problem {
 }
 
 impl Problem {
-    fn order(&self) -> usize {
+    const fn order(&self) -> usize {
         self.stand.len() - 1
     }
 

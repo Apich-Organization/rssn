@@ -418,7 +418,7 @@ where
 
             let lap_y = 2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x, y + 1)]) + u_curr[(x, y - 1)];
 
-            *prev_val = u_curr[i] + 0.5 * (s_x * lap_x + s_y * lap_y);
+            *prev_val = u_curr[i] + f64::midpoint(s_x * lap_x, s_y * lap_y);
         });
 
     for _ in 0..steps {

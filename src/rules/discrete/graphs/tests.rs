@@ -16,6 +16,7 @@ fn gt(
 }
 
 /// The edges of a graph term, each with its weight (default 1).
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 fn parse_graph(text: &str) -> (usize, Vec<Edge>) {
     let n = nums(text).first().copied().unwrap_or(0) as usize;
     let start = text.find("list(").unwrap_or(0);
@@ -37,6 +38,7 @@ fn edge_set(
     out
 }
 
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 fn random_graph(
     rng: &mut Lcg,
     n: usize,
@@ -103,7 +105,6 @@ fn union_find_components(
     skip_edge: Option<usize>,
     skip_vertex: Option<usize>,
 ) -> usize {
-    let mut parent: Vec<usize> = (0..n).collect();
     fn find(
         p: &mut [usize],
         x: usize,
@@ -114,6 +115,7 @@ fn union_find_components(
         }
         p[x]
     }
+    let mut parent: Vec<usize> = (0..n).collect();
     for (i, &(u, v, _)) in edges.iter().enumerate() {
         if Some(i) == skip_edge || Some(u) == skip_vertex || Some(v) == skip_vertex {
             continue;
@@ -229,6 +231,7 @@ fn strongly_connected_components() {
         let edges = random_graph(&mut rng, n, 25, true, 1);
         // reference: mutual reachability by transitive closure
         let mut reach = vec![vec![false; n]; n];
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for i in 0..n {
             reach[i][i] = true;
         }
@@ -243,6 +246,7 @@ fn strongly_connected_components() {
             }
         }
         let mut want: Vec<Vec<i64>> = Vec::new();
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for i in 0..n {
             if want.iter().any(|c| c.contains(&(i as i64))) {
                 continue;
@@ -255,6 +259,7 @@ fn strongly_connected_components() {
 }
 
 #[test]
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 fn cycles_bridges_and_articulation_points() {
     assert_eq!(s("graph_has_cycle(graph_path(5))"), "false");
     assert_eq!(s("graph_has_cycle(graph_cycle(5))"), "true");
@@ -371,7 +376,9 @@ fn brute_force_min_cut(
             continue;
         }
         let mut c = 0;
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for u in 0..n {
+            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
             for v in 0..n {
                 if mask >> u & 1 == 1 && mask >> v & 1 == 0 {
                     c += cap[u][v];
@@ -417,9 +424,6 @@ fn brute_force_min_cost_flow(
     n: usize,
     edges: &[(usize, usize, i64, i64)],
 ) -> (i64, i64) {
-    let mut best = (0_i64, 0_i64);
-    let m = edges.len();
-    let mut f = vec![0_i64; m];
     fn go(
         i: usize,
         n: usize,
@@ -447,6 +451,9 @@ fn brute_force_min_cost_flow(
             go(i + 1, n, edges, f, best);
         }
     }
+    let mut best = (0_i64, 0_i64);
+    let m = edges.len();
+    let mut f = vec![0_i64; m];
     go(0, n, edges, &mut f, &mut best);
     best
 }
@@ -595,6 +602,7 @@ fn shortest_paths_with_symbolic_and_rational_weights() {
 }
 
 #[test]
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 fn unweighted_shortest_paths() {
     let g = gt(5, &[(0, 1, 1), (1, 2, 1), (0, 3, 1), (3, 2, 1)], false);
     assert_eq!(s(&format!("graph_shortest_path_unweighted({g}, 0)")), "list(list(0, 0, -1), list(1, 1, 0), list(3, 1, 0), list(2, 2, 1))");
@@ -623,6 +631,7 @@ fn brute_force_max_matching(
     for mask in 0u32..(1 << m) {
         let mut used = vec![false; n];
         let mut ok = true;
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for i in 0..m {
             if mask >> i & 1 == 1 {
                 let (u, v, _) = edges[i];
@@ -641,6 +650,7 @@ fn brute_force_max_matching(
     best
 }
 
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 fn is_matching(
     pairs: &[Vec<i64>],
     edges: &[Edge],
@@ -797,8 +807,6 @@ fn brute_force_isomorphic(
     a: &[Edge],
     b: &[Edge],
 ) -> bool {
-    let (ma, mb) = (adjacency(n, a, false), adjacency(n, b, false));
-    let mut perm: Vec<usize> = (0..n).collect();
     fn next_permutation(p: &mut [usize]) -> bool {
         let n = p.len();
         let Some(i) = (1..n).rev().find(|&i| p[i - 1] < p[i]) else { return false };
@@ -807,6 +815,8 @@ fn brute_force_isomorphic(
         p[i..].reverse();
         true
     }
+    let (ma, mb) = (adjacency(n, a, false), adjacency(n, b, false));
+    let mut perm: Vec<usize> = (0..n).collect();
     loop {
         if (0..n).all(|u| (0..n).all(|v| ma[u][v] == mb[perm[u]][perm[v]])) {
             return true;
@@ -882,6 +892,7 @@ fn brute_force_chromatic(
 }
 
 #[test]
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 fn colouring() {
     for (g, chi) in [
         ("graph_complete(5)", "5"),
@@ -987,7 +998,7 @@ fn graph_operations() {
                 let (in1, in2) = (u < n1, v < n1);
                 let expected_du = if in1 && in2 { a1[u][v] } else if !in1 && !in2 { a2[u - n1][v - n1] } else { 0 };
                 assert_eq!(du[u][v], expected_du);
-                let expected_join = if in1 != in2 { 1 } else { expected_du };
+                let expected_join = if in1 == in2 { expected_du } else { 1 };
                 assert_eq!(join[u][v], expected_join);
             }
         }

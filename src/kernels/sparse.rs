@@ -316,82 +316,6 @@ impl SparseMatrixData {
     }
 }
 
-#[cfg(test)]
-mod tests {
-
-    use ndarray::array;
-
-    use super::*;
-
-    #[test]
-    pub(crate) fn test_csr_from_triplets() {
-        let triplets = vec![(0, 0, 1.0), (1, 2, 2.0), (2, 1, 3.0)];
-
-        let mat = csr_from_triplets(3, 3, &triplets);
-
-        assert_eq!(mat.rows(), 3);
-
-        assert_eq!(mat.cols(), 3);
-
-        assert_eq!(mat.nnz(), 3);
-
-        assert_eq!(mat.get(0, 0), Some(&1.0));
-
-        assert_eq!(mat.get(1, 2), Some(&2.0));
-
-        assert_eq!(mat.get(2, 1), Some(&3.0));
-
-        assert_eq!(mat.get(0, 1), None);
-    }
-
-    #[test]
-    pub(crate) fn test_sp_mat_vec_mul() {
-        let triplets = vec![(0, 0, 1.0), (0, 2, 2.0), (2, 1, 3.0)];
-
-        let mat = csr_from_triplets(3, 3, &triplets);
-
-        let vec = vec![10.0, 20.0, 30.0];
-
-        let result = sp_mat_vec_mul(&mat, &vec);
-
-        match result {
-            | Ok(res) => {
-                assert_eq!(res, vec![70.0, 0.0, 60.0])
-            },
-            | Err(e) => {
-                panic!(
-                    "sp_mat_vec_mul \
-                     failed with: {}",
-                    e
-                )
-            },
-        }
-    }
-
-    #[test]
-    pub(crate) fn test_to_csr() {
-        let dense_arr = array![[1.0, 0.0, 2.0], [0.0, 0.0, 0.0], [3.0, 0.0, 4.0]].into_dyn();
-
-        let csr_mat = to_csr(&dense_arr);
-
-        assert_eq!(csr_mat.rows(), 3);
-
-        assert_eq!(csr_mat.cols(), 3);
-
-        assert_eq!(csr_mat.nnz(), 4);
-
-        assert_eq!(csr_mat.get(0, 0), Some(&1.0));
-
-        assert_eq!(csr_mat.get(0, 2), Some(&2.0));
-
-        assert_eq!(csr_mat.get(2, 0), Some(&3.0));
-
-        assert_eq!(csr_mat.get(2, 2), Some(&4.0));
-
-        assert_eq!(csr_mat.get(1, 1), None);
-    }
-}
-
 use ndarray::Array1;
 
 /// Solves a sparse linear system `Ax=b` using the Conjugate Gradient method.
@@ -462,4 +386,79 @@ pub fn solve_conjugate_gradient(
     }
 
     Ok(x)
+}
+
+#[cfg(test)]
+mod tests {
+
+    use ndarray::array;
+
+    use super::*;
+
+    #[test]
+    pub fn test_csr_from_triplets() {
+        let triplets = vec![(0, 0, 1.0), (1, 2, 2.0), (2, 1, 3.0)];
+
+        let mat = csr_from_triplets(3, 3, &triplets);
+
+        assert_eq!(mat.rows(), 3);
+
+        assert_eq!(mat.cols(), 3);
+
+        assert_eq!(mat.nnz(), 3);
+
+        assert_eq!(mat.get(0, 0), Some(&1.0));
+
+        assert_eq!(mat.get(1, 2), Some(&2.0));
+
+        assert_eq!(mat.get(2, 1), Some(&3.0));
+
+        assert_eq!(mat.get(0, 1), None);
+    }
+
+    #[test]
+    pub fn test_sp_mat_vec_mul() {
+        let triplets = vec![(0, 0, 1.0), (0, 2, 2.0), (2, 1, 3.0)];
+
+        let mat = csr_from_triplets(3, 3, &triplets);
+
+        let vec = vec![10.0, 20.0, 30.0];
+
+        let result = sp_mat_vec_mul(&mat, &vec);
+
+        match result {
+            | Ok(res) => {
+                assert_eq!(res, vec![70.0, 0.0, 60.0]);
+            },
+            | Err(e) => {
+                panic!(
+                    "sp_mat_vec_mul \
+                     failed with: {e}"
+                )
+            },
+        }
+    }
+
+    #[test]
+    pub fn test_to_csr() {
+        let dense_arr = array![[1.0, 0.0, 2.0], [0.0, 0.0, 0.0], [3.0, 0.0, 4.0]].into_dyn();
+
+        let csr_mat = to_csr(&dense_arr);
+
+        assert_eq!(csr_mat.rows(), 3);
+
+        assert_eq!(csr_mat.cols(), 3);
+
+        assert_eq!(csr_mat.nnz(), 4);
+
+        assert_eq!(csr_mat.get(0, 0), Some(&1.0));
+
+        assert_eq!(csr_mat.get(0, 2), Some(&2.0));
+
+        assert_eq!(csr_mat.get(2, 0), Some(&3.0));
+
+        assert_eq!(csr_mat.get(2, 2), Some(&4.0));
+
+        assert_eq!(csr_mat.get(1, 1), None);
+    }
 }

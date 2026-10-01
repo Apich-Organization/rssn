@@ -52,9 +52,12 @@ pub unsafe extern "C" fn rssn_session_free(session: *mut RssnSession) {
 
 /// Borrows the session behind a pointer.
 ///
+/// # Errors
+/// `NullArgument` when `session` is null.
+///
 /// # Safety
 /// `session` must be null or a live session pointer.
-pub(crate) unsafe fn borrow_session<'a>(session: *const RssnSession) -> Result<&'a Session, RssnStatus> {
+pub unsafe fn borrow_session<'a>(session: *const RssnSession) -> Result<&'a Session, RssnStatus> {
     // SAFETY: caller contract.
     unsafe { session.as_ref() }
         .map(|s| &s.0)
@@ -62,7 +65,10 @@ pub(crate) unsafe fn borrow_session<'a>(session: *const RssnSession) -> Result<&
 }
 
 /// Resolves a term handle.
-pub(crate) fn resolve(
+///
+/// # Errors
+/// The status describing why `id` does not name a live term.
+pub fn resolve(
     session: &Session,
     id: u32,
 ) -> Result<Term<'_>, RssnStatus> {
@@ -310,6 +316,7 @@ pub unsafe extern "C" fn rssn_term_to_latex(
     session: *const RssnSession,
     term: u32,
 ) -> *mut c_char {
+    #[allow(clippy::redundant_closure_for_method_calls)] // fn-pointer param needs a higher-ranked closure
     render(session, term, |t| t.to_latex())
 }
 
@@ -322,6 +329,7 @@ pub unsafe extern "C" fn rssn_term_to_typst(
     session: *const RssnSession,
     term: u32,
 ) -> *mut c_char {
+    #[allow(clippy::redundant_closure_for_method_calls)] // fn-pointer param needs a higher-ranked closure
     render(session, term, |t| t.to_typst())
 }
 
@@ -334,6 +342,7 @@ pub unsafe extern "C" fn rssn_term_to_pretty(
     session: *const RssnSession,
     term: u32,
 ) -> *mut c_char {
+    #[allow(clippy::redundant_closure_for_method_calls)] // fn-pointer param needs a higher-ranked closure
     render(session, term, |t| t.to_pretty())
 }
 

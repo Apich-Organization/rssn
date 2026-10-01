@@ -103,7 +103,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("mobius_compose", 2, Request::MobiusCompose),
         ("mobius_inverse", 1, Request::MobiusInverse),
     ];
-    let ops = Ops::of(i.graph()).ok_or(RuleError::Invalid { rule: "complex/analysis".into(), reason: "needs elementary" })?;
+    let ops = Ops::of(i.graph()).ok_or_else(|| RuleError::Invalid { rule: "complex/analysis".into(), reason: "needs elementary" })?;
     for (name, arity, request) in table {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
         i.kernel(&format!("complex/{name}"), Tier::Reduce, Analysis { op, request, ops });
@@ -380,7 +380,7 @@ fn numeric_function(
     }
     let snapshot = graph.clone();
     Some(move |at: Complex64| {
-        let bindings: HashMap<SymbolId, Complex64> = [(z, at)].into_iter().collect();
+        let bindings: HashMap<SymbolId, Complex64> = std::iter::once((z, at)).collect();
         eval_complex(&snapshot, term, &bindings).unwrap_or(Complex64::new(f64::NAN, f64::NAN))
     })
 }
@@ -458,7 +458,6 @@ fn circle(
 impl Analysis {
     /// The residue of `f` at the pole `root`, checked numerically.
     fn residue_at(
-        &self,
         cx: &mut Cx<'_>,
         f: NodeId,
         q: &Quotient,
@@ -505,7 +504,7 @@ impl Analysis {
                 return None;
             }
             if distance < radius {
-                residues.push(self.residue_at(cx, f, &q, root, &poles, z)?);
+                residues.push(Self::residue_at(cx, f, &q, root, &poles, z)?);
             }
         }
         let sum = build::add(cx.graph, &residues);
@@ -517,6 +516,7 @@ impl Analysis {
     }
 
     #[allow(clippy::too_many_lines)]
+    #[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
     fn compute(
         &self,
         cx: &mut Cx<'_>,
@@ -555,7 +555,7 @@ impl Analysis {
                     let poles = poles_of(cx, self.ops, &q)?;
                     let at = at?;
                     return match poles.iter().find(|r| (r.value - at).norm() < 1e-9 * (1.0 + at.norm())) {
-                        | Some(root) => self.residue_at(cx, f, &q, &root.clone(), &poles, z),
+                        | Some(root) => Self::residue_at(cx, f, &q, &root.clone(), &poles, z),
                         | None => Some(cx.graph.int(0)),
                     };
                 }
@@ -582,7 +582,7 @@ impl Analysis {
                 // a, removable otherwise.
                 let at = cx.graph.substitute(f, z, a);
                 let at = best(cx.graph, at)?;
-                let defined = value_of(cx.graph, at).is_some_and(|v| v.is_finite());
+                let defined = value_of(cx.graph, at).is_some_and(num_complex::Complex::is_finite);
                 Some(cx.graph.sym(if defined { "regular" } else { "removable" }))
             },
             | Request::Contour => {

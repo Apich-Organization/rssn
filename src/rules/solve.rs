@@ -880,6 +880,7 @@ mod tests {
         assert_eq!(items.len(), expected_count, "{equation} -> {solutions}");
         let (lhs, rhs) = equation.split_once('=').unwrap_or((equation, "0"));
         for item in items {
+            use std::fmt::Write as _;
             // Replace the unknown `x`, but not the x in `exp`.
             let template = format!("({lhs}) - ({rhs})");
             let chars: Vec<char> = template.chars().collect();
@@ -889,7 +890,7 @@ mod tests {
                     && !(i > 0 && chars[i - 1].is_alphanumeric())
                     && !chars.get(i + 1).is_some_and(|c| c.is_alphanumeric());
                 if alone {
-                    residual.push_str(&format!("({item})"));
+                    let _ = write!(residual, "({item})");
                 } else {
                     residual.push(ch);
                 }

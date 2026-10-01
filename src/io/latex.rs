@@ -58,7 +58,9 @@ pub fn to_latex(
     render(graph, &Latex, node)
 }
 
-/// Renders `node` as LaTeX, wrapped in `\left( .. \right)` when the term is
+/// Renders `node` as LaTeX, parenthesised when `precedence` demands it.
+///
+/// The result is wrapped in `\left( .. \right)` when the term is
 /// a sum, a difference, a negative number or an equation and `precedence`
 /// asks for more than additive binding (`precedence > 1`, the legacy
 /// convention where sums and differences bind at 1 and everything else
@@ -351,28 +353,28 @@ mod tests {
     #[test]
     fn constructs() {
         let cases: &[(&str, &str)] = &[
-            (r#"list(1, 2, 3)"#, r#"\left[ 1, 2, 3 \right]"#),
-            (r#"list(list(1, 2), list(3, 4))"#, r#"\begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}"#),
-            (r#"(a+b)/c"#, r#"\frac{a + b}{c}"#),
-            (r#"diff(f(x), x)"#, r#"\frac{d}{dx} f"#),
-            (r#"diff(diff(u(x, t), x), x)"#, r#"\frac{\partial^2 u}{\partial x^2}"#),
-            (r#"x^2/(2*y) + sqrt(x+1) - 3/4*z"#, r#"\frac{x^{2}}{2y} - \frac{3z}{4} + \sqrt{x + 1}"#),
-            (r#"x^(1/n)"#, r#"\sqrt[n]{x}"#),
-            (r#"x^(2/3)"#, r#"x^{\frac{2}{3}}"#),
-            (r#"x_1^2"#, r#"x_{1}^{2}"#),
-            (r#"exp(x^2)"#, r#"e^{x^{2}}"#),
-            (r#"alpha*beta"#, r#"\alpha \beta"#),
-            (r#"sum(n^2, n, 1, 10)"#, r#"\sum_{n=1}^{10} n^{2}"#),
-            (r#"limit(sin(x)/x, x, 0)"#, r#"\lim_{x \to 0} \frac{\sin(x)}{x}"#),
-            (r#"defint(f(x), x, 0, 1)"#, r#"\int_{0}^{1} f(x) \, dx"#),
-            (r#"abs(x)"#, r#"\left| x \right|"#),
-            (r#"binomial(n,k)"#, r#"\binom{n}{k}"#),
-            (r#"-x/2"#, r#"-\frac{x}{2}"#),
-            (r#"conj(z)"#, r#"\overline{z}"#),
-            (r#"2*pi*r"#, r#"2r \pi"#),
-            (r#"foo(x, y)"#, r#"\mathrm{foo}(x, y)"#),
-            (r#"factorial(n+1)"#, r#"\left( n + 1 \right)!"#),
-            (r#"x^(-1/2)"#, r#"\frac{1}{\sqrt{x}}"#),
+            (r"list(1, 2, 3)", r"\left[ 1, 2, 3 \right]"),
+            (r"list(list(1, 2), list(3, 4))", r"\begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}"),
+            (r"(a+b)/c", r"\frac{a + b}{c}"),
+            (r"diff(f(x), x)", r"\frac{d}{dx} f"),
+            (r"diff(diff(u(x, t), x), x)", r"\frac{\partial^2 u}{\partial x^2}"),
+            (r"x^2/(2*y) + sqrt(x+1) - 3/4*z", r"\frac{x^{2}}{2y} - \frac{3z}{4} + \sqrt{x + 1}"),
+            (r"x^(1/n)", r"\sqrt[n]{x}"),
+            (r"x^(2/3)", r"x^{\frac{2}{3}}"),
+            (r"x_1^2", r"x_{1}^{2}"),
+            (r"exp(x^2)", r"e^{x^{2}}"),
+            (r"alpha*beta", r"\alpha \beta"),
+            (r"sum(n^2, n, 1, 10)", r"\sum_{n=1}^{10} n^{2}"),
+            (r"limit(sin(x)/x, x, 0)", r"\lim_{x \to 0} \frac{\sin(x)}{x}"),
+            (r"defint(f(x), x, 0, 1)", r"\int_{0}^{1} f(x) \, dx"),
+            (r"abs(x)", r"\left| x \right|"),
+            (r"binomial(n,k)", r"\binom{n}{k}"),
+            (r"-x/2", r"-\frac{x}{2}"),
+            (r"conj(z)", r"\overline{z}"),
+            (r"2*pi*r", r"2r \pi"),
+            (r"foo(x, y)", r"\mathrm{foo}(x, y)"),
+            (r"factorial(n+1)", r"\left( n + 1 \right)!"),
+            (r"x^(-1/2)", r"\frac{1}{\sqrt{x}}"),
         ];
         for (src, want) in cases {
             assert_eq!(render_src(src), *want, "source: {src}");

@@ -145,7 +145,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(0)).eval(eval))?;
         i.graph().ops_mut().set_attr(op, OnReals(Facts::POSITIVE));
     }
-    let algebra = op_algebra(i.graph()).ok_or(RuleError::Invalid {
+    let algebra = op_algebra(i.graph()).ok_or_else(|| RuleError::Invalid {
         rule: "physics".to_owned(),
         reason: "needs the functional analysis rule set",
     })?;
@@ -439,6 +439,7 @@ fn eigenvalue(
 // ----------------------------------------------------------------------
 
 /// `{f, g} = Σ ∂f/∂q ∂g/∂p - ∂f/∂p ∂g/∂q`.
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 fn poisson_bracket(
     cx: &mut Cx<'_>,
     args: &[NodeId],
@@ -597,6 +598,7 @@ fn gamma_matrix(
     Some(rows)
 }
 
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 fn mat_vec(
     graph: &mut Graph,
     m: &[Vec<NodeId>],
@@ -604,6 +606,7 @@ fn mat_vec(
 ) -> Vec<NodeId> {
     m.iter()
         .map(|row| {
+            #[allow(clippy::needless_collect)] // collect ends the shared borrow of `graph` before `mul` needs it mutably
             let nonzero: Vec<(NodeId, NodeId)> = row
                 .iter()
                 .zip(v)

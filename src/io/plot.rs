@@ -34,7 +34,7 @@ struct Svg {
 }
 
 impl Svg {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self { body: String::new() }
     }
 
@@ -177,6 +177,7 @@ fn check_range(
 }
 
 /// Min and max of the finite values, widened when they coincide.
+#[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
 fn extent(values: impl Iterator<Item = f64>) -> Option<(f64, f64)> {
     let (lo, hi) = values
         .filter(|v| v.is_finite())
@@ -196,6 +197,7 @@ fn padded(range: (f64, f64)) -> (f64, f64) {
 }
 
 /// A viridis-like colour map; `t` is clamped to `[0, 1]`.
+#[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
 fn colormap(t: f64) -> String {
     const STOPS: [(f64, f64, f64); 5] = [
         (68.0, 1.0, 84.0),
@@ -532,6 +534,9 @@ impl Scene {
     }
 }
 
+/// A projected quad: depth, outline, height fraction.
+type Quad = (f64, Vec<(f64, f64)>, f64);
+
 /// Paints the grid `z[row][col]` over the given axes as coloured quads.
 fn draw_surface(
     svg: &mut Svg,
@@ -544,7 +549,7 @@ fn draw_surface(
     let yr = (ys.first().copied().unwrap_or(0.0), ys.last().copied().unwrap_or(1.0));
     let scene = Scene::new([xr, yr, zr]);
     scene.draw_box(svg);
-    let mut quads: Vec<(f64, Vec<(f64, f64)>, f64)> = Vec::new();
+    let mut quads: Vec<Quad> = Vec::new();
     for (r, pair) in z.windows(2).enumerate() {
         for c in 0..xs.len().saturating_sub(1) {
             let corners = [(r, c), (r, c + 1), (r + 1, c + 1), (r + 1, c)];
@@ -580,8 +585,8 @@ fn colorbar(
     let (x, top, h) = (WIDTH - 24.0, 60.0, 200.0);
     let steps = 40;
     for i in 0..steps {
-        let t = 1.0 - (i as f64 + 0.5) / steps as f64;
-        svg.rect((x, top + h * i as f64 / steps as f64), (10.0, h / steps as f64 + 0.5), &colormap(t));
+        let t = 1.0 - (f64::from(i) + 0.5) / f64::from(steps);
+        svg.rect((x, top + h * f64::from(i) / f64::from(steps)), (10.0, h / f64::from(steps) + 0.5), &colormap(t));
     }
     svg.text((x + 5.0, top - 6.0), "middle", &format_tick(range.1));
     svg.text((x + 5.0, top + h + 14.0), "middle", &format_tick(range.0));
@@ -669,6 +674,7 @@ fn bounds_3d(points: &[[f64; 3]]) -> Result<[(f64, f64); 3], String> {
 /// # Errors
 /// Fails for an invalid range, fewer than two samples, no finite point, or
 /// when the file cannot be written.
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 pub fn plot_parametric_curve_3d(
     f: impl Fn(f64) -> (f64, f64, f64),
     range: (f64, f64),
@@ -708,6 +714,9 @@ pub fn plot_3d_path_from_points(
     write_svg(svg, path)
 }
 
+/// A projected arrow: depth, tail, tip, relative magnitude.
+type Arrow = (f64, (f64, f64), (f64, f64), f64);
+
 /// Plots the 3D vector field `f(x, y, z) = (u, v, w)` as arrows on a
 /// `grid`^3 lattice over the three ranges, coloured by magnitude.
 ///
@@ -743,7 +752,7 @@ pub fn plot_vector_field_3d(
     let mut svg = Svg::new();
     scene.draw_box(&mut svg);
     let reach = 0.8 * ranges.iter().map(|r| r.1 - r.0).fold(f64::INFINITY, f64::min) / (grid - 1) as f64;
-    let mut arrows: Vec<(f64, (f64, f64), (f64, f64), f64)> = field
+    let mut arrows: Vec<Arrow> = field
         .iter()
         .filter_map(|(p, d)| {
             let m = d[0].hypot(d[1]).hypot(d[2]);

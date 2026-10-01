@@ -88,9 +88,10 @@ where
     circle_integral(f, z0, radius, n) / (2.0 * PI * I)
 }
 
-/// The number of zeros minus the number of poles of `f` inside the circle
-/// `|z - center| = radius` (argument principle), as the winding number of
-/// `f` around the origin. Robust: it follows the continuous argument of
+/// The number of zeros minus the number of poles of `f` inside a circle.
+///
+/// The circle is `|z - center| = radius` (argument principle), and the count
+/// is the winding number of `f` around the origin. Robust: it follows the continuous argument of
 /// `f` instead of integrating `f'/f`. `None` if `f` vanishes or is not
 /// finite on the contour, or the sampling is too coarse to follow it.
 #[must_use]
@@ -225,6 +226,7 @@ impl Mobius {
 
     /// `self ∘ other`.
     #[must_use]
+    #[allow(clippy::suspicious_operation_groupings)] // 2x2 matrix product, indices are intentional
     pub fn compose(
         &self,
         other: &Self,
@@ -297,7 +299,7 @@ mod tests {
         let z = Complex64::new(0.3, 0.7);
         let d = complex_derivative(&|w: Complex64| w.sin(), z);
         assert!(close(d, z.cos(), 1e-8));
-        let d3 = cauchy_derivative(|w| w.exp(), z, 3, 1.0, 64);
+        let d3 = cauchy_derivative(num_complex::Complex::exp, z, 3, 1.0, 64);
         assert!(close(d3, z.exp(), 1e-12));
     }
 

@@ -287,7 +287,7 @@ fn sum(
 ) -> CellId {
     let mut constant = Number::from(0);
     let mut groups: Vec<(Vec<CellId>, Number)> = Vec::new();
-    for term in window.children(cell).collect::<Vec<_>>() {
+    for term in window.children(cell) {
         let (coeff, factors) = split_term(graph, window, term);
         if factors.is_empty() {
             constant = constant.add(&coeff);
@@ -342,7 +342,7 @@ fn product(
 ) -> CellId {
     let mut coeff = Number::from(1);
     let mut groups: Vec<(Vec<CellId>, Number)> = Vec::new();
-    for factor in window.children(cell).collect::<Vec<_>>() {
+    for factor in window.children(cell) {
         if let Some(n) = window.number(graph, factor) {
             coeff = coeff.mul(n);
             continue;
@@ -676,10 +676,10 @@ impl Radical {
                         changed = true;
                     }
                     coefficient = coefficient.mul(&Number::rat(c_part));
-                    if rest != 1 {
-                        radicals.push((rest, frac));
-                    } else {
+                    if rest == 1 {
                         changed = true;
+                    } else {
+                        radicals.push((rest, frac));
                     }
                 },
                 | None => others.push(c),
@@ -739,7 +739,7 @@ impl Kernel for Radical {
         if !b.is_integer() {
             let numer = graph.num(Number::rat(num_rational::BigRational::from_integer(b.numer().clone())));
             let denom = graph.num(Number::rat(num_rational::BigRational::from_integer(b.denom().clone())));
-            let minus = graph.num(Number::rat(-e.clone()));
+            let minus = graph.num(Number::rat(-e));
             let top = if b.numer() == &num_bigint::BigInt::from(1) { None } else { Some(graph.node(core::POW, &[numer, exponent])) };
             let bottom = graph.node(core::POW, &[denom, minus]);
             return Outcome::Equal(match top {

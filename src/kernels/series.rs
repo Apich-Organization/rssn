@@ -119,15 +119,15 @@ mod tests {
         // 1 + x + x^2/2 at x = 1 around 0.
         assert!((evaluate_power_series(&[1.0, 1.0, 0.5], 0.0, 1.0) - 2.5).abs() < 1e-15);
         // (x - 2)^2 expanded around 2: 0 + 0 x + 1 x^2 at x = 5.
-        assert_eq!(evaluate_power_series(&[0.0, 0.0, 1.0], 2.0, 5.0), 9.0);
-        assert_eq!(evaluate_power_series(&[], 1.0, 3.0), 0.0);
-        assert_eq!(evaluate_power_series(&[4.0], 1.0, 3.0), 4.0);
+        assert!((evaluate_power_series(&[0.0, 0.0, 1.0], 2.0, 5.0) - 9.0).abs() < 1e-9);
+        assert!((evaluate_power_series(&[], 1.0, 3.0) - 0.0).abs() < 1e-9);
+        assert!((evaluate_power_series(&[4.0], 1.0, 3.0) - 4.0).abs() < 1e-9);
     }
 
     #[test]
     fn finite_sums() {
-        assert_eq!(sum_range(|k| k, 1, 100), 5050.0);
-        assert_eq!(sum_range(|k| k, 5, 4), 0.0);
+        assert!((sum_range(|k| k, 1, 100) - 5050.0).abs() < 1e-9);
+        assert!((sum_range(|k| k, 5, 4) - 0.0).abs() < 1e-9);
         assert!((sum_range(|k| 0.1 * k.powi(0), 1, 10) - 1.0).abs() < 1e-15);
     }
 

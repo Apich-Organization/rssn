@@ -97,7 +97,7 @@ const FUEL: usize = 600;
 
 impl Integrator<'_, '_> {
     /// Spends one unit of work; `false` once the search is out of fuel.
-    fn spend(&mut self) -> bool {
+    const fn spend(&mut self) -> bool {
         match self.fuel.checked_sub(1) {
             | Some(rest) => {
                 self.fuel = rest;
@@ -446,6 +446,7 @@ impl Integrator<'_, '_> {
     }
 
     /// `exp(u) * sin(v)` and `exp(u) * cos(v)` with linear `u`, `v`.
+    #[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
     fn exponential_times_trig(
         &mut self,
         f: NodeId,

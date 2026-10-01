@@ -317,7 +317,7 @@ proptest! {
         let (want, got) = (g.eval(root, &env).unwrap_or(f64::NAN), g.eval(out, &env).unwrap_or(f64::NAN));
         prop_assert!(close(want, got), "{} = {} but {} = {}", g.display(root), want, g.display(out), got);
         // Every member of the root class must agree, not just the cheapest.
-        for member in g.members(g.find(root)).collect::<Vec<_>>() {
+        for member in g.members(g.find(root)) {
             if let Some(value) = g.eval(member, &env) {
                 prop_assert!(close(want, value), "{} = {} but member {} = {}", g.display(root), want, g.display(member), value);
             }

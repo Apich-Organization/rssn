@@ -432,7 +432,7 @@ proptest::proptest! {
 #[test]
 fn reference_values_erf_gamma_beta() {
     assert!((erf_numerical(1.0) - 0.842_700_792_949_714_9).abs() < 1e-9);
-    assert!((erfc_numerical(2.0) - 0.004_677_734_981_047_265_4).abs() < 1e-9);
+    assert!((erfc_numerical(2.0) - 0.004_677_734_981_047_265).abs() < 1e-9);
     assert!((inverse_erf_numerical(0.520_499_877_813_046_5) - 0.5).abs() < 1e-9);
     assert_eq!(inverse_erf_numerical(1.0), f64::INFINITY);
     assert_eq!(inverse_erf_numerical(-1.0), f64::NEG_INFINITY);
@@ -446,8 +446,8 @@ fn reference_values_erf_gamma_beta() {
 #[test]
 fn incomplete_gamma_closed_forms() {
     // s = 1: gamma(1, x) = 1 - e^-x
-    for x in [0.1, 1.0, 3.0, 10.0] {
-        let want = 1.0 - (-x as f64).exp();
+    for x in [0.1_f64, 1.0, 3.0, 10.0] {
+        let want = 1.0 - (-x).exp();
         assert!(
             (lower_incomplete_gamma(1.0, x) - want).abs() < 1e-8,
             "x = {x}"
@@ -457,11 +457,11 @@ fn incomplete_gamma_closed_forms() {
             "x = {x}"
         );
         assert!(
-            (regularized_upper_gamma(1.0, x) - (-x as f64).exp()).abs() < 1e-8,
+            (regularized_upper_gamma(1.0, x) - (-x).exp()).abs() < 1e-8,
             "x = {x}"
         );
         assert!(
-            (upper_incomplete_gamma(1.0, x) - (-x as f64).exp()).abs() < 1e-8,
+            (upper_incomplete_gamma(1.0, x) - (-x).exp()).abs() < 1e-8,
             "x = {x}"
         );
     }

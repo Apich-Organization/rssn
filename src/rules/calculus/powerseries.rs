@@ -49,7 +49,7 @@ struct Expander<'c, 'a> {
 const MAX_DEPTH: usize = 64;
 
 impl Expander<'_, '_> {
-    fn graph(&mut self) -> &mut Graph {
+    const fn graph(&mut self) -> &mut Graph {
         self.cx.graph
     }
 
@@ -302,8 +302,7 @@ impl Expander<'_, '_> {
 
     /// Taylor weights of the elementary functions at zero, up to `n`.
     fn weights(
-        &self,
-        kind: Weights,
+        kind: &Weights,
         n: usize,
     ) -> Vec<Number> {
         let factorial = |k: usize| (1..=k).fold(BigInt::one(), |acc, i| acc * BigInt::from(i));
@@ -331,7 +330,7 @@ impl Expander<'_, '_> {
                     let bottom = num_traits::pow(BigInt::from(4), m) * factorial(m) * factorial(m) * BigInt::from(k);
                     frac(top, bottom)
                 },
-                | Weights::Binomial(ref e) => {
+                | Weights::Binomial(e) => {
                     // e (e-1) ... (e-k+1) / k!
                     let mut value = Number::from(1);
                     for i in 0..k {
@@ -425,7 +424,7 @@ impl Expander<'_, '_> {
                 coefficients: s.coefficients.iter().map(|&c| self.mul(c, inv_lead)).collect(),
             };
             let (_, u) = self.split_constant(&ratio)?;
-            let weights = self.weights(Weights::Binomial(e.clone()), usize::try_from(self.order.max(0)).unwrap_or(0) + 2);
+            let weights = Self::weights(&Weights::Binomial(e.clone()), usize::try_from(self.order.max(0)).unwrap_or(0) + 2);
             let mut body = self.compose(&weights, &u);
             let e_node = self.num(e);
             let lead_power = self.cx.graph.node(core::POW, &[lead, e_node]);
@@ -443,7 +442,7 @@ impl Expander<'_, '_> {
         match name.as_str() {
             | "exp" => {
                 let (c0, u) = self.split_constant(&s)?;
-                let weights = self.weights(Weights::Exp, n);
+                let weights = Self::weights(&Weights::Exp, n);
                 let body = self.compose(&weights, &u);
                 let factor = self.function_of("exp", c0)?;
                 Some(self.scaled(&body, factor))
@@ -460,7 +459,7 @@ impl Expander<'_, '_> {
                     coefficients: s.coefficients.iter().map(|&c| self.mul(c, inv_lead)).collect(),
                 };
                 let (_, u) = self.split_constant(&ratio)?;
-                let weights = self.weights(Weights::Log1p, n);
+                let weights = Self::weights(&Weights::Log1p, n);
                 let body = self.compose(&weights, &u);
                 let log_lead = self.function_of("ln", lead)?;
                 let constant = Series::constant(log_lead);
@@ -471,8 +470,8 @@ impl Expander<'_, '_> {
                 let (c0, u) = self.split_constant(&s)?;
                 let (odd_kind, even_kind) =
                     if hyperbolic { (Weights::Sinh, Weights::Cosh) } else { (Weights::Sin, Weights::Cos) };
-                let odd = self.compose(&self.weights(odd_kind, n), &u);
-                let even = self.compose(&self.weights(even_kind, n), &u);
+                let odd = self.compose(&Self::weights(&odd_kind, n), &u);
+                let even = self.compose(&Self::weights(&even_kind, n), &u);
                 let (s_name, c_name) = if hyperbolic { ("sinh", "cosh") } else { ("sin", "cos") };
                 let (s0, k0) = (self.function_of(s_name, c0)?, self.function_of(c_name, c0)?);
                 if name == s_name {
@@ -502,7 +501,7 @@ impl Expander<'_, '_> {
                     return None;
                 }
                 let kind = if name == "atan" { Weights::Atan } else { Weights::Asin };
-                Some(self.compose(&self.weights(kind, n), &u))
+                Some(self.compose(&Self::weights(&kind, n), &u))
             },
             | "sqrt" => {
                 let half = self.num(Number::fraction(1, 2)?);
@@ -538,7 +537,7 @@ enum Weights {
 /// The Laurent expansion of `f` about `x = a` up to and including
 /// `(x - a)^order`: returns the valuation and the simplified coefficients
 /// from that power upward.
-pub(crate) fn laurent_expansion(
+pub fn laurent_expansion(
     cx: &mut Cx<'_>,
     f: NodeId,
     x: NodeId,

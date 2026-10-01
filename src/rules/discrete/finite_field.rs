@@ -185,6 +185,7 @@ fn read_poly(
 
 // ---------------- prime field ----------------
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn scalar2(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -225,6 +226,7 @@ fn gf_pow(
     Some(V::Int(base.modpow(&e.abs(), &p)))
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn gf_is(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -238,6 +240,7 @@ fn gf_is(
 
 // ---------------- polynomials ----------------
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn poly2(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -386,6 +389,7 @@ fn gfx_reduce(
     Some(poly_value(reduce(&f, &m, &p)?))
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn gfx2(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -538,7 +542,7 @@ mod tests {
             }
         }
         // big modulus
-        assert_eq!(s("gf_mul(2^100, 3, 2^127 - 1)"), format!("{}", (3_u128 << 100) % ((1_u128 << 127) - 1)));
+        assert_eq!(s("gf_mul(2^100, 3, 2^127 - 1)"), format!("{}", (3_u128 << 100)));
     }
 
     #[test]

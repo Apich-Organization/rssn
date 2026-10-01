@@ -1435,11 +1435,11 @@ mod tests {
     #[test]
     fn float_semantics() {
         let sets = [number_theory()];
-        assert_eq!(eval(&sets, "gcd(12, 18)", &[]), 6.0);
-        assert_eq!(eval(&sets, "gcd(x, 18)", &[("x", 11.6)]), 6.0);
-        assert_eq!(eval(&sets, "lcm(4, 6)", &[]), 12.0);
-        assert_eq!(eval(&sets, "lcm(0, 6)", &[]), 0.0);
-        assert_eq!(eval(&sets, "mod(x, 5)", &[("x", -17.0)]), 3.0);
+        assert!((eval(&sets, "gcd(12, 18)", &[]) - 6.0).abs() < 1e-9);
+        assert!((eval(&sets, "gcd(x, 18)", &[("x", 11.6)]) - 6.0).abs() < 1e-9);
+        assert!((eval(&sets, "lcm(4, 6)", &[]) - 12.0).abs() < 1e-9);
+        assert!((eval(&sets, "lcm(0, 6)", &[]) - 0.0).abs() < 1e-9);
+        assert!((eval(&sets, "mod(x, 5)", &[("x", -17.0)]) - 3.0).abs() < 1e-9);
         assert!(eval(&sets, "mod(x, 0)", &[("x", 1.0)]).is_nan());
     }
 
@@ -1619,7 +1619,7 @@ mod tests {
                     &format!("{a}*({}) + {b}*({})", v[0], v[1]),
                     &[("t", t)],
                 );
-                assert_eq!(value, c as f64, "{a}x + {b}y = {c}, t = {t}: {text}");
+                assert!((value - c as f64).abs() < 1e-9, "{a}x + {b}y = {c}, t = {t}: {text}");
             }
         }
         // Rational coefficients are scaled to integers; the equation may
@@ -1685,7 +1685,7 @@ mod tests {
                 eval(&sets, &v[1], &b),
                 eval(&sets, &v[2], &b),
             );
-            assert_eq!(x * x + y * y, z * z);
+            assert!((x * x + y * y - z * z).abs() < 1e-9);
         }
         assert_eq!(
             s("diophantine(x^2 - z^2 + y^2 = 0, list(x, z, y))"),

@@ -305,6 +305,7 @@ fn ec_is_infinity(
     Some(V::Bool(list.is_empty()))
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn ec_coord(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -509,7 +510,7 @@ mod tests {
     }
 
     fn pt(p: Option<(i64, i64)>) -> String {
-        p.map_or("list()".to_string(), |(x, y)| format!("list({x}, {y})"))
+        p.map_or_else(|| "list()".to_string(), |(x, y)| format!("list({x}, {y})"))
     }
 
     #[test]

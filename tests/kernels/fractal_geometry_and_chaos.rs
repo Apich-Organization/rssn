@@ -275,7 +275,7 @@ fn test_logistic_map_chaos() {
     let orbit = logistic_map_iterate(0.1, 4.0, 100);
 
     for &x in &orbit {
-        assert!(x >= 0.0 && x <= 1.0);
+        assert!((0.0..=1.0).contains(&x));
     }
 }
 
@@ -297,9 +297,9 @@ fn test_bifurcation_diagram_range() {
     let data = logistic_bifurcation((2.5, 4.0), 10, 100, 10, 0.5);
 
     for (r, x) in data {
-        assert!(r >= 2.5 && r <= 4.0);
+        assert!((2.5..=4.0).contains(&r));
 
-        assert!(x >= 0.0 && x <= 1.0);
+        assert!((0.0..=1.0).contains(&x));
     }
 }
 
@@ -348,7 +348,7 @@ fn test_box_counting_dimension_line() {
     let dim = box_counting_dimension(&points, 8);
 
     // Box-counting dimension estimation has some variance
-    assert!(dim >= 0.7 && dim <= 1.5, "Box counting dimension: {}", dim);
+    assert!((0.7..=1.5).contains(&dim), "Box counting dimension: {}", dim);
 }
 
 #[test]
@@ -478,9 +478,9 @@ fn test_ifs_fractal_bounded() {
 
     // Sierpinski triangle is bounded between (0,0) and (1,1) roughly
     for (x, y) in points {
-        assert!(x >= -0.1 && x <= 1.1);
+        assert!((-0.1..=1.1).contains(&x));
 
-        assert!(y >= -0.1 && y <= 1.1);
+        assert!((-0.1..=1.1).contains(&y));
     }
 }
 
@@ -541,7 +541,7 @@ mod proptests {
         fn prop_logistic_map_bounded(x0 in 0.01..0.99f64, r in 0.0..4.0f64) {
             let orbit = logistic_map_iterate(x0, r, 100);
             for x in orbit {
-                prop_assert!(x >= 0.0 && x <= 1.0 + 1e-10);
+                prop_assert!((0.0..=1.0 + 1e-10).contains(&x));
             }
         }
 
@@ -906,7 +906,7 @@ mod strengthened {
 
         /// The main cardioid interior never escapes: c = w/2 - w^2/4 for |w| < 1.
         #[test]
-        fn prop_cardioid_interior_is_in_the_set(rad in 0.0..0.9f64, ang in 0.0..6.283f64) {
+        fn prop_cardioid_interior_is_in_the_set(rad in 0.0..0.9f64, ang in 0.0..std::f64::consts::TAU) {
             let (wr, wi) = (rad * ang.cos(), rad * ang.sin());
             let (c_re, c_im) = (wr / 2.0 - (wr * wr - wi * wi) / 4.0, wi / 2.0 - (2.0 * wr * wi) / 4.0);
             prop_assert_eq!(mandelbrot_escape_time(c_re, c_im, 500), 500);

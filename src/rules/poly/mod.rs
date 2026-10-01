@@ -148,7 +148,7 @@ impl Kernel for Collapse {
         // This sum with each term in its closed form: the class as a whole
         // may still be best spelled by a request that produced it.
         let mut terms = Vec::new();
-        for &child in graph.children(node).to_vec().iter() {
+        for &child in &graph.children(node).to_vec() {
             let closed = Extractor::new(graph, &[child], &crate::graph::ClosedForm).build(graph, child);
             let Some(t) = closed.or_else(|| best(graph, child)) else {
                 return Outcome::Pass;

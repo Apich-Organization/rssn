@@ -234,9 +234,7 @@ impl Limiter<'_, '_> {
             }
             // Not evaluable for lack of semantics (an undetermined
             // function), rather than undefined: nothing to be done.
-            if self.cx.graph.eval(raw, &env).is_none() {
-                return None;
-            }
+            self.cx.graph.eval(raw, &env)?;
         }
         match self.probe(f) {
             | Probe::PlusInfinity if self.simple_divergence(f) => return Some(self.infinite(true)),
@@ -378,11 +376,9 @@ impl Limiter<'_, '_> {
                 let half = graph.num(Number::fraction(1, 2)?);
                 Some(graph.node(core::MUL, &[sign, half, pi]))
             },
-            | "tanh" => Some(sign),
-            | "acot" | "sech" | "csch" => Some(graph.int(0)),
-            | "coth" => Some(sign),
+            | "tanh" | "coth" => Some(sign),
             | "exp" if up => Some(self.infinite(true)),
-            | "exp" => Some(graph.int(0)),
+            | "acot" | "sech" | "csch" | "exp" => Some(graph.int(0)),
             | "ln" | "sqrt" | "cosh" | "abs" | "asinh" | "acosh" if up || name == "cosh" || name == "abs" => {
                 Some(self.infinite(true))
             },

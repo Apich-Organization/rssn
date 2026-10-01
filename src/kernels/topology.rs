@@ -76,7 +76,9 @@ pub fn euclidean_distance(
     p1.iter().zip(p2).map(|(a, b)| (a - b).powi(2)).sum::<f64>().sqrt()
 }
 
-/// The Vietoris-Rips complex of a point cloud: every set of points that are
+/// The Vietoris-Rips complex of a point cloud.
+///
+/// It holds every set of points that are
 /// pairwise within `epsilon`, up to dimension `max_dim`. Simplices are
 /// returned by increasing dimension, lexicographically within a dimension.
 #[must_use]
@@ -247,6 +249,7 @@ pub fn integer_rank(m: &[Vec<i64>]) -> usize {
                 continue;
             }
             let f = &a[r][c] / &pivot;
+            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
             for k in c..cols {
                 let d = &f * &a[rank][k];
                 a[r][k] -= d;
@@ -419,7 +422,9 @@ pub fn betti_numbers_at_radius(
     (0..=max_dim).map(|k| betti_number(&complex, k)).collect()
 }
 
-/// The (naive) persistence diagrams of a point cloud: Betti numbers are
+/// The (naive) persistence diagrams of a point cloud.
+///
+/// Betti numbers are
 /// sampled at `steps + 1` radii and a rise of `b_k` opens an interval, a
 /// fall closes the most recently opened one; intervals still open at
 /// `max_epsilon` end there.

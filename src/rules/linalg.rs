@@ -567,6 +567,7 @@ fn rref<F: Field>(
         }
         let pivot = m[row][col].clone();
         factor = field.mul(&factor, &pivot);
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for c in 0..cols {
             m[row][c] = field.div(&m[row][c], &pivot)?;
         }
@@ -575,6 +576,7 @@ fn rref<F: Field>(
                 continue;
             }
             let scale = m[r][col].clone();
+            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
             for c in 0..cols {
                 let delta = field.mul(&scale, &m[row][c]);
                 m[r][c] = field.sub(&m[r][c], &delta);
@@ -715,6 +717,7 @@ fn inverse(
         let inverse_det = reciprocal(cx.graph, det);
         let mut out = vec![vec![cx.graph.int(0); n]; n];
         for (i, row) in m.iter().enumerate() {
+            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
             for j in 0..row.len() {
                 let minor: Vec<Vec<NodeId>> = m
                     .iter()
@@ -778,6 +781,7 @@ fn matmul(
     let mut out = Vec::with_capacity(a.len());
     for row in a {
         let mut new_row = Vec::with_capacity(cols);
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for c in 0..cols {
             let terms: Vec<NodeId> = (0..inner).map(|k| mul(graph, &[row[k], b[k][c]])).collect();
             new_row.push(add(graph, &terms));
@@ -910,6 +914,7 @@ fn eigenvectors(
 }
 
 /// `P A = L U` with partial pivoting (pivot on the first non-zero entry).
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 fn lu(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
@@ -927,6 +932,7 @@ fn lu(
         if pivot_row != col {
             u.swap(pivot_row, col);
             perm.swap(pivot_row, col);
+            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
             for c in 0..col {
                 let (a, b) = (l[pivot_row][c], l[col][c]);
                 l[pivot_row][c] = b;
@@ -936,6 +942,7 @@ fn lu(
         for r in col + 1..n {
             let factor = field.div(&u[r][col], &u[col][col])?;
             l[r][col] = factor;
+            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
             for c in col..n {
                 let delta = field.mul(&factor, &u[col][c]);
                 u[r][c] = field.sub(&u[r][c], &delta);
@@ -951,6 +958,7 @@ fn lu(
 }
 
 /// `A = Q R` by Gram–Schmidt on the columns (full column rank).
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 fn qr(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
@@ -1477,7 +1485,7 @@ impl LinalgKernel {
                 }
                 let ru_node = list(cx.graph, &ru);
                 let rv_node = list(cx.graph, &rv);
-                let normal = LinalgKernel { op: self.op, request: Request::Cross }.compute(cx, &[ru_node, rv_node])?;
+                let normal = Self { op: self.op, request: Request::Cross }.compute(cx, &[ru_node, rv_node])?;
                 let normal = vector(cx.graph, normal)?;
                 let squared = dot(cx.graph, &normal, &normal);
                 let squared = cx.simplify(squared);

@@ -459,10 +459,12 @@ fn graph_laplacian(
     let zero = cx.graph.int(0);
     let cells = cells(&gr);
     let mut rows = Vec::with_capacity(gr.n);
+    #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
     for u in 0..gr.n {
         let degree: Vec<NodeId> = gr.adj[u].iter().map(|e| e.w).collect();
         let degree = sum(cx.graph, &degree);
         let mut row = Vec::with_capacity(gr.n);
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for v in 0..gr.n {
             let cell = if cells[u][v].is_empty() { zero } else { sum(cx.graph, &cells[u][v]) };
             let minus = neg(cx.graph, cell);
@@ -685,7 +687,7 @@ struct Bridges {
     time: usize,
     disc: Vec<Option<usize>>,
     low: Vec<usize>,
-    bridges: Vec<(usize, usize)>,
+    cuts: Vec<(usize, usize)>,
     ap: Vec<bool>,
 }
 
@@ -711,7 +713,7 @@ fn bridge_visit(
             bridge_visit(gr, v, Some(e.id), s);
             s.low[u] = s.low[u].min(s.low[v]);
             if Some(s.low[v]) > s.disc[u] {
-                s.bridges.push((u, v));
+                s.cuts.push((u, v));
             }
             if parent_edge.is_some() && Some(s.low[v]) >= s.disc[u] {
                 s.ap[u] = true;
@@ -732,7 +734,7 @@ fn graph_bridges(
         time: 0,
         disc: vec![None; gr.n],
         low: vec![0; gr.n],
-        bridges: Vec::new(),
+        cuts: Vec::new(),
         ap: vec![false; gr.n],
     };
     for u in 0..gr.n {
@@ -741,7 +743,7 @@ fn graph_bridges(
         }
     }
     let aps: Vec<usize> = (0..gr.n).filter(|&u| s.ap[u]).collect();
-    Some(V::List(vec![V::List(s.bridges.iter().map(|&(u, v)| pair(u, v)).collect()), indices(&aps)]))
+    Some(V::List(vec![V::List(s.cuts.iter().map(|&(u, v)| pair(u, v)).collect()), indices(&aps)]))
 }
 
 // ---------------- spanning trees ----------------
@@ -873,7 +875,10 @@ fn edmonds_karp(
         let mut v = t;
         while v != s {
             let c = cap[parent[v]][v].clone();
-            bottleneck = Some(bottleneck.map_or(c.clone(), |b| b.min(c)));
+            bottleneck = Some(match bottleneck {
+                | Some(b) => b.min(c),
+                | None => c,
+            });
             v = parent[v];
         }
         let bottleneck = bottleneck.unwrap_or_else(BigRational::zero);
@@ -1034,7 +1039,10 @@ fn graph_min_cost_flow(
         while v != s {
             let id = via[v];
             let c = arcs[id].cap.clone();
-            bottleneck = Some(bottleneck.map_or(c.clone(), |b| b.min(c)));
+            bottleneck = Some(match bottleneck {
+                | Some(b) => b.min(c),
+                | None => c,
+            });
             v = arcs[id ^ 1].to;
         }
         let bottleneck = bottleneck?;
@@ -1228,7 +1236,7 @@ fn graph_shortest_path_unweighted(
                 V::List(vec![
                     V::uint(v),
                     V::uint(dist[v].unwrap_or(0)),
-                    V::Int(prev[v].map_or(BigInt::from(-1), BigInt::from)),
+                    V::Int(prev[v].map_or_else(|| BigInt::from(-1), BigInt::from)),
                 ])
             })
             .collect(),
@@ -1392,6 +1400,7 @@ fn graph_hopcroft_karp(
         dist: vec![0; gr.n],
     };
     while hk.bfs() {
+        #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
         for u in 0..gr.n {
             if part[u] == 0 && hk.mate[u].is_none() {
                 hk.dfs(u);
@@ -1685,6 +1694,7 @@ fn symmetric_eigenvalues(mut m: Vec<Vec<f64>>) -> Vec<f64> {
                     row[p] = c * kp - s * kq;
                     row[q] = s * kp + c * kq;
                 }
+                #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
                 for k in 0..n {
                     let (pk, qk) = (m[p][k], m[q][k]);
                     m[p][k] = c * pk - s * qk;

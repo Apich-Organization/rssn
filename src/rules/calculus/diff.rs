@@ -17,8 +17,9 @@ use crate::graph::SizeCost;
 use crate::graph::SymbolId;
 use crate::graph::op::core;
 
-/// Operator attribute: the partial derivative with respect to each
-/// argument, as a pattern over the arguments (`?a` is argument 0, `?b`
+/// Operator attribute: the partial derivatives of an operator.
+///
+/// One entry per argument, as a pattern over the arguments (`?a` is argument 0, `?b`
 /// argument 1, ...); `None` for an argument the operator cannot be
 /// differentiated in (the order of a Bessel function), which is fine as
 /// long as that argument does not depend on the variable.

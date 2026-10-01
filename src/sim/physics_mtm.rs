@@ -108,7 +108,7 @@ pub(crate) fn prolongate(coarse_correction: &[f64]) -> Vec<f64> {
     }
 
     for i in 0..coarse_n - 1 {
-        fine_correction[2 * i + 1] = 0.5 * (coarse_correction[i] + coarse_correction[i + 1]);
+        fine_correction[2 * i + 1] = f64::midpoint(coarse_correction[i], coarse_correction[i + 1]);
     }
 
     fine_correction

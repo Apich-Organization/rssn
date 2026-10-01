@@ -1276,6 +1276,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
     fn fingerprint_ignores_commutative_order() {
         let mut g = graph();
         let (a, b) = (g.sym("a"), g.sym("b"));

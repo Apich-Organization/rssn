@@ -136,12 +136,10 @@ impl PolyGF256 {
         let result_len = result.len();
 
         // Ascending order: the constant terms line up at index 0.
-        for i in 0..self.0.len() {
-            result[i] = self.0[i];
-        }
+        result[..self.0.len()].copy_from_slice(&self.0[..]);
 
-        for i in 0..other.0.len() {
-            result[i] ^= other.0[i];
+        for (r, o) in result.iter_mut().zip(&other.0) {
+            *r ^= *o;
         }
 
         debug_assert_eq!(result.len(), result_len);
@@ -1019,7 +1017,7 @@ pub fn hamming_decode_numerical(codeword: &[u8]) -> Result<(Vec<u8>, Option<usiz
 /// # Returns
 /// `true` if the codeword is valid (no errors), `false` otherwise.
 #[must_use]
-pub fn hamming_check_numerical(codeword: &[u8]) -> bool {
+pub const fn hamming_check_numerical(codeword: &[u8]) -> bool {
     if codeword.len() != 7 {
         return false;
     }

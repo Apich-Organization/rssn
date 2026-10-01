@@ -837,7 +837,7 @@ mod proptests {
         fn prop_code_rate_range(k in 0usize..100, n in 1usize..100) {
             let k = k.min(n);
             let rate = code_rate(k, n);
-            prop_assert!(rate >= 0.0 && rate <= 1.0);
+            prop_assert!((0.0..=1.0).contains(&rate));
         }
 
         /// Error correction capability is consistent with detection capability

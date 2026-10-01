@@ -3071,6 +3071,7 @@ mod tests {
         let uniform = Uniform::new(-1.0, 2.0).unwrap_or_else(|e| panic!("{e}"));
         let chi = ChiSquared::new(5.0).unwrap_or_else(|e| panic!("{e}"));
         for t in [-0.6, -0.1, 0.2, 0.4] {
+            #[allow(clippy::type_complexity)] // one-off table of (name, integrand, lo, hi)
             let cases: [(&str, Box<dyn Fn(f64) -> f64>, f64, f64); 5] = [
                 (
                     "normal(0.5, 1.5)",
@@ -3301,9 +3302,9 @@ mod tests {
             1e-14,
             "I_x(1, 3)",
         );
-        assert_eq!(at("beta_reg(2, 3, x)", &[("x", -1.0)]), 0.0);
-        assert_eq!(at("beta_reg(2, 3, x)", &[("x", 2.0)]), 1.0);
-        assert_eq!(at("gamma_lr(2, x)", &[("x", -1.0)]), 0.0);
+        assert!((at("beta_reg(2, 3, x)", &[("x", -1.0)]) - 0.0).abs() < 1e-9);
+        assert!((at("beta_reg(2, 3, x)", &[("x", 2.0)]) - 1.0).abs() < 1e-9);
+        assert!((at("gamma_lr(2, x)", &[("x", -1.0)]) - 0.0).abs() < 1e-9);
         assert!(at("gamma_lr(-1, x)", &[("x", 1.0)]).is_nan());
         assert!(at("beta_reg(0, 1, x)", &[("x", 0.5)]).is_nan());
         // Their derivatives are the densities.
@@ -3452,7 +3453,7 @@ mod tests {
         let (wl, wu) = (at(&wide[0], &[]), at(&wide[1], &[]));
         let (nl, nu) = (at(&narrow[0], &[]), at(&narrow[1], &[]));
         assert!(wl < nl && nu < wu);
-        close((wl + wu) / 2.0, mean_of(&A), 1e-12, "centre");
+        close(f64::midpoint(wl, wu), mean_of(&A), 1e-12, "centre");
     }
 
     #[test]
@@ -3724,6 +3725,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
     fn entropy_of_probability_lists() {
         assert_eq!(s("entropy(list(1/2, 1/2))"), "ln(2)");
         assert_eq!(s("entropy(list(1/4, 1/4, 1/4, 1/4))"), "2*ln(2)");
@@ -3882,6 +3884,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cast_sign_loss)] // operand is non-negative by construction (index/count)
     fn gini_impurity() {
         assert_eq!(s("gini(list(1/2, 1/4, 1/4))"), "5/8");
         assert_eq!(s("gini(list(1))"), "0");

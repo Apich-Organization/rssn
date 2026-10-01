@@ -71,6 +71,10 @@ pub type NavierStokesOutput = Result<(Array2<f64>, Array2<f64>, Array2<f64>), St
 /// Returns an error if the grid is smaller than 3 points, not square, or if
 /// the obstacle mask does not have shape `(ny, nx)`; also if the multigrid
 /// solver rejects the grid size.
+///
+/// # Panics
+/// Panics if an intermediate array is not contiguous, which cannot happen for
+/// arrays this function allocates itself.
 pub fn run_channel_flow(
     nx: usize,
     ny: usize,
@@ -481,9 +485,9 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
 
     for j in 0..ny {
         for i in 0..nx {
-            u_centered[[j, i]] = 0.5 * (u[[j, i]] + u[[j, i + 1]]);
+            u_centered[[j, i]] = f64::midpoint(u[[j, i]], u[[j, i + 1]]);
 
-            v_centered[[j, i]] = 0.5 * (v[[j, i]] + v[[j + 1, i]]);
+            v_centered[[j, i]] = f64::midpoint(v[[j, i]], v[[j + 1, i]]);
         }
     }
 

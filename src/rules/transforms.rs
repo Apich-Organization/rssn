@@ -137,7 +137,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         registered.push((i.op(request(name, kind != Request::Convolve))?, kind));
     }
     let get = |i: &mut Installer<'_>, name: &str| {
-        i.graph().ops().lookup(name).ok_or(RuleError::Invalid { rule: format!("transforms/{name}"), reason: "missing operator" })
+        i.graph().ops().lookup(name).ok_or_else(|| RuleError::Invalid { rule: format!("transforms/{name}"), reason: "missing operator" })
     };
     let ops = Ops {
         laplace: registered[0].0,
@@ -285,6 +285,7 @@ impl Tx<'_, '_> {
     }
 
     /// Splits a product into the factors free of the variable and the rest.
+    #[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
     fn factors(
         &mut self,
         f: NodeId,
@@ -368,6 +369,7 @@ impl Tx<'_, '_> {
 
     /// `L[prod factors](y)`.
     #[allow(clippy::too_many_lines)]
+    #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
     fn laplace_product(
         &mut self,
         factors: &[NodeId],
@@ -893,6 +895,7 @@ impl Tx<'_, '_> {
         Some(mul(self.cx.graph, &all))
     }
 
+    #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
     fn fourier_single(
         &mut self,
         g: NodeId,
@@ -993,6 +996,7 @@ impl Tx<'_, '_> {
 
     /// Products: modulation by `exp(I a t)`, `cos(a t)`, `sin(a t)`,
     /// multiplication by `t`, and `heaviside(t) exp(-a t)`.
+    #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
     fn fourier_product(
         &mut self,
         factors: &[NodeId],
@@ -1112,6 +1116,7 @@ impl Tx<'_, '_> {
         Some(mul(self.cx.graph, &all))
     }
 
+    #[allow(clippy::float_cmp)] // exact comparison against a sentinel / integer-valued input is intended
     fn z_product(
         &mut self,
         factors: &[NodeId],
@@ -1257,7 +1262,7 @@ impl Tx<'_, '_> {
                     // with complex roots rho e^(± I theta).
                     let (p, q) = (p / lead, q / lead);
                     let zero = BigRational::zero();
-                    let big_b = piece.numerator.get(1).cloned().unwrap_or(zero.clone()) / lead;
+                    let big_b = piece.numerator.get(1).cloned().unwrap_or_else(|| zero.clone()) / lead;
                     let big_c = piece.numerator.first().cloned().unwrap_or(zero) / lead;
                     if (&p * &p - BigRational::from_integer(BigInt::from(4)) * &q).is_positive() || !q.is_positive() {
                         return None;
@@ -1313,6 +1318,7 @@ impl Tx<'_, '_> {
 
     /// Bindings for the free symbols of `nodes` other than `skip`: fixed
     /// moderate values, positive so that assumptions hold.
+    #[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
     fn sample_bindings(
         &mut self,
         nodes: &[NodeId],
@@ -1486,6 +1492,7 @@ impl Tx<'_, '_> {
     }
 
     /// Partial sums of `f(n) z0^-n` against `F(z0)`.
+    #[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
     fn z_series_agrees(
         &mut self,
         sequence: NodeId,

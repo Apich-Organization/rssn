@@ -280,6 +280,7 @@ fn mandelbrot_orbit(
     Some(V::nodes(&out))
 }
 
+#[allow(clippy::tuple_array_conversions)] // false positive: the tuple is a destructuring of separate values, not a conversion
 fn mandelbrot_fixed_points(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -347,6 +348,7 @@ fn stability(
 }
 
 /// `(1/n) sum ln abs(f'(x_k))`, evaluated in floating point.
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn numeric_lyapunov(
     cx: &mut Cx<'_>,
     f: NodeId,
@@ -669,6 +671,7 @@ fn moran_dimension(
     }
     let f = |d: f64| r.iter().map(|x| x.powf(d)).sum::<f64>() - 1.0;
     let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+    #[allow(clippy::while_float)] // bracket doubling, bounded by the `hi > 1e6` bail-out
     while f(hi) > 0.0 {
         hi *= 2.0;
         if hi > 1e6 {
@@ -676,10 +679,10 @@ fn moran_dimension(
         }
     }
     for _ in 0..200 {
-        let mid = 0.5 * (lo + hi);
+        let mid = f64::midpoint(lo, hi);
         if f(mid) > 0.0 { lo = mid } else { hi = mid }
     }
-    Some(V::Float(0.5 * (lo + hi)))
+    Some(V::Float(f64::midpoint(lo, hi)))
 }
 
 /// The least-squares slope of `ys` against `xs`.
@@ -927,7 +930,7 @@ mod tests {
     #[test]
     fn logistic_map() {
         assert_eq!(s("logistic_iterate(2, 0.5, 3)"), "list(0.5, 0.5, 0.5, 0.5)");
-        close("logistic_iterate(2.5, 0.25, 2)", &[0.25, 0.46875, 0.62255859375]);
+        close("logistic_iterate(2.5, 0.25, 2)", &[0.25, 0.46875, 0.622_558_593_75]);
         assert_eq!(floats(&s("logistic_iterate(3.7, 0.2, 10)")).len(), 11);
         // Below r = 3 every start settles on the fixed point 1 - 1/r.
         let b = floats(&s("logistic_bifurcation(2.5, 2.5001, 2, 200, 3)"));
@@ -944,7 +947,7 @@ mod tests {
         assert_eq!(s("lorenz(10, 28, 8/3)"), "list(10*y - 10*x, x*(28 - z) - y, x*y - 8/3*z)");
         let std = s("lorenz_orbit(list(1, 1, 1), 0.01, 2)");
         assert_eq!(std, s("lorenz_orbit(list(1, 1, 1), 0.01, 2, 10, 28, 8/3)"));
-        close("lorenz_orbit(list(1, 1, 1), 0.01, 2)", &[1.0, 1.26, 0.9833333333333333, 1.026, 1.5175666666666667, 0.9697111111111111]);
+        close("lorenz_orbit(list(1, 1, 1), 0.01, 2)", &[1.0, 1.26, 0.983_333_333_333_333_3, 1.026, 1.517_566_666_666_666_7, 0.969_711_111_111_111_1]);
         close("rossler_orbit(list(1, 1, 1), 0.01, 1, 0.2, 0.2, 5.7)", &[0.98, 1.012, 0.955]);
         close("henon_orbit(list(0, 0), 2, 1.4, 0.3)", &[1.0, 0.0, -0.4, 0.3]);
         assert_eq!(floats(&s("tinkerbell_orbit(list(-0.72, -0.64), 5, 0.9, -0.6013, 2, 0.5)")).len(), 10);
@@ -980,7 +983,7 @@ mod tests {
         assert_eq!(s("similarity_dimension(list(1/2, 1/2, 1/2, 1/2))"), "ln(4)/ln(2)");
         assert_eq!(s("similarity_dimension(list(1/3, 1/3, 1/3, 1/3, 1/3, 1/3, 1/3, 1/3))"), "ln(8)/ln(3)");
         let eq = s("similarity_dimension(list(1/2, 1/3))");
-        assert!(eq.contains("D") && eq.contains('='), "{eq}");
+        assert!(eq.contains('D') && eq.contains('='), "{eq}");
         assert!((value("moran_dimension(list(1/3, 1/3))") - 2.0_f64.ln() / 3.0_f64.ln()).abs() < 1e-12);
         assert!((value("moran_dimension(list(1/2, 1/2, 1/2))") - 3.0_f64.ln() / 2.0_f64.ln()).abs() < 1e-12);
         let d = value("moran_dimension(list(1/2, 1/4))");
@@ -1017,7 +1020,7 @@ mod tests {
     fn orbit_density_and_entropy() {
         assert_eq!(s("orbit_density(list(list(0.1, 0.1), list(0.9, 0.9), list(0.2, 0.1)), 2, 2, 0, 1, 0, 1)"), "list(list(2, 0), list(0, 1))");
         assert!((value("orbit_entropy(list(list(1, 1), list(1, 1)))") - 4.0_f64.ln()).abs() < 1e-12);
-        assert_eq!(value("orbit_entropy(list(list(5, 0), list(0, 0)))"), 0.0);
+        assert!((value("orbit_entropy(list(list(5, 0), list(0, 0)))") - 0.0).abs() < 1e-9);
         assert!(s("orbit_density(list(list(0, 0)), 0, 2, 0, 1, 0, 1)").starts_with("orbit_density("));
     }
 }

@@ -213,6 +213,7 @@ fn crc8(
     Some(V::Int(BigInt::from(ec::crc8_compute(&data))))
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn interleave(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -260,6 +261,7 @@ fn byte(
     u8::try_from(small(cx.graph, n)?).ok()
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn gf256_binary(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -299,7 +301,7 @@ fn gf256_log(
     a: &[NodeId],
 ) -> Option<V> {
     let x = byte(cx, *a.first()?)?;
-    (1..255_u64).find(|&k| ff::gf256_pow(2, k) == x).or((x == 1).then_some(0)).map(|k| V::Int(BigInt::from(k)))
+    (1..255_u64).find(|&k| ff::gf256_pow(2, k) == x).or_else(|| (x == 1).then_some(0)).map(|k| V::Int(BigInt::from(k)))
 }
 
 type Bytes = Vec<u8>;
@@ -380,6 +382,7 @@ fn pgcd(
     a
 }
 
+#[allow(clippy::needless_pass_by_ref_mut)] // signature is shared with the other rule-table entries / call sites
 fn poly_pair(
     cx: &mut Cx<'_>,
     a: &[NodeId],
@@ -579,10 +582,10 @@ mod tests {
         // (by chance) decodes to another valid codeword's data.
         let data = [1, 2, 3, 4, 5, 6];
         let cw = nums(&s(&format!("rs_encode({}, 4)", word(&data))));
-        let mut bad = cw.clone();
+        let mut bad = cw;
         bad[0] ^= 5;
         bad[3] ^= 9;
-        bad[7] ^= 77;
+        bad[7] ^= 0x4D;
         let out = s(&format!("rs_decode({}, 4)", word(&bad)));
         assert!(out.starts_with("rs_decode") || out != word(&data));
         assert_eq!(s("rs_encode(list(1), 255)"), "rs_encode(list(1), 255)");

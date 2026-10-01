@@ -220,7 +220,7 @@ pub fn solve_root_bisection(
     if fb.abs() < tolerance {
         return Ok(b);
     }
-    if !(fa * fb < 0.0) {
+    if (fa * fb).partial_cmp(&0.0) != Some(std::cmp::Ordering::Less) {
         return Err(format!("Interval [{a}, {b}] does not bracket a root"));
     }
     for _ in 0..max_iter {

@@ -51,8 +51,10 @@ impl Default for IndefiniteSumConfig {
     }
 }
 
-/// Taylor coefficients `c_m` of `f` about `center`, `f(t) ≈ Σ c_m (t -
-/// center)^m`, from the interpolating polynomial of degree `terms - 1`
+/// Taylor coefficients `c_m` of `f` about `center`.
+///
+/// They satisfy `f(t) ≈ Σ c_m (t -
+/// center)^m` and come from the interpolating polynomial of degree `terms - 1`
 /// through Chebyshev nodes on `[center - radius, center + radius]`. This is
 /// accurate for moderate `terms` (up to about 16), unlike repeated finite
 /// differences, and converges to the Taylor series for analytic `f`.

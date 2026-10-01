@@ -162,6 +162,7 @@ fn determinant(mut m: Vec<Vec<f64>>) -> f64 {
         det *= m[c][c];
         for r in c + 1..n {
             let f = m[r][c] / m[c][c];
+            #[allow(clippy::needless_range_loop)] // index is used for more than one array / arithmetic; iterator form would not be clearer
             for k in c..n {
                 m[r][k] -= f * m[c][k];
             }

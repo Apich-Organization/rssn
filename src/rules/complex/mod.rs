@@ -106,7 +106,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "complex/euler: exp(I * ?x) <=> cos(?x) + I * sin(?x)",
         ],
     )?;
-    let ops = Ops::of(i.graph()).ok_or(RuleError::Invalid { rule: "complex".into(), reason: "needs elementary" })?;
+    let ops = Ops::of(i.graph()).ok_or_else(|| RuleError::Invalid { rule: "complex".into(), reason: "needs elementary" })?;
     branches::install(i)?;
     analysis::install(i)?;
     i.kernel("complex/unit-power", Tier::Normalize, UnitPower { unit });
@@ -152,9 +152,9 @@ impl Ops {
 
 /// Term builders shared by the complex kernels.
 pub(crate) mod build {
-    use super::*;
+    use super::{Graph, NodeId, core, OpId};
 
-    pub(crate) fn add(
+    pub fn add(
         graph: &mut Graph,
         terms: &[NodeId],
     ) -> NodeId {
@@ -165,7 +165,7 @@ pub(crate) mod build {
         }
     }
 
-    pub(crate) fn mul(
+    pub fn mul(
         graph: &mut Graph,
         factors: &[NodeId],
     ) -> NodeId {
@@ -176,7 +176,7 @@ pub(crate) mod build {
         }
     }
 
-    pub(crate) fn neg(
+    pub fn neg(
         graph: &mut Graph,
         x: NodeId,
     ) -> NodeId {
@@ -184,7 +184,7 @@ pub(crate) mod build {
         mul(graph, &[minus_one, x])
     }
 
-    pub(crate) fn sub(
+    pub fn sub(
         graph: &mut Graph,
         a: NodeId,
         b: NodeId,
@@ -193,7 +193,7 @@ pub(crate) mod build {
         add(graph, &[a, negated])
     }
 
-    pub(crate) fn pow(
+    pub fn pow(
         graph: &mut Graph,
         base: NodeId,
         exponent: NodeId,
@@ -201,7 +201,7 @@ pub(crate) mod build {
         graph.node(core::POW, &[base, exponent])
     }
 
-    pub(crate) fn powi(
+    pub fn powi(
         graph: &mut Graph,
         base: NodeId,
         exponent: i64,
@@ -210,7 +210,7 @@ pub(crate) mod build {
         pow(graph, base, e)
     }
 
-    pub(crate) fn call(
+    pub fn call(
         graph: &mut Graph,
         op: OpId,
         args: &[NodeId],
@@ -219,7 +219,7 @@ pub(crate) mod build {
     }
 
     /// `a + b*I`.
-    pub(crate) fn complex(
+    pub fn complex(
         graph: &mut Graph,
         unit: OpId,
         re: NodeId,
@@ -624,6 +624,7 @@ fn register_complex_evals(graph: &mut Graph) {
 /// Evaluates the concrete term `node` over the complex numbers; see
 /// [`Graph::eval_complex`].
 #[must_use]
+#[allow(clippy::implicit_hasher)] // delegates to `Graph::eval_complex`, which fixes the default hasher
 pub fn eval_complex(
     graph: &Graph,
     node: NodeId,
@@ -696,7 +697,7 @@ mod tests {
         let root = g.parse("exp(I*z) * (1 + I)^2 + ln(z)").unwrap_or_else(|e| panic!("{e}"));
         let z = g.interner_mut().symbol("z");
         let at = Complex64::new(0.3, -0.4);
-        let bindings: HashMap<SymbolId, Complex64> = [(z, at)].into_iter().collect();
+        let bindings: HashMap<SymbolId, Complex64> = std::iter::once((z, at)).collect();
         let got = eval_complex(&g, root, &bindings).unwrap_or_default();
         let i = Complex64::new(0.0, 1.0);
         let want = (i * at).exp() * (1.0 + i) * (1.0 + i) + at.ln();

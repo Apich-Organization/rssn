@@ -17,7 +17,7 @@ use crate::graph::SizeCost;
 
 /// Runs `sets` on `src` symbolically and returns the best term as text,
 /// together with whether it is free of heavy operators.
-pub(crate) fn reduce_with(
+pub fn reduce_with(
     sets: &[RuleSet],
     src: &str,
     assume: &[(&str, Facts)],
@@ -46,7 +46,7 @@ pub(crate) fn reduce_with(
 }
 
 /// The closed form `sets` reduce `src` to. Panics if heavy operators remain.
-pub(crate) fn simplify(
+pub fn simplify(
     sets: &[RuleSet],
     src: &str,
 ) -> String {
@@ -57,7 +57,7 @@ pub(crate) fn simplify(
 
 /// The numeric value `sets` give `src` under `bindings`, with its error
 /// estimate. NaN if no value was found.
-pub(crate) fn numeric(
+pub fn numeric(
     sets: &[RuleSet],
     src: &str,
     bindings: &[(&str, f64)],
@@ -76,7 +76,7 @@ pub(crate) fn numeric(
 }
 
 /// Evaluates the term `src` directly (no rules) under `bindings`.
-pub(crate) fn eval(
+pub fn eval(
     sets: &[RuleSet],
     src: &str,
     bindings: &[(&str, f64)],

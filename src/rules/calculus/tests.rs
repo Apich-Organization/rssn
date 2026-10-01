@@ -200,7 +200,7 @@ fn check_limit(
     assert!(reduced, "{request} was not resolved: {closed}");
     let value = eval(&[calculus()], &closed, &[]);
     assert!(
-        (value - expected).abs() < 1e-9 * (1.0 + expected.abs()) || value == expected,
+        (value - expected).abs() < 1e-9 * (1.0 + expected.abs()) || value.total_cmp(&expected).is_eq(),
         "{request} = {closed} = {value}, expected {expected}"
     );
     if expected.is_finite() {

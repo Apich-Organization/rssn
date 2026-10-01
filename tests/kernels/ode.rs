@@ -136,7 +136,7 @@ proptest! {
     #[test]
     fn prop_adaptive_matches_exp(a in -3.0..3.0f64) {
         let tr = solve_adaptive(move |_t, y, dy| dy[0] = a * y[0], &[1.0], (0.0, 1.0), 1e-9, 1e-12, 100_000)
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
         prop_assert!((tr.last()[0] - a.exp()).abs() < 1e-6 * a.exp().max(1.0));
     }
 

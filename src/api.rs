@@ -162,7 +162,7 @@ impl Config {
 
     /// Replaces the search budget.
     #[must_use]
-    pub fn budget(
+    pub const fn budget(
         mut self,
         budget: Budget,
     ) -> Self {
@@ -172,7 +172,7 @@ impl Config {
 }
 
 /// Why a computation could not produce an answer.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ComputeError {
     /// A rule set failed to install.
     Rule(RuleError),
@@ -761,7 +761,7 @@ impl<'s> IntoTerm<'s> for Term<'s> {
     fn into_term(
         self,
         _session: &'s Session,
-    ) -> Term<'s> {
+    ) -> Self {
         self
     }
 }
@@ -853,10 +853,10 @@ arithmetic!(Div, div, |a, b| a.binary(core::MUL, b.pow(-1)));
 arithmetic!(scalar i32);
 arithmetic!(scalar f64);
 
-impl<'s> Neg for Term<'s> {
-    type Output = Term<'s>;
+impl Neg for Term<'_> {
+    type Output = Self;
 
-    fn neg(self) -> Term<'s> {
+    fn neg(self) -> Self {
         self.session.int(-1).binary(core::MUL, self)
     }
 }
