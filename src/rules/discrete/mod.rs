@@ -33,13 +33,12 @@
 //! | [`finite_field`] | `gf_*` (prime field), `gfp_*` (polynomials over GF(p)), `gfx_*` (extension fields GF(p)\[x\]/(m)) |
 //! | [`graphs`] | `graph`/`digraph` terms, `graph_*` queries, traversals, shortest paths, spanning trees, flows, matchings, colouring, isomorphism, products |
 //! | [`topology`] | `sc`, `sc_complex`, `sc_dimension`, `sc_simplices`, `sc_euler_characteristic`, `sc_boundary`, `sc_boundary_matrix`, `sc_coboundary_matrix`, `sc_chain_boundary`, `sc_betti`, `sc_cohomology_betti`, `sc_verify_boundary`, `sc_verify_coboundary`, `sc_components`, `sc_grid`, `sc_torus`, `vietoris_rips`, `vietoris_rips_filtration`, `betti_at_radius`, `persistence`, `euclidean_distance` |
-//! | [`fractal`] | `mandelbrot_*`, `julia_escape`, `logistic_*`, `ifs_apply`, `similarity_dimension`, `dyn_*`, `lorenz`, `box_counting` |
-//! | [`graphics`] | `translation_2d`, `rotation_3d_x`, `perspective`, `look_at`, `bezier`, `bspline`, quaternions, meshes |
+//! | [`fractal`] | `mandelbrot_escape`, `julia_escape`, `burning_ship_escape`, `multibrot_escape`, `newton_fractal_root`, `mandelbrot_iterate`, `mandelbrot_orbit`, `mandelbrot_fixed_points`, `mandelbrot_stability`, `complex_map_fixed_points`, `complex_map_stability`, `map_fixed_points`, `map_stability`, `lyapunov_exponent`, `logistic_iterate`, `logistic_bifurcation`, `logistic_lyapunov`, `lorenz`, `lorenz_orbit`, `lorenz_lyapunov`, `rossler_orbit`, `henon_orbit`, `tinkerbell_orbit`, `ifs_apply`, `ifs_generate`, `similarity_dimension`, `moran_dimension`, `box_counting`, `correlation_dimension`, `orbit_density`, `orbit_entropy` |
+//! | [`graphics`] | `translation_2d/3d`, `scaling_2d/3d`, `shear_2d`, `rotation_2d`, `rotation_3d_x/y/z`, `rotation_axis_angle`, `reflection_2d/3d`, `perspective`, `orthographic`, `look_at`, `apply_transform`, `apply_transform_vector`, `bezier`, `bezier_derivative`, `bezier_split`, `bspline`, `catmull_rom`, `quat_mul`, `quat_conj`, `quat_inverse`, `quat_norm`, `quat_normalize`, `quat_from_axis_angle`, `quat_rotate`, `quat_to_matrix`, `quat_slerp`, `mesh_transform`, `mesh_normals`, `mesh_triangulate`, `ray_sphere`, `ray_plane`, `ray_triangle`, `reflect`, `refract`, `barycentric` |
 //! | [`groups`] | `group` term; `cyclic_group`, `dihedral_group`, `symmetric_group`, `klein_four_group`, `group_from_table`; `group_elements`, `group_order`, `group_identity`, `group_mul`, `group_inverse`, `group_is_abelian`, `group_element_order`, `group_conjugacy_classes`, `group_center`, `group_is_valid`, `group_subgroups`, `group_cosets`, `group_is_normal`; `representation_is_valid`, `group_character`; `perm_compose`, `perm_inverse`, `perm_order`, `perm_cycles`, `perm_sign` |
 //!
 //! See the documentation of each module for the exact term formats.
 
-#![allow(dead_code)] // TEMP
 
 pub mod coding;
 pub mod crypto;
@@ -338,14 +337,6 @@ pub(crate) fn is_zero(
     n: NodeId,
 ) -> bool {
     g.number_of(n).is_some_and(Number::is_zero)
-}
-
-/// Whether `n` is a literal one.
-pub(crate) fn is_one(
-    g: &Graph,
-    n: NodeId,
-) -> bool {
-    g.number_of(n).is_some_and(Number::is_one)
 }
 
 /// The sum of `terms`; literal numbers are folded.
