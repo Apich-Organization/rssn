@@ -32,8 +32,14 @@
 //! | `solve_with_fourier_transform(eq, u(x, t), conditions)` | heat and Schrödinger equations on the line |
 //! | `solve_wave_equation_1d_dalembert`, `solve_heat_equation_1d`, `solve_heat_equation_3d`, `solve_wave_equation_3d`, `solve_laplace_equation_2d`, `solve_laplace_equation_3d`, `solve_poisson_equation_2d`, `solve_poisson_equation_3d`, `solve_helmholtz_equation`, `solve_schrodinger_equation`, `solve_klein_gordon_equation`, `solve_burgers_equation`, `solve_second_order_pde` | one method each, same arguments as `pdsolve` |
 //! | `at(f, x, a)` | `f` with `x = a`, once `f` is concrete in `x` |
+//! | `pde_symmetries(eq, u(x, t))` | Lie point symmetries `list(list(ξ, τ, φ), …)` with polynomial infinitesimals |
+//! | `pde_traveling_wave(eq, u(x, t), c)` | `u = F(x - c t)`: the solution, or `list(ansatz, ODE)` |
+//! | `pde_similarity(eq, u(x, t), list(ξ, τ, φ))` | similarity reduction by a scaling/translation symmetry |
+//! | `noether_current(L, u(x, t), list(ξ, τ, φ))` | the conserved current `list(J^x, J^t)` of a variational symmetry |
 
 use std::collections::HashMap;
+
+mod symmetry;
 
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
@@ -115,6 +121,11 @@ enum Request {
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let heavy = |name: &str, arity: Arity| OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100);
     let at = i.op(heavy("at", Arity::Fixed(3)).flags(OpFlags::OPAQUE_ON_APPLY))?;
+    let symmetries = i.op(heavy("pde_symmetries", Arity::Fixed(2)))?;
+    let traveling = i.op(heavy("pde_traveling_wave", Arity::Fixed(3)))?;
+    let similarity = i.op(heavy("pde_similarity", Arity::Fixed(3)))?;
+    let noether = i.op(heavy("noether_current", Arity::Fixed(3)))?;
+    i.kernel("pde/symmetry", Tier::Reduce, Symmetry { symmetries, traveling, similarity, noether });
     i.kernel("pde/at", Tier::Reduce, Pde { op: at, request: Request::At });
     let table = [
         ("pdsolve", Method::Any),
@@ -201,6 +212,49 @@ impl Kernel for Pde {
 }
 
 /// `at(f, x, a)`: substitution once `f` is free of requests involving `x`.
+/// `pde_symmetries`, `pde_traveling_wave`, `pde_similarity` and
+/// `noether_current`.
+struct Symmetry {
+    symmetries: OpId,
+    traveling: OpId,
+    similarity: OpId,
+    noether: OpId,
+}
+
+impl Kernel for Symmetry {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.symmetries, self.traveling, self.similarity, self.noether]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let op = cx.graph.op(node);
+        let args = cx.graph.children(node).to_vec();
+        let found = (|| {
+            if op == self.noether {
+                let &[l, u, g] = args.as_slice() else { return None };
+                return symmetry::noether_current(cx, l, u, g);
+            }
+            let (&equation, rest) = args.split_first()?;
+            let (&unknown, extra) = rest.split_first()?;
+            let p = Problem::parse(cx, equation, unknown)?;
+            if op == self.symmetries {
+                let generators = symmetry::symmetries(cx, &p)?;
+                let items: Vec<NodeId> = generators.iter().map(|g| cx.graph.node(core::LIST, g)).collect();
+                Some(cx.graph.node(core::LIST, &items))
+            } else if op == self.traveling {
+                symmetry::traveling_wave(cx, &p, *extra.first()?)
+            } else {
+                symmetry::similarity(cx, &p, *extra.first()?)
+            }
+        })();
+        found.map_or(Outcome::Pass, Outcome::Pinned)
+    }
+}
+
 fn at(
     cx: &mut Cx<'_>,
     args: &[NodeId],
@@ -1991,6 +2045,38 @@ mod tests {
 
     fn any(src: &str) -> String {
         reduce_with(&[pde()], src, &ASSUME).0
+    }
+
+    #[test]
+    fn lie_symmetries_and_reductions() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| crate::rules::testing::simplify(&rules, src);
+        // Heat equation: translations, scalings, Galilean boost, projective
+        // map and superposition of polynomial solutions.
+        let heat = run("pde_symmetries(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t))");
+        for generator in [
+            "list(1, 0, 0)",
+            "list(0, 1, 0)",
+            "list(1/2*x, t, 0)",
+            "list(0, 0, u(x, t))",
+            "list(-2*t, 0, x*u(x, t))",
+            "list(-4*t*x, -4*t^2, x^2*u(x, t) + 2*t*u(x, t))",
+            "list(0, 0, x^2 + 2*t)",
+        ] {
+            assert!(heat.contains(generator), "{generator} missing from {heat}");
+        }
+        // Burgers: the scaling has weight -1 on u.
+        let burgers = run("pde_symmetries(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = diff(diff(u(x, t), x), x), u(x, t))");
+        assert!(burgers.contains("list(-x, -2*t, u(x, t))") && burgers.contains("list(t, 0, 1)") && burgers.contains("list(-t*x, -t^2, t*u(x, t) - x)"), "{burgers}");
+        // Traveling waves of the advection-diffusion-reaction type.
+        let wave = run("pde_traveling_wave(diff(u(x, t), t) + 2*diff(u(x, t), x) = 0, u(x, t), 2)");
+        assert!(wave.contains("x - 2*t"), "{wave}");
+        // Heat equation similarity solution z = x/√t: error-function profile.
+        let similar = run("pde_similarity(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(x, 2*t, 0))");
+        assert!(similar.contains("erf"), "{similar}");
+        // Noether: time translation of the wave Lagrangian gives the energy.
+        let current = run("noether_current(diff(u(x, t), t)^2/2 - diff(u(x, t), x)^2/2, u(x, t), list(0, 1, 0))");
+        assert!(current.contains("diff(u(x, t), t)*diff(u(x, t), x)"), "{current}");
     }
 
     #[test]

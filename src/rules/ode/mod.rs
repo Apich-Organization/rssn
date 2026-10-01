@@ -1053,6 +1053,45 @@ fn apply_conditions(
     Some(explicit(cx, problem, result))
 }
 
+/// The coefficients of `expr` as a polynomial in the symbol `v` (free of
+/// `v`), for other rule sets.
+pub(crate) fn coefficients_of(
+    graph: &mut Graph,
+    expr: NodeId,
+    v: NodeId,
+) -> Option<Vec<NodeId>> {
+    coefficients_in(graph, expr, v)
+}
+
+/// Whether `needle` occurs in `term`.
+pub(crate) fn occurs_in(
+    graph: &Graph,
+    term: NodeId,
+    needle: NodeId,
+) -> bool {
+    occurs(graph, term, needle)
+}
+
+/// The solutions of a homogeneous linear identity in `unknowns` that must
+/// hold for all values of every other generator (see the Lie module).
+pub(crate) fn solve_linear_identity(
+    graph: &mut Graph,
+    expr: NodeId,
+    unknowns: &[NodeId],
+) -> Option<Vec<Vec<BigRational>>> {
+    lie::solve_identity(graph, expr, unknowns)
+}
+
+/// The general solution of an ordinary differential equation for
+/// `unknown` (`y(x) = …` or an implicit relation), for other rule sets.
+pub(crate) fn solve_ode(
+    cx: &mut Cx<'_>,
+    equation: NodeId,
+    unknown: NodeId,
+) -> Option<NodeId> {
+    solve_equation(cx, equation, unknown, 0).map(|(_, answer)| answer)
+}
+
 /// Parses and solves one equation for `unknown`: the general solution
 /// (explicit or implicit), verified against the equation. Reduction
 /// methods call this again on the reduced equation, so every method is
