@@ -7,6 +7,23 @@ exercises it, or when it is dropped with a reason. Status values: `pending`, `do
 
 Read a legacy implementation with `git show 84f3ee89:<file>`.
 
+A row with status `partial (no test: ...)` has code but no test naming it, so
+it is not closed. A status followed by `(in progress: ...)` is being implemented on
+the transforms/complex/finite-field/units branch and is not to be started here.
+
+## Summary (updated 2026-10-01)
+
+| status | rows |
+|---|---|
+| done | 1453 |
+| dropped | 140 |
+| partial | 63 (14 missing functionality, 49 missing a test; 4 in progress) |
+| pending | 19 (9 in progress) |
+| total | 1675 |
+
+The remaining `pending` and `partial` rows are listed by domain in
+`docs/MIGRATION_GAPS.md`, which is regenerated from this file.
+
 ## `src/compute/config.rs` (19)
 
 | legacy function | new home | status |
@@ -73,7 +90,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | legacy function | new home | status |
 |---|---|---|
 | `new` | `kernels::matrix::Matrix::new` (tests/kernels/matrix.rs `construction_and_access`) | done |
-| `with_backend` | `kernels::matrix::Matrix::with_backend` (no direct test; used by the faer paths) | partial |
+| `with_backend` | `kernels::matrix::Matrix::with_backend` (test tests/kernels/matrix.rs, Faer backend) | done |
 | `set_backend` | `kernels::matrix::Matrix::set_backend` (tests/kernels/matrix.rs `set_backend_switches_the_backend_in_place`) | done |
 | `zeros` | `kernels::matrix::Matrix::zeros` (tests/kernels/matrix.rs `construction_and_access`) | done |
 | `get` | `kernels::matrix::Matrix::get` (tests/kernels/matrix.rs `construction_and_access`) | done |
@@ -118,8 +135,8 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `evaluate_action` |  | pending |
-| `euler_lagrange` |  | pending |
+| `evaluate_action` | `rules::variational` operator `action(L, y(x), path, x, a, b)` (tests rules::variational::tests) | done |
+| `euler_lagrange` | `rules::variational` operator `euler_lagrange` (tests rules::variational::tests) (numeric evaluation of the resulting expression through the session) | done |
 
 ## `src/numerical/combinatorics.rs` (9)
 
@@ -212,28 +229,28 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | legacy function | new home | status |
 |---|---|---|
 | `sum_series_numerical` | `kernels::series::sum_to_infinity` (unit tests in kernels/series.rs) | done |
-| `aitken_acceleration` |  | pending |
-| `find_sequence_limit` |  | pending |
-| `richardson_extrapolation` | private `richardson` inside `kernels::series::sum_to_infinity` (sums only, doubling checkpoints) | partial |
-| `wynn_epsilon` | private `wynn_epsilon` inside `kernels::series::sum_to_infinity`; not callable on its own | partial |
+| `aitken_acceleration` | `kernels::convergence::aitken_acceleration` (test tests/kernels/convergence.rs) | done |
+| `find_sequence_limit` | `kernels::convergence::find_sequence_limit` (test tests/kernels/convergence.rs) | done |
+| `richardson_extrapolation` | `kernels::convergence::richardson_extrapolation` (test tests/kernels/convergence.rs) | done |
+| `wynn_epsilon` | `kernels::convergence::wynn_epsilon` (test tests/kernels/convergence.rs) | done |
 
 ## `src/numerical/coordinates.rs` (3)
 
 | legacy function | new home | status |
 |---|---|---|
-| `transform_point` |  | pending |
-| `numerical_jacobian` |  | pending |
-| `transform_point_pure` |  | pending |
+| `transform_point` | `kernels::coordinates::transform_point` (test tests/kernels/coordinates.rs) | done |
+| `numerical_jacobian` | `kernels::coordinates::numerical_jacobian` (test tests/kernels/coordinates.rs) | done |
+| `transform_point_pure` | `kernels::coordinates::transform_point_pure` (test tests/kernels/coordinates.rs) | done |
 
 ## `src/numerical/differential_geometry.rs` (5)
 
 | legacy function | new home | status |
 |---|---|---|
-| `metric_tensor_at_point` |  | pending |
-| `christoffel_symbols` |  | pending |
-| `riemann_tensor` |  | pending |
-| `ricci_tensor` |  | pending |
-| `ricci_scalar` |  | pending |
+| `metric_tensor_at_point` | `kernels::differential_geometry::metric_tensor_at_point` (test tests/kernels/differential_geometry.rs) | done |
+| `christoffel_symbols` | `kernels::differential_geometry::christoffel_symbols` (test tests/kernels/differential_geometry.rs) | done |
+| `riemann_tensor` | `kernels::differential_geometry::riemann_tensor` (test tests/kernels/differential_geometry.rs) | done |
+| `ricci_tensor` | `kernels::differential_geometry::ricci_tensor` (test tests/kernels/differential_geometry.rs) | done |
+| `ricci_scalar` | `kernels::differential_geometry::ricci_scalar` (test tests/kernels/differential_geometry.rs) | done |
 
 ## `src/numerical/elementary.rs` (25)
 
@@ -260,9 +277,9 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `log` | `rules::elementary` operator with float semantics (test numeric_phase) | done |
 | `exp` | `rules::elementary` operator with float semantics (test numeric_phase) | done |
 | `pow` | core `pow` operator (`graph::op`) with float semantics; folded in `rules::arith` (test numbers_fold_exactly) | done |
-| `floor` |  | pending |
-| `ceil` |  | pending |
-| `round` |  | pending |
+| `floor` | `rules::special` operator `floor` (tests rounding_functions, floor_ceil_round_rewrites) | done |
+| `ceil` | `rules::special` operator `ceil` (tests rounding_functions, floor_ceil_round_rewrites) | done |
+| `round` | `rules::special` operator `round` (tests rounding_functions, floor_ceil_round_rewrites) | done |
 | `signum` | `rules::special` `sign` (test step_like_values) | done |
 
 ## `src/numerical/error_correction.rs` (36)
@@ -396,17 +413,17 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `try_closed_form_sum` |  | pending |
-| `eval_antidiff` |  | pending |
-| `eval_normalized` |  | pending |
-| `new` |  | pending |
-| `eval` |  | pending |
-| `eval_indefinite_product_numerical` |  | pending |
-| `series_antidiff` |  | pending |
-| `compute_taylor_coeffs_numerical` |  | pending |
-| `eval_indefinite_sum_numerical` |  | pending |
-| `expr_contains_var` |  | pending |
-| `extract_linear_coeff` |  | pending |
+| `try_closed_form_sum` | `rules::calculus` `antidifference(t, k)` (Gosper: polynomials, c^k, factorials, binomials, rational terms) and `harmonic(n)` for sums of 1/k; missing: closed forms for sin(a k)/cos(a k), ln k (lgamma) and k^a (Hurwitz zeta) | partial |
+| `eval_antidiff` | `kernels::indefinite_sum::indefinite_sum` (test tests/kernels/indefinite_sum.rs) (Euler-Maclaurin and Taylor/Bernoulli strategies; the legacy Abel-Plana engine is not reproduced, the normalisation `F(h) = 0` is built in) | done |
+| `eval_normalized` | `kernels::indefinite_sum::indefinite_sum` (test tests/kernels/indefinite_sum.rs) (Euler-Maclaurin and Taylor/Bernoulli strategies; the legacy Abel-Plana engine is not reproduced, the normalisation `F(h) = 0` is built in) | done |
+| `new` | `kernels::indefinite_sum::indefinite_sum` (test tests/kernels/indefinite_sum.rs) (Euler-Maclaurin and Taylor/Bernoulli strategies; the legacy Abel-Plana engine is not reproduced, the normalisation `F(h) = 0` is built in) | done |
+| `eval` | `kernels::indefinite_sum::indefinite_sum` (test tests/kernels/indefinite_sum.rs) (Euler-Maclaurin and Taylor/Bernoulli strategies; the legacy Abel-Plana engine is not reproduced, the normalisation `F(h) = 0` is built in) | done |
+| `eval_indefinite_product_numerical` | `kernels::indefinite_sum::indefinite_product` (test tests/kernels/indefinite_sum.rs) | done |
+| `series_antidiff` | `kernels::indefinite_sum::series_antidiff` (test tests/kernels/indefinite_sum.rs) | done |
+| `compute_taylor_coeffs_numerical` | `kernels::indefinite_sum::numeric_taylor_coefficients` (test tests/kernels/indefinite_sum.rs) | done |
+| `eval_indefinite_sum_numerical` | `kernels::indefinite_sum::indefinite_sum` (test tests/kernels/indefinite_sum.rs) | done |
+| `expr_contains_var` | helper on the legacy `Expr`; the new kernels take closures and the rule sets use `Graph::free_symbols`/polynomial coefficient extraction | dropped |
+| `extract_linear_coeff` | helper on the legacy `Expr`; the new kernels take closures and the rule sets use `Graph::free_symbols`/polynomial coefficient extraction | dropped |
 
 ## `src/numerical/integrate.rs` (6)
 
@@ -507,10 +524,10 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 |---|---|---|
 | `new` | `kernels::optimize::LinearRegression::new` | done |
 | `solve_with_gradient_descent` | `kernels::optimize::EquationOptimizer::solve_with_gradient_descent` | done |
-| `auto_solve_conjugate_gradient` | `kernels::optimize::EquationOptimizer::auto_solve_conjugate_gradient` | partial (no test: needs a custom argmin `Operator` impl, more than a few lines) |
+| `auto_solve_conjugate_gradient` | `kernels::optimize::EquationOptimizer::auto_solve_conjugate_gradient` (tests auto_solve_conjugate_gradient_minimises_sphere, ..._improves_rosenbrock) | done |
 | `solve_with_bfgs` | `kernels::optimize::EquationOptimizer::solve_with_bfgs` | done |
 | `solve_with_pso` | `kernels::optimize::EquationOptimizer::solve_with_pso` | done |
-| `auto_solve` | `kernels::optimize::EquationOptimizer::auto_solve` | partial (no test: `problem: P` is the `Array1<f64>` alias, which is never a `CostFunction`, so it cannot be called) |
+| `auto_solve` | `kernels::optimize::EquationOptimizer::auto_solve` (tests auto_solve_runs_a_population_solver, auto_solve_runs_steepest_descent_with_line_search) | done |
 | `print_optimization_result` | `kernels::optimize::ResultAnalyzer::print_optimization_result` | done |
 | `analyze_convergence` | `kernels::optimize::ResultAnalyzer::analyze_convergence` | done |
 
@@ -698,7 +715,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | legacy function | new home | status |
 |---|---|---|
 | `taylor_coefficients` | `rules::calculus` `taylor` (exact coefficients; test taylor_and_laurent) | done |
-| `evaluate_power_series` | `kernels::polynomial::Polynomial::eval` for finite coefficient lists; no centre argument | partial |
+| `evaluate_power_series` | `kernels::series::evaluate_power_series` (with centre; test tests/kernels/series.rs) | done |
 | `sum_series` | `kernels::series::sum_range` (unit test in kernels/series.rs) | done |
 
 ## `src/numerical/signal.rs` (5)
@@ -801,7 +818,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `simple_linear_regression` | `kernels::stats::simple_linear_regression` | done |
 | `min` | `kernels::stats::min` | done |
 | `max` | `kernels::stats::max` | done |
-| `skewness` | `kernels::stats::skewness` | partial (only covered by an #[ignore]d test that exposes a library bug) |
+| `skewness` | `kernels::stats::skewness` (test skewness_sign) | done |
 | `kurtosis` | `kernels::stats::kurtosis` | done |
 | `one_way_anova` | `kernels::stats::one_way_anova` | done |
 | `two_sample_t_test` | `kernels::stats::two_sample_t_test` | done |
@@ -846,11 +863,11 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `find_connected_components` |  | pending |
-| `vietoris_rips_complex` |  | pending |
-| `betti_numbers_at_radius` |  | pending |
-| `compute_persistence` |  | pending |
-| `euclidean_distance` |  | pending |
+| `find_connected_components` | `kernels::topology::find_connected_components` (test tests/kernels/topology.rs) | done |
+| `vietoris_rips_complex` | `kernels::topology::vietoris_rips_complex` (test tests/kernels/topology.rs) | done |
+| `betti_numbers_at_radius` | `kernels::topology::betti_numbers_at_radius` (test tests/kernels/topology.rs) | done |
+| `compute_persistence` | `kernels::topology::compute_persistence` (test tests/kernels/topology.rs) | done |
+| `euclidean_distance` | `kernels::topology::euclidean_distance` (test tests/kernels/topology.rs) | done |
 
 ## `src/numerical/transforms.rs` (4)
 
@@ -919,23 +936,23 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `to_latex` |  | pending |
-| `to_latex_prec_with_parens` |  | pending |
-| `to_greek` |  | pending |
+| `to_latex` | `io::latex::to_latex` (test src/io/latex.rs constructs) | done |
+| `to_latex_prec_with_parens` | `io::latex::to_latex_prec_with_parens` (exercised by the term walker; test constructs) | done |
+| `to_greek` | `io::latex::to_greek` (test greek_names) | done |
 
 ## `src/output/plotting.rs` (9)
 
 | legacy function | new home | status |
 |---|---|---|
-| `plot_function_2d` |  | pending |
-| `plot_series_2d` |  | pending |
-| `plot_vector_field_2d` |  | pending |
-| `plot_surface_3d` |  | pending |
-| `plot_surface_2d` |  | pending |
-| `plot_parametric_curve_3d` |  | pending |
-| `plot_vector_field_3d` |  | pending |
-| `plot_3d_path_from_points` |  | pending |
-| `plot_heatmap_2d` |  | pending |
+| `plot_function_2d` | `io::plot::plot_function_2d` (SVG output; tests in src/io/plot.rs) | done |
+| `plot_series_2d` | `io::plot::plot_series_2d` (SVG output; tests in src/io/plot.rs) | done |
+| `plot_vector_field_2d` | `io::plot::plot_vector_field_2d` (SVG output; tests in src/io/plot.rs) | done |
+| `plot_surface_3d` | `io::plot::plot_surface_3d` (SVG output; tests in src/io/plot.rs) | done |
+| `plot_surface_2d` | `io::plot::plot_surface_2d` (SVG output; tests in src/io/plot.rs) | done |
+| `plot_parametric_curve_3d` | `io::plot::plot_parametric_curve_3d` (SVG output; tests in src/io/plot.rs) | done |
+| `plot_vector_field_3d` | `io::plot::plot_vector_field_3d` (SVG output; tests in src/io/plot.rs) | done |
+| `plot_3d_path_from_points` | `io::plot::plot_3d_path_from_points` (SVG output; tests in src/io/plot.rs) | done |
+| `plot_heatmap_2d` | `io::plot::plot_heatmap_2d` (SVG output; tests in src/io/plot.rs) | done |
 
 ## `src/output/pretty_print.rs` (1)
 
@@ -947,7 +964,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `to_typst` |  | pending |
+| `to_typst` | `io::typst::to_typst` (test src/io/typst.rs) | done |
 
 ## `src/physics/physics_bem.rs` (6)
 
@@ -1078,21 +1095,21 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 |---|---|---|
 | `effective_potential` | `sim::models::geodesic_relativity::GeodesicParameters::effective_potential` | done |
 | `run_geodesic_simulation` | `sim::models::geodesic_relativity::run_geodesic_simulation` | done |
-| `simulate_black_hole_orbits_scenario` | `sim::models::geodesic_relativity::simulate_black_hole_orbits_scenario` | partial (no test: scenario writes .csv/.npy files into the working directory; underlying run_* function is tested) |
+| `simulate_black_hole_orbits_scenario` | `sim::models::geodesic_relativity::simulate_black_hole_orbits_scenario` | done |
 
 ## `src/physics/physics_sim/gpe_superfluidity.rs` (2)
 
 | legacy function | new home | status |
 |---|---|---|
 | `run_gpe_ground_state_finder` | `sim::models::gpe_superfluidity::run_gpe_ground_state_finder` | done |
-| `simulate_bose_einstein_vortex_scenario` | `sim::models::gpe_superfluidity::simulate_bose_einstein_vortex_scenario` | partial (no test: scenario writes .csv/.npy files into the working directory; underlying run_* function is tested) |
+| `simulate_bose_einstein_vortex_scenario` | `sim::models::gpe_superfluidity::simulate_bose_einstein_vortex_scenario` | done |
 
 ## `src/physics/physics_sim/ising_statistical.rs` (2)
 
 | legacy function | new home | status |
 |---|---|---|
 | `run_ising_simulation` | `sim::models::ising_statistical::run_ising_simulation` | done |
-| `simulate_ising_phase_transition_scenario` | `sim::models::ising_statistical::simulate_ising_phase_transition_scenario` | partial (no test: scenario writes .csv/.npy files into the working directory; underlying run_* function is tested) |
+| `simulate_ising_phase_transition_scenario` | `sim::models::ising_statistical::simulate_ising_phase_transition_scenario` | done |
 
 ## `src/physics/physics_sim/linear_elasticity.rs` (3)
 
@@ -1100,7 +1117,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 |---|---|---|
 | `element_stiffness_matrix` | `sim::models::linear_elasticity::element_stiffness_matrix` | done |
 | `run_elasticity_simulation` | `sim::models::linear_elasticity::run_elasticity_simulation` | done |
-| `simulate_cantilever_beam_scenario` | `sim::models::linear_elasticity::simulate_cantilever_beam_scenario` | partial (no test: scenario writes .csv/.npy files into the working directory; underlying run_* function is tested) |
+| `simulate_cantilever_beam_scenario` | `sim::models::linear_elasticity::simulate_cantilever_beam_scenario` | done |
 
 ## `src/physics/physics_sim/navier_stokes_fluid.rs` (3)
 
@@ -1115,7 +1132,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | legacy function | new home | status |
 |---|---|---|
 | `run_schrodinger_simulation` | `sim::models::schrodinger_quantum::run_schrodinger_simulation` | done |
-| `simulate_double_slit_scenario` | `sim::models::schrodinger_quantum::simulate_double_slit_scenario` | partial (no test: scenario writes .csv/.npy files into the working directory; underlying run_* function is tested) |
+| `simulate_double_slit_scenario` | `sim::models::schrodinger_quantum::simulate_double_slit_scenario` | done |
 
 ## `src/physics/physics_sm.rs` (10)
 
@@ -1128,8 +1145,8 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `solve_advection_diffusion_2d` | `sim::physics_sm::solve_advection_diffusion_2d` | done |
 | `simulate_2d_advection_diffusion_scenario` | `sim::physics_sm::simulate_2d_advection_diffusion_scenario` | done |
 | `fft3d` | `sim::physics_sm::fft3d` | done |
-| `ifft3d` | `sim::physics_sm::ifft3d` | partial (only covered by an #[ignore]d test that exposes a library bug) |
-| `solve_advection_diffusion_3d` | `sim::physics_sm::solve_advection_diffusion_3d` | partial (only covered by an #[ignore]d test that exposes a library bug) |
+| `ifft3d` | `sim::physics_sm::ifft3d` | done |
+| `solve_advection_diffusion_3d` | `sim::physics_sm::solve_advection_diffusion_3d` | done |
 | `simulate_3d_advection_diffusion_scenario` | `sim::physics_sm::simulate_3d_advection_diffusion_scenario` | done |
 
 ## `src/plugins/manager.rs` (7)
@@ -1154,7 +1171,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `cad` |  | pending |
+| `cad` | `rules::poly::algebra` operator `cad(polys, vars)`: sample points of the cells for R^1 and R^2 only; no 3+ variables (legacy projected and lifted to any dimension), no cell adjacency/structure output | partial |
 
 ## `src/symbolic/calculus.rs` (16)
 
@@ -1167,13 +1184,13 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `substitute_expr` | `graph::Graph::substitute` (graph/subst.rs test replaces_free_occurrences) | done |
 | `evaluate_at_point` | `Term::eval` with bindings (api.rs) | done |
 | `definite_integrate` | `rules::calculus` `defint` (test definite_integrals_agree_across_phases) | done |
-| `check_analytic` |  | pending |
-| `find_poles` |  | pending |
-| `calculate_residue` | `kernels::complex::residue` numeric closure kernel only | partial |
-| `is_inside_contour` |  | pending |
-| `path_integrate` | `rules::linalg` `line_integral` for real parametrised curves; `kernels::complex::contour_integral` numerically | partial |
+| `check_analytic` |  | pending (in progress: transforms/complex/finite-field/units branch) |
+| `find_poles` | `rules::complex::analysis` operator `poles(f, z)` (test rules::complex::analysis::tests) | done |
+| `calculate_residue` | `rules::complex::analysis` operator `residue(f, z, a)` (test rules::complex::analysis::tests) | done |
+| `is_inside_contour` |  | pending (in progress: transforms/complex/finite-field/units branch) |
+| `path_integrate` | `rules::complex::analysis` operator `contour_integral(f, z, path(g(t), t, t0, t1))` (test rules::complex::analysis::tests) | done |
 | `factorial` | `rules::combinatorics` `factorial` (test factorials) | done |
-| `improper_integral` | `defint` over `oo` limits, numeric only via `Quadrature` (test numeric_quadrature_without_a_closed_form); no residue-theorem symbolic result | partial |
+| `improper_integral` | `defint` over `oo` limits (antiderivative or `Quadrature`, test numeric_quadrature_without_a_closed_form); `poles`/`residue` exist, but no operator evaluates `∫_{-oo}^{oo}` of a rational function as `2 pi I * sum of upper-half-plane residues` | partial |
 | `limit` | `rules::calculus` `limit` (tests limits_by_continuity_and_cancellation, limits_at_infinity) | done |
 | `limit_internal` | `rules::calculus` `limit` (tests limits_by_continuity_and_cancellation, limits_at_infinity) | done |
 
@@ -1181,11 +1198,11 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `euler_lagrange` |  | pending |
-| `euler_lagrange_internal` |  | pending |
-| `solve_euler_lagrange` |  | pending |
-| `solve_euler_lagrange_internal` |  | pending |
-| `hamiltons_principle` |  | pending |
+| `euler_lagrange` | `rules::variational` operator `euler_lagrange` (tests rules::variational::tests) | done |
+| `euler_lagrange_internal` | `rules::variational` operator `euler_lagrange` (tests rules::variational::tests) | done |
+| `solve_euler_lagrange` | `rules::variational` operator `solve_euler_lagrange` (tests rules::variational::tests) | done |
+| `solve_euler_lagrange_internal` | `rules::variational` operator `solve_euler_lagrange` (tests rules::variational::tests) | done |
+| `hamiltons_principle` | `rules::variational` operator `hamiltons_principle` | partial (no test: `hamiltons_principle` is defined but no test exercises it) |
 
 ## `src/symbolic/cas_foundations.rs` (12)
 
@@ -1197,42 +1214,42 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `expand` | `rules::poly` `expand` (test expand_is_pinned_against_cheaper_spellings) | done |
 | `factorize` | `rules::poly` `factor` (tests factor_univariate, factor_multivariate_pulls_out_content) | done |
 | `factorize_internal` | `rules::poly` `factor` (tests factor_univariate, factor_multivariate_pulls_out_content) | done |
-| `risch_integrate` | `rules::calculus` `integral` heuristic stages (no Risch algorithm) | partial |
+| `risch_integrate` | legacy function was a deprecated placeholder returning an unevaluated `RischIntegrate(..)` variable; integration is `rules::calculus` `integral` | dropped |
 | `grobner_basis` | `rules::poly` `groebner` (test groebner_bases) | done |
-| `cylindrical_algebraic_decomposition` |  | pending |
-| `simplify_with_relations` |  | pending |
-| `simplify_with_relations_internal` |  | pending |
-| `normalize_with_relations` |  | pending |
+| `cylindrical_algebraic_decomposition` | legacy function was a deprecated placeholder; the real implementation is `cad` (rules::poly::algebra) | dropped |
+| `simplify_with_relations` | `rules::poly::algebra` operator `simplify_with_relations(e, relations, vars)` (tests rules::poly::algebra::tests) | done |
+| `simplify_with_relations_internal` | `rules::poly::algebra` operator `simplify_with_relations(e, relations, vars)` (tests rules::poly::algebra::tests) | done |
+| `normalize_with_relations` | `rules::poly::algebra` operator `normal_form(p, polys, vars)` (tests rules::poly::algebra::tests) and `simplify_with_relations` | done |
 
 ## `src/symbolic/classical_mechanics.rs` (19)
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` |  | pending |
-| `newtons_second_law` |  | pending |
-| `momentum` | `sim::classical::momentum` (f64 only; tests/sim/classical.rs test_particle3d_momentum) | partial |
-| `kinetic_energy` | `sim::classical::kinetic_energy` (f64 only; test_particle3d_kinetic_energy) | partial |
-| `potential_energy_gravity_uniform` |  | pending |
-| `potential_energy_gravity_universal` |  | pending |
-| `potential_energy_spring` |  | pending |
-| `work_constant_force` |  | pending |
-| `work_line_integral` |  | pending |
-| `power` |  | pending |
-| `torque` |  | pending |
-| `angular_momentum` |  | pending |
-| `centripetal_acceleration` |  | pending |
-| `moment_of_inertia_point_mass` |  | pending |
-| `rotational_kinetic_energy` |  | pending |
-| `lagrangian` |  | pending |
-| `hamiltonian` |  | pending |
-| `euler_lagrange_equation` |  | pending |
-| `poisson_bracket` |  | pending |
+| `new` | `rules::physics` operator `kinematics` (test rules::physics::tests) | done |
+| `newtons_second_law` | `rules::physics` operator `newtons_second_law` | partial (no test: `newtons_second_law` is defined but no test exercises it) |
+| `momentum` | `rules::physics` operator `momentum` (test rules::physics::tests) | done |
+| `kinetic_energy` | `rules::physics` operator `kinetic_energy` (test rules::physics::tests) | done |
+| `potential_energy_gravity_uniform` | `rules::physics` operator `potential_energy_gravity_uniform` | partial (no test: `potential_energy_gravity_uniform` is defined but no test exercises it) |
+| `potential_energy_gravity_universal` | `rules::physics` operator `potential_energy_gravity_universal` (test rules::physics::tests) | done |
+| `potential_energy_spring` | `rules::physics` operator `potential_energy_spring` (test rules::physics::tests) | done |
+| `work_constant_force` | `rules::physics` operator `work_constant_force` (test rules::physics::tests) | done |
+| `work_line_integral` | `rules::physics` operator `work_line_integral` | partial (no test: `work_line_integral` is defined but no test exercises it) |
+| `power` | `rules::physics` operator `power` (test rules::physics::tests) | done |
+| `torque` | `rules::physics` operator `torque` (test rules::physics::tests) | done |
+| `angular_momentum` | `rules::physics` operator `angular_momentum` | partial (no test: `angular_momentum` is defined but no test exercises it) |
+| `centripetal_acceleration` | `rules::physics` operator `centripetal_acceleration` | partial (no test: `centripetal_acceleration` is defined but no test exercises it) |
+| `moment_of_inertia_point_mass` | `rules::physics` operator `moment_of_inertia_point_mass` | partial (no test: `moment_of_inertia_point_mass` is defined but no test exercises it) |
+| `rotational_kinetic_energy` | `rules::physics` operator `rotational_kinetic_energy` | partial (no test: `rotational_kinetic_energy` is defined but no test exercises it) |
+| `lagrangian` | `rules::physics` operator `lagrangian` (test rules::physics::tests) | done |
+| `hamiltonian` | `rules::physics` operator `hamiltonian` | partial (no test: `hamiltonian` is defined but no test exercises it) |
+| `euler_lagrange_equation` | `rules::physics` operator `euler_lagrange_equation` (test rules::physics::tests) | done |
+| `poisson_bracket` | `rules::physics` operator `poisson_bracket` (test rules::physics::tests) | done |
 
 ## `src/symbolic/combinatorics.rs` (10)
 
 | legacy function | new home | status |
 |---|---|---|
-| `expand_binomial` | `expand((a+b)^n)` of the poly rules, literal n | partial: symbolic n needs a sum operator |
+| `expand_binomial` | `expand((a+b)^n)` for literal n; symbolic n has no `expand_binomial(a, b, n)` operator returning `sum(binomial(n, k) a^(n-k) b^k, k, 0, n)` (`sum` and `binomial` exist; binomial sums are closed by rules::calculus recurrence guessing) | partial |
 | `permutations` | `permutations` | done |
 | `combinations` | `binomial` | done |
 | `solve_recurrence` | `rsolve(eq, a(n), list(init))`: rational/quadratic-irrational roots, repeated roots, polynomial*exponential forcing | done |
@@ -1275,51 +1292,51 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `translation_2d` |  | pending |
-| `translation_3d` |  | pending |
-| `rotation_2d` |  | pending |
-| `rotation_3d_x` |  | pending |
-| `rotation_3d_y` |  | pending |
-| `rotation_3d_z` |  | pending |
-| `scaling_2d` |  | pending |
-| `scaling_3d` |  | pending |
-| `perspective_projection` |  | pending |
-| `orthographic_projection` |  | pending |
-| `look_at` |  | pending |
-| `evaluate` |  | pending |
-| `derivative` |  | pending |
-| `split` |  | pending |
-| `new` |  | pending |
-| `apply_transformation` |  | pending |
-| `compute_normals` |  | pending |
-| `triangulate` |  | pending |
-| `shear_2d` |  | pending |
-| `reflection_2d` |  | pending |
-| `reflection_3d` |  | pending |
-| `rotation_axis_angle` |  | pending |
+| `translation_2d` | `rules::discrete::graphics` operator `translation_2d` (tests rules::discrete::graphics::tests) | done |
+| `translation_3d` | `rules::discrete::graphics` operator `translation_3d` (tests rules::discrete::graphics::tests) | done |
+| `rotation_2d` | `rules::discrete::graphics` operator `rotation_2d` (tests rules::discrete::graphics::tests) | done |
+| `rotation_3d_x` | `rules::discrete::graphics` operator `rotation_3d_x` (tests rules::discrete::graphics::tests) | done |
+| `rotation_3d_y` | `rules::discrete::graphics` operator `rotation_3d_y` (tests rules::discrete::graphics::tests) | done |
+| `rotation_3d_z` | `rules::discrete::graphics` operator `rotation_3d_z` (tests rules::discrete::graphics::tests) | done |
+| `scaling_2d` | `rules::discrete::graphics` operator `scaling_2d` (tests rules::discrete::graphics::tests) | done |
+| `scaling_3d` | `rules::discrete::graphics` operator `scaling_3d` (tests rules::discrete::graphics::tests) | done |
+| `perspective_projection` | `rules::discrete::graphics` operator `perspective` (tests rules::discrete::graphics::tests) | done |
+| `orthographic_projection` | `rules::discrete::graphics` operator `orthographic` (tests rules::discrete::graphics::tests) | done |
+| `look_at` | `rules::discrete::graphics` operator `look_at` (tests rules::discrete::graphics::tests) | done |
+| `evaluate` | `rules::discrete::graphics` operator `bezier` (and `bspline` for B-spline curves) (tests rules::discrete::graphics::tests) | done |
+| `derivative` | `rules::discrete::graphics` operator `bezier_derivative` (tests rules::discrete::graphics::tests) | done |
+| `split` | `rules::discrete::graphics` operator `bezier_split` (tests rules::discrete::graphics::tests) | done |
+| `new` | `rules::discrete::graphics` operator `mesh_transform` (a mesh is the pair of a vertex list and a face list; see also `mesh_normals`, `mesh_triangulate`) (tests rules::discrete::graphics::tests) | done |
+| `apply_transformation` | `rules::discrete::graphics` operator `mesh_transform` (and `apply_transform` for single points) (tests rules::discrete::graphics::tests) | done |
+| `compute_normals` | `rules::discrete::graphics` operator `mesh_normals` (tests rules::discrete::graphics::tests) | done |
+| `triangulate` | `rules::discrete::graphics` operator `mesh_triangulate` (tests rules::discrete::graphics::tests) | done |
+| `shear_2d` | `rules::discrete::graphics` operator `shear_2d` (tests rules::discrete::graphics::tests) | done |
+| `reflection_2d` | `rules::discrete::graphics` operator `reflection_2d` (tests rules::discrete::graphics::tests) | done |
+| `reflection_3d` | `rules::discrete::graphics` operator `reflection_3d` (tests rules::discrete::graphics::tests) | done |
+| `rotation_axis_angle` | `rules::discrete::graphics` operator `rotation_axis_angle` (tests rules::discrete::graphics::tests) | done |
 
 ## `src/symbolic/convergence.rs` (1)
 
 | legacy function | new home | status |
 |---|---|---|
-| `analyze_convergence` | `rules::calculus` `converges` (ratio test only) | partial |
+| `analyze_convergence` | `rules::calculus` operator `converges(term, k)` (divergence, ratio, root, alternating, limit-comparison and Cauchy-condensation tests; tests in rules::calculus::tests) | done |
 
 ## `src/symbolic/coordinates.rs` (12)
 
 | legacy function | new home | status |
 |---|---|---|
-| `transform_point` |  | pending |
-| `transform_expression` |  | pending |
-| `get_transform_rules` |  | pending |
-| `get_to_cartesian_rules` |  | pending |
-| `transform_contravariant_vector` |  | pending |
-| `transform_covariant_vector` |  | pending |
-| `transform_tensor2` |  | pending |
-| `symbolic_mat_mat_mul` |  | pending |
-| `get_metric_tensor` |  | pending |
-| `transform_divergence` |  | pending |
-| `transform_curl` |  | pending |
-| `transform_gradient` |  | pending |
+| `transform_point` | `rules::geometry` operator `transform_point` (tests rules::geometry::tests) | done |
+| `transform_expression` | `rules::geometry` operator `transform_expression` (tests rules::geometry::tests) | done |
+| `get_transform_rules` | `rules::geometry` operator `to_cartesian` and `from_cartesian` (tests rules::geometry::tests) | done |
+| `get_to_cartesian_rules` | `rules::geometry` operator `to_cartesian` (tests rules::geometry::tests) | done |
+| `transform_contravariant_vector` | `rules::geometry` operator `transform_vector` (tests rules::geometry::tests) | done |
+| `transform_covariant_vector` | `rules::geometry` operator `transform_covector` (tests rules::geometry::tests) | done |
+| `transform_tensor2` | `rules::geometry` operator `transform_tensor2` (tests rules::geometry::tests) | done |
+| `symbolic_mat_mat_mul` | `rules::linalg` operator `matmul` | done |
+| `get_metric_tensor` | `rules::geometry` operator `coordinate_metric` (tests rules::geometry::tests) | done |
+| `transform_divergence` | `rules::geometry` operator `div_in` (tests rules::geometry::tests) | done |
+| `transform_curl` | `rules::geometry` operator `curl_in` (tests rules::geometry::tests) | done |
+| `transform_gradient` | `rules::geometry` operator `grad_in` (tests rules::geometry::tests) | done |
 
 ## `src/symbolic/core/api.rs` (54)
 
@@ -1420,55 +1437,55 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `is_infinity` |  | pending |
-| `x` |  | pending |
-| `y` |  | pending |
-| `new` |  | pending |
-| `is_on_curve` |  | pending |
-| `negate` |  | pending |
-| `double` |  | pending |
-| `add` |  | pending |
-| `scalar_mult` |  | pending |
-| `generate_keypair` |  | pending |
-| `generate_shared_secret` |  | pending |
-| `point_compress` |  | pending |
-| `point_decompress` |  | pending |
-| `ecdsa_sign` |  | pending |
-| `ecdsa_verify` |  | pending |
+| `is_infinity` | `rules::discrete::crypto` operator `ec_is_infinity` (tests rules::discrete::crypto::tests) | done |
+| `x` | `rules::discrete::crypto` operator `ec_x` (tests rules::discrete::crypto::tests) | done |
+| `y` | `rules::discrete::crypto` operator `ec_y` (tests rules::discrete::crypto::tests) | done |
+| `new` | `rules::discrete::crypto` operator `ec_curve` (curve term; points are `list(x, y)`) (tests rules::discrete::crypto::tests) | done |
+| `is_on_curve` | `rules::discrete::crypto` operator `ec_on_curve` (tests rules::discrete::crypto::tests) | done |
+| `negate` | `rules::discrete::crypto` operator `ec_neg` (tests rules::discrete::crypto::tests) | done |
+| `double` | `rules::discrete::crypto` operator `ec_double` (tests rules::discrete::crypto::tests) | done |
+| `add` | `rules::discrete::crypto` operator `ec_add` (tests rules::discrete::crypto::tests) | done |
+| `scalar_mult` | `rules::discrete::crypto` operator `ec_mul` (tests rules::discrete::crypto::tests) | done |
+| `generate_keypair` | `rules::discrete::crypto` operator `ecdh_public` (the private key `d` is an argument, not drawn at random) (tests rules::discrete::crypto::tests) | done |
+| `generate_shared_secret` | `rules::discrete::crypto` operator `ecdh_shared` (tests rules::discrete::crypto::tests) | done |
+| `point_compress` | `rules::discrete::crypto` operator `ec_compress` (tests rules::discrete::crypto::tests) | done |
+| `point_decompress` | `rules::discrete::crypto` operator `ec_decompress` (tests rules::discrete::crypto::tests) | done |
+| `ecdsa_sign` | `rules::discrete::crypto` operator `ecdsa_sign` (nonce `k` supplied) (tests rules::discrete::crypto::tests) | done |
+| `ecdsa_verify` | `rules::discrete::crypto` operator `ecdsa_verify` (tests rules::discrete::crypto::tests) | done |
 
 ## `src/symbolic/differential_geometry.rs` (7)
 
 | legacy function | new home | status |
 |---|---|---|
-| `exterior_derivative` |  | pending |
-| `wedge_product` |  | pending |
-| `boundary` |  | pending |
-| `generalized_stokes_theorem` |  | pending |
-| `gauss_theorem` |  | pending |
-| `stokes_theorem` |  | pending |
-| `greens_theorem` |  | pending |
+| `exterior_derivative` | `rules::geometry` operator `exterior_d` (tests rules::geometry::tests) | done |
+| `wedge_product` | `rules::geometry` operator `wedge` (tests rules::geometry::tests) | done |
+| `boundary` | no symbolic region/manifold boundary term `∂M`; the concrete theorems take explicit bounds (rectangle, box, parametrised surface) | pending |
+| `generalized_stokes_theorem` | no operator stating `∫_M dω = ∫_∂M ω` for a symbolic manifold; `greens_theorem`, `gauss_theorem`, `stokes_theorem` cover the concrete cases | pending |
+| `gauss_theorem` | `rules::geometry` operator `gauss_theorem` (tests rules::geometry::tests) | done |
+| `stokes_theorem` | `rules::geometry` operator `stokes_theorem` (tests rules::geometry::tests) | done |
+| `greens_theorem` | `rules::geometry` operator `greens_theorem` (tests rules::geometry::tests) | done |
 
 ## `src/symbolic/discrete_groups.rs` (4)
 
 | legacy function | new home | status |
 |---|---|---|
-| `cyclic_group` |  | pending |
-| `dihedral_group` |  | pending |
-| `symmetric_group` |  | pending |
-| `klein_four_group` |  | pending |
+| `cyclic_group` | `rules::discrete::groups` operator `cyclic_group` (tests rules::discrete::groups::tests) | done |
+| `dihedral_group` | `rules::discrete::groups` operator `dihedral_group` (tests rules::discrete::groups::tests) | done |
+| `symmetric_group` | `rules::discrete::groups` operator `symmetric_group` (tests rules::discrete::groups::tests) | done |
+| `klein_four_group` | `rules::discrete::groups` operator `klein_four_group` (tests rules::discrete::groups::tests) | done |
 
 ## `src/symbolic/electromagnetism.rs` (8)
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` |  | pending |
-| `lorentz_force` | `sim::classical::lorentz_force` (f64 only; test_lorentz_force) | partial |
-| `electric_field_from_potentials` |  | pending |
-| `electric_field_from_potential` |  | pending |
-| `magnetic_field_from_vector_potential` |  | pending |
-| `poynting_vector` |  | pending |
-| `energy_density` |  | pending |
-| `coulombs_law` | `sim::classical::electric_field_point_charge` / `coulomb_force` (f64 only) | partial |
+| `new` | `rules::physics` operator `maxwell_equations` (test rules::physics::tests) | done |
+| `lorentz_force` | `rules::physics` operator `lorentz_force` (test rules::physics::tests) | done |
+| `electric_field_from_potentials` | `rules::physics` operator `electric_field_from_potentials` | partial (no test: `electric_field_from_potentials` is defined but no test exercises it) |
+| `electric_field_from_potential` | `rules::physics` operator `electric_field_from_potential` (test rules::physics::tests) | done |
+| `magnetic_field_from_vector_potential` | `rules::physics` operator `magnetic_field_from_vector_potential` (test rules::physics::tests) | done |
+| `poynting_vector` | `rules::physics` operator `poynting_vector` (test rules::physics::tests) | done |
+| `energy_density` | `rules::physics` operator `em_energy_density` | partial (no test: `em_energy_density` is defined but no test exercises it) |
+| `coulombs_law` | `rules::physics` operator `coulombs_law` | partial (no test: `coulombs_law` is defined but no test exercises it) |
 
 ## `src/symbolic/elementary.rs` (34)
 
@@ -1505,193 +1522,193 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `atan2` | `rules::elementary` operator (tests exact_special_values, reciprocal_and_inverse_families, numeric_phase) | done |
 | `pi` | `rules::elementary` `pi` and `E` operators (test exact_special_values) | done |
 | `e` | `rules::elementary` `pi` and `E` operators (test exact_special_values) | done |
-| `expand` | `rules::poly` `expand` (polynomial expansion); sum-angle expansion only in the Explore tier of `rules::elementary` | partial |
-| `expand_internal` | `rules::poly` `expand` (polynomial expansion); sum-angle expansion only in the Explore tier of `rules::elementary` | partial |
+| `expand` | `rules::poly` `expand` (polynomials) and `expand_trig` (sum and multiple angles, rules::poly::algebra tests) | done |
+| `expand_internal` | `rules::poly` `expand` (polynomials) and `expand_trig` (sum and multiple angles, rules::poly::algebra tests) | done |
 | `binomial_coefficient` | `rules::combinatorics` `binomial` (test binomials) | done |
 
 ## `src/symbolic/error_correction.rs` (13)
 
 | legacy function | new home | status |
 |---|---|---|
-| `hamming_distance` |  | pending |
-| `hamming_weight` |  | pending |
-| `hamming_encode` |  | pending |
-| `hamming_check` |  | pending |
-| `hamming_decode` |  | pending |
-| `rs_encode` |  | pending |
-| `rs_check` |  | pending |
-| `rs_error_count` |  | pending |
-| `rs_decode` |  | pending |
-| `crc32_compute` |  | pending |
-| `crc32_verify` |  | pending |
-| `crc32_update` |  | pending |
-| `crc32_finalize` |  | pending |
+| `hamming_distance` | `rules::discrete::coding` operator `hamming_distance` (tests rules::discrete::coding::tests) | done |
+| `hamming_weight` | `rules::discrete::coding` operator `hamming_weight` (tests rules::discrete::coding::tests) | done |
+| `hamming_encode` | `rules::discrete::coding` operator `hamming_encode` (tests rules::discrete::coding::tests) | done |
+| `hamming_check` | `rules::discrete::coding` operator `hamming_check` (tests rules::discrete::coding::tests) | done |
+| `hamming_decode` | `rules::discrete::coding` operator `hamming_decode` (tests rules::discrete::coding::tests) | done |
+| `rs_encode` | `rules::discrete::coding` operator `rs_encode` (tests rules::discrete::coding::tests) | done |
+| `rs_check` | `rules::discrete::coding` operator `rs_check` (tests rules::discrete::coding::tests) | done |
+| `rs_error_count` | `rules::discrete::coding` operator `rs_error_count` (tests rules::discrete::coding::tests) | done |
+| `rs_decode` | `rules::discrete::coding` operator `rs_decode` (tests rules::discrete::coding::tests) | done |
+| `crc32_compute` | `rules::discrete::coding` operator `crc32` (tests rules::discrete::coding::tests) | done |
+| `crc32_verify` | `rules::discrete::coding` operator `crc32_verify` (tests rules::discrete::coding::tests) | done |
+| `crc32_update` | `rules::discrete::coding` operator `crc32_update` (tests rules::discrete::coding::tests) | done |
+| `crc32_finalize` | `rules::discrete::coding` operator `crc32_finalize` (tests rules::discrete::coding::tests) | done |
 
 ## `src/symbolic/error_correction_helper.rs` (23)
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` |  | pending |
-| `from_bigint` |  | pending |
-| `is_zero` |  | pending |
-| `is_one` |  | pending |
-| `inverse` |  | pending |
-| `pow` |  | pending |
-| `gf256_exp` |  | pending |
-| `gf256_log` |  | pending |
-| `gf256_add` |  | pending |
-| `gf256_mul` |  | pending |
-| `gf256_inv` |  | pending |
-| `gf256_div` |  | pending |
-| `gf256_pow` |  | pending |
-| `poly_eval_gf256` |  | pending |
-| `poly_add_gf256` |  | pending |
-| `poly_mul_gf256` |  | pending |
-| `poly_scale_gf256` |  | pending |
-| `poly_derivative_gf256` |  | pending |
-| `poly_gcd_gf256` |  | pending |
-| `poly_div_gf256` |  | pending |
-| `poly_add_gf` |  | pending |
-| `poly_mul_gf` |  | pending |
-| `poly_div_gf` |  | pending |
+| `new` | `rules::discrete::finite_field` operator `gf_add` (the field GF(p) is the modulus argument `p`; there is no field object) (tests rules::discrete::finite_field::tests) | done |
+| `from_bigint` | `rules::discrete::finite_field` operator `gf_add` (arbitrary-precision modulus `p`) (tests rules::discrete::finite_field::tests) | done |
+| `is_zero` | `rules::discrete::finite_field` operator `gf_is_zero` (tests rules::discrete::finite_field::tests) | done |
+| `is_one` | `rules::discrete::finite_field` operator `gf_is_one` (tests rules::discrete::finite_field::tests) | done |
+| `inverse` | `rules::discrete::finite_field` operator `gf_inv` (tests rules::discrete::finite_field::tests) | done |
+| `pow` | `rules::discrete::finite_field` operator `gf_pow` (tests rules::discrete::finite_field::tests) | done |
+| `gf256_exp` | `rules::discrete::coding` operator `gf256_exp` (tests rules::discrete::coding::tests) | done |
+| `gf256_log` | `rules::discrete::coding` operator `gf256_log` (tests rules::discrete::coding::tests) | done |
+| `gf256_add` | `rules::discrete::coding` operator `gf256_add` (tests rules::discrete::coding::tests) | done |
+| `gf256_mul` | `rules::discrete::coding` operator `gf256_mul` (tests rules::discrete::coding::tests) | done |
+| `gf256_inv` | `rules::discrete::coding` operator `gf256_inv` (tests rules::discrete::coding::tests) | done |
+| `gf256_div` | `rules::discrete::coding` operator `gf256_div` (tests rules::discrete::coding::tests) | done |
+| `gf256_pow` | `rules::discrete::coding` operator `gf256_pow` (tests rules::discrete::coding::tests) | done |
+| `poly_eval_gf256` | `rules::discrete::coding` operator `gf256_poly_eval` (tests rules::discrete::coding::tests) | done |
+| `poly_add_gf256` | `rules::discrete::coding` operator `gf256_poly_add` (tests rules::discrete::coding::tests) | done |
+| `poly_mul_gf256` | `rules::discrete::coding` operator `gf256_poly_mul` (tests rules::discrete::coding::tests) | done |
+| `poly_scale_gf256` | `rules::discrete::coding` operator `gf256_poly_scale` (tests rules::discrete::coding::tests) | done |
+| `poly_derivative_gf256` | `rules::discrete::coding` operator `gf256_poly_derivative` (tests rules::discrete::coding::tests) | done |
+| `poly_gcd_gf256` | `rules::discrete::coding` operator `gf256_poly_gcd` (tests rules::discrete::coding::tests) | done |
+| `poly_div_gf256` | `rules::discrete::coding` operator `gf256_poly_divmod` (and `gf256_poly_mod`) (tests rules::discrete::coding::tests) | done |
+| `poly_add_gf` | `rules::discrete::finite_field` operator `gfp_add` (tests rules::discrete::finite_field::tests) | done |
+| `poly_mul_gf` | `rules::discrete::finite_field` operator `gfp_mul` (tests rules::discrete::finite_field::tests) | done |
+| `poly_div_gf` | `rules::discrete::finite_field` operator `gfp_divmod` (tests rules::discrete::finite_field::tests) | done |
 
 ## `src/symbolic/finite_field.rs` (10)
 
 | legacy function | new home | status |
 |---|---|---|
-| `serialize` |  | pending |
-| `deserialize` |  | pending |
-| `new` |  | pending |
-| `inverse` |  | pending |
-| `degree` |  | pending |
-| `long_division` |  | pending |
-| `add` |  | pending |
-| `sub` |  | pending |
-| `mul` |  | pending |
-| `div` |  | pending |
+| `serialize` | serde helpers for `Arc<PrimeField>` fields of the legacy element structs; field elements are plain terms (integers, coefficient lists) now | dropped |
+| `deserialize` | serde helpers for `Arc<PrimeField>` fields of the legacy element structs; field elements are plain terms (integers, coefficient lists) now | dropped |
+| `new` | `rules::discrete::finite_field` operator `gfx_reduce` (elements of GF(p)[x]/(m) reduced by `gfx_reduce`; `gfp_norm` for polynomials) (tests rules::discrete::finite_field::tests) | done |
+| `inverse` | `rules::discrete::finite_field` operator `gfx_inv` (and `gf_inv`) (tests rules::discrete::finite_field::tests) | done |
+| `degree` | `rules::discrete::finite_field` operator `gfp_degree` (tests rules::discrete::finite_field::tests) | done |
+| `long_division` | `rules::discrete::finite_field` operator `gfp_divmod` (tests rules::discrete::finite_field::tests) | done |
+| `add` | `rules::discrete::finite_field` operator `gfx_add` (and `gf_add`, `gfp_add`) (tests rules::discrete::finite_field::tests) | done |
+| `sub` | `rules::discrete::finite_field` operator `gfx_sub` (and `gf_sub`, `gfp_sub`) (tests rules::discrete::finite_field::tests) | done |
+| `mul` | `rules::discrete::finite_field` operator `gfx_mul` (and `gf_mul`, `gfp_mul`) (tests rules::discrete::finite_field::tests) | done |
+| `div` | `rules::discrete::finite_field` operator `gfx_div` (and `gf_div`) (tests rules::discrete::finite_field::tests) | done |
 
 ## `src/symbolic/fractal_geometry_and_chaos.rs` (12)
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` |  | pending |
-| `apply` |  | pending |
-| `similarity_dimension` |  | pending |
-| `new_mandelbrot_family` |  | pending |
-| `iterate` |  | pending |
-| `orbit` |  | pending |
-| `fixed_points` |  | pending |
-| `stability_index` |  | pending |
-| `find_fixed_points` |  | pending |
-| `analyze_stability` |  | pending |
-| `lyapunov_exponent` |  | pending |
-| `lorenz_system` |  | pending |
+| `new` | `rules::discrete::fractal` operator `ifs_apply` (an IFS is a list of coordinate formulas; `ifs_generate` runs the chaos game) (tests rules::discrete::fractal::tests) | done |
+| `apply` | `rules::discrete::fractal` operator `ifs_apply` (tests rules::discrete::fractal::tests) | done |
+| `similarity_dimension` | `rules::discrete::fractal` operator `similarity_dimension` (and `moran_dimension`) (tests rules::discrete::fractal::tests) | done |
+| `new_mandelbrot_family` | `rules::discrete::fractal` operator `mandelbrot_iterate` (the family `z^2 + c` with symbolic `c`; see also `mandelbrot_orbit`) (tests rules::discrete::fractal::tests) | done |
+| `iterate` | `rules::discrete::fractal` operator `mandelbrot_iterate` (tests rules::discrete::fractal::tests) | done |
+| `orbit` | `rules::discrete::fractal` operator `mandelbrot_orbit` (tests rules::discrete::fractal::tests) | done |
+| `fixed_points` | `rules::discrete::fractal` operator `mandelbrot_fixed_points` (tests rules::discrete::fractal::tests) | done |
+| `stability_index` | `rules::discrete::fractal` operator `mandelbrot_stability` (tests rules::discrete::fractal::tests) | done |
+| `find_fixed_points` | `rules::discrete::fractal` operator `map_fixed_points` (and `complex_map_fixed_points`) (tests rules::discrete::fractal::tests) | done |
+| `analyze_stability` | `rules::discrete::fractal` operator `map_stability` (and `complex_map_stability`) (tests rules::discrete::fractal::tests) | done |
+| `lyapunov_exponent` | `rules::discrete::fractal` operator `lyapunov_exponent` (tests rules::discrete::fractal::tests) | done |
+| `lorenz_system` | `rules::discrete::fractal` operator `lorenz` (tests rules::discrete::fractal::tests) | done |
 
 ## `src/symbolic/functional_analysis.rs` (13)
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` |  | pending |
-| `apply` |  | pending |
-| `inner_product` | `kernels::functional_analysis::inner_product` (discrete samples only, no symbolic integrals) | partial |
-| `inner_product_internal` | `kernels::functional_analysis::inner_product` (discrete samples only, no symbolic integrals) | partial |
-| `norm` | `kernels::functional_analysis::{l1_norm,l2_norm,infinity_norm}` (discrete samples; no general L^p) | partial |
-| `norm_internal` | `kernels::functional_analysis::{l1_norm,l2_norm,infinity_norm}` (discrete samples; no general L^p) | partial |
-| `banach_norm` | `kernels::functional_analysis::{l1_norm,l2_norm,infinity_norm}` (discrete samples; no general L^p) | partial |
-| `banach_norm_internal` | `kernels::functional_analysis::{l1_norm,l2_norm,infinity_norm}` (discrete samples; no general L^p) | partial |
-| `are_orthogonal` |  | pending |
-| `project` | `kernels::functional_analysis::project` (discrete samples) | partial |
-| `project_internal` | `kernels::functional_analysis::project` (discrete samples) | partial |
-| `gram_schmidt` | `kernels::functional_analysis::gram_schmidt` (discrete samples) | partial |
-| `gram_schmidt_orthonormal` | `kernels::functional_analysis::gram_schmidt_orthonormal` (discrete samples) | partial |
+| `new` | function spaces are the trailing `x, a, b` arguments of `rules::functional` `inner_product`/`l2_norm`/`lp_norm` (Hilbert and Banach space structs have no term form); operators are built from `op_mul`, `op_d`, `op_int`, ... | done |
+| `apply` | `rules::functional` operator `op_apply` (tests rules::functional::tests) | done |
+| `inner_product` | `rules::functional` operator `inner_product(f, g, x, a, b)` (tests rules::functional::tests) (discrete samples: kernels::functional_analysis::inner_product) | done |
+| `inner_product_internal` | `rules::functional` operator `inner_product(f, g, x, a, b)` (tests rules::functional::tests) (discrete samples: kernels::functional_analysis::inner_product) | done |
+| `norm` | `rules::functional` operator `l2_norm` (tests rules::functional::tests) and `lp_norm` (discrete samples: kernels::functional_analysis::{l1_norm,l2_norm,infinity_norm}) | done |
+| `norm_internal` | `rules::functional` operator `l2_norm` (tests rules::functional::tests) and `lp_norm` (discrete samples: kernels::functional_analysis::{l1_norm,l2_norm,infinity_norm}) | done |
+| `banach_norm` | `rules::functional` operator `lp_norm(f, p, x, a, b)` (tests rules::functional::tests) | done |
+| `banach_norm_internal` | `rules::functional` operator `lp_norm(f, p, x, a, b)` (tests rules::functional::tests) | done |
+| `are_orthogonal` | `rules::functional` operator `are_orthogonal` (tests rules::functional::tests) | done |
+| `project` | `rules::functional` operator `project_onto` (tests rules::functional::tests) (discrete samples: kernels::functional_analysis::project) | done |
+| `project_internal` | `rules::functional` operator `project_onto` (tests rules::functional::tests) (discrete samples: kernels::functional_analysis::project) | done |
+| `gram_schmidt` | `rules::functional` operator `gram_schmidt` (tests rules::functional::tests) (discrete samples: kernels::functional_analysis::gram_schmidt) | done |
+| `gram_schmidt_orthonormal` | `rules::functional` operator `gram_schmidt_orthonormal` (tests rules::functional::tests) (discrete samples: kernels::functional_analysis::gram_schmidt_orthonormal) | done |
 
 ## `src/symbolic/geometric_algebra.rs` (11)
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` | `Multivector3D` fields (numeric G3 only) | partial |
-| `scalar` | `Multivector3D` fields (numeric G3 only) | partial |
-| `vector` | `Multivector3D` fields (numeric G3 only) | partial |
-| `geometric_product` | `kernels::geometric_algebra::Multivector3D` `Mul` (numeric G3 only) | partial |
-| `grade_projection` |  | pending |
-| `outer_product` | `Multivector3D::wedge` (numeric G3 only) | partial |
-| `inner_product` | `Multivector3D::dot` (numeric G3 only) | partial |
-| `reverse` | `Multivector3D::reverse` (numeric G3 only) | partial |
-| `magnitude` | `Multivector3D::norm` (numeric G3 only) | partial |
-| `dual` |  | pending |
-| `normalize` |  | pending |
+| `new` | `rules::geometric_algebra` operator `mv` (tests rules::geometric_algebra::tests) (any signature, symbolic coefficients) | done |
+| `scalar` | `rules::geometric_algebra` operator `mv_scalar` (tests rules::geometric_algebra::tests) | done |
+| `vector` | `rules::geometric_algebra` operator `mv_vector` (tests rules::geometric_algebra::tests) | done |
+| `geometric_product` | `rules::geometric_algebra` operator `ga_gp` (tests rules::geometric_algebra::tests) | done |
+| `grade_projection` | `rules::geometric_algebra` operator `ga_grade` (tests rules::geometric_algebra::tests) | done |
+| `outer_product` | `rules::geometric_algebra` operator `ga_wedge` (tests rules::geometric_algebra::tests) | done |
+| `inner_product` | `rules::geometric_algebra` operator `ga_inner` (tests rules::geometric_algebra::tests) | done |
+| `reverse` | `rules::geometric_algebra` operator `ga_reverse` (tests rules::geometric_algebra::tests) | done |
+| `magnitude` | `rules::geometric_algebra` operator `ga_norm` (tests rules::geometric_algebra::tests) | done |
+| `dual` | `rules::geometric_algebra` operator `ga_dual` (tests rules::geometric_algebra::tests) | done |
+| `normalize` | `rules::geometric_algebra` operator `ga_normalize` (tests rules::geometric_algebra::tests) | done |
 
 ## `src/symbolic/graph.rs` (15)
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` |  | pending |
-| `nodes` |  | pending |
-| `node_count` |  | pending |
-| `is_directed` |  | pending |
-| `add_node` |  | pending |
-| `add_edge` |  | pending |
-| `get_node_id` |  | pending |
-| `neighbors` |  | pending |
-| `out_degree` |  | pending |
-| `in_degree` |  | pending |
-| `get_edges` |  | pending |
-| `add_hyperedge` |  | pending |
-| `to_adjacency_matrix` |  | pending |
-| `to_incidence_matrix` |  | pending |
-| `to_laplacian_matrix` |  | pending |
+| `new` | `rules::discrete::graphs` operator `graph` / `digraph` (terms `graph(n, edges)`) (tests rules::discrete::graphs::tests) | done |
+| `nodes` | `rules::discrete::graphs` operator `graph_nodes` (tests rules::discrete::graphs::tests) | done |
+| `node_count` | `rules::discrete::graphs` operator `graph_node_count` (tests rules::discrete::graphs::tests) | done |
+| `is_directed` | `rules::discrete::graphs` operator `graph_is_directed` (tests rules::discrete::graphs::tests) | done |
+| `add_node` | `rules::discrete::graphs` operator `graph_add_node` (tests rules::discrete::graphs::tests) | done |
+| `add_edge` | `rules::discrete::graphs` operator `graph_add_edge` (tests rules::discrete::graphs::tests) | done |
+| `get_node_id` | `rules::discrete::graphs` operator `graph_node_id` (tests rules::discrete::graphs::tests) | done |
+| `neighbors` | `rules::discrete::graphs` operator `graph_neighbors` (tests rules::discrete::graphs::tests) | done |
+| `out_degree` | `rules::discrete::graphs` operator `graph_out_degree` (tests rules::discrete::graphs::tests) | done |
+| `in_degree` | `rules::discrete::graphs` operator `graph_in_degree` (tests rules::discrete::graphs::tests) | done |
+| `get_edges` | `rules::discrete::graphs` operator `graph_edges` (tests rules::discrete::graphs::tests) | done |
+| `add_hyperedge` | `rules::discrete::graphs` operator `graph_add_hyperedge` (tests rules::discrete::graphs::tests) | done |
+| `to_adjacency_matrix` | `rules::discrete::graphs` operator `graph_adjacency` (tests rules::discrete::graphs::tests) | done |
+| `to_incidence_matrix` | `rules::discrete::graphs` operator `graph_incidence` (tests rules::discrete::graphs::tests) | done |
+| `to_laplacian_matrix` | `rules::discrete::graphs` operator `graph_laplacian` (tests rules::discrete::graphs::tests) | done |
 
 ## `src/symbolic/graph_algorithms.rs` (26)
 
 | legacy function | new home | status |
 |---|---|---|
-| `dfs` |  | pending |
-| `bfs` |  | pending |
-| `connected_components` |  | pending |
-| `is_connected` |  | pending |
-| `strongly_connected_components` |  | pending |
-| `has_cycle` |  | pending |
-| `find_bridges_and_articulation_points` |  | pending |
-| `kruskal_mst` |  | pending |
-| `edmonds_karp_max_flow` |  | pending |
-| `dinic_max_flow` |  | pending |
-| `bellman_ford` |  | pending |
-| `min_cost_max_flow` |  | pending |
-| `is_bipartite` |  | pending |
-| `bipartite_maximum_matching` |  | pending |
-| `prim_mst` |  | pending |
-| `topological_sort_kahn` |  | pending |
-| `topological_sort_dfs` |  | pending |
-| `topological_sort` |  | pending |
-| `bipartite_minimum_vertex_cover` |  | pending |
-| `hopcroft_karp_bipartite_matching` |  | pending |
-| `blossom_algorithm` |  | pending |
-| `shortest_path_unweighted` |  | pending |
-| `dijkstra` |  | pending |
-| `floyd_warshall` |  | pending |
-| `spectral_analysis` |  | pending |
-| `algebraic_connectivity` |  | pending |
+| `dfs` | `rules::discrete::graphs` operator `graph_dfs` (tests rules::discrete::graphs::tests) | done |
+| `bfs` | `rules::discrete::graphs` operator `graph_bfs` (tests rules::discrete::graphs::tests) | done |
+| `connected_components` | `rules::discrete::graphs` operator `graph_components` (tests rules::discrete::graphs::tests) | done |
+| `is_connected` | `rules::discrete::graphs` operator `graph_is_connected` (tests rules::discrete::graphs::tests) | done |
+| `strongly_connected_components` | `rules::discrete::graphs` operator `graph_scc` (tests rules::discrete::graphs::tests) | done |
+| `has_cycle` | `rules::discrete::graphs` operator `graph_has_cycle` (tests rules::discrete::graphs::tests) | done |
+| `find_bridges_and_articulation_points` | `rules::discrete::graphs` operator `graph_bridges` (tests rules::discrete::graphs::tests) | done |
+| `kruskal_mst` | `rules::discrete::graphs` operator `graph_kruskal` (tests rules::discrete::graphs::tests) | done |
+| `edmonds_karp_max_flow` | `rules::discrete::graphs` operator `graph_edmonds_karp` (tests rules::discrete::graphs::tests) | done |
+| `dinic_max_flow` | `rules::discrete::graphs` operator `graph_dinic` (tests rules::discrete::graphs::tests) | done |
+| `bellman_ford` | `rules::discrete::graphs` operator `graph_bellman_ford` (tests rules::discrete::graphs::tests) | done |
+| `min_cost_max_flow` | `rules::discrete::graphs` operator `graph_min_cost_flow` (tests rules::discrete::graphs::tests) | done |
+| `is_bipartite` | `rules::discrete::graphs` operator `graph_is_bipartite` (tests rules::discrete::graphs::tests) | done |
+| `bipartite_maximum_matching` | `rules::discrete::graphs` operator `graph_bipartite_matching` (tests rules::discrete::graphs::tests) | done |
+| `prim_mst` | `rules::discrete::graphs` operator `graph_prim` (tests rules::discrete::graphs::tests) | done |
+| `topological_sort_kahn` | `rules::discrete::graphs` operator `graph_toposort_kahn` (tests rules::discrete::graphs::tests) | done |
+| `topological_sort_dfs` | `rules::discrete::graphs` operator `graph_toposort_dfs` (tests rules::discrete::graphs::tests) | done |
+| `topological_sort` | `rules::discrete::graphs` operator `graph_toposort` (tests rules::discrete::graphs::tests) | done |
+| `bipartite_minimum_vertex_cover` | `rules::discrete::graphs` operator `graph_vertex_cover` (tests rules::discrete::graphs::tests) | done |
+| `hopcroft_karp_bipartite_matching` | `rules::discrete::graphs` operator `graph_hopcroft_karp` (tests rules::discrete::graphs::tests) | done |
+| `blossom_algorithm` | `rules::discrete::graphs` operator `graph_blossom` (tests rules::discrete::graphs::tests) | done |
+| `shortest_path_unweighted` | `rules::discrete::graphs` operator `graph_shortest_path_unweighted` (tests rules::discrete::graphs::tests) | done |
+| `dijkstra` | `rules::discrete::graphs` operator `graph_dijkstra` (tests rules::discrete::graphs::tests) | done |
+| `floyd_warshall` | `rules::discrete::graphs` operator `graph_floyd_warshall` (tests rules::discrete::graphs::tests) | done |
+| `spectral_analysis` | `rules::discrete::graphs` operator `spectral_analysis` (tests rules::discrete::graphs::tests) | done |
+| `algebraic_connectivity` | `rules::discrete::graphs` operator `algebraic_connectivity` (tests rules::discrete::graphs::tests) | done |
 
 ## `src/symbolic/graph_isomorphism_and_coloring.rs` (3)
 
 | legacy function | new home | status |
 |---|---|---|
-| `are_isomorphic_heuristic` |  | pending |
-| `greedy_coloring` |  | pending |
-| `chromatic_number_exact` |  | pending |
+| `are_isomorphic_heuristic` | `rules::discrete::graphs` operator `graph_isomorphic_heuristic` (tests rules::discrete::graphs::tests) | done |
+| `greedy_coloring` | `rules::discrete::graphs` operator `graph_greedy_coloring` (tests rules::discrete::graphs::tests) | done |
+| `chromatic_number_exact` | `rules::discrete::graphs` operator `graph_chromatic_number` (tests rules::discrete::graphs::tests) | done |
 
 ## `src/symbolic/graph_operations.rs` (8)
 
 | legacy function | new home | status |
 |---|---|---|
-| `induced_subgraph` |  | pending |
-| `union` |  | pending |
-| `intersection` |  | pending |
-| `cartesian_product` |  | pending |
-| `tensor_product` |  | pending |
-| `complement` |  | pending |
-| `disjoint_union` |  | pending |
-| `join` |  | pending |
+| `induced_subgraph` | `rules::discrete::graphs` operator `induced_subgraph` (tests rules::discrete::graphs::tests) | done |
+| `union` | `rules::discrete::graphs` operator `graph_union` (tests rules::discrete::graphs::tests) | done |
+| `intersection` | `rules::discrete::graphs` operator `graph_intersection` (tests rules::discrete::graphs::tests) | done |
+| `cartesian_product` | `rules::discrete::graphs` operator `graph_cartesian` (tests rules::discrete::graphs::tests) | done |
+| `tensor_product` | `rules::discrete::graphs` operator `graph_tensor` (tests rules::discrete::graphs::tests) | done |
+| `complement` | `rules::discrete::graphs` operator `graph_complement` (tests rules::discrete::graphs::tests) | done |
+| `disjoint_union` | `rules::discrete::graphs` operator `graph_disjoint_union` (tests rules::discrete::graphs::tests) | done |
+| `join` | `rules::discrete::graphs` operator `graph_join` (tests rules::discrete::graphs::tests) | done |
 
 ## `src/symbolic/grobner.rs` (4)
 
@@ -1706,15 +1723,15 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` |  | pending |
-| `multiply` |  | pending |
-| `inverse` |  | pending |
-| `is_abelian` |  | pending |
-| `element_order` |  | pending |
-| `conjugacy_classes` |  | pending |
-| `center` |  | pending |
-| `is_valid` |  | pending |
-| `character` |  | pending |
+| `new` | `rules::discrete::groups` operator `group_from_table` (tests rules::discrete::groups::tests) | done |
+| `multiply` | `rules::discrete::groups` operator `group_mul` (tests rules::discrete::groups::tests) | done |
+| `inverse` | `rules::discrete::groups` operator `group_inverse` (tests rules::discrete::groups::tests) | done |
+| `is_abelian` | `rules::discrete::groups` operator `group_is_abelian` (tests rules::discrete::groups::tests) | done |
+| `element_order` | `rules::discrete::groups` operator `group_element_order` (tests rules::discrete::groups::tests) | done |
+| `conjugacy_classes` | `rules::discrete::groups` operator `group_conjugacy_classes` (tests rules::discrete::groups::tests) | done |
+| `center` | `rules::discrete::groups` operator `group_center` (tests rules::discrete::groups::tests) | done |
+| `is_valid` | `rules::discrete::groups` operator `group_is_valid` (tests rules::discrete::groups::tests) | done |
+| `character` | `rules::discrete::groups` operator `group_character` (tests rules::discrete::groups::tests) | done |
 
 ## `src/symbolic/handles.rs` (8)
 
@@ -1733,21 +1750,21 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` |  | pending |
-| `solve_neumann_series` |  | pending |
-| `solve_separable_kernel` |  | pending |
-| `solve_successive_approximations` |  | pending |
-| `solve_by_differentiation` |  | pending |
-| `solve_airfoil_equation` |  | pending |
-| `solve_airfoil_equation_internal` |  | pending |
+| `new` | `rules::functional` operator `fredholm_solve` (tests rules::functional::tests) (equation parameters are the arguments `f, lambda, K, x, t, a, b`) | done |
+| `solve_neumann_series` | `rules::functional` operator `fredholm_neumann` (tests rules::functional::tests) | done |
+| `solve_separable_kernel` | `rules::functional` operator `fredholm_separable` (tests rules::functional::tests) | done |
+| `solve_successive_approximations` | `rules::functional` operator `volterra_successive` (tests rules::functional::tests) | done |
+| `solve_by_differentiation` | `rules::functional` operator `volterra_to_ode` (tests rules::functional::tests) (with `volterra_solve`) | done |
+| `solve_airfoil_equation` | `rules::functional` operator `airfoil_equation` | partial (no test: `airfoil_equation` is defined but no test exercises it) |
+| `solve_airfoil_equation_internal` | `rules::functional` operator `airfoil_equation` | partial (no test: `airfoil_equation` is defined but no test exercises it) |
 
 ## `src/symbolic/integration.rs` (8)
 
 | legacy function | new home | status |
 |---|---|---|
 | `integrate_rational_function` | `rules::calculus` `integral` partial-fraction stage, exact over Q (test rational_functions) | done |
-| `risch_norman_integrate` | `rules::calculus` `integral` staged heuristics; no Risch-Norman undetermined-coefficients ansatz | partial |
-| `integrate_poly_exp` | `integral` by_parts stage handles polynomial*exp(ax) (test by_parts); no general exponential extension | partial |
+| `risch_norman_integrate` | `rules::calculus` `integral` staged heuristics (table, partial fractions, substitution, by parts, verified by differentiation); no Risch-Norman undetermined-coefficients ansatz | partial |
+| `integrate_poly_exp` | `integral` by_parts stage integrates polynomial*exp(a x) (test by_parts) and `erfi`/`erf` for Gaussians; no general exp-extension (towers `exp(g(x))` with polynomial-in-t coefficients, `g` non-linear) integrator | partial |
 | `poly_from_coeffs` | `poly::repr::Poly::from_univariate` | done |
 | `partial_fraction_integrate` | `rules::calculus` `integral` partial-fraction stage, exact over Q (test rational_functions) | done |
 | `hermite_integrate_rational` | `rules::calculus` `integral` partial-fraction stage, exact over Q (test rational_functions) | done |
@@ -1758,17 +1775,17 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `lie_bracket` |  | pending |
-| `lie_bracket_internal` |  | pending |
-| `exponential_map` |  | pending |
-| `adjoint_representation_group` |  | pending |
-| `adjoint_representation_algebra` |  | pending |
-| `commutator_table` |  | pending |
-| `check_jacobi_identity` |  | pending |
-| `so3_generators` |  | pending |
-| `so3` |  | pending |
-| `su2_generators` |  | pending |
-| `su2` |  | pending |
+| `lie_bracket` | `rules::lie` operator `lie_bracket` (tests rules::lie::tests) | done |
+| `lie_bracket_internal` | `rules::lie` operator `lie_bracket` (tests rules::lie::tests) | done |
+| `exponential_map` | `rules::lie` operator `exp_map` (tests rules::lie::tests) | done |
+| `adjoint_representation_group` | `rules::lie` operator `adjoint_group` (tests rules::lie::tests) | done |
+| `adjoint_representation_algebra` | `rules::lie` operator `adjoint_rep` (tests rules::lie::tests) | done |
+| `commutator_table` | `rules::lie` operator `commutator_table` (tests rules::lie::tests) | done |
+| `check_jacobi_identity` | `rules::lie` operator `check_jacobi` (tests rules::lie::tests) | done |
+| `so3_generators` | `rules::lie` operator `so3_basis` (tests rules::lie::tests) | done |
+| `so3` | `rules::lie` operator `so3_basis` (tests rules::lie::tests) (the algebra is `so3_basis()` with `structure_constants`/`killing_form`) | done |
+| `su2_generators` | `rules::lie` operator `su2_basis` (tests rules::lie::tests) with `-i sigma/2` convention (legacy `+i sigma/2` flipped the sign of the structure constants) | done |
+| `su2` | `rules::lie` operator `su2_basis` (tests rules::lie::tests) (the algebra is `su2_basis()` with `structure_constants`/`killing_form`) | done |
 
 ## `src/symbolic/logic.rs` (6)
 
@@ -1812,7 +1829,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `null_space` | `rules::linalg` `nullspace` | done |
 | `null_space_internal` | `rules::linalg` `nullspace` | done |
 | `eigen_decomposition` | `rules::linalg` `eigenvals`, `eigenvects` (closed-form roots only) | done |
-| `svd_decomposition` | `rules::linalg` `svd` (numeric, faer) | partial |
+| `svd_decomposition` | `rules::linalg` `svd` (numeric, faer); no exact symbolic SVD | partial |
 | `rank` | `rules::linalg` `rank` | done |
 | `gaussian_elimination` | `rules::linalg` `rref` | done |
 | `is_zero_matrix` | `rules::linalg` `rank(A) = 0` | done |
@@ -1859,7 +1876,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | legacy function | new home | status |
 |---|---|---|
 | `evaluate_numerical` | `Term::eval` / `Answer::as_f64` (api.rs; test derivatives_agree_across_phases) | done |
-| `evaluate_complex` |  | pending |
+| `evaluate_complex` | `rules::complex::eval_complex` / `Graph::eval_complex` (complex evaluation of terms; test rules::complex::tests) | done |
 
 ## `src/symbolic/ode.rs` (22)
 
@@ -1867,8 +1884,8 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 |---|---|---|
 | `solve_ode` | `rules::ode` `dsolve` (tests first_order_linear_and_separable ... cauchy_euler) | done |
 | `solve_ode_internal` | `rules::ode` `dsolve` (tests first_order_linear_and_separable ... cauchy_euler) | done |
-| `solve_ode_system` | `rules::ode` `odeint` (numeric systems only; no symbolic system solver) | partial |
-| `solve_ode_system_internal` | `rules::ode` `odeint` (numeric systems only; no symbolic system solver) | partial |
+| `solve_ode_system` | `rules::ode` `odeint` (numeric systems only); `dsolve` takes a single equation: no symbolic solver for linear/first-order systems | partial |
+| `solve_ode_system_internal` | `rules::ode` `odeint` (numeric systems only); `dsolve` takes a single equation: no symbolic solver for linear/first-order systems | partial |
 | `solve_separable_ode` | `rules::ode` `dsolve` (test first_order_linear_and_separable) | done |
 | `solve_separable_ode_internal` | `rules::ode` `dsolve` (test first_order_linear_and_separable) | done |
 | `solve_first_order_linear_ode` | `rules::ode` `dsolve` (test first_order_linear_and_separable) | done |
@@ -1885,75 +1902,75 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `solve_exact_ode_internal` | `rules::ode` `dsolve` (test bernoulli_riccati_homogeneous_exact) | done |
 | `solve_ode_by_series` |  | pending |
 | `solve_ode_by_series_internal` |  | pending |
-| `solve_ode_by_fourier` |  | pending |
-| `solve_ode_by_fourier_internal` |  | pending |
+| `solve_ode_by_fourier` | needs the Fourier derivative theorem (transforms branch) to turn the ODE into an algebraic equation | pending |
+| `solve_ode_by_fourier_internal` | needs the Fourier derivative theorem (transforms branch) to turn the ODE into an algebraic equation | pending |
 
 ## `src/symbolic/optimize.rs` (4)
 
 | legacy function | new home | status |
 |---|---|---|
-| `find_extrema` |  | pending |
+| `find_extrema` | `rules::optimize` operator `find_extrema(f, vars)` (test rules::optimize::tests) | done |
 | `hessian_matrix` | `rules::linalg` `hessian` (test vector_calculus) | done |
 | `hessian_matrix_internal` | `rules::linalg` `hessian` (test vector_calculus) | done |
-| `find_constrained_extrema` |  | pending |
+| `find_constrained_extrema` | `rules::optimize` operator `find_constrained_extrema(f, constraints, vars)` (Lagrange multipliers; test rules::optimize::tests) | done |
 
 ## `src/symbolic/pde.rs` (37)
 
 | legacy function | new home | status |
 |---|---|---|
-| `solve_pde` |  | pending |
-| `solve_pde_internal` |  | pending |
-| `solve_pde_by_separation_of_variables` |  | pending |
-| `solve_pde_by_separation_of_variables_internal` |  | pending |
-| `classify_pde_heuristic` |  | pending |
-| `solve_pde_by_characteristics` |  | pending |
-| `solve_pde_by_characteristics_internal` |  | pending |
-| `solve_pde_by_greens_function` |  | pending |
-| `solve_pde_by_greens_function_internal` |  | pending |
-| `solve_second_order_pde` |  | pending |
-| `solve_second_order_pde_internal` |  | pending |
-| `solve_wave_equation_1d_dalembert` |  | pending |
-| `solve_wave_equation_1d_dalembert_internal` |  | pending |
-| `solve_heat_equation_1d` |  | pending |
-| `solve_heat_equation_1d_internal` |  | pending |
-| `solve_laplace_equation_2d` |  | pending |
-| `solve_laplace_equation_2d_internal` |  | pending |
-| `solve_wave_equation_3d` |  | pending |
-| `solve_wave_equation_3d_internal` |  | pending |
-| `solve_heat_equation_3d` |  | pending |
-| `solve_heat_equation_3d_internal` |  | pending |
-| `solve_laplace_equation_3d` |  | pending |
-| `solve_laplace_equation_3d_internal` |  | pending |
-| `solve_poisson_equation_2d` |  | pending |
-| `solve_poisson_equation_2d_internal` |  | pending |
-| `solve_poisson_equation_3d` |  | pending |
-| `solve_poisson_equation_3d_internal` |  | pending |
-| `solve_helmholtz_equation` |  | pending |
-| `solve_helmholtz_equation_internal` |  | pending |
-| `solve_schrodinger_equation` |  | pending |
-| `solve_schrodinger_equation_internal` |  | pending |
-| `solve_klein_gordon_equation` |  | pending |
-| `solve_klein_gordon_equation_internal` |  | pending |
-| `solve_burgers_equation` |  | pending |
-| `solve_burgers_equation_internal` |  | pending |
-| `solve_with_fourier_transform` |  | pending |
-| `solve_with_fourier_transform_internal` |  | pending |
+| `solve_pde` | `rules::pde` operator `solve_pde` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_pde_internal` | `rules::pde` operator `solve_pde` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_pde_by_separation_of_variables` | `rules::pde` operator `solve_pde_by_separation_of_variables` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_pde_by_separation_of_variables_internal` | `rules::pde` operator `solve_pde_by_separation_of_variables` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `classify_pde_heuristic` | `rules::pde` operator `pde_classify` (test rules::pde::tests) | done |
+| `solve_pde_by_characteristics` | `rules::pde` operator `solve_pde_by_characteristics` (test rules::pde::tests) | done |
+| `solve_pde_by_characteristics_internal` | `rules::pde` operator `solve_pde_by_characteristics` (test rules::pde::tests) | done |
+| `solve_pde_by_greens_function` | `rules::pde` operator `solve_pde_by_greens_function` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_pde_by_greens_function_internal` | `rules::pde` operator `solve_pde_by_greens_function` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_second_order_pde` | `rules::pde` operator `solve_second_order_pde` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_second_order_pde_internal` | `rules::pde` operator `solve_second_order_pde` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_wave_equation_1d_dalembert` | `rules::pde` operator `solve_wave_equation_1d_dalembert` (test rules::pde::tests) | done |
+| `solve_wave_equation_1d_dalembert_internal` | `rules::pde` operator `solve_wave_equation_1d_dalembert` (test rules::pde::tests) | done |
+| `solve_heat_equation_1d` | `rules::pde` operator `solve_heat_equation_1d` (test rules::pde::tests) | done |
+| `solve_heat_equation_1d_internal` | `rules::pde` operator `solve_heat_equation_1d` (test rules::pde::tests) | done |
+| `solve_laplace_equation_2d` | `rules::pde` operator `solve_laplace_equation_2d` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_laplace_equation_2d_internal` | `rules::pde` operator `solve_laplace_equation_2d` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_wave_equation_3d` | `rules::pde` operator `solve_wave_equation_3d` (test rules::pde::tests) | done |
+| `solve_wave_equation_3d_internal` | `rules::pde` operator `solve_wave_equation_3d` (test rules::pde::tests) | done |
+| `solve_heat_equation_3d` | `rules::pde` operator `solve_heat_equation_3d` (test rules::pde::tests) | done |
+| `solve_heat_equation_3d_internal` | `rules::pde` operator `solve_heat_equation_3d` (test rules::pde::tests) | done |
+| `solve_laplace_equation_3d` | `rules::pde` operator `solve_laplace_equation_3d` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_laplace_equation_3d_internal` | `rules::pde` operator `solve_laplace_equation_3d` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_poisson_equation_2d` | `rules::pde` operator `solve_poisson_equation_2d` (test rules::pde::tests) | done |
+| `solve_poisson_equation_2d_internal` | `rules::pde` operator `solve_poisson_equation_2d` (test rules::pde::tests) | done |
+| `solve_poisson_equation_3d` | `rules::pde` operator `solve_poisson_equation_3d` (test rules::pde::tests) | done |
+| `solve_poisson_equation_3d_internal` | `rules::pde` operator `solve_poisson_equation_3d` (test rules::pde::tests) | done |
+| `solve_helmholtz_equation` | `rules::pde` operator `solve_helmholtz_equation` (test rules::pde::tests) | done |
+| `solve_helmholtz_equation_internal` | `rules::pde` operator `solve_helmholtz_equation` (test rules::pde::tests) | done |
+| `solve_schrodinger_equation` | `rules::pde` operator `solve_schrodinger_equation` (test rules::pde::tests) | done |
+| `solve_schrodinger_equation_internal` | `rules::pde` operator `solve_schrodinger_equation` (test rules::pde::tests) | done |
+| `solve_klein_gordon_equation` | `rules::pde` operator `solve_klein_gordon_equation` (test rules::pde::tests) | done |
+| `solve_klein_gordon_equation_internal` | `rules::pde` operator `solve_klein_gordon_equation` (test rules::pde::tests) | done |
+| `solve_burgers_equation` | `rules::pde` operator `solve_burgers_equation` (test rules::pde::tests) | done |
+| `solve_burgers_equation_internal` | `rules::pde` operator `solve_burgers_equation` (test rules::pde::tests) | done |
+| `solve_with_fourier_transform` | `rules::pde` operator `solve_with_fourier_transform` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
+| `solve_with_fourier_transform_internal` | `rules::pde` operator `solve_with_fourier_transform` (exercised through the method dispatch of `pdsolve`, test rules::pde::tests) | done |
 
 ## `src/symbolic/poly_factorization.rs` (11)
 
 | legacy function | new home | status |
 |---|---|---|
-| `factor_gf` | private GF(p) helper inside `rules::poly::univariate`, reachable only through `factor` over Q; no public GF(p) API | partial |
-| `poly_derivative_gf` | private GF(p) helper inside `rules::poly::univariate`, reachable only through `factor` over Q; no public GF(p) API | partial |
-| `square_free_factorization_gf` |  | pending |
-| `berlekamp_factorization` |  | pending |
+| `factor_gf` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
+| `poly_derivative_gf` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
+| `square_free_factorization_gf` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
+| `berlekamp_factorization` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
 | `berlekamp_zassenhaus` | `rules::poly::univariate::factor` (Berlekamp-Zassenhaus over Q; tests known_factorisations, factorisation_reproduces_the_input) | done |
-| `cantor_zassenhaus` | private GF(p) helper inside `rules::poly::univariate`, reachable only through `factor` over Q; no public GF(p) API | partial |
-| `distinct_degree_factorization` | private GF(p) helper inside `rules::poly::univariate`, reachable only through `factor` over Q; no public GF(p) API | partial |
-| `poly_gcd_gf` | private GF(p) helper inside `rules::poly::univariate`, reachable only through `factor` over Q; no public GF(p) API | partial |
-| `poly_pow_mod` | private GF(p) helper inside `rules::poly::univariate`, reachable only through `factor` over Q; no public GF(p) API | partial |
-| `poly_mul_scalar` | private GF(p) helper inside `rules::poly::univariate`, reachable only through `factor` over Q; no public GF(p) API | partial |
-| `poly_extended_gcd` | private GF(p) helper inside `rules::poly::univariate`, reachable only through `factor` over Q; no public GF(p) API | partial |
+| `cantor_zassenhaus` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
+| `distinct_degree_factorization` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
+| `poly_gcd_gf` | `rules::discrete::finite_field` operator `gfp_gcd(f, g, p)` (tests rules::discrete::finite_field::tests) | done |
+| `poly_pow_mod` | `rules::discrete::finite_field` operator `gfx_pow(a, e, m, p)` (tests rules::discrete::finite_field::tests) (power modulo the polynomial `m` over GF(p)) | done |
+| `poly_mul_scalar` | `rules::discrete::finite_field` operator `gfp_mul(f, list(c), p)` (tests rules::discrete::finite_field::tests) (scalar as a constant polynomial) | done |
+| `poly_extended_gcd` | `rules::discrete::finite_field` operator `gfp_egcd(f, g, p)` (tests rules::discrete::finite_field::tests) | done |
 
 ## `src/symbolic/polynomial.rs` (24)
 
@@ -1976,7 +1993,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `poly_mul_scalar_expr` | `poly::repr::Poly::{add,mul,scale}` (test arithmetic_laws) | done |
 | `gcd` | `rules::poly` `pgcd` (test division_and_gcd) | done |
 | `degree` | `rules::poly` `degree` (test degree_and_coefficients; stays unreduced for non-polynomials) | done |
-| `leading_term` | `poly::repr::Poly::terms` ordered by monomial (no dedicated accessor) | partial |
+| `leading_term` | `rules::poly::algebra` operator `leading_term(p, vars[, order])` (tests rules::poly::algebra::tests) | done |
 | `long_division` | `rules::poly` `quo`/`rem` and `univariate::divrem` (test division_and_gcd) | done |
 | `get_coeffs_as_vec` | `poly::repr::Poly::univariate_in` (test univariate_views) | done |
 | `get_coeff_for_power` | `rules::poly` `coeff` (test degree_and_coefficients) | done |
@@ -1988,52 +2005,52 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `verify_equation_solution` |  | pending |
-| `verify_indefinite_integral` |  | pending |
-| `verify_definite_integral` |  | pending |
-| `verify_ode_solution` |  | pending |
-| `verify_matrix_inverse` |  | pending |
-| `verify_derivative` |  | pending |
-| `verify_limit` |  | pending |
+| `verify_equation_solution` | `rules::verify` operator `verify_solution` (tests rules::verify::tests) | done |
+| `verify_indefinite_integral` | `rules::verify` operator `verify_integral` (tests rules::verify::tests) | done |
+| `verify_definite_integral` | `rules::verify` operator `verify_definite_integral` (tests rules::verify::tests) | done |
+| `verify_ode_solution` | `rules::verify` operator `verify_ode_solution` (tests rules::verify::tests) | done |
+| `verify_matrix_inverse` | `rules::verify` operator `verify_inverse` (tests rules::verify::tests) | done |
+| `verify_derivative` | `rules::verify` operator `verify_derivative` (tests rules::verify::tests) | done |
+| `verify_limit` | `rules::verify` operator `verify_limit` (tests rules::verify::tests) | done |
 
 ## `src/symbolic/quantum_field_theory.rs` (8)
 
 | legacy function | new home | status |
 |---|---|---|
-| `dirac_adjoint` |  | pending |
-| `feynman_slash` |  | pending |
-| `scalar_field_lagrangian` |  | pending |
-| `qed_lagrangian` |  | pending |
-| `qcd_lagrangian` |  | pending |
-| `propagator` |  | pending |
-| `scattering_cross_section` |  | pending |
-| `feynman_propagator_position_space` |  | pending |
+| `dirac_adjoint` | `rules::physics` operator `dirac_adjoint` (test rules::physics::tests) | done |
+| `feynman_slash` | `rules::physics` operator `feynman_slash` (test rules::physics::tests) | done |
+| `scalar_field_lagrangian` | `rules::physics` operator `scalar_field_lagrangian` (test rules::physics::tests) | done |
+| `qed_lagrangian` | `rules::physics` operator `qed_lagrangian` | partial (no test: `qed_lagrangian` is defined but no test exercises it) |
+| `qcd_lagrangian` | `rules::physics` operator `qcd_lagrangian` | partial (no test: `qcd_lagrangian` is defined but no test exercises it) |
+| `propagator` | `rules::physics` operator `propagator` | partial (no test: `propagator` is defined but no test exercises it) |
+| `scattering_cross_section` | `rules::physics` operator `scattering_cross_section` | partial (no test: `scattering_cross_section` is defined but no test exercises it) |
+| `feynman_propagator_position_space` | `rules::physics` operator `feynman_propagator_position_space` | partial (no test: `feynman_propagator_position_space` is defined but no test exercises it) |
 
 ## `src/symbolic/quantum_mechanics.rs` (21)
 
 | legacy function | new home | status |
 |---|---|---|
-| `bra_ket` |  | pending |
-| `bra_ket_internal` |  | pending |
-| `new` |  | pending |
-| `apply` |  | pending |
-| `commutator` |  | pending |
-| `commutator_internal` |  | pending |
-| `expectation_value` |  | pending |
-| `expectation_value_internal` |  | pending |
-| `uncertainty` |  | pending |
-| `probability_density` |  | pending |
-| `hamiltonian_free_particle` |  | pending |
-| `hamiltonian_harmonic_oscillator` |  | pending |
-| `angular_momentum_z` |  | pending |
-| `pauli_matrices` |  | pending |
-| `spin_operator` |  | pending |
-| `solve_time_independent_schrodinger` |  | pending |
-| `time_dependent_schrodinger_equation` |  | pending |
-| `dirac_equation` |  | pending |
-| `klein_gordon_equation` |  | pending |
-| `first_order_energy_correction` |  | pending |
-| `scattering_amplitude` |  | pending |
+| `bra_ket` | `rules::physics` operator `braket` (test rules::physics::tests) | done |
+| `bra_ket_internal` | `rules::physics` operator `braket_on` | partial (no test: `braket_on` is defined but no test exercises it) |
+| `new` | `rules::physics` operator `op_mul` (with `op_d`, `op_add`, `op_compose`, ... from rules::functional) (test rules::physics::tests) | done |
+| `apply` | `rules::physics` operator `qm_apply` (test rules::physics::tests) | done |
+| `commutator` | `rules::physics` operator `commutator` (test rules::physics::tests) | done |
+| `commutator_internal` | `rules::physics` operator `commutator` (test rules::physics::tests) | done |
+| `expectation_value` | `rules::physics` operator `expectation_value` (test rules::physics::tests) | done |
+| `expectation_value_internal` | `rules::physics` operator `expectation_value` (test rules::physics::tests) | done |
+| `uncertainty` | `rules::physics` operator `uncertainty` (test rules::physics::tests) | done |
+| `probability_density` | `rules::physics` operator `probability_density` (test rules::physics::tests) | done |
+| `hamiltonian_free_particle` | `rules::physics` operator `hamiltonian_free_particle` | partial (no test: `hamiltonian_free_particle` is defined but no test exercises it) |
+| `hamiltonian_harmonic_oscillator` | `rules::physics` operator `hamiltonian_harmonic_oscillator` (test rules::physics::tests) | done |
+| `angular_momentum_z` | `rules::physics` operator `angular_momentum_z` | partial (no test: `angular_momentum_z` is defined but no test exercises it) |
+| `pauli_matrices` | `rules::physics` operator `pauli_matrices` | partial (no test: `pauli_matrices` is defined but no test exercises it) |
+| `spin_operator` | `rules::physics` operator `spin_operator` (test rules::physics::tests) | done |
+| `solve_time_independent_schrodinger` | `rules::physics` operator `solve_time_independent_schrodinger` | partial (no test: `solve_time_independent_schrodinger` is defined but no test exercises it) |
+| `time_dependent_schrodinger_equation` | `rules::physics` operator `time_dependent_schrodinger_equation` | partial (no test: `time_dependent_schrodinger_equation` is defined but no test exercises it) |
+| `dirac_equation` | `rules::physics` operator `dirac_equation` (test rules::physics::tests) | done |
+| `klein_gordon_equation` | `rules::physics` operator `klein_gordon_equation` (test rules::physics::tests) | done |
+| `first_order_energy_correction` | `rules::physics` operator `first_order_energy_correction` | partial (no test: `first_order_energy_correction` is defined but no test exercises it) |
+| `scattering_amplitude` | `rules::physics` operator `scattering_amplitude` | partial (no test: `scattering_amplitude` is defined but no test exercises it) |
 
 ## `src/symbolic/radicals.rs` (2)
 
@@ -2047,7 +2064,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | legacy function | new home | status |
 |---|---|---|
 | `sturm_sequence` | `kernels::real_roots::sturm_sequence` (tests/kernels/real_roots.rs) | done |
-| `count_real_roots_in_interval` | `kernels::real_roots::isolate_real_roots` returns intervals (count = length); no interval-count function | partial |
+| `count_real_roots_in_interval` | `rules::poly::algebra` operator `count_real_roots(p, x, a, b)` (tests rules::poly::algebra::tests) (Sturm sequences) | done |
 | `isolate_real_roots` | `kernels::real_roots::isolate_real_roots` (tests/kernels/real_roots.rs) | done |
 | `eval_expr` | Expr helper; `Term::eval` | dropped |
 
@@ -2055,16 +2072,16 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `lorentz_factor` | `sim::classical::lorentz_factor` (f64 only; test_lorentz_factor_high_speed) | partial |
-| `lorentz_transformation_x` |  | pending |
-| `velocity_addition` | `sim::classical::relativistic_velocity_addition` (f64 only) | partial |
-| `mass_energy_equivalence` | `sim::classical::mass_energy` (f64 only) | partial |
-| `relativistic_momentum` | `sim::classical::relativistic_momentum` (f64 only) | partial |
-| `doppler_effect` |  | pending |
-| `schwarzschild_radius` |  | pending |
-| `gravitational_time_dilation` |  | pending |
-| `einstein_tensor` |  | pending |
-| `geodesic_acceleration` |  | pending |
+| `lorentz_factor` | `rules::physics` operator `lorentz_factor` (test rules::physics::tests) | done |
+| `lorentz_transformation_x` | `rules::physics` operator `lorentz_transformation_x` (test rules::physics::tests) | done |
+| `velocity_addition` | `rules::physics` operator `velocity_addition` (test rules::physics::tests) | done |
+| `mass_energy_equivalence` | `rules::physics` operator `mass_energy_equivalence` (test rules::physics::tests) | done |
+| `relativistic_momentum` | `rules::physics` operator `relativistic_momentum` (test rules::physics::tests) | done |
+| `doppler_effect` | `rules::physics` operator `doppler_effect` | partial (no test: `doppler_effect` is defined but no test exercises it) |
+| `schwarzschild_radius` | `rules::physics` operator `schwarzschild_radius` (test rules::physics::tests) | done |
+| `gravitational_time_dilation` | `rules::physics` operator `gravitational_time_dilation` | partial (no test: `gravitational_time_dilation` is defined but no test exercises it) |
+| `einstein_tensor` | `rules::physics` operator `einstein_tensor_from` | partial (no test: `einstein_tensor_from` is defined but no test exercises it) |
+| `geodesic_acceleration` | `rules::physics` operator `geodesic_acceleration` (test rules::physics::tests) | done |
 | `lorentz_transformation` | legacy alias of lorentz_transformation_x | dropped |
 | `einstein_field_equations` | legacy placeholder, superseded by einstein_tensor | dropped |
 | `geodesic_equation` | legacy placeholder, superseded by geodesic_acceleration | dropped |
@@ -2073,8 +2090,8 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `apply_rules_to_normal_form` | `Session::with_rules` + `Engine` saturation (rules fixed at session build, not per call) | partial |
-| `knuth_bendix` |  | pending |
+| `apply_rules_to_normal_form` | `rules::rewriting` operator `rewrite_with(t, rules, vars)` (tests rules::rewriting::tests) | done |
+| `knuth_bendix` | `rules::rewriting` operator `knuth_bendix(equations, variables[, precedence])` (tests rules::rewriting::tests) | done |
 
 ## `src/symbolic/series.rs` (14)
 
@@ -2091,9 +2108,9 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `summation_internal` | `rules::calculus` `sum`/`product` (tests sums_and_products, numeric_sums) | done |
 | `product` | `rules::calculus` `sum`/`product` (tests sums_and_products, numeric_sums) | done |
 | `product_internal` | `rules::calculus` `sum`/`product` (tests sums_and_products, numeric_sums) | done |
-| `analyze_convergence` | `rules::calculus` `converges` (ratio test only) | partial |
-| `asymptotic_expansion` |  | pending |
-| `analytic_continuation` |  | pending |
+| `analyze_convergence` | `rules::calculus` operator `converges(term, k)` (divergence, ratio, root, alternating, limit-comparison and Cauchy-condensation tests; tests in rules::calculus::tests) | done |
+| `asymptotic_expansion` | `rules::calculus` definition `asymptotic(f, x, n) := laurent(f, x, oo, n)` (expansions at infinity; tests in rules::calculus::tests) | done |
+| `analytic_continuation` | `rules::complex::analysis` operator `continue_along(f, z, points, order)` (test rules::complex::analysis::tests) | done |
 
 ## `src/symbolic/simplify.rs` (9)
 
@@ -2121,19 +2138,19 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` |  | pending |
-| `volume` |  | pending |
-| `reciprocal_lattice_vectors` |  | pending |
-| `bloch_theorem` |  | pending |
-| `energy_band` |  | pending |
-| `density_of_states_3d` |  | pending |
-| `fermi_energy_3d` |  | pending |
-| `drude_conductivity` |  | pending |
-| `hall_coefficient` |  | pending |
-| `debye_frequency` |  | pending |
-| `einstein_heat_capacity` |  | pending |
-| `plasma_frequency` |  | pending |
-| `london_penetration_depth` |  | pending |
+| `new` | `rules::physics` operator `lattice_volume` (test rules::physics::tests) | done |
+| `volume` | `rules::physics` operator `lattice_volume` (test rules::physics::tests) | done |
+| `reciprocal_lattice_vectors` | `rules::physics` operator `reciprocal_lattice_vectors` (test rules::physics::tests) | done |
+| `bloch_theorem` | `rules::physics` operator `bloch_wave` | partial (no test: `bloch_wave` is defined but no test exercises it) |
+| `energy_band` | `rules::physics` operator `energy_band` (test rules::physics::tests) | done |
+| `density_of_states_3d` | `rules::physics` operator `density_of_states_3d` | partial (no test: `density_of_states_3d` is defined but no test exercises it) |
+| `fermi_energy_3d` | `rules::physics` operator `fermi_energy_3d` | partial (no test: `fermi_energy_3d` is defined but no test exercises it) |
+| `drude_conductivity` | `rules::physics` operator `drude_conductivity` | partial (no test: `drude_conductivity` is defined but no test exercises it) |
+| `hall_coefficient` | `rules::physics` operator `hall_coefficient` (test rules::physics::tests) | done |
+| `debye_frequency` | `rules::physics` operator `debye_frequency` | partial (no test: `debye_frequency` is defined but no test exercises it) |
+| `einstein_heat_capacity` | `rules::physics` operator `einstein_heat_capacity` (test rules::physics::tests) | done |
+| `plasma_frequency` | `rules::physics` operator `plasma_frequency` | partial (no test: `plasma_frequency` is defined but no test exercises it) |
+| `london_penetration_depth` | `rules::physics` operator `london_penetration_depth` | partial (no test: `london_penetration_depth` is defined but no test exercises it) |
 
 ## `src/symbolic/solve.rs` (9)
 
@@ -2162,7 +2179,7 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `erf_numerical` | `kernels::special::erf_numerical (test_erf)` | done |
 | `erfc_numerical` | `kernels::special::erfc_numerical (test_erfc)` | done |
 | `inverse_erf` | `kernels::special::inverse_erf_numerical (test_inverse_erf)` | done |
-| `inverse_erfc` |  | pending |
+| `inverse_erfc` | `rules::special` operator `erfcinv`, definition `inverse_erfc(x)` (tests rules::special::tests) | done |
 | `factorial` | `kernels::special::factorial (test_factorial)` | done |
 | `double_factorial` | `kernels::special::double_factorial (test_double_factorial)` | done |
 | `binomial` | `kernels::special::binomial (test_binomial)` | done |
@@ -2174,11 +2191,11 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `bessel_y1` | `kernels::special::bessel_y1 (bessel_y1_small_argument_reference_values)` | done |
 | `bessel_i0` | `kernels::special::bessel_i0 (test_bessel_i0)` | done |
 | `bessel_i1` | `kernels::special::bessel_i1 (modified_bessel_recurrence_and_edges)` | done |
-| `bessel_k0` |  | pending |
-| `bessel_k1` |  | pending |
+| `bessel_k0` | `rules::special` definition `bessel_k0(x) := besselk(0, x)` (tests rules::special::tests) | done |
+| `bessel_k1` | `rules::special` definition `bessel_k1(x) := besselk(1, x)` (tests rules::special::tests) | done |
 | `sinc` | `kernels::special::sinc (test_sinc)` | done |
 | `zeta` | `kernels::special::riemann_zeta (test_riemann_zeta)` | done |
-| `ln_factorial` |  | pending |
+| `ln_factorial` | `rules::special` definition `ln_factorial(n) := lgamma(n + 1)` (tests rules::special::tests) | done |
 | `regularized_gamma_p` | `kernels::special::regularized_lower_gamma (incomplete_gamma_closed_forms)` | done |
 | `regularized_gamma_q` | `kernels::special::regularized_upper_gamma (incomplete_gamma_closed_forms)` | done |
 
@@ -2190,28 +2207,28 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `ln_gamma` | `rules::special` `lgamma` (test gamma_family_values) | done |
 | `beta` | `rules::special` `beta` (test gamma_family_values) | done |
 | `digamma` | `rules::special` `digamma` (test gamma_family_values) | done |
-| `polygamma` | `kernels::special::polygamma_numerical` only; no `polygamma` operator | partial |
+| `polygamma` | `rules::special` operator `polygamma(n, x)` (exact at integers, `digamma` for n = 0, derivative rules) (tests rules::special::tests) | done |
 | `erf` | `rules::special` `erf`/`erfc` (test error_function_values) | done |
 | `erfc` | `rules::special` `erf`/`erfc` (test error_function_values) | done |
-| `erfi` |  | pending |
+| `erfi` | `rules::special` operator `erfi` (integral of exp(x^2) reduces to it) (tests rules::special::tests) | done |
 | `zeta` | `rules::special` `zeta` (test zeta_values) | done |
-| `bessel_j` | `rules::special` `besselj`/`bessely`/`besseli` (test bessel_values; integer orders 0 and 1 only) | partial |
-| `bessel_y` | `rules::special` `besselj`/`bessely`/`besseli` (test bessel_values; integer orders 0 and 1 only) | partial |
-| `bessel_i` | `rules::special` `besselj`/`bessely`/`besseli` (test bessel_values; integer orders 0 and 1 only) | partial |
-| `bessel_k` |  | pending |
+| `bessel_j` | `rules::special` operator `besselj(n, x)` (any order via kernels::special::bessel_j; half-integer closed forms) (tests rules::special::tests) | done |
+| `bessel_y` | `rules::special` operator `bessely(n, x)` (any order via kernels::special::bessel_y; half-integer closed forms) (tests rules::special::tests) | done |
+| `bessel_i` | `rules::special` operator `besseli(n, x)` (any order via kernels::special::bessel_i; half-integer closed forms) (tests rules::special::tests) | done |
+| `bessel_k` | `rules::special` operator `besselk(n, x)` (any order via kernels::special::bessel_k; half-integer closed forms) (tests rules::special::tests) | done |
 | `legendre_p` | `rules::special` `legendre`/`laguerre`/`hermite`/`chebyshevt`/`chebyshevu` (tests polynomials_of_any_degree_match_the_recurrence) | done |
 | `laguerre_l` | `rules::special` `legendre`/`laguerre`/`hermite`/`chebyshevt`/`chebyshevu` (tests polynomials_of_any_degree_match_the_recurrence) | done |
-| `generalized_laguerre` |  | pending |
+| `generalized_laguerre` | `rules::special` operator `laguerre_gen(n, alpha, x)` (tests rules::special::tests) | done |
 | `hermite_h` | `rules::special` `legendre`/`laguerre`/`hermite`/`chebyshevt`/`chebyshevu` (tests polynomials_of_any_degree_match_the_recurrence) | done |
 | `chebyshev_t` | `rules::special` `legendre`/`laguerre`/`hermite`/`chebyshevt`/`chebyshevu` (tests polynomials_of_any_degree_match_the_recurrence) | done |
 | `chebyshev_u` | `rules::special` `legendre`/`laguerre`/`hermite`/`chebyshevt`/`chebyshevu` (tests polynomials_of_any_degree_match_the_recurrence) | done |
-| `bessel_differential_equation` |  | pending |
-| `legendre_differential_equation` |  | pending |
-| `legendre_rodrigues_formula` |  | pending |
-| `laguerre_differential_equation` |  | pending |
-| `hermite_differential_equation` |  | pending |
-| `hermite_rodrigues_formula` |  | pending |
-| `chebyshev_differential_equation` |  | pending |
+| `bessel_differential_equation` | `rules::special` definition `bessel_differential_equation(y, x, n)` (tests rules::special::tests) | done |
+| `legendre_differential_equation` | `rules::special` definition `legendre_differential_equation(y, x, n)` | partial (no test: `legendre_differential_equation` is defined but no test exercises it) |
+| `legendre_rodrigues_formula` | `rules::special` definition `legendre_rodrigues(n, x)` (tests rules::special::tests) | done |
+| `laguerre_differential_equation` | `rules::special` definition `laguerre_differential_equation(y, x, n)` | partial (no test: `laguerre_differential_equation` is defined but no test exercises it) |
+| `hermite_differential_equation` | `rules::special` definition `hermite_differential_equation(y, x, n)` | partial (no test: `hermite_differential_equation` is defined but no test exercises it) |
+| `hermite_rodrigues_formula` | `rules::special` definition `hermite_rodrigues(n, x)` (tests rules::special::tests) | done |
+| `chebyshev_differential_equation` | `rules::special` definition `chebyshev_differential_equation(y, x, n)` | partial (no test: `chebyshev_differential_equation` is defined but no test exercises it) |
 
 ## `src/symbolic/stats.rs` (10)
 
@@ -2256,69 +2273,69 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 |---|---|---|
 | `simple_linear_regression_symbolic` | `linear_regression` | done |
 | `nonlinear_regression_symbolic` | `nonlinear_regression` (builds a `solve` request; needs the solve rules) | done |
-| `polynomial_regression_symbolic` | `polynomial_regression` | partial: exact/float data only, symbolic data not supported |
+| `polynomial_regression_symbolic` | `polynomial_regression` (rules::stats): exact and float data only; symbolic (non-numeric) data points are not supported | partial |
 
 ## `src/symbolic/tensor.rs` (15)
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` | `kernels::tensor::TensorData` / `ndarray` arrays (f64 only; no symbolic components) | partial |
-| `rank` | `kernels::tensor::TensorData` / `ndarray` arrays (f64 only; no symbolic components) | partial |
-| `get` | `kernels::tensor::TensorData` / `ndarray` arrays (f64 only; no symbolic components) | partial |
-| `add` | `kernels::tensor::TensorData` / `ndarray` arrays (f64 only; no symbolic components) | partial |
-| `sub` | `kernels::tensor::TensorData` / `ndarray` arrays (f64 only; no symbolic components) | partial |
-| `scalar_mul` | `kernels::tensor::TensorData` / `ndarray` arrays (f64 only; no symbolic components) | partial |
-| `outer_product` | `kernels::tensor::outer_product` (f64 ndarray only) | partial |
-| `contract` | `kernels::tensor::contract` (f64 ndarray only) | partial |
-| `to_matrix_expr` | `kernels::tensor::TensorData` / `ndarray` arrays (f64 only; no symbolic components) | partial |
-| `raise_index` |  | pending |
-| `lower_index` |  | pending |
-| `christoffel_symbols_first_kind` |  | pending |
-| `christoffel_symbols_second_kind` |  | pending |
-| `riemann_curvature_tensor` |  | pending |
-| `covariant_derivative_vector` |  | pending |
+| `new` | a tensor is a nested `list` term (see `rules::geometry` `tensor_rank`, `component`) | done |
+| `rank` | `rules::geometry` operator `tensor_rank` (tests rules::geometry::tests) | done |
+| `get` | `rules::geometry` operator `component` (tests rules::geometry::tests) | done |
+| `add` | `rules::geometry` operator `tensor_add` (tests rules::geometry::tests) | done |
+| `sub` | `rules::geometry` `tensor_add(A, tensor_smul(-1, B))` (no dedicated operator) | done |
+| `scalar_mul` | `rules::geometry` operator `tensor_smul` (tests rules::geometry::tests) | done |
+| `outer_product` | `rules::geometry` operator `tensor_outer` (tests rules::geometry::tests) | done |
+| `contract` | `rules::geometry` operator `contract` (tests rules::geometry::tests) | done |
+| `to_matrix_expr` | tensors are nested lists, so a rank-2 tensor already is a matrix term for `rules::linalg` (`matmul`, `det`, ...) | done |
+| `raise_index` | `rules::geometry` operator `raise_index` (tests rules::geometry::tests) | done |
+| `lower_index` | `rules::geometry` operator `lower_index` (tests rules::geometry::tests) | done |
+| `christoffel_symbols_first_kind` | `rules::geometry` operator `christoffel1` | partial (no test: `christoffel1` is defined but no test exercises it) |
+| `christoffel_symbols_second_kind` | `rules::geometry` operator `christoffel` (tests rules::geometry::tests) | done |
+| `riemann_curvature_tensor` | `rules::geometry` operator `riemann` (tests rules::geometry::tests) | done |
+| `covariant_derivative_vector` | `rules::geometry` operator `covariant_derivative` (tests rules::geometry::tests) | done |
 
 ## `src/symbolic/thermodynamics.rs` (13)
 
 | legacy function | new home | status |
 |---|---|---|
-| `first_law_thermodynamics` |  | pending |
-| `ideal_gas_law` | `sim::classical::{ideal_gas_pressure,ideal_gas_volume,ideal_gas_temperature}` (f64 only) | partial |
-| `enthalpy` |  | pending |
-| `helmholtz_free_energy` |  | pending |
-| `gibbs_free_energy` |  | pending |
-| `boltzmann_entropy` |  | pending |
-| `carnot_efficiency` |  | pending |
-| `boltzmann_distribution` |  | pending |
-| `partition_function` |  | pending |
-| `fermi_dirac_distribution` |  | pending |
-| `bose_einstein_distribution` |  | pending |
-| `work_isothermal_expansion` |  | pending |
-| `verify_maxwell_relation_helmholtz` |  | pending |
+| `first_law_thermodynamics` | `rules::physics` operator `first_law_thermodynamics` | partial (no test: `first_law_thermodynamics` is defined but no test exercises it) |
+| `ideal_gas_law` | `rules::physics` operator `ideal_gas_law` | partial (no test: `ideal_gas_law` is defined but no test exercises it) |
+| `enthalpy` | `rules::physics` operator `enthalpy` (test rules::physics::tests) | done |
+| `helmholtz_free_energy` | `rules::physics` operator `helmholtz_free_energy` | partial (no test: `helmholtz_free_energy` is defined but no test exercises it) |
+| `gibbs_free_energy` | `rules::physics` operator `gibbs_free_energy` (test rules::physics::tests) | done |
+| `boltzmann_entropy` | `rules::physics` operator `boltzmann_entropy` | partial (no test: `boltzmann_entropy` is defined but no test exercises it) |
+| `carnot_efficiency` | `rules::physics` operator `carnot_efficiency` (test rules::physics::tests) | done |
+| `boltzmann_distribution` | `rules::physics` operator `boltzmann_distribution` | partial (no test: `boltzmann_distribution` is defined but no test exercises it) |
+| `partition_function` | `rules::physics` operator `partition_function` (test rules::physics::tests) | done |
+| `fermi_dirac_distribution` | `rules::physics` operator `fermi_dirac_distribution` (test rules::physics::tests) | done |
+| `bose_einstein_distribution` | `rules::physics` operator `bose_einstein_distribution` | partial (no test: `bose_einstein_distribution` is defined but no test exercises it) |
+| `work_isothermal_expansion` | `rules::physics` operator `work_isothermal_expansion` | partial (no test: `work_isothermal_expansion` is defined but no test exercises it) |
+| `verify_maxwell_relation_helmholtz` | `rules::physics` operator `verify_maxwell_relation_helmholtz` (test rules::physics::tests) | done |
 
 ## `src/symbolic/topology.rs` (19)
 
 | legacy function | new home | status |
 |---|---|---|
-| `new` |  | pending |
-| `dimension` |  | pending |
-| `boundary` |  | pending |
-| `symbolic_boundary` |  | pending |
-| `add_term` |  | pending |
-| `add_simplex` |  | pending |
-| `get_simplices_by_dim` |  | pending |
-| `get_boundary_matrix` |  | pending |
-| `get_symbolic_boundary_matrix` |  | pending |
-| `apply_boundary_operator` |  | pending |
-| `apply_symbolic_boundary_operator` |  | pending |
-| `compute_euler_characteristic` |  | pending |
-| `verify_boundary_property` |  | pending |
-| `verify_coboundary_property` |  | pending |
-| `compute_homology_betti_number` |  | pending |
-| `compute_cohomology_betti_number` |  | pending |
-| `create_grid_complex` |  | pending |
-| `create_torus_complex` |  | pending |
-| `vietoris_rips_filtration` |  | pending |
+| `new` | `rules::discrete::topology` operator `sc_complex` (tests rules::discrete::topology::tests) | done |
+| `dimension` | `rules::discrete::topology` operator `sc_dimension` (tests rules::discrete::topology::tests) | done |
+| `boundary` | `rules::discrete::topology` operator `sc_boundary` (tests rules::discrete::topology::tests) | done |
+| `symbolic_boundary` | `rules::discrete::topology` operator `sc_boundary`; chain coefficients are arbitrary terms (tests rules::discrete::topology::tests) | done |
+| `add_term` | `rules::discrete::topology` operator `sc_chain_boundary`; a chain is `list(list(coeff, simplex), ...)` and equal simplices are combined (tests rules::discrete::topology::tests) | done |
+| `add_simplex` | `rules::discrete::topology` operator `sc_complex`; `sc_complex(list(...))` closes under faces (tests rules::discrete::topology::tests) | done |
+| `get_simplices_by_dim` | `rules::discrete::topology` operator `sc_simplices` (tests rules::discrete::topology::tests) | done |
+| `get_boundary_matrix` | `rules::discrete::topology` operator `sc_boundary_matrix` (tests rules::discrete::topology::tests) | done |
+| `get_symbolic_boundary_matrix` | `rules::discrete::topology` operator `sc_boundary_matrix` (tests rules::discrete::topology::tests) | done |
+| `apply_boundary_operator` | `rules::discrete::topology` operator `sc_chain_boundary` (tests rules::discrete::topology::tests) | done |
+| `apply_symbolic_boundary_operator` | `rules::discrete::topology` operator `sc_chain_boundary`; coefficients may be symbolic (tests rules::discrete::topology::tests) | done |
+| `compute_euler_characteristic` | `rules::discrete::topology` operator `sc_euler_characteristic` (tests rules::discrete::topology::tests) | done |
+| `verify_boundary_property` | `rules::discrete::topology` operator `sc_verify_boundary` (tests rules::discrete::topology::tests) | done |
+| `verify_coboundary_property` | `rules::discrete::topology` operator `sc_verify_coboundary` (tests rules::discrete::topology::tests) | done |
+| `compute_homology_betti_number` | `rules::discrete::topology` operator `sc_betti` (tests rules::discrete::topology::tests) | done |
+| `compute_cohomology_betti_number` | `rules::discrete::topology` operator `sc_cohomology_betti` (tests rules::discrete::topology::tests) | done |
+| `create_grid_complex` | `rules::discrete::topology` operator `sc_grid` (tests rules::discrete::topology::tests) | done |
+| `create_torus_complex` | `rules::discrete::topology` operator `sc_torus` (tests rules::discrete::topology::tests) | done |
+| `vietoris_rips_filtration` | `rules::discrete::topology` operator `vietoris_rips_filtration` (tests rules::discrete::topology::tests) | done |
 
 ## `src/symbolic/transforms.rs` (28)
 
@@ -2326,14 +2343,14 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 |---|---|---|
 | `fourier_time_shift` | `rules::transforms` `fourier` (shift/modulation theorems applied inside the kernel) | done |
 | `fourier_frequency_shift` | `rules::transforms` `fourier` modulation by exp(I a t), cos, sin | done |
-| `fourier_scaling` | `rules::transforms` `fourier` (linear arguments in the table) | partial |
-| `fourier_differentiation` | `rules::transforms` `fourier` multiplication-by-t theorem; derivative theorem not applied | partial |
+| `fourier_scaling` | `rules::transforms` `fourier` (linear arguments through the table); no general scaling theorem `F(f(a t)) = F(w/a)/|a|` | partial (in progress: transforms/complex/finite-field/units branch) |
+| `fourier_differentiation` | `rules::transforms` `fourier` (multiplication-by-t theorem); derivative theorem `F(f-prime) = I w F(f)` not applied | partial (in progress: transforms/complex/finite-field/units branch) |
 | `laplace_time_shift` | `rules::transforms` `laplace` heaviside(t - c) shift theorem | done |
 | `laplace_differentiation` | `rules::transforms` `laplace` of `diff(y(t), t)` = s L[y] - y(0) (first order) | done |
 | `laplace_frequency_shift` | `rules::transforms` `laplace` exp(a t) shift theorem | done |
 | `laplace_scaling` | `rules::transforms` `laplace` (linear arguments in the table) | done |
 | `laplace_integration` | `rules::transforms` `laplace` of `defint(g, u, 0, t)` = G/s | done |
-| `z_time_shift` | `rules::transforms` `ztransform` of `kronecker(n - k)`; general shifted sequences not detected | partial |
+| `z_time_shift` | `rules::transforms` `ztransform` of `kronecker(n - k)`; general shifted sequences `f(n - k)` not detected | partial (in progress: transforms/complex/finite-field/units branch) |
 | `z_scaling` | `rules::transforms` `ztransform` a^n g(n) = G(z/a) | done |
 | `z_differentiation` | `rules::transforms` `ztransform` n g(n) = -z G'(z) | done |
 | `fourier_transform` | `rules::transforms` `fourier` (table + theorems, numerically checked; test fourier_transforms) | done |
@@ -2350,14 +2367,14 @@ Read a legacy implementation with `git show 84f3ee89:<file>`.
 | `inverse_z_transform_internal` | `rules::transforms` `inverse_ztransform` | done |
 | `partial_fraction_decomposition` | `rules::poly` `apart(f, x)` over Q | done |
 | `partial_fraction_decomposition_internal` | `rules::poly::apart::apart` | done |
-| `convolution_fourier` | `rules::transforms` `convolve` builds the convolution integral; the transform-product theorem is not applied | partial |
+| `convolution_fourier` | `rules::transforms` `convolve` builds the convolution integral; the transform-product theorem is not applied | partial (in progress: transforms/complex/finite-field/units branch) |
 | `convolution_laplace` | `rules::transforms` `convolve(f, g, t)` = ∫_0^t f(u) g(t-u) du (test convolution) | done |
 
 ## `src/symbolic/unit_unification.rs` (1)
 
 | legacy function | new home | status |
 |---|---|---|
-| `unify_expression` |  | pending |
+| `unify_expression` |  | pending (in progress: transforms/complex/finite-field/units branch) |
 
 ## `src/symbolic/vector.rs` (15)
 
