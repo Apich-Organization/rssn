@@ -33,6 +33,8 @@ pub use extract::CostModel;
 pub use extract::Extractor;
 pub use extract::SizeCost;
 pub use facts::Facts;
+pub use eval::ComplexEval;
+pub use facts::Always;
 pub use facts::OnReals;
 pub use id::ClassId;
 pub use id::NodeId;

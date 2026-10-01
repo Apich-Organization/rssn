@@ -1349,7 +1349,9 @@ pub fn generate_ifs_fractal(
             .wrapping_mul(6_364_136_223_846_793_005)
             .wrapping_add(1);
 
-        (*state >> 33) as f64 / f64::from(u32::MAX)
+        // The top 31 bits give an integer in [0, 2^31); dividing by 2^31
+        // yields r uniformly in [0, 1), covering all cumulative bins.
+        (*state >> 33) as f64 / 2_147_483_648.0
     };
 
     for i in 0..(num_points + skip) {

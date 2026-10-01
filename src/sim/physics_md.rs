@@ -313,8 +313,9 @@ pub fn morse_interaction(
 
     let potential = de * one_minus_exp * one_minus_exp;
 
-    // Force = -dV/dr = 2 * De * a * (1 - exp) * exp
-    let force_magnitude = 2.0 * de * a * one_minus_exp * exp_term;
+    // V = De (1 - e)^2 with e = exp(-a (r - re)), so dV/dr = 2 De a (1 - e) e
+    // and the force along r_vec (from p2 to p1) is -dV/dr.
+    let force_magnitude = -2.0 * de * a * one_minus_exp * exp_term;
 
     let force_on_p1 = scalar_mul(&r_vec, force_magnitude / r);
 

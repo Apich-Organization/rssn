@@ -617,8 +617,14 @@ mod strengthened {
             }
         }
         assert!(grid.iter().flatten().all(|&v| v <= 60));
-        assert!(grid.iter().flatten().any(|&v| v == 60), "some pixels lie inside the set");
-        assert!(grid.iter().flatten().any(|&v| v < 60), "some pixels lie outside the set");
+        assert!(
+            grid.iter().flatten().any(|&v| v == 60),
+            "some pixels lie inside the set"
+        );
+        assert!(
+            grid.iter().flatten().any(|&v| v < 60),
+            "some pixels lie outside the set"
+        );
     }
 
     #[test]
@@ -637,12 +643,16 @@ mod strengthened {
     fn newton_fractal_finds_all_three_cube_roots_of_unity() {
         let data = generate_newton_fractal(30, 30, (-2.0, 2.0), (-2.0, 2.0), 60, 1e-6);
         for root in 0..3u32 {
-            assert!(data.iter().flatten().any(|&v| v == root), "no pixel converged to root {root}");
+            assert!(
+                data.iter().flatten().any(|&v| v == root),
+                "no pixel converged to root {root}"
+            );
         }
         // A point next to z = 1 converges to root 0, next to the two complex roots to roots 1 and 2.
         let near = |x: f64, y: f64| {
             let n = 400;
-            let d = generate_newton_fractal(n, n, (x - 0.01, x + 0.01), (y - 0.01, y + 0.01), 60, 1e-6);
+            let d =
+                generate_newton_fractal(n, n, (x - 0.01, x + 0.01), (y - 0.01, y + 0.01), 60, 1e-6);
             d[n / 2][n / 2]
         };
         assert_eq!(near(1.0, 0.0), 0);
@@ -659,7 +669,11 @@ mod strengthened {
         assert!((p[0].2 - (1.0 - 0.01 * (8.0 / 3.0 - 1.0))).abs() < 1e-12);
         // The origin is a fixed point; so is (sqrt(beta (rho-1)), same, rho-1).
         let origin = generate_lorenz_attractor((0.0, 0.0, 0.0), 0.01, 50);
-        assert!(origin.iter().all(|&(x, y, z)| x == 0.0 && y == 0.0 && z == 0.0));
+        assert!(
+            origin
+                .iter()
+                .all(|&(x, y, z)| x == 0.0 && y == 0.0 && z == 0.0)
+        );
         let c = (8.0f64 / 3.0 * 27.0).sqrt();
         let fp = generate_lorenz_attractor((c, c, 27.0), 0.01, 200);
         for (x, y, z) in fp {
@@ -677,7 +691,9 @@ mod strengthened {
         let x = (c - (c * c - 4.0 * a * b).sqrt()) / 2.0;
         let fp = generate_rossler_attractor((x, -x / a, x / a), 0.01, 100, a, b, c);
         for (px, py, pz) in fp {
-            assert!((px - x).abs() < 1e-9 && (py + x / a).abs() < 1e-9 && (pz - x / a).abs() < 1e-9);
+            assert!(
+                (px - x).abs() < 1e-9 && (py + x / a).abs() < 1e-9 && (pz - x / a).abs() < 1e-9
+            );
         }
     }
 
@@ -701,7 +717,12 @@ mod strengthened {
         let (x, y) = (-0.72f64, -0.64f64);
         let ex = x * x - y * y + 0.9 * x + (-0.6013) * y;
         let ey = 2.0 * x * y + 2.0 * x + 0.5 * y;
-        assert!((p[0].0 - ex).abs() < 1e-12 && (p[0].1 - ey).abs() < 1e-12, "{:?} vs {:?}", p[0], (ex, ey));
+        assert!(
+            (p[0].0 - ex).abs() < 1e-12 && (p[0].1 - ey).abs() < 1e-12,
+            "{:?} vs {:?}",
+            p[0],
+            (ex, ey)
+        );
     }
 
     #[test]
@@ -714,7 +735,10 @@ mod strengthened {
         let o = logistic_map_iterate(0.3, 3.2, 1000);
         let (a, b) = (o[998], o[999]);
         let (lo, hi) = (a.min(b), a.max(b));
-        assert!((lo - 0.513_044_9).abs() < 1e-5 && (hi - 0.799_455_5).abs() < 1e-5, "{lo}, {hi}");
+        assert!(
+            (lo - 0.513_044_9).abs() < 1e-5 && (hi - 0.799_455_5).abs() < 1e-5,
+            "{lo}, {hi}"
+        );
     }
 
     #[test]
@@ -780,10 +804,20 @@ mod strengthened {
 
     #[test]
     fn orbit_density_bins_points_row_major_by_y() {
-        let d = orbit_density(&[(0.05, 0.95), (0.05, 0.95), (0.55, 0.05), (2.0, 2.0)], 10, 10, (0.0, 1.0), (0.0, 1.0));
+        let d = orbit_density(
+            &[(0.05, 0.95), (0.05, 0.95), (0.55, 0.05), (2.0, 2.0)],
+            10,
+            10,
+            (0.0, 1.0),
+            (0.0, 1.0),
+        );
         assert_eq!(d[9][0], 2);
         assert_eq!(d[0][5], 1);
-        assert_eq!(d.iter().flatten().sum::<usize>(), 3, "out-of-range points are dropped");
+        assert_eq!(
+            d.iter().flatten().sum::<usize>(),
+            3,
+            "out-of-range points are dropped"
+        );
     }
 
     #[test]
@@ -803,7 +837,10 @@ mod strengthened {
         assert!((x - 1.0).abs() < 1e-12 && (y - 3.0).abs() < 1e-12);
         assert!(generate_ifs_fractal(&[], &[], (0.0, 0.0), 10, 0).is_empty());
         let (t, _) = sierpinski_triangle_ifs();
-        assert!(generate_ifs_fractal(&t, &[1.0], (0.0, 0.0), 10, 0).is_empty(), "length mismatch");
+        assert!(
+            generate_ifs_fractal(&t, &[1.0], (0.0, 0.0), 10, 0).is_empty(),
+            "length mismatch"
+        );
     }
 
     #[test]
@@ -813,11 +850,13 @@ mod strengthened {
         let b = generate_ifs_fractal(&t, &p, (0.0, 0.0), 500, 20);
         assert_eq!(a, b);
         // The fern lives in x in [-2.2, 2.7], y in [0, 10].
-        assert!(a.iter().all(|&(x, y)| (-3.0..3.0).contains(&x) && (-0.1..10.1).contains(&y)));
+        assert!(
+            a.iter()
+                .all(|&(x, y)| (-3.0..3.0).contains(&x) && (-0.1..10.1).contains(&y))
+        );
     }
 
     #[test]
-    #[ignore = "library bug: generate_ifs_fractal's LCG yields r = (state >> 33) / u32::MAX in [0, 0.5], so the last map(s) are never chosen; for the Sierpinski triangle the third map (top corner) is never applied: observed max y = 2.4e-7 (points collapse onto the bottom edge), expected points up to y = 1"]
     fn ifs_sierpinski_reaches_the_top_vertex() {
         let (t, p) = sierpinski_triangle_ifs();
         let pts = generate_ifs_fractal(&t, &p, (0.5, 0.5), 5000, 20);
@@ -826,7 +865,16 @@ mod strengthened {
     }
 
     #[test]
-    #[ignore = "library bug: same LCG range problem: the Barnsley fern never uses its last two maps (cumulative probability 0.86 and 0.93 exceed the maximum r = 0.5), so the leaflets are missing: observed x range [0, 2.656], expected about [-2.18, 2.66]"]
+    fn ifs_sierpinski_uses_all_maps_about_equally() {
+        // Each of the three maps has probability 1/3 and the third maps the
+        // triangle into its upper half (y >= 0.5).
+        let (t, p) = sierpinski_triangle_ifs();
+        let pts = generate_ifs_fractal(&t, &p, (0.5, 0.5), 30_000, 20);
+        let upper = pts.iter().filter(|q| q.1 > 0.5).count() as f64 / pts.len() as f64;
+        assert!((upper - 1.0 / 3.0).abs() < 0.03, "upper fraction {upper}");
+    }
+
+    #[test]
     fn ifs_fern_spans_its_known_bounding_box() {
         let (t, p) = barnsley_fern_ifs();
         let pts = generate_ifs_fractal(&t, &p, (0.0, 0.0), 20_000, 50);

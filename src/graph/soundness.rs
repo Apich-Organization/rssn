@@ -12,7 +12,12 @@
 //! inconclusive; they are covered by checking the reduced results of whole
 //! requests instead.
 
+use std::collections::HashMap;
+
+use num_complex::Complex64;
+
 use super::facts::Facts;
+use super::id::SymbolId;
 use super::id::NodeId;
 use super::number::Number;
 use super::rule::Action;
@@ -195,7 +200,29 @@ pub fn check_rewrite(
                     });
                 }
             },
-            | _ => verdict.inconclusive = verdict.inconclusive.saturating_add(1),
+            | _ => {
+                // Terms with complex values (the imaginary unit, branches
+                // of multi-valued functions) are compared over C.
+                let bindings: HashMap<SymbolId, Complex64> =
+                    env.bindings().iter().map(|&(s, v)| (s, Complex64::new(v, 0.0))).collect();
+                match (graph.eval_complex(lhs, &bindings), graph.eval_complex(rhs, &bindings)) {
+                    | (Some(a), Some(b)) if a.is_finite() && b.is_finite() => {
+                        if (a - b).norm() <= 1e-7 * (1.0 + a.norm().max(b.norm())) {
+                            verdict.agreed = verdict.agreed.saturating_add(1);
+                        } else {
+                            return Err(Refutation {
+                                rule: name.to_owned(),
+                                lhs: graph.display(lhs),
+                                rhs: graph.display(rhs),
+                                lhs_value: a.re,
+                                rhs_value: b.re,
+                                sample,
+                            });
+                        }
+                    },
+                    | _ => verdict.inconclusive = verdict.inconclusive.saturating_add(1),
+                }
+            },
         }
     }
     Ok(verdict)

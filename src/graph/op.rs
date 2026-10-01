@@ -51,6 +51,14 @@ impl OpFlags {
     pub const HEAVY: Self = Self(1 << 2);
     /// The node is a leaf carrying a payload.
     pub const LEAF: Self = Self(1 << 3);
+    /// The operator's value is a truth value. Its scalar semantics encode
+    /// true and false as 1 and 0 for evaluation, but numeric folding must
+    /// not replace the term by that number.
+    pub const PREDICATE: Self = Self(1 << 5);
+    /// Tree windows always look inside this operator, even when the node
+    /// is shared. Local normalisation of arithmetic needs to see the
+    /// structure of `x * x^(-1)` whether or not `x^(-1)` is used elsewhere.
+    pub const TRANSPARENT: Self = Self(1 << 4);
     /// No flags.
     pub const NONE: Self = Self(0);
 
@@ -272,14 +280,15 @@ impl OpTable {
                 .flags(OpFlags::LEAF)
                 .cost(3),
             OpDescriptor::new("add", Arity::Variadic)
-                .flags(ac)
+                .flags(ac.with(OpFlags::TRANSPARENT))
                 .cost(1)
                 .eval(|a| a.iter().sum()),
             OpDescriptor::new("mul", Arity::Variadic)
-                .flags(ac)
+                .flags(ac.with(OpFlags::TRANSPARENT))
                 .cost(1)
                 .eval(|a| a.iter().product()),
             OpDescriptor::new("pow", Arity::Fixed(2))
+                .flags(OpFlags::TRANSPARENT)
                 .cost(1)
                 .eval(|a| match a {
                     | [b, e] => b.powf(*e),

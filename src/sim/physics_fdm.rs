@@ -392,12 +392,34 @@ where
             *val = initial_u(x, y);
         });
 
-    // First step (assuming u_t = 0 at t=0)
+    // Second-order start for zero initial velocity: the centred difference
+    // (u^1 - u^-1) / (2 dt) = 0 gives u^-1 = u^1, and the scheme at t = 0
+    // reads u^1 = 2 u^0 - u^-1 + s Lap u^0, hence u^-1 = u^0 + (s/2) Lap u^0.
     let s_x = (c * dt / dx).powi(2);
 
     let s_y = (c * dt / dy).powi(2);
 
-    u_prev.data.copy_from_slice(&u_curr.data);
+    u_prev
+        .as_mut_slice()
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, prev_val)| {
+            let x = i % width;
+
+            let y = i / width;
+
+            if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
+                *prev_val = 0.0;
+
+                return;
+            }
+
+            let lap_x = 2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x + 1, y)]) + u_curr[(x - 1, y)];
+
+            let lap_y = 2.0f64.mul_add(-u_curr[(x, y)], u_curr[(x, y + 1)]) + u_curr[(x, y - 1)];
+
+            *prev_val = u_curr[i] + 0.5 * (s_x * lap_x + s_y * lap_y);
+        });
 
     for _ in 0..steps {
         u_next

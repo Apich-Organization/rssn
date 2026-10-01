@@ -18,7 +18,6 @@
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
-use num_traits::One;
 use num_traits::Signed;
 use num_traits::Zero;
 
@@ -44,27 +43,27 @@ use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
 use crate::rules::poly::repr::Poly;
-use crate::rules::poly::univariate;
+use crate::rules::poly::apart::apart;
 use crate::rules::poly::univariate::QPoly;
 
 use super::diff::Differentiate;
 
 /// Operators the integrator builds results from.
-#[derive(Copy, Clone)]
-pub(super) struct Functions {
-    pub(super) diff: OpId,
-    pub(super) exp: OpId,
-    pub(super) ln: OpId,
-    pub(super) sin: OpId,
-    pub(super) cos: OpId,
-    pub(super) tan: OpId,
-    pub(super) asin: OpId,
-    pub(super) acos: OpId,
-    pub(super) atan: OpId,
-    pub(super) sinh: OpId,
-    pub(super) cosh: OpId,
-    pub(super) tanh: OpId,
-    pub(super) sqrt: OpId,
+#[derive(Copy, Clone, Debug)]
+pub struct Functions {
+    pub(crate) diff: OpId,
+    pub(crate) exp: OpId,
+    pub(crate) ln: OpId,
+    pub(crate) sin: OpId,
+    pub(crate) cos: OpId,
+    pub(crate) tan: OpId,
+    pub(crate) asin: OpId,
+    pub(crate) acos: OpId,
+    pub(crate) atan: OpId,
+    pub(crate) sinh: OpId,
+    pub(crate) cosh: OpId,
+    pub(crate) tanh: OpId,
+    pub(crate) sqrt: OpId,
 }
 
 const MAX_DEPTH: usize = 6;
@@ -246,6 +245,9 @@ impl Integrator<'_, '_> {
             return Some(found);
         }
         if let Some(found) = self.trig_powers(f, depth) {
+            return Some(found);
+        }
+        if let Some(found) = self.trig_product(f, depth) {
             return Some(found);
         }
         if let Some(found) = self.substitution(f, depth) {
@@ -480,56 +482,17 @@ impl Integrator<'_, '_> {
         if denom.len() < 2 {
             return None;
         }
-        let (quotient, remainder) = univariate::divrem(&numer, &denom)?;
+        let parts = apart(&numer, &denom)?;
         let mut pieces = Vec::new();
-        if !quotient.is_empty() {
+        if !parts.quotient.is_empty() {
             let integrated: QPoly = std::iter::once(BigRational::zero())
-                .chain(quotient.iter().enumerate().map(|(k, c)| c / BigRational::from_integer(BigInt::from(k + 1))))
+                .chain(parts.quotient.iter().enumerate().map(|(k, c)| c / BigRational::from_integer(BigInt::from(k + 1))))
                 .collect();
             pieces.push(self.polynomial(&integrated));
         }
-        if remainder.is_empty() {
-            return Some(self.add(&pieces));
-        }
-        let (_, factors) = univariate::factor(&denom);
-        // Unknown numerators: for factor i and power j, a polynomial of
-        // degree < deg(f_i). Column = x^k * denom / f_i^j.
-        let n = denom.len() - 1;
-        let mut columns: Vec<QPoly> = Vec::with_capacity(n);
-        let mut labels: Vec<(usize, u32, usize)> = Vec::with_capacity(n);
-        for (i, (factor, multiplicity)) in factors.iter().enumerate() {
-            let fq: QPoly = factor.iter().cloned().map(BigRational::from_integer).collect();
-            let mut power: QPoly = vec![BigRational::one()];
-            for j in 1..=*multiplicity {
-                power = univariate::mul(&power, &fq);
-                let (cofactor, _) = univariate::divrem(&denom, &power)?;
-                for k in 0..factor.len() - 1 {
-                    let mut shifted = vec![BigRational::zero(); k];
-                    shifted.extend(cofactor.iter().cloned());
-                    columns.push(shifted);
-                    labels.push((i, j, k));
-                }
-            }
-        }
-        if columns.len() != n {
-            return None;
-        }
-        let solution = solve_columns(&columns, &remainder, n)?;
-        for (i, (factor, multiplicity)) in factors.iter().enumerate() {
-            let fq: QPoly = factor.iter().cloned().map(BigRational::from_integer).collect();
-            let base = self.polynomial(&fq);
-            for j in 1..=*multiplicity {
-                let numerator: Vec<BigRational> = labels
-                    .iter()
-                    .zip(&solution)
-                    .filter(|((fi, fj, _), _)| *fi == i && *fj == j)
-                    .map(|(_, value)| value.clone())
-                    .collect();
-                if numerator.iter().all(Zero::is_zero) {
-                    continue;
-                }
-                pieces.push(self.partial_fraction(&fq, base, j, &numerator)?);
-            }
+        for piece in &parts.pieces {
+            let base = self.polynomial(&piece.factor);
+            pieces.push(self.partial_fraction(&piece.factor, base, piece.power, &piece.numerator)?);
         }
         Some(self.add(&pieces))
     }
@@ -678,6 +641,80 @@ impl Integrator<'_, '_> {
         self.integrate(expanded, depth + 1)
     }
 
+    /// Products of two sines/cosines with different linear arguments, by
+    /// the product-to-sum formulas:
+    /// `sin a sin b = (cos(a-b) - cos(a+b))/2`,
+    /// `cos a cos b = (cos(a-b) + cos(a+b))/2`,
+    /// `sin a cos b = (sin(a+b) + sin(a-b))/2`.
+    /// Any other factors must be free of the variable or polynomial (they
+    /// are kept and the result handed back to the integrator).
+    fn trig_product(
+        &mut self,
+        f: NodeId,
+        depth: usize,
+    ) -> Option<NodeId> {
+        if self.cx.graph.op(f) != core::MUL {
+            return None;
+        }
+        let fs = self.f;
+        let factors = self.cx.graph.children(f).to_vec();
+        let trig: Vec<usize> = factors
+            .iter()
+            .enumerate()
+            .filter(|&(_, &n)| {
+                let op = self.cx.graph.op(n);
+                (op == fs.sin || op == fs.cos) && self.depends(n)
+            })
+            .map(|(i, _)| i)
+            .collect();
+        let &[i, j] = trig.as_slice() else {
+            return None;
+        };
+        let (p, q) = (*factors.get(i)?, *factors.get(j)?);
+        let (&[a], &[b]) = (self.cx.graph.children(p), self.cx.graph.children(q)) else {
+            return None;
+        };
+        if a == b {
+            return None;
+        }
+        let (op_p, op_q) = (self.cx.graph.op(p), self.cx.graph.op(q));
+        let minus_b = self.neg(b);
+        let difference = self.add(&[a, minus_b]);
+        let sum = self.add(&[a, b]);
+        let half = self.frac(1, 2);
+        let combined = if op_p == fs.sin && op_q == fs.sin {
+            let first = self.call(fs.cos, difference);
+            let second = self.call(fs.cos, sum);
+            let second = self.neg(second);
+            self.add(&[first, second])
+        } else if op_p == fs.cos && op_q == fs.cos {
+            let first = self.call(fs.cos, difference);
+            let second = self.call(fs.cos, sum);
+            self.add(&[first, second])
+        } else {
+            // sin(s) cos(c) with s the sine's argument.
+            let (s, c) = if op_p == fs.sin { (a, b) } else { (b, a) };
+            let minus_c = self.neg(c);
+            let d = self.add(&[s, minus_c]);
+            let t = self.add(&[s, c]);
+            let first = self.call(fs.sin, t);
+            let second = self.call(fs.sin, d);
+            self.add(&[first, second])
+        };
+        let rest: Vec<NodeId> =
+            factors.iter().enumerate().filter(|&(k, _)| k != i && k != j).map(|(_, &n)| n).collect();
+        let mut all = rest;
+        all.push(half);
+        all.push(combined);
+        let product = self.mul(&all);
+        let expanded = self.cx.simplify(product);
+        let expanded = self.expand(expanded)?;
+        if expanded == f {
+            return None;
+        }
+        self.integrate(expanded, depth + 1)
+    }
+
     fn expand(
         &mut self,
         term: NodeId,
@@ -742,6 +779,7 @@ impl Integrator<'_, '_> {
     ) -> Option<NodeId> {
         for u in self.candidates(f) {
             let du = self.derivative(u);
+            let du = self.cx.simplify(du);
             if self.number(du).is_some_and(|n| n.is_zero()) || self.cx.graph.op(du) == self.f.diff {
                 continue;
             }
@@ -845,44 +883,8 @@ impl Integrator<'_, '_> {
     }
 }
 
-/// Solves `sum_k a_k * column_k = target` over the rationals, where every
-/// polynomial has degree below `n` and there are `n` columns.
-fn solve_columns(
-    columns: &[QPoly],
-    target: &[BigRational],
-    n: usize,
-) -> Option<Vec<BigRational>> {
-    // Augmented matrix: row = coefficient of x^row.
-    let mut m: Vec<Vec<BigRational>> = (0..n)
-        .map(|row| {
-            let mut line: Vec<BigRational> =
-                columns.iter().map(|c| c.get(row).cloned().unwrap_or_else(BigRational::zero)).collect();
-            line.push(target.get(row).cloned().unwrap_or_else(BigRational::zero));
-            line
-        })
-        .collect();
-    for col in 0..n {
-        let pivot = (col..n).find(|&r| !m[r][col].is_zero())?;
-        m.swap(col, pivot);
-        let lead = m[col][col].clone();
-        for value in &mut m[col] {
-            *value = &*value / &lead;
-        }
-        for row in 0..n {
-            if row != col && !m[row][col].is_zero() {
-                let factor = m[row][col].clone();
-                let pivot_row = m[col].clone();
-                for (value, p) in m[row].iter_mut().zip(&pivot_row) {
-                    *value = &*value - &factor * p;
-                }
-            }
-        }
-    }
-    Some(m.into_iter().map(|row| row.last().cloned().unwrap_or_else(BigRational::zero)).collect())
-}
-
 /// Finds a checked antiderivative of the best form of `integrand`.
-fn antiderivative(
+pub(super) fn antiderivative(
     cx: &mut Cx<'_>,
     functions: Functions,
     integrand: NodeId,
@@ -957,6 +959,53 @@ impl Kernel for Definite {
 }
 
 /// Numeric kernel for `defint`: adaptive Gauss–Kronrod quadrature.
+/// A numeric function of `inputs`.
+type Numeric = Box<dyn Fn(&[f64]) -> f64>;
+
+/// Compiles `term` as a function of `inputs`. An iterated integral
+/// (`defint` whose integrand or limits are themselves evaluable this way)
+/// becomes nested quadrature: the inner integral is evaluated afresh at
+/// every outer sample point, with a smaller panel budget.
+fn compile_nested(
+    graph: &mut Graph,
+    defint: OpId,
+    term: NodeId,
+    inputs: &[SymbolId],
+    tolerance: f64,
+    depth: usize,
+) -> Option<Numeric> {
+    if graph.op(term) == defint && depth < 3 {
+        let &[integrand, variable, lower, upper] = graph.children(term) else {
+            return None;
+        };
+        let y = graph.symbol_of(variable)?;
+        let mut inner_inputs = vec![y];
+        inner_inputs.extend_from_slice(inputs);
+        let body = best(graph, integrand)?;
+        let body = compile_nested(graph, defint, body, &inner_inputs, tolerance, depth + 1)?;
+        let lower = best(graph, lower)?;
+        let lower = compile_nested(graph, defint, lower, inputs, tolerance, depth + 1)?;
+        let upper = best(graph, upper)?;
+        let upper = compile_nested(graph, defint, upper, inputs, tolerance, depth + 1)?;
+        return Some(Box::new(move |args: &[f64]| {
+            let (a, b) = (lower(args), upper(args));
+            let mut point = Vec::with_capacity(args.len() + 1);
+            point.push(0.0);
+            point.extend_from_slice(args);
+            let f = |t: f64| {
+                let mut point = point.clone();
+                if let Some(slot) = point.first_mut() {
+                    *slot = t;
+                }
+                body(&point)
+            };
+            gauss_kronrod_any(f, a, b, tolerance, 200).value
+        }));
+    }
+    let compiled = Interpreter.compile(graph, term, inputs).ok()?;
+    Some(Box::new(move |args: &[f64]| compiled.call(args)))
+}
+
 pub(super) struct Quadrature {
     pub(super) defint: OpId,
 }
@@ -972,6 +1021,10 @@ impl Kernel for Quadrature {
         node: NodeId,
     ) -> Outcome {
         if !cx.env.numeric {
+            return Outcome::Pass;
+        }
+        // Already evaluated in this run.
+        if cx.graph.approx(cx.graph.find(node)).is_some() {
             return Outcome::Pass;
         }
         let graph = &mut *cx.graph;
@@ -1002,7 +1055,8 @@ impl Kernel for Quadrature {
                 values.push(value);
             }
         }
-        let Ok(compiled) = Interpreter.compile(graph, term, &inputs) else {
+        let tolerance = cx.env.tolerance.max(1e-13);
+        let Some(compiled) = compile_nested(graph, self.defint, term, &inputs, tolerance, 0) else {
             return Outcome::Pass;
         };
         let f = |t: f64| {
@@ -1010,9 +1064,8 @@ impl Kernel for Quadrature {
             if let Some(slot) = args.first_mut() {
                 *slot = t;
             }
-            compiled.call(&args)
+            compiled(&args)
         };
-        let tolerance = cx.env.tolerance.max(1e-13);
         let result = gauss_kronrod_any(f, a, b, tolerance, 4_000);
         if result.value.is_finite() && result.error.is_finite() {
             Outcome::Approx(Ball { mid: result.value, rad: result.error })

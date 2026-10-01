@@ -85,7 +85,8 @@ fn test_lennard_jones_equilibrium() {
 
     let p2 = Particle::new(1, 1.0, vec![r_eq, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
 
-    let (potential, force) = lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+    let (potential, force) =
+        lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
 
     // Potential at equilibrium is -ε
     assert!((potential + 1.0).abs() < 1e-10);
@@ -104,7 +105,8 @@ fn test_lennard_jones_repulsive() {
 
     let p2 = Particle::new(1, 1.0, vec![0.9, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
 
-    let (potential, _force) = lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+    let (potential, _force) =
+        lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
 
     assert!(potential > 0.0);
 }
@@ -120,7 +122,8 @@ fn test_morse_at_equilibrium() {
 
     let p2 = Particle::new(1, 1.0, vec![1.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
 
-    let (potential, _force) = morse_interaction(&p1, &p2, 1.0, 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+    let (potential, _force) =
+        morse_interaction(&p1, &p2, 1.0, 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
 
     // At r = re, potential should be 0
     assert!(potential.abs() < 1e-10);
@@ -133,7 +136,8 @@ fn test_morse_stretched() {
 
     let p2 = Particle::new(1, 1.0, vec![2.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
 
-    let (potential, _force) = morse_interaction(&p1, &p2, 1.0, 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+    let (potential, _force) =
+        morse_interaction(&p1, &p2, 1.0, 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
 
     // At r > re, potential should be positive
     assert!(potential > 0.0);
@@ -150,7 +154,8 @@ fn test_harmonic_at_equilibrium() {
 
     let p2 = Particle::new(1, 1.0, vec![1.0, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
 
-    let (potential, _force) = harmonic_interaction(&p1, &p2, 100.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+    let (potential, _force) =
+        harmonic_interaction(&p1, &p2, 100.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
 
     // At r = r0, potential should be 0
     assert!(potential.abs() < 1e-10);
@@ -163,7 +168,8 @@ fn test_harmonic_stretched() {
 
     let p2 = Particle::new(1, 1.0, vec![1.5, 0.0, 0.0], vec![0.0, 0.0, 0.0]);
 
-    let (potential, _force) = harmonic_interaction(&p1, &p2, 100.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+    let (potential, _force) =
+        harmonic_interaction(&p1, &p2, 100.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
 
     // V = 0.5 * 100 * (1.5 - 1.0)² = 50 * 0.25 = 12.5
     assert!((potential - 12.5).abs() < 1e-10);
@@ -482,7 +488,11 @@ mod strengthened {
         }
     }
 
-    fn at(x: f64, y: f64, z: f64) -> Particle {
+    fn at(
+        x: f64,
+        y: f64,
+        z: f64,
+    ) -> Particle {
         Particle::new(0, 1.0, vec![x, y, z], vec![0.0; 3])
     }
 
@@ -504,7 +514,10 @@ mod strengthened {
             let grad = (vp - vm) / (2.0 * h);
             let scale = force[axis].abs().max(grad.abs()).max(1.0);
             if (force[axis] + grad).abs() > 1e-5 * scale {
-                return Err(format!("{name}: F[{axis}] = {} but -dV/dx = {}", force[axis], -grad));
+                return Err(format!(
+                    "{name}: F[{axis}] = {} but -dV/dx = {}",
+                    force[axis], -grad
+                ));
             }
         }
         Ok(())
@@ -516,27 +529,38 @@ mod strengthened {
         assert_eq!((p.id, p.mass), (7, 3.0));
         assert_eq!(p.force, vec![0.0, 0.0]);
         assert!((p.speed() - 0.5f64.hypot(0.5)).abs() < 1e-15);
-        assert!(p.distance_to(&at(0.0, 0.0, 0.0)).is_err(), "2D and 3D positions cannot be compared");
+        assert!(
+            p.distance_to(&at(0.0, 0.0, 0.0)).is_err(),
+            "2D and 3D positions cannot be compared"
+        );
         assert!(lennard_jones_interaction(&p, &at(0.0, 0.0, 0.0), 1.0, 1.0).is_err());
     }
 
     #[test]
     fn lennard_jones_reference_values() {
         // r = sigma: V = 0, F = 24 epsilon / sigma (repulsive, along +r from p2 to p1)
-        let (v, f) = lennard_jones_interaction(&at(1.0, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+        let (v, f) = lennard_jones_interaction(&at(1.0, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 1.0)
+            .unwrap_or_else(|e| panic!("{e}"));
         assert!(v.abs() < 1e-12);
-        assert!((f[0] - 24.0).abs() < 1e-9 && f[1] == 0.0 && f[2] == 0.0, "{f:?}");
+        assert!(
+            (f[0] - 24.0).abs() < 1e-9 && f[1] == 0.0 && f[2] == 0.0,
+            "{f:?}"
+        );
         // r = 2: V = 4 (1/4096 - 1/64)
-        let (v, _) = lennard_jones_interaction(&at(2.0, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+        let (v, _) = lennard_jones_interaction(&at(2.0, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 1.0)
+            .unwrap_or_else(|e| panic!("{e}"));
         assert!((v - 4.0 * (1.0 / 4096.0 - 1.0 / 64.0)).abs() < 1e-12);
         // Newton's third law: swapping the particles reverses the force.
-        let (_, f12) = lennard_jones_interaction(&at(1.3, 0.2, 0.0), &at(0.0, 0.0, 0.1), 0.7, 1.1).unwrap_or_else(|e| panic!("{e}"));
-        let (_, f21) = lennard_jones_interaction(&at(0.0, 0.0, 0.1), &at(1.3, 0.2, 0.0), 0.7, 1.1).unwrap_or_else(|e| panic!("{e}"));
+        let (_, f12) = lennard_jones_interaction(&at(1.3, 0.2, 0.0), &at(0.0, 0.0, 0.1), 0.7, 1.1)
+            .unwrap_or_else(|e| panic!("{e}"));
+        let (_, f21) = lennard_jones_interaction(&at(0.0, 0.0, 0.1), &at(1.3, 0.2, 0.0), 0.7, 1.1)
+            .unwrap_or_else(|e| panic!("{e}"));
         for k in 0..3 {
             assert!((f12[k] + f21[k]).abs() < 1e-12);
         }
         // Coincident particles: infinite potential, zero force.
-        let (v, f) = lennard_jones_interaction(&at(0.0, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+        let (v, f) = lennard_jones_interaction(&at(0.0, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 1.0)
+            .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!((v, f), (f64::INFINITY, vec![0.0; 3]));
     }
 
@@ -545,17 +569,19 @@ mod strengthened {
         // V(re + ln 2 / a) = De / 4 ; well depth is De below the dissociation limit.
         let (a, de, re) = (1.5, 2.0, 1.2);
         let r = re + 2f64.ln() / a;
-        let (v, _) = morse_interaction(&at(r, 0.0, 0.0), &at(0.0, 0.0, 0.0), de, a, re).unwrap_or_else(|e| panic!("{e}"));
+        let (v, _) = morse_interaction(&at(r, 0.0, 0.0), &at(0.0, 0.0, 0.0), de, a, re)
+            .unwrap_or_else(|e| panic!("{e}"));
         assert!((v - de / 4.0).abs() < 1e-12);
-        let (v, _) = morse_interaction(&at(1e3, 0.0, 0.0), &at(0.0, 0.0, 0.0), de, a, re).unwrap_or_else(|e| panic!("{e}"));
+        let (v, _) = morse_interaction(&at(1e3, 0.0, 0.0), &at(0.0, 0.0, 0.0), de, a, re)
+            .unwrap_or_else(|e| panic!("{e}"));
         assert!((v - de).abs() < 1e-12);
         // Equilibrium: zero force.
-        let (_, f) = morse_interaction(&at(re, 0.0, 0.0), &at(0.0, 0.0, 0.0), de, a, re).unwrap_or_else(|e| panic!("{e}"));
+        let (_, f) = morse_interaction(&at(re, 0.0, 0.0), &at(0.0, 0.0, 0.0), de, a, re)
+            .unwrap_or_else(|e| panic!("{e}"));
         assert!(f.iter().all(|c| c.abs() < 1e-12));
     }
 
     #[test]
-    #[ignore = "library bug: morse_interaction returns the force with the wrong sign (+2 De a (1-e) e instead of -2 De a (1-e) e): stretched bond (r = re + 0.5, De = a = 1) yields force +0.4773 along +r (repulsive), expected -0.4773 (attractive), i.e. F != -dV/dr"]
     fn morse_force_is_minus_the_gradient_of_the_potential() {
         let p2 = at(0.0, 0.0, 0.0);
         let morse = |a: &Particle, b: &Particle| morse_interaction(a, b, 1.0, 1.0, 1.0);
@@ -565,17 +591,36 @@ mod strengthened {
             }
         }
         // Stretched bond pulls p1 back toward p2 (negative x component).
-        let (_, f) = morse_interaction(&at(1.5, 0.0, 0.0), &p2, 1.0, 1.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+        let (_, f) = morse_interaction(&at(1.5, 0.0, 0.0), &p2, 1.0, 1.0, 1.0)
+            .unwrap_or_else(|e| panic!("{e}"));
         assert!(f[0] < 0.0, "expected attraction, got {f:?}");
+    }
+
+    #[test]
+    fn morse_force_matches_analytic_value_and_is_antisymmetric() {
+        // r = re + 0.5, De = a = 1: F = -2 (1 - e^-0.5) e^-0.5 = -0.47730...
+        let (_, f) =
+            morse_interaction(&at(1.5, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 1.0, 1.0).unwrap();
+        let e = (-0.5f64).exp();
+        assert!((f[0] + 2.0 * (1.0 - e) * e).abs() < 1e-12);
+        let (_, g) =
+            morse_interaction(&at(0.0, 0.0, 0.0), &at(1.5, 0.0, 0.0), 1.0, 1.0, 1.0).unwrap();
+        assert!((f[0] + g[0]).abs() < 1e-12, "Newton's third law");
+        // Compressed bond repels: force on p1 points away from p2.
+        let (_, h) =
+            morse_interaction(&at(0.7, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 1.0, 1.0).unwrap();
+        assert!(h[0] > 0.0);
     }
 
     #[test]
     fn lennard_jones_harmonic_coulomb_forces_are_minus_the_gradient() {
         let p2 = Particle::with_charge(1, 1.0, vec![0.1, -0.2, 0.3], vec![0.0; 3], -2.0);
-        let mk = |q: f64| move |a: &Particle, b: &Particle| {
-            let mut a = a.clone();
-            a.charge = q;
-            coulomb_interaction(&a, b, 1.7)
+        let mk = |q: f64| {
+            move |a: &Particle, b: &Particle| {
+                let mut a = a.clone();
+                a.charge = q;
+                coulomb_interaction(&a, b, 1.7)
+            }
         };
         for pos in [[1.4, 0.2, 0.1], [0.9, 0.9, 0.9], [-1.0, 0.5, 0.7]] {
             let lj = |a: &Particle, b: &Particle| lennard_jones_interaction(a, b, 0.8, 1.1);
@@ -583,9 +628,18 @@ mod strengthened {
             let ss = |a: &Particle, b: &Particle| soft_sphere_interaction(a, b, 0.5, 2.5, 6);
             for (name, res) in [
                 ("lj", check_force_is_minus_gradient("lj", lj, &p2, pos)),
-                ("harmonic", check_force_is_minus_gradient("harmonic", ha, &p2, pos)),
-                ("soft sphere", check_force_is_minus_gradient("soft sphere", ss, &p2, pos)),
-                ("coulomb", check_force_is_minus_gradient("coulomb", mk(3.0), &p2, pos)),
+                (
+                    "harmonic",
+                    check_force_is_minus_gradient("harmonic", ha, &p2, pos),
+                ),
+                (
+                    "soft sphere",
+                    check_force_is_minus_gradient("soft sphere", ss, &p2, pos),
+                ),
+                (
+                    "coulomb",
+                    check_force_is_minus_gradient("coulomb", mk(3.0), &p2, pos),
+                ),
             ] {
                 if let Err(e) = res {
                     panic!("{name} at {pos:?}: {e}");
@@ -603,12 +657,15 @@ mod strengthened {
         assert!((v - 5.0 * 6.0 / 2.0).abs() < 1e-12);
         assert!((f[0] - 5.0 * 6.0 / 4.0).abs() < 1e-12);
         // Harmonic bond stretched by 0.5 pulls p1 back: F = -k dr.
-        let (v, f) = harmonic_interaction(&at(1.5, 0.0, 0.0), &at(0.0, 0.0, 0.0), 100.0, 1.0).unwrap_or_else(|e| panic!("{e}"));
+        let (v, f) = harmonic_interaction(&at(1.5, 0.0, 0.0), &at(0.0, 0.0, 0.0), 100.0, 1.0)
+            .unwrap_or_else(|e| panic!("{e}"));
         assert!((v - 12.5).abs() < 1e-12 && (f[0] + 50.0).abs() < 1e-12);
         // Soft sphere is zero beyond sigma, epsilon (sigma/r)^n inside.
-        let (v, f) = soft_sphere_interaction(&at(3.0, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 2.0, 12).unwrap_or_else(|e| panic!("{e}"));
+        let (v, f) = soft_sphere_interaction(&at(3.0, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 2.0, 12)
+            .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!((v, f), (0.0, vec![0.0; 3]));
-        let (v, f) = soft_sphere_interaction(&at(1.0, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 2.0, 12).unwrap_or_else(|e| panic!("{e}"));
+        let (v, f) = soft_sphere_interaction(&at(1.0, 0.0, 0.0), &at(0.0, 0.0, 0.0), 1.0, 2.0, 12)
+            .unwrap_or_else(|e| panic!("{e}"));
         assert!((v - 4096.0).abs() < 1e-9 && (f[0] - 12.0 * 4096.0).abs() < 1e-6);
     }
 
@@ -627,7 +684,8 @@ mod strengthened {
             Ok(())
         };
         let (dt, steps) = (1e-3, 2000);
-        let traj = integrate_velocity_verlet(&mut ps, dt, steps, calc).unwrap_or_else(|e| panic!("{e}"));
+        let traj =
+            integrate_velocity_verlet(&mut ps, dt, steps, calc).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(traj.len(), steps + 1);
         let omega = 4.0f64;
         let energy = |s: &[Particle]| {
@@ -638,12 +696,23 @@ mod strengthened {
         for (i, s) in traj.iter().enumerate() {
             let t = i as f64 * dt;
             let r = s[1].position[0] - s[0].position[0];
-            assert!((r - (r0 + 0.25 * (omega * t).cos())).abs() < 2e-5, "step {i}: r = {r}");
-            assert!((energy(s) - e0).abs() < 1e-4 * e0, "energy drift at step {i}");
+            assert!(
+                (r - (r0 + 0.25 * (omega * t).cos())).abs() < 2e-5,
+                "step {i}: r = {r}"
+            );
+            assert!(
+                (energy(s) - e0).abs() < 1e-4 * e0,
+                "energy drift at step {i}"
+            );
         }
         // Total momentum is exactly conserved and the centre of mass stays put.
         for s in &traj {
-            assert!(total_momentum(s).unwrap_or_default().iter().all(|p| p.abs() < 1e-12));
+            assert!(
+                total_momentum(s)
+                    .unwrap_or_default()
+                    .iter()
+                    .all(|p| p.abs() < 1e-12)
+            );
             assert!((center_of_mass(s).unwrap_or_default()[0] - 0.625).abs() < 1e-12);
         }
     }
@@ -667,17 +736,28 @@ mod strengthened {
             p[1].force = f.iter().map(|c| -c).collect();
             Ok(())
         };
-        let traj = integrate_velocity_verlet(&mut ps, 2e-3, 3000, calc).unwrap_or_else(|e| panic!("{e}"));
+        let traj =
+            integrate_velocity_verlet(&mut ps, 2e-3, 3000, calc).unwrap_or_else(|e| panic!("{e}"));
         let energy = |s: &[Particle]| {
-            let (v, _) = lennard_jones_interaction(&s[0], &s[1], 1.0, 1.0).unwrap_or((f64::NAN, vec![]));
+            let (v, _) =
+                lennard_jones_interaction(&s[0], &s[1], 1.0, 1.0).unwrap_or((f64::NAN, vec![]));
             total_kinetic_energy(s) + v
         };
         let e0 = energy(&traj[0]);
         assert!(e0 < 0.0, "bound state");
-        assert!(traj.iter().all(|s| (energy(s) - e0).abs() < 1e-4 * e0.abs()));
+        assert!(
+            traj.iter()
+                .all(|s| (energy(s) - e0).abs() < 1e-4 * e0.abs())
+        );
         // The bond oscillates around the minimum 2^(1/6).
-        let rs: Vec<f64> = traj.iter().map(|s| s[1].position[0] - s[0].position[0]).collect();
-        let (lo, hi) = (rs.iter().cloned().fold(f64::MAX, f64::min), rs.iter().cloned().fold(f64::MIN, f64::max));
+        let rs: Vec<f64> = traj
+            .iter()
+            .map(|s| s[1].position[0] - s[0].position[0])
+            .collect();
+        let (lo, hi) = (
+            rs.iter().cloned().fold(f64::MAX, f64::min),
+            rs.iter().cloned().fold(f64::MIN, f64::max),
+        );
         assert!(lo < 2f64.powf(1.0 / 6.0) && hi > 2f64.powf(1.0 / 6.0));
     }
 
@@ -702,7 +782,12 @@ mod strengthened {
 
     #[test]
     fn thermostats_hit_or_approach_the_target() {
-        let mk = || vec![Particle::new(0, 1.0, vec![0.0; 3], vec![1.0, 2.0, 2.0]), Particle::new(1, 2.0, vec![1.0; 3], vec![-1.0, 0.5, 0.0])];
+        let mk = || {
+            vec![
+                Particle::new(0, 1.0, vec![0.0; 3], vec![1.0, 2.0, 2.0]),
+                Particle::new(1, 2.0, vec![1.0; 3], vec![-1.0, 0.5, 0.0]),
+            ]
+        };
         let mut ps = mk();
         velocity_rescale(&mut ps, 3.5);
         assert!((temperature(&ps) - 3.5).abs() < 1e-12);
@@ -731,17 +816,34 @@ mod strengthened {
         initialize_velocities_maxwell_boltzmann(&mut a, 1.5, 42);
         initialize_velocities_maxwell_boltzmann(&mut b, 1.5, 42);
         initialize_velocities_maxwell_boltzmann(&mut c, 1.5, 43);
-        assert!(a.iter().zip(&b).all(|(p, q)| p.velocity == q.velocity), "same seed => same velocities");
-        assert!(a.iter().zip(&c).any(|(p, q)| p.velocity != q.velocity), "different seed => different velocities");
+        assert!(
+            a.iter().zip(&b).all(|(p, q)| p.velocity == q.velocity),
+            "same seed => same velocities"
+        );
+        assert!(
+            a.iter().zip(&c).any(|(p, q)| p.velocity != q.velocity),
+            "different seed => different velocities"
+        );
         assert!((temperature(&a) - 1.5).abs() < 1e-12);
-        assert!(total_momentum(&a).unwrap_or_default().iter().all(|p| p.abs() < 1e-10));
+        assert!(
+            total_momentum(&a)
+                .unwrap_or_default()
+                .iter()
+                .all(|p| p.abs() < 1e-10)
+        );
     }
 
     #[test]
     fn periodic_boundary_helpers() {
-        assert_eq!(apply_pbc(&[10.0, 25.0, -25.0, 0.0], &[10.0; 4]), vec![0.0, 5.0, 5.0, 0.0]);
+        assert_eq!(
+            apply_pbc(&[10.0, 25.0, -25.0, 0.0], &[10.0; 4]),
+            vec![0.0, 5.0, 5.0, 0.0]
+        );
         assert_eq!(apply_pbc(&[1.0, 2.0], &[10.0, 1.5]), vec![1.0, 0.5]);
-        assert_eq!(minimum_image_distance(&[9.0, -9.0, 5.0, 4.0], &[10.0; 4]), vec![-1.0, 1.0, 5.0, 4.0]);
+        assert_eq!(
+            minimum_image_distance(&[9.0, -9.0, 5.0, 4.0], &[10.0; 4]),
+            vec![-1.0, 1.0, 5.0, 4.0]
+        );
         assert_eq!(minimum_image_distance(&[23.0], &[10.0]), vec![3.0]);
     }
 
@@ -760,7 +862,12 @@ mod strengthened {
         // v_com = (16/4, 6/4, 0): velocities shift by it and momentum vanishes.
         assert_eq!(ps[0].velocity, vec![-3.0, -1.5, 0.0]);
         assert_eq!(ps[1].velocity, vec![1.0, 0.5, 0.0]);
-        assert!(total_momentum(&ps).unwrap_or_default().iter().all(|p| p.abs() < 1e-12));
+        assert!(
+            total_momentum(&ps)
+                .unwrap_or_default()
+                .iter()
+                .all(|p| p.abs() < 1e-12)
+        );
         assert!(remove_com_velocity(&mut []).is_ok());
     }
 
@@ -768,17 +875,34 @@ mod strengthened {
     fn lattices_have_the_expected_geometry() {
         let cubic = create_cubic_lattice(3, 1.5, 2.0);
         assert_eq!(cubic.len(), 27);
-        assert!(cubic.iter().enumerate().all(|(i, p)| p.id == i && p.mass == 2.0 && p.velocity == vec![0.0; 3]));
+        assert!(
+            cubic
+                .iter()
+                .enumerate()
+                .all(|(i, p)| p.id == i && p.mass == 2.0 && p.velocity == vec![0.0; 3])
+        );
         assert_eq!(cubic[26].position, vec![3.0, 3.0, 3.0]);
         let fcc = create_fcc_lattice(2, 2.0, 1.0);
         assert_eq!(fcc.len(), 32);
         // Nearest-neighbour distance a / sqrt(2), with 12 neighbours in the periodic box.
         let box_size = vec![4.0; 3];
         let d_nn = 2.0 / 2f64.sqrt();
-        let neighbours = fcc.iter().skip(1).filter(|p| {
-            let r = minimum_image_distance(&fcc[0].position.iter().zip(&p.position).map(|(a, b)| a - b).collect::<Vec<_>>(), &box_size);
-            (r.iter().map(|x| x * x).sum::<f64>().sqrt() - d_nn).abs() < 1e-9
-        }).count();
+        let neighbours = fcc
+            .iter()
+            .skip(1)
+            .filter(|p| {
+                let r = minimum_image_distance(
+                    &fcc[0]
+                        .position
+                        .iter()
+                        .zip(&p.position)
+                        .map(|(a, b)| a - b)
+                        .collect::<Vec<_>>(),
+                    &box_size,
+                );
+                (r.iter().map(|x| x * x).sum::<f64>().sqrt() - d_nn).abs() < 1e-9
+            })
+            .count();
         assert_eq!(neighbours, 12);
         assert!(create_cubic_lattice(0, 1.0, 1.0).is_empty());
     }
@@ -794,12 +918,18 @@ mod strengthened {
         let shell = 4.0 / 3.0 * std::f64::consts::PI * (1.5f64.powi(3) - 1.0);
         assert!((g[2] - 1.0 / (rho * shell)).abs() < 1e-9, "g[2] = {}", g[2]);
         assert!(g.iter().enumerate().all(|(i, &v)| i == 2 || v == 0.0));
-        assert!(radial_distribution_function(&pair[..1], &[10.0; 3], 10, 5.0).0.is_empty());
+        assert!(
+            radial_distribution_function(&pair[..1], &[10.0; 3], 10, 5.0)
+                .0
+                .is_empty()
+        );
 
         // Uniformly distributed points (seeded LCG): g(r) fluctuates around 1.
         let mut state = 12345u64;
         let mut next = || {
-            state = state.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
             (state >> 11) as f64 / (1u64 << 53) as f64 * 10.0
         };
         let gas: Vec<Particle> = (0..600).map(|_| at(next(), next(), next())).collect();

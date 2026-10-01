@@ -68,31 +68,45 @@
 pub mod arith;
 pub mod calculus;
 pub mod combinatorics;
+pub mod complex;
+pub mod discrete;
 pub mod elementary;
+pub mod geometry;
+pub mod linalg;
 pub mod logic;
 pub mod number_theory;
+pub mod ode;
 pub mod poly;
 pub mod solve;
 pub mod special;
+pub mod stats;
+pub mod transforms;
 #[cfg(test)]
 pub(crate) mod testing;
 
 pub use arith::arith;
 pub use calculus::calculus;
 pub use combinatorics::combinatorics;
+pub use complex::complex;
+pub use discrete::discrete;
 pub use elementary::elementary;
+pub use geometry::geometry;
+pub use linalg::linalg;
 pub use logic::logic;
 pub use number_theory::number_theory;
+pub use ode::ode;
 pub use poly::poly;
 pub use solve::solve;
 pub use special::special;
+pub use stats::stats;
+pub use transforms::transforms;
 
 use crate::graph::RuleSet;
 
 /// Every rule set shipped with rssn.
 #[must_use]
 pub fn standard() -> Vec<RuleSet> {
-    vec![arith(), elementary(), calculus(), poly(), solve(), number_theory(), combinatorics(), logic(), special()]
+    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), discrete()]
 }
 
 #[cfg(test)]
@@ -110,10 +124,16 @@ mod tests {
         let mut graph = Graph::new();
         let engine = Engine::install(&mut graph, &standard()).unwrap_or_else(|e| panic!("{e}"));
         let verdicts = check_program(&graph, engine.program(), 60).unwrap_or_else(|e| panic!("{e}"));
-        let untested: Vec<&str> =
-            verdicts.iter().filter(|(_, v)| v.agreed == 0).map(|(name, _)| name.as_str()).collect();
-        // Rules whose left-hand side only matches special literal arguments
-        // are instantiated exactly, so they are all testable.
+        // Rules about requests (derivatives, integrals) have no numeric
+        // value to compare; they are covered by the dual-phase tests of
+        // their rule sets and listed here explicitly so that the list
+        // cannot grow unnoticed.
+        let exempt = ["calculus/ftc", "calculus/defint-empty"];
+        let untested: Vec<&str> = verdicts
+            .iter()
+            .filter(|(name, v)| v.agreed == 0 && !exempt.contains(&name.as_str()))
+            .map(|(name, _)| name.as_str())
+            .collect();
         assert!(untested.is_empty(), "rules that were never actually tested: {untested:?}");
     }
 }

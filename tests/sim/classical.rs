@@ -551,14 +551,22 @@ mod strengthened {
         }
     }
 
-    fn rel(a: f64, b: f64) -> f64 {
+    fn rel(
+        a: f64,
+        b: f64,
+    ) -> f64 {
         (a - b).abs() / b.abs().max(f64::MIN_POSITIVE)
     }
 
     #[test]
     fn constants_are_mutually_consistent() {
         // c^2 = 1 / (eps0 mu0)
-        assert!(rel(1.0 / (VACUUM_PERMITTIVITY * VACUUM_PERMEABILITY), SPEED_OF_LIGHT.powi(2)) < 1e-8);
+        assert!(
+            rel(
+                1.0 / (VACUUM_PERMITTIVITY * VACUUM_PERMEABILITY),
+                SPEED_OF_LIGHT.powi(2)
+            ) < 1e-8
+        );
         // k_e = 1 / (4 pi eps0)
         assert!(rel(COULOMB_CONSTANT, 1.0 / (4.0 * PI * VACUUM_PERMITTIVITY)) < 1e-8);
         // hbar = h / 2 pi
@@ -566,7 +574,12 @@ mod strengthened {
         // R = N_A k_B
         assert!(rel(GAS_CONSTANT, AVOGADRO_NUMBER * BOLTZMANN_CONSTANT) < 1e-9);
         // Bohr radius = hbar / (m_e c alpha)
-        assert!(rel(BOHR_RADIUS, HBAR / (ELECTRON_MASS * SPEED_OF_LIGHT * FINE_STRUCTURE_CONSTANT)) < 1e-6);
+        assert!(
+            rel(
+                BOHR_RADIUS,
+                HBAR / (ELECTRON_MASS * SPEED_OF_LIGHT * FINE_STRUCTURE_CONSTANT)
+            ) < 1e-6
+        );
         // Stefan-Boltzmann sigma = 2 pi^5 k^4 / (15 h^3 c^2)
         let sigma = 2.0 * PI.powi(5) * BOLTZMANN_CONSTANT.powi(4)
             / (15.0 * PLANCK_CONSTANT.powi(3) * SPEED_OF_LIGHT.powi(2));
@@ -580,20 +593,45 @@ mod strengthened {
         let r = 0.37;
         assert!(rel(coulomb_force(q, q, r), COULOMB_CONSTANT * q * q / (r * r)) < 1e-9);
         // F = q E for a test charge q and V = E * r for a point charge.
-        assert!(rel(coulomb_force(q, q, r), q * electric_field_point_charge(q, r)) < 1e-9);
-        assert!(rel(electric_potential_point_charge(q, r), electric_field_point_charge(q, r) * r) < 1e-9);
+        assert!(
+            rel(
+                coulomb_force(q, q, r),
+                q * electric_field_point_charge(q, r)
+            ) < 1e-9
+        );
+        assert!(
+            rel(
+                electric_potential_point_charge(q, r),
+                electric_field_point_charge(q, r) * r
+            ) < 1e-9
+        );
         assert_eq!(coulomb_force(1.0, 1.0, 0.0), f64::INFINITY);
     }
 
     #[test]
     fn magnetic_helpers_reference_values() {
         // B = mu0 I / (2 pi r)
-        assert!(rel(magnetic_field_infinite_wire(1.0, 0.1), VACUUM_PERMEABILITY / (2.0 * PI * 0.1)) < 1e-9);
+        assert!(
+            rel(
+                magnetic_field_infinite_wire(1.0, 0.1),
+                VACUUM_PERMEABILITY / (2.0 * PI * 0.1)
+            ) < 1e-9
+        );
         // Lorentz force is q v B at 90 degrees and vanishes for parallel motion.
-        assert!(rel(lorentz_force(ELEMENTARY_CHARGE, 1e6, 0.0, 1.0), ELEMENTARY_CHARGE * 1e6) < 1e-9);
+        assert!(
+            rel(
+                lorentz_force(ELEMENTARY_CHARGE, 1e6, 0.0, 1.0),
+                ELEMENTARY_CHARGE * 1e6
+            ) < 1e-9
+        );
         assert!(lorentz_force(ELEMENTARY_CHARGE, 1e6, PI / 2.0, 1.0).is_finite());
         // r = m v / (q B)
-        assert!(rel(cyclotron_radius(ELECTRON_MASS, 1e6, ELEMENTARY_CHARGE, 1.0), ELECTRON_MASS * 1e6 / ELEMENTARY_CHARGE) < 1e-9);
+        assert!(
+            rel(
+                cyclotron_radius(ELECTRON_MASS, 1e6, ELEMENTARY_CHARGE, 1.0),
+                ELECTRON_MASS * 1e6 / ELEMENTARY_CHARGE
+            ) < 1e-9
+        );
     }
 
     #[test]
@@ -601,14 +639,27 @@ mod strengthened {
         // 1 mol at 273.15 K and 101325 Pa occupies 22.414 L.
         let v = ideal_gas_volume(1.0, 273.15, 101_325.0);
         assert!((v - 0.022_414).abs() < 2e-5, "V = {v}");
-        assert!(rel(ideal_gas_pressure(2.0, 300.0, 0.5), 2.0 * GAS_CONSTANT * 300.0 / 0.5) < 1e-12);
-        assert!(rel(ideal_gas_temperature(ideal_gas_pressure(1.5, 350.0, 0.2), 0.2, 1.5), 350.0) < 1e-12);
+        assert!(
+            rel(
+                ideal_gas_pressure(2.0, 300.0, 0.5),
+                2.0 * GAS_CONSTANT * 300.0 / 0.5
+            ) < 1e-12
+        );
+        assert!(
+            rel(
+                ideal_gas_temperature(ideal_gas_pressure(1.5, 350.0, 0.2), 0.2, 1.5),
+                350.0
+            ) < 1e-12
+        );
     }
 
     #[test]
     fn kinetic_theory_speed_ratios() {
         let (m, t) = (28.0 * ATOMIC_MASS_UNIT, 300.0);
-        let (mean, rms) = (maxwell_boltzmann_mean_speed(m, t), maxwell_boltzmann_rms_speed(m, t));
+        let (mean, rms) = (
+            maxwell_boltzmann_mean_speed(m, t),
+            maxwell_boltzmann_rms_speed(m, t),
+        );
         // v_rms / v_mean = sqrt(3 pi / 8)
         assert!(rel(rms / mean, (3.0 * PI / 8.0).sqrt()) < 1e-12);
         // N2 at 300 K: mean speed about 476 m/s
@@ -627,7 +678,9 @@ mod strengthened {
         let integral: f64 = (0..n)
             .map(|i| {
                 let (a, b) = (i as f64 * h, (i + 1) as f64 * h);
-                0.5 * h * (maxwell_boltzmann_speed_distribution(a, m, t) + maxwell_boltzmann_speed_distribution(b, m, t))
+                0.5 * h
+                    * (maxwell_boltzmann_speed_distribution(a, m, t)
+                        + maxwell_boltzmann_speed_distribution(b, m, t))
             })
             .sum();
         assert!((integral - 1.0).abs() < 1e-6, "integral {integral}");
@@ -644,7 +697,12 @@ mod strengthened {
         assert!((flux - 6.32e7).abs() < 0.02e7, "flux {flux}");
         assert!((wien_displacement_wavelength(5778.0) - 501.5e-9).abs() < 1e-9);
         assert_eq!(wien_displacement_wavelength(0.0), f64::INFINITY);
-        assert!(rel(blackbody_power(4.0, 300.0), 4.0 * blackbody_power(1.0, 300.0)) < 1e-12);
+        assert!(
+            rel(
+                blackbody_power(4.0, 300.0),
+                4.0 * blackbody_power(1.0, 300.0)
+            ) < 1e-12
+        );
     }
 
     #[test]
@@ -687,7 +745,13 @@ mod strengthened {
         let p = (2.0 * ELECTRON_MASS * ELEMENTARY_CHARGE).sqrt();
         assert!((de_broglie_wavelength(p) - 1.2264e-9).abs() < 1e-13);
         // Energy spacing of the oscillator is hbar omega.
-        assert!(rel(quantum_harmonic_oscillator_energy(5, 2.0) - quantum_harmonic_oscillator_energy(4, 2.0), 2.0 * HBAR) < 1e-9);
+        assert!(
+            rel(
+                quantum_harmonic_oscillator_energy(5, 2.0)
+                    - quantum_harmonic_oscillator_energy(4, 2.0),
+                2.0 * HBAR
+            ) < 1e-9
+        );
         assert!(rel(heisenberg_position_uncertainty(1e-24), HBAR / 2e-24) < 1e-12);
         assert_eq!(heisenberg_position_uncertainty(0.0), 0.0);
         assert_eq!(de_broglie_wavelength(0.0), f64::INFINITY);
@@ -713,7 +777,10 @@ mod strengthened {
     #[test]
     fn particle_helpers() {
         let p = Particle3D::new(2.0, 1.0, 2.0, 3.0, 3.0, 4.0, 0.0);
-        assert_eq!((p.x, p.y, p.z, p.vx, p.vy, p.vz), (1.0, 2.0, 3.0, 3.0, 4.0, 0.0));
+        assert_eq!(
+            (p.x, p.y, p.z, p.vx, p.vy, p.vz),
+            (1.0, 2.0, 3.0, 3.0, 4.0, 0.0)
+        );
         let ps = [p, Particle3D::new(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0)];
         assert!(rel(total_kinetic_energy(&ps), 25.0 + 2.0) < 1e-12);
     }
@@ -737,7 +804,8 @@ mod strengthened {
             Particle3D::new(1.0, -0.5, 0.0, 0.0, 0.0, -v, 0.0),
             Particle3D::new(1.0, 0.5, 0.0, 0.0, 0.0, v, 0.0),
         ];
-        let e = |ps: &[Particle3D]| total_kinetic_energy(ps) + gravitational_potential_energy(ps, 1.0);
+        let e =
+            |ps: &[Particle3D]| total_kinetic_energy(ps) + gravitational_potential_energy(ps, 1.0);
         let e0 = e(&start);
         // KE = 2 * (1/2) * (1/2) = 1/2 and PE = -1, so E = -1/2.
         assert!((e0 + 0.5).abs() < 1e-12, "E0 = {e0}");
@@ -771,7 +839,8 @@ mod strengthened {
         };
         let traj = projectile_motion_with_drag(params);
         let range = 20.0f64.powi(2) * (2.0 * PI / 4.0).sin() / STANDARD_GRAVITY;
-        let (t_end, x_end, y_end, ..) = *traj.last().unwrap_or(&(0.0, f64::NAN, f64::NAN, 0.0, 0.0));
+        let (t_end, x_end, y_end, ..) =
+            *traj.last().unwrap_or(&(0.0, f64::NAN, f64::NAN, 0.0, 0.0));
         assert!((x_end - range).abs() < 0.05, "range {x_end} vs {range}");
         assert!(y_end >= 0.0 && y_end < 0.01);
         // Flight time 2 v0 sin(theta) / g
@@ -784,11 +853,20 @@ mod strengthened {
     #[test]
     fn drag_shortens_the_range_and_lowers_the_peak() {
         let base = ProjectileParams {
-            v0: 30.0, angle: PI / 4.0, mass: 0.5, drag_coeff: 0.0, area: 0.02, air_density: 1.225,
-            dt: 1e-3, max_time: 20.0,
+            v0: 30.0,
+            angle: PI / 4.0,
+            mass: 0.5,
+            drag_coeff: 0.0,
+            area: 0.02,
+            air_density: 1.225,
+            dt: 1e-3,
+            max_time: 20.0,
         };
         let no_drag = projectile_motion_with_drag(base);
-        let drag = projectile_motion_with_drag(ProjectileParams { drag_coeff: 0.5, ..base });
+        let drag = projectile_motion_with_drag(ProjectileParams {
+            drag_coeff: 0.5,
+            ..base
+        });
         let far = |t: &Vec<(f64, f64, f64, f64, f64)>| t.last().map_or(f64::NAN, |p| p.1);
         assert!(far(&drag) < 0.95 * far(&no_drag));
         // With drag, the descent is steeper than the ascent: horizontal velocity only decreases.
@@ -799,8 +877,15 @@ mod strengthened {
     fn particle_motion_in_uniform_gravity_is_exact() {
         // F = (0, 0, -m g); RK4 is exact for quadratic trajectories.
         let (m, g) = (2.0, 9.81);
-        let traj = simulate_particle_motion(|_, _| [0.0, 0.0, -m * g], m, (1.0, 2.0, 10.0), (3.0, 0.0, 5.0), (0.0, 2.0), 20)
-            .unwrap_or_else(|e| panic!("{e}"));
+        let traj = simulate_particle_motion(
+            |_, _| [0.0, 0.0, -m * g],
+            m,
+            (1.0, 2.0, 10.0),
+            (3.0, 0.0, 5.0),
+            (0.0, 2.0),
+            20,
+        )
+        .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(traj.len(), 21);
         let last = &traj[20];
         assert_eq!(last.len(), 6);
@@ -814,21 +899,46 @@ mod strengthened {
     fn particle_motion_in_a_harmonic_trap_matches_cosine_and_conserves_energy() {
         let (m, k) = (1.5_f64, 6.0_f64);
         let omega = (k / m).sqrt();
-        let traj = simulate_particle_motion(|_, s| [-k * s[0], -k * s[1], -k * s[2]], m, (1.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 5.0), 2000)
-            .unwrap_or_else(|e| panic!("{e}"));
+        let traj = simulate_particle_motion(
+            |_, s| [-k * s[0], -k * s[1], -k * s[2]],
+            m,
+            (1.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+            (0.0, 5.0),
+            2000,
+        )
+        .unwrap_or_else(|e| panic!("{e}"));
         let e0 = 0.5 * k;
         for (i, s) in traj.iter().enumerate() {
             let t = 5.0 * i as f64 / 2000.0;
             assert!((s[0] - (omega * t).cos()).abs() < 1e-8, "step {i}");
-            let energy = 0.5 * m * (s[3] * s[3] + s[4] * s[4] + s[5] * s[5]) + 0.5 * k * (s[0] * s[0] + s[1] * s[1] + s[2] * s[2]);
+            let energy = 0.5 * m * (s[3] * s[3] + s[4] * s[4] + s[5] * s[5])
+                + 0.5 * k * (s[0] * s[0] + s[1] * s[1] + s[2] * s[2]);
             assert!((energy - e0).abs() < 1e-8, "energy at step {i}: {energy}");
         }
     }
 
     #[test]
     fn particle_motion_rejects_zero_steps_and_blowup() {
-        assert!(simulate_particle_motion(|_, _| [0.0; 3], 1.0, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 1.0), 0).is_err());
-        let r = simulate_particle_motion(|_, s| [s[0].powi(3) * 1e3, 0.0, 0.0], 1.0, (10.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 50.0), 50);
+        assert!(
+            simulate_particle_motion(
+                |_, _| [0.0; 3],
+                1.0,
+                (0.0, 0.0, 0.0),
+                (0.0, 0.0, 0.0),
+                (0.0, 1.0),
+                0
+            )
+            .is_err()
+        );
+        let r = simulate_particle_motion(
+            |_, s| [s[0].powi(3) * 1e3, 0.0, 0.0],
+            1.0,
+            (10.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+            (0.0, 50.0),
+            50,
+        );
         assert!(r.is_err());
     }
 
@@ -843,12 +953,16 @@ mod strengthened {
         let n = 40;
         let (x0, x1) = (0.0, 1.0);
         let dx = (x1 - x0) / (n as f64 - 1.0);
-        let (vals, vecs) = solve_1d_schrodinger(|_| 0.0, (x0, x1), n).unwrap_or_else(|e| panic!("{e}"));
+        let (vals, vecs) =
+            solve_1d_schrodinger(|_| 0.0, (x0, x1), n).unwrap_or_else(|e| panic!("{e}"));
         let vals = sorted(vals);
         assert_eq!(vals.len(), n);
         for (k, e) in vals.iter().enumerate().take(6) {
             let exact = (1.0 - ((k + 1) as f64 * PI / (n as f64 + 1.0)).cos()) / (dx * dx);
-            assert!((e - exact).abs() < 1e-8 * exact.max(1.0), "E_{k} = {e} vs {exact}");
+            assert!(
+                (e - exact).abs() < 1e-8 * exact.max(1.0),
+                "E_{k} = {e} vs {exact}"
+            );
         }
         assert!(vecs.is_orthogonal(1e-8), "eigenvectors must be orthonormal");
         // Continuum limit for the lowest level: pi^2 / (2 L^2) with L = (n+1) dx.
@@ -859,7 +973,8 @@ mod strengthened {
     #[test]
     fn schrodinger_1d_harmonic_oscillator_levels() {
         // V = x^2 / 2 (hbar = m = omega = 1): E_n = n + 1/2.
-        let (vals, _) = solve_1d_schrodinger(|x| 0.5 * x * x, (-6.0, 6.0), 60).unwrap_or_else(|e| panic!("{e}"));
+        let (vals, _) = solve_1d_schrodinger(|x| 0.5 * x * x, (-6.0, 6.0), 60)
+            .unwrap_or_else(|e| panic!("{e}"));
         let vals = sorted(vals);
         for (n, e) in vals.iter().enumerate().take(3) {
             assert!((e - (n as f64 + 0.5)).abs() < 0.03, "E_{n} = {e}");
@@ -869,10 +984,18 @@ mod strengthened {
     #[test]
     fn schrodinger_1d_ground_state_has_no_nodes() {
         let n = 30;
-        let (vals, vecs) = solve_1d_schrodinger(|x| 0.5 * x * x, (-5.0, 5.0), n).unwrap_or_else(|e| panic!("{e}"));
-        let (i0, _) = vals.iter().enumerate().min_by(|a, b| a.1.total_cmp(b.1)).unwrap_or((0, &0.0));
+        let (vals, vecs) =
+            solve_1d_schrodinger(|x| 0.5 * x * x, (-5.0, 5.0), n).unwrap_or_else(|e| panic!("{e}"));
+        let (i0, _) = vals
+            .iter()
+            .enumerate()
+            .min_by(|a, b| a.1.total_cmp(b.1))
+            .unwrap_or((0, &0.0));
         let col: Vec<f64> = (0..n).map(|r| *vecs.get(r, i0)).collect();
-        assert!(col.iter().all(|&v| v >= 0.0) || col.iter().all(|&v| v <= 0.0), "ground state must not change sign");
+        assert!(
+            col.iter().all(|&v| v >= 0.0) || col.iter().all(|&v| v <= 0.0),
+            "ground state must not change sign"
+        );
         assert!((col.iter().map(|v| v * v).sum::<f64>() - 1.0).abs() < 1e-8);
     }
 
@@ -880,21 +1003,32 @@ mod strengthened {
     fn schrodinger_solvers_validate_grid_size() {
         assert!(solve_1d_schrodinger(|_| 0.0, (0.0, 1.0), 2).is_err());
         assert!(solve_2d_schrodinger(|_, _| 0.0, (0.0, 1.0, 0.0, 1.0), (2, 5)).is_err());
-        assert!(solve_3d_schrodinger(|_, _, _| 0.0, (0.0, 1.0, 0.0, 1.0, 0.0, 1.0), (5, 5, 2)).is_err());
+        assert!(
+            solve_3d_schrodinger(|_, _, _| 0.0, (0.0, 1.0, 0.0, 1.0, 0.0, 1.0), (5, 5, 2)).is_err()
+        );
         // Dense 3D solver refuses grids with more than 25000 points.
-        assert!(solve_3d_schrodinger(|_, _, _| 0.0, (0.0, 1.0, 0.0, 1.0, 0.0, 1.0), (30, 30, 30)).is_err());
+        assert!(
+            solve_3d_schrodinger(|_, _, _| 0.0, (0.0, 1.0, 0.0, 1.0, 0.0, 1.0), (30, 30, 30))
+                .is_err()
+        );
     }
 
     #[test]
     fn schrodinger_2d_box_levels_are_sums_of_1d_levels() {
         // Interior 4 x 4 (grid 6 x 6): E = e_a + e_b with e_k = (1 - cos(k pi / 5)) / dx^2.
         let (nx, ny) = (6usize, 6usize);
-        let (vals, _) = solve_2d_schrodinger(|_, _| 0.0, (0.0, 1.0, 0.0, 1.0), (nx, ny)).unwrap_or_else(|e| panic!("{e}"));
+        let (vals, _) = solve_2d_schrodinger(|_, _| 0.0, (0.0, 1.0, 0.0, 1.0), (nx, ny))
+            .unwrap_or_else(|e| panic!("{e}"));
         let vals = sorted(vals);
         assert_eq!(vals.len(), nx * ny);
         let d = 1.0 / (nx as f64 - 1.0);
         let e1 = |k: usize| (1.0 - (k as f64 * PI / (nx as f64 - 1.0)).cos()) / (d * d);
-        assert!((vals[0] - 2.0 * e1(1)).abs() < 1e-6, "ground {} vs {}", vals[0], 2.0 * e1(1));
+        assert!(
+            (vals[0] - 2.0 * e1(1)).abs() < 1e-6,
+            "ground {} vs {}",
+            vals[0],
+            2.0 * e1(1)
+        );
         // (1,2) and (2,1) are degenerate.
         assert!((vals[1] - (e1(1) + e1(2))).abs() < 1e-6);
         assert!((vals[2] - (e1(1) + e1(2))).abs() < 1e-6);
@@ -907,10 +1041,16 @@ mod strengthened {
     fn schrodinger_3d_box_ground_state() {
         let (n, l) = (5usize, 1.0);
         let d = l / (n as f64 - 1.0);
-        let (vals, _) = solve_3d_schrodinger(|_, _, _| 0.0, (0.0, l, 0.0, l, 0.0, l), (n, n, n)).unwrap_or_else(|e| panic!("{e}"));
+        let (vals, _) = solve_3d_schrodinger(|_, _, _| 0.0, (0.0, l, 0.0, l, 0.0, l), (n, n, n))
+            .unwrap_or_else(|e| panic!("{e}"));
         let vals = sorted(vals);
         let e1 = (1.0 - (PI / (n as f64 - 1.0)).cos()) / (d * d);
-        assert!((vals[0] - 3.0 * e1).abs() < 1e-5, "ground {} vs {}", vals[0], 3.0 * e1);
+        assert!(
+            (vals[0] - 3.0 * e1).abs() < 1e-5,
+            "ground {} vs {}",
+            vals[0],
+            3.0 * e1
+        );
         // Next level is triply degenerate: 2 e1(1) + e1(2).
         let e2 = (1.0 - (2.0 * PI / (n as f64 - 1.0)).cos()) / (d * d);
         for v in &vals[1..4] {
@@ -922,8 +1062,15 @@ mod strengthened {
     fn heat_equation_matches_the_decaying_sine_mode() {
         // u_t = alpha u_xx, u(x,0) = sin(pi x), u(0)=u(1)=0  =>  u = exp(-alpha pi^2 t) sin(pi x)
         let (alpha, nx, nt) = (0.5, 101, 100);
-        let res = solve_heat_equation_1d_crank_nicolson(&|x| (PI * x).sin(), alpha, (0.0, 1.0), nx, (0.0, 0.2), nt)
-            .unwrap_or_else(|e| panic!("{e}"));
+        let res = solve_heat_equation_1d_crank_nicolson(
+            &|x| (PI * x).sin(),
+            alpha,
+            (0.0, 1.0),
+            nx,
+            (0.0, 0.2),
+            nt,
+        )
+        .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(res.len(), nt + 1);
         let decay = (-alpha * PI * PI * 0.2).exp();
         for (i, &u) in res[nt].iter().enumerate() {
@@ -932,14 +1079,23 @@ mod strengthened {
         }
         // Boundary values stay zero and the maximum decreases monotonically.
         assert!(res.iter().all(|u| u[0] == 0.0 && u[nx - 1] == 0.0));
-        let peaks: Vec<f64> = res.iter().map(|u| u.iter().cloned().fold(f64::MIN, f64::max)).collect();
+        let peaks: Vec<f64> = res
+            .iter()
+            .map(|u| u.iter().cloned().fold(f64::MIN, f64::max))
+            .collect();
         assert!(peaks.windows(2).all(|w| w[1] <= w[0] + 1e-15));
     }
 
     #[test]
     fn heat_equation_validates_arguments() {
-        assert!(solve_heat_equation_1d_crank_nicolson(&|_| 1.0, 1.0, (0.0, 1.0), 2, (0.0, 1.0), 10).is_err());
-        assert!(solve_heat_equation_1d_crank_nicolson(&|_| 1.0, 1.0, (0.0, 1.0), 10, (0.0, 1.0), 0).is_err());
+        assert!(
+            solve_heat_equation_1d_crank_nicolson(&|_| 1.0, 1.0, (0.0, 1.0), 2, (0.0, 1.0), 10)
+                .is_err()
+        );
+        assert!(
+            solve_heat_equation_1d_crank_nicolson(&|_| 1.0, 1.0, (0.0, 1.0), 10, (0.0, 1.0), 0)
+                .is_err()
+        );
     }
 
     #[test]
@@ -951,7 +1107,8 @@ mod strengthened {
         let ut = vec![0.0; n];
         let dt = 0.005;
         let steps = 200;
-        let snaps = solve_wave_equation_1d(&u0, &ut, 1.0, dx, dt, steps).unwrap_or_else(|e| panic!("{e}"));
+        let snaps =
+            solve_wave_equation_1d(&u0, &ut, 1.0, dx, dt, steps).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(snaps.len(), steps + 1);
         for &(k, tol) in &[(100usize, 2e-3), (200usize, 3e-3)] {
             let t = k as f64 * dt;
@@ -980,12 +1137,14 @@ mod strengthened {
         assert_eq!(lattice.len(), 8);
         for row in &lattice {
             assert_eq!(row.len(), 8);
-            assert!(row.iter().all(|&s| s == 1 || s == -1), "spins must be +-1: {row:?}");
+            assert!(
+                row.iter().all(|&s| s == 1 || s == -1),
+                "spins must be +-1: {row:?}"
+            );
         }
     }
 
     #[test]
-    #[ignore = "library bug: simulate_ising_model initialises `lattice[i][j]` for i in 0..steps instead of 0..size: panics with index out of bounds when steps > size (size 8, steps 1000) and leaves zero-spin rows when steps < size"]
     fn ising_model_with_more_steps_than_rows() {
         let lattice = simulate_ising_model(8, 2.0, 1000);
         assert_eq!(lattice.len(), 8);
@@ -993,10 +1152,33 @@ mod strengthened {
     }
 
     #[test]
-    #[ignore = "library bug: simulate_ising_model leaves rows uninitialised (spin 0) when steps < size (size 8, steps 3: rows 3..8 stay all zero)"]
     fn ising_model_with_fewer_steps_than_rows_has_only_unit_spins() {
         let lattice = simulate_ising_model(8, 2.0, 3);
         assert!(lattice.iter().flatten().all(|&s| s == 1 || s == -1));
+    }
+
+    #[test]
+    fn ising_model_cools_towards_low_energy_and_handles_degenerate_sizes() {
+        // At T = 0.05 almost only energy-lowering flips are accepted, so
+        // the energy per site must fall far below the random-start value (~0).
+        let n = 8;
+        let lat = simulate_ising_model(n, 0.05, 100_000);
+        let mut e = 0.0;
+        for i in 0..n {
+            for j in 0..n {
+                let s = f64::from(lat[i][j]);
+                e -= s * f64::from(lat[(i + 1) % n][j] + lat[i][(j + 1) % n]);
+            }
+        }
+        let per_site = e / ((n * n) as f64);
+        assert!(per_site < -0.5, "E/N = {per_site}");
+        assert!(simulate_ising_model(0, 1.0, 10).is_empty());
+        assert!(
+            simulate_ising_model(4, 1.0, 0)
+                .iter()
+                .flatten()
+                .all(|&s| s.abs() == 1)
+        );
     }
 
     proptest! {

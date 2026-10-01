@@ -8,8 +8,8 @@ use rssn::kernels::stats::{
     BinomialDist, ExponentialDist, GammaDist, PoissonDist, UniformDist, VarianceType,
     chi_squared_test, coefficient_of_variation, correlation, covariance, geometric_mean,
     harmonic_mean, iqr, kurtosis, max, mean, median, min, mode, one_way_anova, percentile, range,
-    shannon_entropy, simple_linear_regression, skewness, standard_error, std_dev, two_sample_t_test,
-    variance, variance_with_type, welch_t_test, z_scores,
+    shannon_entropy, simple_linear_regression, skewness, standard_error, std_dev,
+    two_sample_t_test, variance, variance_with_type, welch_t_test, z_scores,
 };
 
 fn cfg() -> ProptestConfig {
@@ -35,14 +35,29 @@ fn variance_is_population_variance() {
 
 #[test]
 fn variance_with_type_population_sample_and_edges() {
-    assert_approx_eq!(variance_with_type(&EIGHT, VarianceType::Population).unwrap_or(f64::NAN), 4.0, 1e-10);
-    assert_approx_eq!(variance_with_type(&EIGHT, VarianceType::Sample).unwrap_or(f64::NAN), 32.0 / 7.0, 1e-10);
+    assert_approx_eq!(
+        variance_with_type(&EIGHT, VarianceType::Population).unwrap_or(f64::NAN),
+        4.0,
+        1e-10
+    );
+    assert_approx_eq!(
+        variance_with_type(&EIGHT, VarianceType::Sample).unwrap_or(f64::NAN),
+        32.0 / 7.0,
+        1e-10
+    );
     // Welford stability with a large offset.
     let shifted = [1e12 + 1.0, 1e12 + 2.0, 1e12 + 3.0];
-    assert_approx_eq!(variance_with_type(&shifted, VarianceType::Sample).unwrap_or(f64::NAN), 1.0, 1e-10);
+    assert_approx_eq!(
+        variance_with_type(&shifted, VarianceType::Sample).unwrap_or(f64::NAN),
+        1.0,
+        1e-10
+    );
     assert_eq!(variance_with_type(&[], VarianceType::Sample), None);
     assert_eq!(variance_with_type(&[1.0], VarianceType::Sample), None);
-    assert_eq!(variance_with_type(&[1.0], VarianceType::Population), Some(0.0));
+    assert_eq!(
+        variance_with_type(&[1.0], VarianceType::Population),
+        Some(0.0)
+    );
 }
 
 #[test]
@@ -52,8 +67,16 @@ fn std_dev_is_sample_standard_deviation() {
 
 #[test]
 fn geometric_and_harmonic_means() {
-    assert_approx_eq!(geometric_mean(&[1.0, 2.0, 4.0, 8.0]), 2.828_427_124_746_190_3, 1e-10);
-    assert_approx_eq!(harmonic_mean(&[1.0, 2.0, 4.0]), 1.714_285_714_285_714_2, 1e-10);
+    assert_approx_eq!(
+        geometric_mean(&[1.0, 2.0, 4.0, 8.0]),
+        2.828_427_124_746_190_3,
+        1e-10
+    );
+    assert_approx_eq!(
+        harmonic_mean(&[1.0, 2.0, 4.0]),
+        1.714_285_714_285_714_2,
+        1e-10
+    );
     assert!(geometric_mean(&[]).is_nan() && harmonic_mean(&[]).is_nan());
 }
 
@@ -112,7 +135,8 @@ fn covariance_and_correlation() {
 
 #[test]
 fn simple_linear_regression_exact_line() {
-    let (slope, intercept) = simple_linear_regression(&[(1.0, 3.0), (2.0, 5.0), (3.0, 7.0), (4.0, 9.0)]);
+    let (slope, intercept) =
+        simple_linear_regression(&[(1.0, 3.0), (2.0, 5.0), (3.0, 7.0), (4.0, 9.0)]);
     assert_approx_eq!(slope, 2.0, 1e-10);
     assert_approx_eq!(intercept, 1.0, 1e-10);
     let (s, i) = simple_linear_regression(&[]);
@@ -154,7 +178,6 @@ fn welch_t_test_shifted_samples() {
 }
 
 #[test]
-#[ignore = "library bug: two_sample_t_test pools POPULATION variances (variance()) with (n-1) weights; observed t = -1.118034, expected t = -1.0 (p = 0.34659)"]
 fn two_sample_t_test_shifted_samples() {
     let (t, p) = two_sample_t_test(&[1.0, 2.0, 3.0, 4.0, 5.0], &[2.0, 3.0, 4.0, 5.0, 6.0]);
     assert_approx_eq!(t, -1.0, 1e-10);
@@ -202,7 +225,6 @@ fn coefficient_of_variation_and_standard_error() {
 }
 
 #[test]
-#[ignore = "library bug: skewness() always returns NaN (statrs Data::skewness is the default `None`); observed NaN for [1,1,1,2,10], expected > 0 (Fisher-Pearson 1.4565, adjusted 2.1713)"]
 fn skewness_sign() {
     assert!(skewness(&mut [1.0, 1.0, 1.0, 2.0, 10.0]) > 0.0);
     assert!(skewness(&mut [-10.0, -2.0, -1.0, -1.0, -1.0]) < 0.0);
@@ -210,7 +232,6 @@ fn skewness_sign() {
 }
 
 #[test]
-#[ignore = "library bug: kurtosis multiplies the whole (n-1)^2 correction by term1; observed -4.449375 for [2,4,4,4,5,5,7,9], expected the standard unbiased excess kurtosis G2 = 0.940625"]
 fn kurtosis_matches_unbiased_excess_kurtosis() {
     let k = kurtosis(&mut EIGHT.clone());
     assert_approx_eq!(k, 0.940_625, 1e-9);
@@ -337,4 +358,44 @@ proptest! {
         prop_assert!((u.cdf(x) - f).abs() < 1e-9);
         prop_assert!(u.cdf(x + 0.1) >= u.cdf(x));
     }
+}
+
+#[test]
+fn skewness_is_adjusted_fisher_pearson() {
+    // Hand computation: mean 3, m2 = 12.4, m3 = 63.6, g1 = 1.45657, G1 = sqrt(20)/3 g1 = 2.17130.
+    let g = skewness(&mut [1.0, 1.0, 1.0, 2.0, 10.0]);
+    assert_approx_eq!(g, 20f64.sqrt() / 3.0 * 63.6 / 12.4f64.powf(1.5), 1e-12);
+    assert_approx_eq!(g, 2.1713, 1e-4);
+    // Sign flips under reflection, invariant under shift and scale.
+    let a = skewness(&mut [-10.0, -2.0, -1.0, -1.0, -1.0]);
+    assert_approx_eq!(a, -g, 1e-12);
+    let b = skewness(&mut [12.0, 12.0, 12.0, 14.0, 30.0]);
+    assert_approx_eq!(b, g, 1e-12);
+    assert!(skewness(&mut [1.0, 2.0]).is_nan());
+    assert_eq!(skewness(&mut [3.0, 3.0, 3.0]), 0.0);
+}
+
+#[test]
+fn kurtosis_is_shift_and_scale_invariant_and_flat_data_is_negative() {
+    let base = kurtosis(&mut EIGHT.clone());
+    let mut moved: Vec<f64> = EIGHT.iter().map(|v| 3.0 * v - 7.0).collect();
+    assert_approx_eq!(kurtosis(&mut moved), base, 1e-10);
+    // Two-point-mass data is the flattest possible: strongly negative excess kurtosis.
+    assert!(kurtosis(&mut [0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0]) < -1.0);
+}
+
+#[test]
+fn two_sample_t_test_agrees_with_welch_for_equal_sizes_and_unequal_sizes_hand_value() {
+    // For equal n the pooled and Welch t statistics coincide.
+    let a = [1.0, 2.0, 4.0, 8.0, 3.0];
+    let b = [2.0, 3.0, 9.0, 7.0, 6.0];
+    let (t_pool, _) = two_sample_t_test(&a, &b);
+    let (t_welch, _) = welch_t_test(&a, &b);
+    assert_approx_eq!(t_pool, t_welch, 1e-12);
+    // Unequal sizes: x = [1,2,3] (mean 2, s^2 1), y = [4,6,8,10] (mean 7, s^2 20/3);
+    // sp^2 = (2*1 + 3*20/3)/5 = 4.4, t = -5 / sqrt(4.4 (1/3 + 1/4)) = -3.1218...
+    let (t, p) = two_sample_t_test(&[1.0, 2.0, 3.0], &[4.0, 6.0, 8.0, 10.0]);
+    assert_approx_eq!(t, -5.0 / (4.4f64 * (1.0 / 3.0 + 0.25)).sqrt(), 1e-12);
+    assert!(p > 0.0 && p < 0.05);
+    assert!(two_sample_t_test(&[1.0], &[1.0, 2.0]).0.is_nan());
 }

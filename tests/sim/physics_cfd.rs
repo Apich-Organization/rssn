@@ -535,7 +535,11 @@ mod strengthened {
     }
 
     /// Matrix sampled on a uniform grid over the unit square (row index = x, column index = y).
-    fn grid(nx: usize, ny: usize, f: impl Fn(f64, f64) -> f64) -> Matrix<f64> {
+    fn grid(
+        nx: usize,
+        ny: usize,
+        f: impl Fn(f64, f64) -> f64,
+    ) -> Matrix<f64> {
         let mut m = Matrix::zeros(nx, ny);
         for i in 0..nx {
             for j in 0..ny {
@@ -545,7 +549,10 @@ mod strengthened {
         m
     }
 
-    fn interior_max_err(a: &Matrix<f64>, b: &Matrix<f64>) -> f64 {
+    fn interior_max_err(
+        a: &Matrix<f64>,
+        b: &Matrix<f64>,
+    ) -> f64 {
         let mut e = 0.0f64;
         for i in 1..a.rows() - 1 {
             for j in 1..a.cols() - 1 {
@@ -573,7 +580,10 @@ mod strengthened {
     fn dimensionless_numbers_exact_values() {
         assert_eq!(reynolds_number(2.0, 3.0, 1e-6), 6e6);
         assert_eq!(mach_number(340.0, 340.0), 1.0);
-        assert!((froude_number(3.132_091_952_673_165, 10.0, 9.81) - 0.316_227_766_016_837_9).abs() < 1e-12);
+        assert!(
+            (froude_number(3.132_091_952_673_165, 10.0, 9.81) - 0.316_227_766_016_837_9).abs()
+                < 1e-12
+        );
         assert_eq!(cfl_number(-2.0, 0.1, 0.5), 0.4); // uses |v|
         assert!(check_cfl_stability(1.0, 0.1, 0.1, 1.0)); // boundary: cfl == max
         assert!(!check_cfl_stability(1.0, 0.11, 0.1, 1.0));
@@ -590,7 +600,11 @@ mod strengthened {
         assert_eq!(res.len(), 11);
         for k in 0..=10usize {
             for i in 0..n {
-                let want = if i >= k + 1 && i - k < n { u0[i - k] } else { 0.0 };
+                let want = if i >= k + 1 && i - k < n {
+                    u0[i - k]
+                } else {
+                    0.0
+                };
                 if i >= 1 && i < n - 1 {
                     assert!((res[k][i] - want).abs() < 1e-12, "step {k}, cell {i}");
                 }
@@ -621,7 +635,10 @@ mod strengthened {
         let t0 = total(&res[0]);
         for u in &res {
             assert!((total(u) - t0).abs() < 1e-10);
-            assert!(u.iter().all(|&v| v >= -1e-12 && v <= 1.0 + 1e-12), "upwind must stay monotone for CFL <= 1");
+            assert!(
+                u.iter().all(|&v| v >= -1e-12 && v <= 1.0 + 1e-12),
+                "upwind must stay monotone for CFL <= 1"
+            );
         }
     }
 
@@ -687,14 +704,20 @@ mod strengthened {
     fn burgers_keeps_constants_and_stays_bounded() {
         let n = 50;
         let res = solve_burgers_1d(&vec![0.7; n], 0.01, 0.02, 0.001, 20);
-        assert!(res.iter().all(|u| u.iter().all(|&v| (v - 0.7).abs() < 1e-12)));
+        assert!(
+            res.iter()
+                .all(|u| u.iter().all(|&v| (v - 0.7).abs() < 1e-12))
+        );
         let mut u0 = vec![0.0; n];
         for i in 10..30 {
             u0[i] = 1.0 - ((i as f64 - 20.0).abs() / 10.0);
         }
         let res = solve_burgers_1d(&u0, 0.01, 0.02, 0.001, 200);
         for u in &res {
-            assert!(u.iter().all(|&v| v >= -1e-12 && v <= 1.0 + 1e-12), "max principle violated");
+            assert!(
+                u.iter().all(|&v| v >= -1e-12 && v <= 1.0 + 1e-12),
+                "max principle violated"
+            );
         }
         // Viscosity smooths the pulse: its L2 norm decreases.
         let l2 = |u: &[f64]| u.iter().map(|v| v * v).sum::<f64>();
@@ -706,7 +729,9 @@ mod strengthened {
         // laplace(u) = -2 pi^2 sin(pi x) sin(pi y), u = 0 on the boundary.
         let n = 21;
         let d = 1.0 / (n as f64 - 1.0);
-        let f = grid(n, n, |x, y| -2.0 * PI * PI * (PI * x).sin() * (PI * y).sin());
+        let f = grid(n, n, |x, y| {
+            -2.0 * PI * PI * (PI * x).sin() * (PI * y).sin()
+        });
         let u0 = Matrix::zeros(n, n);
         // The 5-point Laplacian has eigenvalue -4 (1 - cos(pi d)) / d^2 on this mode.
         let amp = 2.0 * PI * PI * d * d / (4.0 * (1.0 - (PI * d).cos()));
@@ -762,7 +787,10 @@ mod strengthened {
                 assert!((gx.get(i, j) - (2.0 * x + y)).abs() < 1e-9, "d/dx");
                 assert!((gy.get(i, j) - (6.0 * y + x)).abs() < 1e-9, "d/dy");
                 assert!((div.get(i, j) - 2.0).abs() < 1e-9, "div");
-                assert!((vort.get(i, j) - 2.0).abs() < 1e-9, "vorticity of solid-body rotation");
+                assert!(
+                    (vort.get(i, j) - 2.0).abs() < 1e-9,
+                    "vorticity of solid-body rotation"
+                );
             }
         }
         // Boundary entries are left at zero.
@@ -788,7 +816,10 @@ mod strengthened {
         let div = compute_divergence(&u, &v, d, d);
         for i in 2..n - 2 {
             for j in 2..n - 2 {
-                assert!(div.get(i, j).abs() < 1e-9, "central differences of a stream function commute");
+                assert!(
+                    div.get(i, j).abs() < 1e-9,
+                    "central differences of a stream function commute"
+                );
             }
         }
     }
@@ -814,7 +845,10 @@ mod strengthened {
         for j in 0..6 {
             assert_eq!((*m.get(0, j), *m.get(4, j)), (-1.0, -1.0));
         }
-        assert!((m.get(2, 2) - (10.0 * 0.5 + 0.4)).abs() < 1e-12, "interior untouched");
+        assert!(
+            (m.get(2, 2) - (10.0 * 0.5 + 0.4)).abs() < 1e-12,
+            "interior untouched"
+        );
 
         let mut f = grid(5, 6, |x, y| 100.0 * x + 7.0 * y + 3.0 * x * y);
         let interior = f.clone();
@@ -847,15 +881,35 @@ mod strengthened {
     fn lid_driven_cavity_develops_a_primary_vortex() {
         let n = 17;
         let (psi, omega) = lid_driven_cavity_simple(n, n, 100.0, 1.0, 40, 1e-3);
-        assert_eq!((psi.rows(), psi.cols(), omega.rows(), omega.cols()), (n, n, n, n));
+        assert_eq!(
+            (psi.rows(), psi.cols(), omega.rows(), omega.cols()),
+            (n, n, n, n)
+        );
         // No penetration through the walls.
         for k in 0..n {
-            assert_eq!((*psi.get(k, 0), *psi.get(k, n - 1), *psi.get(0, k), *psi.get(n - 1, k)), (0.0, 0.0, 0.0, 0.0));
+            assert_eq!(
+                (
+                    *psi.get(k, 0),
+                    *psi.get(k, n - 1),
+                    *psi.get(0, k),
+                    *psi.get(n - 1, k)
+                ),
+                (0.0, 0.0, 0.0, 0.0)
+            );
         }
         // The lid drives the fluid in +x, so the interior stream function is negative (u = psi_y).
-        let interior_min = (1..n - 1).flat_map(|i| (1..n - 1).map(move |j| (i, j))).map(|(i, j)| *psi.get(i, j)).fold(f64::MAX, f64::min);
-        let interior_max = (1..n - 1).flat_map(|i| (1..n - 1).map(move |j| (i, j))).map(|(i, j)| *psi.get(i, j)).fold(f64::MIN, f64::max);
-        assert!(interior_min < -1e-3 && interior_max < 1e-9, "psi range [{interior_min}, {interior_max}]");
+        let interior_min = (1..n - 1)
+            .flat_map(|i| (1..n - 1).map(move |j| (i, j)))
+            .map(|(i, j)| *psi.get(i, j))
+            .fold(f64::MAX, f64::min);
+        let interior_max = (1..n - 1)
+            .flat_map(|i| (1..n - 1).map(move |j| (i, j)))
+            .map(|(i, j)| *psi.get(i, j))
+            .fold(f64::MIN, f64::max);
+        assert!(
+            interior_min < -1e-3 && interior_max < 1e-9,
+            "psi range [{interior_min}, {interior_max}]"
+        );
         // Lid vorticity is strongly negative: about -2 U / dy.
         let d = 1.0 / (n as f64 - 1.0);
         assert!(*omega.get(n / 2, n - 1) < -1.0 / d);

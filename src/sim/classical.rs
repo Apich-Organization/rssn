@@ -243,9 +243,13 @@ pub fn simulate_ising_model(
 
     let mut lattice = vec![vec![0i8; size]; size];
 
-    for i in 0..steps {
-        for j in 0..size {
-            lattice[i][j] = if rng.random::<bool>() {
+    if size == 0 {
+        return lattice;
+    }
+
+    for row in &mut lattice {
+        for spin in row.iter_mut() {
+            *spin = if rng.random::<bool>() {
                 1
             } else {
                 -1

@@ -33,6 +33,8 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 
+use std::path::Path;
+
 use crate::io::write_npy_file;
 use crate::sim::physics_sm::create_k_grid;
 use crate::sim::physics_sm::fft2d;
@@ -168,7 +170,9 @@ pub fn run_schrodinger_simulation(
 ///
 /// This function will return an error if the underlying `run_schrodinger_simulation` fails
 /// or if the final state cannot be written to the NPY file.
-pub fn simulate_double_slit_scenario() -> Result<(), String> {
+/// The final density is saved as `schrodinger_double_slit.npy` inside
+/// `output_dir`, which is created if missing.
+pub fn simulate_double_slit_scenario(output_dir: &Path) -> Result<(), String> {
     const NX: usize = 256;
 
     const NY: usize = 256;
@@ -240,15 +244,17 @@ pub fn simulate_double_slit_scenario() -> Result<(), String> {
     let snapshots = run_schrodinger_simulation(&params, &mut initial_psi)?;
 
     if let Some(final_state) = snapshots.last() {
-        let filename = "schrodinger_double_slit.\
-             npy";
+        std::fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
+
+        let filename = output_dir.join("schrodinger_double_slit.npy");
 
         println!(
             "Saving final probability \
-             density to {filename}"
+             density to {}",
+            filename.display()
         );
 
-        write_npy_file(filename, final_state)?;
+        write_npy_file(&filename, final_state)?;
     } else {
         println!(
             "Simulation produced no \

@@ -419,14 +419,16 @@ where
                     let nodes = [
                         (k_el * n_nodes_y + j_el) * n_nodes_x + i_el,
                         (k_el * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
-                        (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
                         (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
+                        (k_el * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
                         ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el,
                         ((k_el + 1) * n_nodes_y + j_el) * n_nodes_x + i_el + 1,
-                        ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
                         ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el,
+                        ((k_el + 1) * n_nodes_y + j_el + 1) * n_nodes_x + i_el + 1,
                     ];
 
+                    // The order above is the shape-function bit order
+                    // l = i + 2 j + 4 m (x fastest), matching `n[l]` and `xi` in the quadrature.
                     let mut local_triplets = Vec::with_capacity(64);
 
                     for r in 0..8 {
@@ -462,16 +464,10 @@ where
 
                 let is_boundary = i == 0 || j == 0 || k == 0 || i == nx || j == ny || k == nz;
 
+                // Interior loads stay as assembled from the element integrals
+                // (∫ N_l f dV); only Dirichlet nodes are overwritten below.
                 if is_boundary {
                     boundary_nodes.insert(idx);
-                } else {
-                    let x = i as f64 * hx;
-
-                    let y = j as f64 * hy;
-
-                    let z = k as f64 * hz;
-
-                    f[idx] = force_fn(x, y, z);
                 }
             }
         }

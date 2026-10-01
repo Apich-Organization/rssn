@@ -252,6 +252,34 @@ pub fn simulate_2d_advection_diffusion_scenario() -> Vec<f64> {
     solve_advection_diffusion_2d(&initial_condition, &config)
 }
 
+/// Applies `f` to every z-column of a `[k * plane_size + i]` array in place.
+///
+/// The columns are gathered, transformed and scattered back to the same
+/// layout, so `fft3d` and `ifft3d` share one axis order (x fastest, then y, then z).
+fn transform_z_columns(
+    data: &mut [Complex<f64>],
+    plane_size: usize,
+    depth: usize,
+    f: fn(&mut Vec<Complex<f64>>),
+) {
+    let columns: Vec<Vec<Complex<f64>>> = (0..plane_size)
+        .into_par_iter()
+        .map(|i| {
+            let mut z_col: Vec<_> = (0..depth).map(|k| data[k * plane_size + i]).collect();
+
+            f(&mut z_col);
+
+            z_col
+        })
+        .collect();
+
+    for (i, col) in columns.iter().enumerate() {
+        for (k, v) in col.iter().enumerate() {
+            data[k * plane_size + i] = *v;
+        }
+    }
+}
+
 /// Performs a 3D FFT.
 pub fn fft3d(
     data: &mut Vec<Complex<f64>>,
@@ -279,18 +307,7 @@ pub fn fft3d(
 
     *data = transposed_xy;
 
-    let transposed_z: Vec<Complex<f64>> = (0..plane_size)
-        .into_par_iter()
-        .flat_map(|i| {
-            let mut z_col: Vec<_> = (0..depth).map(|k| data[k * plane_size + i]).collect();
-
-            fft(&mut z_col);
-
-            z_col
-        })
-        .collect();
-
-    *data = transposed_z;
+    transform_z_columns(data, plane_size, depth, fft);
 }
 
 /// Performs a 3D IFFT.
@@ -302,18 +319,7 @@ pub fn ifft3d(
 ) {
     let plane_size = width * height;
 
-    let transposed_z: Vec<Complex<f64>> = (0..plane_size)
-        .into_par_iter()
-        .flat_map(|i| {
-            let mut z_col: Vec<_> = (0..depth).map(|k| data[k * plane_size + i]).collect();
-
-            ifft(&mut z_col);
-
-            z_col
-        })
-        .collect();
-
-    *data = transposed_z;
+    transform_z_columns(data, plane_size, depth, ifft);
 
     let mut transposed_xy = vec![Complex::default(); data.len()];
 

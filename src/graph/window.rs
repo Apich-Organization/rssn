@@ -73,8 +73,9 @@ impl TreeWindow {
     /// Carves the window rooted at `root`.
     ///
     /// A child is copied into the window when it is an operator application
-    /// whose class has a single parent and the window holds fewer than
-    /// `max_cells` cells; otherwise it becomes an atom.
+    /// that is either unshared (its class has a single parent) or
+    /// [`TRANSPARENT`](OpFlags::TRANSPARENT), and the window holds fewer
+    /// than `max_cells` cells; otherwise it becomes an atom.
     #[must_use]
     pub fn carve(
         graph: &Graph,
@@ -91,9 +92,11 @@ impl TreeWindow {
         let mut stack = vec![(root, NIL)];
         while let Some((node, parent)) = stack.pop() {
             let children = graph.children(node);
+            let transparent = graph.ops().get(graph.op(node)).flags.has(OpFlags::TRANSPARENT);
             let inline = !children.is_empty()
                 && (parent == NIL
-                    || (window.live < max_cells && graph.parents(graph.find(node)).len() <= 1));
+                    || (window.live < max_cells
+                        && (transparent || graph.parents(graph.find(node)).len() <= 1)));
             let cell = if inline {
                 window.alloc(graph.op(node), NodeId::NONE)
             } else {
@@ -1166,10 +1169,14 @@ mod tests {
     #[test]
     fn shared_subterms_become_atoms() {
         let mut g = graph();
-        // `a + b` is used by both sin and cos: it has two parents.
+        // `f(a)` is used by both sin and cos: it has two parents.
+        let node = g.parse("sin(f(a)) * cos(f(a))").unwrap_or(NodeId::NONE);
+        let w = TreeWindow::carve(&g, node, 64);
+        assert_eq!(shape(&g, &w, w.root()), "mul(sin([f(a)]) cos([f(a)]))");
+        // Arithmetic is transparent: shared or not, the window sees it.
         let node = g.parse("sin(a + b) * cos(a + b)").unwrap_or(NodeId::NONE);
         let w = TreeWindow::carve(&g, node, 64);
-        assert_eq!(shape(&g, &w, w.root()), "mul(sin([a + b]) cos([a + b]))");
+        assert_eq!(shape(&g, &w, w.root()), "mul(sin(add([a] [b])) cos(add([a] [b])))");
         // Used once: inlined.
         let node = g.parse("sin(p + q)").unwrap_or(NodeId::NONE);
         let w = TreeWindow::carve(&g, node, 64);

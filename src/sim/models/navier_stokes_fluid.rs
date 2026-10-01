@@ -20,6 +20,8 @@
 //!
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/karman_velocity_mag.png)
 
+use std::path::Path;
+
 use ndarray::Array2;
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -62,19 +64,38 @@ pub type NavierStokesOutput = Result<(Array2<f64>, Array2<f64>, Array2<f64>), St
 /// # Returns
 /// Tuple of (u, v, p) arrays.
 ///
-/// # Panics
-/// Panics if `nx` or `ny` is less than 2.
+/// The solver works on a square `nx` x `nx` grid (`ny` must equal `nx`) whose
+/// size is `2^k + 1`, as required by the multigrid pressure solver.
 ///
 /// # Errors
-/// Returns an error if the obstacle mask is not the same size as the grid.
+/// Returns an error if the grid is smaller than 3 points, not square, or if
+/// the obstacle mask does not have shape `(ny, nx)`; also if the multigrid
+/// solver rejects the grid size.
 pub fn run_channel_flow(
     nx: usize,
-    _ny: usize,
+    ny: usize,
     re: f64,
     dt: f64,
     n_iter: usize,
     obstacle_mask: &Array2<bool>,
 ) -> NavierStokesOutput {
+    if nx < 3 || ny < 3 {
+        return Err("Grid must have at least 3 points in each direction.".to_string());
+    }
+
+    if nx != ny {
+        return Err(format!(
+            "Channel flow requires a square grid, got {nx} x {ny}."
+        ));
+    }
+
+    if obstacle_mask.dim() != (ny, nx) {
+        return Err(format!(
+            "Obstacle mask has shape {:?} but the grid is ({ny}, {nx}).",
+            obstacle_mask.dim()
+        ));
+    }
+
     let n = nx;
 
     let h = 1.0 / (n as f64 - 1.0);
@@ -296,16 +317,41 @@ pub fn run_channel_flow(
 
 /// Main solver for the 2D lid-driven cavity problem.
 ///
+/// Chorin's projection method on a staggered (MAC) grid: `p[j][i]` lives at
+/// cell centres, `u[j][i]` on the left face of cell `(j, i)` and `v[j][i]` on
+/// its bottom face. Each step
+/// 1. advances the intermediate velocity explicitly with first-order upwind
+///    advection and central diffusion with `nu = 1 / re`,
+/// 2. solves `lap(phi) = div(u*) / dt` with the multigrid solver (the same
+///    solver and zero-Dirichlet closure as [`run_channel_flow`]), and
+/// 3. corrects `u = u* - dt grad(phi)` and sets `p = phi`.
+///
+/// The top row of `u` is the moving lid (`lid_velocity`), the bottom row and
+/// the side faces are at rest. The explicit scheme needs
+/// `dt <= h^2 re / 4` (diffusion) and `dt <= h / |u|` (advection) to stay stable.
+///
 /// # Errors
 ///
-/// This function will return an error if the underlying Poisson solver fails,
-/// or if there are issues reshaping the pressure correction array.
+/// Returns an error if the grid is smaller than 3 points, if the cells are
+/// not square (`nx != ny`), or if the multigrid solver fails.
 pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOutput {
-    let (nx, ny, _re, dt) = (params.nx, params.ny, params.re, params.dt);
+    let (nx, ny, re, dt) = (params.nx, params.ny, params.re, params.dt);
+
+    if nx < 3 || ny < 3 {
+        return Err("Grid must have at least 3 points in each direction.".to_string());
+    }
+
+    if nx != ny {
+        return Err(format!(
+            "The cavity solver requires square cells, got {nx} x {ny}."
+        ));
+    }
 
     let hx = 1.0 / (nx - 1) as f64;
 
     let hy = 1.0 / (ny - 1) as f64;
+
+    let nu = 1.0 / re;
 
     let mut u = Array2::<f64>::zeros((ny, nx + 1));
 
@@ -324,93 +370,131 @@ pub fn run_lid_driven_cavity(params: &NavierStokesParameters) -> NavierStokesOut
 
     let mg_size = 2_usize.pow(mg_size_k) + 1;
 
+    // The multigrid solver assumes spacing 1 / (mg_size - 1); rescale the
+    // right-hand side so that it solves the Poisson problem for spacing hx.
+    let h_mg = 1.0 / (mg_size - 1) as f64;
+
+    let rhs_scale = (hx / h_mg).powi(2);
+
     for _ in 0..params.n_iter {
-        let u_old = u.clone();
+        // 1. Intermediate velocity (explicit advection + diffusion).
+        let mut u_star = u.clone();
 
-        let v_old = v.clone();
+        let mut v_star = v.clone();
 
-        // Calculate RHS in parallel
+        for j in 1..ny - 1 {
+            for i in 1..nx {
+                let uc = u[[j, i]];
+
+                // v averaged to the u-face.
+                let vc = 0.25 * (v[[j, i - 1]] + v[[j, i]] + v[[j + 1, i - 1]] + v[[j + 1, i]]);
+
+                let du_dx = if uc > 0.0 {
+                    uc - u[[j, i - 1]]
+                } else {
+                    u[[j, i + 1]] - uc
+                } / hx;
+
+                let du_dy = if vc > 0.0 {
+                    uc - u[[j - 1, i]]
+                } else {
+                    u[[j + 1, i]] - uc
+                } / hy;
+
+                let lap = (u[[j, i + 1]] - 2.0 * uc + u[[j, i - 1]]) / (hx * hx)
+                    + (u[[j + 1, i]] - 2.0 * uc + u[[j - 1, i]]) / (hy * hy);
+
+                u_star[[j, i]] = uc + dt * (-(uc * du_dx + vc * du_dy) + nu * lap);
+            }
+        }
+
+        for j in 1..ny {
+            for i in 1..nx - 1 {
+                let vc = v[[j, i]];
+
+                // u averaged to the v-face.
+                let uc = 0.25 * (u[[j - 1, i]] + u[[j - 1, i + 1]] + u[[j, i]] + u[[j, i + 1]]);
+
+                let dv_dx = if uc > 0.0 {
+                    vc - v[[j, i - 1]]
+                } else {
+                    v[[j, i + 1]] - vc
+                } / hx;
+
+                let dv_dy = if vc > 0.0 {
+                    vc - v[[j - 1, i]]
+                } else {
+                    v[[j + 1, i]] - vc
+                } / hy;
+
+                let lap = (v[[j, i + 1]] - 2.0 * vc + v[[j, i - 1]]) / (hx * hx)
+                    + (v[[j + 1, i]] - 2.0 * vc + v[[j - 1, i]]) / (hy * hy);
+
+                v_star[[j, i]] = vc + dt * (-(uc * dv_dx + vc * dv_dy) + nu * lap);
+            }
+        }
+
+        // 2. Pressure Poisson: lap(phi) = div(u*) / dt, i.e. -lap(phi) = -div/dt.
         let mut rhs_padded = vec![0.0; mg_size * mg_size];
 
-        let rhs_ptr = rhs_padded.as_mut_ptr() as usize;
-
-        (1..ny - 1).into_par_iter().for_each(|j| {
+        for j in 1..ny - 1 {
             for i in 1..nx - 1 {
-                let div_u_star = ((u_old[[j, i + 1]] - u_old[[j, i]]) / hx)
-                    + ((v_old[[j + 1, i]] - v_old[[j, i]]) / hy);
+                let div_u_star = (u_star[[j, i + 1]] - u_star[[j, i]]) / hx
+                    + (v_star[[j + 1, i]] - v_star[[j, i]]) / hy;
 
-                unsafe {
-                    *(rhs_ptr as *mut f64).add(j * mg_size + i) = div_u_star / dt;
-                }
+                rhs_padded[j * mg_size + i] = -rhs_scale * div_u_star / dt;
             }
-        });
+        }
 
-        // Solve Poisson for pressure correction
-        let p_corr_vec = solve_poisson_2d_multigrid(mg_size, &rhs_padded, 10)?; // More V-cycles for accuracy
-        let p_corr =
-            Array2::from_shape_vec((mg_size, mg_size), p_corr_vec).map_err(|e| e.to_string())?;
+        let phi_vec = solve_poisson_2d_multigrid(mg_size, &rhs_padded, 10)?;
 
-        // Update pressure and velocities in parallel
-        let p_ptr = p.as_mut_ptr() as usize;
+        let phi = Array2::from_shape_vec((mg_size, mg_size), phi_vec).map_err(|e| e.to_string())?;
 
-        let u_ptr = u.as_mut_ptr() as usize;
-
-        let v_ptr = v.as_mut_ptr() as usize;
-
-        // Update P
-        (0..ny).into_par_iter().for_each(|j| {
+        // 3. Projection: u = u* - dt grad(phi); the pressure is phi itself.
+        for j in 0..ny {
             for i in 0..nx {
-                unsafe {
-                    *(p_ptr as *mut f64).add(j * nx + i) += 0.7 * p_corr[[j, i]];
-                }
+                p[[j, i]] = phi[[j, i]];
             }
-        });
+        }
 
-        // Update U
-        (1..ny - 1).into_par_iter().for_each(|j| {
+        u = u_star;
+
+        v = v_star;
+
+        for j in 1..ny - 1 {
             for i in 1..nx {
-                unsafe {
-                    *(u_ptr as *mut f64).add(j * (nx + 1) + i) -=
-                        dt / hx * (p_corr[[j, i]] - p_corr[[j, i - 1]]);
-                }
+                u[[j, i]] -= dt / hx * (phi[[j, i]] - phi[[j, i - 1]]);
             }
-        });
+        }
 
-        // Update V
-        (1..ny).into_par_iter().for_each(|j| {
+        for j in 1..ny {
             for i in 1..nx - 1 {
-                unsafe {
-                    *(v_ptr as *mut f64).add(j * nx + i) -=
-                        dt / hy * (p_corr[[j, i]] - p_corr[[j - 1, i]]);
-                }
+                v[[j, i]] -= dt / hy * (phi[[j, i]] - phi[[j - 1, i]]);
             }
-        });
+        }
     }
 
-    // ... centering ...
+    // Interpolate the staggered velocities to cell centres.
     let mut u_centered = Array2::<f64>::zeros((ny, nx));
 
     let mut v_centered = Array2::<f64>::zeros((ny, nx));
 
-    let uc_ptr = u_centered.as_mut_ptr() as usize;
-
-    let vc_ptr = v_centered.as_mut_ptr() as usize;
-
-    (0..ny).into_par_iter().for_each(|j| {
+    for j in 0..ny {
         for i in 0..nx {
-            unsafe {
-                *(uc_ptr as *mut f64).add(j * nx + i) = 0.5 * (u[[j, i]] + u[[j, i + 1]]);
+            u_centered[[j, i]] = 0.5 * (u[[j, i]] + u[[j, i + 1]]);
 
-                *(vc_ptr as *mut f64).add(j * nx + i) = 0.5 * (v[[j, i]] + v[[j + 1, i]]);
-            }
+            v_centered[[j, i]] = 0.5 * (v[[j, i]] + v[[j + 1, i]]);
         }
-    });
+    }
 
     Ok((u_centered, v_centered, p))
 }
 
 /// An example scenario for the lid-driven cavity simulation.
-pub fn simulate_lid_driven_cavity_scenario() {
+///
+/// The fields are written as `cavity_u_velocity.npy`, `cavity_v_velocity.npy`
+/// and `cavity_pressure.npy` inside `output_dir`, which is created if missing.
+pub fn simulate_lid_driven_cavity_scenario(output_dir: &Path) {
     const K: usize = 6;
 
     const N: usize = 2_usize.pow(K as u32) + 1;
@@ -437,11 +521,13 @@ pub fn simulate_lid_driven_cavity_scenario() {
             );
 
             let save_result = (|| -> Result<(), String> {
-                write_npy_file("cavity_u_velocity.npy", &u)?;
+                std::fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
 
-                write_npy_file("cavity_v_velocity.npy", &v)?;
+                write_npy_file(output_dir.join("cavity_u_velocity.npy"), &u)?;
 
-                write_npy_file("cavity_pressure.npy", &p)?;
+                write_npy_file(output_dir.join("cavity_v_velocity.npy"), &v)?;
+
+                write_npy_file(output_dir.join("cavity_pressure.npy"), &p)?;
 
                 Ok(())
             })();

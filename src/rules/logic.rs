@@ -145,7 +145,7 @@ impl Cmp {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let ac = OpFlags::COMMUTATIVE.with(OpFlags::ASSOCIATIVE);
+    let ac = OpFlags::COMMUTATIVE.with(OpFlags::ASSOCIATIVE).with(OpFlags::PREDICATE);
     let and = i.op(OpDescriptor::new("and", Arity::Variadic)
         .flags(ac)
         .eval(|a| bit(a.iter().all(|&x| is_true(x)))))?;
@@ -156,16 +156,19 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         .flags(ac)
         .eval(|a| bit(a.iter().filter(|&&x| is_true(x)).count() % 2 == 1)))?;
     let not = i.op(OpDescriptor::new("not", Arity::Fixed(1))
+        .flags(OpFlags::PREDICATE)
         .eval(|a| a.first().map_or(f64::NAN, |&x| bit(!is_true(x)))))?;
     // Costlier than their expansions, so extraction prefers and/or/not.
     let implies =
         i.op(OpDescriptor::new("implies", Arity::Fixed(2))
+            .flags(OpFlags::PREDICATE)
             .cost(12)
             .eval(|a| match a {
                 | [p, q] => bit(!is_true(*p) || is_true(*q)),
                 | _ => f64::NAN,
             }))?;
     let iff = i.op(OpDescriptor::new("iff", Arity::Fixed(2))
+        .flags(OpFlags::PREDICATE)
         .cost(30)
         .eval(|a| match a {
             | [p, q] => bit(is_true(*p) == is_true(*q)),
@@ -197,7 +200,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("ge", ge, Cmp::Ge),
         ("ne", ne, Cmp::Ne),
     ] {
-        let op = i.op(OpDescriptor::new(name, Arity::Fixed(2)).eval(eval))?;
+        let op = i.op(OpDescriptor::new(name, Arity::Fixed(2)).flags(OpFlags::PREDICATE).eval(eval))?;
         comparisons.push((op, cmp));
     }
     comparisons.push((core::EQ, Cmp::Eq));

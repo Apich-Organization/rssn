@@ -9,10 +9,17 @@
 
 mod diff;
 mod integrate;
+mod limits;
+mod powerseries;
+pub(crate) use powerseries::laurent_expansion;
+mod series;
 #[cfg(test)]
 mod tests;
 
 use crate::graph::Arity;
+use crate::graph::Cx;
+use crate::graph::Graph;
+use crate::graph::NodeId;
 use crate::graph::Facts;
 use crate::graph::OnReals;
 use crate::graph::OpDescriptor;
@@ -95,6 +102,23 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     partials(i, "tanh", &["1 - tanh(?a)^2"])?;
     partials(i, "sqrt", &["1/(2*sqrt(?a))"])?;
     partials(i, "abs", &["?a/abs(?a)"])?;
+    partials(i, "cot", &["-(1 + cot(?a)^2)"])?;
+    partials(i, "sec", &["sec(?a) * tan(?a)"])?;
+    partials(i, "csc", &["-csc(?a) * cot(?a)"])?;
+    partials(i, "acot", &["-1/(1 + ?a^2)"])?;
+    partials(i, "asec", &["1/(?a^2 * (1 - ?a^(-2))^(1/2))"])?;
+    partials(i, "acsc", &["-1/(?a^2 * (1 - ?a^(-2))^(1/2))"])?;
+    partials(i, "coth", &["1 - coth(?a)^2"])?;
+    partials(i, "sech", &["-sech(?a) * tanh(?a)"])?;
+    partials(i, "csch", &["-csch(?a) * coth(?a)"])?;
+    partials(i, "asinh", &["(?a^2 + 1)^(-1/2)"])?;
+    partials(i, "acosh", &["(?a^2 - 1)^(-1/2)"])?;
+    partials(i, "atanh", &["1/(1 - ?a^2)"])?;
+    partials(i, "acoth", &["1/(1 - ?a^2)"])?;
+    partials(i, "asech", &["-1/(?a * (1 - ?a^2)^(1/2))"])?;
+    partials(i, "acsch", &["-1/(?a^2 * (1 + ?a^(-2))^(1/2))"])?;
+    partials(i, "atan2", &["?b/(?a^2 + ?b^2)", "-?a/(?a^2 + ?b^2)"])?;
+    partials(i, "log", &["-ln(?b)/(?a * ln(?a)^2)", "1/(?b * ln(?a))"])?;
 
     i.kernel(
         "calculus/diff",
@@ -135,9 +159,30 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         tanh: lookup(i, "tanh")?,
         sqrt: lookup(i, "sqrt")?,
     };
+    i.graph().ops_mut().set_attr(integral, functions);
     i.kernel("calculus/integral", Tier::Reduce, integrate::Antiderivative { integral, functions });
     i.kernel("calculus/defint", Tier::Reduce, integrate::Definite { defint, functions });
     i.kernel("calculus/quadrature", Tier::Reduce, integrate::Quadrature { defint });
+    // limit(f, x, a) and limit(f, x, a, plus|minus); x is bound in f.
+    let limit =
+        i.op(OpDescriptor::new("limit", Arity::Variadic).flags(OpFlags::HEAVY).cost(100).binder(1, 0b1))?;
+    i.kernel("calculus/limit", Tier::Reduce, limits::SymbolicLimit { limit, infinity, functions });
+    i.kernel("calculus/limit-numeric", Tier::Reduce, limits::NumericLimit { limit });
+    // Series, sums and products. The index of a sum or product is bound.
+    let request = |name: &str, arity: u8| OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100);
+    let ops = series::SeriesOps {
+        functions,
+        infinity,
+        defint,
+        taylor: i.op(request("taylor", 4))?,
+        laurent: i.op(request("laurent", 4))?,
+        fourier: i.op(request("fourier_series", 4))?,
+        sum: i.op(request("sum", 4).binder(1, 0b1))?,
+        product: i.op(request("product", 4).binder(1, 0b1))?,
+        converges: i.op(request("converges", 2).binder(1, 0b1))?,
+    };
+    i.kernel("calculus/series", Tier::Reduce, series::SeriesKernel { ops });
+    i.kernel("calculus/sum-numeric", Tier::Reduce, series::NumericSum { sum: ops.sum, product: ops.product });
     i.rewrites(
         Tier::Reduce,
         &[
@@ -148,4 +193,30 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ],
     )?;
     Ok(())
+}
+
+/// A verified antiderivative of `f` with respect to `x`, for other rule
+/// sets (differential equations, transforms). `None` if none is found or
+/// the calculus rule set is not installed in this graph.
+pub fn antiderivative(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let integral = cx.graph.ops().lookup("integral")?;
+    let functions = *cx.graph.ops().attr::<integrate::Functions>(integral)?;
+    integrate::antiderivative(cx, functions, f, x)
+}
+
+/// The derivative of the concrete term `f` with respect to the symbol
+/// `x`, unsimplified. Parts that cannot be differentiated stay as `diff`
+/// requests.
+pub fn derivative(
+    graph: &mut Graph,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let diff = graph.ops().lookup("diff")?;
+    let symbol = graph.symbol_of(x)?;
+    Some(diff::Differentiate { diff }.derive(graph, f, symbol, x))
 }

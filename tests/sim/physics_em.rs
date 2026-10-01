@@ -24,7 +24,12 @@ impl OdeSystem for DecaySystem {
         1
     }
 
-    fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+    fn eval(
+        &self,
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
+    ) {
         dy[0] = -y[0];
     }
 }
@@ -37,7 +42,12 @@ impl OdeSystem for Exponential {
         1
     }
 
-    fn eval(&self, _t: f64, y: &[f64], dy: &mut [f64]) {
+    fn eval(
+        &self,
+        _t: f64,
+        y: &[f64],
+        dy: &mut [f64],
+    ) {
         dy[0] = self.0 * y[0];
     }
 }
@@ -65,27 +75,49 @@ fn midpoint_and_heun_have_second_order_closed_forms() {
     // Both methods reduce to multiplication by 1 - h + h^2/2 per step for y' = -y.
     let h = 0.1;
     let factor = 1.0 - h + h * h / 2.0;
-    for solver in [solve_midpoint_euler::<DecaySystem>, solve_heun_euler::<DecaySystem>] {
+    for solver in [
+        solve_midpoint_euler::<DecaySystem>,
+        solve_heun_euler::<DecaySystem>,
+    ] {
         let res = solver(&DecaySystem, &[1.0], (0.0, 1.0), h);
         let (_, y) = last(&res);
         assert_approx_eq!(y, factor.powi(10), 1e-12);
-        assert!((y - (-1.0f64).exp()).abs() < 2e-3, "second-order accuracy: {y}");
+        assert!(
+            (y - (-1.0f64).exp()).abs() < 2e-3,
+            "second-order accuracy: {y}"
+        );
     }
 }
 
 #[test]
 fn convergence_orders_of_the_explicit_schemes() {
     let exact = 1.0f64.exp();
-    let err = |solver: fn(&Exponential, &[f64], (f64, f64), f64) -> Vec<(f64, Vec<f64>)>, h: f64| {
+    let err = |solver: fn(&Exponential, &[f64], (f64, f64), f64) -> Vec<(f64, Vec<f64>)>,
+               h: f64| {
         (last(&solver(&Exponential(1.0), &[1.0], (0.0, 1.0), h)).1 - exact).abs()
     };
     for (name, solver, order) in [
-        ("euler", solve_forward_euler::<Exponential> as fn(&_, &_, _, _) -> _, 1.0),
-        ("midpoint", solve_midpoint_euler::<Exponential> as fn(&_, &_, _, _) -> _, 2.0),
-        ("heun", solve_heun_euler::<Exponential> as fn(&_, &_, _, _) -> _, 2.0),
+        (
+            "euler",
+            solve_forward_euler::<Exponential> as fn(&_, &_, _, _) -> _,
+            1.0,
+        ),
+        (
+            "midpoint",
+            solve_midpoint_euler::<Exponential> as fn(&_, &_, _, _) -> _,
+            2.0,
+        ),
+        (
+            "heun",
+            solve_heun_euler::<Exponential> as fn(&_, &_, _, _) -> _,
+            2.0,
+        ),
     ] {
         let observed = (err(solver, 0.01) / err(solver, 0.005)).log2();
-        assert!((observed - order).abs() < 0.1, "{name}: observed order {observed}");
+        assert!(
+            (observed - order).abs() < 0.1,
+            "{name}: observed order {observed}"
+        );
     }
 }
 
@@ -96,10 +128,17 @@ fn undamped_oscillator_scenario_shows_forward_euler_energy_growth() {
     assert_eq!(res[0].1, vec![1.0, 0.0]);
     // Forward Euler multiplies the energy by (1 + (omega h)^2) each step: it grows without bound.
     let energy = |y: &[f64]| y[1] * y[1] + (2.0 * std::f64::consts::PI).powi(2) * y[0] * y[0];
-    let (e0, e1) = (energy(&res[0].1), energy(&res.last().map_or(&[0.0, 0.0][..], |r| &r.1[..])));
+    let (e0, e1) = (
+        energy(&res[0].1),
+        energy(&res.last().map_or(&[0.0, 0.0][..], |r| &r.1[..])),
+    );
     let growth = (1.0 + (2.0 * std::f64::consts::PI * 0.01f64).powi(2)).powi(res.len() as i32 - 1);
     assert!(e1 > 2.0 * e0);
-    assert!((e1 / e0 - growth).abs() < 1e-6 * growth, "{} vs {growth}", e1 / e0);
+    assert!(
+        (e1 / e0 - growth).abs() < 1e-6 * growth,
+        "{} vs {growth}",
+        e1 / e0
+    );
 }
 
 struct Harmonic;
@@ -109,14 +148,19 @@ impl MechanicalSystem for Harmonic {
         1
     }
 
-    fn eval_acceleration(&self, x: &[f64], a: &mut [f64]) {
+    fn eval_acceleration(
+        &self,
+        x: &[f64],
+        a: &mut [f64],
+    ) {
         a[0] = -4.0 * x[0]; // omega = 2
     }
 }
 
 #[test]
 fn semi_implicit_euler_keeps_the_oscillator_bounded_and_the_energy_close() {
-    let res = solve_semi_implicit_euler(&Harmonic, &[1.0, 0.0], (0.0, 20.0), 0.001).unwrap_or_else(|e| panic!("{e}"));
+    let res = solve_semi_implicit_euler(&Harmonic, &[1.0, 0.0], (0.0, 20.0), 0.001)
+        .unwrap_or_else(|e| panic!("{e}"));
     let energy = |y: &[f64]| 0.5 * y[1] * y[1] + 2.0 * y[0] * y[0];
     let e0 = energy(&res[0].1);
     for (t, y) in &res {
@@ -144,7 +188,10 @@ fn orbit_scenario_conserves_angular_momentum_exactly_and_energy_approximately() 
     for (t, y) in &res {
         assert!((l(y) - l0).abs() < 1e-9 * l0, "angular momentum at t = {t}");
     }
-    let drift = res.iter().map(|(_, y)| (e(y) - e0).abs()).fold(0.0, f64::max);
+    let drift = res
+        .iter()
+        .map(|(_, y)| (e(y) - e0).abs())
+        .fold(0.0, f64::max);
     assert!(drift < 0.5, "energy drift {drift} (dt = {dt})");
     assert!(res.iter().all(|(_, y)| y.iter().all(|v| v.is_finite())));
 }
@@ -176,7 +223,8 @@ impl LinearOdeSystem for Singular {
 
 #[test]
 fn backward_euler_is_stable_for_stiff_systems_and_matches_the_closed_form() {
-    let res = solve_backward_euler_linear(&Stiff, &[1.0, 1.0], (0.0, 1.0), 0.1).unwrap_or_else(|e| panic!("{e}"));
+    let res = solve_backward_euler_linear(&Stiff, &[1.0, 1.0], (0.0, 1.0), 0.1)
+        .unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(res.len(), 11);
     for (k, (_, y)) in res.iter().enumerate() {
         let k = k as i32;
@@ -200,7 +248,6 @@ fn stiff_decay_scenario_matches_the_closed_form() {
 }
 
 #[test]
-#[ignore = "library bug (Matrix::inverse on singular input): solve_backward_euler_linear returns Ok for A = I with dt = 1 (I - dt A = 0) because Matrix::inverse() returns Some(garbage) for singular matrices; expected Err(\"Matrix (I - dt*A) is not invertible.\")"]
 fn backward_euler_reports_a_singular_step_matrix() {
     assert!(solve_backward_euler_linear(&Singular, &[1.0, 1.0], (0.0, 1.0), 1.0).is_err());
 }
@@ -233,4 +280,24 @@ proptest! {
         let e2 = (last(&solve_heun_euler(&Exponential(a), &[1.0], (0.0, 1.0), 0.05)).1 - exact).abs();
         prop_assert!(e2 < e1);
     }
+}
+
+#[test]
+fn midpoint_euler_is_second_order_on_exponential_decay() {
+    let err = |dt: f64| {
+        let r = solve_midpoint_euler(&DecaySystem, &[1.0], (0.0, 1.0), dt);
+        (r.last().map_or(f64::NAN, |s| s.1[0]) - (-1.0f64).exp()).abs()
+    };
+    let (e1, e2) = (err(0.02), err(0.01));
+    assert!(e2 < 1e-4);
+    assert!((3.5..4.5).contains(&(e1 / e2)), "ratio {}", e1 / e2);
+}
+
+#[test]
+fn backward_euler_singular_only_at_the_critical_step() {
+    // I - dt A is singular exactly when dt = 1 / lambda; the neighbours are fine.
+    assert!(solve_backward_euler_linear(&Singular, &[1.0, 1.0], (0.0, 1.0), 1.0).is_err());
+    let ok = solve_backward_euler_linear(&Singular, &[1.0, 1.0], (0.0, 1.0), 0.5).unwrap();
+    // (1 - 0.5)^-1 = 2 per step for lambda = 1.
+    assert!((ok[1].1[0] - 2.0).abs() < 1e-12);
 }

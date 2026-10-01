@@ -213,6 +213,10 @@ impl Kernel for FiniteDifference {
         if !cx.env.numeric {
             return Outcome::Pass;
         }
+        // Already evaluated in this run.
+        if cx.graph.approx(cx.graph.find(node)).is_some() {
+            return Outcome::Pass;
+        }
         let graph = &mut *cx.graph;
         let &[body, var] = graph.children(node) else {
             return Outcome::Pass;

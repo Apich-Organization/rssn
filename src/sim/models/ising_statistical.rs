@@ -21,10 +21,11 @@
 use std::fmt::Write as OtherWrite;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 
 use ndarray::Array2;
 use rand_v10::prelude::*;
-use rand_v10::rng;
+use rand_v10::rngs::StdRng;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -44,10 +45,42 @@ pub struct IsingParameters {
     pub mc_steps: usize,
 }
 
-/// Runs an Ising model simulation.
+/// Seed used by [`run_ising_simulation`], so that plain runs are reproducible.
+pub const DEFAULT_ISING_SEED: u64 = 0x1517_0000_5EED;
+
+/// Derives an independent RNG for one (step, colour, row) of the checkerboard sweep.
+fn row_rng(
+    seed: u64,
+    step: usize,
+    colour: u64,
+    row: usize,
+) -> StdRng {
+    let mixed = seed
+        ^ ((step as u64) * 2 + colour).wrapping_mul(0x9E37_79B9_7F4A_7C15)
+        ^ (row as u64 + 1).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+
+    StdRng::seed_from_u64(mixed)
+}
+
+/// Runs an Ising model simulation with the fixed seed [`DEFAULT_ISING_SEED`].
+///
+/// Equivalent to [`run_ising_simulation_seeded`]; repeated calls with the same
+/// parameters return identical results.
 #[must_use]
 pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
-    let mut local_rng = rng();
+    run_ising_simulation_seeded(params, DEFAULT_ISING_SEED)
+}
+
+/// Runs an Ising model simulation whose random numbers all derive from `seed`.
+///
+/// The initial configuration and every row update use their own generator
+/// derived from `seed`, so the result does not depend on thread scheduling.
+#[must_use]
+pub fn run_ising_simulation_seeded(
+    params: &IsingParameters,
+    seed: u64,
+) -> (Vec<i8>, f64) {
+    let mut local_rng = StdRng::seed_from_u64(seed);
 
     let mut grid: Vec<i8> = (0..params.width * params.height)
         .map(|_| {
@@ -63,7 +96,7 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
 
     let b = 1.0 / params.temperature;
 
-    for _ in 0..params.mc_steps {
+    for step in 0..params.mc_steps {
         // Checkerboard update for parallelism
         let grid_ptr = grid.as_mut_ptr() as usize;
 
@@ -73,7 +106,7 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
 
         // Red points
         (0..height).into_par_iter().for_each(|i| {
-            let mut local_rng = rng();
+            let mut local_rng = row_rng(seed, step, 0, i);
 
             for j in 0..width {
                 if (i + j) % 2 == 0 {
@@ -104,7 +137,7 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
 
         // Black points
         (0..height).into_par_iter().for_each(|i| {
-            let mut local_rng = rng();
+            let mut local_rng = row_rng(seed, step, 1, i);
 
             for j in 0..width {
                 if (i + j) % 2 != 0 {
@@ -146,7 +179,12 @@ pub fn run_ising_simulation(params: &IsingParameters) -> (Vec<i8>, f64) {
 ///
 /// This function will return an error if it fails to reshape the `Array2<f64>` for NPY
 /// output or if it fails to create or write to the output files (CSV or NPY).
-pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
+/// The files `ising_low_temp_state.npy`, `ising_high_temp_state.npy` and
+/// `ising_magnetization_vs_temp.csv` are written into `output_dir`, which is
+/// created if missing.
+pub fn simulate_ising_phase_transition_scenario(output_dir: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
+
     println!(
         "Running Ising model phase \
          transition simulation..."
@@ -180,11 +218,7 @@ pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
                 Array2::from_shape_vec((50, 50), grid.iter().map(|&s| f64::from(s)).collect())
                     .map_err(|e| e.to_string())?;
 
-            write_npy_file(
-                "ising_low_temp_state.\
-                 npy",
-                &arr,
-            )?;
+            write_npy_file(output_dir.join("ising_low_temp_state.npy"), &arr)?;
         }
 
         if i == 35 {
@@ -192,15 +226,12 @@ pub fn simulate_ising_phase_transition_scenario() -> Result<(), String> {
                 Array2::from_shape_vec((50, 50), grid.iter().map(|&s| f64::from(s)).collect())
                     .map_err(|e| e.to_string())?;
 
-            write_npy_file("ising_high_temp_state.npy", &arr)?;
+            write_npy_file(output_dir.join("ising_high_temp_state.npy"), &arr)?;
         }
     }
 
-    let mut file = File::create(
-        "ising_magnetization_vs_temp.\
-         csv",
-    )
-    .map_err(|e| e.to_string())?;
+    let mut file = File::create(output_dir.join("ising_magnetization_vs_temp.csv"))
+        .map_err(|e| e.to_string())?;
 
     file.write_all(results.as_bytes())
         .map_err(|e| e.to_string())?;

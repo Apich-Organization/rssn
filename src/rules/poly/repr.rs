@@ -547,10 +547,10 @@ mod tests {
 
     #[test]
     fn non_polynomial_parts_are_generators() {
-        assert_eq!(expand("(f(x) + 1)^2"), "apply(f, x)^2 + 2*apply(f, x) + 1");
+        assert_eq!(expand("(f(x) + 1)^2"), "f(x)^2 + 2*f(x) + 1");
         assert_eq!(expand("(x^(1/2) + 1)^2"), "(x^(1/2))^2 + 2*x^(1/2) + 1");
         assert_eq!(expand("(x + 1)^n * (x + 1)"), "x*(x + 1)^n + (x + 1)^n");
-        assert_eq!(expand("f((x + 1)^2)"), "apply(f, x^2 + 2*x + 1)", "expansion is deep");
+        assert_eq!(expand("f((x + 1)^2)"), "f(x^2 + 2*x + 1)", "expansion is deep");
     }
 
     #[test]

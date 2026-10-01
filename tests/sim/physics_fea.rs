@@ -581,15 +581,27 @@ mod strengthened {
         }
     }
 
-    fn close(a: f64, b: f64, rel: f64) -> bool {
+    fn close(
+        a: f64,
+        b: f64,
+        rel: f64,
+    ) -> bool {
         (a - b).abs() <= rel * a.abs().max(b.abs()).max(1e-30)
     }
 
-    fn mat_vec(k: &Matrix<f64>, x: &[f64]) -> Vec<f64> {
-        (0..k.rows()).map(|i| (0..k.cols()).map(|j| k.get(i, j) * x[j]).sum()).collect()
+    fn mat_vec(
+        k: &Matrix<f64>,
+        x: &[f64],
+    ) -> Vec<f64> {
+        (0..k.rows())
+            .map(|i| (0..k.cols()).map(|j| k.get(i, j) * x[j]).sum())
+            .collect()
     }
 
-    fn tri(coords: [(f64, f64); 3], plane_stress: bool) -> TriangleElement2D {
+    fn tri(
+        coords: [(f64, f64); 3],
+        plane_stress: bool,
+    ) -> TriangleElement2D {
         TriangleElement2D::new([0, 1, 2], coords, 0.01, Material::steel(), plane_stress)
     }
 
@@ -601,22 +613,40 @@ mod strengthened {
             assert!(close(g, e / (2.0 * (1.0 + nu)), 1e-12));
             // E = 9 K G / (3 K + G) and nu = (3K - 2G) / (2 (3K + G))
             assert!(close(e, 9.0 * k * g / (3.0 * k + g), 1e-12));
-            assert!(close(nu, (3.0 * k - 2.0 * g) / (2.0 * (3.0 * k + g)), 1e-12));
+            assert!(close(
+                nu,
+                (3.0 * k - 2.0 * g) / (2.0 * (3.0 * k + g)),
+                1e-12
+            ));
         }
         let steel = Material::steel();
         assert!(close(steel.shear_modulus(), 76.923_076_923e9, 1e-9));
         assert!(close(steel.bulk_modulus(), 166.666_666_667e9, 1e-9));
-        assert_eq!((steel.yield_strength, steel.thermal_conductivity, steel.thermal_expansion), (250e6, 50.0, 12e-6));
+        assert_eq!(
+            (
+                steel.yield_strength,
+                steel.thermal_conductivity,
+                steel.thermal_expansion
+            ),
+            (250e6, 50.0, 12e-6)
+        );
     }
 
     #[test]
     fn node_helpers() {
-        assert!((Node2D::new(1, 1.0, 1.0).distance_to(&Node2D::new(2, 4.0, 5.0)) - 5.0).abs() < 1e-12);
+        assert!(
+            (Node2D::new(1, 1.0, 1.0).distance_to(&Node2D::new(2, 4.0, 5.0)) - 5.0).abs() < 1e-12
+        );
     }
 
     #[test]
     fn linear_bar_stiffness_is_ea_over_l_with_unit_row_sums_zero() {
-        let k = LinearElement1D { length: 2.0, youngs_modulus: 100e9, area: 0.002 }.local_stiffness_matrix();
+        let k = LinearElement1D {
+            length: 2.0,
+            youngs_modulus: 100e9,
+            area: 0.002,
+        }
+        .local_stiffness_matrix();
         let ea_l = 100e9 * 0.002 / 2.0;
         assert_eq!(k.data(), &vec![ea_l, -ea_l, -ea_l, ea_l]);
     }
@@ -626,22 +656,48 @@ mod strengthened {
         let (e, nu) = (200e9, 0.3);
         let ps = tri([(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)], true).constitutive_matrix();
         let f = e / (1.0 - nu * nu);
-        for (idx, want) in [f, f * nu, 0.0, f * nu, f, 0.0, 0.0, 0.0, f * (1.0 - nu) / 2.0].iter().enumerate() {
-            assert!(close(ps.data()[idx], *want, 1e-12) || (ps.data()[idx] == 0.0 && *want == 0.0), "plane stress entry {idx}");
+        for (idx, want) in [
+            f,
+            f * nu,
+            0.0,
+            f * nu,
+            f,
+            0.0,
+            0.0,
+            0.0,
+            f * (1.0 - nu) / 2.0,
+        ]
+        .iter()
+        .enumerate()
+        {
+            assert!(
+                close(ps.data()[idx], *want, 1e-12) || (ps.data()[idx] == 0.0 && *want == 0.0),
+                "plane stress entry {idx}"
+            );
         }
         let pe = tri([(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)], false).constitutive_matrix();
         let f = e / ((1.0 + nu) * (1.0 - 2.0 * nu));
         assert!(close(*pe.get(0, 0), f * (1.0 - nu), 1e-12));
         assert!(close(*pe.get(0, 1), f * nu, 1e-12));
-        assert!(close(*pe.get(2, 2), Material::steel().shear_modulus(), 1e-12), "D33 must equal G in both formulations");
-        assert!(close(*ps.get(2, 2), Material::steel().shear_modulus(), 1e-12));
+        assert!(
+            close(*pe.get(2, 2), Material::steel().shear_modulus(), 1e-12),
+            "D33 must equal G in both formulations"
+        );
+        assert!(close(
+            *ps.get(2, 2),
+            Material::steel().shear_modulus(),
+            1e-12
+        ));
     }
 
     #[test]
     fn b_matrix_of_the_unit_right_triangle() {
         let b = tri([(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)], true).b_matrix();
         // shape function gradients: N1 = 1 - x - y, N2 = x, N3 = y
-        let want = [-1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0, 0.0, 1.0, 1.0, 0.0];
+        let want = [
+            -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0, 0.0, 1.0,
+            1.0, 0.0,
+        ];
         assert_eq!(b.data().len(), 18);
         for (g, w) in b.data().iter().zip(want) {
             assert!((g - w).abs() < 1e-12, "{:?}", b.data());
@@ -654,9 +710,15 @@ mod strengthened {
         let el = tri(coords, true);
         // u = a x + b y + c, v = d x + e y + f
         let (a, b, c, d, e, f) = (1e-4, 2e-5, 3e-6, -4e-5, 5e-5, 7e-6);
-        let u: Vec<f64> = coords.iter().flat_map(|&(x, y)| [a * x + b * y + c, d * x + e * y + f]).collect();
+        let u: Vec<f64> = coords
+            .iter()
+            .flat_map(|&(x, y)| [a * x + b * y + c, d * x + e * y + f])
+            .collect();
         let strain = compute_element_strain(&el.b_matrix(), &u);
-        assert!(close(strain[0], a, 1e-9) && close(strain[1], e, 1e-9) && close(strain[2], b + d, 1e-9), "{strain:?}");
+        assert!(
+            close(strain[0], a, 1e-9) && close(strain[1], e, 1e-9) && close(strain[2], b + d, 1e-9),
+            "{strain:?}"
+        );
         let stress = el.compute_stress(&u);
         let dm = el.constitutive_matrix();
         for i in 0..3 {
@@ -693,7 +755,11 @@ mod strengthened {
         let ku = mat_vec(&k, &u);
         let energy = 0.5 * u.iter().zip(&ku).map(|(a, b)| a * b).sum::<f64>();
         let d11 = el.constitutive_matrix().get(0, 0).to_owned();
-        assert!(close(energy, 0.5 * el.thickness * el.area() * d11 * eps * eps, 1e-9));
+        assert!(close(
+            energy,
+            0.5 * el.thickness * el.area() * d11 * eps * eps,
+            1e-9
+        ));
         // Symmetric positive semi-definite.
         assert!(energy > 0.0);
     }
@@ -711,7 +777,14 @@ mod strengthened {
                 (nodes[e[2]].x, nodes[e[2]].y),
             ];
             let el = TriangleElement2D::new(*e, coords, t, mat, true);
-            let dofs = [2 * e[0], 2 * e[0] + 1, 2 * e[1], 2 * e[1] + 1, 2 * e[2], 2 * e[2] + 1];
+            let dofs = [
+                2 * e[0],
+                2 * e[0] + 1,
+                2 * e[1],
+                2 * e[1] + 1,
+                2 * e[2],
+                2 * e[2] + 1,
+            ];
             list.push((el.local_stiffness_matrix(), dofs));
         }
         let k = assemble_2d_stiffness_matrix(2 * nodes.len(), &list);
@@ -723,8 +796,16 @@ mod strengthened {
         assert!(f.iter().step_by(2).sum::<f64>().abs() < 1e-3);
         assert!(f.iter().skip(1).step_by(2).sum::<f64>().abs() < 1e-3);
         let sigma_x = mat.youngs_modulus / (1.0 - 0.09) * eps;
-        let right_end: f64 = nodes.iter().filter(|n| (n.x - 2.0).abs() < 1e-12).map(|n| f[2 * n.id]).sum();
-        assert!(close(right_end, sigma_x * t * 1.0, 1e-9), "{right_end} vs {}", sigma_x * t);
+        let right_end: f64 = nodes
+            .iter()
+            .filter(|n| (n.x - 2.0).abs() < 1e-12)
+            .map(|n| f[2 * n.id])
+            .sum();
+        assert!(
+            close(right_end, sigma_x * t * 1.0, 1e-9),
+            "{right_end} vs {}",
+            sigma_x * t
+        );
         // Energy 1/2 u^T K u = 1/2 sigma_x eps V.
         let energy = 0.5 * u.iter().zip(&f).map(|(a, b)| a * b).sum::<f64>();
         assert!(close(energy, 0.5 * sigma_x * eps * 2.0 * t, 1e-9));
@@ -733,18 +814,31 @@ mod strengthened {
     #[test]
     fn stress_invariants() {
         let vm = |s: [f64; 3]| TriangleElement2D::von_mises_stress(&s);
-        assert!(close(vm([100e6, 100e6, 0.0]), 100e6, 1e-12), "equibiaxial: sigma_vm = sigma");
+        assert!(
+            close(vm([100e6, 100e6, 0.0]), 100e6, 1e-12),
+            "equibiaxial: sigma_vm = sigma"
+        );
         assert!(close(vm([100e6, -100e6, 0.0]), 3f64.sqrt() * 100e6, 1e-12));
         let (s1, s2, ang) = principal_stresses(&[80e6, 20e6, 40e6]);
         // centre 50, radius sqrt(30^2 + 40^2) = 50
-        assert!((s1 - 100e6).abs() < 1e-3 && s2.abs() < 1e-3, "s1 = {s1}, s2 = {s2}");
+        assert!(
+            (s1 - 100e6).abs() < 1e-3 && s2.abs() < 1e-3,
+            "s1 = {s1}, s2 = {s2}"
+        );
         assert!((ang - 0.5 * (40.0f64).atan2(30.0)).abs() < 1e-12);
         assert!(close(max_shear_stress(s1, s2), 50e6, 1e-9));
         // Invariants: s1 + s2 = sx + sy ; s1 s2 = sx sy - txy^2
         assert!((s1 + s2 - 100e6).abs() < 1.0);
         assert!((s1 * s2 - (80e6 * 20e6 - 40e6 * 40e6)).abs() < 1e3);
-        assert_eq!(safety_factor_von_mises(&[0.0, 0.0, 0.0], 250e6), f64::INFINITY);
-        assert!((safety_factor_von_mises(&[0.0, 0.0, 100e6], 250e6) - 250.0 / (3f64.sqrt() * 100.0)).abs() < 1e-9);
+        assert_eq!(
+            safety_factor_von_mises(&[0.0, 0.0, 0.0], 250e6),
+            f64::INFINITY
+        );
+        assert!(
+            (safety_factor_von_mises(&[0.0, 0.0, 100e6], 250e6) - 250.0 / (3f64.sqrt() * 100.0))
+                .abs()
+                < 1e-9
+        );
     }
 
     #[test]
@@ -758,13 +852,23 @@ mod strengthened {
         assert!(close(*k.get(2, 5), 2.0 * e * i / l, 1e-12));
         for r in 0..6 {
             for c in 0..6 {
-                assert!(close(*k.get(r, c), *k.get(c, r), 1e-12) || (k.get(r, c) - k.get(c, r)).abs() < 1e-9);
+                assert!(
+                    close(*k.get(r, c), *k.get(c, r), 1e-12)
+                        || (k.get(r, c) - k.get(c, r)).abs() < 1e-9
+                );
             }
         }
         // Translation and rigid rotation produce no force: u = [1,0,0,1,0,0], [0,1,0,0,1,0], [0,0,1,0,l... ] etc.
         let scale = k.data().iter().fold(0.0f64, |m, v| m.max(v.abs()));
-        for u in [[1.0, 0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 1.0, 0.0, l, 1.0]] {
-            assert!(mat_vec(&k, &u).iter().all(|f| f.abs() < 1e-9 * scale), "{u:?}");
+        for u in [
+            [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0, l, 1.0],
+        ] {
+            assert!(
+                mat_vec(&k, &u).iter().all(|f| f.abs() < 1e-9 * scale),
+                "{u:?}"
+            );
         }
     }
 
@@ -777,7 +881,11 @@ mod strengthened {
         let kl = beam.local_stiffness_matrix();
         // Rotation preserves the Frobenius norm and the trace.
         assert!(close(kg.frobenius_norm(), kl.frobenius_norm(), 1e-12));
-        assert!(close(kg.trace().unwrap_or(f64::NAN), kl.trace().unwrap_or(f64::NAN), 1e-12));
+        assert!(close(
+            kg.trace().unwrap_or(f64::NAN),
+            kl.trace().unwrap_or(f64::NAN),
+            1e-12
+        ));
         assert!(kg.is_symmetric());
         // A vertical bar (90 degrees) has its axial stiffness on the y dof.
         let vk = BeamElement2D::new(1.0, 200e9, 0.001, 1e-6, PI / 2.0).global_stiffness_matrix();
@@ -796,7 +904,11 @@ mod strengthened {
         let ux = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
         for u in [uy, ux] {
             let mu = mat_vec(&m, &u);
-            assert!(close(u.iter().zip(&mu).map(|(a, b)| a * b).sum::<f64>(), total, 1e-12));
+            assert!(close(
+                u.iter().zip(&mu).map(|(a, b)| a * b).sum::<f64>(),
+                total,
+                1e-12
+            ));
         }
     }
 
@@ -807,25 +919,51 @@ mod strengthened {
         let k = BeamElement2D::new(l, e, a, i, 0.0).global_stiffness_matrix();
         let mut f = vec![0.0; 6];
         f[4] = p;
-        let u = solve_static_structural(k, f, &[(0, 0.0), (1, 0.0), (2, 0.0)]).unwrap_or_else(|e| panic!("{e}"));
-        assert!(close(u[4], p * l.powi(3) / (3.0 * e * i), 1e-9), "tip deflection {}", u[4]);
-        assert!(close(u[5], p * l * l / (2.0 * e * i), 1e-9), "tip rotation {}", u[5]);
-        assert!(u[3].abs() < 1e-15, "no axial extension for a transverse load");
+        let u = solve_static_structural(k, f, &[(0, 0.0), (1, 0.0), (2, 0.0)])
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert!(
+            close(u[4], p * l.powi(3) / (3.0 * e * i), 1e-9),
+            "tip deflection {}",
+            u[4]
+        );
+        assert!(
+            close(u[5], p * l * l / (2.0 * e * i), 1e-9),
+            "tip rotation {}",
+            u[5]
+        );
+        assert!(
+            u[3].abs() < 1e-15,
+            "no axial extension for a transverse load"
+        );
     }
 
     #[test]
     fn bar_chain_displacements_and_prescribed_motion() {
-        let k = LinearElement1D { length: 1.0, youngs_modulus: 200e9, area: 0.001 }.local_stiffness_matrix();
+        let k = LinearElement1D {
+            length: 1.0,
+            youngs_modulus: 200e9,
+            area: 0.001,
+        }
+        .local_stiffness_matrix();
         let kk = 200e6;
         let global = assemble_global_stiffness_matrix(3, &[(k.clone(), 0, 1), (k.clone(), 1, 2)]);
-        assert_eq!(global.data(), &vec![kk, -kk, 0.0, -kk, 2.0 * kk, -kk, 0.0, -kk, kk]);
-        let u = solve_static_structural(global.clone(), vec![0.0, 0.0, 1000.0], &[(0, 0.0)]).unwrap_or_else(|e| panic!("{e}"));
-        assert!(close(u[1], 1000.0 / kk, 1e-9) && close(u[2], 2000.0 / kk, 1e-9), "{u:?}");
+        assert_eq!(
+            global.data(),
+            &vec![kk, -kk, 0.0, -kk, 2.0 * kk, -kk, 0.0, -kk, kk]
+        );
+        let u = solve_static_structural(global.clone(), vec![0.0, 0.0, 1000.0], &[(0, 0.0)])
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert!(
+            close(u[1], 1000.0 / kk, 1e-9) && close(u[2], 2000.0 / kk, 1e-9),
+            "{u:?}"
+        );
         // Prescribed end displacement moves the whole unloaded bar rigidly.
-        let u = solve_static_structural(global.clone(), vec![0.0; 3], &[(0, 0.001)]).unwrap_or_else(|e| panic!("{e}"));
+        let u = solve_static_structural(global.clone(), vec![0.0; 3], &[(0, 0.001)])
+            .unwrap_or_else(|e| panic!("{e}"));
         assert!(u.iter().all(|&v| (v - 0.001).abs() < 1e-15), "{u:?}");
         // Prescribing both ends fixes the middle node by symmetry.
-        let u = solve_static_structural(global.clone(), vec![0.0; 3], &[(0, 0.0), (2, 0.002)]).unwrap_or_else(|e| panic!("{e}"));
+        let u = solve_static_structural(global.clone(), vec![0.0; 3], &[(0, 0.0), (2, 0.002)])
+            .unwrap_or_else(|e| panic!("{e}"));
         assert!((u[1] - 0.001).abs() < 1e-12, "{u:?}");
         // Errors: wrong force length, and an unconstrained (singular) system.
         assert!(solve_static_structural(global.clone(), vec![0.0; 2], &[(0, 0.0)]).is_err());
@@ -834,12 +972,20 @@ mod strengthened {
 
     #[test]
     fn penalty_boundary_conditions_approximate_the_exact_solution() {
-        let k = LinearElement1D { length: 1.0, youngs_modulus: 200e9, area: 0.001 }.local_stiffness_matrix();
+        let k = LinearElement1D {
+            length: 1.0,
+            youngs_modulus: 200e9,
+            area: 0.001,
+        }
+        .local_stiffness_matrix();
         let mut global = assemble_global_stiffness_matrix(3, &[(k.clone(), 0, 1), (k, 1, 2)]);
         let mut f = vec![0.0, 0.0, 1000.0];
         apply_boundary_conditions_penalty(&mut global, &mut f, &[(0, 0.0)], 1e20);
         let sol = solve_static_structural(global, f, &[]).unwrap_or_else(|e| panic!("{e}"));
-        assert!((sol[1] - 5e-6).abs() < 1e-9 && (sol[2] - 1e-5).abs() < 1e-9, "{sol:?}");
+        assert!(
+            (sol[1] - 5e-6).abs() < 1e-9 && (sol[2] - 1e-5).abs() < 1e-9,
+            "{sol:?}"
+        );
     }
 
     #[test]
@@ -888,7 +1034,10 @@ mod strengthened {
         assert!(e2.iter().all(|e| (area(e) - 0.125).abs() < 1e-12));
         assert!((e2.iter().map(area).sum::<f64>() - 1.0).abs() < 1e-12);
         // The diagonal midpoint is the centre of the square.
-        assert!(n2.iter().any(|n| (n.x - 0.5).abs() < 1e-12 && (n.y - 0.5).abs() < 1e-12));
+        assert!(
+            n2.iter()
+                .any(|n| (n.x - 0.5).abs() < 1e-12 && (n.y - 0.5).abs() < 1e-12)
+        );
     }
 
     proptest! {

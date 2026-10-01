@@ -46,6 +46,11 @@ opt-level = 0
 debug = true
 incremental = true
 
+# The symbolic test suite runs thousands of nested engine runs and numeric
+# integrations; unoptimised builds make it several times slower.
+[profile.test]
+opt-level = 1
+
 [profile.release]
 lto = true
 codegen-units = 1

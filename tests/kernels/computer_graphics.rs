@@ -800,11 +800,20 @@ mod strengthened {
         }
     }
 
-    fn near(a: Vector3D, b: Vector3D, tol: f64) -> bool {
+    fn near(
+        a: Vector3D,
+        b: Vector3D,
+        tol: f64,
+    ) -> bool {
         (a - b).magnitude() < tol
     }
 
-    fn near_p(a: Point3D, x: f64, y: f64, z: f64) -> bool {
+    fn near_p(
+        a: Point3D,
+        x: f64,
+        y: f64,
+        z: f64,
+    ) -> bool {
         (a.x - x).abs() < 1e-9 && (a.y - y).abs() < 1e-9 && (a.z - z).abs() < 1e-9
     }
 
@@ -813,13 +822,28 @@ mod strengthened {
         let a = Vector3D::new(1.0, 2.0, 3.0);
         let b = Vector3D::new(4.0, 5.0, 6.0);
         assert_eq!(dot_product(&a, &b), 32.0);
-        assert!(near(cross_product(&a, &b), Vector3D::new(-3.0, 6.0, -3.0), 1e-12));
+        assert!(near(
+            cross_product(&a, &b),
+            Vector3D::new(-3.0, 6.0, -3.0),
+            1e-12
+        ));
         assert!(near(-a, Vector3D::new(-1.0, -2.0, -3.0), 0.0 + 1e-15));
         assert!(near(a / 2.0, Vector3D::new(0.5, 1.0, 1.5), 1e-15));
         assert_eq!(a.magnitude_squared(), 14.0);
-        assert!(near(project(&a, &Vector3D::new(2.0, 0.0, 0.0)), Vector3D::new(1.0, 0.0, 0.0), 1e-12));
-        assert!(near(project(&a, &Vector3D::new(0.0, 0.0, 0.0)), Vector3D::new(0.0, 0.0, 0.0), 0.0 + 1e-15));
-        assert_eq!(dot_product_2d(&Vector2D::new(1.0, 2.0), &Vector2D::new(3.0, 4.0)), 11.0);
+        assert!(near(
+            project(&a, &Vector3D::new(2.0, 0.0, 0.0)),
+            Vector3D::new(1.0, 0.0, 0.0),
+            1e-12
+        ));
+        assert!(near(
+            project(&a, &Vector3D::new(0.0, 0.0, 0.0)),
+            Vector3D::new(0.0, 0.0, 0.0),
+            0.0 + 1e-15
+        ));
+        assert_eq!(
+            dot_product_2d(&Vector2D::new(1.0, 2.0), &Vector2D::new(3.0, 4.0)),
+            11.0
+        );
         assert_eq!(angle_between(&a, &Vector3D::new(0.0, 0.0, 0.0)), 0.0);
         assert!((angle_between(&a, &-a) - PI).abs() < 1e-7);
     }
@@ -827,7 +851,10 @@ mod strengthened {
     #[test]
     fn points_and_2d_helpers() {
         assert!((Point2D::new(0.0, 0.0).distance_to(&Point2D::new(3.0, 4.0)) - 5.0).abs() < 1e-12);
-        assert!((Point3D::new(1.0, 2.0, 2.0).distance_to(&Point3D::new(0.0, 0.0, 0.0)) - 3.0).abs() < 1e-12);
+        assert!(
+            (Point3D::new(1.0, 2.0, 2.0).distance_to(&Point3D::new(0.0, 0.0, 0.0)) - 3.0).abs()
+                < 1e-12
+        );
         let v = Vector2D::new(3.0, 4.0);
         assert_eq!((v + v).x, 6.0);
         assert_eq!((v - v).y, 0.0);
@@ -844,9 +871,24 @@ mod strengthened {
         let x = Point3D::new(1.0, 0.0, 0.0);
         let y = Point3D::new(0.0, 1.0, 0.0);
         let z = Point3D::new(0.0, 0.0, 1.0);
-        assert!(near_p(transform_point(&rotation_matrix_z(FRAC_PI_2), &x), 0.0, 1.0, 0.0));
-        assert!(near_p(transform_point(&rotation_matrix_x(FRAC_PI_2), &y), 0.0, 0.0, 1.0));
-        assert!(near_p(transform_point(&rotation_matrix_y(FRAC_PI_2), &z), 1.0, 0.0, 0.0));
+        assert!(near_p(
+            transform_point(&rotation_matrix_z(FRAC_PI_2), &x),
+            0.0,
+            1.0,
+            0.0
+        ));
+        assert!(near_p(
+            transform_point(&rotation_matrix_x(FRAC_PI_2), &y),
+            0.0,
+            0.0,
+            1.0
+        ));
+        assert!(near_p(
+            transform_point(&rotation_matrix_y(FRAC_PI_2), &z),
+            1.0,
+            0.0,
+            0.0
+        ));
         let axis = rotation_matrix_axis(&Vector3D::new(0.0, 0.0, 1.0), FRAC_PI_2);
         assert!(near_p(transform_point(&axis, &x), 0.0, 1.0, 0.0));
     }
@@ -855,11 +897,21 @@ mod strengthened {
     fn composite_transforms_apply_right_to_left() {
         // scale by 2, then translate by (1, 0, 0): (1,1,1) -> (2,2,2) -> (3,2,2)
         let m = translation_matrix(1.0, 0.0, 0.0) * scaling_matrix(2.0, 2.0, 2.0);
-        assert!(near_p(transform_point(&m, &Point3D::new(1.0, 1.0, 1.0)), 3.0, 2.0, 2.0));
+        assert!(near_p(
+            transform_point(&m, &Point3D::new(1.0, 1.0, 1.0)),
+            3.0,
+            2.0,
+            2.0
+        ));
         // Vectors ignore translation.
         let v = transform_vector(&m, &Vector3D::new(1.0, 1.0, 1.0));
         assert!(near(v, Vector3D::new(2.0, 2.0, 2.0), 1e-12));
-        assert!(near_p(transform_point(&uniform_scaling_matrix(3.0), &Point3D::new(1.0, 2.0, 3.0)), 3.0, 6.0, 9.0));
+        assert!(near_p(
+            transform_point(&uniform_scaling_matrix(3.0), &Point3D::new(1.0, 2.0, 3.0)),
+            3.0,
+            6.0,
+            9.0
+        ));
     }
 
     #[test]
@@ -871,14 +923,24 @@ mod strengthened {
         let via_q = q.rotate_vector(&Vector3D::new(1.0, 2.0, 3.0));
         let via_m = transform_point(&m, &p);
         assert!(near_p(via_m, via_q.x, via_q.y, via_q.z));
-        assert!(near_p(via_m, transform_point(&rotation_matrix_z(0.9), &p).x, transform_point(&rotation_matrix_z(0.9), &p).y, 3.0));
+        assert!(near_p(
+            via_m,
+            transform_point(&rotation_matrix_z(0.9), &p).x,
+            transform_point(&rotation_matrix_z(0.9), &p).y,
+            3.0
+        ));
     }
 
     #[test]
     fn quaternion_inverse_and_product() {
         let q = Quaternion::new(1.0, 2.0, 3.0, 4.0);
         let id = q.multiply(&q.inverse());
-        assert!((id.w - 1.0).abs() < 1e-12 && id.x.abs() < 1e-12 && id.y.abs() < 1e-12 && id.z.abs() < 1e-12);
+        assert!(
+            (id.w - 1.0).abs() < 1e-12
+                && id.x.abs() < 1e-12
+                && id.y.abs() < 1e-12
+                && id.z.abs() < 1e-12
+        );
         // i * j = k
         let i = Quaternion::new(0.0, 1.0, 0.0, 0.0);
         let j = Quaternion::new(0.0, 0.0, 1.0, 0.0);
@@ -897,24 +959,41 @@ mod strengthened {
         let want = Quaternion::from_axis_angle(&axis, FRAC_PI_4);
         assert!((mid.w - want.w).abs() < 1e-9, "w = {} vs {}", mid.w, want.w);
         assert!((mid.z - want.z).abs() < 1e-9, "z = {} vs {}", mid.z, want.z);
-        assert!((mid.magnitude() - 1.0).abs() < 1e-9, "|slerp| = {}", mid.magnitude());
+        assert!(
+            (mid.magnitude() - 1.0).abs() < 1e-9,
+            "|slerp| = {}",
+            mid.magnitude()
+        );
     }
 
     #[test]
-    #[ignore = "library bug: Quaternion::slerp uses cos(theta_0 - theta) instead of cos(theta) for the first weight, so it is only right at t = 0.5 (and 0, 1); at t = 0.25 observed w = 0.831470 (cos 3pi/16), expected 0.980785 (cos pi/8)"]
     fn quaternion_slerp_quarter_way() {
         let axis = Vector3D::new(0.0, 0.0, 1.0);
         let a = Quaternion::identity();
         let b = Quaternion::from_axis_angle(&axis, FRAC_PI_2);
         let q = a.slerp(&b, 0.25);
         let want = Quaternion::from_axis_angle(&axis, FRAC_PI_2 / 4.0);
-        assert!((q.w - want.w).abs() < 1e-9, "t=0.25: w = {} vs {}", q.w, want.w);
-        assert!((q.z - want.z).abs() < 1e-9, "t=0.25: z = {} vs {}", q.z, want.z);
+        assert!(
+            (q.w - want.w).abs() < 1e-9,
+            "t=0.25: w = {} vs {}",
+            q.w,
+            want.w
+        );
+        assert!(
+            (q.z - want.z).abs() < 1e-9,
+            "t=0.25: z = {} vs {}",
+            q.z,
+            want.z
+        );
     }
 
     #[test]
     fn vector_slerp_halfway_between_orthogonal_unit_vectors() {
-        let m = slerp(&Vector3D::new(1.0, 0.0, 0.0), &Vector3D::new(0.0, 1.0, 0.0), 0.5);
+        let m = slerp(
+            &Vector3D::new(1.0, 0.0, 0.0),
+            &Vector3D::new(0.0, 1.0, 0.0),
+            0.5,
+        );
         let s = std::f64::consts::FRAC_1_SQRT_2;
         assert!(near(m, Vector3D::new(s, s, 0.0), 1e-12));
     }
@@ -926,7 +1005,8 @@ mod strengthened {
         let incident = Vector3D::new(s, -s, 0.0);
         let normal = Vector3D::new(0.0, 1.0, 0.0);
         let eta = 1.0 / 1.5;
-        let r = refract(&incident, &normal, eta).unwrap_or_else(|| panic!("no total internal reflection here"));
+        let r = refract(&incident, &normal, eta)
+            .unwrap_or_else(|| panic!("no total internal reflection here"));
         let sin_out = r.x / r.magnitude();
         assert!((sin_out - eta * s).abs() < 1e-9, "sin(theta_t) = {sin_out}");
         assert!(r.y < 0.0);
@@ -944,7 +1024,8 @@ mod strengthened {
         assert!(near(h.normal, Vector3D::new(0.0, 0.0, -1.0), 1e-12));
         // Starting inside the sphere the far side is returned.
         let inside = Ray::new(Point3D::new(0.0, 0.0, 0.0), Vector3D::new(0.0, 0.0, 1.0));
-        let h = ray_sphere_intersection(&inside, &sphere).unwrap_or_else(|| panic!("expected a hit"));
+        let h =
+            ray_sphere_intersection(&inside, &sphere).unwrap_or_else(|| panic!("expected a hit"));
         assert!((h.t - 1.0).abs() < 1e-9);
         // Sphere behind the ray.
         let behind = Ray::new(Point3D::new(0.0, 0.0, 5.0), Vector3D::new(0.0, 0.0, 1.0));
@@ -956,7 +1037,11 @@ mod strengthened {
         let parallel = Ray::new(Point3D::new(0.0, 1.0, 0.0), Vector3D::new(1.0, 0.0, 0.0));
         let plane = Plane::new(Point3D::new(0.0, 0.0, 0.0), Vector3D::new(0.0, 1.0, 0.0));
         assert!(ray_plane_intersection(&parallel, &plane).is_none());
-        let (v0, v1, v2) = (Point3D::new(0.0, 0.0, 0.0), Point3D::new(1.0, 0.0, 0.0), Point3D::new(0.0, 1.0, 0.0));
+        let (v0, v1, v2) = (
+            Point3D::new(0.0, 0.0, 0.0),
+            Point3D::new(1.0, 0.0, 0.0),
+            Point3D::new(0.0, 1.0, 0.0),
+        );
         let outside = Ray::new(Point3D::new(2.0, 2.0, -1.0), Vector3D::new(0.0, 0.0, 1.0));
         assert!(ray_triangle_intersection(&outside, &v0, &v1, &v2).is_none());
     }
@@ -975,8 +1060,10 @@ mod strengthened {
         assert!(near_p(bezier_quadratic(&p0, &p1, &p3, 0.5), 0.5, 1.0, 0.0));
         // Catmull-Rom of collinear equispaced points is linear.
         let (a, b, c, d) = (
-            Point3D::new(-1.0, 0.0, 0.0), Point3D::new(0.0, 0.0, 0.0),
-            Point3D::new(1.0, 0.0, 0.0), Point3D::new(2.0, 0.0, 0.0),
+            Point3D::new(-1.0, 0.0, 0.0),
+            Point3D::new(0.0, 0.0, 0.0),
+            Point3D::new(1.0, 0.0, 0.0),
+            Point3D::new(2.0, 0.0, 0.0),
         );
         assert!(near_p(catmull_rom(&a, &b, &c, &d, 0.25), 0.25, 0.0, 0.0));
     }
@@ -989,7 +1076,10 @@ mod strengthened {
         assert!(p.x.abs() < 1e-12 && p.y.abs() < 1e-12);
         // With a 90 degree field of view and aspect 1, the point (z, z, -z) maps to the corner x = y = 1.
         let corner = transform_point(&persp, &Point3D::new(5.0, 5.0, -5.0));
-        assert!((corner.x - 1.0).abs() < 1e-9 && (corner.y - 1.0).abs() < 1e-9, "{corner:?}");
+        assert!(
+            (corner.x - 1.0).abs() < 1e-9 && (corner.y - 1.0).abs() < 1e-9,
+            "{corner:?}"
+        );
         let ortho = orthographic_matrix(-2.0, 2.0, -1.0, 1.0, 0.1, 10.0);
         let q = transform_point(&ortho, &Point3D::new(2.0, 1.0, -0.1));
         assert!((q.x - 1.0).abs() < 1e-9 && (q.y - 1.0).abs() < 1e-9);
@@ -999,14 +1089,22 @@ mod strengthened {
     fn look_at_maps_eye_to_origin_and_target_onto_negative_z() {
         let eye = Point3D::new(1.0, 2.0, 3.0);
         let target = Point3D::new(1.0, 2.0, -7.0);
-        let view = look_at_matrix(&eye.to_vector(), &target.to_vector(), &Vector3D::new(0.0, 1.0, 0.0));
+        let view = look_at_matrix(
+            &eye.to_vector(),
+            &target.to_vector(),
+            &Vector3D::new(0.0, 1.0, 0.0),
+        );
         assert!(near_p(transform_point(&view, &eye), 0.0, 0.0, 0.0));
         assert!(near_p(transform_point(&view, &target), 0.0, 0.0, -10.0));
     }
 
     #[test]
     fn barycentric_of_vertices_and_color_helpers() {
-        let (v0, v1, v2) = (Point3D::new(0.0, 0.0, 0.0), Point3D::new(1.0, 0.0, 0.0), Point3D::new(0.0, 1.0, 0.0));
+        let (v0, v1, v2) = (
+            Point3D::new(0.0, 0.0, 0.0),
+            Point3D::new(1.0, 0.0, 0.0),
+            Point3D::new(0.0, 1.0, 0.0),
+        );
         let (u, v, w) = barycentric_coordinates(&v1, &v0, &v1, &v2);
         assert!((u - 0.0).abs() < 1e-12 && (v - 1.0).abs() < 1e-12 && w.abs() < 1e-12);
         let c = Color::rgb(0.2, 0.4, 0.6);
@@ -1065,5 +1163,63 @@ mod strengthened {
             prop_assert!((h.point.to_vector().magnitude() - radius).abs() < 1e-9);
             prop_assert!((h.normal.magnitude() - 1.0).abs() < 1e-9);
         }
+    }
+}
+
+mod ledger_fill {
+    use super::*;
+
+    #[test]
+    fn shearing_matrix_places_the_six_shear_factors() {
+        let m = shearing_matrix(1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+        let expect = [
+            [1.0, 1.0, 2.0, 0.0],
+            [3.0, 1.0, 4.0, 0.0],
+            [5.0, 6.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+        for (i, row) in expect.iter().enumerate() {
+            for (j, &v) in row.iter().enumerate() {
+                assert_eq!(*m.get(i, j), v, "({i},{j})");
+            }
+        }
+    }
+
+    #[test]
+    fn from_euler_gives_identity_and_axis_rotations() {
+        let q = Quaternion::from_euler(0.0, 0.0, 0.0);
+        assert_eq!((q.w, q.x, q.y, q.z), (1.0, 0.0, 0.0, 0.0));
+        let yaw = Quaternion::from_euler(0.0, 0.0, PI);
+        assert!(yaw.w.abs() < 1e-12 && (yaw.z - 1.0).abs() < 1e-12);
+        let roll = Quaternion::from_euler(PI / 2.0, 0.0, 0.0);
+        assert!(
+            (roll.w - (PI / 4.0).cos()).abs() < 1e-12 && (roll.x - (PI / 4.0).sin()).abs() < 1e-12
+        );
+    }
+}
+
+#[test]
+fn quaternion_slerp_has_constant_angular_velocity() {
+    // Rotation angle of slerp(t) relative to the start must be t * total angle.
+    let axis = Vector3D::new(1.0, 2.0, 2.0).normalize();
+    let a = Quaternion::identity();
+    let total = 1.9;
+    let b = Quaternion::from_axis_angle(&axis, total);
+    for &t in &[0.1, 0.3, 0.7, 0.9] {
+        let q = a.slerp(&b, t);
+        let want = Quaternion::from_axis_angle(&axis, total * t);
+        assert!(
+            (q.w - want.w).abs() < 1e-9,
+            "t={t}: w {} vs {}",
+            q.w,
+            want.w
+        );
+        assert!(
+            (q.x - want.x).abs() < 1e-9,
+            "t={t}: x {} vs {}",
+            q.x,
+            want.x
+        );
+        assert!((q.magnitude() - 1.0).abs() < 1e-9);
     }
 }

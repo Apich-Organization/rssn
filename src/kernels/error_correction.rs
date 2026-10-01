@@ -78,8 +78,10 @@ use crate::kernels::finite_field::gf256_pow;
 
 /// Represents a polynomial over GF(2^8).
 ///
-/// The polynomial is stored in descending order of powers, i.e., the first
-/// element is the coefficient of the highest power term.
+/// The polynomial is stored in ascending order of powers: `coeffs[i]` is the
+/// coefficient of `x^i`, so the first element is the constant term. Every
+/// method of this type (`eval`, `poly_add`, `poly_mul`, `poly_div`,
+/// `derivative`, `normalize`) uses this one order.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PolyGF256(pub Vec<u8>);
 
@@ -87,7 +89,8 @@ impl PolyGF256 {
     /// Creates a new polynomial from coefficients.
     ///
     /// # Arguments
-    /// * `coeffs` - Coefficients in descending order of powers.
+    /// * `coeffs` - Coefficients in ascending order of powers (`coeffs[i]` is the
+    ///   coefficient of `x^i`).
     #[must_use]
     pub const fn new(coeffs: Vec<u8>) -> Self {
         Self(coeffs)
@@ -132,13 +135,16 @@ impl PolyGF256 {
 
         let result_len = result.len();
 
+        // Ascending order: the constant terms line up at index 0.
         for i in 0..self.0.len() {
-            result[i + result_len - self.0.len()] = self.0[i];
+            result[i] = self.0[i];
         }
 
         for i in 0..other.0.len() {
-            result[i + result_len - other.0.len()] ^= other.0[i];
+            result[i] ^= other.0[i];
         }
+
+        debug_assert_eq!(result.len(), result_len);
 
         Self(result)
     }
@@ -191,27 +197,43 @@ impl PolyGF256 {
                 .to_string());
         }
 
+        // Ignore zero high-order coefficients so the true leading term divides.
+        let d = divisor.normalize();
+
+        if d.0.is_empty() {
+            return Err("Division by zero \
+                 polynomial"
+                .to_string());
+        }
+
+        let d_len = d.0.len();
+
+        let lead_inv = gf256_inv(d.0[d_len - 1])?;
+
         let mut rem = self.0.clone();
 
-        let mut quot = vec![0; self.degree() + 1];
+        if rem.len() < d_len {
+            return Ok((Self(vec![0]), Self(rem)));
+        }
 
-        let divisor_lead_inv = gf256_inv(divisor.0[0])?;
+        let mut quot = vec![0; rem.len() - d_len + 1];
 
-        while rem.len() >= divisor.0.len() {
-            let lead_coeff = rem[0];
+        // Eliminate the highest power first; quotient coefficient k belongs to x^k.
+        for k in (0..quot.len()).rev() {
+            let q_coeff = gf256_mul(rem[k + d_len - 1], lead_inv);
 
-            let q_coeff = gf256_mul(lead_coeff, divisor_lead_inv);
-
-            let deg_diff = rem.len() - divisor.0.len();
-
-            quot[deg_diff] = q_coeff;
-
-            for (i, var) in rem.iter_mut().enumerate().take(divisor.0.len()) {
-                *var ^= gf256_mul(divisor.0[i], q_coeff);
+            if q_coeff == 0 {
+                continue;
             }
 
-            rem.remove(0);
+            quot[k] = q_coeff;
+
+            for (i, &dc) in d.0.iter().enumerate() {
+                rem[k + i] ^= gf256_mul(dc, q_coeff);
+            }
         }
+
+        rem.truncate(d_len - 1);
 
         Ok((Self(quot), Self(rem)))
     }
@@ -243,12 +265,13 @@ impl PolyGF256 {
         Self(self.0.iter().map(|&coeff| gf256_mul(coeff, c)).collect())
     }
 
-    /// Normalizes the polynomial by removing leading zeros.
+    /// Normalizes the polynomial by removing zero coefficients of the highest
+    /// powers (the trailing elements in ascending order).
     #[must_use]
     pub fn normalize(&self) -> Self {
-        let start = self.0.iter().position(|&x| x != 0).unwrap_or(self.0.len());
+        let end = self.0.iter().rposition(|&x| x != 0).map_or(0, |i| i + 1);
 
-        Self(self.0[start..].to_vec())
+        Self(self.0[..end].to_vec())
     }
 }
 
@@ -470,6 +493,16 @@ pub fn reed_solomon_decode(
     // Use Berlekamp-Massey to find error locator polynomial
     let sigma = berlekamp_massey(&syndromes);
 
+    // More than t = floor(n_parity / 2) errors cannot be located uniquely;
+    // report it instead of "correcting" to a different codeword.
+    let sigma_degree = sigma.iter().rposition(|&x| x != 0).unwrap_or(0);
+
+    if sigma_degree > n_parity / 2 {
+        return Err("Uncorrectable errors: more than \
+                    n_parity / 2 errors."
+            .to_string());
+    }
+
     // Use Chien search to find error locations
     let error_locations = chien_search_extended(&sigma, codeword.len())?;
 
@@ -479,27 +512,39 @@ pub fn reed_solomon_decode(
             .to_string());
     }
 
-    // Compute error evaluator polynomial omega = S(x) * sigma(x) mod x^n_parity
+    // Error evaluator omega(x) = S(x) sigma(x) mod x^n_parity; both are stored
+    // lowest power first, so the low-order coefficients are kept.
     let mut omega = poly_mul_gf256(&syndromes, &sigma);
 
-    if omega.len() > n_parity {
-        omega = omega[omega.len() - n_parity..].to_vec();
-    }
+    omega.truncate(n_parity);
 
     // Use Forney's algorithm to find error magnitudes
     let error_magnitudes =
         forney_algorithm_extended(&omega, &sigma, &error_locations, codeword.len())?;
 
-    // Correct errors
+    // Correct a copy first so that a failed verification leaves the input intact.
+    let mut corrected = codeword.to_vec();
+
     for (i, &loc) in error_locations.iter().enumerate() {
-        codeword[loc] ^= error_magnitudes[i];
+        corrected[loc] ^= error_magnitudes[i];
     }
+
+    if !calculate_syndromes(&corrected, n_parity)
+        .iter()
+        .all(|&s| s == 0)
+    {
+        return Err("Uncorrectable errors: \
+                    corrected word is not a codeword."
+            .to_string());
+    }
+
+    codeword.copy_from_slice(&corrected);
 
     Ok(())
 }
 
 /// Berlekamp-Massey algorithm to find the error locator polynomial.
-fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
+pub(crate) fn berlekamp_massey(syndromes: &[u8]) -> Vec<u8> {
     let mut sigma = vec![1u8];
 
     let mut b = vec![1u8];
@@ -647,10 +692,10 @@ fn forney_algorithm_extended(
                 .to_string());
         }
 
-        // 3. Magnitude Y_i = Omega(x) / Sigma'(x)
-        // (Note: Some conventions require an extra X_i factor,
-        // but for standard S_i = sum Y*X^i, this is correct)
-        let magnitude = gf256_div(omega_val, sigma_prime_val)?;
+        // 3. With roots alpha^0..alpha^(n-1) (first consecutive root b = 0)
+        // Forney's formula is Y_i = X_i^(1-b) Omega(X_i^-1) / Sigma'(X_i^-1),
+        // i.e. an extra factor X_i = alpha^power.
+        let magnitude = gf256_mul(x_inv, gf256_div(omega_val, sigma_prime_val)?);
 
         magnitudes.push(magnitude);
     }

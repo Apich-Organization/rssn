@@ -950,6 +950,12 @@ mod tests {
             ("(x + 1)^5 * (x - 2)^(-3)", 0.9),
             ("2^x + x^(1/3)", 1.5),
             ("abs(x) * x", -0.8),
+            ("cot(x) + sec(x) * csc(x)", 0.7),
+            ("acot(x) + asec(x + 2) + acsc(x + 2)", 0.6),
+            ("coth(x) - sech(x) * csch(x)", 0.9),
+            ("asinh(x) + acosh(x + 2) + atanh(x / 2)", 0.5),
+            ("acoth(x + 2) + asech(x / 2) + acsch(x)", 0.8),
+            ("atan2(x, 2) + log(3, x)", 1.4),
             ("x * y * sin(x * y)", 0.35),
         ] {
             if text.contains('y') {
@@ -988,7 +994,7 @@ mod tests {
         assert!(!answer.reduced);
         assert_eq!(
             answer.term.to_string(),
-            "x*diff(apply(f, x), x) + apply(f, x)"
+            "x*diff(f(x), x) + f(x)"
         );
     }
 

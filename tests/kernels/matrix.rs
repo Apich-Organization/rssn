@@ -14,7 +14,11 @@ fn cfg() -> ProptestConfig {
     }
 }
 
-fn m(rows: usize, cols: usize, d: &[f64]) -> Matrix<f64> {
+fn m(
+    rows: usize,
+    cols: usize,
+    d: &[f64],
+) -> Matrix<f64> {
     Matrix::new(rows, cols, d.to_vec())
 }
 
@@ -36,10 +40,16 @@ fn construction_and_access() {
 fn arithmetic() {
     let m1 = m(2, 2, &[1.0, 2.0, 3.0, 4.0]);
     let m2 = m(2, 2, &[5.0, 6.0, 7.0, 8.0]);
-    assert_eq!((m1.clone() + m2.clone()).data(), &vec![6.0, 8.0, 10.0, 12.0]);
+    assert_eq!(
+        (m1.clone() + m2.clone()).data(),
+        &vec![6.0, 8.0, 10.0, 12.0]
+    );
     assert_eq!((m2.clone() - m1.clone()).data(), &vec![4.0, 4.0, 4.0, 4.0]);
     // [1 2; 3 4] * [5 6; 7 8] = [19 22; 43 50]
-    assert_eq!((m1.clone() * m2.clone()).data(), &vec![19.0, 22.0, 43.0, 50.0]);
+    assert_eq!(
+        (m1.clone() * m2.clone()).data(),
+        &vec![19.0, 22.0, 43.0, 50.0]
+    );
     assert_eq!((m1.clone() * 2.0).data(), &vec![2.0, 4.0, 6.0, 8.0]);
     assert_eq!((m1.clone() / 2.0).data(), &vec![0.5, 1.0, 1.5, 2.0]);
     assert_eq!((-m1).data(), &vec![-1.0, -2.0, -3.0, -4.0]);
@@ -54,12 +64,20 @@ fn transpose() {
 
 #[test]
 fn determinant() {
-    assert_approx_eq!(m(2, 2, &[1.0, 2.0, 3.0, 4.0]).determinant().unwrap_or(f64::NAN), -2.0);
+    assert_approx_eq!(
+        m(2, 2, &[1.0, 2.0, 3.0, 4.0])
+            .determinant()
+            .unwrap_or(f64::NAN),
+        -2.0
+    );
     // -24 + 40 - 15 = 1
     let m3 = m(3, 3, &[1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0]);
     assert_approx_eq!(m3.determinant().unwrap_or(f64::NAN), 1.0);
     assert_approx_eq!(m3.determinant_lu().unwrap_or(f64::NAN), 1.0);
-    assert_approx_eq!(Matrix::<f64>::identity(4).determinant().unwrap_or(f64::NAN), 1.0);
+    assert_approx_eq!(
+        Matrix::<f64>::identity(4).determinant().unwrap_or(f64::NAN),
+        1.0
+    );
     assert!(m(2, 3, &[1.0; 6]).determinant().is_err());
 }
 
@@ -68,7 +86,9 @@ fn block_determinant_matches_lu() {
     let a = m(
         4,
         4,
-        &[4.0, 1.0, 2.0, 0.5, 1.0, 3.0, 0.0, 1.0, 2.0, 0.0, 5.0, 1.0, 0.5, 1.0, 1.0, 6.0],
+        &[
+            4.0, 1.0, 2.0, 0.5, 1.0, 3.0, 0.0, 1.0, 2.0, 0.0, 5.0, 1.0, 0.5, 1.0, 1.0, 6.0,
+        ],
     );
     let lu = a.determinant_lu().unwrap_or(f64::NAN);
     let block = a.determinant_block().unwrap_or(f64::NAN);
@@ -79,14 +99,13 @@ fn block_determinant_matches_lu() {
 fn singular_matrix_has_zero_determinant_or_error() {
     let s = m(2, 2, &[1.0, 2.0, 2.0, 4.0]);
     match s.determinant() {
-        Ok(d) => assert!(d.abs() < 1e-12, "det = {d}"),
-        Err(_) => {}
+        | Ok(d) => assert!(d.abs() < 1e-12, "det = {d}"),
+        | Err(_) => {},
     }
     assert_eq!(s.rank(), Ok(1));
 }
 
 #[test]
-#[ignore = "library bug: Matrix::inverse returns Some(bogus) for singular [[1,2],[2,4]] because rref pivots into the identity half"]
 fn singular_matrix_has_no_inverse() {
     // observed: Some([[0, 0.5], [1, -0.5]]); expected: None
     let s = m(2, 2, &[1.0, 2.0, 2.0, 4.0]);
@@ -97,7 +116,9 @@ fn singular_matrix_has_no_inverse() {
 fn inverse_of_2x2() {
     // det = 10 ; inverse = [0.6 -0.7; -0.2 0.4]
     let a = m(2, 2, &[4.0, 7.0, 2.0, 6.0]);
-    let inv = a.inverse().unwrap_or_else(|| panic!("matrix should be invertible"));
+    let inv = a
+        .inverse()
+        .unwrap_or_else(|| panic!("matrix should be invertible"));
     assert_approx_eq!(*inv.get(0, 0), 0.6);
     assert_approx_eq!(*inv.get(0, 1), -0.7);
     assert_approx_eq!(*inv.get(1, 0), -0.2);
@@ -110,7 +131,9 @@ fn inverse_of_2x2() {
 fn inverse_of_3x3_known() {
     // [[1,2,3],[0,1,4],[5,6,0]] has inverse [[-24,18,5],[20,-15,-4],[-5,4,1]].
     let a = m(3, 3, &[1.0, 2.0, 3.0, 0.0, 1.0, 4.0, 5.0, 6.0, 0.0]);
-    let inv = a.inverse().unwrap_or_else(|| panic!("matrix should be invertible"));
+    let inv = a
+        .inverse()
+        .unwrap_or_else(|| panic!("matrix should be invertible"));
     let want = [-24.0, 18.0, 5.0, 20.0, -15.0, -4.0, -5.0, 4.0, 1.0];
     for (g, w) in inv.data().iter().zip(want) {
         assert_approx_eq!(*g, w, 1e-9);
@@ -121,7 +144,9 @@ fn inverse_of_3x3_known() {
 #[test]
 fn faer_backend_inverse_agrees_with_native() {
     let a = m(3, 3, &[2.0, -1.0, 0.0, -1.0, 2.0, -1.0, 0.0, -1.0, 2.0]);
-    let native = a.inverse().unwrap_or_else(|| panic!("native inverse failed"));
+    let native = a
+        .inverse()
+        .unwrap_or_else(|| panic!("native inverse failed"));
     let faer = a
         .clone()
         .with_backend(Backend::Faer)
@@ -142,9 +167,15 @@ fn norms() {
 
 #[test]
 fn trace_and_rank() {
-    assert_eq!(m(3, 3, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]).trace(), Ok(15.0));
+    assert_eq!(
+        m(3, 3, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]).trace(),
+        Ok(15.0)
+    );
     assert!(m(2, 3, &[1.0; 6]).trace().is_err());
-    assert_eq!(m(3, 3, &[1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 0.0, 1.0, 1.0]).rank(), Ok(2));
+    assert_eq!(
+        m(3, 3, &[1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 0.0, 1.0, 1.0]).rank(),
+        Ok(2)
+    );
     assert_eq!(Matrix::<f64>::identity(5).rank(), Ok(5));
 }
 
@@ -166,7 +197,9 @@ fn rref_and_null_space() {
 #[test]
 fn identity_orthogonal_symmetric_diagonal() {
     let id = Matrix::<f64>::identity(3);
-    assert!(id.is_identity(1e-9) && id.is_orthogonal(1e-9) && id.is_symmetric() && id.is_diagonal());
+    assert!(
+        id.is_identity(1e-9) && id.is_orthogonal(1e-9) && id.is_symmetric() && id.is_diagonal()
+    );
     let swap = m(2, 2, &[0.0, 1.0, 1.0, 0.0]);
     assert!(!swap.is_identity(1e-9));
     assert!(swap.is_orthogonal(1e-9));
@@ -192,18 +225,29 @@ fn strassen_matches_naive_product() {
 fn jacobi_eigen_decomposition_of_symmetric_matrix() {
     // Eigenvalues of [[2,1],[1,2]] are 1 and 3.
     let a = m(2, 2, &[2.0, 1.0, 1.0, 2.0]);
-    let (mut vals, vecs) = a.jacobi_eigen_decomposition(50, 1e-12).unwrap_or_else(|e| panic!("{e}"));
+    let (mut vals, vecs) = a
+        .jacobi_eigen_decomposition(50, 1e-12)
+        .unwrap_or_else(|e| panic!("{e}"));
     vals.sort_by(f64::total_cmp);
     assert_approx_eq!(vals[0], 1.0, 1e-9);
     assert_approx_eq!(vals[1], 3.0, 1e-9);
     assert!(vecs.is_orthogonal(1e-9));
-    assert!(m(2, 3, &[1.0; 6]).jacobi_eigen_decomposition(10, 1e-9).is_err());
+    assert!(
+        m(2, 3, &[1.0; 6])
+            .jacobi_eigen_decomposition(10, 1e-9)
+            .is_err()
+    );
 }
 
-fn dominant_matrix(n: usize, seed: u64) -> Matrix<f64> {
+fn dominant_matrix(
+    n: usize,
+    seed: u64,
+) -> Matrix<f64> {
     let mut rng = seed;
     let mut next = || {
-        rng = rng.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+        rng = rng
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
         ((rng >> 33) % 1000) as f64 / 500.0 - 1.0
     };
     let mut d: Vec<f64> = (0..n * n).map(|_| next()).collect();
@@ -254,6 +298,129 @@ proptest! {
         let right = a.clone() * b + a * c;
         for (x, y) in left.data().iter().zip(right.data()) {
             prop_assert!((x - y).abs() < 1e-9 * x.abs().max(1.0));
+        }
+    }
+}
+
+mod ledger_fill {
+    use rssn::kernels::matrix::*;
+
+    #[test]
+    fn set_backend_switches_the_backend_in_place() {
+        let mut m = Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
+        m.set_backend(Backend::Faer);
+        assert!((m.determinant().unwrap_or(f64::NAN) + 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn lu_decomposition_of_a_2x2_matrix() {
+        let m = Matrix::new(2, 2, vec![4.0, 3.0, 6.0, 3.0]);
+        let (lu, swaps) = m.lu_decomposition().unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(swaps, 0);
+        // U = [[4, 3], [0, -1.5]], L multiplier 1.5 stored below the diagonal.
+        assert_eq!((*lu.get(0, 0), *lu.get(0, 1)), (4.0, 3.0));
+        assert!((lu.get(1, 0) - 1.5).abs() < 1e-12 && (lu.get(1, 1) + 1.5).abs() < 1e-12);
+        assert!(Matrix::new(2, 3, vec![0.0; 6]).lu_decomposition().is_err());
+    }
+
+    #[test]
+    fn faer_cholesky_decomposition_reconstructs_the_matrix() {
+        let mut m = Matrix::new(2, 2, vec![4.0, 2.0, 2.0, 3.0]);
+        m.set_backend(Backend::Faer);
+        match m.decompose(FaerDecompositionType::Cholesky) {
+            | Some(FaerDecompositionResult::Cholesky { l }) => {
+                let llt = l.clone() * l.transpose();
+                for i in 0..2 {
+                    for j in 0..2 {
+                        assert!((llt.get(i, j) - m.get(i, j)).abs() < 1e-12);
+                    }
+                }
+                assert_eq!(*l.get(0, 1), 0.0);
+            },
+            | other => panic!("unexpected result {other:?}"),
+        }
+        // A non-SPD matrix has no Cholesky factor.
+        assert!(
+            Matrix::new(2, 2, vec![1.0, 2.0, 2.0, 1.0])
+                .decompose(FaerDecompositionType::Cholesky)
+                .is_none()
+        );
+    }
+}
+
+#[test]
+fn inverse_rejects_singular_matrices_relative_to_scale() {
+    // Scale must not matter: a tiny or huge singular matrix is still singular.
+    for scale in [1e-8, 1.0, 1e8] {
+        let s = m(3, 3, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
+        let scaled = Matrix::new(3, 3, s.data().iter().map(|v| v * scale).collect());
+        assert!(scaled.inverse().is_none(), "scale {scale}");
+    }
+    // A well-conditioned matrix at a tiny scale is still invertible.
+    let a = Matrix::new(2, 2, vec![4e-9, 7e-9, 2e-9, 6e-9]);
+    let inv = a.clone().inverse().expect("invertible at small scale");
+    assert!((a * inv).is_identity(1e-9));
+    // Zero matrix and non-square input.
+    assert!(Matrix::<f64>::zeros(3, 3).inverse().is_none());
+    assert!(Matrix::<f64>::zeros(2, 3).inverse().is_none());
+    // Row swap needed (zero leading pivot).
+    let p = m(2, 2, &[0.0, 1.0, 1.0, 0.0]);
+    assert!((p.clone() * p.inverse().unwrap()).is_identity(1e-12));
+}
+
+#[test]
+fn faer_inverse_rejects_singular_matrices() {
+    let mut s = m(2, 2, &[1.0, 2.0, 2.0, 4.0]);
+    s.set_backend(Backend::Faer);
+    assert!(s.inverse().is_none());
+}
+
+#[test]
+fn faer_lu_and_qr_reconstruct_the_matrix() {
+    use rssn::kernels::matrix::{FaerDecompositionResult, FaerDecompositionType};
+    let mut a = m(3, 3, &[2.0, 1.0, 1.0, 4.0, -6.0, 0.0, -2.0, 7.0, 2.0]);
+    a.set_backend(Backend::Faer);
+    match a.decompose(FaerDecompositionType::Lu).expect("LU") {
+        | FaerDecompositionResult::Lu { l, u, p } => {
+            let lu = l * u;
+            for (i, &src) in p.iter().enumerate() {
+                for j in 0..3 {
+                    assert_approx_eq!(*lu.get(i, j), *a.get(src, j), 1e-12);
+                }
+            }
+        },
+        | _ => panic!("expected LU"),
+    }
+    let mut b = m(3, 2, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+    b.set_backend(Backend::Faer);
+    match b.decompose(FaerDecompositionType::Qr).expect("QR") {
+        | FaerDecompositionResult::Qr { q, r } => {
+            let qr = q.clone() * r;
+            for i in 0..3 {
+                for j in 0..2 {
+                    assert_approx_eq!(*qr.get(i, j), *b.get(i, j), 1e-12);
+                }
+            }
+            assert!((q.transpose() * q).is_identity(1e-12));
+        },
+        | _ => panic!("expected QR"),
+    }
+}
+
+#[test]
+fn faer_multiplication_of_non_square_matrices_matches_naive() {
+    let a = m(3, 2, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+    let b = m(2, 4, &[1.0, 0.0, 2.0, -1.0, 3.0, 1.0, 0.0, 2.0]);
+    let naive = a.clone() * b.clone();
+    let mut fa = a;
+    let mut fb = b;
+    fa.set_backend(Backend::Faer);
+    fb.set_backend(Backend::Faer);
+    let fast = fa * fb;
+    assert_eq!((fast.rows(), fast.cols()), (3, 4));
+    for i in 0..3 {
+        for j in 0..4 {
+            assert_approx_eq!(*fast.get(i, j), *naive.get(i, j), 1e-12);
         }
     }
 }

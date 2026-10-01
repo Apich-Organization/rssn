@@ -16,7 +16,9 @@ fn cfg() -> ProptestConfig {
 
 #[test]
 fn eval_and_degree() {
-    let p = Polynomial { coeffs: vec![1.0, 2.0, 1.0] }; // x^2 + 2x + 1
+    let p = Polynomial {
+        coeffs: vec![1.0, 2.0, 1.0],
+    }; // x^2 + 2x + 1
     assert_eq!(p.eval(0.0), 1.0);
     assert_eq!(p.eval(1.0), 4.0);
     assert_eq!(p.eval(-1.0), 0.0);
@@ -26,7 +28,9 @@ fn eval_and_degree() {
 #[test]
 fn eval_and_derivative_high_precision() {
     // P(x) = 3x^3 - 2x^2 + 0.5x - 7 ; reference value from 50-digit arithmetic.
-    let p = Polynomial { coeffs: vec![3.0, -2.0, 0.5, -7.0] };
+    let p = Polynomial {
+        coeffs: vec![3.0, -2.0, 0.5, -7.0],
+    };
     let x = 1.23456789f64;
     let expected = -3.7860026896706396f64;
     assert!((p.eval(x) - expected).abs() < 1e-12, "got {}", p.eval(x));
@@ -37,8 +41,12 @@ fn eval_and_derivative_high_precision() {
 
 #[test]
 fn arithmetic() {
-    let p1 = Polynomial { coeffs: vec![1.0, 1.0] }; // x + 1
-    let p2 = Polynomial { coeffs: vec![1.0, -1.0] }; // x - 1
+    let p1 = Polynomial {
+        coeffs: vec![1.0, 1.0],
+    }; // x + 1
+    let p2 = Polynomial {
+        coeffs: vec![1.0, -1.0],
+    }; // x - 1
     assert_eq!((p1.clone() + p2.clone()).coeffs, vec![2.0, 0.0]);
     assert_eq!((p1.clone() * p2.clone()).coeffs, vec![1.0, 0.0, -1.0]);
     let diff = p1 - p2;
@@ -47,13 +55,14 @@ fn arithmetic() {
 
 #[test]
 fn calculus() {
-    let p = Polynomial { coeffs: vec![1.0, 0.0, 0.0] }; // x^2
+    let p = Polynomial {
+        coeffs: vec![1.0, 0.0, 0.0],
+    }; // x^2
     assert_eq!(p.derivative().coeffs, vec![2.0, 0.0]);
     assert_eq!(p.integral().coeffs, vec![1.0 / 3.0, 0.0, 0.0, 0.0]);
 }
 
 #[test]
-#[ignore = "library bug: long_division stores the quotient lowest-degree-first with a trailing zero (observed [6,-5,1,0], expected [1,-5,6]); only symmetric quotients come out right"]
 fn long_division_with_remainder() {
     // (x^3 - 6x^2 + 11x - 6 + 5) / (x - 1)  ->  q = x^2 - 5x + 6, r = 5
     let p = Polynomial::new(vec![1.0, -6.0, 11.0, -1.0]);
@@ -70,7 +79,8 @@ fn long_division_with_remainder() {
 #[test]
 fn long_division_symmetric_quotient_and_exact_division() {
     // (x^2 - 1) / (x - 1) = x + 1 exactly (quotient happens to be palindromic).
-    let (q, r) = Polynomial::new(vec![1.0, 0.0, -1.0]).long_division(&Polynomial::new(vec![1.0, -1.0]));
+    let (q, r) =
+        Polynomial::new(vec![1.0, 0.0, -1.0]).long_division(&Polynomial::new(vec![1.0, -1.0]));
     assert_eq!(&q.coeffs[..2], &[1.0, 1.0]);
     assert!(r.is_zero(1e-12));
 }
@@ -83,7 +93,9 @@ fn zero_test() {
 
 #[test]
 fn roots() {
-    let p = Polynomial { coeffs: vec![1.0, 0.0, -1.0] }; // x^2 - 1
+    let p = Polynomial {
+        coeffs: vec![1.0, 0.0, -1.0],
+    }; // x^2 - 1
     let mut roots = p.find_roots().unwrap_or_else(|e| panic!("{e}"));
     roots.sort_by(f64::total_cmp);
     assert_eq!(roots.len(), 2);
@@ -93,7 +105,9 @@ fn roots() {
 
 #[test]
 fn division_by_zero_scalar_is_error() {
-    let p = Polynomial { coeffs: vec![1.0, 2.0, 3.0] };
+    let p = Polynomial {
+        coeffs: vec![1.0, 2.0, 3.0],
+    };
     assert!(p.clone().div_scalar(0.0).is_err());
     let half = p.div_scalar(2.0).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(half.coeffs, vec![0.5, 1.0, 1.5]);
@@ -161,4 +175,27 @@ proptest! {
         let back = p.integral().derivative();
         prop_assert!((back.eval(x) - p.eval(x)).abs() < 1e-8 * p.eval(x).abs().max(1.0));
     }
+}
+
+#[test]
+fn long_division_reconstructs_dividend() {
+    // p = q * d + r must hold pointwise for a non-palindromic case.
+    let p = Polynomial::new(vec![2.0, -3.0, 0.5, 7.0, -4.0]);
+    let d = Polynomial::new(vec![1.0, 0.0, 2.0]);
+    let (q, r) = p.clone().long_division(&d);
+    assert_eq!(q.coeffs.len(), 3);
+    for &x in &[-2.0, -0.5, 0.0, 1.3, 3.0] {
+        let lhs = p.eval(x);
+        let rhs = q.eval(x) * d.eval(x) + r.eval(x);
+        assert_approx_eq!(lhs, rhs, 1e-9);
+    }
+}
+
+#[test]
+fn long_division_by_higher_degree_gives_zero_quotient() {
+    let p = Polynomial::new(vec![1.0, 2.0]);
+    let d = Polynomial::new(vec![1.0, 0.0, 1.0]);
+    let (q, r) = p.long_division(&d);
+    assert_eq!(q.coeffs, vec![0.0]);
+    assert_eq!(r.coeffs, vec![1.0, 2.0]);
 }

@@ -5,7 +5,6 @@
 //! orthogonal polynomials, and other commonly used special functions.
 
 use std::f64::consts::FRAC_2_PI;
-use std::f64::consts::FRAC_PI_4;
 
 use statrs::function::beta::beta;
 use statrs::function::beta::ln_beta;
@@ -249,57 +248,70 @@ pub fn erfc_numerical(x: f64) -> f64 {
 }
 
 /// Computes the inverse error function, erf⁻¹(x).
-/// Uses a rational approximation for the initial guess and Newton-Raphson refinement.
+///
+/// Starts from Winitzki's closed-form approximation and polishes with Halley
+/// iterations on `erfc(y) = 1 - x` (for x ≥ 0.5, where `1 - x` is exact and
+/// the tail keeps full relative precision) or on `erf(y) = x` otherwise.
 #[must_use]
 pub fn inverse_erf_numerical(x: f64) -> f64 {
+    if x.is_nan() {
+        return f64::NAN;
+    }
+
     if x <= -1.0 {
-        return f64::NEG_INFINITY;
+        return if x == -1.0 {
+            f64::NEG_INFINITY
+        } else {
+            f64::NAN
+        };
     }
 
     if x >= 1.0 {
-        return f64::INFINITY;
+        return if x == 1.0 {
+            f64::INFINITY
+        } else {
+            f64::NAN
+        };
     }
 
     if x.abs() < 1e-15 {
-        return 0.0;
+        // erf(y) = 2y/sqrt(pi) to first order.
+        return x * std::f64::consts::PI.sqrt() / 2.0;
     }
 
-    // Use an approximation formula
     let sign = if x < 0.0 { -1.0 } else { 1.0 };
 
     let x = x.abs();
 
-    // Rational approximation for |x| < 0.7
-    let result = if x < 0.7 {
-        let x2 = x * x;
+    // Winitzki (2008): a = 0.147 gives a relative error below 2e-3.
+    let a = 0.147;
 
-        let num = x * x2.mul_add(x2.mul_add(0.014_000_2, -0.140_543_331), 1.0);
+    let ln1 = ((1.0 - x) * (1.0 + x)).ln();
 
-        let den = x2.mul_add(x2.mul_add(0.049_988, -0.453_004_011), 1.0);
+    let t = 2.0 / (std::f64::consts::PI * a) + ln1 / 2.0;
 
-        num / den
-    } else {
-        // For larger x, use a different approximation
-        let y = (-(1.0 - x).ln()).sqrt();
+    let mut y = ((t * t - ln1 / a).sqrt() - t).sqrt();
 
-        let num = y * (1.0 + y * (-0.094_1 + y * 0.003_27));
-
-        let den = 1.0 + y * (-0.188 + y * 0.0329);
-
-        num / den * 0.886_226_899 // √(π/2)
-    };
-
-    // Refine with Newton-Raphson iterations
     let two_over_sqrt_pi = 2.0 / std::f64::consts::PI.sqrt();
 
-    let mut y = result;
-
-    for _ in 0..3 {
-        let err = erf(y) - x;
-
+    // Halley step for f(y) with f''/f' = -2y (true for both erf - x and
+    // erfc - c because f' = ±(2/√π) e^(-y²)): y -= h / (1 + h y), h = f / f'.
+    for _ in 0..8 {
         let deriv = two_over_sqrt_pi * (-y * y).exp();
 
-        y -= err / deriv;
+        let h = if x >= 0.5 {
+            (erfc(y) - (1.0 - x)) / -deriv
+        } else {
+            (erf(y) - x) / deriv
+        };
+
+        let step = h / (1.0 + h * y);
+
+        y -= step;
+
+        if step.abs() <= 1e-16 * y.abs() {
+            break;
+        }
     }
 
     sign * y
@@ -309,270 +321,443 @@ pub fn inverse_erf_numerical(x: f64) -> f64 {
 // Bessel Functions
 // ============================================================================
 
+/// Euler-Mascheroni constant γ.
+const EULER_GAMMA: f64 = 0.577_215_664_901_532_9;
+
+/// Below this |x| the alternating power series are used for `J` and `Y`
+/// (largest term ~ I₀(5) ≈ 27, so cancellation costs under one digit).
+const BESSEL_SERIES_MAX: f64 = 5.0;
+
+/// Above this |x| the Hankel asymptotic expansion is used for `J` and `Y`; its
+/// smallest term is about e^(-2x) ≈ 2e-22 there, below double precision.
+const BESSEL_ASYMPTOTIC_MIN: f64 = 25.0;
+
+/// Below this |x| the (all-positive, hence cancellation-free) power series is
+/// used for `I`; above it the asymptotic expansion (smallest term ~ e^(-2x)).
+const BESSEL_I_SERIES_MAX: f64 = 30.0;
+
+/// Power series `Σ (-1)^k (x²/4)^k / (k! (k+ν)!)` for ν = 0 or 1 times
+/// `(x/2)^ν` (Abramowitz & Stegun 9.1.10): Jν(x) for small |x|.
+fn bessel_j_series(
+    nu: u32,
+    x: f64,
+) -> f64 {
+    let q = x * x / 4.0;
+
+    let mut term = if nu == 0 { 1.0 } else { x / 2.0 };
+
+    let mut sum = term;
+
+    for k in 1..200 {
+        let kf = f64::from(k);
+
+        term *= -q / (kf * (kf + f64::from(nu)));
+
+        sum += term;
+
+        if term.abs() < 1e-18 * sum.abs().max(1e-300) {
+            break;
+        }
+    }
+
+    sum
+}
+
+/// Hankel asymptotic expansion (A&S 9.2.5-9.2.10) returning `(P, Q)` for
+/// order `nu` at large positive `x`, summed until the terms stop decreasing.
+fn hankel_pq(
+    nu: u32,
+    x: f64,
+) -> (f64, f64) {
+    let mu = 4.0 * f64::from(nu) * f64::from(nu);
+
+    let mut p = 1.0;
+
+    let mut q = 0.0;
+
+    // a_k(ν) / x^k with a_k = a_{k-1} (μ - (2k-1)²) / (8k)
+    let mut term = 1.0;
+
+    let mut last = f64::INFINITY;
+
+    for k in 1..100 {
+        let kf = f64::from(k);
+
+        term *= (mu - (2.0 * kf - 1.0).powi(2)) / (8.0 * kf * x);
+
+        if term.abs() > last {
+            break;
+        }
+
+        last = term.abs();
+
+        // Signs follow (-1)^floor(k/2) for P (even k) and Q (odd k).
+        match k % 4 {
+            | 0 => p += term,
+            | 1 => q += term,
+            | 2 => p -= term,
+            | _ => q -= term,
+        }
+
+        if term.abs() < 1e-17 {
+            break;
+        }
+    }
+
+    (p, q)
+}
+
+/// Bessel `Jν` (ν = 0, 1) for large positive `x` from the Hankel expansion.
+fn bessel_j_asymptotic(
+    nu: u32,
+    x: f64,
+) -> f64 {
+    let (p, q) = hankel_pq(nu, x);
+
+    let chi = x - (f64::from(nu) / 2.0 + 0.25) * std::f64::consts::PI;
+
+    (FRAC_2_PI / x).sqrt() * p.mul_add(chi.cos(), -q * chi.sin())
+}
+
+/// Bessel `Yν` (ν = 0, 1) for large positive `x` from the Hankel expansion.
+fn bessel_y_asymptotic(
+    nu: u32,
+    x: f64,
+) -> f64 {
+    let (p, q) = hankel_pq(nu, x);
+
+    let chi = x - (f64::from(nu) / 2.0 + 0.25) * std::f64::consts::PI;
+
+    (FRAC_2_PI / x).sqrt() * p.mul_add(chi.sin(), q * chi.cos())
+}
+
+/// `J₀(x), J₁(x), …, J_m(x)` for 5 ≤ x ≤ 25 by Miller's backward recurrence
+/// `J_{n-1} = (2n/x) J_n - J_{n+1}`, normalised with `J₀ + 2 Σ J_{2k} = 1`
+/// (A&S 9.1.46). Backward recurrence is stable for n > x, and the start index
+/// is far beyond x so the (arbitrary) starting values are damped out.
+fn bessel_j_miller(
+    x: f64,
+    m: usize,
+) -> Vec<f64> {
+    debug_assert!(m % 2 == 0);
+
+    let start = m + 2 * (x as usize + 30);
+
+    let start = start + start % 2;
+
+    let mut j = vec![0.0; start + 2];
+
+    j[start] = 1e-30;
+
+    for n in (1..=start).rev() {
+        j[n - 1] = (2.0 * n as f64 / x).mul_add(j[n], -j[n + 1]);
+
+        if j[n - 1].abs() > 1e250 {
+            // Rescale to avoid overflow; only ratios matter before normalising.
+            for v in &mut j[(n - 1)..] {
+                *v *= 1e-250;
+            }
+        }
+    }
+
+    let norm = j[0] + 2.0 * (1..=start / 2).map(|k| j[2 * k]).sum::<f64>();
+
+    j.truncate(m + 1);
+
+    for v in &mut j {
+        *v /= norm;
+    }
+
+    j
+}
+
+/// Number of Bessel orders needed for the Neumann series for `Y` at `x`.
+fn neumann_order(x: f64) -> usize {
+    let m = x as usize + 40;
+
+    m + m % 2
+}
+
 /// Computes the Bessel function of the first kind, J₀(x).
+///
+/// Accurate to roughly 1e-15 (absolute): power series for |x| < 5, Miller
+/// backward recurrence for 5 ≤ |x| ≤ 25 and the Hankel asymptotic expansion
+/// beyond.
 #[must_use]
 pub fn bessel_j0(x: f64) -> f64 {
-    if x == 0.0 {
-        return 1.0;
+    if x.is_nan() {
+        return f64::NAN;
     }
 
     let ax = x.abs();
 
-    if ax < 8.0 {
-        let y = x * x;
-
-        let ans1 = y.mul_add(
-            y.mul_add(
-                y.mul_add(
-                    y.mul_add(y.mul_add(-184.905_245_6, 77_392.330_17), -11_214_424.18),
-                    651_619_640.7,
-                ),
-                -13_362_590_354.0,
-            ),
-            57_568_490_574.0,
-        );
-
-        let ans2 = y.mul_add(
-            y.mul_add(
-                y.mul_add(y.mul_add(y + 267.853_271_2, 59_272.648_53), 9_494_680.718),
-                1_029_532_985.0,
-            ),
-            57_568_490_411.0,
-        );
-
-        ans1 / ans2
+    if ax < BESSEL_SERIES_MAX {
+        bessel_j_series(0, ax)
+    } else if ax <= BESSEL_ASYMPTOTIC_MIN {
+        bessel_j_miller(ax, 2)[0]
+    } else if ax.is_finite() {
+        bessel_j_asymptotic(0, ax)
     } else {
-        let z = 8.0 / ax;
-
-        let y = z * z;
-
-        let xx = ax - FRAC_PI_4;
-
-        let ans1 = 1.0
-            + y * (-0.109_862_862_7e-2
-                + y * (0.273_451_040_7e-4 + y * (-0.207_337_063_9e-5 + y * 0.209_388_721_1e-6)));
-
-        let ans2 = -0.156_249_999_5e-1
-            + y * (0.143_048_876_5e-3
-                + y * (-0.691_114_765_1e-5 + y * (0.762_109_516_1e-6 - y * 0.934_945_152e-7)));
-
-        (FRAC_2_PI / ax).sqrt() * xx.cos().mul_add(ans1, -(z * xx.sin() * ans2))
+        0.0
     }
 }
 
-/// Computes the Bessel function of the first kind, J₁(x).
+/// Computes the Bessel function of the first kind, J₁(x) (odd in `x`).
+///
+/// Same method and accuracy as [`bessel_j0`].
 #[must_use]
 pub fn bessel_j1(x: f64) -> f64 {
-    if x == 0.0 {
-        return 0.0;
+    if x.is_nan() {
+        return f64::NAN;
     }
 
     let ax = x.abs();
 
-    if ax < 8.0 {
-        let y = x * x;
-
-        let ans1 = x * y.mul_add(
-            y.mul_add(
-                y.mul_add(
-                    y.mul_add(y.mul_add(-30.160_366_06, 15_704.482_60), -2_972_611.439),
-                    242_396_853.1,
-                ),
-                -789_505_923_500.0,
-            ),
-            723_626_142_320.0,
-        );
-
-        let ans2 = y.mul_add(
-            y.mul_add(
-                y.mul_add(y.mul_add(y + 376.999_139_7, 994_474.339_4), 185_833_047.4),
-                230_053_517_800.0,
-            ),
-            144_725_228_442.0,
-        );
-
-        ans1 / ans2
+    let v = if ax < BESSEL_SERIES_MAX {
+        bessel_j_series(1, ax)
+    } else if ax <= BESSEL_ASYMPTOTIC_MIN {
+        bessel_j_miller(ax, 2)[1]
+    } else if ax.is_finite() {
+        bessel_j_asymptotic(1, ax)
     } else {
-        let z = 8.0 / ax;
+        0.0
+    };
 
-        let y = z * z;
-
-        let xx = ax - 2.356_194_491;
-
-        let ans1 = 1.0
-            + y * (0.183_105e-2
-                + y * (-0.351_639_649_6e-4 + y * (0.245_752_017_4e-5 + y * (-0.240_337_019e-6))));
-
-        let ans2 = 0.046_874_999_95
-            + y * (-0.200_269_087_3e-3
-                + y * (0.844_919_909_6e-5 + y * (-0.882_289_87e-6 + y * 0.105_787_412e-6)));
-
-        let ans = (FRAC_2_PI / ax).sqrt() * xx.cos().mul_add(ans1, -(z * xx.sin() * ans2));
-
-        if x < 0.0 { -ans } else { ans }
-    }
+    if x < 0.0 { -v } else { v }
 }
 
-/// Computes the Bessel function of the second kind, Y₀(x).
+/// Computes the Bessel function of the second kind, Y₀(x), for x ≥ 0
+/// (`NaN` for x < 0, `-∞` at 0).
+///
+/// Series (A&S 9.1.13) for x < 5, the Neumann expansion
+/// `Y₀ = (2/π)(ln(x/2) + γ) J₀ - (4/π) Σ (-1)^k J_{2k}/k` (A&S 9.1.88) for
+/// 5 ≤ x ≤ 25 and the Hankel expansion beyond; accurate to about 1e-14.
 #[must_use]
 pub fn bessel_y0(x: f64) -> f64 {
-    if x < 0.0 {
+    if x.is_nan() || x < 0.0 {
         return f64::NAN;
     }
 
-    if x < 8.0 {
-        let y = x * x;
+    if x == 0.0 {
+        return f64::NEG_INFINITY;
+    }
 
-        let ans1 = y.mul_add(
-            y.mul_add(
-                y.mul_add(
-                    y.mul_add(y.mul_add(228.462_273_3, -86_327.927_57), 10_879_881.29),
-                    -512_359_803.6,
-                ),
-                7_062_834_065.0,
-            ),
-            -2_957_821_389.0,
-        );
+    if x < BESSEL_SERIES_MAX {
+        let q = x * x / 4.0;
 
-        let ans2 = y.mul_add(
-            y.mul_add(
-                y.mul_add(y.mul_add(y + 226.103_024_4, 47_447.264_70), 7_189_466.438),
-                745_249_964.8,
-            ),
-            40_076_544_269.0,
-        );
+        let mut term = 1.0;
 
-        (FRAC_2_PI * bessel_j0(x)).mul_add(x.ln(), ans1 / ans2)
+        let mut harmonic = 0.0;
+
+        let mut sum = 0.0;
+
+        for k in 1..200 {
+            let kf = f64::from(k);
+
+            term *= -q / (kf * kf);
+
+            harmonic += 1.0 / kf;
+
+            // (-1)^(k+1) H_k (x²/4)^k / (k!)²
+            let t = -term * harmonic;
+
+            sum += t;
+
+            if t.abs() < 1e-18 * sum.abs().max(1e-300) {
+                break;
+            }
+        }
+
+        FRAC_2_PI * (((x / 2.0).ln() + EULER_GAMMA) * bessel_j_series(0, x) + sum)
+    } else if x <= BESSEL_ASYMPTOTIC_MIN {
+        let m = neumann_order(x);
+
+        let j = bessel_j_miller(x, m);
+
+        let mut sum = 0.0;
+
+        for k in 1..=m / 2 {
+            let sign = if k % 2 == 0 { 1.0 } else { -1.0 };
+
+            sum += sign * j[2 * k] / k as f64;
+        }
+
+        FRAC_2_PI * ((x / 2.0).ln() + EULER_GAMMA).mul_add(j[0], -2.0 * sum)
+    } else if x.is_finite() {
+        bessel_y_asymptotic(0, x)
     } else {
-        let z = 8.0 / x;
-
-        let y = z * z;
-
-        let xx = x - FRAC_PI_4;
-
-        let ans1 = 1.0
-            + y * (-0.109_862_862_7e-2
-                + y * (0.273_451_040_7e-4 + y * (-0.207_337_063_9e-5 + y * 0.209_388_721_1e-6)));
-
-        let ans2 = -0.156_249_999_5e-1
-            + y * (0.143_048_876_5e-3
-                + y * (-0.691_114_765_1e-5 + y * (0.762_109_516_1e-6 + y * (-0.934_945_152e-7))));
-
-        (FRAC_2_PI / x).sqrt() * xx.sin().mul_add(ans1, z * xx.cos() * ans2)
+        0.0
     }
 }
 
-/// Computes the Bessel function of the second kind, Y₁(x).
+/// Computes the Bessel function of the second kind, Y₁(x), for x ≥ 0
+/// (`NaN` for x < 0, `-∞` at 0).
+///
+/// Series (A&S 9.1.11) for x < 5; for 5 ≤ x ≤ 25 the derivative of the
+/// Neumann expansion of Y₀ (`Y₁ = -Y₀'`, `J₀' = -J₁`,
+/// `J_{2k}' = (J_{2k-1} - J_{2k+1})/2`); Hankel expansion beyond.
+/// Accurate to about 1e-14.
 #[must_use]
 pub fn bessel_y1(x: f64) -> f64 {
-    if x < 0.0 {
+    if x.is_nan() || x < 0.0 {
         return f64::NAN;
     }
 
-    if x < 8.0 {
-        let y = x * x;
-
-        let ans1 = x * y.mul_add(
-            y.mul_add(
-                y.mul_add(
-                    y.mul_add(y.mul_add(85_119_379.35, -42_379_227.26), 7_349_264_551.0),
-                    -5_153_438_139_000.0,
-                ),
-                12_752_743_900_000_000.0,
-            ),
-            -49_006_049_430_000_000.0,
-        );
-
-        let ans2 = y.mul_add(
-            y.mul_add(
-                y.mul_add(
-                    y.mul_add(y.mul_add(y + 354_963.288_5, 102_042.605), 22_459_040.0),
-                    37_336_503_670.0,
-                ),
-                42_444_196_640_000.0,
-            ),
-            24_995_805_700_000_000.0,
-        );
-
-        FRAC_2_PI.mul_add(bessel_j1(x).mul_add(x.ln(), -(1.0 / x)), ans1 / ans2)
-    } else {
-        let z = 8.0 / x;
-
-        let y = z * z;
-
-        let xx = x - 2.356_194_491;
-
-        let ans1 = 1.0
-            + y * (0.183_105e-2
-                + y * (-0.351_639_649_6e-4 + y * (0.245_752_017_4e-5 + y * (-0.240_337_019e-6))));
-
-        let ans2 = 0.046_874_999_95
-            + y * (-0.200_269_087_3e-3
-                + y * (0.844_919_909_6e-5 + y * (-0.882_289_87e-6 + y * 0.105_787_412e-6)));
-
-        (FRAC_2_PI / x).sqrt() * xx.sin().mul_add(ans1, z * xx.cos() * ans2)
+    if x == 0.0 {
+        return f64::NEG_INFINITY;
     }
+
+    if x < BESSEL_SERIES_MAX {
+        let q = x * x / 4.0;
+
+        // (x/2)^(2k+1) / (k! (k+1)!) with alternating sign, and
+        // ψ(k+1) + ψ(k+2) = -2γ + H_k + H_{k+1}.
+        let mut term = x / 2.0;
+
+        let mut h_k = 0.0;
+
+        let mut h_k1 = 1.0;
+
+        let mut sum = term * (-2.0 * EULER_GAMMA + h_k + h_k1);
+
+        for k in 1..200 {
+            let kf = f64::from(k);
+
+            term *= -q / (kf * (kf + 1.0));
+
+            h_k += 1.0 / kf;
+
+            h_k1 += 1.0 / (kf + 1.0);
+
+            let t = term * (-2.0 * EULER_GAMMA + h_k + h_k1);
+
+            sum += t;
+
+            if t.abs() < 1e-18 * sum.abs().max(1e-300) {
+                break;
+            }
+        }
+
+        FRAC_2_PI * (((x / 2.0).ln() * bessel_j_series(1, x)) - 1.0 / x)
+            - sum / std::f64::consts::PI
+    } else if x <= BESSEL_ASYMPTOTIC_MIN {
+        let m = neumann_order(x);
+
+        let j = bessel_j_miller(x, m + 2);
+
+        let mut sum = 0.0;
+
+        for k in 1..=m / 2 {
+            let sign = if k % 2 == 0 { 1.0 } else { -1.0 };
+
+            sum += sign * (j[2 * k - 1] - j[2 * k + 1]) / (2.0 * k as f64);
+        }
+
+        // Y₀' = (2/π)[J₀/x - (ln(x/2) + γ) J₁ - 2 Σ (-1)^k (J_{2k-1} - J_{2k+1})/(2k)]
+        let y0_prime = FRAC_2_PI * (j[0] / x - ((x / 2.0).ln() + EULER_GAMMA) * j[1] - 2.0 * sum);
+
+        -y0_prime
+    } else if x.is_finite() {
+        bessel_y_asymptotic(1, x)
+    } else {
+        0.0
+    }
+}
+
+/// `Σ (x²/4)^k / (k! (k+ν)!) · (x/2)^ν` for ν = 0, 1: `Iν(x)` by its power
+/// series (A&S 9.6.10); all terms are positive so there is no cancellation.
+fn bessel_i_series(
+    nu: u32,
+    x: f64,
+) -> f64 {
+    let q = x * x / 4.0;
+
+    let mut term = if nu == 0 { 1.0 } else { x / 2.0 };
+
+    let mut sum = term;
+
+    for k in 1..500 {
+        let kf = f64::from(k);
+
+        term *= q / (kf * (kf + f64::from(nu)));
+
+        sum += term;
+
+        if term < 1e-17 * sum {
+            break;
+        }
+    }
+
+    sum
+}
+
+/// Asymptotic expansion `Iν(x) ~ e^x / sqrt(2πx) Σ (-1)^k a_k(ν) / x^k`
+/// (A&S 9.7.1) for large positive `x`.
+fn bessel_i_asymptotic(
+    nu: u32,
+    x: f64,
+) -> f64 {
+    let mu = 4.0 * f64::from(nu) * f64::from(nu);
+
+    let mut term = 1.0;
+
+    let mut sum = 1.0;
+
+    let mut last = f64::INFINITY;
+
+    for k in 1..100 {
+        let kf = f64::from(k);
+
+        term *= -(mu - (2.0 * kf - 1.0).powi(2)) / (8.0 * kf * x);
+
+        if term.abs() > last {
+            break;
+        }
+
+        last = term.abs();
+
+        sum += term;
+
+        if term.abs() < 1e-17 {
+            break;
+        }
+    }
+
+    // exp(x/2) twice avoids overflow of the intermediate for x near 709.
+    let e = (x / 2.0).exp();
+
+    (e / (2.0 * std::f64::consts::PI * x).sqrt()) * e * sum
 }
 
 /// Computes the modified Bessel function of the first kind, I₀(x).
+///
+/// Power series for |x| ≤ 30 and the asymptotic expansion beyond; relative
+/// accuracy about 1e-15.
 #[must_use]
 pub fn bessel_i0(x: f64) -> f64 {
-    if x == 0.0 {
-        return 1.0;
-    }
-
     let ax = x.abs();
 
-    if ax < 3.75 {
-        let y = (x / 3.75).powi(2);
-
-        1.0 + y
-            * (3.515_622_9
-                + y * (3.089_942_4
-                    + y * (1.206_749_2 + y * (0.265_973_2 + y * (0.036_076_8 + y * 0.004_581_3)))))
+    if ax <= BESSEL_I_SERIES_MAX {
+        bessel_i_series(0, ax)
     } else {
-        let y = 3.75 / ax;
-
-        (ax.exp() / ax.sqrt())
-            * (0.398_942_28
-                + y * (0.013_285_92
-                    + y * (0.002_253_19
-                        + y * (-0.001_575_65
-                            + y * (0.009_162_81
-                                + y * (-0.020_577_06
-                                    + y * (0.026_355_37
-                                        + y * (-0.016_476_33 + y * 0.003_923_77))))))))
+        bessel_i_asymptotic(0, ax)
     }
 }
 
-/// Computes the modified Bessel function of the first kind, I₁(x).
+/// Computes the modified Bessel function of the first kind, I₁(x) (odd in `x`).
+///
+/// Same method and accuracy as [`bessel_i0`].
 #[must_use]
 pub fn bessel_i1(x: f64) -> f64 {
     let ax = x.abs();
 
-    let ans = if ax < 3.75 {
-        let y = (x / 3.75).powi(2);
-
-        ax * (0.5
-            + y * (0.878_905_94
-                + y * (0.514_988_69
-                    + y * (0.150_849_34
-                        + y * (0.026_587_33 + y * (0.003_015_32 + y * 0.000_324_11))))))
+    let v = if ax <= BESSEL_I_SERIES_MAX {
+        bessel_i_series(1, ax)
     } else {
-        let y = 3.75 / ax;
-
-        let ans = 0.398_942_28
-            + y * (-0.039_880_24
-                + y * (-0.003_620_18
-                    + y * (0.001_638_01
-                        + y * (-0.010_315_55
-                            + y * (0.022_829_67
-                                + y * (-0.028_953_12 + y * (0.017_876_54 - y * 0.004_200_59)))))));
-
-        (ax.exp() / ax.sqrt()) * ans
+        bessel_i_asymptotic(1, ax)
     };
 
-    if x < 0.0 { -ans } else { ans }
+    if x < 0.0 { -v } else { v }
 }
 
 // ============================================================================
@@ -779,33 +964,27 @@ pub fn binomial(
     gamma((n + 1) as f64) / (gamma((k + 1) as f64) * gamma((n - k + 1) as f64))
 }
 
-/// Computes the Riemann zeta function ζ(s) for real s > 1.
-/// Uses the Euler product formula for computation.
+/// Computes the Riemann zeta function ζ(s) for real s > 1
+/// (`+∞` at s = 1, `NaN` for s < 1).
+///
+/// Uses Euler-Maclaurin summation (via [`hurwitz_zeta`] with q = 1): the first
+/// terms directly, the tail by its integral plus Bernoulli-number corrections;
+/// accurate to about 1e-15.
 #[must_use]
 pub fn riemann_zeta(s: f64) -> f64 {
-    if s <= 1.0 {
-        if (s - 1.0).abs() < 1e-15 {
-            return f64::INFINITY;
-        }
-
-        // For s < 1, use reflection formula (simplified)
-        return f64::NAN; // TODO: implement for s < 1
+    if s.is_nan() {
+        return f64::NAN;
     }
 
-    // Direct summation for s > 1
-    let mut sum = 0.0;
-
-    for n in 1..10000 {
-        let term = 1.0 / f64::from(n).powf(s);
-
-        sum += term;
-
-        if term < 1e-15 * sum.abs() {
-            break;
-        }
+    if (s - 1.0).abs() < 1e-15 {
+        return f64::INFINITY;
     }
 
-    sum
+    if s < 1.0 {
+        return f64::NAN; // Analytic continuation is not implemented.
+    }
+
+    hurwitz_zeta(s, 1.0)
 }
 
 /// Computes the sinc function sinc(x) = sin(πx) / (πx).
@@ -986,6 +1165,7 @@ pub fn hurwitz_zeta(
 
     let mut correction = 0.0;
     let mut rising_factorial = s;
+    let mut rising_next = 1.0;
     let mut s_pow = s_val.powf(-s - 1.0); // S^(-s-1)
     let s_val_sq_inv = 1.0 / (s_val * s_val);
 
@@ -998,7 +1178,10 @@ pub fn hurwitz_zeta(
             break;
         }
         correction += term;
-        rising_factorial *= (s + 1.0) * (s + 2.0);
+        // Next Euler-Maclaurin term needs s (s+1) ... (s + 2j): the two new
+        // factors advance with j.
+        rising_factorial *= (s + rising_next) * (s + rising_next + 1.0);
+        rising_next += 2.0;
         s_pow *= s_val_sq_inv;
     }
 

@@ -7,6 +7,7 @@
 
 pub mod calculus;
 pub mod combinatorics;
+pub mod complex;
 pub mod computer_graphics;
 pub mod error_correction;
 pub mod finite_field;
@@ -24,6 +25,8 @@ pub mod pde;
 pub mod polynomial;
 /// Real root isolation and refinement for polynomials.
 pub mod real_roots;
+/// Partial sums and accelerated infinite sums.
+pub mod series;
 /// Signal processing: filters, windows and spectra.
 pub mod signal;
 pub mod solve;

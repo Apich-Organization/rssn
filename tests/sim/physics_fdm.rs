@@ -104,9 +104,6 @@ fn test_poisson_solver() {
     // Potential should be minimum (most negative) at the negative source
     let min_val = u.as_slice().iter().fold(f64::INFINITY, |a, &b| a.min(b));
 
-
-
-
     assert!(u[(10, 10)] <= min_val + 1e-10);
 }
 
@@ -231,8 +228,17 @@ mod strengthened {
     fn heat_2d_product_mode_decays_with_the_exact_ftcs_factor() {
         let (w, h, steps) = (21usize, 21usize, 30usize);
         let (alpha, dt) = (0.4, 0.1); // r_x + r_y = 0.08
-        let cfg = FdmSolverConfig2D { width: w, height: h, dx: 1.0, dy: 1.0, dt, steps };
-        let mode = |x: usize, y: usize| (PI * x as f64 / (w as f64 - 1.0)).sin() * (PI * y as f64 / (h as f64 - 1.0)).sin();
+        let cfg = FdmSolverConfig2D {
+            width: w,
+            height: h,
+            dx: 1.0,
+            dy: 1.0,
+            dt,
+            steps,
+        };
+        let mode = |x: usize, y: usize| {
+            (PI * x as f64 / (w as f64 - 1.0)).sin() * (PI * y as f64 / (h as f64 - 1.0)).sin()
+        };
         let grid = solve_heat_equation_2d(&cfg, alpha, mode);
         assert_eq!(grid.dimensions(), &Dimensions::D2(w, h));
         let lam = -2.0 * (1.0 - (PI / (w as f64 - 1.0)).cos());
@@ -240,33 +246,70 @@ mod strengthened {
         let amp = g.powi(steps as i32);
         for y in 0..h {
             for x in 0..w {
-                assert!((grid[(x, y)] - amp * mode(x, y)).abs() < 1e-12, "({x}, {y})");
+                assert!(
+                    (grid[(x, y)] - amp * mode(x, y)).abs() < 1e-12,
+                    "({x}, {y})"
+                );
             }
         }
     }
 
     #[test]
     fn heat_2d_point_source_spreads_symmetrically_and_conserves_heat_far_from_the_boundary() {
-        let cfg = FdmSolverConfig2D { width: 31, height: 31, dx: 1.0, dy: 1.0, dt: 0.2, steps: 15 };
-        let grid = solve_heat_equation_2d(&cfg, 1.0, |x, y| if (x, y) == (15, 15) { 1000.0 } else { 0.0 });
+        let cfg = FdmSolverConfig2D {
+            width: 31,
+            height: 31,
+            dx: 1.0,
+            dy: 1.0,
+            dt: 0.2,
+            steps: 15,
+        };
+        let grid = solve_heat_equation_2d(&cfg, 1.0, |x, y| {
+            if (x, y) == (15, 15) {
+                1000.0
+            } else {
+                0.0
+            }
+        });
         let total: f64 = grid.as_slice().iter().sum();
         assert!((total - 1000.0).abs() < 1e-4, "heat {total}");
         for k in 1..10 {
             assert!((grid[(15 + k, 15)] - grid[(15 - k, 15)]).abs() < 1e-10);
             assert!((grid[(15, 15 + k)] - grid[(15, 15 - k)]).abs() < 1e-10);
-            assert!((grid[(15 + k, 15)] - grid[(15, 15 + k)]).abs() < 1e-10, "x/y symmetry");
+            assert!(
+                (grid[(15 + k, 15)] - grid[(15, 15 + k)]).abs() < 1e-10,
+                "x/y symmetry"
+            );
         }
         // Profile decreases away from the source.
         assert!(grid[(15, 15)] > grid[(16, 15)] && grid[(16, 15)] > grid[(17, 15)]);
         // Second moment grows by 2 r per step and axis: sum x^2 u / sum u = 2 * alpha * dt * steps = 6.
-        let m2: f64 = (0..31).map(|x| (0..31).map(|y| grid[(x, y)]).sum::<f64>() * ((x as f64 - 15.0).powi(2))).sum::<f64>() / total;
+        let m2: f64 = (0..31)
+            .map(|x| (0..31).map(|y| grid[(x, y)]).sum::<f64>() * ((x as f64 - 15.0).powi(2)))
+            .sum::<f64>()
+            / total;
         assert!((m2 - 2.0 * 1.0 * 0.2 * 15.0).abs() < 0.01, "variance {m2}");
     }
 
     #[test]
     fn heat_2d_keeps_boundary_values_fixed() {
-        let cfg = FdmSolverConfig2D { width: 12, height: 9, dx: 1.0, dy: 1.0, dt: 0.1, steps: 25 };
-        let grid = solve_heat_equation_2d(&cfg, 0.5, |x, y| if x == 0 { 10.0 } else if x == 11 || y == 0 || y == 8 { 0.0 } else { 3.0 });
+        let cfg = FdmSolverConfig2D {
+            width: 12,
+            height: 9,
+            dx: 1.0,
+            dy: 1.0,
+            dt: 0.1,
+            steps: 25,
+        };
+        let grid = solve_heat_equation_2d(&cfg, 0.5, |x, y| {
+            if x == 0 {
+                10.0
+            } else if x == 11 || y == 0 || y == 8 {
+                0.0
+            } else {
+                3.0
+            }
+        });
         for y in 0..9 {
             assert_eq!((grid[(0, y)], grid[(11, y)]), (10.0, 0.0));
         }
@@ -285,8 +328,17 @@ mod strengthened {
 
     #[test]
     fn wave_2d_is_bounded_and_symmetric_for_a_symmetric_pulse() {
-        let cfg = FdmSolverConfig2D { width: 41, height: 41, dx: 1.0, dy: 1.0, dt: 0.5, steps: 30 };
-        let g = solve_wave_equation_2d(&cfg, 1.0, |x, y| (-((x as f64 - 20.0).powi(2) + (y as f64 - 20.0).powi(2)) / 10.0).exp());
+        let cfg = FdmSolverConfig2D {
+            width: 41,
+            height: 41,
+            dx: 1.0,
+            dy: 1.0,
+            dt: 0.5,
+            steps: 30,
+        };
+        let g = solve_wave_equation_2d(&cfg, 1.0, |x, y| {
+            (-((x as f64 - 20.0).powi(2) + (y as f64 - 20.0).powi(2)) / 10.0).exp()
+        });
         assert!(g.as_slice().iter().all(|v| v.abs() <= 1.05));
         for k in 1..15 {
             assert!((g[(20 + k, 20)] - g[(20 - k, 20)]).abs() < 1e-12);
@@ -294,27 +346,74 @@ mod strengthened {
         }
         // Boundary rows stay zero.
         for k in 0..41 {
-            assert_eq!((g[(0, k)], g[(40, k)], g[(k, 0)], g[(k, 40)]), (0.0, 0.0, 0.0, 0.0));
+            assert_eq!(
+                (g[(0, k)], g[(40, k)], g[(k, 0)], g[(k, 40)]),
+                (0.0, 0.0, 0.0, 0.0)
+            );
         }
     }
 
     /// Discrete dispersion of the standing mode sin(pi x / (w-1)) sin(pi y / (h-1)): cos(theta) = 1 + s lambda / 2.
-    fn theta(w: usize, dt: f64, c: f64) -> f64 {
+    fn theta(
+        w: usize,
+        dt: f64,
+        c: f64,
+    ) -> f64 {
         let lam = -2.0 * (1.0 - (PI / (w as f64 - 1.0)).cos());
         (1.0 + (c * dt).powi(2) * (lam + lam) / 2.0).acos()
     }
 
     #[test]
-    #[ignore = "library bug: solve_wave_equation_2d starts leapfrog with u^{-1} = u^0 (\"u_t = 0\") instead of u^1 = u^0 + s/2 Lap u^0, so the solution is advanced by half a step: for the standing mode (w = 41, c = 1, dt = 0.5, 40 steps) the centre value is cos(40.5 theta)/cos(theta/2) = -0.0184 instead of cos(40 theta) = 0.0012"]
     fn wave_2d_standing_mode_follows_the_discrete_dispersion_relation() {
         let w = 41usize;
         let (c, dt, steps) = (1.0, 0.5, 40usize);
-        let cfg = FdmSolverConfig2D { width: w, height: w, dx: 1.0, dy: 1.0, dt, steps };
-        let mode = |x: usize, y: usize| (PI * x as f64 / (w as f64 - 1.0)).sin() * (PI * y as f64 / (w as f64 - 1.0)).sin();
+        let cfg = FdmSolverConfig2D {
+            width: w,
+            height: w,
+            dx: 1.0,
+            dy: 1.0,
+            dt,
+            steps,
+        };
+        let mode = |x: usize, y: usize| {
+            (PI * x as f64 / (w as f64 - 1.0)).sin() * (PI * y as f64 / (w as f64 - 1.0)).sin()
+        };
         let g = solve_wave_equation_2d(&cfg, c, mode);
         let th = theta(w, dt, c);
         let expected = (steps as f64 * th).cos();
-        assert!((g[(20, 20)] - expected).abs() < 1e-6, "centre {} vs {expected}", g[(20, 20)]);
+        assert!(
+            (g[(20, 20)] - expected).abs() < 1e-6,
+            "centre {} vs {expected}",
+            g[(20, 20)]
+        );
+    }
+
+    #[test]
+    fn wave_2d_standing_mode_matches_dispersion_at_every_step_count() {
+        // Independent check at several step counts and a rectangular spacing.
+        let w = 33usize;
+        let (c, dt) = (1.0, 0.4);
+        let mode = |x: usize, y: usize| {
+            (PI * x as f64 / (w as f64 - 1.0)).sin() * (PI * y as f64 / (w as f64 - 1.0)).sin()
+        };
+        let th = theta(w, dt, c);
+        for steps in [1usize, 2, 7, 25] {
+            let cfg = FdmSolverConfig2D {
+                width: w,
+                height: w,
+                dx: 1.0,
+                dy: 1.0,
+                dt,
+                steps,
+            };
+            let g = solve_wave_equation_2d(&cfg, c, mode);
+            let want = (steps as f64 * th).cos() * mode(16, 16);
+            assert!(
+                (g[(16, 16)] - want).abs() < 1e-10,
+                "steps {steps}: {} vs {want}",
+                g[(16, 16)]
+            );
+        }
     }
 
     #[test]
@@ -322,22 +421,54 @@ mod strengthened {
         // The half-step start-up error above is O(dt): the solution still tracks cos(omega t) within ~2 theta.
         let w = 41usize;
         let (c, dt) = (1.0, 0.5);
-        let mode = |x: usize, y: usize| (PI * x as f64 / (w as f64 - 1.0)).sin() * (PI * y as f64 / (w as f64 - 1.0)).sin();
+        let mode = |x: usize, y: usize| {
+            (PI * x as f64 / (w as f64 - 1.0)).sin() * (PI * y as f64 / (w as f64 - 1.0)).sin()
+        };
         let th = theta(w, dt, c);
         for steps in [10usize, 40, 80] {
-            let cfg = FdmSolverConfig2D { width: w, height: w, dx: 1.0, dy: 1.0, dt, steps };
+            let cfg = FdmSolverConfig2D {
+                width: w,
+                height: w,
+                dx: 1.0,
+                dy: 1.0,
+                dt,
+                steps,
+            };
             let g = solve_wave_equation_2d(&cfg, c, mode);
-            assert!((g[(20, 20)] - (steps as f64 * th).cos()).abs() < 2.0 * th, "steps {steps}: {}", g[(20, 20)]);
+            assert!(
+                (g[(20, 20)] - (steps as f64 * th).cos()).abs() < 2.0 * th,
+                "steps {steps}: {}",
+                g[(20, 20)]
+            );
         }
     }
 
     #[test]
     fn wave_3d_symmetric_pulse_stays_symmetric_and_bounded() {
         let n = 15;
-        let cfg = FdmSolverConfig3D { width: n, height: n, depth: n, dx: 1.0, dy: 1.0, dz: 1.0, dt: 0.4, steps: 8 };
-        let g = solve_wave_equation_3d(&cfg, 1.0, |x, y, z| if (x, y, z) == (7, 7, 7) { 1.0 } else { 0.0 });
+        let cfg = FdmSolverConfig3D {
+            width: n,
+            height: n,
+            depth: n,
+            dx: 1.0,
+            dy: 1.0,
+            dz: 1.0,
+            dt: 0.4,
+            steps: 8,
+        };
+        let g = solve_wave_equation_3d(&cfg, 1.0, |x, y, z| {
+            if (x, y, z) == (7, 7, 7) {
+                1.0
+            } else {
+                0.0
+            }
+        });
         assert_eq!(g.dimensions(), &Dimensions::D3(n, n, n));
-        assert!(g.as_slice().iter().all(|v| v.is_finite() && v.abs() <= 1.0 + 1e-12));
+        assert!(
+            g.as_slice()
+                .iter()
+                .all(|v| v.is_finite() && v.abs() <= 1.0 + 1e-12)
+        );
         for k in 1..6 {
             let a = g[(7 + k, 7, 7)];
             assert!((a - g[(7 - k, 7, 7)]).abs() < 1e-12);
@@ -360,12 +491,24 @@ mod strengthened {
                 src[(x, y)] = -2.0 * PI * PI * mode(x, y);
             }
         }
-        let cfg = PoissonSolverConfig2D { width: n, height: n, dx: d, dy: d, omega: 1.7, max_iter: 3000, tolerance: 1e-13 };
+        let cfg = PoissonSolverConfig2D {
+            width: n,
+            height: n,
+            dx: d,
+            dy: d,
+            omega: 1.7,
+            max_iter: 3000,
+            tolerance: 1e-13,
+        };
         let u = solve_poisson_2d(&cfg, &src);
         let amp = 2.0 * PI * PI * d * d / (4.0 * (1.0 - (PI * d).cos()));
         for y in 0..n {
             for x in 0..n {
-                assert!((u[(x, y)] - amp * mode(x, y)).abs() < 1e-8, "({x}, {y}): {}", u[(x, y)]);
+                assert!(
+                    (u[(x, y)] - amp * mode(x, y)).abs() < 1e-8,
+                    "({x}, {y}): {}",
+                    u[(x, y)]
+                );
             }
         }
     }
@@ -375,7 +518,15 @@ mod strengthened {
         let n = 21usize;
         let mut src = FdmGrid::new(Dimensions::D2(n, n));
         src[(10, 10)] = 5.0;
-        let cfg = PoissonSolverConfig2D { width: n, height: n, dx: 1.0, dy: 1.0, omega: 1.6, max_iter: 2000, tolerance: 1e-12 };
+        let cfg = PoissonSolverConfig2D {
+            width: n,
+            height: n,
+            dx: 1.0,
+            dy: 1.0,
+            omega: 1.6,
+            max_iter: 2000,
+            tolerance: 1e-12,
+        };
         let u = solve_poisson_2d(&cfg, &src);
         for k in 1..10 {
             assert!((u[(10 + k, 10)] - u[(10 - k, 10)]).abs() < 1e-9);
@@ -392,8 +543,16 @@ mod strengthened {
     #[test]
     fn burgers_1d_basic_properties() {
         // Constants and zero stay constant.
-        assert!(solve_burgers_1d(&vec![2.5; 30], 0.1, 0.05, 0.01, 50).iter().all(|&v| (v - 2.5).abs() < 1e-12));
-        assert!(solve_burgers_1d(&vec![0.0; 30], 0.1, 0.05, 0.01, 50).iter().all(|&v| v == 0.0));
+        assert!(
+            solve_burgers_1d(&vec![2.5; 30], 0.1, 0.05, 0.01, 50)
+                .iter()
+                .all(|&v| (v - 2.5).abs() < 1e-12)
+        );
+        assert!(
+            solve_burgers_1d(&vec![0.0; 30], 0.1, 0.05, 0.01, 50)
+                .iter()
+                .all(|&v| v == 0.0)
+        );
         // Very short inputs are returned unchanged.
         assert_eq!(solve_burgers_1d(&[1.0], 0.1, 0.05, 0.01, 5), vec![1.0]);
         // Fixed end values.
@@ -455,4 +614,11 @@ mod strengthened {
             prop_assert!(res.iter().all(|&v| v >= -1e-12 && v <= 1.0 + 1e-12));
         }
     }
+}
+
+#[test]
+fn wave_scenario_stays_bounded_on_the_expected_grid() {
+    let g = simulate_2d_wave_propagation_scenario();
+    assert_eq!(g.as_slice().len(), 120 * 120);
+    assert!(g.as_slice().iter().all(|v| v.is_finite() && v.abs() < 1.5));
 }

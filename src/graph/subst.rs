@@ -130,7 +130,7 @@ mod tests {
     #[test]
     fn replaces_free_occurrences() {
         let mut g = Graph::new();
-        assert_eq!(subst(&mut g, "x^2 + f(x, y)", "x", "a + 1"), "(a + 1)^2 + apply(f, a + 1, y)");
+        assert_eq!(subst(&mut g, "x^2 + f(x, y)", "x", "a + 1"), "(a + 1)^2 + f(a + 1, y)");
         assert_eq!(subst(&mut g, "x + y", "z", "1"), "x + y");
         assert_eq!(subst(&mut g, "x * x", "x", "3"), "3*3", "substitution does not simplify");
     }
@@ -155,7 +155,7 @@ mod tests {
         let inner = g.parse("x^2 + 1").unwrap_or(NodeId::NONE);
         let t = g.sym("t");
         let out = g.replace_subterm(term, inner, t);
-        assert_eq!(g.display(out), "t^3*apply(f, t) + x");
+        assert_eq!(g.display(out), "t^3*f(t) + x");
         assert_eq!(g.replace_subterm(out, t, inner), term);
     }
 

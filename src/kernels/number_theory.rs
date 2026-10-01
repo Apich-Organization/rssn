@@ -35,7 +35,8 @@ pub fn mod_pow(
     mut exp: u64,
     modulus: u64,
 ) -> u64 {
-    let mut res = 1;
+    // x^0 mod 1 is 0, so the accumulator must be reduced too.
+    let mut res = 1 % u128::from(modulus);
 
     base %= u128::from(modulus);
 

@@ -1210,7 +1210,9 @@ impl Quaternion {
 
         let sin_theta_0 = theta_0.sin();
 
-        let s0 = (theta_0 - theta).cos() - dot * sin_theta / sin_theta_0;
+        // Standard slerp weight sin(theta_0 - theta) / sin(theta_0), since
+        // q(t) = sin((1-t) theta_0)/sin(theta_0) q0 + sin(t theta_0)/sin(theta_0) q1.
+        let s0 = (theta_0 - theta).sin() / sin_theta_0;
 
         let s1 = sin_theta / sin_theta_0;
 

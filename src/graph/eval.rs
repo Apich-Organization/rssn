@@ -6,9 +6,19 @@
 
 use std::collections::HashMap;
 
+use num_complex::Complex64;
+
 use super::id::NodeId;
+use super::id::SymbolId;
+use super::op::core;
 use super::rule::Env;
 use super::store::Graph;
+
+/// Operator attribute: the operator's value over the complex numbers.
+/// Operators without it are evaluated by [`Graph::eval_complex`] with their
+/// real evaluator when all arguments are real.
+#[derive(Copy, Clone, Debug)]
+pub struct ComplexEval(pub fn(&[Complex64]) -> Option<Complex64>);
 
 impl Graph {
     /// Evaluates the concrete term `node` to a float under the bindings of
@@ -54,6 +64,71 @@ impl Graph {
                         .map(|&c| (c, false)),
                 );
             }
+        }
+        values.get(&node).copied()
+    }
+}
+
+impl Graph {
+    /// Evaluates the concrete term `node` over the complex numbers.
+    ///
+    /// Operators without a [`ComplexEval`] attribute are evaluated with their
+    /// real evaluator when all their arguments are real.
+    #[must_use]
+    pub fn eval_complex(
+        &self,
+        node: NodeId,
+        bindings: &HashMap<SymbolId, Complex64>,
+    ) -> Option<Complex64> {
+        let mut values: HashMap<NodeId, Complex64> = HashMap::new();
+        let mut stack = vec![(node, false)];
+        while let Some((cur, expanded)) = stack.pop() {
+            if values.contains_key(&cur) {
+                continue;
+            }
+            let children = self.children(cur);
+            if !expanded && !children.is_empty() {
+                stack.push((cur, true));
+                stack.extend(children.iter().map(|&c| (c, false)));
+                continue;
+            }
+            let args: Vec<Complex64> = children.iter().map(|c| values.get(c).copied()).collect::<Option<_>>()?;
+            let value = if let Some(n) = self.as_number(cur) {
+                Complex64::new(n.to_f64(), 0.0)
+            } else if let Some(s) = self.as_symbol(cur) {
+                *bindings.get(&s)?
+            } else {
+                match self.op(cur) {
+                    | core::ADD => args.iter().sum(),
+                    | core::MUL => args.iter().product(),
+                    | core::POW => {
+                        let (base, exponent) = (*args.first()?, *args.get(1)?);
+                        if exponent.im == 0.0 && exponent.re.fract() == 0.0 && exponent.re.abs() <= 1024.0 {
+                            #[allow(clippy::cast_possible_truncation)]
+                            base.powi(exponent.re as i32)
+                        } else if base.im == 0.0 && base.re > 0.0 && exponent.im == 0.0 {
+                            Complex64::new(base.re.powf(exponent.re), 0.0)
+                        } else {
+                            base.powc(exponent)
+                        }
+                    },
+                    | op => {
+                        if let Some(eval) = self.ops().attr::<ComplexEval>(op) {
+                            (eval.0)(&args)?
+                        } else if args.iter().all(|a| a.im == 0.0) {
+                            let eval = self.ops().get(op).eval?;
+                            let reals: Vec<f64> = args.iter().map(|a| a.re).collect();
+                            Complex64::new(eval(&reals), 0.0)
+                        } else {
+                            return None;
+                        }
+                    },
+                }
+            };
+            // A negative zero imaginary part would select the lower side
+            // of branch cuts; values on a cut take the principal side.
+            let value = if value.im == 0.0 { Complex64::new(value.re, 0.0) } else { value };
+            values.insert(cur, value);
         }
         values.get(&node).copied()
     }

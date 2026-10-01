@@ -4,6 +4,8 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 
+use std::path::Path;
+
 use crate::io::write_npy_file;
 use crate::sim::physics_sm::create_k_grid;
 use crate::sim::physics_sm::fft2d;
@@ -138,7 +140,9 @@ pub fn run_gpe_ground_state_finder(params: &GpeParameters) -> Result<Array2<f64>
 ///
 /// This function will return an error if the GPE ground state finder fails
 /// or if the final density cannot be written to the NPY file.
-pub fn simulate_bose_einstein_vortex_scenario() -> Result<(), String> {
+/// The density is saved as `gpe_vortex_state.npy` inside `output_dir`, which is
+/// created if missing.
+pub fn simulate_bose_einstein_vortex_scenario(output_dir: &Path) -> Result<(), String> {
     println!(
         "Running GPE simulation to \
          find BEC ground state..."
@@ -157,14 +161,17 @@ pub fn simulate_bose_einstein_vortex_scenario() -> Result<(), String> {
 
     let final_density = run_gpe_ground_state_finder(&params)?;
 
-    let filename = "gpe_vortex_state.npy";
+    std::fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
+
+    let filename = output_dir.join("gpe_vortex_state.npy");
 
     println!(
         "Simulation finished. Saving \
-         final density to {filename}"
+         final density to {}",
+        filename.display()
     );
 
-    write_npy_file(filename, &final_density)?;
+    write_npy_file(&filename, &final_density)?;
 
     Ok(())
 }

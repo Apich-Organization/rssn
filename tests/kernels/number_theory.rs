@@ -50,7 +50,6 @@ fn mod_pow_reference_values() {
 }
 
 #[test]
-#[ignore = "library bug: mod_pow(x, 0, 1) returns 1 (initial accumulator is not reduced); x^0 mod 1 must be 0"]
 fn mod_pow_modulus_one_is_zero() {
     assert_eq!(mod_pow(5, 0, 1), 0);
 }
@@ -77,7 +76,16 @@ fn primality_against_sieve() {
 #[test]
 fn primality_hard_cases() {
     // Carmichael numbers and strong pseudoprimes to many bases.
-    for c in [561u64, 1105, 1729, 2465, 2821, 6601, 3_215_031_751, 3_825_123_056_546_413_051] {
+    for c in [
+        561u64,
+        1105,
+        1729,
+        2465,
+        2821,
+        6601,
+        3_215_031_751,
+        3_825_123_056_546_413_051,
+    ] {
         assert!(!is_prime_miller_rabin(c), "{c} is composite");
     }
     // Mersenne prime 2^61 - 1 and the largest 64-bit prime.
@@ -165,4 +173,15 @@ proptest! {
         prop_assume!(gcd(a, n) == 1);
         prop_assert_eq!(mod_pow(u128::from(a), phi(n), n), 1);
     }
+}
+
+#[test]
+fn mod_pow_zero_exponent_and_small_cases() {
+    // x^0 = 1 for any modulus > 1, including x = 0 by convention.
+    assert_eq!(mod_pow(0, 0, 7), 1);
+    assert_eq!(mod_pow(9, 0, 2), 1);
+    // Everything is 0 modulo 1.
+    assert_eq!(mod_pow(123, 45, 1), 0);
+    // 2^10 = 1024 = 4 (mod 10).
+    assert_eq!(mod_pow(2, 10, 10), 4);
 }

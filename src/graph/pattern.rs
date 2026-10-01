@@ -574,6 +574,26 @@ impl Pat {
         nvars: usize,
         limit: usize,
     ) -> Vec<Match> {
+        let mut fuel = usize::MAX;
+        self.matches_bounded(graph, root, nvars, limit, &mut fuel)
+    }
+
+    /// Like [`Pat::matches`], but gives up once `fuel` search steps have
+    /// been spent; `fuel` is decremented by the steps taken.
+    ///
+    /// Matching modulo associativity and commutativity against classes
+    /// with many members can take exponentially long without finding
+    /// anything. A scheduler passes a budget and treats a rule that runs
+    /// out of it like one that matched too often.
+    #[must_use]
+    pub fn matches_bounded(
+        &self,
+        graph: &Graph,
+        root: NodeId,
+        nvars: usize,
+        limit: usize,
+        fuel: &mut usize,
+    ) -> Vec<Match> {
         let mut out = Vec::new();
         let Self::Node(op, pats) = self else {
             return out;
@@ -587,6 +607,7 @@ impl Pat {
             out: &mut out,
             root,
             multi: Vec::new(),
+            fuel: *fuel,
         };
         let mut subst = vec![NodeId::NONE; nvars];
         let flags = graph.ops().get(*op).flags;
@@ -610,6 +631,7 @@ impl Pat {
                 pats.iter().zip(children.iter().copied()).rev().collect();
             matcher.solve(&mut goals, &mut subst, &[]);
         }
+        *fuel = matcher.fuel;
         out
     }
 }
@@ -621,6 +643,8 @@ struct Matcher<'g, 'o> {
     root: NodeId,
     /// Variables currently bound to several operands of a nested node.
     multi: Vec<(u32, OpId, Vec<NodeId>)>,
+    /// Search steps left.
+    fuel: usize,
 }
 
 impl Matcher<'_, '_> {
@@ -636,9 +660,10 @@ impl Matcher<'_, '_> {
         subst: &mut Vec<NodeId>,
         is_root: bool,
     ) {
-        if self.out.len() >= self.limit {
+        if self.out.len() >= self.limit || self.fuel == 0 {
             return;
         }
+        self.fuel -= 1;
         let Some(pat) = pats.get(index) else {
             let rest: Vec<NodeId> = if is_root {
                 children
@@ -693,9 +718,10 @@ impl Matcher<'_, '_> {
         subst: &mut Vec<NodeId>,
         rest: &[NodeId],
     ) {
-        if self.out.len() >= self.limit {
+        if self.out.len() >= self.limit || self.fuel == 0 {
             return;
         }
+        self.fuel -= 1;
         let Some((pat, node)) = goals.pop() else {
             self.out.push(Match {
                 root: self.root,
@@ -824,9 +850,10 @@ impl Matcher<'_, '_> {
         rest: &[NodeId],
         absorb: Option<(u32, OpId)>,
     ) {
-        if self.out.len() >= self.limit {
+        if self.out.len() >= self.limit || self.fuel == 0 {
             return;
         }
+        self.fuel -= 1;
         let Some(pat) = pats.get(index) else {
             let mut pending = goals.clone();
             if let Some((var, op)) = absorb {

@@ -327,7 +327,9 @@ impl Cx<'_> {
         }
         let mut env = Env::symbolic();
         env.depth = self.env.depth.saturating_add(1);
-        let budget = Budget { max_iterations: 6, max_nodes: 4_000, patience: 2, ..Budget::default() };
+        // No exploring rules (`max_nodes: 0`): a nested run is asked for a
+        // normal form, quickly, not for a search.
+        let budget = Budget { max_iterations: 6, max_nodes: 0, patience: 2, ..Budget::default() };
         self.engine.run(self.graph, &[term], &env, &Saturate, &budget);
         Extractor::new(self.graph, &[term], &SizeCost).build(self.graph, term).unwrap_or(term)
     }

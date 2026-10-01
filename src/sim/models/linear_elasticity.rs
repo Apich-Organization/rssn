@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 
 use ndarray::Array1;
 use ndarray::Array2;
@@ -36,36 +37,94 @@ pub struct ElasticityParameters {
 }
 
 /// Calculates the element stiffness matrix for a 2D quadrilateral element (plane stress).
+///
+/// This is the standard bilinear isoparametric Q4 element of unit thickness:
+/// `K = ∫ Bᵀ C B det(J) dξ dη` evaluated with 2x2 Gauss quadrature
+/// (Zienkiewicz & Taylor, "The Finite Element Method", Vol. 1, ch. 6;
+/// Cook et al., "Concepts and Applications of Finite Element Analysis", ch. 6).
+/// The corners `p1..p4` must be given counter-clockwise (bottom-left,
+/// bottom-right, top-right, top-left for an axis-aligned element) and the
+/// degrees of freedom are ordered `[u1, v1, u2, v2, u3, v3, u4, v4]`.
+/// Multiply by the thickness for a thicker plate.
 #[must_use]
 pub fn element_stiffness_matrix(
-    _p1: (f64, f64),
-    _p2: (f64, f64),
-    _p3: (f64, f64),
-    _p4: (f64, f64),
+    p1: (f64, f64),
+    p2: (f64, f64),
+    p3: (f64, f64),
+    p4: (f64, f64),
     e: f64,
     nu: f64,
 ) -> Array2<f64> {
-    // B-matrix for a 2D quadrilateral (Q4) element under plane stress.
-    // These values are derived for a unit square element with nodes ordered as follows:
-    // p1 = bottom-left, p2 = bottom-right, p3 = top-right, p4 = top-left
-    //
-    // The B-matrix relates nodal displacements to strains. The values below are obtained
-    // by differentiating the shape functions with respect to x and y at the element centroid,
-    // under the assumption of a unit square reference element. For more details, see:
-    // - Zienkiewicz & Taylor, "The Finite Element Method," Vol. 1, Section 6.5 (Q4 element)
-    // - Cook et al., "Concepts and Applications of Finite Element Analysis," Table for Q4 shape function derivatives
-    //
-    // If the element geometry or node ordering changes, this matrix must be recomputed accordingly.
-    let b_mat = array![
-        [-0.25, 0.0, 0.25, 0.0, 0.25, 0.0, -0.25, 0.0],
-        [0.0, -0.25, 0.0, -0.25, 0.0, 0.25, 0.0, 0.25],
-        [-0.25, -0.25, -0.25, 0.25, 0.25, 0.25, 0.25, -0.25]
-    ];
+    let pts = [p1, p2, p3, p4];
+
+    // Natural coordinates of the corners.
+    let xi_n = [-1.0, 1.0, 1.0, -1.0];
+
+    let eta_n = [-1.0, -1.0, 1.0, 1.0];
 
     let c_mat = (e / nu.mul_add(-nu, 1.0))
         * array![[1.0, nu, 0.0], [nu, 1.0, 0.0], [0.0, 0.0, (1.0 - nu) / 2.0]];
 
-    b_mat.t().dot(&c_mat.dot(&b_mat))
+    let g = 1.0 / 3.0_f64.sqrt();
+
+    let mut k = Array2::<f64>::zeros((8, 8));
+
+    for &xi in &[-g, g] {
+        for &eta in &[-g, g] {
+            // Shape-function derivatives in natural coordinates.
+            let mut dn_dxi = [0.0; 4];
+
+            let mut dn_deta = [0.0; 4];
+
+            for n in 0..4 {
+                dn_dxi[n] = 0.25 * xi_n[n] * (1.0 + eta_n[n] * eta);
+
+                dn_deta[n] = 0.25 * eta_n[n] * (1.0 + xi_n[n] * xi);
+            }
+
+            // Jacobian J = [[dx/dxi, dy/dxi], [dx/deta, dy/deta]].
+            let mut j = [[0.0; 2]; 2];
+
+            for n in 0..4 {
+                j[0][0] += dn_dxi[n] * pts[n].0;
+
+                j[0][1] += dn_dxi[n] * pts[n].1;
+
+                j[1][0] += dn_deta[n] * pts[n].0;
+
+                j[1][1] += dn_deta[n] * pts[n].1;
+            }
+
+            let det = j[0][0].mul_add(j[1][1], -(j[0][1] * j[1][0]));
+
+            let inv = [
+                [j[1][1] / det, -j[0][1] / det],
+                [-j[1][0] / det, j[0][0] / det],
+            ];
+
+            // Strain-displacement matrix B (3 x 8): [ex, ey, gxy].
+            let mut b_mat = Array2::<f64>::zeros((3, 8));
+
+            for n in 0..4 {
+                let dn_dx = inv[0][0].mul_add(dn_dxi[n], inv[0][1] * dn_deta[n]);
+
+                let dn_dy = inv[1][0].mul_add(dn_dxi[n], inv[1][1] * dn_deta[n]);
+
+                b_mat[[0, 2 * n]] = dn_dx;
+
+                b_mat[[1, 2 * n + 1]] = dn_dy;
+
+                b_mat[[2, 2 * n]] = dn_dy;
+
+                b_mat[[2, 2 * n + 1]] = dn_dx;
+            }
+
+            // Gauss weights are 1 for the 2-point rule.
+            k = k + b_mat.t().dot(&c_mat.dot(&b_mat)) * det.abs();
+        }
+    }
+
+    k
 }
 
 /// Runs a 2D linear elasticity simulation using the Finite Element Method.
@@ -186,7 +245,9 @@ pub fn run_elasticity_simulation(params: &ElasticityParameters) -> Result<Vec<f6
 ///
 /// This function will return an error if the underlying `run_elasticity_simulation`
 /// fails or if it cannot create or write to the output CSV files.
-pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
+/// `beam_original.csv` and `beam_deformed.csv` are written into `output_dir`,
+/// which is created if it does not exist.
+pub fn simulate_cantilever_beam_scenario(output_dir: &Path) -> Result<(), String> {
     println!(
         "Running 2D Cantilever Beam \
          simulation..."
@@ -255,9 +316,13 @@ pub fn simulate_cantilever_beam_scenario() -> Result<(), String> {
         new_nodes[i].1 += d[i * 2 + 1];
     }
 
-    let mut orig_file = File::create("beam_original.csv").map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(output_dir).map_err(|e| e.to_string())?;
 
-    let mut def_file = File::create("beam_deformed.csv").map_err(|e| e.to_string())?;
+    let mut orig_file =
+        File::create(output_dir.join("beam_original.csv")).map_err(|e| e.to_string())?;
+
+    let mut def_file =
+        File::create(output_dir.join("beam_deformed.csv")).map_err(|e| e.to_string())?;
 
     writeln!(orig_file, "x,y").map_err(|e| e.to_string())?;
 

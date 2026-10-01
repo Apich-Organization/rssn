@@ -135,7 +135,15 @@ impl Polynomial {
         mut self,
         divisor: &Self,
     ) -> (Self, Self) {
-        let mut quotient = vec![0.0; self.coeffs.len()];
+        // Coefficients are highest-degree-first, so the quotient of degrees
+        // n and m has n - m + 1 entries with the leading one first.
+        let q_len = if self.coeffs.len() >= divisor.coeffs.len() {
+            self.coeffs.len() - divisor.coeffs.len() + 1
+        } else {
+            1
+        };
+
+        let mut quotient = vec![0.0; q_len];
 
         let divisor_lead = divisor.coeffs[0];
 
@@ -146,7 +154,7 @@ impl Polynomial {
 
             let deg_diff = self.coeffs.len() - divisor.coeffs.len();
 
-            quotient[deg_diff] = q_coeff;
+            quotient[q_len - 1 - deg_diff] = q_coeff;
 
             for i in 0..divisor.coeffs.len() {
                 self.coeffs[i] -= divisor.coeffs[i] * q_coeff;

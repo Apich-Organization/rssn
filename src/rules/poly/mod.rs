@@ -8,6 +8,7 @@
 //! form, so that extraction returns it verbatim instead of whatever
 //! spelling happens to be cheapest.
 
+pub mod apart;
 pub mod groebner;
 pub mod repr;
 pub mod univariate;
@@ -64,6 +65,7 @@ enum Request {
     Gcd,
     Together,
     Cancel,
+    Apart,
     Groebner,
 }
 
@@ -76,6 +78,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("factor", 1, Request::Factor, true),
         ("together", 1, Request::Together, true),
         ("cancel", 1, Request::Cancel, true),
+        ("apart", 2, Request::Apart, true),
         ("degree", 2, Request::Degree, false),
         ("coeff", 3, Request::Coeff, false),
         ("quo", 3, Request::Quo, false),
@@ -128,6 +131,7 @@ impl Kernel for PolyKernel {
             | (Request::Factor, &[e]) => factor(graph, e).map(Outcome::Pinned),
             | (Request::Together, &[e]) => together(graph, e, false).map(Outcome::Pinned),
             | (Request::Cancel, &[e]) => together(graph, e, true).map(Outcome::Pinned),
+            | (Request::Apart, &[e, x]) => apart_term(graph, e, x).map(Outcome::Pinned),
             | (Request::Degree, &[p, x]) => degree(graph, p, x).map(Outcome::Equal),
             | (Request::Coeff, &[p, x, n]) => coeff(graph, p, x, n).map(Outcome::Equal),
             | (Request::Quo, &[p, q, x]) => divide(graph, p, q, x).map(|(quo, _)| Outcome::Equal(quo)),
@@ -155,6 +159,44 @@ impl Kernel for PolyKernel {
         // The argument may itself contain a request that is reduced later.
         true
     }
+}
+
+/// Partial fractions of a rational function of `x` over `Q`:
+/// `polynomial + sum numerator / factor^power`.
+fn apart_term(
+    graph: &mut Graph,
+    e: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let term = best(graph, e)?;
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let r = ratio(graph, &mut gens, term, Limits::default())?;
+    if gens.len() != 1 {
+        return None;
+    }
+    let as_q = |p: &Poly| -> Option<QPoly> { p.univariate_in(gx)?.iter().map(Number::to_rational).collect() };
+    let parts = apart::apart(&as_q(&r.numer)?, &as_q(&r.denom)?)?;
+    let poly_term = |graph: &mut Graph, q: &[BigRational]| {
+        let numbers: Vec<Number> = q.iter().cloned().map(Number::rat).collect();
+        to_term(graph, &gens, &Poly::from_univariate(gx, &numbers))
+    };
+    let mut terms = Vec::new();
+    if !parts.quotient.is_empty() {
+        terms.push(poly_term(graph, &parts.quotient));
+    }
+    for piece in &parts.pieces {
+        let numerator = poly_term(graph, &piece.numerator);
+        let base = poly_term(graph, &piece.factor);
+        let exponent = graph.int(-i64::from(piece.power));
+        let denominator = graph.node(core::POW, &[base, exponent]);
+        terms.push(graph.node(core::MUL, &[numerator, denominator]));
+    }
+    Some(match terms.as_slice() {
+        | [] => graph.int(0),
+        | [only] => *only,
+        | _ => graph.node(core::ADD, &terms),
+    })
 }
 
 fn expand(
@@ -633,7 +675,7 @@ mod tests {
         assert_eq!(run("expand((x + y)*(x - y))"), "x^2 - y^2");
         assert_eq!(run("expand((a + b)^3)"), "a^3 + 3*a^2*b + 3*a*b^2 + b^3");
         // Nested inside something else, the expanded form survives too.
-        assert_eq!(run("f(expand((x + 1)^2))"), "apply(f, x^2 + 2*x + 1)");
+        assert_eq!(run("f(expand((x + 1)^2))"), "f(x^2 + 2*x + 1)");
         assert_eq!(run("expand(x*(x + 1)) - x^2"), "x");
     }
 
@@ -720,5 +762,7 @@ mod tests {
         assert_eq!(run("cancel((x^2 - 1)/(x - 1))"), "x + 1");
         assert_eq!(run("cancel((x^2 + 2*x + 1)/(x^2 - 1))"), "(x + 1)/(x - 1)");
         assert_eq!(run("cancel(x/x^3)"), "1/x^2");
+        assert_eq!(run("apart(1/(x^2 - 1), x)"), "1/2/(x - 1) - 1/2/(x + 1)");
+        assert_eq!(run("apart((x^3 + 1)/(x^2 + 1), x)"), "x + (1 - x)/(x^2 + 1)");
     }
 }

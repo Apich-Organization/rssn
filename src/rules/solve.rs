@@ -111,7 +111,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
 }
 
 /// `l = r` becomes `l - r`; anything else is taken to equal zero.
-fn as_expression(
+pub(crate) fn as_expression(
     graph: &mut Graph,
     equation: NodeId,
 ) -> NodeId {
@@ -160,7 +160,7 @@ const MAX_DEPTH: usize = 8;
 
 /// Solves `expr = 0` for `x`. `None` means "could not solve"; `Some` is
 /// the complete list of solutions that were found on principal branches.
-fn solve_for(
+pub(crate) fn solve_for(
     graph: &mut Graph,
     expr: NodeId,
     x: NodeId,
@@ -534,7 +534,7 @@ fn determinant(
 /// Solves a square linear system by Cramer's rule with polynomial
 /// arithmetic in the parameters. `None` if the system is not linear in the
 /// unknowns, not square, too large, or singular.
-fn solve_linear(
+pub(crate) fn solve_linear(
     graph: &mut Graph,
     equations: &[NodeId],
     unknowns: &[NodeId],
@@ -762,6 +762,10 @@ impl Kernel for PolynomialNumeric {
         if !cx.env.numeric {
             return Outcome::Pass;
         }
+        // Already evaluated in this run.
+        if cx.graph.approx(cx.graph.find(node)).is_some() {
+            return Outcome::Pass;
+        }
         let graph = &mut *cx.graph;
         let &[equation, unknown] = graph.children(node) else {
             return Outcome::Pass;
@@ -804,6 +808,10 @@ impl Kernel for RootNear {
         node: NodeId,
     ) -> Outcome {
         if !cx.env.numeric {
+            return Outcome::Pass;
+        }
+        // Already evaluated in this run.
+        if cx.graph.approx(cx.graph.find(node)).is_some() {
             return Outcome::Pass;
         }
         let graph = &mut *cx.graph;

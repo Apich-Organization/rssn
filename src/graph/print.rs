@@ -173,6 +173,19 @@ impl Graph {
                     self.write_term(exp, PREC_ATOM, out);
                 }
             },
+            | core::APPLY if self.children(node).first().is_some_and(|&f| self.as_symbol(f).is_some()) => {
+                // An unknown function applied: `y(t)`, as it is parsed.
+                let children = self.children(node);
+                self.write_leaf(children[0], out);
+                out.push('(');
+                for (i, &child) in children[1..].iter().enumerate() {
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
+                    self.write_term(child, PREC_EQ, out);
+                }
+                out.push(')');
+            },
             | op if self.ops().get(op).arity == Arity::Fixed(0) => {
                 out.push_str(&self.ops().get(op).name);
             },
@@ -402,7 +415,11 @@ impl Graph {
                 self.write_term(*base, if group { PREC_NEG } else { PREC_POW }, out);
             } else {
                 self.write_term(*base, PREC_ATOM, out);
-                let _ = write!(out, "^{exp}");
+                if exp.is_integer() {
+                    let _ = write!(out, "^{exp}");
+                } else {
+                    let _ = write!(out, "^({exp})");
+                }
             }
         }
         if group {
@@ -468,6 +485,8 @@ mod tests {
         assert_eq!(round_trip("x^(-2)"), "1/x^2");
         assert_eq!(round_trip("(x + 1)^(-1)"), "1/(x + 1)");
         assert_eq!(round_trip("2^(-x)"), "2^(-x)");
+        assert_eq!(round_trip("2/pi^(1/2)"), "2/pi^(1/2)");
+        assert_eq!(round_trip("x^(-3/2)"), "1/x^(3/2)");
         assert_eq!(round_trip("x^(1/2)"), "x^(1/2)");
         assert_eq!(round_trip("-(a + b)"), "-(a + b)");
         assert_eq!(round_trip("a^b^c"), "a^(b^c)");
@@ -484,7 +503,7 @@ mod tests {
     #[test]
     fn functions() {
         assert_eq!(round_trip("sin(x + 1)"), "sin(x + 1)");
-        assert_eq!(round_trip("f(x, y)"), "apply(f, x, y)");
+        assert_eq!(round_trip("f(x, y)"), "f(x, y)");
     }
 
     #[test]

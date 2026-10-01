@@ -99,12 +99,8 @@ fn test_reed_solomon_decode_with_errors() {
 
     corrupted[0] ^= 0xFF;
 
-
-
-
     // Decode and correct
     reed_solomon_decode(&mut corrupted, 4).unwrap_or_else(|e| panic!("{e}"));
-
 
     assert_eq!(&corrupted[0..message.len()], &message[..],);
 }
@@ -118,7 +114,8 @@ fn test_reed_solomon_decode_with_errors() {
 fn test_hamming_encode_basic() {
     let data = vec![1, 0, 1, 1];
 
-    let codeword = hamming_encode_numerical(&data).unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
+    let codeword = hamming_encode_numerical(&data)
+        .unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
 
     assert_eq!(codeword.len(), 7);
 }
@@ -128,7 +125,8 @@ fn test_hamming_encode_basic() {
 fn test_hamming_encode_all_zeros() {
     let data = vec![0, 0, 0, 0];
 
-    let codeword = hamming_encode_numerical(&data).unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
+    let codeword = hamming_encode_numerical(&data)
+        .unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
 
     assert_eq!(codeword, vec![0, 0, 0, 0, 0, 0, 0]);
 }
@@ -138,7 +136,8 @@ fn test_hamming_encode_all_zeros() {
 fn test_hamming_encode_all_ones() {
     let data = vec![1, 1, 1, 1];
 
-    let codeword = hamming_encode_numerical(&data).unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
+    let codeword = hamming_encode_numerical(&data)
+        .unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
 
     assert_eq!(codeword.len(), 7);
 }
@@ -157,9 +156,11 @@ fn test_hamming_encode_wrong_length() {
 fn test_hamming_decode_no_error() {
     let data = vec![1, 0, 1, 1];
 
-    let codeword = hamming_encode_numerical(&data).unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
+    let codeword = hamming_encode_numerical(&data)
+        .unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
 
-    let (decoded, error_pos) = hamming_decode_numerical(&codeword).unwrap_or_else(|e| panic!("{e}"));
+    let (decoded, error_pos) =
+        hamming_decode_numerical(&codeword).unwrap_or_else(|e| panic!("{e}"));
 
     assert_eq!(decoded, data);
 
@@ -171,10 +172,12 @@ fn test_hamming_decode_no_error() {
 fn test_hamming_decode_single_error() {
     let data = vec![1, 0, 1, 1];
 
-    let mut codeword = hamming_encode_numerical(&data).unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
+    let mut codeword = hamming_encode_numerical(&data)
+        .unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
 
     codeword[2] ^= 1; // Introduce error at position 3 (1-indexed)
-    let (decoded, error_pos) = hamming_decode_numerical(&codeword).unwrap_or_else(|e| panic!("{e}"));
+    let (decoded, error_pos) =
+        hamming_decode_numerical(&codeword).unwrap_or_else(|e| panic!("{e}"));
 
     assert_eq!(decoded, data);
 
@@ -186,10 +189,12 @@ fn test_hamming_decode_single_error() {
 fn test_hamming_decode_parity_error() {
     let data = vec![1, 0, 1, 1];
 
-    let mut codeword = hamming_encode_numerical(&data).unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
+    let mut codeword = hamming_encode_numerical(&data)
+        .unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
 
     codeword[0] ^= 1; // Error in parity bit
-    let (decoded, error_pos) = hamming_decode_numerical(&codeword).unwrap_or_else(|e| panic!("{e}"));
+    let (decoded, error_pos) =
+        hamming_decode_numerical(&codeword).unwrap_or_else(|e| panic!("{e}"));
 
     assert_eq!(decoded, data);
 
@@ -210,7 +215,8 @@ fn test_hamming_decode_wrong_length() {
 fn test_hamming_check_valid() {
     let data = vec![1, 0, 1, 1];
 
-    let codeword = hamming_encode_numerical(&data).unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
+    let codeword = hamming_encode_numerical(&data)
+        .unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
 
     assert!(hamming_check_numerical(&codeword));
 }
@@ -220,7 +226,8 @@ fn test_hamming_check_valid() {
 fn test_hamming_check_invalid() {
     let data = vec![1, 0, 1, 1];
 
-    let mut codeword = hamming_encode_numerical(&data).unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
+    let mut codeword = hamming_encode_numerical(&data)
+        .unwrap_or_else(|| panic!("hamming_encode_numerical returned None"));
 
     codeword[2] ^= 1; // Introduce error
     assert!(!hamming_check_numerical(&codeword));
@@ -908,7 +915,6 @@ mod strengthened {
     }
 
     #[test]
-    #[ignore = "library bug: reed_solomon_decode returns Ok(()) but leaves a wrong codeword when 2 symbols are corrupted with 4 parity symbols (t = 2); e.g. message 10..30, errors at 3 (^0x21) and 17 (^0xC4): byte 3 decodes to 155 (expected 13), byte 17 to 136 (expected 27)"]
     fn reed_solomon_corrects_up_to_half_the_parity_symbols() {
         let message: Vec<u8> = (10..30).collect();
         let n_parity = 4; // t = 2
@@ -932,9 +938,18 @@ mod strengthened {
     #[test]
     fn hamming_encode_known_codewords() {
         // layout [p1 p2 d3 p4 d5 d6 d7] with p1 = d3^d5^d7, p2 = d3^d6^d7, p4 = d5^d6^d7
-        assert_eq!(hamming_encode_numerical(&[1, 0, 1, 1]), Some(vec![0, 1, 1, 0, 0, 1, 1]));
-        assert_eq!(hamming_encode_numerical(&[1, 1, 1, 1]), Some(vec![1, 1, 1, 1, 1, 1, 1]));
-        assert_eq!(hamming_encode_numerical(&[0, 0, 0, 1]), Some(vec![1, 1, 0, 1, 0, 0, 1]));
+        assert_eq!(
+            hamming_encode_numerical(&[1, 0, 1, 1]),
+            Some(vec![0, 1, 1, 0, 0, 1, 1])
+        );
+        assert_eq!(
+            hamming_encode_numerical(&[1, 1, 1, 1]),
+            Some(vec![1, 1, 1, 1, 1, 1, 1])
+        );
+        assert_eq!(
+            hamming_encode_numerical(&[0, 0, 0, 1]),
+            Some(vec![1, 1, 0, 1, 0, 0, 1])
+        );
     }
 
     #[test]
@@ -944,7 +959,11 @@ mod strengthened {
         for i in 0..7 {
             let mut cw = clean.clone();
             cw[i] ^= 1;
-            assert_eq!(hamming_decode_numerical(&cw), Ok((data.clone(), Some(i + 1))), "bit {i}");
+            assert_eq!(
+                hamming_decode_numerical(&cw),
+                Ok((data.clone(), Some(i + 1))),
+                "bit {i}"
+            );
         }
     }
 
@@ -1040,7 +1059,6 @@ mod strengthened {
 
         /// RS(n, k) with 4 parity symbols corrects any 2 symbol errors at random positions.
         #[test]
-        #[ignore = "library bug: 2-symbol errors are mis-corrected (see reed_solomon_corrects_up_to_half_the_parity_symbols); minimal case message [0,0,0,0], errors 0x01 at bytes 0 and 2: decoder returns Ok with [129,0,33,0,0,0,0,0] instead of all zeros"]
         fn prop_reed_solomon_corrects_random_errors(
             message in proptest::collection::vec(any::<u8>(), 4..24),
             e1 in 1u8..=255, e2 in 1u8..=255,
@@ -1092,5 +1110,139 @@ mod strengthened {
             let xor: Vec<u8> = ea.iter().zip(&eb).map(|(p, q)| p ^ q).collect();
             prop_assert_eq!(ex, xor);
         }
+    }
+}
+
+mod ledger_fill {
+    use rssn::kernels::error_correction::*;
+
+    #[test]
+    fn poly_sub_is_xor_like_poly_add() {
+        let a = PolyGF256::new(vec![1, 2, 3]);
+        let b = PolyGF256::new(vec![3, 2, 1]);
+        assert_eq!(a.poly_sub(&b), a.poly_add(&b));
+        assert_eq!(a.poly_sub(&a).0, vec![0, 0, 0]);
+    }
+
+    #[test]
+    fn poly_mul_and_scale_follow_the_field_rules() {
+        // (1 + x)(1 + x) = 1 + x^2 in characteristic 2 (coefficients in ascending order).
+        let p = PolyGF256::new(vec![1, 1]);
+        assert_eq!(p.poly_mul(&p).0, vec![1, 0, 1]);
+        assert_eq!(p.scale(1), p);
+        assert_eq!(p.scale(0).0, vec![0, 0]);
+    }
+
+    #[test]
+    fn poly_div_by_the_zero_polynomial_is_an_error() {
+        assert!(
+            PolyGF256::new(vec![1, 0, 1])
+                .poly_div(&PolyGF256::new(vec![]))
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn poly_div_returns_the_correct_quotient() {
+        // Ascending order: x^3 = [0, 0, 0, 1], x = [0, 1]; x^3 / x = x^2 = [0, 0, 1].
+        let (q, r) = PolyGF256::new(vec![0, 0, 0, 1])
+            .poly_div(&PolyGF256::new(vec![0, 1]))
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(q.normalize().0, vec![0, 0, 1]);
+        assert!(r.normalize().0.is_empty());
+    }
+
+    #[test]
+    fn chien_search_finds_the_error_locator_root_position() {
+        // sigma(x) = 1 + alpha^3 x has its root at alpha^-3, i.e. error position 3.
+        let sigma = PolyGF256::new(vec![1, 8]);
+        assert_eq!(
+            chien_search(&sigma).unwrap_or_else(|e| panic!("{e}")),
+            vec![3]
+        );
+    }
+
+    #[test]
+    fn forney_algorithm_returns_the_error_magnitude() {
+        // sigma = 1 + alpha^3 x, omega = alpha^6: e = omega(X^-1) X^-1 / sigma'(X^-1) = alpha^(6 - 3 - 3) = 1.
+        let sigma = PolyGF256::new(vec![1, 8]);
+        let omega = PolyGF256::new(vec![64]);
+        assert_eq!(
+            forney_algorithm(&omega, &sigma, &[3]).unwrap_or_else(|e| panic!("{e}")),
+            vec![1]
+        );
+    }
+}
+
+mod ledger_rs_extra {
+    use rssn::kernels::error_correction::*;
+
+    #[test]
+    fn reed_solomon_corrects_every_two_error_pair_in_a_short_code() {
+        // Exhaustive over all position pairs with fixed magnitudes.
+        let cw = reed_solomon_encode(&[3, 1, 4, 1, 5, 9], 4).unwrap();
+        for i in 0..cw.len() {
+            for j in (i + 1)..cw.len() {
+                let mut bad = cw.clone();
+                bad[i] ^= 0x35;
+                bad[j] ^= 0xE1;
+                reed_solomon_decode(&mut bad, 4).unwrap_or_else(|e| panic!("({i},{j}): {e}"));
+                assert_eq!(bad, cw, "({i},{j})");
+            }
+        }
+    }
+
+    #[test]
+    fn reed_solomon_corrects_three_errors_with_six_parity() {
+        let cw = reed_solomon_encode(b"three errors here", 6).unwrap();
+        let mut bad = cw.clone();
+        bad[0] ^= 0x01;
+        bad[7] ^= 0x80;
+        bad[cw.len() - 2] ^= 0x7F;
+        reed_solomon_decode(&mut bad, 6).unwrap();
+        assert_eq!(bad, cw);
+    }
+
+    #[test]
+    fn reed_solomon_never_returns_ok_with_a_non_codeword() {
+        // t + 1 = 3 errors with 4 parity symbols: either an error is reported
+        // (input untouched) or the result is at least a valid codeword.
+        let cw = reed_solomon_encode(&(0u8..16).collect::<Vec<_>>(), 4).unwrap();
+        let mut errs = 0;
+        for k in 0..cw.len() - 2 {
+            let mut bad = cw.clone();
+            bad[k] ^= 0x11;
+            bad[k + 1] ^= 0x22;
+            bad[k + 2] ^= 0x44;
+            let before = bad.clone();
+            match reed_solomon_decode(&mut bad, 4) {
+                | Ok(()) => assert!(reed_solomon_check(&bad, 4)),
+                | Err(_) => {
+                    errs += 1;
+                    assert_eq!(bad, before);
+                },
+            }
+        }
+        assert!(
+            errs > 0,
+            "some 3-error patterns must be reported as uncorrectable"
+        );
+    }
+
+    #[test]
+    fn poly_div_reconstructs_the_dividend() {
+        // p = q d + r, ascending order, in GF(2^8).
+        let p = PolyGF256::new(vec![7, 0, 19, 200, 3, 55]);
+        let d = PolyGF256::new(vec![5, 9, 1]);
+        let (q, r) = p.poly_div(&d).unwrap();
+        assert!(r.normalize().degree() < d.degree() || r.normalize().0.is_empty());
+        assert_eq!(q.poly_mul(&d).poly_add(&r).normalize(), p.normalize());
+    }
+
+    #[test]
+    fn poly_add_aligns_constant_terms() {
+        // (1 + 2x) + (3) = 2 + 2x, not 1 + (2^3)x.
+        let sum = PolyGF256::new(vec![1, 2]).poly_add(&PolyGF256::new(vec![3]));
+        assert_eq!(sum.0, vec![2, 2]);
     }
 }

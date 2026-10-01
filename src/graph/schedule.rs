@@ -24,6 +24,7 @@
 //! semantics, so numeric kernels higher up find their inputs evaluated.
 
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
@@ -71,6 +72,9 @@ pub struct Budget {
     pub beam_width: usize,
     /// Beam depth for window search.
     pub beam_depth: usize,
+    /// Search steps a rewrite may spend looking for matches per
+    /// iteration before it is banned like a rule that matched too often.
+    pub match_fuel: usize,
     /// Stop after this many consecutive iterations that changed the graph
     /// without making the best term of any root cheaper; `0` disables the
     /// check.
@@ -91,6 +95,7 @@ impl Default for Budget {
             window_steps: 512,
             beam_width: 0,
             beam_depth: 3,
+            match_fuel: 200_000,
             patience: 3,
             time_limit: None,
         }
@@ -240,7 +245,7 @@ impl Engine {
             .iter()
             .map(|_| RuleState::default())
             .collect();
-        let mut windowed: HashSet<NodeId> = HashSet::new();
+        let mut windowed: HashMap<NodeId, u64> = HashMap::new();
         let normalizing: Vec<&Rewrite> = self.rewrites_of(Tier::Normalize);
         let exploring: Vec<&Rewrite> = self.rewrites_of(Tier::Explore);
         let passes: Vec<&dyn WindowPass> = self.program.passes.iter().map(|p| &**p).collect();
@@ -344,18 +349,18 @@ impl Engine {
                 break;
             }
             if budget.patience > 0 {
-                let extractor = Extractor::new(graph, roots, &ClosedForm);
-                let cost = roots
-                    .iter()
-                    .try_fold(0_u64, |acc, &r| {
-                        extractor.cost(graph, r).map(|c| acc.saturating_add(c))
-                    })
+                // Progress is measured on the closed form when there is one
+                // and on the best partially reduced term otherwise.
+                let total = |extractor: &Extractor, graph: &Graph| {
+                    roots.iter().try_fold(0_u64, |acc, &r| extractor.cost(graph, r).map(|c| acc.saturating_add(c)))
+                };
+                let cost = total(&Extractor::new(graph, roots, &ClosedForm), graph)
+                    .or_else(|| total(&Extractor::new(graph, roots, &SizeCost), graph).map(|c| c.saturating_add(1 << 40)))
                     .unwrap_or(u64::MAX);
                 if cost < best_cost {
                     best_cost = cost;
                     stalled = 0;
-                } else if cost != u64::MAX {
-                    // Only count iterations once there is an answer at all.
+                } else {
                     stalled = stalled.saturating_add(1);
                     if stalled >= budget.patience {
                         stop = Stop::Plateau;
@@ -439,14 +444,18 @@ impl Engine {
                     let shift = state.times_banned.min(16);
                     let limit = budget.match_limit.saturating_mul(1_usize << shift);
                     let mut matches = Vec::new();
+                    let mut fuel = budget.match_fuel;
                     for &node in nodes {
                         let room = limit.saturating_add(1).saturating_sub(matches.len());
                         if room == 0 {
                             break;
                         }
-                        matches.extend(rewrite.lhs.matches(graph, node, rewrite.nvars, room));
+                        matches.extend(rewrite.lhs.matches_bounded(graph, node, rewrite.nvars, room, &mut fuel));
+                        if fuel == 0 {
+                            break;
+                        }
                     }
-                    if matches.len() > limit {
+                    if matches.len() > limit || fuel == 0 {
                         state.banned_until = iteration
                             .saturating_add(budget.ban_length.saturating_mul(1_usize << shift))
                             .saturating_add(1);
@@ -512,7 +521,7 @@ impl Engine {
         normalizing: &[&Rewrite],
         exploring: &[&Rewrite],
         passes: &[&dyn WindowPass],
-        done: &mut HashSet<NodeId>,
+        done: &mut HashMap<NodeId, u64>,
     ) -> bool {
         if normalizing.is_empty() && passes.is_empty() {
             return false;
@@ -531,7 +540,11 @@ impl Engine {
             let Some(term) = extractor.build(graph, NodeId::from_raw(class.raw())) else {
                 continue;
             };
-            if !graph.children(term).is_empty() && done.insert(term) {
+            // A term is worth another look once the graph has learnt
+            // something since its last window: what its atoms are known to
+            // equal may have changed.
+            let stamp = graph.union_count();
+            if !graph.children(term).is_empty() && done.insert(term, stamp) != Some(stamp) {
                 terms.push((NodeId::from_raw(class.raw()), term));
             }
         }
@@ -560,7 +573,7 @@ impl Engine {
             }
             if steps > 0 {
                 let out = window.commit(graph);
-                done.insert(out);
+                done.insert(out, graph.union_count());
                 changed |= graph.union(term, out);
             }
         }

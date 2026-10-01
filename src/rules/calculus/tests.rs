@@ -16,17 +16,25 @@ fn run(src: &str) -> String {
 fn check_antiderivative(f: &str) {
     let (primitive, reduced) = reduce_with(&[calculus()], &format!("integral({f}, x)"), &[]);
     assert!(reduced, "∫ {f} dx was not found: {primitive}");
-    for at in [0.4, 0.9, 1.7] {
+    let mut checked = 0;
+    for at in [0.4, 0.9, 1.7, 2.6] {
         let h = 1e-5;
         let up = eval(&[calculus()], &primitive, &[("x", at + h), ("a", 1.3), ("b", 0.6)]);
         let down = eval(&[calculus()], &primitive, &[("x", at - h), ("a", 1.3), ("b", 0.6)]);
         let derivative = (up - down) / (2.0 * h);
         let want = eval(&[calculus()], f, &[("x", at), ("a", 1.3), ("b", 0.6)]);
+        // A real logarithm of a negative number is NaN here although the
+        // antiderivative is fine as a complex function: skip such points.
+        if !derivative.is_finite() || !want.is_finite() {
+            continue;
+        }
+        checked += 1;
         assert!(
             (derivative - want).abs() < 1e-5 * (1.0 + want.abs()),
             "∫ {f} dx = {primitive}, but its derivative at {at} is {derivative}, not {want}"
         );
     }
+    assert!(checked > 0, "∫ {f} dx = {primitive} could not be evaluated anywhere");
 }
 
 /// A definite integral in both phases: the closed form, evaluated, must
@@ -123,7 +131,7 @@ fn by_parts() {
 
 #[test]
 fn powers_of_sines_and_cosines() {
-    for f in ["sin(x)^3", "cos(x)^5", "sin(x)^2*cos(x)^3", "sin(x)^4", "sin(x)^2*cos(x)^2", "sin(2*x)^3*cos(2*x)^2"] {
+    for f in ["sin(2*x)*sin(x)", "cos(3*x)*cos(x)", "x*sin(x)*cos(2*x)", "sin(x)^3", "cos(x)^5", "sin(x)^2*cos(x)^3", "sin(x)^4", "sin(x)^2*cos(x)^2", "sin(2*x)^3*cos(2*x)^2"] {
         check_antiderivative(f);
     }
 }
@@ -138,7 +146,7 @@ fn what_cannot_be_integrated_stays_a_request() {
 
 #[test]
 fn fundamental_theorem() {
-    assert_eq!(run("diff(integral(f(x), x), x)"), "apply(f, x)");
+    assert_eq!(run("diff(integral(f(x), x), x)"), "f(x)");
     assert_eq!(run("diff(integral(x*exp(x), x), x)"), "x*exp(x)");
     assert_eq!(run("defint(f(x), x, a, a)"), "0");
 }
@@ -179,5 +187,148 @@ fn nested_requests() {
     assert_eq!(run("integral(diff(x^3, x), x)"), "x^3");
     let (value, _) = numeric(&[calculus()], "defint(defint(x*y, y, 0, x), x, 0, 1)", &[], 1e-10);
     assert!((value - 0.125).abs() < 1e-9, "{value}");
+}
+
+
+
+/// A limit in both phases.
+fn check_limit(
+    request: &str,
+    expected: f64,
+) {
+    let (closed, reduced) = reduce_with(&[calculus()], request, &[]);
+    assert!(reduced, "{request} was not resolved: {closed}");
+    let value = eval(&[calculus()], &closed, &[]);
+    assert!(
+        (value - expected).abs() < 1e-9 * (1.0 + expected.abs()) || value == expected,
+        "{request} = {closed} = {value}, expected {expected}"
+    );
+    if expected.is_finite() {
+        let (numeric_value, _) = numeric(&[calculus()], request, &[], 1e-6);
+        assert!((numeric_value - expected).abs() < 1e-5 * (1.0 + expected.abs()), "{request} numerically {numeric_value}");
+    }
+}
+
+#[test]
+fn limits_by_continuity_and_cancellation() {
+    assert_eq!(run("limit(x^2 + 1, x, 2)"), "5");
+    assert_eq!(run("limit((x^2 - 1)/(x - 1), x, 1)"), "2");
+    assert_eq!(run("limit(sin(x)/x, x, 0)"), "1");
+    assert_eq!(run("limit(a*x + b, x, c)"), "a*c + b");
+    check_limit("limit((1 - cos(x))/x^2, x, 0)", 0.5);
+    check_limit("limit((exp(x) - 1 - x)/x^2, x, 0)", 0.5);
+    check_limit("limit(tan(x)/x, x, 0)", 1.0);
+    check_limit("limit((x^3 - 8)/(x - 2), x, 2)", 12.0);
+    check_limit("limit(ln(1 + x)/x, x, 0)", 1.0);
+    check_limit("limit(x*ln(x), x, 0, plus)", 0.0);
+}
+
+#[test]
+fn limits_at_infinity() {
+    assert_eq!(run("limit(1/x, x, oo)"), "0");
+    assert_eq!(run("limit((2*x^2 + 1)/(x^2 - 3), x, oo)"), "2");
+    assert_eq!(run("limit((3*x + 1)/(x^2 + 1), x, -oo)"), "0");
+    assert_eq!(run("limit(x^2, x, -oo)"), "oo");
+    assert_eq!(run("limit(x^3/(x + 1), x, -oo)"), "oo");
+    assert_eq!(run("limit(exp(-x), x, oo)"), "0");
+    assert_eq!(run("limit(atan(x), x, oo)"), "1/2*pi");
+    assert_eq!(run("limit(atan(x), x, -oo)"), "-1/2*pi");
+    check_limit("limit(x*exp(-x), x, oo)", 0.0);
+    check_limit("limit(ln(x)/x, x, oo)", 0.0);
+    check_limit("limit((1 + 1/x)^x, x, oo)", std::f64::consts::E);
+    check_limit("limit(x^(1/x), x, oo)", 1.0);
+    check_limit("limit(tanh(x), x, oo)", 1.0);
+}
+
+#[test]
+fn infinite_and_one_sided_limits() {
+    assert_eq!(run("limit(1/x^2, x, 0)"), "oo");
+    assert_eq!(run("limit(1/x, x, 0, plus)"), "oo");
+    assert_eq!(run("limit(1/x, x, 0, minus)"), "-oo");
+    assert_eq!(run("limit(ln(x), x, 0, plus)"), "-oo");
+    assert_eq!(run("limit(abs(x)/x, x, 0, minus)"), "-1");
+    // No two-sided limit: the request stays.
+    for src in ["limit(1/x, x, 0)", "limit(abs(x)/x, x, 0)", "limit(sin(1/x), x, 0)", "limit(sin(x), x, oo)"] {
+        let (text, reduced) = reduce_with(&[calculus()], src, &[]);
+        assert!(!reduced, "{src} unexpectedly gave {text}");
+    }
+}
+
+#[test]
+fn taylor_and_laurent() {
+    assert_eq!(run("taylor(exp(x), x, 0, 4)"), "1/24*x^4 + 1/6*x^3 + 1/2*x^2 + x + 1");
+    assert_eq!(run("taylor(sin(x), x, 0, 5)"), "1/120*x^5 - 1/6*x^3 + x");
+    assert_eq!(run("taylor(1/(1 - x), x, 0, 3)"), "x^3 + x^2 + x + 1");
+    assert_eq!(run("taylor(ln(x), x, 1, 3)"), "1/3*(x - 1)^3 - 1/2*(x - 1)^2 + x - 1");
+    assert_eq!(run("taylor(sin(x)/x, x, 0, 4)"), "1/120*x^4 - 1/6*x^2 + 1", "removable singularity");
+    assert_eq!(run("laurent(1/(x*(1 - x)), x, 0, 2)"), "x^2 + x + 1 + 1/x");
+    assert_eq!(run("laurent(exp(x)/x^2, x, 0, 1)"), "1/6*x + 1/2 + 1/x + 1/x^2");
+    // The series approximates the function near the point.
+    let series = run("taylor(cos(x)*exp(x), x, 0, 8)");
+    let (got, want) = (eval(&[calculus()], &series, &[("x", 0.3)]), 0.3_f64.cos() * 0.3_f64.exp());
+    assert!((got - want).abs() < 1e-8, "{series}: {got} vs {want}");
+}
+
+#[test]
+fn sums_and_products() {
+    assert_eq!(run("sum(k^2, k, 1, 4)"), "30");
+    assert_eq!(run("sum(a^k, k, 0, 2)"), "a^2 + a + 1");
+    assert_eq!(run("product(k, k, 1, 5)"), "120");
+    assert_eq!(run("product(c, k, 1, n)"), "c^n");
+    // Closed forms, checked against the written-out sum.
+    for (summand, bindings) in [("k", 1.0), ("k^2", 1.0), ("k^3 - 2*k + 1", 1.0), ("3*r^k", 0.7), ("k*a + 2", 1.3)] {
+        let (closed, reduced) = reduce_with(&[calculus()], &format!("sum({summand}, k, 2, n)"), &[]);
+        assert!(reduced, "sum of {summand}: {closed}");
+        let at = [("n", 9.0), ("r", bindings), ("a", bindings)];
+        let got = eval(&[calculus()], &closed, &at);
+        let want: f64 = (2..=9)
+            .map(|k| eval(&[calculus()], summand, &[("k", f64::from(k)), ("r", bindings), ("a", bindings)]))
+            .sum();
+        assert!((got - want).abs() < 1e-9 * (1.0 + want.abs()), "sum of {summand} = {closed}: {got} vs {want}");
+    }
+    assert_eq!(run("sum((1/2)^k, k, 0, oo)"), "2");
+    assert_eq!(run("sum(3*(1/3)^k, k, 1, oo)"), "3/2");
+    let (text, reduced) = reduce_with(&[calculus()], "sum(2^k, k, 0, oo)", &[]);
+    assert!(!reduced, "a divergent geometric series has no sum: {text}");
+}
+
+#[test]
+fn numeric_sums() {
+    let (value, error) = numeric(&[calculus()], "sum(1/k^2, k, 1, oo)", &[], 1e-10);
+    assert!((value - std::f64::consts::PI.powi(2) / 6.0).abs() < 1e-5, "{value} ± {error}");
+    let (value, _) = numeric(&[calculus()], "sum((-1)^(k + 1)/k, k, 1, oo)", &[], 1e-12);
+    assert!((value - std::f64::consts::LN_2).abs() < 1e-9, "{value}");
+    let (value, _) = numeric(&[calculus()], "sum(sin(k)/k^2, k, 1, 1000)", &[], 1e-12);
+    let want: f64 = (1..=1000).map(|k| f64::from(k).sin() / f64::from(k * k)).sum();
+    assert!((value - want).abs() < 1e-12, "{value}");
+    let (value, _) = numeric(&[calculus()], "product(1 + 1/k^2, k, 1, 50)", &[], 1e-12);
+    let want: f64 = (1..=50).map(|k| 1.0 + 1.0 / f64::from(k * k)).product();
+    assert!((value - want).abs() < 1e-12, "{value}");
+}
+
+#[test]
+fn convergence_tests() {
+    assert_eq!(run("converges(1/2^k, k)"), "true");
+    assert_eq!(run("converges(2^k/k^5, k)"), "false");
+    assert_eq!(run("converges(1/k^2, k)"), "true");
+    assert_eq!(run("converges(1/k, k)"), "false");
+}
+
+#[test]
+fn fourier_series_of_simple_functions() {
+    // x on [-pi, pi]: 2 sin x - sin 2x + (2/3) sin 3x - ...
+    let series = run("fourier_series(x, x, pi, 3)");
+    for at in [0.5, 1.5, 2.5] {
+        let got = eval(&[calculus()], &series, &[("x", at)]);
+        let want = 2.0 * (at.sin() - (2.0 * at).sin() / 2.0 + (3.0 * at).sin() / 3.0);
+        assert!((got - want).abs() < 1e-9, "{series} at {at}: {got} vs {want}");
+    }
+    // An even function has no sine terms.
+    let series = run("fourier_series(x^2, x, 1, 2)");
+    let at = 0.4_f64;
+    let pi = std::f64::consts::PI;
+    let want = 1.0 / 3.0 - 4.0 / (pi * pi) * (pi * at).cos() + 1.0 / (pi * pi) * (2.0 * pi * at).cos();
+    let got = eval(&[calculus()], &series, &[("x", at)]);
+    assert!((got - want).abs() < 1e-9, "{series}: {got} vs {want}");
 }
 

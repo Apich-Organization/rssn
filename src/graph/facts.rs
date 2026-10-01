@@ -90,6 +90,12 @@ impl BitOr for Facts {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct OnReals(pub Facts);
 
+/// Operator attribute: facts that hold for the operator's value whatever
+/// its arguments (`re`, `im` and `abs` are real for complex arguments too;
+/// the imaginary unit is non-zero).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Always(pub Facts);
+
 impl Graph {
     /// Declares facts about a symbol. Repeated calls accumulate.
     pub fn assume(
@@ -252,6 +258,9 @@ impl Graph {
                     if all(Facts::REAL) {
                         facts = on_reals.0;
                     }
+                }
+                if let Some(always) = self.ops().attr::<Always>(op) {
+                    facts = facts | always.0;
                 }
             },
         }

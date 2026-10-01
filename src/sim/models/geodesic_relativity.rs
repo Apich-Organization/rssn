@@ -20,6 +20,7 @@
 
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -147,8 +148,12 @@ pub fn run_geodesic_simulation(params: &GeodesicParameters) -> Vec<(f64, f64)> {
 ///
 /// # Errors
 ///
-/// This function will return an error if it fails to create or write to the output CSV files.
-pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
+/// This function will return an error if it fails to create the output directory.
+/// The files `orbit_<name>.csv` are written into `output_dir`, which is created
+/// if missing; a file that cannot be created is skipped.
+pub fn simulate_black_hole_orbits_scenario(output_dir: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(output_dir)?;
+
     println!(
         "Running Black Hole orbit \
          simulation..."
@@ -188,7 +193,7 @@ pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
 
         let path = run_geodesic_simulation(&params);
 
-        let filename = format!("orbit_{name}.csv");
+        let filename = output_dir.join(format!("orbit_{name}.csv"));
 
         if let Ok(mut file) = File::create(&filename) {
             let _ = writeln!(file, "x,y");
@@ -199,7 +204,8 @@ pub fn simulate_black_hole_orbits_scenario() -> std::io::Result<()> {
 
             println!(
                 "Saved path to \
-                     {filename}"
+                     {}",
+                filename.display()
             );
         }
     });

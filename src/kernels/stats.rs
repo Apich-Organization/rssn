@@ -373,14 +373,43 @@ pub fn max(data: &mut [f64]) -> f64 {
     data_container.max()
 }
 
-/// Computes the skewness of a slice of data.
+/// Computes the adjusted Fisher-Pearson sample skewness coefficient `G1`
+/// (the estimator used by Excel's `SKEW` and by `scipy.stats.skew(bias=False)`).
+///
+/// With `g1 = m3 / m2^(3/2)` (central moments divided by `n`),
+/// `G1 = sqrt(n (n - 1)) / (n - 2) * g1`.
+///
+/// Returns `NaN` for fewer than three points and `0.0` for constant data.
 pub fn skewness(data: &mut [f64]) -> f64 {
-    let data_container = Data::new(data);
+    let n = data.len() as f64;
 
-    data_container.skewness().unwrap_or(f64::NAN)
+    if n < 3.0 {
+        return f64::NAN;
+    }
+
+    let mean = mean(data);
+
+    let m2 = data.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / n;
+
+    let m3 = data.iter().map(|&x| (x - mean).powi(3)).sum::<f64>() / n;
+
+    if m2 == 0.0 {
+        return 0.0;
+    }
+
+    let g1 = m3 / m2.powf(1.5);
+
+    (n * (n - 1.0)).sqrt() / (n - 2.0) * g1
 }
 
-/// Computes the sample kurtosis (Fisher's g2) of a slice of data.
+/// Computes the unbiased sample excess kurtosis `G2` (the estimator used by
+/// Excel's `KURT` and `scipy.stats.kurtosis(fisher=True, bias=False)`); a
+/// normal distribution has expected value 0.
+///
+/// With `g2 = m4 / m2^2 - 3` (central moments divided by `n`),
+/// `G2 = (n - 1) / ((n - 2)(n - 3)) * ((n + 1) g2 + 6)`.
+///
+/// Returns `NaN` for fewer than four points and `0.0` for constant data.
 pub fn kurtosis(data: &mut [f64]) -> f64 {
     let n = data.len() as f64;
 
@@ -400,11 +429,7 @@ pub fn kurtosis(data: &mut [f64]) -> f64 {
 
     let g2 = m4 / m2.powi(2) - 3.0;
 
-    let term1 = n.mul_add(n, -1.0) / ((n - 2.0) * (n - 3.0));
-
-    let term2 = (g2 + 3.0) - 3.0 * (n - 1.0).powi(2) / ((n - 2.0) * (n - 3.0));
-
-    term1 * term2
+    (n - 1.0) / ((n - 2.0) * (n - 3.0)) * (n + 1.0).mul_add(g2, 6.0)
 }
 
 /// Represents a Poisson distribution.
@@ -593,9 +618,13 @@ pub fn two_sample_t_test(
 
     let mean2 = mean(&sample2_vec);
 
-    let var1 = variance(&sample1_vec);
-
-    let var2 = variance(&sample2_vec);
+    // The pooled estimator weights *sample* (n - 1) variances by (n - 1).
+    let (Some(var1), Some(var2)) = (
+        variance_with_type(&sample1_vec, VarianceType::Sample),
+        variance_with_type(&sample2_vec, VarianceType::Sample),
+    ) else {
+        return (f64::NAN, f64::NAN);
+    };
 
     let s_p_sq = (n1 - 1.0).mul_add(var1, (n2 - 1.0) * var2) / (n1 + n2 - 2.0);
 

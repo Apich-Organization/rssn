@@ -36,7 +36,9 @@ fn heat_1d_dirichlet_ends_leak_heat() {
 fn heat_1d_sine_mode_decays_with_the_exact_crank_nicolson_factor() {
     let (n, d_coeff, dt, steps) = (51usize, 0.3, 0.01, 20usize);
     let dx = 1.0 / (n as f64 - 1.0);
-    let u0: Vec<f64> = (0..n).map(|i| (std::f64::consts::PI * i as f64 * dx).sin()).collect();
+    let u0: Vec<f64> = (0..n)
+        .map(|i| (std::f64::consts::PI * i as f64 * dx).sin())
+        .collect();
     let res = solve_heat_equation_1d_cn(&u0, dx, dt, d_coeff, steps);
     // Eigenvalue of the discrete Laplacian for the first sine mode.
     let lambda = -d_coeff * 2.0 * (1.0 - (std::f64::consts::PI * dx).cos()) / (dx * dx);
@@ -88,7 +90,12 @@ fn schrodinger_1d_eigenstate_only_acquires_the_exact_crank_nicolson_phase() {
     let (n, j, dt, steps) = (41usize, 2usize, 0.02, 25usize);
     let dx = 0.05;
     let psi0: Vec<Complex<f64>> = (0..n)
-        .map(|i| Complex::new((std::f64::consts::PI * (j * i) as f64 / (n as f64 - 1.0)).sin(), 0.0))
+        .map(|i| {
+            Complex::new(
+                (std::f64::consts::PI * (j * i) as f64 / (n as f64 - 1.0)).sin(),
+                0.0,
+            )
+        })
         .collect();
     let energy = (1.0 - (j as f64 * std::f64::consts::PI / (n as f64 - 1.0)).cos()) / (dx * dx);
     let res = solve_schrodinger_1d_cn(&psi0, &vec![0.0; n], dx, dt, steps);
@@ -104,7 +111,14 @@ fn schrodinger_1d_eigenstate_only_acquires_the_exact_crank_nicolson_phase() {
 fn schrodinger_1d_with_a_constant_potential_only_shifts_the_phase() {
     // A constant potential V0 multiplies the state by the same unimodular factor everywhere (interior).
     let n = 31;
-    let psi0: Vec<Complex<f64>> = (0..n).map(|i| Complex::new((std::f64::consts::PI * i as f64 / (n as f64 - 1.0)).sin(), 0.0)).collect();
+    let psi0: Vec<Complex<f64>> = (0..n)
+        .map(|i| {
+            Complex::new(
+                (std::f64::consts::PI * i as f64 / (n as f64 - 1.0)).sin(),
+                0.0,
+            )
+        })
+        .collect();
     let free = solve_schrodinger_1d_cn(&psi0, &vec![0.0; n], 0.1, 0.01, 5);
     let shifted = solve_schrodinger_1d_cn(&psi0, &vec![3.0; n], 0.1, 0.01, 5);
     let ratio = shifted[n / 2] / free[n / 2];
@@ -125,7 +139,15 @@ fn heat_2d_adi_decays_a_product_mode_with_the_exact_factor() {
             u0[j * nx + i] = (pi * i as f64 * dx).sin() * (pi * j as f64 * dy).sin();
         }
     }
-    let cfg = HeatEquationSolverConfig { nx, ny, dx, dy, dt, d_coeff, steps };
+    let cfg = HeatEquationSolverConfig {
+        nx,
+        ny,
+        dx,
+        dy,
+        dt,
+        d_coeff,
+        steps,
+    };
     let res = solve_heat_equation_2d_cn_adi(&u0, &cfg);
     let lx = -d_coeff * 2.0 * (1.0 - (pi * dx).cos()) / (dx * dx);
     let ly = -d_coeff * 2.0 * (1.0 - (pi * dy).cos()) / (dy * dy);
@@ -146,14 +168,23 @@ fn heat_2d_adi_scenario_is_symmetric_bounded_and_dissipative() {
     assert!(res.iter().all(|v| v.is_finite()));
     for j in 0..50 {
         for i in 0..50 {
-            assert!((res[j * 50 + i] - res[i * 50 + j]).abs() < 1e-9, "x/y symmetry at ({i}, {j})");
+            assert!(
+                (res[j * 50 + i] - res[i * 50 + j]).abs() < 1e-9,
+                "x/y symmetry at ({i}, {j})"
+            );
         }
     }
     let max = res.iter().cloned().fold(f64::MIN, f64::max);
-    assert!(max < 100.0 && max > 1.0, "peak {max} must lie below the initial 100");
+    assert!(
+        max < 100.0 && max > 1.0,
+        "peak {max} must lie below the initial 100"
+    );
     // Zero Dirichlet boundary.
     for k in 0..50 {
-        assert_eq!((res[k], res[49 * 50 + k], res[k * 50], res[k * 50 + 49]), (0.0, 0.0, 0.0, 0.0));
+        assert_eq!(
+            (res[k], res[49 * 50 + k], res[k * 50], res[k * 50 + 49]),
+            (0.0, 0.0, 0.0, 0.0)
+        );
     }
 }
 

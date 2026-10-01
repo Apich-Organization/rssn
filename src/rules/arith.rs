@@ -12,6 +12,7 @@ use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
+use crate::graph::OpFlags;
 use crate::graph::Number;
 use crate::graph::OpId;
 use crate::graph::Outcome;
@@ -47,6 +48,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "arith/like-terms-1: ?a + ?c * ?a => (1 + ?c) * ?a if number(?c)",
             "arith/double: ?a + ?a => 2 * ?a",
             "arith/square: ?a * ?a => ?a ^ 2",
+            // The window pass merges powers it can see; these do the same
+            // through equalities (`sec(x)` known to be `cos(x)^(-1)`).
+            "arith/pow-merge-1: ?a * ?a ^ ?n => ?a ^ (?n + 1)",
+            "arith/pow-merge: ?a ^ ?m * ?a ^ ?n => ?a ^ (?m + ?n)",
             "arith/pow-pow: (?a ^ ?m) ^ ?n => ?a ^ (?m * ?n) if integer(?n)",
             "arith/pow-positive-factor: (?c * ?a) ^ ?e => ?c ^ ?e * ?a ^ ?e if number(?c), positive(?c)",
         ],
@@ -108,7 +113,11 @@ impl Kernel for FloatContagion {
         node: NodeId,
     ) -> Outcome {
         let graph = &mut *cx.graph;
-        let Some(eval) = graph.ops().get(graph.op(node)).eval else {
+        let desc = graph.ops().get(graph.op(node));
+        if desc.flags.has(OpFlags::PREDICATE) {
+            return Outcome::Pass;
+        }
+        let Some(eval) = desc.eval else {
             return Outcome::Pass;
         };
         let children = graph.children(node);
@@ -535,11 +544,8 @@ mod tests {
         assert_eq!(simplify("x * x^2 * x^3"), "x^6");
         assert_eq!(simplify("x / x"), "1");
         assert_eq!(simplify("x^2 / x"), "x");
-        assert_eq!(
-            simplify("x^a * x^b"),
-            "x^a*x^b",
-            "symbolic exponents are left alone"
-        );
+        assert_eq!(simplify("x^a * x^b"), "x^(a + b)");
+        assert_eq!(simplify("2^(k + 1) / 2^k"), "2");
         assert_eq!(simplify("(x^2)^3"), "x^6");
         assert_eq!(simplify("(x^a)^2"), "x^(2*a)");
         assert_eq!(simplify("(2*x)^2"), "4*x^2");
@@ -572,7 +578,7 @@ mod tests {
         // the outer window and gets a window of its own.
         assert_eq!(
             simplify("f(x + x) + g(x + x)"),
-            "apply(f, 2*x) + apply(g, 2*x)"
+            "f(2*x) + g(2*x)"
         );
     }
 }

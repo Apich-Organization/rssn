@@ -501,19 +501,27 @@ impl EquationOptimizer {
         Ok(res)
     }
 
-    /// Automatically select solver and solve
+    /// Runs `solver` on `problem` with an `argmin` executor.
+    ///
+    /// `problem` is any argmin problem type (the cost function / gradient
+    /// provider), not the parameter vector. `configure` receives the solver's
+    /// fresh state and returns it set up, e.g. `|s| s.param(x0).max_iters(100)`
+    /// for iterative solvers or `|s| s.max_iters(200)` for population solvers;
+    /// it is required because argmin's default iteration limit is unbounded.
     ///
     /// # Errors
     /// Returns an error if the optimization process fails.
-    pub fn auto_solve<S, I>(
-        problem: P,
+    pub fn auto_solve<C, S, I, Cfg>(
+        problem: C,
         solver: S,
-    ) -> Result<OptimizationResult<P, S, I>, Error>
+        configure: Cfg,
+    ) -> Result<OptimizationResult<C, S, I>, Error>
     where
-        S: Solver<P, I>,
-        I: State<Param = Array1<f64>>,
+        S: Solver<C, I>,
+        I: State,
+        Cfg: FnOnce(I) -> I,
     {
-        Executor::new(problem, solver).run()
+        Executor::new(problem, solver).configure(configure).run()
     }
 }
 

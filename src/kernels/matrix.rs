@@ -129,7 +129,8 @@ impl Field for f64 {
 
         let mut data = Vec::with_capacity(lhs.rows * rhs.cols);
 
-        for j in 0..rhs.cols {
+        // C^T is (rhs.cols x lhs.rows): one column per row of C.
+        for j in 0..lhs.rows {
             data.extend_from_slice(res_mat.col_as_slice(j));
         }
 
@@ -150,7 +151,17 @@ impl Field for f64 {
         // Use partial pivot LU for inversion
         let lu = mat_t.partial_piv_lu();
 
-        // Ideally we check determinant or rank, but for perf we just invert.
+        // A (near-)zero pivot in U means A is singular; refuse to invert
+        // with the same relative tolerance as the generic path.
+        let scale = matrix.data.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
+
+        let tol = n as f64 * f64::EPSILON * scale;
+
+        let u = lu.U();
+
+        if (0..n).any(|i| !(u.get(i, i).abs() > tol)) {
+            return None;
+        }
 
         let inv_t = lu.inverse();
 
@@ -277,7 +288,57 @@ impl Field for f64 {
                     vectors: Matrix::new(rows, cols, u_data).with_backend(matrix.backend),
                 })
             },
-            | _ => None, // LU/QR/etc not implemented yet for this quick pass
+            | FaerDecompositionType::Lu => {
+                // Row-major input: build an owned faer matrix element-wise.
+                let mat = faer::Mat::<f64>::from_fn(rows, cols, |i, j| matrix.data[i * cols + j]);
+                let lu = mat.as_ref().partial_piv_lu();
+                let (l_ref, u_ref) = (lu.L(), lu.U());
+                let k = rows.min(cols);
+                let mut l_data = vec![0.0; rows * k];
+                for i in 0..rows {
+                    for j in 0..k {
+                        l_data[i * k + j] = *l_ref.get(i, j);
+                    }
+                }
+                let mut u_data = vec![0.0; k * cols];
+                for i in 0..k {
+                    for j in 0..cols {
+                        u_data[i * cols + j] = *u_ref.get(i, j);
+                    }
+                }
+                // P * A = L * U: row i of P*A is row p[i] of A.
+                let (fwd, _) = lu.P().arrays();
+                let p: Vec<usize> = fwd.iter().map(|&i| faer::Unbind::unbound(i)).collect();
+                Some(FaerDecompositionResult::Lu {
+                    l: Matrix::new(rows, k, l_data).with_backend(matrix.backend),
+                    u: Matrix::new(k, cols, u_data).with_backend(matrix.backend),
+                    p,
+                })
+            },
+            | FaerDecompositionType::Qr => {
+                let mat = faer::Mat::<f64>::from_fn(rows, cols, |i, j| matrix.data[i * cols + j]);
+                let qr = mat.as_ref().qr();
+                // Thin factors: Q is rows x k, R is k x cols, k = min(rows, cols).
+                let q_mat = qr.compute_thin_Q();
+                let r_ref = qr.thin_R();
+                let k = rows.min(cols);
+                let mut q_data = vec![0.0; rows * k];
+                for i in 0..rows {
+                    for j in 0..k {
+                        q_data[i * k + j] = *q_mat.get(i, j);
+                    }
+                }
+                let mut r_data = vec![0.0; k * cols];
+                for i in 0..k {
+                    for j in 0..cols {
+                        r_data[i * cols + j] = *r_ref.get(i, j);
+                    }
+                }
+                Some(FaerDecompositionResult::Qr {
+                    q: Matrix::new(rows, k, q_data).with_backend(matrix.backend),
+                    r: Matrix::new(k, cols, r_data).with_backend(matrix.backend),
+                })
+            },
         }
     }
 }
@@ -1050,23 +1111,75 @@ impl<T: Field> Matrix<T> {
             }
         }
 
-        // Check if RREF operation was successful
-        augmented.rref().ok().and_then(|rank| {
-            if rank == n {
-                let mut inv_data = vec![T::zero(); n * n];
+        // Gauss-Jordan elimination with partial pivoting restricted to the
+        // first n columns. The rank of the augmented [A | I] is always n, so
+        // singularity must be judged on the pivots of A itself, relative to
+        // the scale of A (n * eps * max|a_ij|, the usual LU rank tolerance).
+        let scale = self
+            .data
+            .iter()
+            .map(Field::magnitude)
+            .fold(0.0_f64, f64::max);
 
-                for i in 0..n {
-                    for j in 0..n {
-                        inv_data[i * n + j] = augmented.get(i, j + n).clone();
+        let tol = n as f64 * f64::EPSILON * scale;
+
+        for c in 0..n {
+            let mut best_row = c;
+
+            let mut best = augmented.get(c, c).magnitude();
+
+            for r in (c + 1)..n {
+                let m = augmented.get(r, c).magnitude();
+
+                if m > best {
+                    best = m;
+
+                    best_row = r;
+                }
+            }
+
+            if best <= tol || !best.is_finite() {
+                return None;
+            }
+
+            if best_row != c {
+                for k in 0..2 * n {
+                    augmented.data.swap(best_row * 2 * n + k, c * 2 * n + k);
+                }
+            }
+
+            let pivot_inv = augmented.get(c, c).clone().inverse().ok()?;
+
+            for k in 0..2 * n {
+                let v = augmented.get(c, k).clone();
+
+                *augmented.get_mut(c, k) = v * pivot_inv.clone();
+            }
+
+            for r in 0..n {
+                if r != c {
+                    let factor = augmented.get(r, c).clone();
+
+                    for k in 0..2 * n {
+                        let term = factor.clone() * augmented.get(c, k).clone();
+
+                        let cur = augmented.get(r, k).clone();
+
+                        *augmented.get_mut(r, k) = cur - term;
                     }
                 }
-
-                Some(Self::new(n, n, inv_data).with_backend(self.backend))
-            } else {
-                // Matrix is not invertible (rank is less than n)
-                None
             }
-        })
+        }
+
+        let mut inv_data = vec![T::zero(); n * n];
+
+        for i in 0..n {
+            for j in 0..n {
+                inv_data[i * n + j] = augmented.get(i, j + n).clone();
+            }
+        }
+
+        Some(Self::new(n, n, inv_data).with_backend(self.backend))
     }
 
     /// Computes a basis for the null space (kernel) of the matrix.

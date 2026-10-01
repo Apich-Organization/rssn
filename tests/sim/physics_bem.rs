@@ -81,13 +81,25 @@ fn rectangle_conduction_matches_the_linear_profile() {
     // Exact solution u = 100 (1 - x): the insulated sides read 100 (1 - x_mid) at their elements.
     for i in 0..n {
         let x_mid = (i as f64 + 0.5) / n as f64;
-        assert!((u[i] - 100.0 * (1.0 - x_mid)).abs() < 5.0, "bottom node {i}: {} vs {}", u[i], 100.0 * (1.0 - x_mid));
+        assert!(
+            (u[i] - 100.0 * (1.0 - x_mid)).abs() < 5.0,
+            "bottom node {i}: {} vs {}",
+            u[i],
+            100.0 * (1.0 - x_mid)
+        );
     }
     // The flux out of the cold side is u_x = -100 (pointing outward: q = du/dn = -du/dx = 100 at x = 1 ... sign per convention).
     let cold: f64 = q[n..2 * n].iter().sum::<f64>() / n as f64;
-    assert!(cold.abs() > 50.0 && cold.abs() < 150.0, "mean flux on the cold side {cold}");
+    assert!(
+        cold.abs() > 50.0 && cold.abs() < 150.0,
+        "mean flux on the cold side {cold}"
+    );
     // Global balance: net flux through the boundary vanishes (harmonic function).
-    let net: f64 = q.iter().enumerate().map(|(i, v)| v * elements_of(&points)[i].length).sum();
+    let net: f64 = q
+        .iter()
+        .enumerate()
+        .map(|(i, v)| v * elements_of(&points)[i].length)
+        .sum();
     assert!(net.abs() < 5.0, "net flux {net}");
 }
 
@@ -98,7 +110,10 @@ fn evaluated_interior_potential_follows_the_linear_profile() {
     let elements = elements_of(&points);
     for (x, want) in [(0.25, 75.0), (0.5, 50.0), (0.75, 25.0)] {
         let pot = evaluate_potential_2d((x, 0.5), &elements, &u, &q);
-        assert!((pot - want).abs() < 6.0, "u({x}, 0.5) = {pot}, expected {want}");
+        assert!(
+            (pot - want).abs() < 6.0,
+            "u({x}, 0.5) = {pot}, expected {want}"
+        );
     }
 }
 
@@ -112,7 +127,12 @@ fn cylinder_scenario_reproduces_the_harmonic_function_x() {
         assert!((u[i] - a.cos()).abs() < 1e-12);
         // The flux is defined on the element between node i and i + 1: its midpoint angle is a + pi/40.
         let mid = a + std::f64::consts::PI / 40.0;
-        assert!((q[i] - mid.cos()).abs() < 0.1, "q[{i}] = {} vs {}", q[i], mid.cos());
+        assert!(
+            (q[i] - mid.cos()).abs() < 0.1,
+            "q[{i}] = {} vs {}",
+            q[i],
+            mid.cos()
+        );
     }
     // The flux integrates to zero over the closed boundary.
     assert!(q.iter().sum::<f64>().abs() < 1e-6);
@@ -120,7 +140,13 @@ fn cylinder_scenario_reproduces_the_harmonic_function_x() {
 
 #[test]
 fn mismatched_inputs_and_singular_systems_are_errors() {
-    assert!(solve_laplace_bem_2d(&[(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)], &[BoundaryCondition::Potential(1.0)]).is_err());
+    assert!(
+        solve_laplace_bem_2d(
+            &[(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)],
+            &[BoundaryCondition::Potential(1.0)]
+        )
+        .is_err()
+    );
     // Pure Neumann data leaves the potential undetermined up to a constant.
     let square = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)];
     let neumann = [BoundaryCondition::Flux(0.0); 4];
