@@ -138,7 +138,7 @@ fn zeta(s: f64) -> f64 {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // name, arity, semantics, what is known of the value for real arguments
-    let functions: [(&str, u8, EvalFn, Facts); 26] = [
+    let functions: [(&str, u8, EvalFn, Facts); 28] = [
         (
             "gamma",
             1,
@@ -284,6 +284,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             |a| a.first().map_or(f64::NAN, |&x| step(x, 0.0, 0.5, 1.0)),
             Facts::NONNEGATIVE,
         ),
+        ("lambertw", 1, |a| a.first().map_or(f64::NAN, |&x| num::lambert_w(x, true)), Facts::REAL),
+        ("lambertw_m1", 1, |a| a.first().map_or(f64::NAN, |&x| num::lambert_w(x, false)), Facts::NEGATIVE),
         ("floor", 1, |a| a.first().map_or(f64::NAN, |x| x.floor()), Facts::INTEGER),
         ("ceil", 1, |a| a.first().map_or(f64::NAN, |x| x.ceil()), Facts::INTEGER),
         ("round", 1, |a| a.first().map_or(f64::NAN, |x| x.round()), Facts::INTEGER),
@@ -339,6 +341,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     partials(i, "digamma", &["polygamma(1, ?a)"])?;
     partials(i, "polygamma", &["", "polygamma(?a + 1, ?b)"])?;
     partials(i, "erfi", &["2/pi^(1/2) * exp(?a^2)"])?;
+    partials(i, "lambertw", &["lambertw(?a)/(?a*(1 + lambertw(?a)))"])?;
+    partials(i, "lambertw_m1", &["lambertw_m1(?a)/(?a*(1 + lambertw_m1(?a)))"])?;
     partials(i, "besselj", &["", "(besselj(?a - 1, ?b) - besselj(?a + 1, ?b))/2"])?;
     partials(i, "bessely", &["", "(bessely(?a - 1, ?b) - bessely(?a + 1, ?b))/2"])?;
     partials(i, "besseli", &["", "(besseli(?a - 1, ?b) + besseli(?a + 1, ?b))/2"])?;
@@ -417,6 +421,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "special/bessely-negative-order: bessely(?n, ?x) => (-1)^?n * bessely(-?n, ?x) if integer(?n), negative(?n)",
             "special/besseli-negative-order: besseli(?n, ?x) => besseli(-?n, ?x) if integer(?n), negative(?n)",
             "special/erfcinv-1: erfcinv(1) => 0",
+            "special/lambertw-0: lambertw(0) => 0",
+            "special/lambertw-e: lambertw(E) => 1",
+            "special/lambertw-inverse: lambertw(?x*exp(?x)) => ?x if nonnegative(?x)",
             "special/digamma-half: digamma(1/2) => -euler_gamma - 2*ln(2)",
             "special/digamma-shift: digamma(?x + 1) - digamma(?x) => 1/?x",
             "special/floor-integer: floor(?n) => ?n if integer(?n)",

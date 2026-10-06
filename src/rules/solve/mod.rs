@@ -13,6 +13,14 @@
 //! [`Inverse`] attribute. Systems go through Cramer's rule when they are
 //! linear and through a lexicographic Gröbner basis otherwise.
 //!
+//! When the equation involves several functions of the unknown, the
+//! sub-solvers of the heuristics module transform it (absolute values,
+//! the Weierstrass substitution, Lambert W, logarithmic and radical
+//! substitutions) and hand the result back to the solver; polynomials of
+//! degree three and four get Cardano's and Ferrari's formulas, higher ones
+//! numeric roots; non-polynomial systems are solved by elimination. Every
+//! candidate is checked against the original equation.
+//!
 //! Inverse functions are taken on their principal branch, so periodic
 //! equations yield one representative solution per branch of the inverse,
 //! not the full solution set.
@@ -61,6 +69,8 @@ use super::poly::repr::Limits;
 use super::poly::repr::Poly;
 use super::poly::to_groebner;
 use super::poly::univariate;
+
+mod heuristics;
 
 /// Operator attribute: the solutions `u` of `op(u) = ?a`, one pattern per
 /// branch that is returned.
@@ -200,7 +210,7 @@ pub(crate) fn solve_for(
             }
             out
         },
-        | _ => return None,
+        | _ => heuristics::multi_generator(graph, term, x, depth)?,
     };
     // Discard candidates at which the original expression is not zero
     // (poles of a cancelled denominator, roots introduced by squaring),
@@ -451,7 +461,10 @@ fn rational_polynomial_roots(
                 let n = higher.len() - 1;
                 let (c0, cn) = (higher.first()?, higher.last()?);
                 if higher.get(1..n)?.iter().any(|c| !c.is_zero()) {
-                    return None;
+                    // Cubic and quartic formulas, or numeric roots.
+                    let rational: Vec<BigRational> = higher.iter().cloned().map(BigRational::from_integer).collect();
+                    roots.extend(heuristics::higher_degree(graph, &rational)?);
+                    continue;
                 }
                 let value = BigRational::new(-c0.clone(), cn.clone());
                 let exponent = graph.num(Number::fraction(1, i64::try_from(n).ok()?)?);
@@ -699,7 +712,8 @@ impl Kernel for Symbolic {
             let unknowns = graph.children(unknown).to_vec();
             let tuples = match solve_linear(graph, &equations, &unknowns) {
                 | Some(single) => Some(vec![single]),
-                | None => solve_polynomial_system(graph, equation, unknown),
+                | None => solve_polynomial_system(graph, equation, unknown)
+                    .or_else(|| heuristics::eliminate(graph, &equations, &unknowns, 0)),
             };
             tuples.map(|tuples| tuples.iter().map(|t| graph.node(core::LIST, t)).collect::<Vec<_>>())
         } else {
@@ -901,6 +915,71 @@ mod tests {
     }
 
     #[test]
+    fn heuristic_sub_solvers() {
+        let rules = crate::rules::standard();
+        let roots = |src: &str| -> Vec<f64> {
+            let (text, reduced) = crate::rules::testing::reduce_with(&rules, src, &[]);
+            assert!(reduced, "{src} not solved: {text}");
+            let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
+            if inner.is_empty() {
+                return Vec::new();
+            }
+            let mut depth = 0;
+            let mut parts = Vec::new();
+            let mut current = String::new();
+            for ch in inner.chars() {
+                match ch {
+                    | '(' => depth += 1,
+                    | ')' => depth -= 1,
+                    | ',' if depth == 0 => {
+                        parts.push(std::mem::take(&mut current));
+                        continue;
+                    },
+                    | _ => {},
+                }
+                current.push(ch);
+            }
+            parts.push(current);
+            let mut values: Vec<f64> = parts.iter().map(|p| crate::rules::testing::eval(&rules, p.trim(), &[])).collect();
+            values.sort_by(f64::total_cmp);
+            values
+        };
+        let close = |got: &[f64], want: &[f64]| {
+            got.len() == want.len() && got.iter().zip(want).all(|(a, b)| (a - b).abs() < 1e-9)
+        };
+        // Cardano: one real root; the trigonometric form: three.
+        let cube = roots("solve(x^3 - 2*x - 5, x)");
+        assert!(close(&cube, &[2.094_551_481_542_327]), "{cube:?}");
+        let three = roots("solve(x^3 - 3*x + 1, x)");
+        assert!(close(&three, &[-1.879_385_241_571_816_6, 0.347_296_355_333_860_7, 1.532_088_886_237_956]), "{three:?}");
+        // Biquadratic and Ferrari quartics, and a quintic numerically.
+        let bi = roots("solve(x^4 - 10*x^2 + 1, x)");
+        let s = (2.0_f64).sqrt() + (3.0_f64).sqrt();
+        let d = (3.0_f64).sqrt() - (2.0_f64).sqrt();
+        assert!(close(&bi, &[-s, -d, d, s]), "{bi:?}");
+        let quintic = roots("solve(x^5 - x - 1, x)");
+        assert!(close(&quintic, &[1.167_303_978_261_418_7]), "{quintic:?}");
+        // Absolute values, trigonometric and Lambert-type equations.
+        assert!(close(&roots("solve(abs(x - 1) - 2, x)"), &[-1.0, 3.0]));
+        let trig = roots("solve(sin(x) + cos(x) - 1, x)");
+        assert!(close(&trig, &[0.0, std::f64::consts::FRAC_PI_2]), "{trig:?}");
+        let double = roots("solve(sin(2*x) - cos(x), x)");
+        assert!(double.len() >= 3, "{double:?}");
+        let w = roots("solve(x*exp(x) - 1, x)");
+        assert!(close(&w, &[0.567_143_290_409_784]), "{w:?}");
+        let lin_exp = roots("solve(x + exp(x), x)");
+        assert!(close(&lin_exp, &[-0.567_143_290_409_784]), "{lin_exp:?}");
+        let log = roots("solve(x*ln(x) - 1, x)");
+        assert!(close(&log, &[1.763_222_834_351_896_7]), "{log:?}");
+        // Radicals.
+        assert!(close(&roots("solve(x - 3*x^(1/2) + 2, x)"), &[1.0, 4.0]));
+        assert!(close(&roots("solve((x + 7)^(1/2) - x - 1, x)"), &[2.0]));
+        // A non-polynomial system by elimination.
+        let (system, reduced) = crate::rules::testing::reduce_with(&rules, "solve(list(y - exp(x), y - 2), list(x, y))", &[]);
+        assert!(reduced && system.contains("ln(2)"), "{system}");
+    }
+
+    #[test]
     fn linear_and_quadratic() {
         assert_eq!(run("solve(2*x + 6 = 0, x)"), "list(-3)");
         assert_eq!(run("solve(x^2 = 4, x)"), "list(-2, 2)");
@@ -963,7 +1042,7 @@ mod tests {
 
     #[test]
     fn unsolvable_requests_stay_unreduced() {
-        for src in ["solve(x + exp(x) = 0, x)", "solve(x^5 - x + 1 = 0, x)", "solve(sin(x) = x, x)"] {
+        for src in ["solve(x + exp(x) = 0, x)", "solve(sin(x) = x, x)"] {
             let (text, reduced) = reduce_with(&[solve()], src, &[]);
             assert!(!reduced, "{src} unexpectedly gave {text}");
         }

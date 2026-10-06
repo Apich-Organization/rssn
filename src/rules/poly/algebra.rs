@@ -702,6 +702,24 @@ fn cad_plane(
 // ---------------------------------------------------------------------------
 // Trigonometric expansion
 
+/// Trigonometric functions of sums and integer multiples expanded in the
+/// concrete term `e` (for the equation solver).
+pub(crate) fn expand_trig_term(
+    graph: &mut Graph,
+    e: NodeId,
+) -> Option<NodeId> {
+    expand_trig(graph, e, 0)
+}
+
+/// An isolating interval of `q` shrunk below `width`.
+pub(crate) fn refine_interval(
+    q: &[BigRational],
+    interval: (BigRational, BigRational),
+    width: &BigRational,
+) -> (BigRational, BigRational) {
+    refine(q, interval, width)
+}
+
 fn expand_trig(
     graph: &mut Graph,
     e: NodeId,

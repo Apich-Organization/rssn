@@ -1539,3 +1539,74 @@ mod arbitrary_order_bessel_tests {
         assert!((generalized_laguerre(2, 1.0, 0.7) - f64::midpoint(0.49 - 4.2, 6.0)).abs() < 1e-14);
     }
 }
+
+/// The Lambert W function: `W(x) e^{W(x)} = x`.
+///
+/// `upper = true` is the principal branch `W₀` (defined for `x ≥ -1/e`); `upper = false` the
+/// branch `W₋₁` (for `-1/e ≤ x < 0`). NaN outside the domain. Halley's
+/// iteration from a branch-appropriate start.
+#[must_use]
+pub fn lambert_w(
+    x: f64,
+    upper: bool,
+) -> f64 {
+    let branch_point = -(-1.0_f64).exp();
+    if !x.is_finite() || x < branch_point || (!upper && x >= 0.0) {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return 0.0;
+    }
+    if (x - branch_point).abs() < 1e-300 {
+        return -1.0;
+    }
+    // Starting points: the series about the branch point near -1/e, a
+    // logarithmic estimate elsewhere.
+    let p = (2.0 * (1.0 + std::f64::consts::E * x)).max(0.0).sqrt();
+    let mut w = if upper {
+        if x < 0.25 {
+            -1.0 + p - p * p / 3.0 + 11.0 / 72.0 * p * p * p
+        } else {
+            let l = x.ln_1p();
+            l - l.max(1e-300).ln_1p() * 0.5
+        }
+    } else if x > -0.25 {
+        let l = (-x).ln();
+        l - (-l).ln()
+    } else {
+        -1.0 - p - p * p / 3.0 - 11.0 / 72.0 * p * p * p
+    };
+    for _ in 0..64 {
+        let e = w.exp();
+        let f = w * e - x;
+        let wp1 = w + 1.0;
+        if wp1.abs() < 1e-300 {
+            break;
+        }
+        let step = f / (e * wp1 - (w + 2.0) * f / (2.0 * wp1));
+        w -= step;
+        if step.abs() <= 1e-15 * w.abs().max(1.0) {
+            break;
+        }
+    }
+    w
+}
+
+#[cfg(test)]
+mod lambert_tests {
+    use super::lambert_w;
+
+    #[test]
+    fn lambert_w_branches() {
+        for &x in &[-0.3, -0.1, 0.5, 1.0, 10.0, 1e6] {
+            let w = lambert_w(x, true);
+            assert!((w * w.exp() - x).abs() < 1e-10 * x.abs().max(1.0), "W0({x}) = {w}");
+        }
+        assert!((lambert_w(1.0, true) - 0.567_143_290_409_784).abs() < 1e-14);
+        for &x in &[-0.35, -0.2, -0.01] {
+            let w = lambert_w(x, false);
+            assert!(w <= -1.0 && (w * w.exp() - x).abs() < 1e-10, "W-1({x}) = {w}");
+        }
+        assert!(lambert_w(-1.0, true).is_nan() && lambert_w(0.5, false).is_nan());
+    }
+}
