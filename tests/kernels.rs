@@ -82,3 +82,5 @@ mod krylov;
 mod special_ext;
 #[path = "kernels/robust.rs"]
 mod robust;
+#[path = "kernels/ode_stiff.rs"]
+mod ode_stiff;
