@@ -11,6 +11,10 @@
 #![allow(unsafe_code)]
 
 pub mod classical;
+/// Compressible gas dynamics (Euler equations, HLLC, MUSCL).
+pub mod gas_dynamics;
+/// Symplectic and stiff (implicit, Rosenbrock) integrators.
+pub mod integrators;
 pub mod models;
 /// Boundary element method.
 pub mod physics_bem;

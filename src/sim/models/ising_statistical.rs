@@ -243,3 +243,130 @@ pub fn simulate_ising_phase_transition_scenario(output_dir: &Path) -> Result<(),
 
     Ok(())
 }
+
+/// Thermodynamic averages of a Monte Carlo run (per spin, `J = k_B = 1`).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct IsingObservables {
+    /// `⟨E⟩ / N`.
+    pub energy: f64,
+    /// `⟨|M|⟩ / N`.
+    pub magnetization: f64,
+    /// Specific heat `(⟨E²⟩ - ⟨E⟩²) / (N T²)`.
+    pub specific_heat: f64,
+    /// Susceptibility `(⟨M²⟩ - ⟨|M|⟩²) / (N T)`.
+    pub susceptibility: f64,
+    /// Binder cumulant `1 - ⟨M⁴⟩ / (3 ⟨M²⟩²)`.
+    pub binder: f64,
+    /// Mean Wolff cluster size (fraction of the lattice).
+    pub mean_cluster: f64,
+}
+
+fn ising_energy(
+    grid: &[i8],
+    width: usize,
+    height: usize,
+) -> f64 {
+    let mut e = 0_i64;
+    for i in 0..height {
+        for j in 0..width {
+            let s = i64::from(grid[i * width + j]);
+            let right = i64::from(grid[i * width + (j + 1) % width]);
+            let down = i64::from(grid[((i + 1) % height) * width + j]);
+            e -= s * (right + down);
+        }
+    }
+    e as f64
+}
+
+/// The Wolff single-cluster algorithm:
+///
+/// a cluster grown from a random seed spin, each aligned neighbour added
+/// with probability `1 - exp(-2/T)`, is flipped as a whole. Rejection-free
+/// and free of critical slowing down, so it samples near `T_c` far better
+/// than local Metropolis updates. `sweeps` cluster updates are measured
+/// after `thermalisation` discarded ones.
+#[must_use]
+pub fn run_wolff_simulation(
+    width: usize,
+    height: usize,
+    temperature: f64,
+    thermalisation: usize,
+    sweeps: usize,
+    seed: u64,
+) -> IsingObservables {
+    let n = width * height;
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut grid = vec![1_i8; n];
+    let add_probability = 1.0 - (-2.0 / temperature).exp();
+    let mut stack = Vec::with_capacity(n);
+    let mut in_cluster = vec![false; n];
+    let (mut e_sum, mut e2_sum, mut m_sum, mut m2_sum, mut m4_sum, mut cluster_sum) = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    for step in 0..thermalisation + sweeps {
+        let start = rng.random_range(0..n);
+        let spin = grid[start];
+        stack.clear();
+        stack.push(start);
+        in_cluster[start] = true;
+        let mut members = Vec::new();
+        while let Some(site) = stack.pop() {
+            members.push(site);
+            let (i, j) = (site / width, site % width);
+            let neighbours = [
+                ((i + height - 1) % height) * width + j,
+                ((i + 1) % height) * width + j,
+                i * width + (j + width - 1) % width,
+                i * width + (j + 1) % width,
+            ];
+            for nb in neighbours {
+                if !in_cluster[nb] && grid[nb] == spin && rng.random::<f64>() < add_probability {
+                    in_cluster[nb] = true;
+                    stack.push(nb);
+                }
+            }
+        }
+        for &site in &members {
+            grid[site] = -grid[site];
+            in_cluster[site] = false;
+        }
+        if step >= thermalisation {
+            let e = ising_energy(&grid, width, height);
+            let m = grid.iter().map(|&s| f64::from(s)).sum::<f64>().abs();
+            e_sum += e;
+            e2_sum += e * e;
+            m_sum += m;
+            m2_sum += m * m;
+            m4_sum += m.powi(4);
+            cluster_sum += members.len() as f64;
+        }
+    }
+    let samples = sweeps.max(1) as f64;
+    let nf = n as f64;
+    let (e, e2, m, m2, m4) = (e_sum / samples, e2_sum / samples, m_sum / samples, m2_sum / samples, m4_sum / samples);
+    IsingObservables {
+        energy: e / nf,
+        magnetization: m / nf,
+        specific_heat: (e2 - e * e) / (nf * temperature * temperature),
+        susceptibility: (m2 - m * m) / (nf * temperature),
+        binder: 1.0 - m4 / (3.0 * m2 * m2),
+        mean_cluster: cluster_sum / samples / nf,
+    }
+}
+
+#[cfg(test)]
+mod wolff_tests {
+    use super::*;
+
+    #[test]
+    fn ordered_and_disordered_phases() {
+        // T_c = 2/ln(1 + √2) ≈ 2.269.
+        let cold = run_wolff_simulation(24, 24, 1.5, 200, 1000, 7);
+        let hot = run_wolff_simulation(24, 24, 4.0, 200, 3000, 7);
+        assert!(cold.magnetization > 0.95 && cold.binder > 0.6, "{cold:?}");
+        assert!(hot.magnetization < 0.3 && hot.binder < 0.4, "{hot:?}");
+        // Onsager's energy per spin at T = 1.5 is ≈ -1.947.
+        assert!((cold.energy + 1.947).abs() < 0.02, "{cold:?}");
+        // The specific heat peaks near T_c.
+        let near = run_wolff_simulation(24, 24, 2.27, 200, 3000, 7);
+        assert!(near.specific_heat > cold.specific_heat && near.specific_heat > hot.specific_heat, "{near:?}");
+    }
+}

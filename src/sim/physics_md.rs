@@ -905,3 +905,308 @@ pub fn create_fcc_lattice(
 
     particles
 }
+
+// ============================================================================
+// Stochastic and extended-system thermostats, neighbour lists
+// ============================================================================
+
+/// A deterministic Gaussian sampler (`SplitMix64` + Box–Muller), so that
+/// Langevin runs are reproducible from a seed.
+#[derive(Clone, Debug)]
+pub struct GaussianStream {
+    state: u64,
+    spare: Option<f64>,
+}
+
+impl GaussianStream {
+    /// A stream seeded with `seed`.
+    #[must_use]
+    pub const fn new(seed: u64) -> Self {
+        Self { state: seed, spare: None }
+    }
+
+    fn uniform(&mut self) -> f64 {
+        self.state = self.state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = self.state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^= z >> 31;
+        ((z >> 11) as f64 + 0.5) / (1_u64 << 53) as f64
+    }
+
+    /// A standard normal deviate.
+    pub fn next_normal(&mut self) -> f64 {
+        if let Some(s) = self.spare.take() {
+            return s;
+        }
+        let (u1, u2) = (self.uniform(), self.uniform());
+        let r = (-2.0 * u1.ln()).sqrt();
+        let theta = 2.0 * std::f64::consts::PI * u2;
+        self.spare = Some(r * theta.sin());
+        r * theta.cos()
+    }
+}
+
+/// Langevin dynamics with the BAOAB splitting (Leimkuhler–Matthews):
+///
+/// half kick (B), half drift (A), exact Ornstein–Uhlenbeck velocity update
+/// with friction `gamma` at temperature `kt` (O), half drift, half kick.
+/// Samples the canonical ensemble with configurational error `O(dt²)`.
+///
+/// # Errors
+/// Propagates errors of the force calculation.
+pub fn integrate_langevin_baoab<F>(
+    particles: &mut [Particle],
+    dt: f64,
+    num_steps: usize,
+    gamma: f64,
+    kt: f64,
+    noise: &mut GaussianStream,
+    mut force_calculator: F,
+) -> Result<(), String>
+where
+    F: FnMut(&mut [Particle]) -> Result<(), String>,
+{
+    let c1 = (-gamma * dt).exp();
+    force_calculator(particles)?;
+    for _ in 0..num_steps {
+        for p in particles.iter_mut() {
+            for k in 0..p.velocity.len() {
+                p.velocity[k] += 0.5 * dt * p.force[k] / p.mass;
+                p.position[k] += 0.5 * dt * p.velocity[k];
+            }
+            let c2 = ((1.0 - c1 * c1) * kt / p.mass).sqrt();
+            for v in &mut p.velocity {
+                *v = c1 * *v + c2 * noise.next_normal();
+            }
+            for k in 0..p.position.len() {
+                p.position[k] += 0.5 * dt * p.velocity[k];
+            }
+        }
+        force_calculator(particles)?;
+        for p in particles.iter_mut() {
+            for k in 0..p.velocity.len() {
+                p.velocity[k] += 0.5 * dt * p.force[k] / p.mass;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// The Nosé–Hoover thermostat:
+///
+/// the friction `ξ` obeys `Q dξ/dt = Σ m v² - N_f kT`, a deterministic
+/// extended system whose invariant `H + Q ξ²/2 + N_f kT s` (with `ds/dt =
+/// ξ`) is conserved. Velocity-Verlet with the friction applied as an exact
+/// exponential scaling in half steps. Returns the final `(ξ, s)`.
+///
+/// # Errors
+/// Propagates errors of the force calculation.
+#[allow(clippy::too_many_arguments)]
+pub fn integrate_nose_hoover<F>(
+    particles: &mut [Particle],
+    dt: f64,
+    num_steps: usize,
+    kt: f64,
+    q_mass: f64,
+    xi0: f64,
+    mut force_calculator: F,
+) -> Result<(f64, f64), String>
+where
+    F: FnMut(&mut [Particle]) -> Result<(), String>,
+{
+    let degrees: f64 = particles.iter().map(|p| p.velocity.len() as f64).sum();
+    let kinetic2 = |ps: &[Particle]| -> f64 { ps.iter().map(|p| p.mass * p.velocity.iter().map(|v| v * v).sum::<f64>()).sum() };
+    let (mut xi, mut s) = (xi0, 0.0);
+    force_calculator(particles)?;
+    for _ in 0..num_steps {
+        // Thermostat half step.
+        xi += 0.25 * dt * (kinetic2(particles) - degrees * kt) / q_mass;
+        let scale = (-0.5 * dt * xi).exp();
+        for p in particles.iter_mut() {
+            p.velocity.iter_mut().for_each(|v| *v *= scale);
+        }
+        s += 0.5 * dt * xi;
+        xi += 0.25 * dt * (kinetic2(particles) - degrees * kt) / q_mass;
+        // Velocity Verlet.
+        for p in particles.iter_mut() {
+            for k in 0..p.velocity.len() {
+                p.velocity[k] += 0.5 * dt * p.force[k] / p.mass;
+                p.position[k] += dt * p.velocity[k];
+            }
+        }
+        force_calculator(particles)?;
+        for p in particles.iter_mut() {
+            for k in 0..p.velocity.len() {
+                p.velocity[k] += 0.5 * dt * p.force[k] / p.mass;
+            }
+        }
+        // Thermostat half step.
+        xi += 0.25 * dt * (kinetic2(particles) - degrees * kt) / q_mass;
+        let scale = (-0.5 * dt * xi).exp();
+        for p in particles.iter_mut() {
+            p.velocity.iter_mut().for_each(|v| *v *= scale);
+        }
+        s += 0.5 * dt * xi;
+        xi += 0.25 * dt * (kinetic2(particles) - degrees * kt) / q_mass;
+    }
+    Ok((xi, s))
+}
+
+/// Pairs `(i, j)`, `i < j`, closer than `cutoff` under periodic
+/// boundaries in a box of side `box_length`.
+///
+/// They are found with a linked-cell list in `O(N)` time (cells of side at
+/// least `cutoff`; a plain double loop when the box holds fewer than three
+/// cells per side).
+#[must_use]
+#[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_precision_loss)]
+pub fn neighbour_pairs(
+    particles: &[Particle],
+    box_length: f64,
+    cutoff: f64,
+) -> Vec<(usize, usize)> {
+    let dim = particles.first().map_or(0, |p| p.position.len());
+    let distance2 = |a: &[f64], b: &[f64]| -> f64 {
+        a.iter()
+            .zip(b)
+            .map(|(x, y)| {
+                let mut d = x - y;
+                d -= box_length * (d / box_length).round();
+                d * d
+            })
+            .sum()
+    };
+    let cells_per_side = (box_length / cutoff).floor() as usize;
+    let mut pairs = Vec::new();
+    if cells_per_side < 3 || dim == 0 || dim > 3 {
+        for i in 0..particles.len() {
+            for j in i + 1..particles.len() {
+                if distance2(&particles[i].position, &particles[j].position) < cutoff * cutoff {
+                    pairs.push((i, j));
+                }
+            }
+        }
+        return pairs;
+    }
+    let side = box_length / cells_per_side as f64;
+    let cell_of = |pos: &[f64]| -> Vec<usize> {
+        pos.iter()
+            .map(|&x| {
+                let wrapped = x.rem_euclid(box_length);
+                ((wrapped / side) as usize).min(cells_per_side - 1)
+            })
+            .collect()
+    };
+    let flat = |c: &[usize]| c.iter().fold(0, |acc, &k| acc * cells_per_side + k);
+    let mut cells: Vec<Vec<usize>> = vec![Vec::new(); cells_per_side.pow(dim as u32)];
+    for (i, p) in particles.iter().enumerate() {
+        cells[flat(&cell_of(&p.position))].push(i);
+    }
+    // Neighbouring cell offsets in {-1, 0, 1}^dim.
+    let offsets: Vec<Vec<isize>> = (0..3_usize.pow(dim as u32))
+        .map(|mut code| {
+            (0..dim)
+                .map(|_| {
+                    let o = (code % 3) as isize - 1;
+                    code /= 3;
+                    o
+                })
+                .collect()
+        })
+        .collect();
+    for (i, p) in particles.iter().enumerate() {
+        let home = cell_of(&p.position);
+        for offset in &offsets {
+            let neighbour: Vec<usize> =
+                home.iter().zip(offset).map(|(&c, &o)| (c as isize + o).rem_euclid(cells_per_side as isize) as usize).collect();
+            for &j in &cells[flat(&neighbour)] {
+                if j > i && distance2(&p.position, &particles[j].position) < cutoff * cutoff {
+                    pairs.push((i, j));
+                }
+            }
+        }
+    }
+    pairs.sort_unstable();
+    pairs.dedup();
+    pairs
+}
+
+#[cfg(test)]
+mod thermostat_tests {
+    use super::*;
+
+    #[allow(clippy::unnecessary_wraps)] // the force-callback signature
+    fn harmonic(ps: &mut [Particle]) -> Result<(), String> {
+        for p in ps.iter_mut() {
+            p.force = p.position.iter().map(|x| -x).collect();
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn langevin_samples_the_canonical_distribution() {
+        // Harmonic oscillators: <v²> = <x²> = kT (m = k = 1).
+        let mut ps: Vec<Particle> = (0..200).map(|i| Particle::new(i, 1.0, vec![0.0], vec![0.0])).collect();
+        let mut noise = GaussianStream::new(42);
+        integrate_langevin_baoab(&mut ps, 0.05, 2000, 1.0, 0.7, &mut noise, harmonic).unwrap();
+        let (mut v2, mut x2) = (0.0, 0.0);
+        let mut samples = 0.0;
+        for _ in 0..200 {
+            integrate_langevin_baoab(&mut ps, 0.05, 10, 1.0, 0.7, &mut noise, harmonic).unwrap();
+            for p in &ps {
+                v2 += p.velocity[0] * p.velocity[0];
+                x2 += p.position[0] * p.position[0];
+                samples += 1.0;
+            }
+        }
+        assert!((v2 / samples - 0.7).abs() < 0.03 && (x2 / samples - 0.7).abs() < 0.03, "{} {}", v2 / samples, x2 / samples);
+    }
+
+    #[test]
+    fn nose_hoover_conserves_its_extended_energy() {
+        let mut ps: Vec<Particle> =
+            (0..5).map(|i| Particle::new(i, 1.0, vec![0.1 * i as f64, -0.2], vec![0.3, 0.1 * i as f64 - 0.2])).collect();
+        let (kt, q) = (0.5, 2.0);
+        let energy = |ps: &[Particle]| -> f64 {
+            ps.iter().map(|p| 0.5 * p.mass * p.velocity.iter().map(|v| v * v).sum::<f64>() + 0.5 * p.position.iter().map(|x| x * x).sum::<f64>()).sum()
+        };
+        let e0 = energy(&ps);
+        let (xi, s) = integrate_nose_hoover(&mut ps, 0.01, 5000, kt, q, 0.0, harmonic).unwrap();
+        let degrees = 10.0;
+        let invariant = energy(&ps) + 0.5 * q * xi * xi + degrees * kt * s;
+        assert!((invariant - e0).abs() < 1e-3 * (1.0 + e0), "{invariant} vs {e0}");
+    }
+
+    #[test]
+    fn cell_lists_find_every_close_pair() {
+        let mut noise = GaussianStream::new(3);
+        let box_length = 10.0;
+        let ps: Vec<Particle> = (0..300)
+            .map(|i| {
+                let pos: Vec<f64> = (0..3).map(|_| (noise.next_normal() * 3.0).rem_euclid(box_length)).collect();
+                Particle::new(i, 1.0, pos, vec![0.0; 3])
+            })
+            .collect();
+        let fast = neighbour_pairs(&ps, box_length, 2.5);
+        let slow = neighbour_pairs(&ps, box_length, 6.0); // brute force path
+        let brute: Vec<(usize, usize)> = slow
+            .into_iter()
+            .filter(|&(i, j)| {
+                let d2: f64 = ps[i]
+                    .position
+                    .iter()
+                    .zip(&ps[j].position)
+                    .map(|(a, b)| {
+                        let mut d = a - b;
+                        d -= box_length * (d / box_length).round();
+                        d * d
+                    })
+                    .sum();
+                d2 < 2.5 * 2.5
+            })
+            .collect();
+        assert_eq!(fast, brute);
+        assert!(!fast.is_empty());
+    }
+}

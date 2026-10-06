@@ -30,6 +30,9 @@ pub const SCENARIOS: &[&str] = &[
     "lid_driven_cavity",
     "channel_flow",
     "schrodinger",
+    "ising_wolff",
+    "sod_shock_tube",
+    "kepler_symplectic",
 ];
 
 fn parse<T: DeserializeOwned>(params: &str) -> Result<T, String> {
@@ -45,6 +48,32 @@ struct IsingRequest {
     #[serde(flatten)]
     params: ising_statistical::IsingParameters,
     seed: Option<u64>,
+}
+
+#[derive(Deserialize)]
+struct WolffRequest {
+    width: usize,
+    height: usize,
+    temperature: f64,
+    thermalisation: usize,
+    sweeps: usize,
+    seed: Option<u64>,
+}
+
+#[derive(Deserialize)]
+struct SodRequest {
+    cells: usize,
+    t: f64,
+    limiter: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct KeplerRequest {
+    q: Vec<f64>,
+    p: Vec<f64>,
+    dt: f64,
+    steps: usize,
+    order: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -112,6 +141,33 @@ pub fn run(
             let r: ChannelRequest = parse(params)?;
             flow(navier_stokes_fluid::run_channel_flow(r.nx, r.ny, r.re, r.dt, r.n_iter, &r.obstacle_mask))?
         },
+        | "ising_wolff" => {
+            let r: WolffRequest = parse(params)?;
+            let stats = ising_statistical::run_wolff_simulation(r.width, r.height, r.temperature, r.thermalisation, r.sweeps, r.seed.unwrap_or(ising_statistical::DEFAULT_ISING_SEED));
+            encode(&stats)?
+        },
+        | "sod_shock_tube" => {
+            let r: SodRequest = parse(params)?;
+            let limiter = match r.limiter.as_deref() {
+                | None | Some("van_leer") => super::gas_dynamics::Limiter::VanLeer,
+                | Some("minmod") => super::gas_dynamics::Limiter::Minmod,
+                | Some("none") => super::gas_dynamics::Limiter::None,
+                | Some(other) => return Err(format!("unknown limiter `{other}`")),
+            };
+            let (x, density, exact) = super::gas_dynamics::sod_shock_tube(r.cells, r.t, limiter);
+            json!({ "x": x, "density": density, "exact": exact })
+        },
+        | "kepler_symplectic" => {
+            let r: KeplerRequest = parse(params)?;
+            if r.q.len() != r.p.len() {
+                return Err("q and p must have the same length".to_owned());
+            }
+            let path = super::integrators::symplectic_trajectory(&r.q, &r.p, 1.0, r.dt, r.steps, r.order.unwrap_or(4), |q: &[f64]| {
+                let r3 = q.iter().map(|x| x * x).sum::<f64>().powf(1.5);
+                q.iter().map(|x| -x / r3).collect()
+            });
+            json!({ "trajectory": path })
+        },
         | "schrodinger" => {
             let mut r: SchrodingerRequest = parse(params)?;
             if r.initial_psi.len() != r.params.nx.saturating_mul(r.params.ny) {
@@ -140,6 +196,16 @@ mod tests {
         let v: Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["spins"].as_array().unwrap().len(), 64);
         assert_eq!(out, run("ising", r#"{"width": 8, "height": 8, "temperature": 1.5, "mc_steps": 20, "seed": 7}"#).unwrap());
+
+        let out = run("ising_wolff", r#"{"width": 16, "height": 16, "temperature": 1.5, "thermalisation": 50, "sweeps": 200, "seed": 3}"#).unwrap();
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert!(v["magnetization"].as_f64().unwrap() > 0.9, "{out}");
+        let out = run("sod_shock_tube", r#"{"cells": 50, "t": 0.2, "limiter": "minmod"}"#).unwrap();
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["density"].as_array().unwrap().len(), 50);
+        let out = run("kepler_symplectic", r#"{"q": [1.0, 0.0], "p": [0.0, 1.0], "dt": 0.01, "steps": 10}"#).unwrap();
+        let v: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["trajectory"].as_array().unwrap().len(), 11);
 
         let out = run(
             "geodesic",
