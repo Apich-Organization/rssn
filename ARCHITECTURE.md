@@ -38,14 +38,14 @@ number.
 | `api` | `Session`, `Term<'s>` (a `Copy` handle with overloaded operators), `Config` (rule sets, target phase, bindings, assumptions, budget), `Session::compute -> Answer`, and `ComputeError`. |
 | `io` | Text parsing and printing (round-trippable), LaTeX, Typst, Unicode pretty-printing, markup helpers, plotting, `.npy` (feature `npy`). |
 | `backend` | `Backend` trait: it compiles a closed-form term into a callable function. The reference `Interpreter` ships with the crate. JIT backends live outside the core crate (see below). |
-| `sim` | Time stepping, fields and particles: FDM/FEM/FVM/BEM, CFD, MD, SPH, spectral, multigrid, and the scenario models. `sim::scenario::run(name, json)` is the uniform entry point. |
+| `sim` | Time stepping, fields and particles: FDM/FEM/FVM/BEM, CFD, MD (Verlet, BAOAB Langevin, Nosé–Hoover, cell lists), SPH, spectral, multigrid; P1/P2 finite elements on unstructured triangle meshes with adaptive refinement (`fem_triangles`); compressible gas dynamics with HLLC/MUSCL and an exact Riemann solver (`gas_dynamics`); symplectic and stiff integrators (`integrators`); Ising Metropolis and Wolff clusters; and the scenario models. `sim::scenario::run(name, json)` is the uniform entry point. |
 | `ffi` | A minimal C ABI over `api` and `sim::scenario`. cbindgen generates `rssn.h`/`rssn.hpp` from it (`DEV=1 cargo build`). |
 
 ### Rule sets
 
 `rules::standard()` installs all of these:
 
-- `arith`, `elementary`, `calculus`, `poly`, `solve`, `ode`, `linalg`, `geometry`, `complex`, `number_theory`, `combinatorics`, `logic`, `special`, `stats`, `transforms`, `variational`, `pde`, `functional`, `physics`, `optimize`, `verify`, `discrete`.
+- `arith`, `elementary`, `calculus`, `poly`, `solve`, `ode`, `linalg`, `geometry`, `complex`, `number_theory`, `combinatorics`, `logic`, `special`, `stats`, `transforms`, `variational`, `pde`, `functional`, `physics`, `physics_quantum`, `optimize`, `verify`, `discrete` (graphs, finite and permutation groups, character tables, point groups, topology and homology, coding, cryptography, fractals), `rewriting` (Knuth–Bendix), `lie` and `lie_structure` (Lie algebras, root systems, representations), `geometric_algebra`, `units`, `radicals`.
 
 A rule set declares the sets it depends on. Its contents are:
 
@@ -54,7 +54,7 @@ A rule set declares the sets it depends on. Its contents are:
 - **definitions**: `name(a, b) := body`, expanded by a kernel;
 - **kernels**: Rust functions over e-classes that return `Equal(term)`, `Pinned(term)`, `Approx(ball)` or `Pass`.
 
-Heavy algorithms are kernels. Examples are Risch-style integration tables, Gosper summation, polynomial factorisation, Gröbner bases, ODE classification and PDE separation of variables. Each kernel writes its result back as an equality.
+Heavy algorithms are kernels. Examples are Risch–Norman integration and the substitution/reduction-formula integrator, Gosper summation and recurrence guessing, univariate (Zassenhaus) and multivariate (Kronecker) factorisation, Gröbner bases, CAD in any dimension, the equation and inequality solver with its heuristic sub-solvers, the ODE solver (classification, variation of parameters of any order, Lie point symmetries, reductions, Fourier and Laplace methods), the PDE solver (characteristics in any dimension, separation of variables, Green's functions, conservation laws and symmetries), and Schreier–Sims / Todd–Coxeter for groups. Each kernel writes its result back as an equality.
 
 ### Phases
 
