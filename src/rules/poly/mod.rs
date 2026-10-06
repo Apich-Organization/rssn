@@ -11,6 +11,7 @@
 pub mod algebra;
 pub mod apart;
 pub mod groebner;
+pub mod multifactor;
 pub mod repr;
 pub mod univariate;
 
@@ -606,7 +607,8 @@ fn factor(
         return Some(to_term(graph, &gens, &poly));
     }
     // Several generators: pull out the numeric content and the monomial
-    // common to all terms; the remaining factor stays expanded.
+    // common to all terms, then split the rest into irreducible factors
+    // (Kronecker reduction to the univariate factoriser).
     let mut content = BigRational::from_integer(BigInt::from(0));
     let mut common: Option<Vec<(u32, u32)>> = None;
     for (mono, c) in poly.terms() {
@@ -621,9 +623,6 @@ fn factor(
         });
     }
     let common = common.unwrap_or_default();
-    if content.is_one() && common.is_empty() {
-        return Some(to_term(graph, &gens, &poly));
-    }
     let mut reduced = Poly::zero();
     for (mono, c) in poly.terms() {
         let lowered: Vec<(u32, u32)> = mono
@@ -636,9 +635,23 @@ fn factor(
         let scaled = Number::rat(c.to_rational()? / &content);
         reduced = reduced.add(&Poly::monomial(lowered, scaled));
     }
-    let outer = to_term(graph, &gens, &Poly::monomial(common, Number::rat(content)));
-    let inner = to_term(graph, &gens, &reduced);
-    Some(graph.node(core::MUL, &[outer, inner]))
+    let (unit, pieces) = multifactor::factor(&reduced, &support).unwrap_or_else(|| (Number::from(1), vec![(reduced.clone(), 1)]));
+    if content.is_one() && common.is_empty() && unit.is_one() && pieces.len() == 1 && pieces[0].1 == 1 {
+        return Some(to_term(graph, &gens, &poly));
+    }
+    let scale = Number::rat(content * unit.to_rational()?);
+    let mut factors = Vec::with_capacity(pieces.len() + 1);
+    if !common.is_empty() || !scale.is_one() {
+        factors.push(to_term(graph, &gens, &Poly::monomial(common, scale)));
+    }
+    for (g, m) in pieces {
+        let base = to_term(graph, &gens, &g);
+        factors.push(power(graph, base, m as usize).unwrap_or(base));
+    }
+    Some(match factors.as_slice() {
+        | [only] => *only,
+        | _ => graph.node(core::MUL, &factors),
+    })
 }
 
 /// Converts the polynomials of `list(p1, ...)` to the Gröbner
@@ -904,6 +917,34 @@ mod tests {
     fn factor_multivariate_pulls_out_content() {
         assert_eq!(run("factor(2*x*y + 4*x*z)"), "2*x*(y + 2*z)");
         assert_eq!(run("factor(x*y + z)"), "x*y + z");
+    }
+
+    #[test]
+    fn factor_multivariate_into_irreducibles() {
+        assert_eq!(run("factor(x^2 - y^2)"), "(x + y)*(x - y)");
+        assert_eq!(run("factor(x^2 + 2*x*y + y^2)"), "(x + y)^2");
+        assert_eq!(run("factor(x^2 + y^2)"), "x^2 + y^2");
+        for src in [
+            "x^3 - y^3",
+            "x^4 - y^4",
+            "x^2*y + x*y^2 - x - y",
+            "6*x^2*y - 3*x*y^2 + 4*x*z - 2*y*z",
+            "(x + y + z)*(x - 2*y + 3)^2*(x*y*z - 1)",
+            "a^2*b^2 - a^2 - b^2 + 1",
+            "x^3*z + x^2*y*z - x*z^2 - y*z^2",
+        ] {
+            let expanded = run(&format!("expand({src})"));
+            let factored = run(&format!("factor({expanded})"));
+            assert!(factored.contains(")*(") || factored.contains(")^"), "{src}: {factored}");
+            for (a, b, c) in [(0.3, -1.1, 0.7), (2.2, 0.4, -1.9), (-0.8, 1.5, 2.6)] {
+                let at = [("x", a), ("y", b), ("z", c), ("a", b), ("b", c)];
+                let (want, got) = (eval(&[poly()], &expanded, &at), eval(&[poly()], &factored, &at));
+                assert!((want - got).abs() < 1e-9 * (1.0 + want.abs()), "{src} = {factored}: {want} vs {got}");
+            }
+        }
+        // Irreducible inputs stay as they are.
+        assert_eq!(run("factor(x^2 + y^2 + 1)"), "x^2 + y^2 + 1");
+        assert!(!run("factor(x^3 + y^2*x + y^5)").contains(")*("));
     }
 
     #[test]
