@@ -19,9 +19,12 @@
 //! (`kkt_points`, `kkt_minimum`), convexity and definiteness checks
 //! (`is_convex`, `is_concave`, `hessian_definiteness`), equality
 //! constrained quadratic programs (`qp_eq`) and `legendre_transform`; see
-//! its table.
+//! its table. The `numeric` submodule adds compiled local and global
+//! numeric optimisation (`nminimize`, `nmaximize`, `nminimize_global`,
+//! `nmaximize_global`).
 
 mod ext;
+mod numeric;
 
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
@@ -59,6 +62,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(heavy("find_constrained_extrema", 3))?;
     i.kernel("optimize/find_constrained_extrema", Tier::Reduce, Extrema { op, constrained: true });
     ext::install(i)?;
+    numeric::install(i)?;
     Ok(())
 }
 
