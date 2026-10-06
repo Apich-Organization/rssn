@@ -8,17 +8,16 @@ exercises it, or when it is dropped with a reason. Status values: `pending`, `do
 Read a legacy implementation with `git show 84f3ee89:<file>`.
 
 A row with status `partial (no test: ...)` has code but no test naming it, so
-it is not closed. A status followed by `(in progress: ...)` is being implemented on
-the transforms/complex/finite-field/units branch and is not to be started here.
+it is not closed. 
 
-## Summary (updated 2026-10-01)
+## Summary (updated 2026-10-06)
 
 | status | rows |
 |---|---|
-| done | 1502 |
+| done | 1535 |
 | dropped | 140 |
-| partial | 14 (14 missing functionality, 0 missing a test; 4 in progress) |
-| pending | 19 (9 in progress) |
+| partial | 0 |
+| pending | 0 |
 | total | 1675 |
 
 The remaining `pending` and `partial` rows are listed by domain in
@@ -1171,7 +1170,7 @@ The remaining `pending` and `partial` rows are listed by domain in
 
 | legacy function | new home | status |
 |---|---|---|
-| `cad` | `rules::poly::algebra` operator `cad(polys, vars)`: sample points of the cells for R^1 and R^2 only; no 3+ variables (legacy projected and lifted to any dimension), no cell adjacency/structure output | partial |
+| `cad` | `rules::poly::algebra` operator `cad(polys, vars)`: sample points of a sign-invariant CAD of R^n for any n (Collins projection in the plane; McCallum-style projection with full coefficient sets in higher dimensions, lifting over rational samples) (tests cylindrical_decomposition, cylindrical_decomposition_in_three_variables) | done |
 
 ## `src/symbolic/calculus.rs` (16)
 
@@ -1459,8 +1458,8 @@ The remaining `pending` and `partial` rows are listed by domain in
 |---|---|---|
 | `exterior_derivative` | `rules::geometry` operator `exterior_d` (tests rules::geometry::tests) | done |
 | `wedge_product` | `rules::geometry` operator `wedge` (tests rules::geometry::tests) | done |
-| `boundary` | no symbolic region/manifold boundary term `∂M`; the concrete theorems take explicit bounds (rectangle, box, parametrised surface) | pending |
-| `generalized_stokes_theorem` | no operator stating `∫_M dω = ∫_∂M ω` for a symbolic manifold; `greens_theorem`, `gauss_theorem`, `stokes_theorem` cover the concrete cases | pending |
+| `boundary` | `rules::geometry` `boundary(M)` of a `cell(φ, params, bounds)` or `chain(...)`: the oriented faces as a chain (test chains_boundaries_and_the_generalized_stokes_theorem) | done |
+| `generalized_stokes_theorem` | `rules::geometry` `generalized_stokes(ω, vars, M)`: `∫_M dω = ∫_∂M ω` with both sides evaluated through `pullback` and `integrate_form`, for cells of any dimension in any ambient space (test chains_boundaries_and_the_generalized_stokes_theorem) | done |
 | `gauss_theorem` | `rules::geometry` operator `gauss_theorem` (tests rules::geometry::tests) | done |
 | `stokes_theorem` | `rules::geometry` operator `stokes_theorem` (tests rules::geometry::tests) | done |
 | `greens_theorem` | `rules::geometry` operator `greens_theorem` (tests rules::geometry::tests) | done |
@@ -2319,7 +2318,7 @@ The remaining `pending` and `partial` rows are listed by domain in
 |---|---|---|
 | `new` | `rules::discrete::topology` operator `sc_complex` (tests rules::discrete::topology::tests) | done |
 | `dimension` | `rules::discrete::topology` operator `sc_dimension` (tests rules::discrete::topology::tests) | done |
-| `boundary` | `rules::discrete::topology` operator `sc_boundary` (tests rules::discrete::topology::tests) | done |
+| `boundary` | `rules::geometry` `boundary(M)` of a `cell(φ, params, bounds)` or `chain(...)`: the oriented faces as a chain (test chains_boundaries_and_the_generalized_stokes_theorem) | done |
 | `symbolic_boundary` | `rules::discrete::topology` operator `sc_boundary`; chain coefficients are arbitrary terms (tests rules::discrete::topology::tests) | done |
 | `add_term` | `rules::discrete::topology` operator `sc_chain_boundary`; a chain is `list(list(coeff, simplex), ...)` and equal simplices are combined (tests rules::discrete::topology::tests) | done |
 | `add_simplex` | `rules::discrete::topology` operator `sc_complex`; `sc_complex(list(...))` closes under faces (tests rules::discrete::topology::tests) | done |

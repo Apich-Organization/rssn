@@ -27,6 +27,12 @@
 //! | `greens_theorem(P, Q, list(x, y), list(list(x0, x1), list(y0, y1)))` | the circulation of `(P, Q)` around a rectangle, as `∬ (Q_x - P_y)` |
 //! | `gauss_theorem(F, vars, bounds)` | the flux out of a box, as `∭ div F` |
 //! | `stokes_theorem(F, surface, u, v, u0, u1, v0, v1)` | the circulation around the boundary of a parametrised surface, as the flux of `curl F` |
+//! | `cell(φ, params, bounds)` | an oriented `k`-cell: the image of the box `bounds = list(list(a1, b1), ...)` of the parameters `params` under the chart `φ = list(x1(u), ..., xn(u))` (inert) |
+//! | `chain(list(list(s, cell), ...))` | a formal sum of cells with integer multiplicities (inert) |
+//! | `boundary(M)` | `∂M` of a cell (constant bounds) or chain: `Σ_i Σ_α (-1)^(i+α) M|_{u_i = a_i / b_i}` as a chain of `(k-1)`-cells; `boundary(boundary(M))` integrates to zero |
+//! | `pullback(ω, vars, φ, params)` | `φ*ω`: the form in the parameters (`dx_i = Σ_j ∂φ_i/∂u_j du_j`) |
+//! | `integrate_form(ω, vars, M)` | `∫_M ω` over a cell or chain: the pull-back's top-degree coefficient integrated over the box (iterated `defint`, first parameter innermost); a 0-form over a 0-cell is its value there |
+//! | `generalized_stokes(ω, vars, M)` | `integrate_form(exterior_d(ω), vars, M) = integrate_form(ω, vars, boundary(M))`, both sides evaluated |
 
 use crate::graph::Arity;
 use crate::graph::Cx;
@@ -96,10 +102,14 @@ enum Request {
     Greens,
     Gauss,
     Stokes,
+    Boundary,
+    Pullback,
+    IntegrateForm,
+    GeneralizedStokes,
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let table: [(&str, u8, Request); 33] = [
+    let table: [(&str, u8, Request); 37] = [
         ("tensor_rank", 1, Request::Rank),
         ("component", 2, Request::Component),
         ("tensor_add", 2, Request::Add),
@@ -133,8 +143,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("greens_theorem", 4, Request::Greens),
         ("gauss_theorem", 3, Request::Gauss),
         ("stokes_theorem", 8, Request::Stokes),
+        ("boundary", 1, Request::Boundary),
+        ("pullback", 4, Request::Pullback),
+        ("integrate_form", 3, Request::IntegrateForm),
+        ("generalized_stokes", 3, Request::GeneralizedStokes),
     ];
     i.op(OpDescriptor::new("form", Arity::Fixed(1)))?;
+    i.op(OpDescriptor::new("cell", Arity::Fixed(3)))?;
+    i.op(OpDescriptor::new("chain", Arity::Fixed(1)))?;
     for (name, arity, request) in table {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(arity)).flags(OpFlags::HEAVY).cost(100))?;
         i.kernel(&format!("geometry/{name}"), Tier::Reduce, Geometry { op, request });
@@ -1176,8 +1192,258 @@ impl Geometry {
                 let inner = named(cx.graph, "defint", &[integrand, u, arg(4)?, arg(5)?])?;
                 named(cx.graph, "defint", &[inner, v, arg(6)?, arg(7)?])
             },
+            | Request::Boundary => {
+                let mut faces = Vec::new();
+                for (sign, cell) in read_chain(cx.graph, arg(0)?)? {
+                    for (s, face) in cell_boundary(cx, &cell)? {
+                        faces.push((sign * s, face));
+                    }
+                }
+                Some(write_chain(cx.graph, &faces))
+            },
+            | Request::Pullback => {
+                let terms = read_form(cx.graph, arg(0)?)?;
+                let vars = items(cx.graph, arg(1)?)?;
+                let chart = items(cx.graph, arg(2)?)?;
+                let params = items(cx.graph, arg(3)?)?;
+                let pulled = pullback(cx, &terms, &vars, &chart, &params)?;
+                write_form(cx, pulled)
+            },
+            | Request::IntegrateForm => {
+                let terms = read_form(cx.graph, arg(0)?)?;
+                let vars = items(cx.graph, arg(1)?)?;
+                let mut total = Vec::new();
+                for (sign, cell) in read_chain(cx.graph, arg(2)?)? {
+                    let value = integrate_over_cell(cx, &terms, &vars, &cell)?;
+                    let m = cx.graph.int(sign);
+                    total.push(mul(cx.graph, &[m, value]));
+                }
+                let sum = add(cx.graph, &total);
+                Some(cx.simplify(sum))
+            },
+            | Request::GeneralizedStokes => {
+                let (omega, vars, manifold) = (arg(0)?, arg(1)?, arg(2)?);
+                let d_omega = named(cx.graph, "exterior_d", &[omega, vars])?;
+                let d_omega = cx.simplify(d_omega);
+                let boundary = named(cx.graph, "boundary", &[manifold])?;
+                let boundary = cx.simplify(boundary);
+                let lhs = named(cx.graph, "integrate_form", &[d_omega, vars, manifold])?;
+                let rhs = named(cx.graph, "integrate_form", &[omega, vars, boundary])?;
+                let (lhs, rhs) = (cx.simplify(lhs), cx.simplify(rhs));
+                Some(cx.graph.node(core::EQ, &[lhs, rhs]))
+            },
         }
     }
+}
+
+// ----------------------------------------------------------------------
+// Chains, boundaries and integration of forms
+// ----------------------------------------------------------------------
+
+/// The items of a `list(...)` (possibly empty).
+fn items(
+    graph: &mut Graph,
+    node: NodeId,
+) -> Option<Vec<NodeId>> {
+    let node = best(graph, node)?;
+    (graph.op(node) == core::LIST).then(|| graph.children(node).to_vec())
+}
+
+/// A cell: chart, parameters and `(a, b)` bounds.
+struct Cell {
+    chart: Vec<NodeId>,
+    params: Vec<NodeId>,
+    bounds: Vec<(NodeId, NodeId)>,
+}
+
+fn read_cell(
+    graph: &mut Graph,
+    node: NodeId,
+) -> Option<Cell> {
+    let node = best(graph, node)?;
+    if graph.ops().get(graph.op(node)).name.as_ref() != "cell" {
+        return None;
+    }
+    let &[chart, params, bounds] = graph.children(node) else {
+        return None;
+    };
+    let (chart, params) = (items(graph, chart)?, items(graph, params)?);
+    let mut pairs = Vec::new();
+    for b in items(graph, bounds)? {
+        let &[lo, hi] = graph.children(b) else {
+            return None;
+        };
+        pairs.push((lo, hi));
+    }
+    (pairs.len() == params.len()).then_some(Cell { chart, params, bounds: pairs })
+}
+
+fn write_cell(
+    graph: &mut Graph,
+    cell: &Cell,
+) -> NodeId {
+    let chart = list(graph, &cell.chart);
+    let params = list(graph, &cell.params);
+    let bounds: Vec<NodeId> = cell.bounds.iter().map(|&(a, b)| list(graph, &[a, b])).collect();
+    let bounds = list(graph, &bounds);
+    named(graph, "cell", &[chart, params, bounds]).unwrap_or(chart)
+}
+
+/// A cell (multiplicity 1) or a chain, as `(multiplicity, cell)` pairs.
+fn read_chain(
+    graph: &mut Graph,
+    node: NodeId,
+) -> Option<Vec<(i64, Cell)>> {
+    let node = best(graph, node)?;
+    if graph.ops().get(graph.op(node)).name.as_ref() != "chain" {
+        return Some(vec![(1, read_cell(graph, node)?)]);
+    }
+    let &[terms] = graph.children(node) else {
+        return None;
+    };
+    let mut out = Vec::new();
+    for t in items(graph, terms)? {
+        let &[m, c] = graph.children(t) else {
+            return None;
+        };
+        let m = graph.number_of(m)?.to_i64()?;
+        out.push((m, read_cell(graph, c)?));
+    }
+    Some(out)
+}
+
+fn write_chain(
+    graph: &mut Graph,
+    cells: &[(i64, Cell)],
+) -> NodeId {
+    let mut terms = Vec::new();
+    for (m, c) in cells {
+        if *m == 0 {
+            continue;
+        }
+        let m = graph.int(*m);
+        let c = write_cell(graph, c);
+        terms.push(list(graph, &[m, c]));
+    }
+    let terms = list(graph, &terms);
+    named(graph, "chain", &[terms]).unwrap_or(terms)
+}
+
+/// `∂` of a cell with constant bounds: the faces `u_i = a_i` (sign
+/// `(-1)^i`) and `u_i = b_i` (sign `(-1)^(i+1)`), `i` from 1.
+fn cell_boundary(
+    cx: &mut Cx<'_>,
+    cell: &Cell,
+) -> Option<Vec<(i64, Cell)>> {
+    let constant = cell.bounds.iter().all(|&(a, b)| {
+        cell.params.iter().all(|&u| {
+            let Some(sym) = cx.graph.as_symbol(u) else {
+                return false;
+            };
+            !cx.graph.depends_on(cx.graph.find(a), sym) && !cx.graph.depends_on(cx.graph.find(b), sym)
+        })
+    });
+    if !constant || cell.params.is_empty() {
+        return None;
+    }
+    let mut faces = Vec::new();
+    for (i, &u) in cell.params.iter().enumerate() {
+        let (a, b) = cell.bounds[i];
+        let parity = if i % 2 == 0 { 1 } else { -1 }; // (-1)^(i+1) with i from 1
+        for (value, sign) in [(a, -parity), (b, parity)] {
+            let chart: Vec<NodeId> = cell
+                .chart
+                .iter()
+                .map(|&c| {
+                    let s = cx.graph.substitute(c, u, value);
+                    cx.simplify(s)
+                })
+                .collect();
+            let mut params = cell.params.clone();
+            params.remove(i);
+            let mut bounds = cell.bounds.clone();
+            bounds.remove(i);
+            faces.push((sign, Cell { chart, params, bounds }));
+        }
+    }
+    Some(faces)
+}
+
+/// `φ*ω` in the parameters `params`.
+fn pullback(
+    cx: &mut Cx<'_>,
+    terms: &[(NodeId, Vec<usize>)],
+    vars: &[NodeId],
+    chart: &[NodeId],
+    params: &[NodeId],
+) -> Option<Vec<(NodeId, Vec<usize>)>> {
+    if chart.len() != vars.len() {
+        return None;
+    }
+    // Simultaneous substitution through fresh symbols.
+    let fresh: Vec<NodeId> = (0..vars.len())
+        .map(|_| {
+            let s = cx.graph.interner_mut().fresh_symbol("p");
+            cx.graph.symbol_node(s)
+        })
+        .collect();
+    let mut jacobian = Vec::with_capacity(chart.len());
+    for &c in chart {
+        let row: Vec<NodeId> = params.iter().map(|&u| d(cx, c, u)).collect::<Option<_>>()?;
+        jacobian.push(row);
+    }
+    let mut out = Vec::new();
+    for (c, idx) in terms {
+        let mut coefficient = *c;
+        for (&x, &f) in vars.iter().zip(&fresh) {
+            coefficient = cx.graph.substitute(coefficient, x, f);
+        }
+        for (&f, &value) in fresh.iter().zip(chart) {
+            coefficient = cx.graph.substitute(coefficient, f, value);
+        }
+        // Wedge the pulled-back differentials dx_i one at a time.
+        let mut partial: Vec<(NodeId, Vec<usize>)> = vec![(coefficient, Vec::new())];
+        for &i in idx {
+            let row = jacobian.get(i)?;
+            let mut next = Vec::new();
+            for (coef, js) in &partial {
+                for (j, &entry) in row.iter().enumerate() {
+                    if cx.graph.number_of(entry).is_some_and(Number::is_zero) {
+                        continue;
+                    }
+                    let mut full = js.clone();
+                    full.push(j);
+                    let Some(even) = sort_indices(&mut full) else {
+                        continue;
+                    };
+                    let product = mul(cx.graph, &[*coef, entry]);
+                    next.push((if even { product } else { neg(cx.graph, product) }, full));
+                }
+            }
+            partial = next;
+        }
+        out.extend(partial);
+    }
+    Some(out)
+}
+
+/// `∫_cell ω`.
+fn integrate_over_cell(
+    cx: &mut Cx<'_>,
+    terms: &[(NodeId, Vec<usize>)],
+    vars: &[NodeId],
+    cell: &Cell,
+) -> Option<NodeId> {
+    let pulled = pullback(cx, terms, vars, &cell.chart, &cell.params)?;
+    let top: Vec<usize> = (0..cell.params.len()).collect();
+    let coefficients: Vec<NodeId> = pulled.into_iter().filter(|(_, idx)| *idx == top).map(|(c, _)| c).collect();
+    let mut integrand = add(cx.graph, &coefficients);
+    integrand = cx.simplify(integrand);
+    for (&u, &(a, b)) in cell.params.iter().zip(&cell.bounds) {
+        let request = named(cx.graph, "defint", &[integrand, u, a, b])?;
+        integrand = cx.simplify(request);
+    }
+    Some(integrand)
 }
 
 /// `a b - c d`.
@@ -1323,6 +1589,32 @@ mod tests {
         assert_eq!(run("gauss_theorem(list(x, y, z), list(x, y, z), list(list(0, 1), list(0, 1), list(0, 1)))"), "3");
         // Stokes on the unit disc (z = 0): circulation of (-y, x, 0) = 2 pi.
         assert_eq!(run("stokes_theorem(list(-y, x, 0), list(u*cos(v), u*sin(v), 0), u, v, 0, 1, 0, 2*pi)"), "2*pi");
+    }
+
+    #[test]
+    fn chains_boundaries_and_the_generalized_stokes_theorem() {
+        let square = "cell(list(x, y), list(x, y), list(list(0, 1), list(0, 1)))";
+        // ∂ of the unit square: four oriented edges.
+        let edges = run(&format!("boundary({square})"));
+        assert_eq!(edges.matches("cell(").count(), 4, "{edges}");
+        // ∫_∂I² x dy = ∫_I² dx∧dy = 1.
+        let x_dy = "form(list(list(x, list(2))))";
+        assert_eq!(run(&format!("integrate_form({x_dy}, list(x, y), boundary({square}))")), "1");
+        assert_eq!(run(&format!("generalized_stokes({x_dy}, list(x, y), {square})")), "1 = 1");
+        // ∂∂ = 0: a 0-form integrates to zero over the boundary of a boundary.
+        assert_eq!(run(&format!("integrate_form(form(list(list(x^2*y + 3, list()))), list(x, y), boundary(boundary({square})))")), "0");
+        // The unit disc in polar parameters, ω = -y dx + x dy: both sides 2 pi.
+        let disc = "cell(list(r*cos(t), r*sin(t)), list(r, t), list(list(0, 1), list(0, 2*pi)))";
+        let omega = "form(list(list(-y, list(1)), list(x, list(2))))";
+        assert_eq!(run(&format!("generalized_stokes({omega}, list(x, y), {disc})")), "2*pi = 2*pi");
+        // A 3-cell: the unit cube, ω = x dy∧dz (flux of (x, 0, 0)) = 1.
+        let cube = "cell(list(x, y, z), list(x, y, z), list(list(0, 1), list(0, 1), list(0, 1)))";
+        assert_eq!(run(&format!("generalized_stokes(form(list(list(x, list(2, 3)))), list(x, y, z), {cube})")), "1 = 1");
+        // A curved surface in R³: the upper hemisphere, ω = x dy (circulation of (0, x, 0)) = pi.
+        let hemisphere = "cell(list(sin(p)*cos(t), sin(p)*sin(t), cos(p)), list(p, t), list(list(0, pi/2), list(0, 2*pi)))";
+        assert_eq!(run(&format!("generalized_stokes(form(list(list(x, list(2)))), list(x, y, z), {hemisphere})")), "pi = pi");
+        // Pull-back of dx∧dy under polar coordinates: r dr∧dt.
+        assert_eq!(run("pullback(form(list(list(1, list(1, 2)))), list(x, y), list(r*cos(t), r*sin(t)), list(r, t))"), "form(list(list(r, list(1, 2))))");
     }
 
     #[test]

@@ -10,7 +10,7 @@
 //! | `normal_form(p, polys, vars)` | remainder of `p` modulo the Gröbner basis of `polys` (`grevlex`) |
 //! | `ideal_member(p, polys, vars)` | whether `p` lies in the ideal |
 //! | `simplify_with_relations(e, relations, vars)` | numerator and denominator of `e` reduced modulo the relations |
-//! | `cad(polys, vars)` | sample points of the cells of a cylindrical algebraic decomposition of `R^1` or `R^2` sign-invariant for `polys` |
+//! | `cad(polys, vars)` | sample points of the cells of a cylindrical algebraic decomposition of `R^n` sign-invariant for `polys` (any number of variables: projection by leading and all other coefficients, discriminants and pairwise resultants, then lifting over each sample) |
 //! | `expand_trig(e)` | sines, cosines and tangents of sums and integer multiples expanded |
 
 use num_bigint::BigInt;
@@ -637,8 +637,147 @@ fn cad(
             Some(graph.node(core::LIST, &items))
         },
         | &[x, y] => cad_plane(graph, &ps, x, y),
-        | _ => None,
+        | _ => cad_space(graph, &ps, &vs),
     }
+}
+
+/// `p` with the generators in `point` replaced by rational values.
+fn eval_partial(
+    p: &Poly,
+    point: &[(u32, BigRational)],
+) -> Option<Poly> {
+    let mut out = Poly::zero();
+    for (mono, coeff) in p.terms() {
+        let mut c = coeff.to_rational()?;
+        let mut rest = Vec::new();
+        for &(g, e) in mono {
+            match point.iter().find(|(h, _)| *h == g) {
+                | Some((_, v)) => c *= num_traits::pow(v.clone(), usize::try_from(e).ok()?),
+                | None => rest.push((g, e)),
+            }
+        }
+        out = out.add(&Poly::monomial(rest, Number::rat(c)));
+    }
+    Some(out)
+}
+
+/// The projection of `polys` along the generator `y`: every coefficient
+/// in `y`, the discriminants and the pairwise resultants (McCallum's
+/// set, with the full coefficient sets for safety), without constants
+/// and duplicates. Polynomials free of `y` pass through.
+fn project(
+    polys: &[Poly],
+    y: u32,
+) -> Option<Vec<Poly>> {
+    let mut out: Vec<Poly> = Vec::new();
+    let mut push = |q: Poly| {
+        if q.as_constant().is_none() && !out.contains(&q) && !out.contains(&q.neg()) {
+            out.push(q);
+        }
+    };
+    let coefficient_lists: Vec<Vec<Poly>> = polys
+        .iter()
+        .map(|p| {
+            let mut c = p.coefficients_in(y);
+            while c.last().is_some_and(Poly::is_zero) {
+                c.pop();
+            }
+            c
+        })
+        .collect();
+    for (i, cs) in coefficient_lists.iter().enumerate() {
+        if cs.len() <= 1 {
+            if let Some(c) = cs.first() {
+                push(c.clone());
+            }
+            continue;
+        }
+        for c in cs {
+            push(c.clone());
+        }
+        if cs.len() >= 3 {
+            push(discriminant(cs, y)?);
+        }
+        for other in coefficient_lists.iter().skip(i + 1) {
+            if other.len() >= 2 {
+                push(resultant(cs, other)?);
+            }
+        }
+    }
+    Some(out)
+}
+
+/// Sample points (one per cell) of a CAD of `R^n`, the generators in
+/// `order` (the last one lifted last).
+fn cad_samples(
+    polys: &[Poly],
+    order: &[u32],
+) -> Option<Vec<Vec<Number>>> {
+    let (&y, base) = order.split_last()?;
+    let fibre_samples = |point: &[(u32, BigRational)]| -> Option<Vec<Number>> {
+        let mut fibres = Vec::with_capacity(polys.len());
+        for p in polys {
+            let q = eval_partial(p, point)?;
+            let mut coefficients: QPoly = if q.is_zero() {
+                Vec::new()
+            } else {
+                q.univariate_in(y)?.iter().map(Number::to_rational).collect::<Option<_>>()?
+            };
+            while coefficients.last().is_some_and(Zero::is_zero) {
+                coefficients.pop();
+            }
+            fibres.push(coefficients);
+        }
+        Some(cad_line(&fibres))
+    };
+    if base.is_empty() {
+        return Some(fibre_samples(&[])?.into_iter().map(|v| vec![v]).collect());
+    }
+    let projection = project(polys, y)?;
+    let mut cells = Vec::new();
+    for sample in cad_samples(&projection, base)? {
+        let point: Vec<(u32, BigRational)> = base
+            .iter()
+            .zip(&sample)
+            .map(|(&g, v)| Some((g, v.to_rational().or_else(|| BigRational::from_float(v.to_f64()))?)))
+            .collect::<Option<_>>()?;
+        for value in fibre_samples(&point)? {
+            let mut cell = sample.clone();
+            cell.push(value);
+            cells.push(cell);
+        }
+        if cells.len() > 100_000 {
+            return None;
+        }
+    }
+    Some(cells)
+}
+
+fn cad_space(
+    graph: &mut Graph,
+    ps: &[NodeId],
+    vs: &[NodeId],
+) -> Option<NodeId> {
+    let mut gens = Gens::default();
+    let order: Vec<u32> = vs.iter().map(|&v| gens.index(graph, v)).collect();
+    let mut polys = Vec::with_capacity(ps.len());
+    for &t in ps {
+        let t = super::best(graph, t)?;
+        let p = from_term(graph, &mut gens, t, Limits::default())?;
+        if p.support().iter().any(|g| !order.contains(g)) {
+            return None;
+        }
+        polys.push(p);
+    }
+    let cells = cad_samples(&polys, &order)?;
+    let items: Vec<NodeId> = cells
+        .into_iter()
+        .map(|c| {
+            let coordinates: Vec<NodeId> = c.into_iter().map(|v| graph.num(v)).collect();
+            graph.node(core::LIST, &coordinates)
+        })
+        .collect();
+    Some(graph.node(core::LIST, &items))
 }
 
 /// Collins projection onto `x` (leading coefficients and discriminants in
@@ -857,6 +996,36 @@ mod tests {
         let (cells, reduced) = reduce_with(&crate::rules::standard(), "cad(list(x^2 + y^2 - 1), list(x, y))", &[]);
         assert!(reduced, "{cells}");
         assert_eq!(cells.matches("list(").count() - 1, 1 + 1 + 3 + 1 + 5 + 1 + 3 + 1 + 1 - 4, "{cells}");
+    }
+
+    #[test]
+    fn cylindrical_decomposition_in_three_variables() {
+        let rules = crate::rules::standard();
+        // The unit sphere: every sample is inside, on or outside, and all
+        // three occur; the cells over the poles are found.
+        let (cells, reduced) = reduce_with(&rules, "cad(list(x^2 + y^2 + z^2 - 1), list(x, y, z))", &[]);
+        assert!(reduced, "{cells}");
+        let points: Vec<Vec<f64>> = cells
+            .trim_start_matches("list(")
+            .trim_end_matches(')')
+            .split("), list(")
+            .map(|c| c.trim_start_matches("list(").trim_end_matches(')').split(", ").map(|v| v.parse::<f64>().unwrap_or_else(|_| crate::rules::testing::eval(&rules, v, &[]))).collect())
+            .collect();
+        assert!(points.iter().all(|p| p.len() == 3), "{cells}");
+        let signs: Vec<i32> = points
+            .iter()
+            .map(|p| {
+                let v = p[0] * p[0] + p[1] * p[1] + p[2] * p[2] - 1.0;
+                if v.abs() < 1e-9 { 0 } else if v < 0.0 { -1 } else { 1 }
+            })
+            .collect();
+        assert!(signs.contains(&-1) && signs.contains(&0) && signs.contains(&1), "{cells}");
+        assert!(points.iter().any(|p| (p[0] - 1.0).abs() < 1e-12 && p[1].abs() < 1e-12 && p[2].abs() < 1e-12), "{cells}");
+        // Two planes meeting along a line: every sign combination of
+        // (x - z, y + z) is realised.
+        let (cells, reduced) = reduce_with(&rules, "cad(list(x - z, y + z), list(x, y, z))", &[]);
+        assert!(reduced, "{cells}");
+        assert!(cells.matches("list(").count() >= 9, "{cells}");
     }
 
     #[test]
