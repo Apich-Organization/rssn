@@ -1610,3 +1610,21 @@ mod lambert_tests {
         assert!(lambert_w(-1.0, true).is_nan() && lambert_w(0.5, false).is_nan());
     }
 }
+
+#[cfg(test)]
+mod hurwitz_tests {
+    use super::hurwitz_zeta;
+
+    #[test]
+    fn hurwitz_values() {
+        let pi = std::f64::consts::PI;
+        assert!((hurwitz_zeta(2.0, 1.0) - pi * pi / 6.0).abs() < 1e-13);
+        assert!((hurwitz_zeta(2.0, 0.5) - pi * pi / 2.0).abs() < 1e-12);
+        // ζ(-1, a) = -B₂(a)/2 = -(a² - a + 1/6)/2
+        let a = 0.3_f64;
+        assert!((hurwitz_zeta(-1.0, a) + f64::midpoint(a * a - a, 1.0 / 6.0)).abs() < 1e-10);
+        // Σ_{k=1}^{4} k^0.5 = ζ(-0.5, 1) - ζ(-0.5, 5)
+        let direct: f64 = (1..=4).map(|k| f64::from(k).sqrt()).sum();
+        assert!((hurwitz_zeta(-0.5, 1.0) - hurwitz_zeta(-0.5, 5.0) - direct).abs() < 1e-10);
+    }
+}

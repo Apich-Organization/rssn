@@ -50,7 +50,7 @@ const MAX_BITS: u64 = 60_000;
 /// The combinatorics rule set.
 #[must_use]
 pub fn combinatorics() -> RuleSet {
-    RuleSet::new("combinatorics", install).needs(arith())
+    RuleSet::new("combinatorics", install).needs(arith()).needs(super::calculus::calculus())
 }
 
 /// The value of `v` if it is a natural number not above `cap`.
@@ -1210,7 +1210,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "combinatorics/binomial-ratio-n: binomial(?n + 1, ?k) / binomial(?n, ?k) => (?n + 1)/(?n + 1 - ?k) \
              if integer(?k), nonnegative(?k), nonnegative(?n)",
         ],
-    )
+    )?;
+    i.define(&["expand_binomial(a, b, n) := sum(binomial(n, j)*a^(n - j)*b^j, j, 0, n)"])
 }
 
 #[cfg(test)]
@@ -1790,9 +1791,9 @@ mod tests {
             let (text, reduced) = reduce_with(&sets, src, &[]);
             assert!(!reduced, "{src} => {text}");
         }
-        // Without differentiation available only rational functions work.
+        // Calculus is a dependency, so transcendental functions expand too.
         let (text, reduced) = reduce_with(&[combinatorics()], "gf_coeffs(exp(x), x, 3)", &[]);
-        assert!(!reduced, "{text}");
+        assert!(reduced && text == "list(1, 1, 1/2)", "{text}");
     }
 
     #[test]

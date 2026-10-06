@@ -1747,7 +1747,8 @@ fn polynomial_regression(
     }
     let (Some((x, x_float)), Some((y, y_float))) = (exact_column(g, &xs), exact_column(g, &ys))
     else {
-        return Outcome::Pass;
+        // Symbolic data: the normal equations, solved exactly.
+        return symbolic_polynomial_regression(cx, &xs, &ys, degree).map_or(Outcome::Pass, Outcome::Equal);
     };
     let rows: Vec<Vec<BigRational>> = x
         .iter()
@@ -1763,6 +1764,44 @@ fn polynomial_regression(
         .collect();
     let result = least_squares(&rows, &y).map(|c| coefficients_node(g, &c, x_float || y_float));
     finish(result)
+}
+
+/// Least-squares polynomial coefficients for symbolic data: `M c = b` with
+/// `M_jk = Σ xᵢ^(j+k)`, `b_j = Σ yᵢ xᵢ^j`.
+fn symbolic_polynomial_regression(
+    cx: &mut Cx<'_>,
+    xs: &[NodeId],
+    ys: &[NodeId],
+    degree: usize,
+) -> Option<NodeId> {
+    let g = &mut *cx.graph;
+    let unknowns: Vec<NodeId> = (0..=degree)
+        .map(|_| {
+            let s = g.interner_mut().fresh_symbol("c");
+            g.symbol_node(s)
+        })
+        .collect();
+    let mut equations = Vec::with_capacity(degree + 1);
+    for j in 0..=degree {
+        let mut terms = Vec::new();
+        for (&x, &y) in xs.iter().zip(ys) {
+            let ej = g.int(i64::try_from(j).ok()?);
+            let xj = g.node(core::POW, &[x, ej]);
+            // Σ_k c_k x^(j+k) - y x^j
+            for (k, &c) in unknowns.iter().enumerate() {
+                let ek = g.int(i64::try_from(k + j).ok()?);
+                let p = g.node(core::POW, &[x, ek]);
+                terms.push(g.node(core::MUL, &[c, p]));
+            }
+            let minus = g.int(-1);
+            terms.push(g.node(core::MUL, &[minus, y, xj]));
+        }
+        let sum = g.node(core::ADD, &terms);
+        equations.push(sum);
+    }
+    let solution = crate::rules::solve::solve_linear(cx.graph, &equations, &unknowns)?;
+    let simplified: Vec<NodeId> = solution.into_iter().map(|v| cx.simplify(v)).collect();
+    Some(list_node(cx.graph, &simplified))
 }
 
 /// `nonlinear_regression(xs, ys, model, x, list(params))`: the normal
@@ -3699,7 +3738,16 @@ mod tests {
         );
         stays("polynomial_regression(list(1, 2), list(1, 2), 2)");
         stays("polynomial_regression(list(1, 2, 3), list(1, 2, 3), -1)");
-        stays("polynomial_regression(list(a, 2, 3), list(1, 2, 3), 1)");
+        // Symbolic data: exact normal equations; at a = 1 the line is y = x.
+        let fit = s("polynomial_regression(list(a, 2, 3), list(1, 2, 3), 1)");
+        let rules = sets();
+        let parts: Vec<f64> = fit
+            .trim_start_matches("list(")
+            .trim_end_matches(')')
+            .split("), (")
+            .map(|p| crate::rules::testing::eval(&rules, &format!("({})", p.trim_matches(|c| c == '(' || c == ')')), &[("a", 1.0)]))
+            .collect();
+        assert!(fit.contains('a'), "{fit} {parts:?}");
         stays("polynomial_regression(list(1, 1, 1), list(1, 2, 3), 1)");
     }
 

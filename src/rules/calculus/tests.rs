@@ -487,3 +487,22 @@ fn extended_integration_methods() {
     assert!((value("defint(cos(2*x)/(x^2 + 4), x, -oo, oo)") - pi / 2.0 * (-4.0_f64).exp()).abs() < 1e-12);
     assert!((value("defint(x*sin(x)/(x^2 + 1), x, -oo, oo)") - pi / std::f64::consts::E).abs() < 1e-12);
 }
+
+/// Trigonometric, logarithmic and fractional-power sums.
+#[test]
+fn special_closed_form_sums() {
+    let rules = crate::rules::standard();
+    for (summand, from) in [("sin(k)", 1), ("cos(2*k + 1)", 0), ("3*ln(k)", 1), ("k^(1/2)", 1), ("k^(-3/2)", 2)] {
+        let (closed, reduced) = reduce_with(&rules, &format!("sum({summand}, k, {from}, n)"), &[]);
+        assert!(reduced && !closed.contains("sum("), "sum of {summand}: {closed}");
+        for n in [6, 11] {
+            let got = eval(&rules, &closed, &[("n", f64::from(n))]);
+            let want: f64 = (from..=n).map(|k| eval(&rules, summand, &[("k", f64::from(k))])).sum();
+            assert!((got - want).abs() < 1e-8 * (1.0 + want.abs()), "sum of {summand} = {closed}: {got} vs {want}");
+        }
+    }
+    let (closed, reduced) = reduce_with(&rules, "sum(k^(-5/2), k, 1, oo)", &[]);
+    assert!(reduced && closed.contains("zeta"), "{closed}");
+    // expand_binomial with a symbolic exponent stays a sum; a literal one expands.
+    assert_eq!(simplify(&rules, "expand_binomial(a, b, 2)"), "a^2 + 2*a*b + b^2");
+}

@@ -374,6 +374,12 @@ fn symbolic_sum(
         }
     }
 
+    // Trigonometric, logarithmic and power summands in closed form.
+    if let Some(found) = special_sum(cx, term, k, lower, upper, infinite_upper) {
+        return Some(found);
+    }
+    let graph = &mut *cx.graph;
+
     // c * r^k with c, r free of k.
     let factors: Vec<NodeId> = if graph.op(term) == core::MUL { graph.children(term).to_vec() } else { vec![term] };
     let (constant, varying): (Vec<NodeId>, Vec<NodeId>) = factors.iter().partition(|&&n| !depends(graph, n));
@@ -438,6 +444,88 @@ fn symbolic_sum(
     let at_start = graph.substitute(big_t, k, lower);
     let difference = sub(graph, at_end, at_start);
     Some(cx.simplify(difference))
+}
+
+/// `Σ c·sin(a k + b)`, `Σ c·cos(a k + b)` (finite), `Σ c·ln k` and
+/// `Σ c·k^s` for `s` free of `k` (Hurwitz zeta).
+fn special_sum(
+    cx: &mut Cx<'_>,
+    term: NodeId,
+    k: NodeId,
+    lower: NodeId,
+    upper: NodeId,
+    infinite_upper: bool,
+) -> Option<NodeId> {
+    let symbol = cx.graph.symbol_of(k)?;
+    let depends = |cx: &Cx<'_>, n: NodeId| cx.graph.depends_on(cx.graph.find(n), symbol);
+    let factors: Vec<NodeId> = if cx.graph.op(term) == core::MUL { cx.graph.children(term).to_vec() } else { vec![term] };
+    let (constant, varying): (Vec<NodeId>, Vec<NodeId>) = factors.iter().partition(|&&n| !depends(cx, n));
+    let &[core_term] = varying.as_slice() else {
+        return None;
+    };
+    let (sin, cos, ln) = (cx.graph.ops().lookup("sin")?, cx.graph.ops().lookup("cos")?, cx.graph.ops().lookup("ln")?);
+    let op = cx.graph.op(core_term);
+    let children = cx.graph.children(core_term).to_vec();
+    let one = cx.graph.int(1);
+    let two = cx.graph.int(2);
+    let minus_one = cx.graph.int(-1);
+    let value = if (op == sin || op == cos) && !infinite_upper {
+        // u = a k + b
+        let &[u] = children.as_slice() else { return None };
+        let parts = crate::rules::ode::coefficients_of(cx.graph, u, k)?;
+        let [b, a] = parts.as_slice() else { return None };
+        let (a, b) = (*a, *b);
+        // Σ_{L}^{U} = sin(a N/2) / sin(a/2) · f(b + a (L + U)/2), N = U - L + 1
+        let neg_l = cx.graph.node(core::MUL, &[minus_one, lower]);
+        let count = cx.graph.node(core::ADD, &[upper, neg_l, one]);
+        let half = cx.graph.num(Number::fraction(1, 2)?);
+        let half_an = cx.graph.node(core::MUL, &[half, a, count]);
+        let top = cx.graph.node(sin, &[half_an]);
+        let half_a = cx.graph.node(core::MUL, &[half, a]);
+        let bottom = cx.graph.node(sin, &[half_a]);
+        let inv = cx.graph.node(core::POW, &[bottom, minus_one]);
+        let mid = cx.graph.node(core::ADD, &[lower, upper]);
+        let shift = cx.graph.node(core::MUL, &[half, a, mid]);
+        let phase = cx.graph.node(core::ADD, &[b, shift]);
+        let wave = cx.graph.node(op, &[phase]);
+        cx.graph.node(core::MUL, &[top, inv, wave])
+    } else if op == ln && children == [k] && !infinite_upper {
+        // Σ_{L}^{U} ln k = lgamma(U + 1) - lgamma(L)
+        let lgamma = cx.graph.ops().lookup("lgamma")?;
+        let up = cx.graph.node(core::ADD, &[upper, one]);
+        let a = cx.graph.node(lgamma, &[up]);
+        let b = cx.graph.node(lgamma, &[lower]);
+        let neg_b = cx.graph.node(core::MUL, &[minus_one, b]);
+        cx.graph.node(core::ADD, &[a, neg_b])
+    } else if let (true, &[base, exponent]) = (op == core::POW, children.as_slice()) {
+        // k^s with s free of k and not a natural number (Faulhaber's case).
+        if base != k || depends(cx, exponent) || cx.graph.number_of(exponent).is_some_and(Number::is_integer) {
+            return None;
+        }
+        let hurwitz = cx.graph.ops().lookup("hurwitz_zeta")?;
+        let neg_s = cx.graph.node(core::MUL, &[minus_one, exponent]);
+        let head = cx.graph.node(hurwitz, &[neg_s, lower]);
+        if infinite_upper {
+            // Converges for -s > 1, known numerically.
+            let v = cx.graph.eval(neg_s, &Env::numeric(0.0))?;
+            if v <= 1.0 {
+                return None;
+            }
+            head
+        } else {
+            let up = cx.graph.node(core::ADD, &[upper, one]);
+            let tail = cx.graph.node(hurwitz, &[neg_s, up]);
+            let neg_tail = cx.graph.node(core::MUL, &[minus_one, tail]);
+            cx.graph.node(core::ADD, &[head, neg_tail])
+        }
+    } else {
+        return None;
+    };
+    let _ = two;
+    let mut all = constant;
+    all.push(value);
+    let product = cx.graph.node(core::MUL, &all);
+    Some(cx.simplify(product))
 }
 
 /// `sum_{k=lower}^{upper} r(k)` for a rational function `r` over `Q` whose

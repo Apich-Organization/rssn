@@ -114,7 +114,9 @@ const ZETA_TERMS: u32 = 12;
 /// Riemann zeta for real `s > 1` by Euler-Maclaurin summation: the first
 /// terms directly, the tail by its integral plus Bernoulli corrections.
 fn zeta(s: f64) -> f64 {
-    if s.is_nan() || s < 1.0 {
+    // Euler–Maclaurin summation is also the analytic continuation for
+    // s < 1, accurate for moderate |s|.
+    if s.is_nan() || s < -20.0 {
         return f64::NAN;
     }
     if s.total_cmp(&1.0).is_eq() {
@@ -138,7 +140,7 @@ fn zeta(s: f64) -> f64 {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // name, arity, semantics, what is known of the value for real arguments
-    let functions: [(&str, u8, EvalFn, Facts); 28] = [
+    let functions: [(&str, u8, EvalFn, Facts); 29] = [
         (
             "gamma",
             1,
@@ -284,6 +286,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             |a| a.first().map_or(f64::NAN, |&x| step(x, 0.0, 0.5, 1.0)),
             Facts::NONNEGATIVE,
         ),
+        ("hurwitz_zeta", 2, |a| match a {
+            | [s, q] => num::hurwitz_zeta(*s, *q),
+            | _ => f64::NAN,
+        }, Facts::NONE),
         ("lambertw", 1, |a| a.first().map_or(f64::NAN, |&x| num::lambert_w(x, true)), Facts::REAL),
         ("lambertw_m1", 1, |a| a.first().map_or(f64::NAN, |&x| num::lambert_w(x, false)), Facts::NEGATIVE),
         ("floor", 1, |a| a.first().map_or(f64::NAN, |x| x.floor()), Facts::INTEGER),
@@ -422,6 +428,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "special/besseli-negative-order: besseli(?n, ?x) => besseli(-?n, ?x) if integer(?n), negative(?n)",
             "special/erfcinv-1: erfcinv(1) => 0",
             "special/lambertw-0: lambertw(0) => 0",
+            "special/hurwitz-1: hurwitz_zeta(?s, 1) => zeta(?s)",
             "special/lambertw-e: lambertw(E) => 1",
             "special/lambertw-inverse: lambertw(?x*exp(?x)) => ?x if nonnegative(?x)",
             "special/digamma-half: digamma(1/2) => -euler_gamma - 2*ln(2)",
@@ -1362,7 +1369,9 @@ mod tests {
             1e-14,
         );
         close(ev("zeta(s)", &[("s", 50.0)]), 1.0, 1e-14);
-        assert!(ev("zeta(s)", &[("s", 0.5)]).is_nan());
+        // The analytic continuation: ζ(1/2) and ζ(-1) = -1/12.
+        close(ev("zeta(s)", &[("s", 0.5)]), -1.460_354_508_809_587, 1e-10);
+        close(ev("zeta(s)", &[("s", -1.0)]), -1.0 / 12.0, 1e-10);
         assert!(ev("zeta(s)", &[("s", 1.0)]).is_infinite());
     }
 

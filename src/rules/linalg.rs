@@ -17,7 +17,7 @@
 //! | `det(A)`, `trace(A)`, `rank(A)`, `inverse(A)`, `rref(A)`, `nullspace(A)` | the usual |
 //! | `linsolve(A, b)` | the solution of `A x = b` (`list()` if inconsistent; free unknowns become parameters `t1, t2, ...`) |
 //! | `charpoly(A, l)`, `eigenvals(A)`, `eigenvects(A)` | characteristic polynomial; eigenvalues (with multiplicity); `list(list(value, multiplicity, list(basis...)), ...)` |
-//! | `lu(A)`, `qr(A)`, `svd(A)` | `list(P, L, U)` with `P A = L U`; `list(Q, R)`; numeric `list(U, S, V)` |
+//! | `lu(A)`, `qr(A)`, `svd(A)` | `list(P, L, U)` with `P A = L U`; `list(Q, R)`; `list(U, S, V)` (numeric for float entries, exact otherwise) |
 //! | `dot`, `cross`, `norm`, `normalize`, `angle`, `project`, `outer` | vector operations |
 //! | `grad(f, vars)`, `div(F, vars)`, `curl(F, vars)`, `laplacian(f, vars)`, `jacobian(F, vars)`, `hessian(f, vars)`, `directional(f, vars, v)` | vector calculus |
 //! | `line_integral(f, curve, t, a, b)`, `line_integral_vec(F, curve, t, a, b)`, `surface_integral(f, surface, u, v, ua, ub, va, vb)`, `volume_integral(f, vars, bounds)` | integrals over parametrised curves, surfaces and boxes, reduced to definite integrals |
@@ -1004,6 +1004,86 @@ fn qr(
 }
 
 /// Numeric singular value decomposition.
+/// Exact singular value decomposition `list(U, S, V)`: `S` holds the
+/// square roots of the eigenvalues of `AᵀA` (largest first when they can
+/// be ordered), `V` its normalised eigenvectors and `U` the columns
+/// `A v / σ` for the non-zero singular values.
+fn symbolic_svd(
+    cx: &mut Cx<'_>,
+    m: &[Vec<NodeId>],
+) -> Option<NodeId> {
+    let rows = m.len();
+    let cols = m.first().map_or(0, Vec::len);
+    // AᵀA
+    let mut ata = vec![vec![NodeId::NONE; cols]; cols];
+    for i in 0..cols {
+        for j in 0..cols {
+            let terms: Vec<NodeId> = (0..rows).map(|k| cx.graph.node(core::MUL, &[m[k][i], m[k][j]])).collect();
+            let sum = cx.graph.node(core::ADD, &terms);
+            ata[i][j] = cx.simplify(sum);
+        }
+    }
+    let vectors = eigenvectors(cx, &ata)?;
+    let mut triples: Vec<(f64, NodeId, Vec<NodeId>)> = Vec::new();
+    for entry in cx.graph.children(vectors).to_vec() {
+        let &[value, _, basis] = cx.graph.children(entry) else {
+            return None;
+        };
+        for v in cx.graph.children(basis).to_vec() {
+            let comps = cx.graph.children(v).to_vec();
+            if comps.len() != cols {
+                return None;
+            }
+            // Normalise.
+            let squares: Vec<NodeId> = comps.iter().map(|&c| {
+                let two = cx.graph.int(2);
+                cx.graph.node(core::POW, &[c, two])
+            }).collect();
+            let norm2 = cx.graph.node(core::ADD, &squares);
+            let half = cx.graph.num(Number::fraction(-1, 2)?);
+            let inv_norm = cx.graph.node(core::POW, &[norm2, half]);
+            let unit: Vec<NodeId> = comps.iter().map(|&c| {
+                let p = cx.graph.node(core::MUL, &[c, inv_norm]);
+                cx.simplify(p)
+            }).collect();
+            let order = cx.graph.eval(value, &crate::graph::Env::numeric(0.0)).unwrap_or(0.0);
+            triples.push((order, value, unit));
+        }
+    }
+    triples.sort_by(|a, b| b.0.total_cmp(&a.0));
+    let half = cx.graph.num(Number::fraction(1, 2)?);
+    let mut sigmas = Vec::new();
+    let mut v_columns = Vec::new();
+    let mut u_columns = Vec::new();
+    for (_, value, unit) in &triples {
+        let sigma = cx.graph.node(core::POW, &[*value, half]);
+        let sigma = cx.simplify(sigma);
+        sigmas.push(sigma);
+        v_columns.push(unit.clone());
+        if !cx.is_zero(sigma) {
+            let minus = cx.graph.int(-1);
+            let inv = cx.graph.node(core::POW, &[sigma, minus]);
+            let column: Vec<NodeId> = (0..rows)
+                .map(|i| {
+                    let terms: Vec<NodeId> = (0..cols).map(|j| cx.graph.node(core::MUL, &[m[i][j], unit[j]])).collect();
+                    let sum = cx.graph.node(core::ADD, &terms);
+                    let scaled = cx.graph.node(core::MUL, &[sum, inv]);
+                    cx.simplify(scaled)
+                })
+                .collect();
+            u_columns.push(column);
+        }
+    }
+    let transpose = |cols: &[Vec<NodeId>]| -> Vec<Vec<NodeId>> {
+        let n = cols.first().map_or(0, Vec::len);
+        (0..n).map(|i| cols.iter().map(|c| c[i]).collect()).collect()
+    };
+    let u = matrix_term(cx.graph, &transpose(&u_columns));
+    let v = matrix_term(cx.graph, &transpose(&v_columns));
+    let s = list(cx.graph, &sigmas);
+    Some(list(cx.graph, &[u, s, v]))
+}
+
 fn svd(
     graph: &mut Graph,
     m: &[Vec<NodeId>],
@@ -1296,7 +1376,7 @@ impl LinalgKernel {
             },
             | Request::Svd => {
                 let m = matrix(cx.graph, arg(0)?)?;
-                svd(cx.graph, &m)
+                svd(cx.graph, &m).or_else(|| symbolic_svd(cx, &m))
             },
             | Request::Dot => {
                 let (a, b) = (vector(cx.graph, arg(0)?)?, vector(cx.graph, arg(1)?)?);
