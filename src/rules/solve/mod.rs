@@ -78,6 +78,8 @@ use super::poly::to_groebner;
 use super::poly::univariate;
 
 mod heuristics;
+#[cfg(test)]
+mod probe;
 
 /// Operator attribute: the solutions `u` of `op(u) = ?a`, one pattern per
 /// branch that is returned.
