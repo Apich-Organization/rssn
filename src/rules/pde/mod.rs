@@ -943,6 +943,9 @@ fn solve(
             solution = laplace_box(cx, p, conditions);
         }
     }
+    if solution.is_none() && method == Any && conditions.is_empty() && !p.nonlinear {
+        solution = direct_integration(cx, p).or_else(|| polynomial_particular(cx, p));
+    }
     if solution.is_none() && matches!(kind, "poisson" | "laplace" | "helmholtz")
         && (try_method(Green) || try_method(Poisson2) || try_method(Poisson3) || try_method(Helmholtz))
     {
@@ -993,8 +996,11 @@ fn characteristics(
     p: &Problem,
     conditions: &Conditions,
 ) -> Option<NodeId> {
-    if p.dimension() != 2 {
+    if p.dimension() < 2 {
         return None;
+    }
+    if p.dimension() > 2 {
+        return if p.nonlinear { None } else { transport_n(cx, p, conditions) };
     }
     if p.nonlinear {
         return quasilinear(cx, p, conditions);
@@ -1049,9 +1055,12 @@ fn characteristics(
         }
         return apply_initial_data(cx, p, conditions, solution, invariant);
     }
-    // Variable coefficients, homogeneous transport: dy/dx = b/a.
-    if !zero(cx.graph, c) || !zero(cx.graph, f) || zero(cx.graph, a) {
+    // Variable coefficients: dy/dx = b/a.
+    if zero(cx.graph, a) {
         return None;
+    }
+    if !zero(cx.graph, c) || !zero(cx.graph, f) {
+        return lagrange_charpit_linear(cx, p, conditions, a, b, c, f);
     }
     let a_inv = powi(cx.graph, a, -1);
     let slope = mul(cx.graph, &[b, a_inv]);
@@ -1083,6 +1092,322 @@ fn characteristics(
         return apply_initial_data(cx, p, conditions, solution, invariant);
     }
     None
+}
+
+/// `∂^α u = f` (a single derivative, constant coefficient): `f`
+/// integrated `α_k` times in each variable, plus `x_k^j F_kj(other
+/// variables)` for every `j < α_k`.
+fn direct_integration(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+) -> Option<NodeId> {
+    let terms: Vec<(Index, NodeId)> =
+        p.linear.iter().filter(|(_, c)| cx.graph.number_of(*c).is_none_or(|v| !v.is_zero())).cloned().collect();
+    let [(index, coefficient)] = terms.as_slice() else {
+        return None;
+    };
+    if index.iter().all(|&k| k == 0) || !p.constant(cx.graph, *coefficient) {
+        return None;
+    }
+    let minus = neg(cx.graph, p.source);
+    let inverse = powi(cx.graph, *coefficient, -1);
+    let mut value = mul(cx.graph, &[minus, inverse]);
+    value = cx.simplify(value);
+    for (k, &order) in index.iter().enumerate() {
+        for _ in 0..order {
+            value = if cx.graph.number_of(value).is_some_and(Number::is_zero) { value } else { antiderivative(cx, value, p.vars[k])? };
+        }
+    }
+    let mut pieces = vec![value];
+    let mut count = 0;
+    for (k, &order) in index.iter().enumerate() {
+        let others: Vec<NodeId> = p.vars.iter().enumerate().filter(|&(j, _)| j != k).map(|(_, &v)| v).collect();
+        for j in 0..order {
+            count += 1;
+            let name = cx.graph.sym(&format!("F{count}"));
+            let mut args = vec![name];
+            args.extend(&others);
+            let arbitrary = cx.graph.node(core::APPLY, &args);
+            let e = cx.graph.int(i64::from(j));
+            let power = cx.graph.node(core::POW, &[p.vars[k], e]);
+            pieces.push(mul(cx.graph, &[power, arbitrary]));
+        }
+    }
+    let solution = add(cx.graph, &pieces);
+    let solution = cx.simplify(solution);
+    let sample = with_sample_function(cx, solution)?;
+    verified(cx, p, sample).then_some(solution)
+}
+
+/// A polynomial particular solution of a constant-coefficient linear
+/// equation with a polynomial source (`Δu = x² + y²`, say): the ansatz of
+/// total degree `deg f + order` with undetermined rational coefficients.
+fn polynomial_particular(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+) -> Option<NodeId> {
+    if p.homogeneous(cx.graph) || p.linear.iter().any(|(_, c)| cx.graph.number_of(*c).and_then(Number::to_rational).is_none()) {
+        return None;
+    }
+    let mut gens = crate::rules::poly::repr::Gens::default();
+    let indices: Vec<u32> = p.vars.iter().map(|&v| gens.index(cx.graph, v)).collect();
+    let source = crate::rules::poly::best(cx.graph, p.source)?;
+    let poly = crate::rules::poly::repr::from_term(cx.graph, &mut gens, source, crate::rules::poly::repr::Limits::default())?;
+    if gens.len() != indices.len() || !poly.is_exact() {
+        return None;
+    }
+    let degree = poly.total_degree() + p.order();
+    // Exponent tuples of total degree <= degree.
+    let n = p.dimension();
+    let mut exponents: Vec<Vec<u32>> = vec![vec![]];
+    for _ in 0..n {
+        let mut next = Vec::new();
+        for e in &exponents {
+            let used: u32 = e.iter().sum();
+            for k in 0..=degree - used {
+                let mut f = e.clone();
+                f.push(k);
+                next.push(f);
+            }
+        }
+        exponents = next;
+    }
+    if exponents.len() > 150 {
+        return None;
+    }
+    let mut unknowns = Vec::with_capacity(exponents.len() + 1);
+    let mut ansatz = Vec::with_capacity(exponents.len());
+    for (m, e) in exponents.iter().enumerate() {
+        let a = fresh_symbol(cx, &format!("a{m}"));
+        unknowns.push(a);
+        let mut factors = vec![a];
+        for (k, &power) in e.iter().enumerate() {
+            if power > 0 {
+                let pw = cx.graph.int(i64::from(power));
+                factors.push(cx.graph.node(core::POW, &[p.vars[k], pw]));
+            }
+        }
+        ansatz.push(mul(cx.graph, &factors));
+    }
+    let ansatz = add(cx.graph, &ansatz);
+    let scale = fresh_symbol(cx, "s");
+    unknowns.push(scale);
+    // L(P) + s * source = 0 for all x.
+    let mut terms = Vec::new();
+    for (index, c) in &p.linear {
+        let mut d = ansatz;
+        for (k, &order) in index.iter().enumerate() {
+            for _ in 0..order {
+                d = derivative(cx.graph, d, p.vars[k])?;
+            }
+        }
+        terms.push(mul(cx.graph, &[*c, d]));
+    }
+    terms.push(mul(cx.graph, &[scale, p.source]));
+    let identity = add(cx.graph, &terms);
+    let identity = cx.simplify(identity);
+    let basis = crate::rules::ode::solve_linear_identity(cx.graph, identity, &unknowns)?;
+    let vector = basis.into_iter().find(|v| v.last().is_some_and(|s| !num_traits::Zero::is_zero(s)))?;
+    let s_value = vector.last()?.clone();
+    let mut solution = ansatz;
+    for (k, &a) in unknowns.iter().enumerate().take(exponents.len()) {
+        let value = cx.graph.num(Number::rat(&vector[k] / &s_value));
+        solution = cx.graph.substitute(solution, a, value);
+    }
+    let solution = cx.simplify(solution);
+    verified(cx, p, solution).then_some(solution)
+}
+
+fn fresh_symbol(
+    cx: &mut Cx<'_>,
+    stem: &str,
+) -> NodeId {
+    let s = cx.graph.interner_mut().fresh_symbol(stem);
+    cx.graph.symbol_node(s)
+}
+
+/// `F(args)` replaced by a concrete function, so that a solution with an
+/// arbitrary function can still be checked by substitution.
+fn with_sample_function(
+    cx: &mut Cx<'_>,
+    solution: NodeId,
+) -> Option<NodeId> {
+    let sin = cx.graph.ops().lookup("sin")?;
+    let mut applications = Vec::new();
+    let mut stack = vec![solution];
+    while let Some(n) = stack.pop() {
+        if cx.graph.op(n) == core::APPLY {
+            let head = *cx.graph.children(n).first()?;
+            let name = cx.graph.symbol_of(head).map(|s| cx.graph.interner().symbol_name(s).to_owned());
+            if name.is_some_and(|n| n.len() <= 2 && n.starts_with(|c: char| c.is_ascii_uppercase())) {
+                applications.push(n);
+                continue;
+            }
+        }
+        stack.extend_from_slice(cx.graph.children(n));
+    }
+    let mut out = solution;
+    for n in applications {
+        let args = cx.graph.children(n)[1..].to_vec();
+        let weighted: Vec<NodeId> = args
+            .iter()
+            .enumerate()
+            .map(|(k, &a)| {
+                let w = cx.graph.int(i64::try_from(k).unwrap_or(0) + 1);
+                mul(cx.graph, &[w, a])
+            })
+            .collect();
+        let sum = add(cx.graph, &weighted);
+        let wave = cx.graph.node(sin, &[sum]);
+        let one = cx.graph.int(1);
+        let sample = add(cx.graph, &[wave, one]);
+        out = cx.graph.replace_subterm(out, n, sample);
+    }
+    Some(out)
+}
+
+/// `Σ a_i ∂_i u + c u = f` with constant `a_i`, `c` in any number of
+/// variables: the invariants `ξ_j = a_j x_l - a_l x_j` of the
+/// characteristic lines (`x_l` the first variable with `a_l ≠ 0`), and
+/// along them `a_l du/dx_l + c u = f`.
+fn transport_n(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+) -> Option<NodeId> {
+    if !conditions.0.is_empty() {
+        return None;
+    }
+    let n = p.dimension();
+    let mut allowed: Vec<Index> = (0..n).map(|k| p.unit(k, 1)).collect();
+    allowed.push(vec![0; n]);
+    if !p.only(cx.graph, &allowed) {
+        return None;
+    }
+    let coefficients: Vec<NodeId> = (0..n).map(|k| p.coefficient(cx.graph, &p.unit(k, 1))).collect();
+    let c = p.coefficient(cx.graph, &vec![0; n]);
+    if !coefficients.iter().chain([&c]).all(|&k| p.constant(cx.graph, k)) {
+        return None;
+    }
+    let lead = coefficients.iter().position(|&k| cx.graph.number_of(k).is_none_or(|v| !v.is_zero()))?;
+    let (a_l, x_l) = (coefficients[lead], p.vars[lead]);
+    let f = neg(cx.graph, p.source);
+    let f = cx.simplify(f);
+    let inverse_a = powi(cx.graph, a_l, -1);
+    let mut invariants = Vec::new();
+    let mut f_on = f;
+    for (j, (&a_j, &x_j)) in coefficients.iter().zip(&p.vars).enumerate() {
+        if j == lead {
+            continue;
+        }
+        let (xi, _) = dummy(cx, p, &format!("xi{j}"));
+        // ξ_j = a_j x_l - a_l x_j  ⇒  x_j = (a_j x_l - ξ_j)/a_l
+        let ajxl = mul(cx.graph, &[a_j, x_l]);
+        let on = sub(cx.graph, ajxl, xi);
+        let on = mul(cx.graph, &[on, inverse_a]);
+        f_on = cx.graph.substitute(f_on, x_j, on);
+        let alxj = mul(cx.graph, &[a_l, x_j]);
+        let invariant = sub(cx.graph, ajxl, alxj);
+        let invariant = cx.simplify(invariant);
+        invariants.push((xi, invariant));
+    }
+    let exp = cx.graph.ops().lookup("exp")?;
+    let rate = mul(cx.graph, &[c, inverse_a]);
+    let rate = cx.simplify(rate);
+    let rate_x = mul(cx.graph, &[rate, x_l]);
+    let growth = cx.graph.node(exp, &[rate_x]);
+    let minus = neg(cx.graph, rate_x);
+    let decay = cx.graph.node(exp, &[minus]);
+    let integrand = mul(cx.graph, &[f_on, inverse_a, growth]);
+    let integrand = cx.simplify(integrand);
+    let mut particular =
+        if cx.graph.number_of(integrand).is_some_and(Number::is_zero) { cx.graph.int(0) } else { antiderivative(cx, integrand, x_l)? };
+    let f_symbol = cx.graph.sym("F");
+    let mut args = vec![f_symbol];
+    for &(xi, invariant) in &invariants {
+        particular = cx.graph.substitute(particular, xi, invariant);
+        args.push(invariant);
+    }
+    let arbitrary = cx.graph.node(core::APPLY, &args);
+    let inside = add(cx.graph, &[particular, arbitrary]);
+    let solution = mul(cx.graph, &[decay, inside]);
+    let solution = cx.simplify(solution);
+    let sample = with_sample_function(cx, solution)?;
+    verified(cx, p, sample).then_some(solution)
+}
+
+/// `a u_x + b u_y + c u = f` with variable coefficients (Lagrange): the
+/// characteristic curves `y = Y(x, C)` from `dy/dx = b/a`, and along them
+/// the linear ODE `du/dx + (c/a) u = f/a`, whose solution carries the
+/// arbitrary function `F(C)`; then `C` is replaced by its expression in
+/// `x` and `y`.
+#[allow(clippy::too_many_arguments)]
+fn lagrange_charpit_linear(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+    a: NodeId,
+    b: NodeId,
+    c: NodeId,
+    f: NodeId,
+) -> Option<NodeId> {
+    let (x, y) = (p.vars[0], p.vars[1]);
+    let a_inv = powi(cx.graph, a, -1);
+    let slope = mul(cx.graph, &[b, a_inv]);
+    let slope = cx.simplify(slope);
+    let y_symbol = cx.graph.symbol_of(y)?;
+    let big_y = {
+        let name = format!("{}_char", cx.graph.interner().symbol_name(y_symbol));
+        let function = cx.graph.sym(&name);
+        cx.graph.node(core::APPLY, &[function, x])
+    };
+    let slope_in_y = cx.graph.substitute(slope, y, big_y);
+    let (diff, dsolve) = (cx.graph.ops().lookup("diff")?, cx.graph.ops().lookup("dsolve")?);
+    let dy = cx.graph.node(diff, &[big_y, x]);
+    let ode = cx.graph.node(core::EQ, &[dy, slope_in_y]);
+    let request = cx.graph.node(dsolve, &[ode, big_y]);
+    let solved = cx.simplify(request);
+    let &[lhs, curve] = cx.graph.children(solved) else {
+        return None;
+    };
+    if cx.graph.op(solved) != core::EQ || lhs != big_y {
+        return None;
+    }
+    // y = Y(x, C1): the constant and its expression in (x, y).
+    let constant = cx.graph.sym("C1");
+    let (k, _) = dummy(cx, p, "k");
+    let curve = cx.graph.substitute(curve, constant, k);
+    let relation = sub(cx.graph, y, curve);
+    let invariant = *solve_for(cx.graph, relation, k, 0)?.first()?;
+    let invariant = cx.simplify(invariant);
+    // Along the curve: du/dx + (c/a) u = f/a.
+    let rate = mul(cx.graph, &[c, a_inv]);
+    let rate = cx.graph.substitute(rate, y, curve);
+    let rate = cx.simplify(rate);
+    let source = mul(cx.graph, &[f, a_inv]);
+    let source = cx.graph.substitute(source, y, curve);
+    let source = cx.simplify(source);
+    let exp = cx.graph.ops().lookup("exp")?;
+    let integral_rate = if cx.graph.number_of(rate).is_some_and(Number::is_zero) { cx.graph.int(0) } else { antiderivative(cx, rate, x)? };
+    let mu = cx.graph.node(exp, &[integral_rate]);
+    let mu = cx.simplify(mu);
+    let weighted = mul(cx.graph, &[source, mu]);
+    let weighted = cx.simplify(weighted);
+    let particular = if cx.graph.number_of(weighted).is_some_and(Number::is_zero) { cx.graph.int(0) } else { antiderivative(cx, weighted, x)? };
+    let arbitrary = apply_function(cx.graph, "F", k);
+    let inside = add(cx.graph, &[particular, arbitrary]);
+    let mu_inv = powi(cx.graph, mu, -1);
+    let along = mul(cx.graph, &[inside, mu_inv]);
+    let solution = cx.graph.substitute(along, k, invariant);
+    let solution = cx.simplify(solution);
+    let sample = with_sample_function(cx, solution)?;
+    if !verified(cx, p, sample) {
+        return None;
+    }
+    if conditions.0.is_empty() {
+        return Some(solution);
+    }
+    apply_initial_data(cx, p, conditions, solution, invariant)
 }
 
 /// With a condition `u(x, y0) = g(x)` on a line, replace the arbitrary
@@ -1330,6 +1655,9 @@ fn convolve_gaussian(
     let minus_oo = neg(cx.graph, oo);
     for &s in dummies.iter().rev() {
         body = cx.graph.node(defint, &[body, s, minus_oo, oo]);
+        // Evaluated in closed form when the integration kernels can (a
+        // Gaussian datum, for instance); otherwise it stays a request.
+        body = cx.simplify(body);
     }
     Some(body)
 }
@@ -1907,7 +2235,36 @@ fn laplace_box(
     // (a vanishing one means the data are special modes, which this
     // general formula cannot represent).
     if cx.graph.number_of(general).is_some_and(Number::is_zero) {
-        return None;
+        // Data made of finitely many modes: the exact terms for small
+        // mode numbers, kept when they reproduce the data on the face.
+        let mut terms = Vec::new();
+        for a in 1..=8_i64 {
+            for b in 1..=8_i64 {
+                let values = [cx.graph.int(a), cx.graph.int(b)];
+                let term = term_for(cx, &values)?;
+                if !cx.graph.number_of(term).is_some_and(Number::is_zero) {
+                    terms.push(term);
+                }
+            }
+        }
+        if terms.is_empty() {
+            return None;
+        }
+        let finite = add(cx.graph, &terms);
+        let finite = cx.simplify(finite);
+        let on_face = cx.graph.substitute(finite, last, lengths[d - 1]);
+        let difference = sub(cx.graph, on_face, h);
+        let symbols: Vec<SymbolId> = p.vars[..d - 1].iter().filter_map(|&v| cx.graph.symbol_of(v)).collect();
+        for (k, point) in [0.23, 0.61, 0.87].into_iter().enumerate() {
+            let mut env = Env::numeric(0.0);
+            for (j, &sym) in symbols.iter().enumerate() {
+                env.bind(sym, point * (1.0 + 0.17 * j as f64) * (1.0 + 0.05 * k as f64));
+            }
+            if cx.graph.eval(difference, &env).is_none_or(|v| v.abs() > 1e-9) {
+                return None;
+            }
+        }
+        return Some(finite);
     }
     let mut series = general;
     for &n in indices.iter().rev() {
@@ -2138,6 +2495,21 @@ mod tests {
 
     fn any(src: &str) -> String {
         reduce_with(&[pde()], src, &ASSUME).0
+    }
+
+    #[test]
+    fn transport_direct_integration_and_polynomial_sources() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| crate::rules::testing::simplify(&rules, src);
+        assert_eq!(run("pdsolve(x*diff(u(x, y), x) + y*diff(u(x, y), y) = u(x, y), u(x, y))"), "u(x, y) = x*F(y/x)");
+        assert_eq!(run("pdsolve(diff(u(x, y, z), x) + diff(u(x, y, z), y) + diff(u(x, y, z), z) = 0, u(x, y, z))"), "u(x, y, z) = F(x - y, x - z)");
+        assert_eq!(run("pdsolve(diff(diff(u(x, y), x), y) = x*y, u(x, y))"), "u(x, y) = 1/4*x^2*y^2 + F1(y) + F2(x)");
+        assert_eq!(run("pdsolve(diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y) = x^2 + y^2, u(x, y))"), "u(x, y) = 1/2*x^2*y^2");
+        let heat = run("pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-x^2)))");
+        assert!(!heat.contains("defint"), "{heat}");
+        let lap = "diff(diff(u(x, y, z), x), x) + diff(diff(u(x, y, z), y), y) + diff(diff(u(x, y, z), z), z) = 0";
+        let modes = run(&format!("pdsolve({lap}, u(x, y, z), list(u(x, y, 0) = 0, u(x, y, 1) = sin(pi*x)*sin(pi*y), u(0, y, z) = 0, u(1, y, z) = 0, u(x, 0, z) = 0, u(x, 1, z) = 0))"));
+        assert!(modes.contains("sinh") && !modes.contains("sum"), "{modes}");
     }
 
     #[test]
