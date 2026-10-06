@@ -492,10 +492,27 @@ pub(super) struct Item {
     pub special: Option<Special>,
 }
 
+/// The profile across one face of a box for a harmonic-type problem:
+/// `u = Σ c_k Ψ_k(others) R_k(x_j)` with `R'' = κ² R`, `R = 1` on the face
+/// carrying the data and `R = 0` (or `R' = 0`) on the opposite one.
+#[derive(Copy, Clone, Debug)]
+pub(super) struct Face {
+    pub var: NodeId,
+    pub start: NodeId,
+    pub length: NodeId,
+    /// The data is at the start of the interval.
+    pub near: bool,
+    /// The opposite end is a Neumann one.
+    pub far_neumann: bool,
+    /// Coefficient of `u_{x_j x_j}`.
+    pub cjj: NodeId,
+}
+
 pub(super) struct Engine {
     pub axes: Vec<Axis>,
     pub time: Option<Time>,
     pub symbol: Symbol,
+    pub face: Option<Face>,
 }
 
 fn zero_node(cx: &mut Cx<'_>) -> NodeId {
@@ -604,7 +621,13 @@ fn time_factor(
                 };
                 terms.push(mul(cx.graph, &[damp, line]));
                 if forced {
-                    if !f_constant {
+                    if f_constant {
+                        let t2 = powi(cx.graph, t, 2);
+                        let half = fraction(cx, 1, 2)?;
+                        let q = mul(cx.graph, &[half, f, t2]);
+                        let q = div(cx, q, time.a2);
+                        terms.push(neg(cx.graph, q));
+                    } else {
                         let (tau, _) = dummy(cx, p, "tau");
                         let f_tau = cx.graph.substitute(f, t, tau);
                         let elapsed = sub(cx.graph, t, tau);
@@ -613,12 +636,6 @@ fn time_factor(
                         let body = neg(cx.graph, body);
                         let zero_t = cx.graph.int(0);
                         terms.push(defint(cx, body, tau, zero_t, t)?);
-                    } else {
-                        let t2 = powi(cx.graph, t, 2);
-                        let half = fraction(cx, 1, 2)?;
-                        let q = mul(cx.graph, &[half, f, t2]);
-                        let q = div(cx, q, time.a2);
-                        terms.push(neg(cx.graph, q));
                     }
                 }
             } else {
@@ -737,7 +754,7 @@ fn project(
 /// Whether the expression `h` (in the index `n`) vanishes, to rounding, at
 /// the integers from `from` on.
 fn vanishes_on_integers(
-    cx: &mut Cx<'_>,
+    cx: &Cx<'_>,
     h: NodeId,
     n: NodeId,
     from: i64,
@@ -954,6 +971,13 @@ fn leaf(
     }
     let f = add(cx.graph, &forcing);
     let f = cx.simplify(f);
+    if let Some(face) = engine.face {
+        let profile = face_profile(cx, &face, s)?;
+        let mut factors = vec![c0, profile];
+        factors.extend(path.iter().map(|st| st.family.mode));
+        let term = mul(cx.graph, &factors);
+        return Some(cx.simplify(term));
+    }
     let t = time_factor(cx, p, engine, s, c0, c1, f)?;
     if cx.is_zero(t) {
         return Some(zero);
@@ -962,6 +986,29 @@ fn leaf(
     factors.extend(path.iter().map(|s| s.family.mode));
     let term = mul(cx.graph, &factors);
     Some(cx.simplify(term))
+}
+
+/// `R(x_j)` for the face problem with `κ² = -s / c_jj`.
+fn face_profile(
+    cx: &mut Cx<'_>,
+    face: &Face,
+    s: NodeId,
+) -> Option<NodeId> {
+    let ratio = div(cx, s, face.cjj);
+    let k2 = neg(cx.graph, ratio);
+    let k2 = cx.simplify(k2);
+    let xi = if is_zero_number(cx.graph, face.start) { face.var } else { sub(cx.graph, face.var, face.start) };
+    let arg = if face.near { sub(cx.graph, face.length, xi) } else { xi };
+    if cx.is_zero(k2) {
+        return Some(if face.far_neumann { cx.graph.int(1) } else { div(cx, arg, face.length) });
+    }
+    let kappa = sqrt(cx, k2)?;
+    let (num, den) = if face.far_neumann { ("cosh", "cosh") } else { ("sinh", "sinh") };
+    let top_arg = mul(cx.graph, &[kappa, arg]);
+    let bottom_arg = mul(cx.graph, &[kappa, face.length]);
+    let top = call(cx, num, &[top_arg])?;
+    let bottom = call(cx, den, &[bottom_arg])?;
+    Some(div(cx, top, bottom))
 }
 
 /// Runs the expansion for the initial data and forcing in `items`.
@@ -1070,7 +1117,7 @@ pub(super) fn interval(
 
 /// The time variable of an evolution equation, if the equation is one.
 pub(super) fn evolution_time(
-    cx: &mut Cx<'_>,
+    cx: &Cx<'_>,
     p: &Problem,
 ) -> Option<usize> {
     let time = p.time(cx.graph);
@@ -1109,6 +1156,8 @@ pub(super) fn solve_box(
     // The operator: time coefficients, spatial terms.
     let (mut a2, mut a1) = (cx.graph.int(0), cx.graph.int(0));
     let mut spatial: Vec<(Vec<u32>, NodeId)> = Vec::new();
+    // First derivatives `c u_{x_j}`: removed by a gauge on Dirichlet axes.
+    let mut drift: Vec<(usize, NodeId)> = Vec::new();
     for (index, c) in &p.linear {
         if is_zero_number(cx.graph, *c) {
             continue;
@@ -1129,6 +1178,10 @@ pub(super) fn solve_box(
                 continue;
             }
         }
+        if let Some(pos) = space.iter().position(|&j| *index == p.unit(j, 1)) {
+            drift.push((pos, *c));
+            continue;
+        }
         if index.iter().any(|d| d % 2 != 0) {
             return None;
         }
@@ -1137,21 +1190,75 @@ pub(super) fn solve_box(
     if spatial.is_empty() {
         return None;
     }
-    let order = if !is_zero_number(cx.graph, a2) {
-        2
-    } else if !is_zero_number(cx.graph, a1) {
-        1
-    } else {
-        0
-    };
+    let order = if is_zero_number(cx.graph, a2) { u32::from(!is_zero_number(cx.graph, a1)) } else { 2 };
     let time = time_index.map(|t| Time { var: p.vars[t], order, a2, a1 });
     // Axes.
-    let mut axes = Vec::new();
     let mut intervals = Vec::new();
     for &j in &space {
-        let iv = interval(cx, p, conditions, j)?;
-        intervals.push(iv.clone());
-        axes.push(Axis { var: p.vars[j], shape: Shape::Interval(iv) });
+        intervals.push(interval(cx, p, conditions, j)?);
+    }
+    // The gauge u = exp(Σ α_j x_j) v with α_j = -c_j / (2 b_j).
+    let zero = cx.graph.int(0);
+    let mut alphas = vec![zero; space.len()];
+    let mut gauged = false;
+    for &(pos, c1) in &drift {
+        let iv = intervals.get(pos)?;
+        if iv.periodic || iv.left.kind != Kind::Dirichlet || iv.right.kind != Kind::Dirichlet {
+            return None;
+        }
+        let pure = |halves: &[u32]| halves.iter().enumerate().all(|(k, &h)| if k == pos { h == 1 } else { h == 0 });
+        let b = spatial.iter().find(|(h, _)| pure(h)).map(|(_, c)| *c)?;
+        let two_b = {
+            let two = cx.graph.int(2);
+            mul(cx.graph, &[two, b])
+        };
+        let alpha = {
+            let q = div(cx, c1, two_b);
+            let q = neg(cx.graph, q);
+            cx.simplify(q)
+        };
+        // The potential shifts by -c²/(4 b).
+        let shift = {
+            let c2 = powi(cx.graph, c1, 2);
+            let four = cx.graph.int(4);
+            let four_b = mul(cx.graph, &[four, b]);
+            let q = div(cx, c2, four_b);
+            neg(cx.graph, q)
+        };
+        match spatial.iter_mut().find(|(h, _)| h.iter().all(|&e| e == 0)) {
+            | Some((_, c)) => {
+                let total = add(cx.graph, &[*c, shift]);
+                *c = cx.simplify(total);
+            },
+            | None => spatial.push((vec![0; space.len()], shift)),
+        }
+        alphas[pos] = alpha;
+        gauged = true;
+    }
+    let xs: Vec<NodeId> = space.iter().map(|&j| p.vars[j]).collect();
+    // exp(-Σ_{k ≠ skip} α_k x_k).
+    let inverse_gauge = |cx: &mut Cx<'_>, skip: Option<usize>| -> Option<NodeId> {
+        let terms: Vec<NodeId> = alphas.iter().zip(&xs).enumerate().filter(|(k, _)| Some(*k) != skip).map(|(_, (&a, &x))| mul(cx.graph, &[a, x])).collect();
+        let sum = add(cx.graph, &terms);
+        let minus = neg(cx.graph, sum);
+        call(cx, "exp", &[minus])
+    };
+    // Data on the ends of a single interval: a lifting `w` carrying them,
+    // so that `v = u - w` has homogeneous ends.
+    let mut lifting: Option<NodeId> = None;
+    if intervals.len() == 1 && !gauged {
+        let iv = intervals.first()?;
+        if !iv.periodic && (!cx.is_zero(iv.left.value) || !cx.is_zero(iv.right.value)) {
+            lifting = Some(lift(cx, iv)?);
+            if let Some(iv) = intervals.first_mut() {
+                iv.left.value = zero;
+                iv.right.value = zero;
+            }
+        }
+    }
+    let mut axes = Vec::new();
+    for iv in &intervals {
+        axes.push(Axis { var: iv.var, shape: Shape::Interval(iv.clone()) });
     }
     // Every condition is a boundary condition on an axis or an initial one.
     for c in &conditions.0 {
@@ -1166,11 +1273,65 @@ pub(super) fn solve_box(
         }
     }
     let mut items = time_items(cx, p, conditions, time_index, order, n)?;
-    if !p.homogeneous(cx.graph) {
-        items.push(Item { role: Role::Source, h: p.source, special: None });
+    let mut source = p.source;
+    if let Some(w) = lifting {
+        // The equation for v = u - w has the source L[w] + f and the
+        // initial data of u - w.
+        let replaced = cx.graph.replace_subterm(p.residual, p.unknown, w);
+        source = cx.simplify(replaced);
+        if let Some(t) = time_index {
+            let t_node = p.vars[t];
+            let w0 = cx.graph.substitute(w, t_node, zero);
+            let w0 = cx.simplify(w0);
+            let wt = derivative(cx.graph, w, t_node)?;
+            let wt0 = cx.graph.substitute(wt, t_node, zero);
+            let wt0 = cx.simplify(wt0);
+            let mut has_displacement = false;
+            for item in &mut items {
+                let subtract = match item.role {
+                    | Role::Displacement => {
+                        has_displacement = true;
+                        w0
+                    },
+                    | Role::Velocity => wt0,
+                    | Role::Source => continue,
+                };
+                let gap = sub(cx.graph, item.h, subtract);
+                item.h = cx.simplify(gap);
+            }
+            if !has_displacement {
+                let negated = neg(cx.graph, w0);
+                items.push(Item { role: Role::Displacement, h: cx.simplify(negated), special: None });
+            }
+        }
+    }
+    if !cx.is_zero(source) {
+        items.push(Item { role: Role::Source, h: source, special: None });
+    }
+    if gauged {
+        let factor = inverse_gauge(cx, None)?;
+        for item in &mut items {
+            let scaled = mul(cx.graph, &[factor, item.h]);
+            item.h = cx.simplify(scaled);
+        }
     }
     // Boundary data as forcing (Green's second identity).
     for (level, iv) in intervals.iter().enumerate() {
+        let mut iv = iv.clone();
+        if gauged {
+            // v = exp(-Σ α x) u on the face: the factor of the other axes,
+            // and of this axis at the end point.
+            let others = inverse_gauge(cx, Some(level))?;
+            for end in [&mut iv.left, &mut iv.right] {
+                let a = alphas[level];
+                let at_end = mul(cx.graph, &[a, end.point]);
+                let minus = neg(cx.graph, at_end);
+                let e = call(cx, "exp", &[minus])?;
+                let scaled = mul(cx.graph, &[others, e, end.value]);
+                end.value = cx.simplify(scaled);
+            }
+        }
+        let iv = &iv;
         // Only a pure second derivative in this variable may occur.
         let mut cjj = None;
         for (halves, c) in &spatial {
@@ -1189,16 +1350,177 @@ pub(super) fn solve_box(
             continue;
         }
         let cjj = cjj.filter(|c| *c != NodeId::NONE)?;
-        items.extend(boundary_items(cx, iv, level, cjj)?);
+        items.extend(boundary_items(cx, iv, level, cjj));
     }
-    let engine = Engine { axes, time, symbol: Symbol::Cartesian(spatial) };
-    finish(cx, p, conditions, &engine, &items)
+    if time_index.is_none() && !gauged && lifting.is_none() {
+        if let Some(solution) = faces(cx, p, conditions, &intervals, &spatial, source)? {
+            return Some(solution);
+        }
+    }
+    let engine = Engine { axes, time, symbol: Symbol::Cartesian(spatial), face: None };
+    let prefactor = if gauged {
+        let terms: Vec<NodeId> = alphas.iter().zip(&xs).map(|(&a, &x)| mul(cx.graph, &[a, x])).collect();
+        let sum = add(cx.graph, &terms);
+        Some(call(cx, "exp", &[sum])?)
+    } else {
+        None
+    };
+    finish(cx, p, conditions, &engine, &items, prefactor, lifting)
+}
+
+/// The lifting `w(x, t)` of the end data of an interval: linear
+/// (`c₀ + c₁ ξ`), or `c₁ ξ + c₂ ξ²` when both ends are Neumann ones.
+fn lift(
+    cx: &mut Cx<'_>,
+    iv: &Interval,
+) -> Option<NodeId> {
+    let xi = if is_zero_number(cx.graph, iv.start) { iv.var } else { sub(cx.graph, iv.var, iv.start) };
+    let (p0, q0, p1, q1) = (iv.left.p, iv.left.q, iv.right.p, iv.right.q);
+    let (g0, g1) = (iv.left.value, iv.right.value);
+    let l = iv.length;
+    let determinant = {
+        let right = {
+            let p1l = mul(cx.graph, &[p1, l]);
+            add(cx.graph, &[p1l, q1])
+        };
+        let a = mul(cx.graph, &[p0, right]);
+        let b = mul(cx.graph, &[q0, p1]);
+        let d = sub(cx.graph, a, b);
+        cx.simplify(d)
+    };
+    let w = if cx.is_zero(determinant) {
+        // Two Neumann ends: w' = g₀ + (g₁ - g₀) ξ/L.
+        if !is_zero_number(cx.graph, p0) || !is_zero_number(cx.graph, p1) {
+            return None;
+        }
+        let (n0, n1) = (div(cx, g0, q0), div(cx, g1, q1));
+        let gap = sub(cx.graph, n1, n0);
+        let two = cx.graph.int(2);
+        let two_l = mul(cx.graph, &[two, l]);
+        let c2 = div(cx, gap, two_l);
+        let xi2 = powi(cx.graph, xi, 2);
+        let quadratic = mul(cx.graph, &[c2, xi2]);
+        let linear = mul(cx.graph, &[n0, xi]);
+        add(cx.graph, &[linear, quadratic])
+    } else {
+        let right = {
+            let p1l = mul(cx.graph, &[p1, l]);
+            add(cx.graph, &[p1l, q1])
+        };
+        let c0 = {
+            let a = mul(cx.graph, &[g0, right]);
+            let b = mul(cx.graph, &[q0, g1]);
+            let d = sub(cx.graph, a, b);
+            div(cx, d, determinant)
+        };
+        let c1 = {
+            let a = mul(cx.graph, &[p0, g1]);
+            let b = mul(cx.graph, &[p1, g0]);
+            let d = sub(cx.graph, a, b);
+            div(cx, d, determinant)
+        };
+        let linear = mul(cx.graph, &[c1, xi]);
+        add(cx.graph, &[c0, linear])
+    };
+    Some(cx.simplify(w))
+}
+
+/// Steady problems with Dirichlet data on faces of a box: the data of each
+/// face is expanded in the modes of the other axes with the profile
+/// `sinh(κ (L - ξ))/sinh(κ L)` across (Laplace's equation, Helmholtz-type
+/// operators), plus the expansion of the source with homogeneous ends.
+/// `Some(None)` when the problem is not of this kind.
+#[allow(clippy::too_many_lines)]
+fn faces(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+    intervals: &[Interval],
+    spatial: &[(Vec<u32>, NodeId)],
+    source: NodeId,
+) -> Option<Option<NodeId>> {
+    if intervals.len() < 2 {
+        return Some(None);
+    }
+    let data_faces: Vec<(usize, bool)> = intervals
+        .iter()
+        .enumerate()
+        .flat_map(|(level, iv)| {
+            let mut out = Vec::new();
+            if !iv.periodic {
+                out.push((level, true));
+                out.push((level, false));
+            }
+            out
+        })
+        .filter(|&(level, near)| {
+            let iv = &intervals[level];
+            let end = if near { iv.left } else { iv.right };
+            !cx.is_zero(end.value)
+        })
+        .collect();
+    if data_faces.is_empty() {
+        return Some(None);
+    }
+    let mut parts = Vec::new();
+    for &(level, near) in &data_faces {
+        let iv = &intervals[level];
+        let (end, opposite) = if near { (iv.left, iv.right) } else { (iv.right, iv.left) };
+        // Dirichlet data, the opposite end Dirichlet or Neumann (homogeneous).
+        if end.kind != Kind::Dirichlet || !matches!(opposite.kind, Kind::Dirichlet | Kind::Neumann) || !cx.is_zero(opposite.value) {
+            return Some(None);
+        }
+        // The operator: a pure second derivative in this axis.
+        let mut cjj = None;
+        let mut rest: Vec<(Vec<u32>, NodeId)> = Vec::new();
+        for (halves, c) in spatial {
+            let here = halves.get(level).copied().unwrap_or(0);
+            if here == 0 {
+                rest.push((halves.iter().enumerate().filter(|(k, _)| *k != level).map(|(_, &h)| h).collect(), *c));
+            } else if here == 1 && halves.iter().enumerate().all(|(k, &h)| k == level || h == 0) && cjj.is_none() {
+                cjj = Some(*c);
+            } else {
+                return Some(None);
+            }
+        }
+        let cjj = cjj?;
+        let others: Vec<Axis> =
+            intervals.iter().enumerate().filter(|(k, _)| *k != level).map(|(_, v)| Axis { var: v.var, shape: Shape::Interval(v.clone()) }).collect();
+        let face = Face { var: iv.var, start: iv.start, length: iv.length, near, far_neumann: opposite.kind == Kind::Neumann, cjj };
+        let engine = Engine { axes: others, time: None, symbol: Symbol::Cartesian(rest), face: Some(face) };
+        let scaled = div(cx, end.value, end.p);
+        let scaled = cx.simplify(scaled);
+        let items = [Item { role: Role::Displacement, h: scaled, special: None }];
+        parts.push(run(cx, p, &engine, &items)?);
+    }
+    // The source, with homogeneous ends.
+    if !cx.is_zero(source) {
+        let axes: Vec<Axis> = intervals
+            .iter()
+            .map(|v| {
+                let mut homogeneous = v.clone();
+                let zero = cx.graph.int(0);
+                homogeneous.left.value = zero;
+                homogeneous.right.value = zero;
+                Axis { var: v.var, shape: Shape::Interval(homogeneous) }
+            })
+            .collect();
+        let engine = Engine { axes, time: None, symbol: Symbol::Cartesian(spatial.to_vec()), face: None };
+        let items = [Item { role: Role::Source, h: source, special: None }];
+        parts.push(run(cx, p, &engine, &items)?);
+    }
+    let total = add(cx.graph, &parts);
+    let total = cx.simplify(total);
+    if is_closed(cx, total) && (!verified(cx, p, total) || !satisfies(cx, p, conditions, total)) {
+        return None;
+    }
+    Some(Some(total))
 }
 
 /// The initial-data items of an evolution problem (none for a steady
 /// one); every condition on the time variable must be an initial one.
 pub(super) fn time_items(
-    cx: &mut Cx<'_>,
+    cx: &Cx<'_>,
     p: &Problem,
     conditions: &Conditions,
     time_index: Option<usize>,
@@ -1242,7 +1564,7 @@ pub(super) fn boundary_items(
     iv: &Interval,
     level: usize,
     cjj: NodeId,
-) -> Option<Vec<Item>> {
+) -> Vec<Item> {
     let mut items = Vec::new();
     for (side, end) in [(-1_i64, iv.left), (1, iv.right)] {
         if iv.periodic || cx.is_zero(end.value) {
@@ -1259,7 +1581,7 @@ pub(super) fn boundary_items(
             special: Some(Special { axis: level, kind: end.kind, point: end.point, weight: cx.graph.int(1) }),
         });
     }
-    Some(items)
+    items
 }
 
 /// Runs the engine and checks closed-form results against the equation and
@@ -1270,11 +1592,24 @@ pub(super) fn finish(
     conditions: &Conditions,
     engine: &Engine,
     items: &[Item],
+    prefactor: Option<NodeId>,
+    offset: Option<NodeId>,
 ) -> Option<NodeId> {
     let solution = run(cx, p, engine, items)?;
-    if cx.is_zero(solution) {
-        return None;
-    }
+    let solution = match prefactor {
+        | Some(factor) if !cx.is_zero(solution) => {
+            let scaled = mul(cx.graph, &[factor, solution]);
+            cx.simplify(scaled)
+        },
+        | _ => solution,
+    };
+    let solution = match offset {
+        | Some(w) => {
+            let total = add(cx.graph, &[solution, w]);
+            cx.simplify(total)
+        },
+        | None => solution,
+    };
     if is_closed(cx, solution) && (!verified(cx, p, solution) || !satisfies(cx, p, conditions, solution)) {
         return None;
     }

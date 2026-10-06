@@ -100,7 +100,9 @@ fn adjugate(
             let d = determinant(cx, &minor(m, i, j));
             let signed = if (i + j) % 2 == 0 { d } else { neg(cx.graph, d) };
             // Transposed cofactors.
-            out[j][i] = signed;
+            if let Some(slot) = out.get_mut(j).and_then(|row| row.get_mut(i)) {
+                *slot = signed;
+            }
         }
     }
     out
@@ -431,9 +433,9 @@ pub(super) fn solve_system(
         for (_, a) in &a_matrices {
             let left = multiply(cx, &p_inverse, a);
             let d = multiply(cx, &left, &p);
-            for i in 0..n {
-                for j in 0..n {
-                    if i != j && !cx.is_zero(d[i][j]) {
+            for (i, row) in d.iter().enumerate() {
+                for (j, &entry) in row.iter().enumerate() {
+                    if i != j && !cx.is_zero(entry) {
                         ok = false;
                     }
                 }

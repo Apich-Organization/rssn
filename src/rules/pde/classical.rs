@@ -81,10 +81,13 @@ pub(super) fn wave_half_line(
     let dirichlet = conditions.find(cx.graph, space, &zero_index, None);
     let neumann = conditions.find(cx.graph, space, &p.unit(space, 1), None);
     let odd = match (dirichlet, neumann) {
-        | (Some(c), None) if cx.is_zero(c.value) => true,
-        | (None, Some(c)) if cx.is_zero(c.value) => false,
+        | (Some(c), None) if cx.is_zero(c.value) && cx.is_zero(c.point) => true,
+        | (None, Some(c)) if cx.is_zero(c.value) && cx.is_zero(c.point) => false,
         | _ => return None,
     };
+    if conditions.0.len() != 2 + usize::from(velocity.is_some()) {
+        return None;
+    }
     let (sign, abs) = (cx.graph.ops().lookup("sign")?, cx.graph.ops().lookup("abs")?);
     let half = cx.graph.num(Number::fraction(1, 2)?);
     let speed = pow(cx.graph, e.speed, half);

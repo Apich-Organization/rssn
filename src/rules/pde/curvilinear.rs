@@ -38,6 +38,7 @@ use super::util::div;
 use super::util::is_zero_number;
 use crate::graph::Cx;
 use crate::graph::NodeId;
+use crate::graph::Number;
 use crate::rules::calculus::derivative;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::neg;
@@ -125,9 +126,7 @@ fn laplacian(
         if is_time || *index == vec![0; n] || is_zero_number(cx.graph, *c) {
             continue;
         }
-        let Some((_, e)) = expected.iter().find(|(i, _)| i == index) else {
-            return None;
-        };
+        let (_, e) = expected.iter().find(|(i, _)| i == index)?;
         let be = mul(cx.graph, &[b, *e]);
         let gap = sub(cx.graph, *c, be);
         if !cx.is_zero(gap) {
@@ -221,13 +220,7 @@ fn solve_layout(
             return None;
         }
     }
-    let order = if !is_zero_number(cx.graph, a2) {
-        2
-    } else if !is_zero_number(cx.graph, a1) {
-        1
-    } else {
-        0
-    };
+    let order = if is_zero_number(cx.graph, a2) { u32::from(!is_zero_number(cx.graph, a1)) } else { 2 };
     let time = time_index.map(|t| Time { var: p.vars[t], order, a2, a1 });
     // Axes in the order angle, radius, axis.
     let mut axes = Vec::new();
@@ -239,12 +232,14 @@ fn solve_layout(
         var: p.vars[layout.r],
         shape: Shape::Radial { radius, end, sphere: layout.sphere, has_angle: layout.theta.is_some() },
     });
-    let mut z_interval = None;
-    if let Some(j) = layout.z {
-        let iv = interval(cx, p, conditions, j)?;
-        axes.push(Axis { var: p.vars[j], shape: Shape::Interval(iv.clone()) });
-        z_interval = Some((axes.len() - 1, iv));
-    }
+    let z_interval = match layout.z {
+        | Some(j) => {
+            let iv = interval(cx, p, conditions, j)?;
+            axes.push(Axis { var: p.vars[j], shape: Shape::Interval(iv.clone()) });
+            Some((axes.len() - 1, iv))
+        },
+        | None => None,
+    };
     // Conditions: r, z and the initial ones only.
     for c in &conditions.0 {
         let allowed = c.on == layout.r || Some(c.on) == layout.z || Some(c.on) == time_index;
@@ -270,10 +265,10 @@ fn solve_layout(
         });
     }
     if let Some((level, iv)) = &z_interval {
-        items.extend(boundary_items(cx, iv, *level, b)?);
+        items.extend(boundary_items(cx, iv, *level, b));
     }
-    let engine = Engine { axes, time, symbol: Symbol::Laplacian { b, a0 } };
-    finish(cx, p, conditions, &engine, &items)
+    let engine = Engine { axes, time, symbol: Symbol::Laplacian { b, a0 }, face: None };
+    finish(cx, p, conditions, &engine, &items, None, None)
 }
 
 /// `Δu = f(r)` with a polynomial `f` and Dirichlet data on `r = R`: the
@@ -288,7 +283,7 @@ fn radial_poisson(
     radius: NodeId,
 ) -> Option<NodeId> {
     let r = p.vars[layout.r];
-    if !cx.graph.number_of(end.p).is_some_and(|v| v.is_one()) {
+    if !cx.graph.number_of(end.p).is_some_and(Number::is_one) {
         return None;
     }
     // Δu = f with f = -source / b, a polynomial in r alone.

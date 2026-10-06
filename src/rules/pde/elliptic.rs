@@ -165,8 +165,8 @@ pub(super) fn half_space(
     let minus_oo = neg(cx.graph, oo);
     let stems = ["s", "r", "q"];
     let mut dummies = Vec::new();
-    for j in 0..d {
-        dummies.push(dummy(cx, p, stems[j]).0);
+    for stem in stems.iter().take(d) {
+        dummies.push(dummy(cx, p, stem).0);
     }
     // All reflections: per variable, the choices (sign, position).
     let mut combos: Vec<(i64, Vec<NodeId>)> = vec![(1, Vec::new())];

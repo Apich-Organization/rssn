@@ -5,30 +5,76 @@
 //! equations, `diff(u(x, t), t)`, `diff(diff(u(x, t), x), x)`. A third
 //! argument is a list of conditions:
 //!
-//! * `u(x, 0) = f`, `u(0, t) = 0`, `u(L, t) = 0` — values on a coordinate
+//! * `u(x, 0) = f`, `u(0, t) = 0`, `u(L, t) = g(t)` — values on a coordinate
 //!   line (initial or Dirichlet boundary conditions);
 //! * `at(diff(u(x, t), t), t, 0) = g`, `at(diff(u(x, t), x), x, 0) = 0` —
-//!   values of a derivative there (initial velocity, Neumann conditions).
+//!   values of a derivative there (initial velocity, Neumann conditions);
+//! * `at(diff(u(x, t), x), x, L) + h*u(L, t) = 0` (or `... = -h*u(L, t)`) —
+//!   Robin conditions, `u(0, t) = u(L, t)` — periodicity;
+//! * `at(diff(diff(u(x, t), x), x), x, 0) = 0` next to `u(0, t) = 0` (and
+//!   `u_xxx = 0` next to `u_x = 0`) — the extra conditions of simply
+//!   supported (sliding) edges when the equation has fourth derivatives.
 //!
 //! The answer is `u(x, t) = ...`: a closed form when one exists (checked by
 //! substitution where it contains no arbitrary functions), an integral
 //! representation (Green's functions, heat kernels, Kirchhoff's formula)
 //! that the integration kernels evaluate further when they can, or a
-//! Fourier series `sum(..., n, 1, oo)` whose coefficients are computed in
-//! closed form. When the initial data is a finite combination of
-//! eigenfunctions the series is replaced by the finite sum.
+//! series `sum(..., n, 1, oo)` (one nested `sum` per dimension) whose
+//! coefficients are computed in closed form. When the data is a finite
+//! combination of eigenfunctions the series is replaced by the finite sum.
+//! For a *system* `pdsolve(list(eq1, eq2), list(u(x, t), v(x, t))[,
+//! conditions])` the answer is `list(u(x, t) = ..., v(x, t) = ...)`.
 //!
 //! The time variable of an evolution equation is `t` if it is an argument
 //! of `u`, otherwise the last argument.
 //!
+//! # Coverage
+//!
+//! Every cell is a standard closed form or series and is tested (see
+//! `dimension_tests`). `D`, `N`, `R`, `P` stand for Dirichlet, Neumann,
+//! Robin and periodic conditions; "images" is the method of images, "series"
+//! an eigenfunction expansion (`expansion` below), "Duhamel" the time
+//! integral of the solution for impulsive forcing.
+//!
+//! | equation | domain | dimensions | method |
+//! |---|---|---|---|
+//! | heat / diffusion, drift, reaction, source | whole space | 1, 2, 3 | heat kernel (gauge `exp(αx + βt)` for drift and reaction), Duhamel |
+//! | | half-space, quadrant, octant (`x_j > 0`, any subset) | 1, 2, 3 | images (`K(x - s) ∓ K(x + s)` per axis); D or N data on one face (Dirichlet kernel `x_n/(t-τ) K`, Neumann `-2D K`); constant data: similarity solution `erfc(x/2√(Dt))` |
+//! | | box `[a, b]^d`, D/N/R/P in every combination per axis; drift on D axes | 1, 2, 3 | expansion; sources by Duhamel; boundary data as boundary forcing (Green's second identity) |
+//! | | disk, ball (radial), cylinder; D/N/R at `r = R` | 1, 2, 3 | expansion in `J_n(j_{n,m} r/R)` (cylinder times axial modes), `sin(κr)/r` and `r^{-1/2} J_{l+1/2}` for balls |
+//! | wave `u_tt = c² Δu` | whole space | 1, 2, 3 | d'Alembert; Poisson's formula (Hadamard descent from 3D); Kirchhoff; sources by Duhamel |
+//! | | half-space (`x_j > 0`, D or N, any subset) | 1, 2, 3 | odd/even extension of data and source |
+//! | | box, disk, cylinder, ball | 1, 2, 3 | expansion (`cos(ωt)`, `sin(ωt)/ω`, Duhamel for time-dependent sources, zero modes) |
+//! | Klein–Gordon, telegraph (`a u_tt + b u_t + e u`) | whole line | 1 | Riemann's formula with `J_0`, `J_1` (`I_0`, `I_1` for the telegraph equation) after `u = e^{-γt} w`; plane-wave integral without data |
+//! | | box, disk, cylinder, ball | 1, 2, 3 | expansion (`T'' + 2γ T' + (ω² ) T`, closed form for under- and over-damped modes) |
+//! | Schrödinger `i u_t = -Δ u + V₀ u` | whole space, half-space | 1, 2, 3 | propagator (complex diffusivity in the heat formulas), images |
+//! | | box, disk, ball | 1, 2, 3 | expansion with `exp(-i s t)` |
+//! | Laplace, Poisson, Helmholtz | whole space | 1, 2, 3 | free-space Green's function |
+//! | | half-space, quadrant, octant | 1, 2, 3 | images; Poisson kernel `Γ(d/2)/π^{d/2} x_n/|x - y|^d` for D data (Laplace); single layer `2G` for N data |
+//! | | rectangle, box | 2, 3 | one data face: sinh/sin closed form; any faces, sources, N/R/mixed: expansion with boundary forcing |
+//! | | disk, ball (axisymmetric), ring | 2, 3 | harmonic series `Σ (r/R)^n(...)`, `Σ A_l (r/R)^l P_l(cos θ)`, finite data on rings; polynomial sources by a particular solution; Bessel expansion otherwise |
+//! | | cylinder | 3 | expansion in `J_0(j_{0,m} r) × sin(kz)` |
+//! | biharmonic, beam `u_tt + k u_xxxx` | box | 1, 2 | expansion (the symbol `Σ c_α Π (-λ_j)^{α_j/2}` is generic in the even operator), simply supported / sliding edges |
+//! | advection `a·∇u + c u = f` | whole space | any | characteristics, invariants `a_j x_l - a_l x_j` |
+//! | hyperbolic and parabolic *systems* with constant matrices | any domain of the scalar solvers | 1, 2, 3 | simultaneous diagonalisation `P^{-1} A_α P = diag`, scalar solution, `U = P W` |
+//!
+//! Limitations: the equation must have constant coefficients (apart from
+//! the polar, cylindrical and spherical Laplacians); eigenvalues of Robin
+//! problems are `sl_root(..)` / `bessel_root(..)` placeholders (roots of
+//! transcendental equations, evaluated numerically, positive spectrum
+//! assumed); a ball without axial symmetry, annuli for evolution equations
+//! and nonhomogeneous Robin data on boxes are not covered; systems need
+//! distinct eigenvalues of some combination of the coupling matrices.
+//!
 //! | operator | value |
 //! |---|---|
 //! | `pdsolve(eq, u(...)[, conditions])`, `solve_pde(...)` | the solution, by whichever method applies |
+//! | `pdsolve(list(eqs), list(u(...), v(...))[, conditions])` | a linear system, by decoupling |
 //! | `pde_classify(eq, u(...))` | `list(type, order, dimension, linear, homogeneous, character, list(methods...))` |
 //! | `pde_order(eq, u(...))` | the order |
 //! | `solve_pde_by_characteristics(eq, u(x, y))` | first-order linear and quasi-linear equations |
-//! | `solve_pde_by_separation_of_variables(eq, u(x, t), conditions)` | heat and wave equations on an interval, Laplace's equation on a rectangle or box |
-//! | `solve_pde_by_greens_function(eq, u(...))` | Poisson and Helmholtz equations in free space |
+//! | `solve_pde_by_separation_of_variables(eq, u(x, t), conditions)` | eigenfunction expansion on boxes, disks, cylinders and balls |
+//! | `solve_pde_by_greens_function(eq, u(...))` | Poisson and Helmholtz equations in free space and half-spaces |
 //! | `solve_with_fourier_transform(eq, u(x, t), conditions)` | heat and Schrödinger equations on the line |
 //! | `solve_wave_equation_1d_dalembert`, `solve_heat_equation_1d`, `solve_heat_equation_3d`, `solve_wave_equation_3d`, `solve_laplace_equation_2d`, `solve_laplace_equation_3d`, `solve_poisson_equation_2d`, `solve_poisson_equation_3d`, `solve_helmholtz_equation`, `solve_schrodinger_equation`, `solve_klein_gordon_equation`, `solve_burgers_equation`, `solve_second_order_pde` | one method each, same arguments as `pdsolve` |
 //! | `at(f, x, a)` | `f` with `x = a`, once `f` is concrete in `x` |
@@ -40,10 +86,19 @@
 //! | `laplace_disk(f(θ), R, r, θ)`, `laplace_ball(f(θ), R, r, θ)` | harmonic functions in a disk / ball (axisymmetric) with boundary values `f` |
 //! | `pde_complete_integral(eq, u(x, y))` | a complete integral of a first-order equation (Lagrange–Charpit classes) |
 //! | `pde_separate(eq, u(x, t))` | separated solutions `X(x) T(t)` or `X(x) + T(t)` with separation constant `lambda` |
+//! | `bessel_zero(ν, m)` | the `m`-th positive zero of `J_ν` (numeric) |
+//! | `bessel_root(ν, h, m)` | the `m`-th positive root of `z J_ν'(z) + h J_ν(z) = 0` (Neumann: `h = 0`; Robin; the ball: `h → h - 1/2`) |
+//! | `sl_root(p₀, q₀, p₁, q₁, L, m)` | the `m`-th `k > 0` with `X'' = -k² X`, `p₀ X(0) + q₀ X'(0) = 0`, `p₁ X(L) + q₁ X'(L) = 0` |
 //!
-//! `pdsolve` also handles drift–diffusion–reaction equations with sources
-//! on the line and half-line (gauge transformation, heat kernel, Duhamel,
-//! images) and waves on the half-line (odd/even extensions).
+//! # The expansion engine
+//!
+//! The solvers on bounded domains share one engine (`spectral`): the domain
+//! is a list of axes (interval, periodic angle, polar angle, radius), each
+//! with eigenfunctions, a weight and a norm; the operator acts on a mode by
+//! its symbol; the time dependence of a mode (`a₂ T'' + a₁ T' + s T = -f`),
+//! initial data, sources and boundary data are projected on the modes, and
+//! indices at which the symbolic projection differs from the projection with
+//! a literal index (zero modes, resonances) are written out.
 
 use std::collections::HashMap;
 
@@ -688,7 +743,7 @@ impl Conditions {
     /// If `node` is a value `u(.., a, ..)` or a derivative `at(∂u, x, a)` on
     /// a coordinate hyperplane: `(variable, point, derivative)`.
     fn atom_of(
-        cx: &mut Cx<'_>,
+        cx: &Cx<'_>,
         p: &Problem,
         node: NodeId,
     ) -> Option<(usize, NodeId, Index)> {

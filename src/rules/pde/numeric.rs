@@ -38,7 +38,7 @@ fn nth_sign_change(
             if found == m {
                 let (mut lo, mut hi, mut glo) = (x, next, gx);
                 for _ in 0..BISECTIONS {
-                    let mid = 0.5 * (lo + hi);
+                    let mid = f64::midpoint(lo, hi);
                     let gm = g(mid);
                     if glo * gm <= 0.0 {
                         hi = mid;
@@ -47,7 +47,7 @@ fn nth_sign_change(
                         glo = gm;
                     }
                 }
-                return 0.5 * (lo + hi);
+                return f64::midpoint(lo, hi);
             }
         }
         x = next;
@@ -56,8 +56,9 @@ fn nth_sign_change(
     f64::NAN
 }
 
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::float_cmp)]
 fn index(m: f64) -> Option<u32> {
-    (m >= 0.0 && m.fract() == 0.0 && m <= 1e6).then(|| m as u32)
+    if (0.0..=1e6).contains(&m) && m.fract() == 0.0 { Some(m as u32) } else { None }
 }
 
 /// `bessel_zero(nu, m)`.
