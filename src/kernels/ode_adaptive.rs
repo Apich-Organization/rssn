@@ -130,6 +130,18 @@ pub struct OdeSolution {
 }
 
 impl OdeSolution {
+    /// Creates a solution holding only the initial point.
+    pub(crate) fn start(t0: f64, y0: &[f64]) -> Self {
+        Self {
+            t: vec![t0],
+            y: vec![y0.to_vec()],
+            events: Vec::new(),
+            nfev: 0,
+            rejected: 0,
+            dense: Vec::new(),
+        }
+    }
+
     /// Evaluates the continuous extension at `t` (available for
     /// [`dopri5`]); `None` outside the integrated range.
     #[must_use]
@@ -185,7 +197,7 @@ const DP_P: [[f64; 4]; 7] = [
     [0.0, 40617522.0 / 29380423.0, -110615467.0 / 29380423.0, 69997945.0 / 29380423.0],
 ];
 
-fn err_norm(err: &[f64], y0: &[f64], y1: &[f64], rtol: f64, atol: f64) -> f64 {
+pub(crate) fn err_norm(err: &[f64], y0: &[f64], y1: &[f64], rtol: f64, atol: f64) -> f64 {
     let n = err.len().max(1) as f64;
     (err.iter()
         .zip(y0.iter().zip(y1))
@@ -198,7 +210,7 @@ fn err_norm(err: &[f64], y0: &[f64], y1: &[f64], rtol: f64, atol: f64) -> f64 {
         .sqrt()
 }
 
-fn initial_step<F: Fn(f64, &[f64], &mut [f64])>(
+pub(crate) fn initial_step<F: Fn(f64, &[f64], &mut [f64])>(
     f: &F,
     t0: f64,
     y0: &[f64],

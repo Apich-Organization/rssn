@@ -2,8 +2,8 @@
 
 use rssn::kernels::dense::Mat;
 use rssn::kernels::optim::{
-    LpStatus, Relation, augmented_lagrangian, bfgs, differential_evolution, lbfgs, nelder_mead,
-    simplex, simulated_annealing, trust_region,
+    LpStatus, Pricing, Relation, augmented_lagrangian, bfgs, differential_evolution, lbfgs, nelder_mead,
+    simplex, simplex_with, simulated_annealing, trust_region,
 };
 
 fn rosen(x: &[f64]) -> f64 {
@@ -139,4 +139,106 @@ fn simplex_linear_programs() {
     assert_eq!(lp, LpStatus::Infeasible);
     let lp = simplex(&[-1.0], &[vec![1.0]], &[Relation::Ge], &[1.0]);
     assert_eq!(lp, LpStatus::Unbounded);
+}
+
+fn lp_value(r: &rssn::kernels::optim::LpResult) -> f64 {
+    match &r.status {
+        LpStatus::Optimal { value, .. } => *value,
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn simplex_beale_cycling_example() {
+    // Beale's classic example on which Dantzig's rule with naive tie-breaking cycles
+    let c = [-0.75, 20.0, -0.5, 6.0];
+    let a = [
+        vec![0.25, -8.0, -1.0, 9.0],
+        vec![0.5, -12.0, -0.5, 3.0],
+        vec![0.0, 0.0, 1.0, 0.0],
+    ];
+    let rel = [Relation::Le; 3];
+    let b = [0.0, 0.0, 1.0];
+    for pr in [Pricing::Dantzig, Pricing::SteepestEdge, Pricing::Bland] {
+        let r = simplex_with(&c, &a, &rel, &b, pr);
+        assert!((lp_value(&r) + 1.25).abs() < 1e-9, "{pr:?}");
+        assert!(r.iterations < 200, "{pr:?}: {}", r.iterations);
+    }
+    assert!(matches!(simplex(&c, &a, &rel, &b), LpStatus::Optimal { .. }));
+}
+
+#[test]
+fn simplex_klee_minty_and_pricing_rules_agree() {
+    // Klee-Minty cube in dimension 6: max sum 2^(n-j) x_j, optimum 5^n at x_n = 5^n
+    let n = 6;
+    let c: Vec<f64> = (0..n).map(|j| -(2.0_f64.powi((n - 1 - j) as i32))).collect();
+    let mut a = Vec::new();
+    let mut b = Vec::new();
+    for i in 0..n {
+        let mut row = vec![0.0; n];
+        for j in 0..i {
+            row[j] = 2.0_f64.powi((i - j + 1) as i32);
+        }
+        row[i] = 1.0;
+        a.push(row);
+        b.push(5.0_f64.powi(i as i32 + 1));
+    }
+    let rel = vec![Relation::Le; n];
+    for pr in [Pricing::Dantzig, Pricing::SteepestEdge, Pricing::Bland] {
+        let r = simplex_with(&c, &a, &rel, &b, pr);
+        assert!((lp_value(&r) + 5.0_f64.powi(n as i32)).abs() < 1e-6, "{pr:?}");
+    }
+}
+
+#[test]
+fn simplex_pricing_reduces_pivots_on_random_lps() {
+    // random dense feasible LPs: max c.x, A x <= b with positive data
+    let mut s = 4242u64;
+    let mut rnd = || {
+        s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        ((s >> 33) as f64) / f64::from(1u32 << 31)
+    };
+    let (mut it_bland, mut it_dantzig, mut it_steep) = (0, 0, 0);
+    for _ in 0..8 {
+        let (m, n) = (30, 40);
+        let c: Vec<f64> = (0..n).map(|_| -(0.5 + rnd())).collect();
+        let a: Vec<Vec<f64>> = (0..m).map(|_| (0..n).map(|_| 0.1 + rnd()).collect()).collect();
+        let b: Vec<f64> = (0..m).map(|_| 5.0 + 10.0 * rnd()).collect();
+        let rel = vec![Relation::Le; m];
+        let rb = simplex_with(&c, &a, &rel, &b, Pricing::Bland);
+        let rd = simplex_with(&c, &a, &rel, &b, Pricing::Dantzig);
+        let rs = simplex_with(&c, &a, &rel, &b, Pricing::SteepestEdge);
+        let v = lp_value(&rb);
+        assert!((lp_value(&rd) - v).abs() < 1e-7 * v.abs().max(1.0));
+        assert!((lp_value(&rs) - v).abs() < 1e-7 * v.abs().max(1.0));
+        assert_eq!(rb.bland_pivots, rb.iterations);
+        it_bland += rb.iterations;
+        it_dantzig += rd.iterations;
+        it_steep += rs.iterations;
+    }
+    assert!(it_dantzig < it_bland, "dantzig {it_dantzig} bland {it_bland}");
+    assert!(it_steep < it_bland, "steepest {it_steep} bland {it_bland}");
+}
+
+#[test]
+fn simplex_two_phase_with_pricing() {
+    // equality-constrained transportation-like problem solved by every rule
+    let c = [4.0, 6.0, 5.0, 3.0, 2.0, 7.0];
+    let a = [
+        vec![1.0, 1.0, 1.0, 0.0, 0.0, 0.0],
+        vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+        vec![1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        vec![0.0, 1.0, 0.0, 0.0, 1.0, 0.0],
+        vec![0.0, 0.0, 1.0, 0.0, 0.0, 1.0],
+    ];
+    let rel = [Relation::Eq; 5];
+    let b = [30.0, 20.0, 15.0, 20.0, 15.0];
+    let mut vals = Vec::new();
+    for pr in [Pricing::Dantzig, Pricing::SteepestEdge, Pricing::Bland] {
+        let r = simplex_with(&c, &a, &rel, &b, pr);
+        vals.push(lp_value(&r));
+    }
+    assert!((vals[0] - vals[1]).abs() < 1e-9 && (vals[1] - vals[2]).abs() < 1e-9);
+    // the optimum is no worse than this feasible plan (x = 10, 5, 15, 5, 15, 0)
+    assert!(vals[0] <= 4.0 * 10.0 + 6.0 * 5.0 + 5.0 * 15.0 + 3.0 * 5.0 + 2.0 * 15.0 + 7.0 * 0.0 + 1e-9);
 }

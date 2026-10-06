@@ -7,7 +7,11 @@
 //! * systems: Newton with backtracking line search, Broyden's method,
 //!   Levenberg-Marquardt, and homotopy continuation for polynomial
 //!   systems of one complex variable per equation (total-degree start
-//!   system) via [`homotopy_univariate`].
+//!   system) via [`homotopy_univariate`], and square multivariate
+//!   polynomial systems via [`homotopy_system`] (total-degree start
+//!   system, gamma trick, RK4 predictor / Newton corrector tracking);
+//! * polynomial roots by the three-stage Jenkins-Traub algorithm
+//!   ([`polynomial_roots_jenkins_traub`]).
 #![allow(
     clippy::manual_midpoint,
     clippy::missing_const_for_fn,
@@ -629,4 +633,580 @@ pub fn homotopy_univariate(coeffs: &[f64]) -> Result<Vec<(f64, f64)>, RootError>
         roots.push(z);
     }
     Ok(roots)
+}
+
+// ------------------------------------------------------------------
+// Jenkins-Traub three-stage polynomial root finder
+// ------------------------------------------------------------------
+
+type Cx = num_complex::Complex64;
+
+/// Horner division of a descending-order polynomial by `(z - s)`:
+/// returns the quotient and the remainder (the value at `s`).
+fn jt_quot(p: &[Cx], s: Cx) -> (Vec<Cx>, Cx) {
+    let mut q = Vec::with_capacity(p.len().saturating_sub(1));
+    let mut acc = Cx::new(0.0, 0.0);
+    for (i, &c) in p.iter().enumerate() {
+        acc = acc * s + c;
+        if i + 1 < p.len() {
+            q.push(acc);
+        }
+    }
+    (q, acc)
+}
+
+fn jt_eval(p: &[Cx], s: Cx) -> Cx {
+    p.iter().fold(Cx::new(0.0, 0.0), |a, &c| a * s + c)
+}
+
+/// Lower bound on the moduli of the roots (Cauchy), by bisection on
+/// `sum_{i>=1} |a_i| x^i = |a_0|`; `p` is in descending order with a
+/// non-zero constant term.
+fn jt_lower_bound(p: &[Cx]) -> f64 {
+    let n = p.len() - 1;
+    let a0 = p[n].norm();
+    let lead = p[0].norm();
+    let hi0 = 1.0 + p[1..].iter().map(|c| c.norm() / lead).fold(0.0, f64::max);
+    let g = |x: f64| {
+        let mut acc = 0.0;
+        for c in &p[..n] {
+            acc = (acc + c.norm()) * x;
+        }
+        acc - a0
+    };
+    let (mut lo, mut hi) = (0.0, hi0.max(1e-300));
+    for _ in 0..200 {
+        let mid = 0.5 * (lo + hi);
+        if g(mid) > 0.0 {
+            hi = mid;
+        } else {
+            lo = mid;
+        }
+    }
+    lo
+}
+
+/// `H_{new}` from `H` at shift `s` (normalised form `qp + t * qh`).
+/// Returns `(H_new, flag)`; `flag` is true when `H(s)` vanishes.
+fn jt_next_h(p_q: &[Cx], pv: Cx, h: &[Cx], s: Cx) -> (Vec<Cx>, bool) {
+    let eta = f64::EPSILON;
+    let (qh, hv) = jt_quot(h, s);
+    let n = p_q.len(); // = deg P = number of coefficients of H
+    let tiny = hv.norm() <= eta * 10.0 * h[h.len() - 1].norm();
+    let mut out = vec![Cx::new(0.0, 0.0); n];
+    if tiny {
+        out[1..n].copy_from_slice(&qh[..(n - 1)]);
+    } else {
+        let t = -pv / hv;
+        out[0] = p_q[0];
+        for j in 1..n {
+            out[j] = t * qh[j - 1] + p_q[j];
+        }
+    }
+    (out, tiny)
+}
+
+/// Newton-like correction `t = -P(s)/H(s)`; returns `(t, vanished)`.
+fn jt_calct(h: &[Cx], s: Cx, pv: Cx) -> (Cx, bool) {
+    let hv = jt_eval(h, s);
+    let tiny = hv.norm() <= f64::EPSILON * 10.0 * h[h.len() - 1].norm();
+    if tiny { (Cx::new(0.0, 0.0), true) } else { (-pv / hv, false) }
+}
+
+fn jt_converged(p: &[Cx], s: Cx) -> (bool, f64) {
+    let eta = f64::EPSILON;
+    let mre = 2.0 * 2.0_f64.sqrt() * eta;
+    let (_, pv) = jt_quot(p, s);
+    let mut e = p[0].norm() * mre / (eta + mre);
+    let mut acc = Cx::new(0.0, 0.0);
+    for &c in p {
+        acc = acc * s + c;
+        e = e * s.norm() + acc.norm();
+    }
+    let errev = e * (eta + mre) - mre * pv.norm();
+    (pv.norm() <= 20.0 * errev.max(0.0), pv.norm())
+}
+
+fn jt_variable(p: &[Cx], h: &mut Vec<Cx>, s0: Cx) -> Option<Cx> {
+    let mut s = s0;
+    let mut b = false;
+    let mut omp = 0.0;
+    let mut relstp = 0.0_f64;
+    for i in 1..=10 {
+        let (ok, mp) = jt_converged(p, s);
+        if ok {
+            return Some(s);
+        }
+        if i != 1 {
+            if !b && mp >= omp && relstp < 0.05 {
+                // iteration is stalling on a cluster: perturb the shift
+                b = true;
+                let tp = relstp.max(f64::EPSILON);
+                let r1 = tp.sqrt();
+                let sp = s + s * Cx::new(r1, r1);
+                let (qp, pv) = jt_quot(p, sp);
+                for _ in 0..5 {
+                    let (hn, _) = jt_next_h(&qp, pv, h, sp);
+                    *h = hn;
+                }
+                omp = mp;
+                continue;
+            } else if mp * 0.1 > omp {
+                return None;
+            }
+        }
+        omp = mp;
+        let (qp, pv) = jt_quot(p, s);
+        let (hn, _) = jt_next_h(&qp, pv, h, s);
+        *h = hn;
+        let (t, tiny) = jt_calct(h, s, pv);
+        if !tiny {
+            relstp = t.norm() / s.norm().max(1e-300);
+            s += t;
+        }
+        if !s.re.is_finite() || !s.im.is_finite() {
+            return None;
+        }
+    }
+    let (ok, _) = jt_converged(p, s);
+    if ok { Some(s) } else { None }
+}
+
+fn jt_fixed(p: &[Cx], h: &mut Vec<Cx>, s: Cx, l2: usize) -> Option<Cx> {
+    let (qp, pv) = jt_quot(p, s);
+    let (mut t, _) = jt_calct(h, s, pv);
+    let mut pasd = false;
+    for j in 1..=l2 {
+        let ot = t;
+        let (hn, _) = jt_next_h(&qp, pv, h, s);
+        *h = hn;
+        let (tn, tiny) = jt_calct(h, s, pv);
+        t = tn;
+        let z = s + t;
+        if !tiny && j != l2 {
+            if (t - ot).norm() >= 0.5 * z.norm() {
+                pasd = false;
+            } else if !pasd {
+                pasd = true;
+            } else {
+                return jt_variable(p, h, z);
+            }
+        }
+    }
+    jt_variable(p, h, s + t)
+}
+
+/// All complex roots of a polynomial with complex coefficients
+/// (`(re, im)` pairs, ascending order) by the three-stage Jenkins-Traub
+/// algorithm (no-shift, fixed-shift and variable-shift stages with
+/// shifts on a circle just inside the smallest root modulus), polished
+/// by Newton iteration against the original polynomial.
+///
+/// Roots are found in order of increasing modulus and deflated forward,
+/// which is the numerically stable direction. Roots at zero are
+/// detected from vanishing low-order coefficients.
+///
+/// # Errors
+/// [`RootError::Invalid`] for constant polynomials,
+/// [`RootError::NoConvergence`] if the shift iteration fails.
+pub fn polynomial_roots_jenkins_traub_complex(coeffs: &[(f64, f64)]) -> Result<Vec<(f64, f64)>, RootError> {
+    let mut asc: Vec<Cx> = coeffs.iter().map(|&(a, b)| Cx::new(a, b)).collect();
+    while asc.last().is_some_and(|c| c.norm() == 0.0) {
+        asc.pop();
+    }
+    if asc.len() < 2 || asc.iter().any(|c| !c.re.is_finite() || !c.im.is_finite()) {
+        return Err(RootError::Invalid);
+    }
+    let orig: Vec<Cx> = asc.iter().rev().copied().collect(); // descending
+    let mut roots: Vec<Cx> = Vec::new();
+    // roots at the origin
+    let mut lo = 0;
+    while asc[lo].norm() == 0.0 {
+        roots.push(Cx::new(0.0, 0.0));
+        lo += 1;
+    }
+    let mut p: Vec<Cx> = asc[lo..].iter().rev().copied().collect();
+    let cosr = (94.0_f64).to_radians().cos();
+    let sinr = (94.0_f64).to_radians().sin();
+    while p.len() > 2 {
+        let n = p.len() - 1;
+        let bnd = jt_lower_bound(&p);
+        // H^(0) = P'
+        let h0: Vec<Cx> =
+            (0..n).map(|i| p[i] * Cx::new((n - i) as f64 / n as f64, 0.0)).collect();
+        let mut h = h0;
+        // stage 1: no-shift
+        for _ in 0..5 {
+            let c0 = h[h.len() - 1];
+            let pc = p[p.len() - 1];
+            let mut hn = vec![Cx::new(0.0, 0.0); n];
+            if c0.norm() > f64::EPSILON * 10.0 * pc.norm() {
+                // (H - H(0)/P(0) P) / z
+                let t = -c0 / pc;
+                hn[0] = t * p[0];
+                for j in 1..n {
+                    hn[j] = h[j - 1] + t * p[j];
+                }
+            } else {
+                hn[1..n].copy_from_slice(&h[..(n - 1)]);
+            }
+            h = hn;
+        }
+        let saved = h.clone();
+        let (mut xx, mut yy) = (0.5_f64.sqrt(), -(0.5_f64.sqrt()));
+        let mut found: Option<Cx> = None;
+        'outer: for _pass in 0..2 {
+            for cnt2 in 1..=9 {
+                let nx = cosr * xx - sinr * yy;
+                yy = sinr * xx + cosr * yy;
+                xx = nx;
+                let s = Cx::new(bnd * xx, bnd * yy);
+                let mut hh = saved.clone();
+                if let Some(z) = jt_fixed(&p, &mut hh, s, 10 * cnt2) {
+                    found = Some(z);
+                    break 'outer;
+                }
+            }
+        }
+        let Some(z) = found else {
+            return Err(RootError::NoConvergence);
+        };
+        roots.push(z);
+        let (q, _) = jt_quot(&p, z);
+        p = q;
+    }
+    if p.len() == 2 {
+        roots.push(-p[1] / p[0]);
+    }
+    // polish against the original polynomial
+    let dorig: Vec<Cx> = (0..orig.len() - 1).map(|i| orig[i] * Cx::new((orig.len() - 1 - i) as f64, 0.0)).collect();
+    for r in &mut roots {
+        for _ in 0..3 {
+            let v = jt_eval(&orig, *r);
+            let d = jt_eval(&dorig, *r);
+            if d.norm() == 0.0 {
+                break;
+            }
+            let step = v / d;
+            if step.norm() > 1e-6 * (1.0 + r.norm()) {
+                break;
+            }
+            let cand = *r - step;
+            if jt_eval(&orig, cand).norm() < v.norm() {
+                *r = cand;
+            } else {
+                break;
+            }
+        }
+    }
+    Ok(roots.into_iter().map(|c| (c.re, c.im)).collect())
+}
+
+/// All complex roots of a real-coefficient polynomial (ascending order)
+/// by the Jenkins-Traub algorithm; see
+/// [`polynomial_roots_jenkins_traub_complex`].
+///
+/// # Errors
+/// [`RootError::Invalid`] for constant polynomials,
+/// [`RootError::NoConvergence`] if the shift iteration fails.
+pub fn polynomial_roots_jenkins_traub(coeffs: &[f64]) -> Result<Vec<(f64, f64)>, RootError> {
+    let c: Vec<(f64, f64)> = coeffs.iter().map(|&v| (v, 0.0)).collect();
+    polynomial_roots_jenkins_traub_complex(&c)
+}
+
+// ------------------------------------------------------------------
+// Multivariate homotopy continuation
+// ------------------------------------------------------------------
+
+/// A monomial `coef * x_0^e_0 * x_1^e_1 * ...` of a polynomial system.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PolyTerm {
+    /// Real coefficient.
+    pub coef: f64,
+    /// Exponent of each variable (one entry per variable).
+    pub exps: Vec<u32>,
+}
+
+/// A tracked homotopy path.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PathResult {
+    /// The endpoint `(re, im)` per variable (meaningful when `finite`).
+    pub x: Vec<(f64, f64)>,
+    /// Max-norm of the residual of the target system at `x`.
+    pub residual: f64,
+    /// `true` when the path converged to a finite solution; `false` for
+    /// paths diverging to infinity or failing to be tracked.
+    pub finite: bool,
+}
+
+fn cpow(z: Cx, e: u32) -> Cx {
+    let mut r = Cx::new(1.0, 0.0);
+    for _ in 0..e {
+        r *= z;
+    }
+    r
+}
+
+/// Evaluates a polynomial system and its Jacobian at a complex point.
+fn eval_system(sys: &[Vec<PolyTerm>], x: &[Cx]) -> (Vec<Cx>, Vec<Vec<Cx>>) {
+    let n = x.len();
+    let mut f = vec![Cx::new(0.0, 0.0); sys.len()];
+    let mut j = vec![vec![Cx::new(0.0, 0.0); n]; sys.len()];
+    for (i, eq) in sys.iter().enumerate() {
+        for term in eq {
+            let pw: Vec<Cx> = (0..n).map(|k| cpow(x[k], term.exps[k])).collect();
+            let full: Cx = pw.iter().fold(Cx::new(1.0, 0.0), |a, &b| a * b);
+            f[i] += full * term.coef;
+            for k in 0..n {
+                if term.exps[k] > 0 {
+                    let mut d = Cx::new(term.coef * f64::from(term.exps[k]), 0.0);
+                    for m in 0..n {
+                        d *= if m == k { cpow(x[m], term.exps[m] - 1) } else { pw[m] };
+                    }
+                    j[i][k] += d;
+                }
+            }
+        }
+    }
+    (f, j)
+}
+
+/// Solves the complex linear system `A x = b` by Gaussian elimination
+/// with partial pivoting; `None` if (numerically) singular.
+fn csolve(mut a: Vec<Vec<Cx>>, mut b: Vec<Cx>) -> Option<Vec<Cx>> {
+    let n = b.len();
+    for k in 0..n {
+        let mut p = k;
+        for i in k + 1..n {
+            if a[i][k].norm() > a[p][k].norm() {
+                p = i;
+            }
+        }
+        if a[p][k].norm() < 1e-300 {
+            return None;
+        }
+        a.swap(k, p);
+        b.swap(k, p);
+        for i in k + 1..n {
+            let m = a[i][k] / a[k][k];
+            if m.norm() != 0.0 {
+                for c in k..n {
+                    let v = a[k][c];
+                    a[i][c] -= m * v;
+                }
+                let bk = b[k];
+                b[i] -= m * bk;
+            }
+        }
+    }
+    let mut x = vec![Cx::new(0.0, 0.0); n];
+    for i in (0..n).rev() {
+        let mut s = b[i];
+        for c in i + 1..n {
+            s -= a[i][c] * x[c];
+        }
+        x[i] = s / a[i][i];
+    }
+    if x.iter().any(|v| !v.re.is_finite() || !v.im.is_finite()) { None } else { Some(x) }
+}
+
+/// `H(x, t) = (1-t) gamma g(x) + t f(x)` with `g_i = x_i^{d_i} - 1`:
+/// returns `(H, dH/dx, dH/dt)`.
+fn homotopy_h(
+    sys: &[Vec<PolyTerm>],
+    deg: &[u32],
+    gamma: Cx,
+    x: &[Cx],
+    t: f64,
+) -> (Vec<Cx>, Vec<Vec<Cx>>, Vec<Cx>) {
+    let n = x.len();
+    let (fv, fj) = eval_system(sys, x);
+    let mut h = vec![Cx::new(0.0, 0.0); n];
+    let mut hx = vec![vec![Cx::new(0.0, 0.0); n]; n];
+    let mut ht = vec![Cx::new(0.0, 0.0); n];
+    for i in 0..n {
+        let g = cpow(x[i], deg[i]) - 1.0;
+        let dg = if deg[i] == 0 { Cx::new(0.0, 0.0) } else { cpow(x[i], deg[i] - 1) * f64::from(deg[i]) };
+        h[i] = gamma * g * (1.0 - t) + fv[i] * t;
+        ht[i] = fv[i] - gamma * g;
+        for k in 0..n {
+            hx[i][k] = fj[i][k] * t;
+        }
+        hx[i][i] += gamma * dg * (1.0 - t);
+    }
+    (h, hx, ht)
+}
+
+fn path_tangent(
+    sys: &[Vec<PolyTerm>],
+    deg: &[u32],
+    gamma: Cx,
+    x: &[Cx],
+    t: f64,
+) -> Option<Vec<Cx>> {
+    let (_, hx, ht) = homotopy_h(sys, deg, gamma, x, t);
+    let rhs: Vec<Cx> = ht.iter().map(|v| -*v).collect();
+    csolve(hx, rhs)
+}
+
+fn max_norm(v: &[Cx]) -> f64 {
+    v.iter().map(|c| c.norm()).fold(0.0, f64::max)
+}
+
+fn track_path(
+    sys: &[Vec<PolyTerm>],
+    deg: &[u32],
+    gamma: Cx,
+    start: &[Cx],
+) -> PathResult {
+    let n = start.len();
+    let mut x = start.to_vec();
+    let mut t = 0.0_f64;
+    let mut dt = 0.01_f64;
+    let fail = |x: &[Cx]| PathResult {
+        x: x.iter().map(|c| (c.re, c.im)).collect(),
+        residual: f64::INFINITY,
+        finite: false,
+    };
+    let mut guard = 0usize;
+    while t < 1.0 {
+        guard += 1;
+        if guard > 200_000 {
+            return fail(&x);
+        }
+        let step = dt.min(1.0 - t);
+        // RK4 predictor on dx/dt = -H_x^{-1} H_t
+        let rk = || -> Option<Vec<Cx>> {
+            let k1 = path_tangent(sys, deg, gamma, &x, t)?;
+            let xa: Vec<Cx> = (0..n).map(|i| x[i] + k1[i] * (0.5 * step)).collect();
+            let k2 = path_tangent(sys, deg, gamma, &xa, t + 0.5 * step)?;
+            let xb: Vec<Cx> = (0..n).map(|i| x[i] + k2[i] * (0.5 * step)).collect();
+            let k3 = path_tangent(sys, deg, gamma, &xb, t + 0.5 * step)?;
+            let xc: Vec<Cx> = (0..n).map(|i| x[i] + k3[i] * step).collect();
+            let k4 = path_tangent(sys, deg, gamma, &xc, t + step)?;
+            Some((0..n).map(|i| x[i] + (k1[i] + k2[i] * 2.0 + k3[i] * 2.0 + k4[i]) * (step / 6.0)).collect())
+        };
+        let tn = if step >= 1.0 - t { 1.0 } else { t + step };
+        let mut ok = false;
+        let mut xn = x.clone();
+        if let Some(pred) = rk() {
+            xn = pred;
+            let mut prev = f64::INFINITY;
+            for it in 0..4 {
+                let (h, hx, _) = homotopy_h(sys, deg, gamma, &xn, tn);
+                let Some(dx) = csolve(hx, h) else { break };
+                for i in 0..n {
+                    xn[i] -= dx[i];
+                }
+                let dn = max_norm(&dx);
+                if dn < 1e-12 * (1.0 + max_norm(&xn)) {
+                    ok = true;
+                    break;
+                }
+                if it > 0 && dn > 0.5 * prev {
+                    break;
+                }
+                prev = dn;
+            }
+        }
+        let jump = (0..n).map(|i| (xn[i] - x[i]).norm()).fold(0.0, f64::max);
+        if ok && jump <= 0.25 * (1.0 + max_norm(&x)) && xn.iter().all(|c| c.re.is_finite() && c.im.is_finite()) {
+            x = xn;
+            t = tn;
+            dt = (dt * 1.8).min(0.1);
+            if max_norm(&x) > 1e9 {
+                return fail(&x);
+            }
+        } else {
+            dt *= 0.5;
+            if dt < 1e-13 {
+                // Accept a near-singular endpoint if the path is already close to t = 1.
+                if t > 1.0 - 1e-4 && max_norm(&x) < 1e7 {
+                    break;
+                }
+                return fail(&x);
+            }
+        }
+    }
+    // Newton polish on the target system.
+    for _ in 0..8 {
+        let (fv, fj) = eval_system(sys, &x);
+        let Some(dx) = csolve(fj, fv) else { break };
+        let nrm = max_norm(&dx);
+        if nrm > 1e-3 * (1.0 + max_norm(&x)) {
+            break;
+        }
+        for i in 0..n {
+            x[i] -= dx[i];
+        }
+        if nrm < 1e-15 * (1.0 + max_norm(&x)) {
+            break;
+        }
+    }
+    let (fv, _) = eval_system(sys, &x);
+    let res = max_norm(&fv);
+    let scale = 1.0 + max_norm(&x).powi(deg.iter().copied().max().unwrap_or(1) as i32);
+    PathResult {
+        x: x.iter().map(|c| (c.re, c.im)).collect(),
+        residual: res,
+        finite: res.is_finite() && res < 1e-7 * scale && max_norm(&x) < 1e7,
+    }
+}
+
+/// Solves a square polynomial system by total-degree homotopy
+/// continuation with the default (fixed, generic) `gamma`; see
+/// [`homotopy_system_with_gamma`].
+///
+/// # Errors
+/// [`RootError::Invalid`] for a non-square or malformed system.
+pub fn homotopy_system(system: &[Vec<PolyTerm>]) -> Result<Vec<PathResult>, RootError> {
+    let gamma = Cx::from_polar(1.0, 0.9132);
+    homotopy_system_with_gamma(system, (gamma.re, gamma.im))
+}
+
+/// Total-degree homotopy continuation for a square polynomial system
+/// `f_i(x_1..x_n) = 0` (`system[i]` lists the terms of `f_i`).
+///
+/// The start system is `g_i = x_i^{d_i} - 1` with `d_i` the total degree
+/// of `f_i`; its `prod d_i` solutions are tracked along
+/// `H(x, t) = (1-t) gamma g(x) + t f(x)` from `t = 0` to `t = 1` with an
+/// RK4 predictor, a Newton corrector and adaptive step control. The
+/// complex constant `gamma` (the "gamma trick") makes the paths
+/// non-crossing with probability one. One [`PathResult`] is returned per
+/// start solution; paths diverging to infinity are marked
+/// `finite == false`.
+///
+/// # Errors
+/// [`RootError::Invalid`] for a non-square or malformed system.
+pub fn homotopy_system_with_gamma(
+    system: &[Vec<PolyTerm>],
+    gamma: (f64, f64),
+) -> Result<Vec<PathResult>, RootError> {
+    let n = system.len();
+    if n == 0 || system.iter().any(|eq| eq.is_empty() || eq.iter().any(|t| t.exps.len() != n)) {
+        return Err(RootError::Invalid);
+    }
+    let deg: Vec<u32> = system
+        .iter()
+        .map(|eq| eq.iter().map(|t| t.exps.iter().sum::<u32>()).max().unwrap_or(0))
+        .collect();
+    if deg.contains(&0) {
+        return Err(RootError::Invalid);
+    }
+    let total: usize = deg.iter().map(|&d| d as usize).product();
+    if total > 200_000 {
+        return Err(RootError::Invalid);
+    }
+    let g = Cx::new(gamma.0, gamma.1);
+    let mut out = Vec::with_capacity(total);
+    for mut idx in 0..total {
+        let mut start = Vec::with_capacity(n);
+        for &d in &deg {
+            let k = idx % d as usize;
+            idx /= d as usize;
+            start.push(Cx::from_polar(1.0, 2.0 * std::f64::consts::PI * k as f64 / f64::from(d)));
+        }
+        out.push(track_path(system, &deg, g, &start));
+    }
+    Ok(out)
 }

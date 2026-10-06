@@ -5,6 +5,10 @@
 //! Wynn's epsilon algorithm, plus drivers that find the limit of a sequence
 //! and sum a series given as closures over the index.
 //! [`crate::kernels::series::sum_to_infinity`] is built on these.
+//!
+//! The Levin family ([`levin_transform`] with the `u`, `t` and `v`
+//! remainder estimates) accelerates both alternating and logarithmically
+//! convergent series, where Aitken and Wynn are weak or unstable.
 
 /// Sums `term(n)` for `n = start, start + 1, ...` (at most `max_terms` terms)
 /// and stops, before adding it, at the first term whose magnitude is below
@@ -155,4 +159,122 @@ pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
         }
     }
     estimates
+}
+
+/// Remainder estimates `omega_n` of the Levin-type transformations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LevinVariant {
+    /// Levin `u`: `omega_n = (beta + n) a_n`; best for logarithmic and
+    /// general series.
+    U,
+    /// Levin `t`: `omega_n = a_n`; best for alternating series.
+    T,
+    /// Levin `v` (Smith-Ford): `omega_n = a_n a_{n+1} / (a_n - a_{n+1})`.
+    V,
+}
+
+/// Levin-type sequence transformation of the partial sums `s_0, s_1, ...`.
+///
+/// With the term `a_n = s_n - s_{n-1}` (`a_0 = s_0`) and the remainder
+/// estimate `omega_n` of the chosen [`LevinVariant`], the entry `k` of the
+/// result is the transform `L_k^{(0)}` computed with the stable
+/// Fessler-Ford-Smith recurrence for numerator and denominator,
+/// `L_k^{(n)} = N_k^{(n)} / D_k^{(n)}` with
+/// `N_{k+1}^{(n)} = N_k^{(n+1)} - (beta+n)(beta+n+k)^{k-1} / (beta+n+k+1)^k N_k^{(n)}`.
+/// Entry `0` is the (weighted) first partial sum; later entries use more
+/// terms. `beta` is the shift (`1.0` is the usual choice). Entries that
+/// are not finite are dropped.
+#[must_use]
+pub fn levin_transform(partial_sums: &[f64], variant: LevinVariant, beta: f64) -> Vec<f64> {
+    let m = partial_sums.len();
+    let usable = if variant == LevinVariant::V { m.saturating_sub(1) } else { m };
+    if usable == 0 {
+        return Vec::new();
+    }
+    let a: Vec<f64> = (0..m)
+        .map(|n| if n == 0 { partial_sums[0] } else { partial_sums[n] - partial_sums[n - 1] })
+        .collect();
+    let mut num = Vec::with_capacity(usable);
+    let mut den = Vec::with_capacity(usable);
+    for n in 0..usable {
+        #[allow(clippy::cast_precision_loss)]
+        let nf = n as f64;
+        let omega = match variant {
+            LevinVariant::U => (beta + nf) * a[n],
+            LevinVariant::T => a[n],
+            LevinVariant::V => a[n] * a[n + 1] / (a[n] - a[n + 1]),
+        };
+        if omega == 0.0 || !omega.is_finite() {
+            break;
+        }
+        num.push(partial_sums[n] / omega);
+        den.push(1.0 / omega);
+    }
+    let mut out = Vec::new();
+    let mut k = 0usize;
+    loop {
+        if let (Some(&nu), Some(&de)) = (num.first(), den.first()) {
+            let v = nu / de;
+            if v.is_finite() {
+                out.push(v);
+            }
+        }
+        if num.len() < 2 {
+            break;
+        }
+        #[allow(clippy::cast_precision_loss)]
+        let kf = k as f64;
+        let mut nn = Vec::with_capacity(num.len() - 1);
+        let mut dd = Vec::with_capacity(num.len() - 1);
+        for n in 0..num.len() - 1 {
+            #[allow(clippy::cast_precision_loss)]
+            let b = beta + n as f64;
+            let c = b * (b + kf).powf(kf - 1.0) / (b + kf + 1.0).powf(kf);
+            nn.push(num[n + 1] - c * num[n]);
+            dd.push(den[n + 1] - c * den[n]);
+        }
+        num = nn;
+        den = dd;
+        k += 1;
+    }
+    out
+}
+
+/// Sums `term(0) + term(1) + ...` with a Levin transformation of the
+/// first `n_terms` partial sums.
+///
+/// Returns `(estimate, error_estimate)` where the error estimate is the
+/// difference of the two highest-order transforms; the best (smallest
+/// successive difference) transform is reported.
+///
+/// # Errors
+/// Returns an error if fewer than four terms are requested or no finite
+/// transform could be formed.
+pub fn levin_sum(
+    term: impl Fn(usize) -> f64,
+    n_terms: usize,
+    variant: LevinVariant,
+) -> Result<(f64, f64), String> {
+    if n_terms < 4 {
+        return Err("levin_sum needs at least four terms".to_string());
+    }
+    let mut s = 0.0;
+    let partial: Vec<f64> = (0..n_terms)
+        .map(|i| {
+            s += term(i);
+            s
+        })
+        .collect();
+    let est = levin_transform(&partial, variant, 1.0);
+    if est.len() < 3 {
+        return Err("levin transform did not produce enough finite estimates".to_string());
+    }
+    let mut best = (est[est.len() - 1], f64::INFINITY);
+    for i in 2..est.len() {
+        let d = (est[i] - est[i - 1]).abs();
+        if d < best.1 {
+            best = (est[i], d);
+        }
+    }
+    Ok(best)
 }

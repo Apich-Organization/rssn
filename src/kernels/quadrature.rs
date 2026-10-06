@@ -7,7 +7,9 @@
 //! * Clenshaw-Curtis rules;
 //! * Filon-type quadrature for oscillatory integrands;
 //! * multi-dimensional integration: nested adaptive Gauss-Kronrod, plain
-//!   Monte Carlo and quasi-Monte Carlo with Halton and Sobol sequences.
+//!   Monte Carlo and quasi-Monte Carlo with Halton and Sobol sequences;
+//! * adaptive Genz-Malik cubature (embedded degree 7/5 rule,
+//!   error-driven subdivision) on hyperrectangles.
 //!
 //! Everything is deterministic: random sampling uses a seeded generator.
 #![allow(
@@ -706,4 +708,173 @@ pub fn cubature_nested<F: Fn(&[f64]) -> f64>(
     let value = rec(&f, lo, hi, 0, &point, &count, tol);
     let e = *count.borrow();
     Integral { value, error: tol * value.abs(), evaluations: e, converged: true }
+}
+
+/// A region of the Genz-Malik adaptive cubature.
+struct GmRegion {
+    center: Vec<f64>,
+    half: Vec<f64>,
+    value: f64,
+    error: f64,
+    axis: usize,
+}
+
+impl PartialEq for GmRegion {
+    fn eq(&self, other: &Self) -> bool {
+        self.error == other.error
+    }
+}
+impl Eq for GmRegion {}
+impl PartialOrd for GmRegion {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for GmRegion {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.error.partial_cmp(&other.error).unwrap_or(std::cmp::Ordering::Equal)
+    }
+}
+
+/// Applies the embedded Genz-Malik degree-7/5 rule on one region and
+/// returns the region with its value, error estimate and split axis.
+fn gm_apply<F: Fn(&[f64]) -> f64>(f: &F, center: Vec<f64>, half: Vec<f64>) -> GmRegion {
+    let n = center.len();
+    let nf = n as f64;
+    let l2 = (9.0_f64 / 70.0).sqrt();
+    let l4 = (9.0_f64 / 10.0).sqrt();
+    let l5 = (9.0_f64 / 19.0).sqrt();
+    let w1 = (12824.0 - 9120.0 * nf + 400.0 * nf * nf) / 19683.0;
+    let w2 = 980.0 / 6561.0;
+    let w3 = (1820.0 - 400.0 * nf) / 19683.0;
+    let w4 = 200.0 / 19683.0;
+    let w5 = 6859.0 / 19683.0 / 2.0_f64.powi(n as i32);
+    let e1 = (729.0 - 950.0 * nf + 50.0 * nf * nf) / 729.0;
+    let e2 = 245.0 / 486.0;
+    let e3 = (265.0 - 100.0 * nf) / 1458.0;
+    let e4 = 25.0 / 729.0;
+    let mut p = center.clone();
+    let f0 = f(&p);
+    let mut s2 = vec![0.0; n];
+    let mut s3 = vec![0.0; n];
+    for i in 0..n {
+        let c = center[i];
+        p[i] = c + l2 * half[i];
+        let a = f(&p);
+        p[i] = c - l2 * half[i];
+        s2[i] = a + f(&p);
+        p[i] = c + l4 * half[i];
+        let a = f(&p);
+        p[i] = c - l4 * half[i];
+        s3[i] = a + f(&p);
+        p[i] = c;
+    }
+    let mut s4 = 0.0;
+    for i in 0..n {
+        for j in i + 1..n {
+            for (si, sj) in [(1.0, 1.0), (1.0, -1.0), (-1.0, 1.0), (-1.0, -1.0)] {
+                p[i] = center[i] + si * l4 * half[i];
+                p[j] = center[j] + sj * l4 * half[j];
+                s4 += f(&p);
+            }
+            p[i] = center[i];
+            p[j] = center[j];
+        }
+    }
+    let mut s5 = 0.0;
+    for mask in 0..(1usize << n) {
+        for i in 0..n {
+            let sgn = if (mask >> i) & 1 == 1 { 1.0 } else { -1.0 };
+            p[i] = center[i] + sgn * l5 * half[i];
+        }
+        s5 += f(&p);
+    }
+    let vol: f64 = half.iter().map(|h| 2.0 * h).product();
+    let t2: f64 = s2.iter().sum();
+    let t3: f64 = s3.iter().sum();
+    let i7 = vol * (w1 * f0 + w2 * t2 + w3 * t3 + w4 * s4 + w5 * s5);
+    let i5 = vol * (e1 * f0 + e2 * t2 + e3 * t3 + e4 * s4);
+    let ratio = (l4 * l4) / (l2 * l2);
+    let mut axis = 0;
+    let mut best = -1.0;
+    for i in 0..n {
+        let d = (s3[i] - 2.0 * f0 - ratio * (s2[i] - 2.0 * f0)).abs();
+        if d > best * (1.0 + 1e-12) || (d >= best * (1.0 - 1e-12) && half[i] > half[axis]) {
+            best = d;
+            axis = i;
+        }
+    }
+    GmRegion { center, half, value: i7, error: (i7 - i5).abs(), axis }
+}
+
+/// Number of integrand evaluations per Genz-Malik rule application.
+fn gm_cost(n: usize) -> usize {
+    1 + 4 * n + 2 * n * (n - 1) + (1usize << n)
+}
+
+/// Adaptive Genz-Malik cubature over the box `[lo, hi]`.
+///
+/// Each region is integrated with the degree-7 Genz-Malik rule
+/// (`1 + 4n + 2n(n-1) + 2^n` points) whose embedded degree-5 rule gives
+/// the error estimate; the region with the largest error is bisected
+/// along the axis with the largest fourth divided difference. The box
+/// is first split uniformly into a few sub-boxes so that narrow peaks
+/// are not missed. Stops when the total error is below
+/// `max(abs_tol, rel_tol * |value|)` or after `max_evals` integrand
+/// evaluations (`converged == false`). Intended for 2 to about 8
+/// dimensions.
+pub fn cubature_genz_malik<F: Fn(&[f64]) -> f64>(
+    f: F,
+    lo: &[f64],
+    hi: &[f64],
+    abs_tol: f64,
+    rel_tol: f64,
+    max_evals: usize,
+) -> Integral {
+    let n = lo.len();
+    if n == 0 || hi.len() != n || n > 20 {
+        return Integral { value: f64::NAN, error: f64::NAN, evaluations: 0, converged: false };
+    }
+    let cost = gm_cost(n);
+    let mut evals = 0usize;
+    // initial uniform split
+    let parts = ((64.0_f64).powf(1.0 / n as f64).floor() as usize).max(2);
+    let mut heap = std::collections::BinaryHeap::new();
+    let count = parts.pow(n as u32);
+    for mut idx in 0..count {
+        let mut c = vec![0.0; n];
+        let mut h = vec![0.0; n];
+        for i in 0..n {
+            let k = idx % parts;
+            idx /= parts;
+            let w = (hi[i] - lo[i]) / parts as f64;
+            c[i] = lo[i] + w * (k as f64 + 0.5);
+            h[i] = 0.5 * w;
+        }
+        heap.push(gm_apply(&f, c, h));
+        evals += cost;
+    }
+    loop {
+        let value: f64 = heap.iter().map(|r| r.value).sum();
+        let error: f64 = heap.iter().map(|r| r.error).sum();
+        let target = abs_tol.max(rel_tol * value.abs());
+        if error <= target {
+            return Integral { value, error, evaluations: evals, converged: true };
+        }
+        if evals + 2 * cost > max_evals || !value.is_finite() {
+            return Integral { value, error, evaluations: evals, converged: false };
+        }
+        let Some(r) = heap.pop() else {
+            return Integral { value, error, evaluations: evals, converged: false };
+        };
+        let mut h = r.half.clone();
+        h[r.axis] *= 0.5;
+        let mut c1 = r.center.clone();
+        let mut c2 = r.center.clone();
+        c1[r.axis] -= h[r.axis];
+        c2[r.axis] += h[r.axis];
+        heap.push(gm_apply(&f, c1, h.clone()));
+        heap.push(gm_apply(&f, c2, h));
+        evals += 2 * cost;
+    }
 }
