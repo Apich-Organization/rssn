@@ -51,11 +51,14 @@ mod classical;
 mod conservation;
 mod curvilinear;
 mod diffusion;
+mod elliptic;
 mod frameworks;
 mod numeric;
 mod spectral;
 mod symmetry;
+mod systems;
 mod util;
+mod waves;
 #[cfg(test)]
 mod dimension_tests;
 
@@ -221,6 +224,10 @@ impl Kernel for Pde {
                     | [e, u, c] => (e, u, Some(c)),
                     | _ => return Outcome::Pass,
                 };
+                let is_list = |cx: &mut Cx<'_>, n: NodeId| best(cx.graph, n).is_some_and(|b| cx.graph.op(b) == core::LIST);
+                if is_list(cx, equation) && is_list(cx, unknown) {
+                    return systems::solve_system(cx, equation, unknown, conditions).map_or(Outcome::Pass, Outcome::Pinned);
+                }
                 let Some(problem) = Problem::parse(cx, equation, unknown) else {
                     return Outcome::Pass;
                 };
@@ -1047,9 +1054,6 @@ fn solve_classical(
         None
     };
     if solution.is_none() && kind == "wave" {
-        if !conditions.is_empty() && (try_method(Separation) || try_method(SecondOrder)) {
-            solution = separation(cx, p, conditions);
-        }
         if solution.is_none() && p.dimension() == 2 && (try_method(Dalembert) || try_method(SecondOrder)) {
             solution = dalembert(cx, p, conditions);
         }
@@ -1061,9 +1065,6 @@ fn solve_classical(
         }
     }
     if solution.is_none() && kind == "heat" {
-        if (try_method(Separation) || try_method(Heat1)) && p.dimension() == 2 {
-            solution = separation(cx, p, conditions);
-        }
         if solution.is_none() && (try_method(Fourier) || try_method(Heat1) || try_method(Heat3)) {
             solution = heat_kernel(cx, p, conditions);
         }
@@ -1071,7 +1072,7 @@ fn solve_classical(
     if solution.is_none() && kind == "schrodinger" && (try_method(Fourier) || try_method(Schrodinger)) {
         solution = schrodinger(cx, p, conditions);
     }
-    if solution.is_none() && kind == "klein_gordon" && try_method(KleinGordon) {
+    if solution.is_none() && kind == "klein_gordon" && try_method(KleinGordon) && conditions.is_empty() {
         solution = klein_gordon(cx, p);
     }
     if solution.is_none() && kind == "laplace" {
@@ -1085,13 +1086,16 @@ fn solve_classical(
     if solution.is_none() && matches!(kind, "poisson" | "laplace" | "helmholtz")
         && (try_method(Green) || try_method(Poisson2) || try_method(Poisson3) || try_method(Helmholtz))
     {
-        solution = green(cx, p);
+        solution = if conditions.is_empty() { green(cx, p) } else { elliptic::half_space(cx, p, conditions) };
     }
     if solution.is_none() && matches!(method, Any | Heat1 | Heat3 | Fourier | Schrodinger) {
         solution = diffusion::similarity(cx, p, conditions).or_else(|| diffusion::parabolic(cx, p, conditions));
     }
     if solution.is_none() && method == Any {
         solution = classical::wave_half_line(cx, p, conditions).or_else(|| frameworks::fourier_evolution(cx, p, conditions));
+    }
+    if solution.is_none() && matches!(method, Any | Dalembert | Wave3 | SecondOrder | KleinGordon) {
+        solution = waves::wave(cx, p, conditions);
     }
     if solution.is_none() && method == Any && conditions.is_empty() && p.order() == 1 && p.nonlinear {
         solution = frameworks::complete_integral(cx, p);
@@ -1979,171 +1983,6 @@ fn kirchhoff(
 // Separation of variables
 // ----------------------------------------------------------------------
 
-/// Boundary type at one end of an interval.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Boundary {
-    Dirichlet,
-    Neumann,
-}
-
-/// The eigenfunctions of `-X'' = λ X` on `[0, L]` for the two boundary
-/// types, as `(sqrt(λ_n), X_n)` in the mode number `n`, together with the
-/// first mode number (0 for the constant Neumann mode).
-fn eigenfunctions(
-    cx: &mut Cx<'_>,
-    left: Boundary,
-    right: Boundary,
-    length: NodeId,
-    x: NodeId,
-    n: NodeId,
-) -> Option<(NodeId, NodeId, i64)> {
-    let pi = cx.graph.ops().lookup("pi")?;
-    let pi = cx.graph.node(pi, &[]);
-    let (sin, cos) = (cx.graph.ops().lookup("sin")?, cx.graph.ops().lookup("cos")?);
-    let inverse_l = powi(cx.graph, length, -1);
-    let (index, function, first) = match (left, right) {
-        | (Boundary::Dirichlet, Boundary::Dirichlet) => (n, sin, 1),
-        | (Boundary::Neumann, Boundary::Neumann) => (n, cos, 0),
-        | (Boundary::Dirichlet, Boundary::Neumann) => {
-            let half = cx.graph.num(Number::fraction(-1, 2)?);
-            (add(cx.graph, &[n, half]), sin, 1)
-        },
-        | (Boundary::Neumann, Boundary::Dirichlet) => {
-            let half = cx.graph.num(Number::fraction(-1, 2)?);
-            (add(cx.graph, &[n, half]), cos, 1)
-        },
-    };
-    let k = mul(cx.graph, &[index, pi, inverse_l]);
-    let kx = mul(cx.graph, &[k, x]);
-    let mode = cx.graph.node(function, &[kx]);
-    Some((k, mode, first))
-}
-
-/// Projection coefficient `∫ h X_n dx / ∫ X_n² dx` over `[0, L]`.
-fn coefficient(
-    cx: &mut Cx<'_>,
-    h: NodeId,
-    mode: NodeId,
-    x: NodeId,
-    length: NodeId,
-) -> Option<NodeId> {
-    let defint = cx.graph.ops().lookup("defint")?;
-    let zero = cx.graph.int(0);
-    let product = mul(cx.graph, &[h, mode]);
-    let numerator = cx.graph.node(defint, &[product, x, zero, length]);
-    let square = powi(cx.graph, mode, 2);
-    let denominator = cx.graph.node(defint, &[square, x, zero, length]);
-    let denominator_inv = powi(cx.graph, denominator, -1);
-    let ratio = mul(cx.graph, &[numerator, denominator_inv]);
-    Some(cx.simplify(ratio))
-}
-
-/// Heat and wave equations on `[0, L]` with Dirichlet or Neumann ends,
-/// and Laplace's equation (see [`laplace_box`]).
-fn separation(
-    cx: &mut Cx<'_>,
-    p: &Problem,
-    conditions: &Conditions,
-) -> Option<NodeId> {
-    let e = evolution(cx, p)?;
-    if !p.homogeneous(cx.graph) || !cx.graph.number_of(e.potential).is_some_and(Number::is_zero) {
-        return None;
-    }
-    let (t, x, time, space) = time_space(p, &e)?;
-    let zero_index = vec![0; p.dimension()];
-    // Boundary conditions at x = 0 and x = L, all homogeneous.
-    let mut ends = Vec::new();
-    for c in &conditions.0 {
-        if c.on != space {
-            continue;
-        }
-        if !cx.graph.number_of(c.value).is_some_and(Number::is_zero) {
-            return None;
-        }
-        let kind = if c.derivative == zero_index {
-            Boundary::Dirichlet
-        } else if c.derivative == p.unit(space, 1) {
-            Boundary::Neumann
-        } else {
-            return None;
-        };
-        ends.push((c.point, kind));
-    }
-    let [(a, ka), (b, kb)] = ends.as_slice() else {
-        return None;
-    };
-    let (left, right, length) = if cx.graph.number_of(*a).is_some_and(Number::is_zero) {
-        (*ka, *kb, *b)
-    } else if cx.graph.number_of(*b).is_some_and(Number::is_zero) {
-        (*kb, *ka, *a)
-    } else {
-        return None;
-    };
-    let initial = conditions.find(cx.graph, time, &zero_index, None)?;
-    if !cx.graph.number_of(initial.point).is_some_and(Number::is_zero) {
-        return None;
-    }
-    let velocity = conditions.find(cx.graph, time, &p.unit(time, 1), None).map(|c| c.value);
-    if e.order == 1 && velocity.is_some() {
-        return None;
-    }
-    // Mode number: an integer symbol.
-    let (n, n_symbol) = dummy(cx, p, "n");
-    cx.graph.assume(n_symbol, Facts::INTEGER | Facts::NONNEGATIVE);
-    let (k, mode, first) = eigenfunctions(cx, left, right, length, x, n)?;
-    let exp = cx.graph.ops().lookup("exp")?;
-    let (sin, cos) = (cx.graph.ops().lookup("sin")?, cx.graph.ops().lookup("cos")?);
-    // Time factor for mode n with coefficients A (from f) and B (from g).
-    let k2 = powi(cx.graph, k, 2);
-    let time_factor = |cx: &mut Cx<'_>, a: NodeId, b: Option<NodeId>| -> Option<NodeId> {
-        if e.order == 1 {
-            let minus_one = cx.graph.int(-1);
-            let rate = mul(cx.graph, &[minus_one, e.speed, k2, t]);
-            let decay = cx.graph.node(exp, &[rate]);
-            Some(mul(cx.graph, &[a, decay]))
-        } else {
-            let half = cx.graph.num(Number::fraction(1, 2)?);
-            let c = pow(cx.graph, e.speed, half);
-            let omega = mul(cx.graph, &[c, k]);
-            let wt = mul(cx.graph, &[omega, t]);
-            let cosine = cx.graph.node(cos, &[wt]);
-            let mut terms = vec![mul(cx.graph, &[a, cosine])];
-            if let Some(b) = b {
-                let sine = cx.graph.node(sin, &[wt]);
-                let scale = powi(cx.graph, omega, -1);
-                terms.push(mul(cx.graph, &[b, scale, sine]));
-            }
-            Some(add(cx.graph, &terms))
-        }
-    };
-    // Finite data: a combination of modes with literal mode numbers.
-    if let Some(finite) = finite_modes(cx, p, initial.value, velocity, mode, n, first, &time_factor) {
-        if verified(cx, p, finite) && satisfies(cx, p, conditions, finite) {
-            return Some(finite);
-        }
-    }
-    let term_for = |cx: &mut Cx<'_>, mode: NodeId| -> Option<NodeId> {
-        let a = coefficient(cx, initial.value, mode, x, length)?;
-        let b = match velocity {
-            | Some(g) => Some(coefficient(cx, g, mode, x, length)?),
-            | None => None,
-        };
-        let factor = time_factor(cx, a, b)?;
-        let term = mul(cx.graph, &[factor, mode]);
-        Some(cx.simplify(term))
-    };
-    let general = term_for(cx, mode)?;
-    let exact = |cx: &mut Cx<'_>, m: i64| -> Option<NodeId> {
-        let number = cx.graph.int(m);
-        let mode_m = cx.graph.substitute(mode, n, number);
-        let mode_m = cx.simplify(mode_m);
-        let term = term_for(cx, mode_m)?;
-        let term = cx.graph.substitute(term, n, number);
-        Some(cx.simplify(term))
-    };
-    assemble(cx, n, first, general, &exact)
-}
-
 /// `Σ_{n ≥ first} term(n)` from the general term with a symbolic mode
 /// number. Integrating with a symbolic `n` silently assumes `n` differs
 /// from the mode numbers where a denominator such as `n - 1` vanishes;
@@ -2203,70 +2042,6 @@ fn agree(
         let scale = cx.graph.eval(b, &env).map_or(1.0, |v| v.abs().max(1.0));
         cx.graph.eval(difference, &env).is_some_and(|v| v.is_finite() && v.abs() <= 1e-9 * scale)
     })
-}
-
-/// Builds the time-dependent factor of a mode from its coefficients.
-type TimeFactor<'a> = dyn Fn(&mut Cx<'_>, NodeId, Option<NodeId>) -> Option<NodeId> + 'a;
-
-/// When the data are sums of eigenmodes with literal mode numbers, the
-/// solution is the corresponding finite sum.
-#[allow(clippy::too_many_arguments)]
-fn finite_modes(
-    cx: &mut Cx<'_>,
-    p: &Problem,
-    f: NodeId,
-    g: Option<NodeId>,
-    mode: NodeId,
-    n: NodeId,
-    first: i64,
-    time_factor: &TimeFactor<'_>,
-) -> Option<NodeId> {
-    let _ = p;
-    // Candidate modes: n = first .. first + 16; project the data on each by
-    // matching terms structurally.
-    let mut terms = Vec::new();
-    let data = [Some(f), g];
-    let mut remaining: Vec<Option<NodeId>> = data.iter().map(|d| d.map(|d| best(cx.graph, d).unwrap_or(d))).collect();
-    for m in first..first + 17 {
-        let number = cx.graph.int(m);
-        let mode_m = cx.graph.substitute(mode, n, number);
-        let mode_m = cx.simplify(mode_m);
-        if cx.graph.number_of(mode_m).is_some_and(Number::is_zero) {
-            continue;
-        }
-        let mut coefficients = [None, None];
-        for (slot, value) in remaining.iter_mut().enumerate() {
-            let Some(v) = *value else {
-                continue;
-            };
-            // coefficient c with v = c * mode_m + rest, c free of the
-            // variables: d(v)/d(mode) after freezing the mode.
-            let c = derivative_by_node(cx, v, mode_m)?;
-            if !p.constant(cx.graph, c) {
-                return None;
-            }
-            if !cx.graph.number_of(c).is_some_and(Number::is_zero) {
-                let cm = mul(cx.graph, &[c, mode_m]);
-                let rest = sub(cx.graph, v, cm);
-                *value = Some(cx.simplify(rest));
-                coefficients[slot] = Some(c);
-            }
-        }
-        if coefficients.iter().all(Option::is_none) {
-            continue;
-        }
-        let zero = cx.graph.int(0);
-        let a = coefficients[0].unwrap_or(zero);
-        let factor = time_factor(cx, a, coefficients[1])?;
-        let factor = cx.graph.substitute(factor, n, number);
-        terms.push(mul(cx.graph, &[factor, mode_m]));
-    }
-    // Everything must have been accounted for.
-    if remaining.iter().flatten().any(|&v| !cx.graph.number_of(v).is_some_and(Number::is_zero)) || terms.is_empty() {
-        return None;
-    }
-    let sum = add(cx.graph, &terms);
-    Some(cx.simplify(sum))
 }
 
 /// Laplace's equation on a rectangle `[0, a] × [0, b]` (or a box) with
@@ -2645,7 +2420,10 @@ fn satisfies(
         }
         let target = evaluate_unknown(cx, p, solution, c.value);
         let difference = sub(cx.graph, on, target);
-        if !cx.is_zero(difference) {
+        // Identities of special functions (a zero of J_0, a periodic
+        // value) are checked numerically when the simplifier cannot.
+        let numerically_zero = |cx: &Cx<'_>| (0..3_u32).all(|k| util::sample(cx.graph, difference, k).is_some_and(|v| v.abs() < 1e-8));
+        if !cx.is_zero(difference) && !numerically_zero(cx) {
             return false;
         }
     }

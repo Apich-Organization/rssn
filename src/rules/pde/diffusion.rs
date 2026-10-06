@@ -187,6 +187,10 @@ pub(super) fn parabolic(
         match on.as_slice() {
             | [] => domains.push(Domain::Whole),
             | [b] if b.robin.is_none() && is_zero_number(cx.graph, b.point) => {
+                // A value that refers to the unknown itself is not data.
+                if cx.graph.depends_on(cx.graph.find(b.value), cx.graph.symbol_of(p.function)?) {
+                    return None;
+                }
                 let dirichlet = b.derivative == zero_index;
                 if !dirichlet && b.derivative != p.unit(j, 1) {
                     return None;

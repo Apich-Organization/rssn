@@ -39,6 +39,8 @@ use super::util::is_zero_number;
 use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::rules::calculus::derivative;
+use crate::rules::complex::build::add;
+use crate::rules::complex::build::neg;
 use crate::rules::complex::build::mul;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
@@ -180,12 +182,15 @@ fn solve_layout(
     let n = p.dimension();
     // The condition at the outer radius; nothing else on r, θ.
     let on_r: Vec<_> = conditions.0.iter().filter(|c| c.on == layout.r).collect();
-    let [outer] = on_r.as_slice() else {
-        return None;
-    };
     if conditions.0.iter().any(|c| Some(c.on) == layout.theta) {
         return None;
     }
+    if let [first, second] = on_r.as_slice() {
+        return annulus(cx, p, conditions, layout, time_index, (b, a0), [first, second]);
+    }
+    let [outer] = on_r.as_slice() else {
+        return None;
+    };
     let radius = outer.point;
     let end = End::from_condition(cx, p, outer)?;
     // Harmonic functions with Dirichlet data: the closed series.
@@ -200,6 +205,11 @@ fn solve_layout(
             if let Some(f) = found {
                 return Some(f);
             }
+        }
+    }
+    if time_index.is_none() && layout.z.is_none() && !p.homogeneous(cx.graph) && is_zero_number(cx.graph, a0) && end.kind == Kind::Dirichlet {
+        if let Some(found) = radial_poisson(cx, p, layout, b, end, radius) {
+            return Some(found);
         }
     }
     // Time structure.
@@ -263,6 +273,225 @@ fn solve_layout(
         items.extend(boundary_items(cx, iv, *level, b)?);
     }
     let engine = Engine { axes, time, symbol: Symbol::Laplacian { b, a0 } };
-    let _ = derivative;
     finish(cx, p, conditions, &engine, &items)
+}
+
+/// `Δu = f(r)` with a polynomial `f` and Dirichlet data on `r = R`: the
+/// polynomial particular solution plus the harmonic function with the
+/// remaining data.
+fn radial_poisson(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    layout: Layout,
+    b: NodeId,
+    end: End,
+    radius: NodeId,
+) -> Option<NodeId> {
+    let r = p.vars[layout.r];
+    if !cx.graph.number_of(end.p).is_some_and(|v| v.is_one()) {
+        return None;
+    }
+    // Δu = f with f = -source / b, a polynomial in r alone.
+    let f = {
+        let q = div(cx, p.source, b);
+        let q = neg(cx.graph, q);
+        cx.simplify(q)
+    };
+    for (j, &v) in p.vars.iter().enumerate() {
+        let depends = cx.graph.symbol_of(v).is_some_and(|s| cx.graph.depends_on(cx.graph.find(f), s));
+        if depends && j != layout.r {
+            return None;
+        }
+    }
+    let zero = cx.graph.int(0);
+    let mut particular = Vec::new();
+    let mut polynomial = Vec::new();
+    let mut derivative_k = f;
+    let mut factorial = 1_i64;
+    for k in 0..=8_i64 {
+        if k > 0 {
+            derivative_k = derivative(cx.graph, derivative_k, r)?;
+            factorial = factorial.checked_mul(k)?;
+        }
+        let at_zero = cx.graph.substitute(derivative_k, r, zero);
+        let coefficient = {
+            let fact = cx.graph.int(factorial);
+            let c = div(cx, at_zero, fact);
+            cx.simplify(c)
+        };
+        if cx.is_zero(coefficient) {
+            continue;
+        }
+        let power = powi(cx.graph, r, k);
+        polynomial.push(mul(cx.graph, &[coefficient, power]));
+        let raised = powi(cx.graph, r, k + 2);
+        let denominator = if layout.sphere { (k + 2) * (k + 3) } else { (k + 2) * (k + 2) };
+        let den = cx.graph.int(denominator);
+        let scaled = div(cx, coefficient, den);
+        particular.push(mul(cx.graph, &[scaled, raised]));
+    }
+    let rebuilt = add(cx.graph, &polynomial);
+    let gap = sub(cx.graph, f, rebuilt);
+    if !cx.is_zero(gap) {
+        return None;
+    }
+    let particular = add(cx.graph, &particular);
+    let particular = cx.simplify(particular);
+    // Remaining data on r = R.
+    let at_radius = cx.graph.substitute(particular, r, radius);
+    let data = sub(cx.graph, end.value, at_radius);
+    let data = cx.simplify(data);
+    let harmonic = match layout.theta {
+        | Some(j) if layout.sphere => classical::laplace_ball(cx, data, radius, r, p.vars[j])?,
+        | Some(j) => classical::laplace_disk(cx, data, radius, r, p.vars[j])?,
+        | None => {
+            if cx.graph.depends_on(cx.graph.find(data), cx.graph.symbol_of(r)?) {
+                return None;
+            }
+            data
+        },
+    };
+    let total = add(cx.graph, &[particular, harmonic]);
+    let total = cx.simplify(total);
+    super::verified(cx, p, total).then_some(total)
+}
+
+/// Laplace's equation in a ring (or spherical shell) with Dirichlet data on
+/// both boundary circles: `a₀ + b₀ ln r + Σ (a_n r^n + b_n r^-n) cos nθ + …`
+/// (`r^l`, `r^(-l-1)` and `P_l(cos θ)` in a shell), for data that are
+/// trigonometric polynomials (polynomials in `cos θ`).
+fn annulus(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+    layout: Layout,
+    time_index: Option<usize>,
+    coefficients: (NodeId, NodeId),
+    ends: [&super::Condition; 2],
+) -> Option<NodeId> {
+    let (_, a0) = coefficients;
+    let theta = p.vars[layout.theta?];
+    if time_index.is_some() || layout.z.is_some() || !p.homogeneous(cx.graph) || !is_zero_number(cx.graph, a0) || conditions.0.len() != 2 {
+        return None;
+    }
+    let r = p.vars[layout.r];
+    let [first, second] = ends;
+    let (inner, outer) = {
+        let (va, vb) = (super::util::sample(cx.graph, first.point, 0)?, super::util::sample(cx.graph, second.point, 0)?);
+        if va <= vb { (first, second) } else { (second, first) }
+    };
+    for c in [inner, outer] {
+        if c.robin.is_some() || c.derivative != vec![0; p.dimension()] {
+            return None;
+        }
+    }
+    let (r1, r2, f1, f2) = (inner.point, outer.point, inner.value, outer.value);
+    let (sin, cos, pi, defint, legendre) = (
+        cx.graph.ops().lookup("sin")?,
+        cx.graph.ops().lookup("cos")?,
+        cx.graph.ops().lookup("pi")?,
+        cx.graph.ops().lookup("defint")?,
+        cx.graph.ops().lookup("legendre")?,
+    );
+    let pi = cx.graph.node(pi, &[]);
+    let zero = cx.graph.int(0);
+    let two = cx.graph.int(2);
+    let two_pi = mul(cx.graph, &[two, pi]);
+    let unresolved = |cx: &Cx<'_>, e: NodeId| crate::rules::ode::occurs_op(cx.graph, e, defint);
+    let max: i64 = if layout.sphere { 10 } else { 12 };
+    let mut terms = Vec::new();
+    let mut last = 0;
+    // The pair (a, b) for the radial factors `u_a(r)`, `u_b(r)` matching
+    // the data (F1, F2) on the two circles.
+    let solve_pair = |cx: &mut Cx<'_>, ra: [NodeId; 2], rb: [NodeId; 2], f1n: NodeId, f2n: NodeId| -> (NodeId, NodeId) {
+        // a ra1 + b rb1 = f1n, a ra2 + b rb2 = f2n.
+        let det = {
+            let x = mul(cx.graph, &[ra[0], rb[1]]);
+            let y = mul(cx.graph, &[rb[0], ra[1]]);
+            sub(cx.graph, x, y)
+        };
+        let a_num = {
+            let x = mul(cx.graph, &[f1n, rb[1]]);
+            let y = mul(cx.graph, &[f2n, rb[0]]);
+            sub(cx.graph, x, y)
+        };
+        let b_num = {
+            let x = mul(cx.graph, &[ra[0], f2n]);
+            let y = mul(cx.graph, &[ra[1], f1n]);
+            sub(cx.graph, x, y)
+        };
+        let (a, b) = (div(cx, a_num, det), div(cx, b_num, det));
+        (cx.simplify(a), cx.simplify(b))
+    };
+    for k in 0..=max {
+        let n = cx.graph.int(k);
+        // Angular functions and their projections.
+        let angular: Vec<(NodeId, NodeId, NodeId)> = if layout.sphere {
+            let ct = cx.graph.node(cos, &[theta]);
+            let st = cx.graph.node(sin, &[theta]);
+            let pl = cx.graph.node(legendre, &[n, ct]);
+            let scale = {
+                let odd = cx.graph.int(2 * k + 1);
+                div(cx, odd, two)
+            };
+            let project = |cx: &mut Cx<'_>, f: NodeId| -> NodeId {
+                let body = mul(cx.graph, &[f, pl, st]);
+                let integral = cx.graph.node(defint, &[body, theta, zero, pi]);
+                let c = mul(cx.graph, &[scale, integral]);
+                cx.simplify(c)
+            };
+            vec![(pl, project(cx, f1), project(cx, f2))]
+        } else {
+            let waves: Vec<NodeId> = if k == 0 {
+                vec![cx.graph.int(1)]
+            } else {
+                let kt = mul(cx.graph, &[n, theta]);
+                vec![cx.graph.node(cos, &[kt]), cx.graph.node(sin, &[kt])]
+            };
+            let mut out = Vec::new();
+            for wave in waves {
+                let project = |cx: &mut Cx<'_>, f: NodeId| -> NodeId {
+                    let body = mul(cx.graph, &[f, wave]);
+                    let integral = cx.graph.node(defint, &[body, theta, zero, two_pi]);
+                    let norm = if k == 0 { two_pi } else { pi };
+                    let c = div(cx, integral, norm);
+                    cx.simplify(c)
+                };
+                out.push((wave, project(cx, f1), project(cx, f2)));
+            }
+            out
+        };
+        for (wave, c1, c2) in angular {
+            if unresolved(cx, c1) || unresolved(cx, c2) {
+                return None;
+            }
+            // Radial factors.
+            let (u_a, u_b) = if layout.sphere {
+                (powi(cx.graph, r, k), powi(cx.graph, r, -k - 1))
+            } else if k == 0 {
+                (cx.graph.int(1), super::util::call(cx, "ln", &[r])?)
+            } else {
+                (powi(cx.graph, r, k), powi(cx.graph, r, -k))
+            };
+            let at = |cx: &mut Cx<'_>, f: NodeId, point: NodeId| cx.graph.substitute(f, r, point);
+            let ra = [at(cx, u_a, r1), at(cx, u_a, r2)];
+            let rb = [at(cx, u_b, r1), at(cx, u_b, r2)];
+            let (a, b) = solve_pair(cx, ra, rb, c1, c2);
+            let ua = mul(cx.graph, &[a, u_a]);
+            let ub = mul(cx.graph, &[b, u_b]);
+            let radial = add(cx.graph, &[ua, ub]);
+            let term = mul(cx.graph, &[radial, wave]);
+            let term = cx.simplify(term);
+            if !cx.is_zero(term) {
+                last = k;
+            }
+            terms.push(term);
+        }
+    }
+    if last >= max {
+        return None;
+    }
+    let total = add(cx.graph, &terms);
+    let total = cx.simplify(total);
+    super::verified(cx, p, total).then_some(total)
 }

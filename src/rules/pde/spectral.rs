@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 //! Eigenfunction expansions on separable domains.
 //!
 //! One engine serves every bounded domain whose Laplacian separates: the
@@ -181,23 +180,24 @@ impl Axis {
         })
     }
 
-    /// Weight at a boundary point (for Green's identity).
-    fn boundary_weight(
-        &self,
-        cx: &mut Cx<'_>,
-        point: NodeId,
-    ) -> NodeId {
-        match &self.shape {
-            | Shape::Radial { sphere, .. } => powi(cx.graph, point, if *sphere { 2 } else { 1 }),
-            | _ => cx.graph.int(1),
-        }
-    }
-
     const fn finite_only(&self) -> bool {
         matches!(self.shape, Shape::Polar)
     }
 
     fn families(
+        &self,
+        cx: &mut Cx<'_>,
+        path: &[Step],
+        n: NodeId,
+    ) -> Option<Vec<Family>> {
+        let mut families = self.families_raw(cx, path, n)?;
+        for family in &mut families {
+            family.mode = cx.simplify(family.mode);
+        }
+        Some(families)
+    }
+
+    fn families_raw(
         &self,
         cx: &mut Cx<'_>,
         path: &[Step],
@@ -336,7 +336,12 @@ fn radial_families(
     } else {
         hr
     };
+    let sin_form_hint = sphere && order_value.is_some_and(|v| (v - 0.5).abs() < 1e-12);
     let root = match end.kind {
+        | Kind::Dirichlet if sin_form_hint => {
+            let p = pi(cx)?;
+            mul(cx.graph, &[n, p])
+        },
         | Kind::Dirichlet => call(cx, "bessel_zero", &[nu, n])?,
         | _ => call(cx, "bessel_root", &[nu, shifted, n])?,
     };
@@ -754,6 +759,61 @@ fn vanishes_on_integers(
     true
 }
 
+/// A literal index, its family and the projections of the items on it.
+type Branch = (i64, NodeId, Family, Vec<Item>);
+
+/// Data that is a finite combination of the modes themselves (matched
+/// structurally): `h = Σ c_m φ_m` with `c_m` free of the axis variable.
+fn structural(
+    cx: &mut Cx<'_>,
+    engine: &Engine,
+    level: usize,
+    path: &[Step],
+    fi: usize,
+    first: i64,
+    items: &[Item],
+) -> Option<Vec<Branch>> {
+    let axis = engine.axes.get(level)?;
+    if axis.finite_only() || items.iter().any(|it| it.special.is_some()) {
+        return None;
+    }
+    let axis_symbol = cx.graph.symbol_of(axis.var)?;
+    let mut remaining: Vec<NodeId> = items.iter().map(|it| it.h).collect();
+    let mut out = Vec::new();
+    for m in first..first + WINDOW + 4 {
+        let number = cx.graph.int(m);
+        let fam = axis.families(cx, path, number)?.get(fi)?.clone();
+        // A constant or bare symbol cannot be frozen structurally.
+        if cx.graph.children(fam.mode).is_empty() {
+            continue;
+        }
+        let mut projected = Vec::new();
+        let mut any = false;
+        for (it, r) in items.iter().zip(remaining.iter_mut()) {
+            let zero = cx.graph.int(0);
+            if cx.is_zero(*r) {
+                projected.push(Item { role: it.role, h: zero, special: None });
+                continue;
+            }
+            let c = super::derivative_by_node(cx, *r, fam.mode)?;
+            if cx.graph.depends_on(cx.graph.find(c), axis_symbol) {
+                return None;
+            }
+            if !cx.is_zero(c) {
+                let cm = mul(cx.graph, &[c, fam.mode]);
+                let rest = sub(cx.graph, *r, cm);
+                *r = cx.simplify(rest);
+                any = true;
+            }
+            projected.push(Item { role: it.role, h: c, special: None });
+        }
+        if any {
+            out.push((m, number, fam, projected));
+        }
+    }
+    if remaining.iter().all(|&r| cx.is_zero(r)) { Some(out) } else { None }
+}
+
 fn expand(
     cx: &mut Cx<'_>,
     p: &Problem,
@@ -774,6 +834,15 @@ fn expand(
     let mut terms = Vec::new();
     for (fi, gfam) in general_families.iter().enumerate() {
         let first = gfam.first;
+        if let Some(branches) = structural(cx, engine, level, path, fi, first, items) {
+            for (_, number, fam, projected) in branches {
+                path.push(Step { index: number, family: fam });
+                let body = expand(cx, p, engine, level + 1, &projected, path);
+                path.pop();
+                terms.push(body?);
+            }
+            continue;
+        }
         if axis.finite_only() {
             // Explicit modes up to a maximal degree; the data must be exhausted.
             let mut tail_zero = true;
@@ -933,9 +1002,32 @@ pub(super) fn interval(
     conditions: &Conditions,
     j: usize,
 ) -> Option<Interval> {
-    let on: Vec<&Condition> = conditions.0.iter().filter(|c| c.on == j).collect();
+    let all_on: Vec<&Condition> = conditions.0.iter().filter(|c| c.on == j).collect();
     let var = p.vars[j];
     let zero_index = vec![0; p.dimension()];
+    // Operators of order four and more carry the extra conditions
+    // `u_xx = 0` (with `u = 0`) or `u_xxx = 0` (with `u_x = 0`).
+    let on: Vec<&Condition> = all_on.iter().copied().filter(|c| c.derivative == zero_index || c.derivative == p.unit(j, 1)).collect();
+    let secondary: Vec<&Condition> = all_on.iter().copied().filter(|c| !(c.derivative == zero_index || c.derivative == p.unit(j, 1))).collect();
+    if !secondary.is_empty() {
+        let higher = p.linear.iter().any(|(i, c)| i[j] >= 4 && !is_zero_number(cx.graph, *c));
+        if !higher {
+            return None;
+        }
+        for c in &secondary {
+            let pairs_with = if c.derivative == p.unit(j, 2) {
+                &zero_index
+            } else if c.derivative == p.unit(j, 3) {
+                &p.unit(j, 1)
+            } else {
+                return None;
+            };
+            let paired = on.iter().any(|q| q.derivative == *pairs_with && cx.graph.same(q.point, c.point));
+            if !paired || !cx.is_zero(c.value) || c.robin.is_some() {
+                return None;
+            }
+        }
+    }
     // Periodic: u(a) = u(b), optionally with the same for the derivative.
     let periodic = on.iter().find(|c| {
         c.derivative == zero_index

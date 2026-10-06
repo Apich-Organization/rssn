@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 //! Small builders shared by the PDE solvers.
 
 use crate::graph::Cx;
