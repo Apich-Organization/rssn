@@ -1073,6 +1073,15 @@ pub(crate) fn occurs_in(
     occurs(graph, term, needle)
 }
 
+/// The solutions of `expr = 0` for the symbol `v`, for other rule sets.
+pub(crate) fn solve_in(
+    graph: &mut Graph,
+    expr: NodeId,
+    v: NodeId,
+) -> Option<Vec<NodeId>> {
+    solve_for(graph, expr, v, 0)
+}
+
 /// Whether some node of `term` has operator `op`.
 pub(crate) fn occurs_op(
     graph: &Graph,

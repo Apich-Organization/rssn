@@ -38,6 +38,8 @@
 //! | `noether_current(L, u(x, t), list(ξ, τ, φ))` | the conserved current `list(J^x, J^t)` of a variational symmetry |
 //! | `conservation_laws(eq, u(x, t))` | `list(list(Λ, T, X), …)`: multipliers with density and flux (`D_t T + D_x X = 0`) |
 //! | `laplace_disk(f(θ), R, r, θ)`, `laplace_ball(f(θ), R, r, θ)` | harmonic functions in a disk / ball (axisymmetric) with boundary values `f` |
+//! | `pde_complete_integral(eq, u(x, y))` | a complete integral of a first-order equation (Lagrange–Charpit classes) |
+//! | `pde_separate(eq, u(x, t))` | separated solutions `X(x) T(t)` or `X(x) + T(t)` with separation constant `lambda` |
 //!
 //! `pdsolve` also handles drift–diffusion–reaction equations with sources
 //! on the line and half-line (gauge transformation, heat kernel, Duhamel,
@@ -47,6 +49,7 @@ use std::collections::HashMap;
 
 mod classical;
 mod conservation;
+mod frameworks;
 mod symmetry;
 
 use crate::graph::op::core;
@@ -134,6 +137,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let similarity = i.op(heavy("pde_similarity", Arity::Fixed(3)))?;
     let noether = i.op(heavy("noether_current", Arity::Fixed(3)))?;
     let laws = i.op(heavy("conservation_laws", Arity::Fixed(2)))?;
+    let complete = i.op(heavy("pde_complete_integral", Arity::Fixed(2)))?;
+    let separate = i.op(heavy("pde_separate", Arity::Fixed(2)))?;
+    i.kernel("pde/frameworks", Tier::Reduce, Frameworks { complete, separate });
     let disk = i.op(heavy("laplace_disk", Arity::Fixed(4)))?;
     let ball = i.op(heavy("laplace_ball", Arity::Fixed(4)))?;
     i.kernel("pde/harmonic", Tier::Reduce, Harmonic { disk, ball });
@@ -224,6 +230,37 @@ impl Kernel for Pde {
 }
 
 /// `at(f, x, a)`: substitution once `f` is free of requests involving `x`.
+/// `pde_complete_integral` and `pde_separate`.
+struct Frameworks {
+    complete: OpId,
+    separate: OpId,
+}
+
+impl Kernel for Frameworks {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.complete, self.separate]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        let &[equation, unknown] = cx.graph.children(node) else {
+            return Outcome::Pass;
+        };
+        let Some(p) = Problem::parse(cx, equation, unknown) else {
+            return Outcome::Pass;
+        };
+        let found = if cx.graph.op(node) == self.complete {
+            frameworks::complete_integral(cx, &p)
+        } else {
+            frameworks::separate(cx, &p)
+        };
+        found.map_or(Outcome::Pass, |rhs| Outcome::Pinned(cx.graph.node(core::EQ, &[p.unknown, rhs])))
+    }
+}
+
 /// `laplace_disk` and `laplace_ball`.
 struct Harmonic {
     disk: OpId,
@@ -912,7 +949,12 @@ fn solve(
         solution = green(cx, p);
     }
     if solution.is_none() && method == Any {
-        solution = classical::drift_diffusion(cx, p, conditions).or_else(|| classical::wave_half_line(cx, p, conditions));
+        solution = classical::drift_diffusion(cx, p, conditions)
+            .or_else(|| classical::wave_half_line(cx, p, conditions))
+            .or_else(|| frameworks::fourier_evolution(cx, p, conditions));
+    }
+    if solution.is_none() && method == Any && conditions.is_empty() && p.order() == 1 && p.nonlinear {
+        solution = frameworks::complete_integral(cx, p);
     }
     let solution = solution?;
     Some(cx.graph.node(core::EQ, &[p.unknown, solution]))
@@ -2096,6 +2138,28 @@ mod tests {
 
     fn any(src: &str) -> String {
         reduce_with(&[pde()], src, &ASSUME).0
+    }
+
+    #[test]
+    fn general_frameworks() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| crate::rules::testing::simplify(&rules, src);
+        // Complete integrals: F(p, q), Clairaut, separable, F(u, p, q).
+        let eikonal = run("pde_complete_integral(diff(u(x, y), x)^2 + diff(u(x, y), y)^2 = 1, u(x, y))");
+        assert!(eikonal.contains("A*x") && eikonal.contains('C'), "{eikonal}");
+        let clairaut = run("pde_complete_integral(u(x, y) = x*diff(u(x, y), x) + y*diff(u(x, y), y) + diff(u(x, y), x)*diff(u(x, y), y), u(x, y))");
+        assert_eq!(clairaut, "u(x, y) = A*B + A*x + B*y");
+        let separable = run("pde_complete_integral(diff(u(x, y), x)^2 - x = diff(u(x, y), y), u(x, y))");
+        assert!(separable.contains('B') && separable.contains('A'), "{separable}");
+        // Separation: the heat equation (multiplicative) and u_t = u_x^2
+        // (additive, Hamilton–Jacobi type).
+        let heat = run("pde_separate(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t))");
+        assert!(heat.contains("lambda") && heat.contains("exp"), "{heat}");
+        let hj = run("pde_separate(diff(u(x, t), t) = diff(u(x, t), x)^2, u(x, t))");
+        assert!(hj.contains("lambda"), "{hj}");
+        // Fourier framework: the Airy-type dispersive equation u_t = -u_xxx.
+        let airy = run("pdsolve(diff(u(x, t), t) + diff(diff(diff(u(x, t), x), x), x) = 0, u(x, t), list(u(x, 0) = exp(-x^2)))");
+        assert!(airy.contains("defint") || airy.contains("airy"), "{airy}");
     }
 
     #[test]
