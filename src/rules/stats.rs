@@ -35,6 +35,17 @@
 //! beta and Student distributions, the entropy of the binomial and Poisson
 //! distributions) stay requests.
 //!
+//! The `ext` submodule adds eleven further families (Cauchy, Laplace,
+//! lognormal, Weibull, geometric, negative binomial, F, Pareto, Rayleigh,
+//! logistic, Gumbel), derived properties (`charfn`, `skewness_of`,
+//! `kurtosis_of`, `median_of`, `mode_of`, `quantile_of`, `std_of`,
+//! `moment_of`, `central_moment_of`), expectations of transformations
+//! (`expect_of`), sums and affine maps of independent variables
+//! (`sum_dist`, `iid_sum`, `iid_mean`, `scale_dist`, `shift_dist`), conjugate
+//! Bayesian updates (`bayes_update`) and exact tests (`binomial_test`,
+//! `fisher_exact`, `wilson_interval`, `mean_interval`, `proportion_z_test`,
+//! `r_squared`, `residuals`); see its table.
+//!
 //! # Inference, regression, information theory
 //!
 //! `z_test`, `t_test`, `welch_test`, `pooled_t_test`, `chi_squared_test`
@@ -81,6 +92,8 @@ use crate::graph::VarNames;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::kernels::stats as num;
+
+mod ext;
 
 use super::calculus::calculus;
 use super::calculus::partials;
@@ -993,6 +1006,9 @@ fn admissible(
     family: &Family,
     params: &[Option<f64>],
 ) -> bool {
+    if let Some(known) = ext::admissible(family.name, params) {
+        return known;
+    }
     let p = |i: usize| params.get(i).copied().flatten();
     let positive = |i: usize| p(i).is_none_or(|v| v > 0.0);
     let probability = |i: usize| p(i).is_none_or(|v| (0.0..=1.0).contains(&v));
@@ -1109,7 +1125,7 @@ fn distribution_request(
         return Outcome::Pass;
     };
     let name = g.ops().get(g.op(dist)).name.clone();
-    let Some(family) = FAMILIES.iter().find(|f| *f.name == *name) else {
+    let Some(family) = FAMILIES.iter().chain(ext::FAMILIES.iter()).find(|f| *f.name == *name) else {
         return Outcome::Pass;
     };
     let params = g.children(dist).to_vec();
@@ -1137,12 +1153,14 @@ fn distribution_request(
         // freedom.
         | Request::Mean if family.name == "student_t" && nu.is_some_and(|v| v <= 1.0) => None,
         | Request::Variance if family.name == "student_t" && nu.is_some_and(|v| v <= 2.0) => None,
+        | Request::Mean if !ext::moment_exists(family.name, 1, &numeric) => None,
+        | Request::Variance if !ext::moment_exists(family.name, 2, &numeric) => None,
         | Request::Mean => Some(family.mean),
         | Request::Variance => Some(family.variance),
         | Request::Mgf => family.mgf,
         | Request::Entropy => family.entropy,
     };
-    let Some(text) = text else {
+    let Some(text) = text.filter(|t| !t.is_empty()) else {
         return Outcome::Pass;
     };
     let Some(&a) = params.first() else {
@@ -2098,6 +2116,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for family in &FAMILIES {
         i.op(OpDescriptor::new(family.name, Arity::Fixed(family.params)))?;
     }
+    ext::install(i)?;
     procedure(i, set, request(binary("pdf")), Tier::Reduce, |cx, a| {
         distribution_request(cx, a, Request::Pdf)
     })?;

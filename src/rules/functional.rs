@@ -23,6 +23,11 @@
 //! | `project_onto(f, g, x, a, b)` | the component of `f` along `g` |
 //! | `gram_schmidt(list(f1, ...), x, a, b)`, `gram_schmidt_orthonormal(...)` | an orthogonal (orthonormal) basis of the span, dependent members dropped |
 //!
+//! The `ext` submodule adds `gram_matrix`, `orthogonal_coefficients`,
+//! `best_approximation`, `l2_distance`, `sobolev_h1`,
+//! `fredholm_eigenvalues`, `operator_adjoint` and `op_commutator` (see its
+//! table).
+//!
 //! # Integral equations
 //!
 //! For `y(x) = f(x) + λ ∫ K(x, t) y(t) dt` (Fredholm on `[a, b]`, Volterra
@@ -37,6 +42,8 @@
 //! | `volterra_to_ode(f, lambda, K, x, t, a, y(x))` | the equivalent differential equation `y' = f' + λ K(x, x) y + λ ∫ ∂K/∂x y dt` (second kind, differentiated once) |
 //! | `volterra_solve(f, lambda, K, x, t, a)` | exact for kernels `K = k(x - t)` with a Laplace-transformable `k`, by the convolution theorem; for kernels free of `t` and `x`, by the ODE |
 //! | `airfoil_equation(f, x, t)` | the inversion of the finite Hilbert transform, `y(x) = -1/(π sqrt(1 - x²)) ∫_{-1}^{1} sqrt(1 - t²) f(t)/(t - x) dt + C/sqrt(1 - x²)` |
+
+mod ext;
 
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
@@ -164,7 +171,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "lp_norm(f, p, x, a, b) := defint(abs(f)^p, x, a, b)^(1/p)",
         "project_onto(f, g, x, a, b) := inner_product(g, f, x, a, b) / inner_product(g, g, x, a, b) * g",
         "airfoil_equation(f, x, t) := -1/(pi*(1 - x^2)^(1/2)) * defint((1 - t^2)^(1/2) * f/(t - x), t, -1, 1) + C/(1 - x^2)^(1/2)",
-    ])
+    ])?;
+    ext::install(i)
 }
 
 struct Functional {

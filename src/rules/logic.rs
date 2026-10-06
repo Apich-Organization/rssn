@@ -10,6 +10,11 @@
 //! Normal-form requests (`cnf`, `dnf`, `nnf`, `simplify_logic`) and
 //! decision requests (`satisfiable`, `tautology`, `truth_table`) are
 //! reduced by one exact kernel.
+//!
+//! The `ext` submodule compiles formulas into binary decision diagrams for
+//! `count_models`, `sat_model`, `all_models`, `bdd`, `bdd_size`, `exists`,
+//! `forall`, `restrict`, `entails`, `equivalent` and `prime_implicants`
+//! (see its table).
 
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
@@ -33,6 +38,8 @@ use crate::graph::Tier;
 use crate::graph::op::EvalFn;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
+
+mod ext;
 
 use super::arith::arith;
 
@@ -232,6 +239,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("logic/constants", Tier::Normalize, Constants { ops });
     i.kernel("logic/boolean", Tier::Normalize, Boolean { ops });
     i.kernel("logic/forms", Tier::Reduce, Forms { ops, forms });
+    ext::install(i, ops)?;
 
     i.rewrites(
         Tier::Normalize,

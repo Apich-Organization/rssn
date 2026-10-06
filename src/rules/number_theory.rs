@@ -4,6 +4,18 @@
 //! Every operator is reduced by an exact kernel that fires only when all of
 //! its arguments are literal integers; anything else stays symbolic. Results
 //! are computed with arbitrary-precision integers, so nothing overflows.
+//!
+//! The core operators are `gcd`, `lcm`, `mod`, `powmod`, `invmod`,
+//! `isprime`, `nextprime`, `totient`, `divisor_count`, `divisor_sum`,
+//! `factorint`, `jacobi`, `egcd`, `crt`, `pell`, `primes`, `cfrac`,
+//! `convergents` and `diophantine`. Quadratic residues, orders, discrete
+//! logarithms, arithmetic functions and the like live in
+//! the `ext` submodule: `legendre_symbol`, `kronecker_symbol`, `sqrtmod`,
+//! `quadratic_residues`, `mult_order`, `carmichael`, `primitive_root`,
+//! `dlog`, `mobius`, `liouville`, `omega`, `bigomega`, `radical`, `sigma`,
+//! `divisors`, `is_squarefree`, `is_square`, `isqrt`, `iroot`,
+//! `perfect_power`, `prevprime`, `prime_pi`, `nth_prime`, `two_squares`,
+//! `lincong`, `binomial_mod` and `farey`.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -28,6 +40,8 @@ use crate::graph::RuleSet;
 use crate::graph::Tier;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
+
+mod ext;
 
 use super::arith::arith;
 use super::poly::best;
@@ -1187,6 +1201,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         Tier::Reduce,
         diophantine,
     )?;
+
+    ext::install(i)?;
 
     // Values on floats are rounded integers, so only identities that hold
     // for every rounding are stated for symbolic arguments. The others are
