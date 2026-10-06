@@ -54,6 +54,8 @@ const MAX_DEGREE: u32 = 64;
 /// Largest integer or half-integer whose gamma value is computed exactly.
 const MAX_GAMMA: u32 = 1000;
 
+mod approx;
+
 /// The special-function rule set.
 #[must_use]
 pub fn special() -> RuleSet {
@@ -547,6 +549,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     if let Some(op) = op_named("laguerre_gen") {
         i.kernel("special/laguerre-gen", Tier::Normalize, GeneralizedLaguerre { op });
     }
+    approx::install(i)?;
     i.define(&[
         "frac(x) := x - floor(x)",
         "ln_factorial(n) := lgamma(n + 1)",
