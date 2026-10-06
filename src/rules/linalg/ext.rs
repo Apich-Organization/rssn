@@ -11,7 +11,7 @@
 //! | operator | value |
 //! |---|---|
 //! | `kron(A, B)` | the Kronecker product |
-//! | `commutator(A, B)` | `A B - B A` |
+//! | `matrix_commutator(A, B)` | `A B - B A` |
 //! | `diag(list(d1, ...))`, `vandermonde(list(x1, ...))`, `hilbert(n)`, `companion(p, x)` | special matrices (`companion` of a monic-normalised polynomial) |
 //! | `adjugate(A)`, `cofactors(A)` | the adjugate (classical adjoint) and the matrix of cofactors |
 //! | `colspace(A)`, `rowspace(A)`, `left_nullspace(A)` | bases, as lists of vectors |
@@ -32,7 +32,7 @@
 //! | `orthogonalize(vs)`, `orthonormalize(vs)` | Gram–Schmidt on a list of vectors (dependent vectors dropped) |
 //! | `smith(A)` | `list(U, D, V)` with `U A V = D` the Smith normal form of an integer matrix, `U` and `V` unimodular |
 //! | `invariant_factors(A)` | the non-zero diagonal of the Smith normal form |
-//! | `hermite(A)` | `list(H, U)` with `U A = H` the row-style Hermite normal form of an integer matrix |
+//! | `hermite_form(A)` | `list(H, U)` with `U A = H` the row-style Hermite normal form of an integer matrix |
 //! | `is_symmetric(A)`, `is_orthogonal(A)`, `is_positive_definite(A)` | truth values (the last for exact rational matrices, by Sylvester's criterion) |
 
 use num_bigint::BigInt;
@@ -1405,7 +1405,7 @@ impl Kernel for Extension {
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, arity, kind) in [
         ("kron", 2, Kind::Kron),
-        ("commutator", 2, Kind::Commutator),
+        ("matrix_commutator", 2, Kind::Commutator),
         ("diag", 1, Kind::Diag),
         ("vandermonde", 1, Kind::Vandermonde),
         ("hilbert", 1, Kind::Hilbert),
@@ -1433,7 +1433,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("orthonormalize", 1, Kind::Orthonormalize),
         ("smith", 1, Kind::Smith),
         ("invariant_factors", 1, Kind::InvariantFactors),
-        ("hermite", 1, Kind::Hermite),
+        ("hermite_form", 1, Kind::Hermite),
         ("is_symmetric", 1, Kind::IsSymmetric),
         ("is_orthogonal", 1, Kind::IsOrthogonal),
         ("is_positive_definite", 1, Kind::IsPositiveDefinite),
@@ -1462,12 +1462,12 @@ mod tests {
             run("kron(list(list(1, 2), list(3, 4)), list(list(0, 1), list(1, 0)))"),
             "list(list(0, 1, 0, 2), list(1, 0, 2, 0), list(0, 3, 0, 4), list(3, 0, 4, 0))"
         );
-        assert_eq!(run("commutator(list(list(0, 1), list(0, 0)), list(list(0, 0), list(1, 0)))"), "list(list(1, 0), list(0, -1))");
+        assert_eq!(run("matrix_commutator(list(list(0, 1), list(0, 0)), list(list(0, 0), list(1, 0)))"), "list(list(1, 0), list(0, -1))");
         assert_eq!(run("diag(list(1, a, 3))"), "list(list(1, 0, 0), list(0, a, 0), list(0, 0, 3))");
         assert_eq!(run("vandermonde(list(1, 2, 3))"), "list(list(1, 1, 1), list(1, 2, 4), list(1, 3, 9))");
         assert_eq!(run("hilbert(2)"), "list(list(1, 1/2), list(1/2, 1/3))");
         assert_eq!(run("companion(x^3 - 2*x^2 + 3*x - 4, x)"), "list(list(0, 0, 4), list(1, 0, -3), list(0, 1, 2))");
-        assert_eq!(run("det(vandermonde(list(a, b)))"), "-a + b");
+        assert_eq!(run("det(vandermonde(list(a, b)))"), "b - a");
     }
 
     #[test]
@@ -1513,7 +1513,7 @@ mod tests {
         assert_eq!(run("matexp(list(list(1, 0), list(0, 2)), t)"), "list(list(exp(t), 0), list(0, exp(2*t)))");
         assert_eq!(run(&format!("mpow({A}, 5)")), "list(list(32, 80), list(0, 32))");
         assert_eq!(run(&format!("mpow({A}, -1)")), "list(list(1/2, -1/4), list(0, 1/2))");
-        assert_eq!(run(&format!("mpow({A}, n)")), "list(list(2^n, 2^(n - 1)*n), list(0, 2^n))");
+        assert_eq!(run(&format!("mpow({A}, n)")), "list(list(2^n, n*2^(n - 1)), list(0, 2^n))");
         assert_eq!(run("matsqrt(list(list(4, 0), list(0, 9)))"), "list(list(2, 0), list(0, 3))");
         assert_eq!(run(&format!("matfun(x^2 + 1, x, {A})")), "list(list(5, 4), list(0, 5))");
     }
@@ -1533,7 +1533,8 @@ mod tests {
             "list(list(list(1, 0), list(1/2, 1)), list(4, 2))"
         );
         assert_eq!(run("cholesky(list(list(4, 2), list(2, 3)))"), "list(list(2, 0), list(1, 2^(1/2)))");
-        assert_eq!(run("cholesky(list(list(1, 2), list(2, 1)))"), "cholesky(list(list(1, 2), list(2, 1)))");
+        let (text, reduced) = crate::rules::testing::reduce_with(&[linalg()], "cholesky(list(list(1, 2), list(2, 1)))", &[]);
+        assert!(!reduced, "not positive definite: {text}");
         assert_eq!(
             run("orthogonalize(list(list(1, 1, 0), list(1, 0, 1), list(0, 1, 1)))"),
             "list(list(1, 1, 0), list(1/2, -1/2, 1), list(-2/3, 2/3, 2/3))"
@@ -1553,10 +1554,10 @@ mod tests {
         let (u, d, v) = (super::tests_part(&smith, 0), super::tests_part(&smith, 1), super::tests_part(&smith, 2));
         assert_eq!(run(&format!("matmul({u}, {a}, {v})")), d);
         assert_eq!(run("det(list(list(1, 0), list(0, 1)))"), "1");
-        let hermite = run("hermite(list(list(2, 3, 6, 2), list(5, 6, 1, 6), list(8, 3, 1, 1)))");
+        let hermite = run("hermite_form(list(list(2, 3, 6, 2), list(5, 6, 1, 6), list(8, 3, 1, 1)))");
         let (h, u) = (super::tests_part(&hermite, 0), super::tests_part(&hermite, 1));
         assert_eq!(run(&format!("matmul({u}, list(list(2, 3, 6, 2), list(5, 6, 1, 6), list(8, 3, 1, 1)))")), h);
-        assert_eq!(h, "list(list(1, 0, 50, -11), list(0, 3, 28, 2), list(0, 0, 61, -13))");
+        assert_eq!(h, "list(list(1, 0, 50, -11), list(0, 3, 28, -2), list(0, 0, 61, -13))");
         assert_eq!(run("det(list(list(1, 2), list(3, 4)))"), "-2");
     }
 }

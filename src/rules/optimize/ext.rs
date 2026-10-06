@@ -540,19 +540,32 @@ fn inequality(
     node: NodeId,
 ) -> Option<NodeId> {
     let node = best(cx.graph, node)?;
-    let name = cx.graph.ops().get(cx.graph.op(node)).name.to_string();
-    let kids = cx.graph.children(node).to_vec();
+    eprintln!("DEBUG ineq {}", cx.graph.display(node));
+    let mut negated = false;
+    let mut current = node;
+    let mut name = cx.graph.ops().get(cx.graph.op(current)).name.to_string();
+    while name == "not" {
+        let &[inner] = cx.graph.children(current) else { return None };
+        current = inner;
+        negated = !negated;
+        name = cx.graph.ops().get(cx.graph.op(current)).name.to_string();
+    }
+    let kids = cx.graph.children(current).to_vec();
     let minus = |cx: &mut Cx<'_>, a: NodeId, b: NodeId| {
         let minus_one = cx.graph.int(-1);
         let negated = cx.graph.node(core::MUL, &[minus_one, b]);
         let sum = cx.graph.node(core::ADD, &[a, negated]);
         cx.simplify(sum)
     };
-    match (name.as_str(), kids.as_slice()) {
-        | ("le" | "lt", &[a, b]) => Some(minus(cx, a, b)),
-        | ("ge" | "gt", &[a, b]) => Some(minus(cx, b, a)),
-        | _ => Some(node),
-    }
+    // `lower` means `a <= b` (so `a - b <= 0`); `not` swaps the sides.
+    let (lower, a, b) = match (name.as_str(), kids.as_slice()) {
+        | ("le" | "lt", &[a, b]) => (true, a, b),
+        | ("ge" | "gt", &[a, b]) => (false, a, b),
+        | _ if negated => return None,
+        | _ => return Some(node),
+    };
+    let lower = lower != negated;
+    Some(if lower { minus(cx, a, b) } else { minus(cx, b, a) })
 }
 
 fn subsets(

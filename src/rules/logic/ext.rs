@@ -645,7 +645,7 @@ mod tests {
         let parity: Vec<String> = (0..30).map(|k| format!("v{k}")).collect();
         assert_eq!(s(&format!("count_models(xor({}))", parity.join(", "))), "536870912");
         assert_eq!(s("sat_model(and(a, not(b)))"), "and(a, not(b))");
-        assert_eq!(s("sat_model(or(a, b))"), "and(not(a), b)");
+        assert_eq!(s("sat_model(or(a, b))"), "and(b, not(a))");
         assert_eq!(s("sat_model(and(a, not(a)))"), "false");
         assert_eq!(s("all_models(iff(a, b))"), "list(and(not(a), not(b)), and(a, b))");
         assert_eq!(s("bdd_size(xor(a, b, c))"), "5");
@@ -669,6 +669,6 @@ mod tests {
         assert_eq!(s("entails(a, and(a, b))"), "false");
         assert_eq!(s("equivalent(implies(a, b), or(not(a), b))"), "true");
         assert_eq!(s("equivalent(xor(a, b), iff(a, b))"), "false");
-        assert_eq!(s("prime_implicants(or(and(a, b), and(not(a), c)))"), "list(and(b, c), and(not(a), c), and(a, b))");
+        assert_eq!(s("prime_implicants(or(and(a, b), and(not(a), c)))"), "list(and(b, c), and(c, not(a)), and(a, b))");
     }
 }

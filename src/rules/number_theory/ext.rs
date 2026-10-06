@@ -4,8 +4,8 @@
 //!
 //! | operator | value |
 //! |---|---|
-//! | `legendre(a, p)` | the Legendre symbol `(a/p)` for an odd prime `p` (`-1`, `0` or `1`) |
-//! | `kronecker(a, n)` | the Kronecker symbol, extending the Jacobi symbol to even and negative `n` |
+//! | `legendre_symbol(a, p)` | the Legendre symbol `(a/p)` for an odd prime `p` (`-1`, `0` or `1`) |
+//! | `kronecker_symbol(a, n)` | the Kronecker symbol, extending the Jacobi symbol to even and negative `n` |
 //! | `sqrtmod(a, p)` | the smaller square root of `a` modulo the prime `p` (Tonelli–Shanks); stays unreduced when `a` is a non-residue |
 //! | `quadratic_residues(n)` | the sorted non-zero squares modulo `n` (`n <= 100000`) |
 //! | `mult_order(a, n)` | the multiplicative order of `a` modulo `n` (`gcd(a, n) = 1`) |
@@ -380,11 +380,11 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let binary = |name: &str| OpDescriptor::new(name, Arity::Fixed(2));
     let ternary = |name: &str| OpDescriptor::new(name, Arity::Fixed(3));
 
-    exact(i, SET, binary("legendre"), |a| match a {
+    exact(i, SET, binary("legendre_symbol"), |a| match a {
         | [x, p] if *p > big(2) && is_prime(p) => jacobi(x, p).and_then(int),
         | _ => None,
     })?;
-    exact(i, SET, binary("kronecker"), |a| match a {
+    exact(i, SET, binary("kronecker_symbol"), |a| match a {
         | [x, n] => kronecker(x, n).and_then(int),
         | _ => None,
     })?;
@@ -569,12 +569,12 @@ mod tests {
 
     #[test]
     fn legendre_kronecker_and_sqrtmod() {
-        assert_eq!(s("legendre(2, 7)"), "1");
-        assert_eq!(s("legendre(3, 7)"), "-1");
-        assert_eq!(s("legendre(14, 7)"), "0");
-        assert_eq!(s("kronecker(2, 15)"), "1");
-        assert_eq!(s("kronecker(3, 8)"), "-1");
-        assert_eq!(s("kronecker(-1, 4)"), "1");
+        assert_eq!(s("legendre_symbol(2, 7)"), "1");
+        assert_eq!(s("legendre_symbol(3, 7)"), "-1");
+        assert_eq!(s("legendre_symbol(14, 7)"), "0");
+        assert_eq!(s("kronecker_symbol(2, 15)"), "1");
+        assert_eq!(s("kronecker_symbol(3, 8)"), "-1");
+        assert_eq!(s("kronecker_symbol(-1, 4)"), "1");
         assert_eq!(s("sqrtmod(10, 13)"), "6");
         assert_eq!(s("sqrtmod(13, 17)"), "8");
         assert_eq!(s("mod(sqrtmod(2, 1000000007)^2, 1000000007)"), "2");

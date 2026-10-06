@@ -10,7 +10,7 @@
 //! `factorint`, `jacobi`, `egcd`, `crt`, `pell`, `primes`, `cfrac`,
 //! `convergents` and `diophantine`. Quadratic residues, orders, discrete
 //! logarithms, arithmetic functions and the like live in
-//! the `ext` submodule: `legendre`, `kronecker`, `sqrtmod`,
+//! the `ext` submodule: `legendre_symbol`, `kronecker_symbol`, `sqrtmod`,
 //! `quadratic_residues`, `mult_order`, `carmichael`, `primitive_root`,
 //! `dlog`, `mobius`, `liouville`, `omega`, `bigomega`, `radical`, `sigma`,
 //! `divisors`, `is_squarefree`, `is_square`, `isqrt`, `iroot`,
