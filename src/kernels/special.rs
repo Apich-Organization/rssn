@@ -1628,3 +1628,215 @@ mod hurwitz_tests {
         assert!((hurwitz_zeta(-0.5, 1.0) - hurwitz_zeta(-0.5, 5.0) - direct).abs() < 1e-10);
     }
 }
+
+/// `E1(x) = ∫_x^∞ e^(-t)/t dt` for `x > 0`: the power series for
+/// `x <= 1`, Lentz's continued fraction beyond.
+#[must_use]
+pub fn exp_integral_e1(x: f64) -> f64 {
+    if x.is_nan() || x <= 0.0 {
+        return f64::NAN;
+    }
+    if x <= 1.0 {
+        let (mut sum, mut term) = (0.0, 1.0);
+        for k in 1..200 {
+            let k = f64::from(k);
+            term *= -x / k;
+            let add = -term / k;
+            sum += add;
+            if add.abs() < 1e-17 * sum.abs() {
+                break;
+            }
+        }
+        return -EULER_GAMMA - x.ln() + sum;
+    }
+    // E1(x) = e^(-x) / (x + 1 - 1/(x + 3 - 4/(x + 5 - ...)))
+    let tiny = 1e-300;
+    let mut b = x + 1.0;
+    let mut c = 1.0 / tiny;
+    let mut d = 1.0 / b;
+    let mut h = d;
+    for i in 1..500 {
+        let i = f64::from(i);
+        let a = -i * i;
+        b += 2.0;
+        d = 1.0 / a.mul_add(d, b);
+        c = b + a / c;
+        let delta = c * d;
+        h *= delta;
+        if (delta - 1.0).abs() < 1e-16 {
+            break;
+        }
+    }
+    h * (-x).exp()
+}
+
+/// The exponential integral `Ei(x) = -PV ∫_(-x)^∞ e^(-t)/t dt`.
+#[must_use]
+pub fn exp_integral_ei(x: f64) -> f64 {
+    if x.is_nan() || x == 0.0 {
+        return if x == 0.0 { f64::NEG_INFINITY } else { f64::NAN };
+    }
+    if x < 0.0 {
+        return -exp_integral_e1(-x);
+    }
+    if x < 40.0 {
+        let (mut sum, mut term) = (0.0, 1.0);
+        for k in 1..400 {
+            let k = f64::from(k);
+            term *= x / k;
+            let add = term / k;
+            sum += add;
+            if add < 1e-17 * sum {
+                break;
+            }
+        }
+        return EULER_GAMMA + x.ln() + sum;
+    }
+    // Asymptotic: e^x/x Σ k!/x^k.
+    let (mut sum, mut term) = (1.0, 1.0);
+    for k in 1..60 {
+        let next = term * f64::from(k) / x;
+        if next > term {
+            break;
+        }
+        term = next;
+        sum += term;
+        if term < 1e-17 {
+            break;
+        }
+    }
+    x.exp() / x * sum
+}
+
+/// The logarithmic integral `li(x) = Ei(ln x)` for `x > 0`.
+#[must_use]
+pub fn log_integral(x: f64) -> f64 {
+    if x.is_nan() || x < 0.0 {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return 0.0;
+    }
+    exp_integral_ei(x.ln())
+}
+
+/// `(Si(x), Ci(x))` for `x > 0`: power series for `x <= 2`, the continued
+/// fraction of `E1(i x)` beyond (Numerical Recipes' `cisi`).
+fn si_ci(x: f64) -> (f64, f64) {
+    use num_complex::Complex64;
+    if x <= 2.0 {
+        let (mut si, mut ci) = (0.0, 0.0);
+        let (mut odd, mut even) = (x, 1.0);
+        for k in 0..60 {
+            let n = 2 * k + 1;
+            if k > 0 {
+                odd *= -x * x / (f64::from(n - 1) * f64::from(n));
+            }
+            si += odd / f64::from(n);
+            let m = 2 * k + 2;
+            even *= -x * x / (f64::from(m - 1) * f64::from(m));
+            ci += even / f64::from(m);
+            if odd.abs() < 1e-18 && even.abs() < 1e-18 {
+                break;
+            }
+        }
+        return (si, EULER_GAMMA + x.ln() + ci);
+    }
+    let tiny = 1e-300;
+    let mut b = Complex64::new(1.0, x);
+    let mut c = Complex64::new(1.0 / tiny, 0.0);
+    let mut d = Complex64::new(1.0, 0.0) / b;
+    let mut h = d;
+    for i in 1..500 {
+        let i = f64::from(i);
+        let a = -i * i;
+        b += 2.0;
+        d = Complex64::new(1.0, 0.0) / (d * a + b);
+        c = b + Complex64::new(a, 0.0) / c;
+        let delta = c * d;
+        h *= delta;
+        if (delta.re - 1.0).abs() + delta.im.abs() < 1e-16 {
+            break;
+        }
+    }
+    h *= Complex64::new(x.cos(), -x.sin());
+    (std::f64::consts::FRAC_PI_2 + h.im, -h.re)
+}
+
+/// The sine integral `Si(x) = ∫_0^x sin(t)/t dt` (odd).
+#[must_use]
+pub fn sine_integral(x: f64) -> f64 {
+    if x.is_nan() {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return 0.0;
+    }
+    let s = si_ci(x.abs()).0;
+    if x < 0.0 { -s } else { s }
+}
+
+/// The cosine integral `Ci(x) = γ + ln x + ∫_0^x (cos t - 1)/t dt` for
+/// `x > 0`.
+#[must_use]
+pub fn cosine_integral(x: f64) -> f64 {
+    if x.is_nan() || x <= 0.0 {
+        return f64::NAN;
+    }
+    si_ci(x).1
+}
+
+/// The hyperbolic sine integral `Shi(x) = ∫_0^x sinh(t)/t dt` (odd).
+#[must_use]
+pub fn sinh_integral(x: f64) -> f64 {
+    if x.is_nan() {
+        return f64::NAN;
+    }
+    let a = x.abs();
+    let s = if a < 1.0 {
+        let (mut sum, mut term) = (0.0, a);
+        for k in 0..40 {
+            let n = 2 * k + 1;
+            if k > 0 {
+                term *= a * a / (f64::from(n - 1) * f64::from(n));
+            }
+            sum += term / f64::from(n);
+        }
+        sum
+    } else {
+        f64::midpoint(exp_integral_ei(a), exp_integral_e1(a))
+    };
+    if x < 0.0 { -s } else { s }
+}
+
+/// The hyperbolic cosine integral `Chi(x) = γ + ln x + ∫_0^x (cosh t - 1)/t dt`
+/// for `x > 0`.
+#[must_use]
+pub fn cosh_integral(x: f64) -> f64 {
+    if x.is_nan() || x <= 0.0 {
+        return f64::NAN;
+    }
+    (exp_integral_ei(x) - exp_integral_e1(x)) / 2.0
+}
+
+#[cfg(test)]
+mod exponential_integral_tests {
+    use super::*;
+
+    #[test]
+    fn reference_values() {
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-12 * (1.0 + b.abs());
+        assert!(close(exp_integral_ei(1.0), 1.895_117_816_355_936_8));
+        assert!(close(exp_integral_ei(-1.0), -0.219_383_934_395_520_27));
+        assert!(close(exp_integral_ei(50.0), 1.058_563_689_713_169e20));
+        assert!(close(exp_integral_e1(2.5), 0.024_914_917_870_269_73));
+        assert!(close(sine_integral(1.0), 0.946_083_070_367_183));
+        assert!(close(sine_integral(10.0), 1.658_347_594_218_874));
+        assert!(close(cosine_integral(1.0), 0.337_403_922_900_968_1));
+        assert!(close(cosine_integral(10.0), -0.045_456_433_004_455_37));
+        assert!(close(log_integral(10.0), 6.165_599_504_787_297));
+        assert!(close(sinh_integral(1.0), 1.057_250_875_375_728_5));
+        assert!(close(cosh_integral(1.0), 0.837_866_940_980_208_2));
+        assert!(close(sinh_integral(3.0), 4.973_440_475_859_807));
+    }
+}

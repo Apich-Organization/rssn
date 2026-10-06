@@ -70,6 +70,8 @@ pub struct Functions {
 }
 
 const MAX_DEPTH: usize = 6;
+/// How deeply substitutions may nest new integration variables.
+const MAX_NESTING: usize = 3;
 
 /// An antiderivative rule contributed by another rule set: given the
 /// integrand and the variable, a candidate antiderivative (which the
@@ -358,7 +360,19 @@ impl Integrator<'_, '_> {
         if let Some(found) = self.radicand_monomial_denominator(f, depth) {
             return Some(found);
         }
+        if let Some(found) = self.quadratic_radical_power(f) {
+            return Some(found);
+        }
         if let Some(found) = self.quadratic_radical(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.secant_power(f, depth) {
+            return Some(found);
+        }
+        if let Some(found) = self.fractional_power_substitution(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.hyperbolic_as_exponentials(f, depth) {
             return Some(found);
         }
         if let Some(found) = self.exp_substitution(f) {
@@ -370,7 +384,10 @@ impl Integrator<'_, '_> {
         if let Some(found) = self.weierstrass(f) {
             return Some(found);
         }
-        self.by_parts(f, depth)
+        if let Some(found) = self.by_parts(f, depth) {
+            return Some(found);
+        }
+        self.log_substitution(f)
     }
 
     /// Standard forms whose argument is linear in the variable.
@@ -941,6 +958,54 @@ impl Integrator<'_, '_> {
                 }
                 Some(self.add(&pieces))
             },
+            | ([c, b, a], _) => {
+                // (B x + C)/q^n, n >= 2: B/(2a) q'/q^n plus the rest times
+                // I_n = ∫ dx/q^n, reduced to I_1 by
+                // I_n = (2a x + b)/((n-1) Δ q^(n-1)) + 2(2n-3) a/((n-1) Δ) I_(n-1).
+                let big_c = numerator.first().cloned().unwrap_or_else(BigRational::zero);
+                let big_b = numerator.get(1).cloned().unwrap_or_else(BigRational::zero);
+                let two = BigRational::from_integer(BigInt::from(2));
+                let four = BigRational::from_integer(BigInt::from(4));
+                let discriminant = &four * a * c - b * b;
+                if !discriminant.is_positive() {
+                    return None;
+                }
+                let mut pieces = Vec::new();
+                let derivative_scale = &big_b / (&two * a);
+                if !derivative_scale.is_zero() {
+                    let exponent = 1 - i64::from(power);
+                    let e = self.int(exponent);
+                    let raised = self.pow(base, e);
+                    let scale = self.rat(&derivative_scale / BigRational::from_integer(BigInt::from(exponent)));
+                    pieces.push(self.mul(&[scale, raised]));
+                }
+                let rest = &big_c - &derivative_scale * b;
+                if !rest.is_zero() {
+                    // Coefficients of I_n as (rational term, multiple of I_1).
+                    let linear = self.polynomial(&[b.clone(), &two * a]);
+                    let mut weight = rest;
+                    let mut n = power;
+                    while n >= 2 {
+                        let n_minus_1 = BigRational::from_integer(BigInt::from(n - 1));
+                        let e = self.int(-i64::from(n - 1));
+                        let raised = self.pow(base, e);
+                        let scale = self.rat(&weight / (&n_minus_1 * &discriminant));
+                        pieces.push(self.mul(&[scale, linear, raised]));
+                        let factor = &two * BigRational::from_integer(BigInt::from(2 * i64::from(n) - 3)) * a / (&n_minus_1 * &discriminant);
+                        weight *= factor;
+                        n -= 1;
+                    }
+                    let d = self.rat(discriminant);
+                    let half = self.frac(1, 2);
+                    let root = self.pow(d, half);
+                    let argument = self.div(linear, root);
+                    let arc = self.call(fs.atan, argument);
+                    let scale = self.rat(&weight * &two);
+                    let scaled = self.mul(&[scale, arc]);
+                    pieces.push(self.div(scaled, root));
+                }
+                Some(self.add(&pieces))
+            },
             | _ => None,
         }
     }
@@ -1252,7 +1317,18 @@ impl Integrator<'_, '_> {
         depth: usize,
     ) -> Option<NodeId> {
         if self.cx.graph.op(f) != core::MUL {
-            return None;
+            // A lone ln, atan, asin or acos: u = f, dv = dx.
+            if self.parts_priority(f) != Some(0) {
+                return None;
+            }
+            let x = self.x;
+            let du = self.derivative(f);
+            let remaining = self.mul(&[x, du]);
+            let remaining = self.cx.simplify(remaining);
+            let tail = self.integrate(remaining, depth + 1)?;
+            let head = self.mul(&[f, x]);
+            let minus_tail = self.neg(tail);
+            return Some(self.add(&[head, minus_tail]));
         }
         let factors = self.cx.graph.children(f).to_vec();
         let (index, _) = factors
@@ -1313,6 +1389,26 @@ pub(super) fn antiderivative(
     integrand: NodeId,
     variable: NodeId,
 ) -> Option<NodeId> {
+    thread_local! {
+        /// Nesting of substitutions that integrate in a new variable.
+        static NESTING: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+    /// Restores the nesting level when the attempt ends.
+    struct Level;
+    impl Drop for Level {
+        fn drop(&mut self) {
+            NESTING.with(|n| n.set(n.get().saturating_sub(1)));
+        }
+    }
+    if NESTING.with(|n| {
+        let level = n.get();
+        n.set(level + 1);
+        level >= MAX_NESTING
+    }) {
+        NESTING.with(|n| n.set(n.get().saturating_sub(1)));
+        return None;
+    }
+    let _level = Level;
     let symbol = cx.graph.symbol_of(variable)?;
     let term = cx.simplify(integrand);
     if opaque_in(cx.graph, term, symbol, functions.diff) {

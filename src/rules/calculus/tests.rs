@@ -506,3 +506,29 @@ fn special_closed_form_sums() {
     // expand_binomial with a symbolic exponent stays a sum; a literal one expands.
     assert_eq!(simplify(&rules, "expand_binomial(a, b, 2)"), "a^2 + 2*a*b + b^2");
 }
+
+/// Substitutions, reduction formulas and the exponential-integral family.
+#[test]
+fn integration_battery() {
+    let rules = crate::rules::standard();
+    for f in [
+        "x^2*exp(x)*sin(x)", "x*ln(x)^2", "x*atan(x)", "asin(x)", "x^3*exp(x^2)", "1/(x^3 + 1)",
+        "sqrt(x)/(1 + x)", "x^(1/3)/(1 + x^(2/3))", "sin(x)^3*cos(x)^2", "tan(x)^3", "1/(1 + sin(x))",
+        "exp(2*x)/(1 + exp(x))", "ln(x^2 + 1)", "x/(1 + x^4)", "1/sqrt(x^2 - 2*x + 5)", "cosh(x)^2", "x*sinh(x)",
+        "exp(sqrt(x))", "sin(sqrt(x))", "ln(sin(x))*cos(x)", "sin(x)/x", "cos(2*x)/x", "1/ln(x)", "x/ln(x)",
+        "exp(x)/x^2", "sinh(x)/x", "x^2/(x^2 + 1)^2", "(x + 1)/(x^2 + x + 1)^2", "1/(x^2 + 1)^3",
+        "1/(1 + x^2)^(3/2)", "x/(x^2 + 2*x + 3)^(5/2)", "sqrt(1 - x^2)*x^2", "sin(ln(x))", "ln(x)^2/x",
+        "1/cos(x)^4", "1/sin(x)^2",
+    ] {
+        let (primitive, reduced) = crate::rules::testing::reduce_with(&rules, &format!("integral({f}, x)"), &[]);
+        assert!(reduced, "∫ {f} dx not found: {primitive}");
+        for at in [0.3, 0.55, 0.8] {
+            let h = 1e-5;
+            let d = (eval(&rules, &primitive, &[("x", at + h)]) - eval(&rules, &primitive, &[("x", at - h)])) / (2.0 * h);
+            let want = eval(&rules, f, &[("x", at)]);
+            assert!((d - want).abs() < 1e-5 * (1.0 + want.abs()), "∫ {f} = {primitive}: {d} vs {want} at {at}");
+        }
+    }
+    assert_eq!(crate::rules::testing::simplify(&rules, "integral(sin(x)/x, x)"), "si(x)");
+    assert_eq!(crate::rules::testing::simplify(&rules, "integral(1/ln(x), x)"), "li(x)");
+}

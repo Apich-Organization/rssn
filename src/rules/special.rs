@@ -43,6 +43,7 @@ use crate::graph::Cx as KernelCx;
 use crate::rules::poly::repr::from_term;
 use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
+use crate::rules::poly::repr::Poly;
 use crate::rules::poly::repr::Limits;
 use super::elementary::elementary;
 
@@ -140,7 +141,7 @@ fn zeta(s: f64) -> f64 {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // name, arity, semantics, what is known of the value for real arguments
-    let functions: [(&str, u8, EvalFn, Facts); 29] = [
+    let functions: [(&str, u8, EvalFn, Facts); 35] = [
         (
             "gamma",
             1,
@@ -291,6 +292,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             | _ => f64::NAN,
         }, Facts::NONE),
         ("lambertw", 1, |a| a.first().map_or(f64::NAN, |&x| num::lambert_w(x, true)), Facts::REAL),
+        ("ei", 1, |a| a.first().map_or(f64::NAN, |&x| num::exp_integral_ei(x)), Facts::NONE),
+        ("li", 1, |a| a.first().map_or(f64::NAN, |&x| num::log_integral(x)), Facts::NONE),
+        ("si", 1, |a| a.first().map_or(f64::NAN, |&x| num::sine_integral(x)), Facts::REAL),
+        ("ci", 1, |a| a.first().map_or(f64::NAN, |&x| num::cosine_integral(x)), Facts::NONE),
+        ("shi", 1, |a| a.first().map_or(f64::NAN, |&x| num::sinh_integral(x)), Facts::REAL),
+        ("chi", 1, |a| a.first().map_or(f64::NAN, |&x| num::cosh_integral(x)), Facts::NONE),
         ("lambertw_m1", 1, |a| a.first().map_or(f64::NAN, |&x| num::lambert_w(x, false)), Facts::NEGATIVE),
         ("floor", 1, |a| a.first().map_or(f64::NAN, |x| x.floor()), Facts::INTEGER),
         ("ceil", 1, |a| a.first().map_or(f64::NAN, |x| x.ceil()), Facts::INTEGER),
@@ -360,6 +367,16 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     at_infinity(i, "sign", Some("1"), Some("-1"))?;
     integral_rule(i, gaussian_integral);
     integral_rule(i, erf_integral);
+    partials(i, "ei", &["exp(?a)/?a"])?;
+    partials(i, "li", &["1/ln(?a)"])?;
+    partials(i, "si", &["sin(?a)/?a"])?;
+    partials(i, "ci", &["cos(?a)/?a"])?;
+    partials(i, "shi", &["sinh(?a)/?a"])?;
+    partials(i, "chi", &["cosh(?a)/?a"])?;
+    at_infinity(i, "si", Some("pi/2"), Some("-pi/2"))?;
+    at_infinity(i, "ci", Some("0"), None)?;
+    integral_rule(i, exponential_integral_family);
+    integral_rule(i, power_over_log);
 
     let families = [
         ("legendre", Family::Legendre),
@@ -1098,6 +1115,153 @@ fn gaussian_integral(
 
 /// `∫ erf(a x + b) dx = ((a x + b) erf(a x + b) + exp(-(a x + b)²)/√π) / a`,
 /// and the same for `erfc` with the sign of the second term flipped.
+/// `(a, constant)` when `u = a x` with `a` free of `x`.
+fn proportional(
+    graph: &mut Graph,
+    u: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let symbol = graph.symbol_of(x)?;
+    let mut gens = Gens::default();
+    let gx = gens.index(graph, x);
+    let poly = from_term(graph, &mut gens, u, Limits::default())?;
+    for g in poly.support() {
+        if g != gx && gens.node(g).is_some_and(|node| depends(graph, node, symbol)) {
+            return None;
+        }
+    }
+    let coefficients = poly.coefficients_in(gx);
+    if poly.degree_in(gx) != 1 || !coefficients.first().is_none_or(Poly::is_zero) {
+        return None;
+    }
+    Some(to_term(graph, &gens, coefficients.get(1)?))
+}
+
+/// `∫ K(a x) / x^n dx` for `K` in exp, sin, cos, sinh, cosh and `n >= 1`:
+/// `Ei`, `Si`, `Ci`, `Shi`, `Chi` for `n = 1`, and
+/// `∫ K(ax)/x^n = -K(ax)/((n-1) x^(n-1)) + a/(n-1) ∫ K'(ax)/x^(n-1)` above.
+fn exponential_integral_family(
+    cx: &mut KernelCx<'_>,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let symbol = graph.symbol_of(x)?;
+    let names = ["exp", "sin", "cos", "sinh", "cosh"];
+    let kinds: Vec<OpId> = names.iter().map(|n| graph.ops().lookup(n)).collect::<Option<_>>()?;
+    let factors = if graph.op(f) == core::MUL { graph.children(f).to_vec() } else { vec![f] };
+    let mut constants = Vec::new();
+    let mut n: Option<u32> = None;
+    let mut kernel = None;
+    for factor in factors {
+        if !depends(graph, factor, symbol) {
+            constants.push(factor);
+        } else if let (true, &[base, e]) = (graph.op(factor) == core::POW, graph.children(factor)) {
+            if graph.symbol_of(base) != Some(symbol) || n.is_some() {
+                return None;
+            }
+            let e = integer(graph, e)?;
+            n = Some((-e).to_u32().filter(|&k| k >= 1)?);
+        } else {
+            let k = kinds.iter().position(|&op| op == graph.op(factor))?;
+            if kernel.is_some() {
+                return None;
+            }
+            let &[u] = graph.children(factor) else {
+                return None;
+            };
+            kernel = Some((k, u));
+        }
+    }
+    let (n, (k, u)) = (n?, kernel?);
+    let a = proportional(graph, u, x)?;
+    // (kind, sign) of K' for exp, sin, cos, sinh, cosh.
+    let derivative = [(0, 1), (2, 1), (1, -1), (4, 1), (3, 1)];
+    let primitive = ["ei", "si", "ci", "shi", "chi"];
+    let build = |graph: &mut Graph, n: u32, k: usize| -> Option<NodeId> {
+        let mut terms: Vec<NodeId> = Vec::new();
+        let mut weight = graph.int(1);
+        let (mut n, mut k) = (n, k);
+        while n > 1 {
+            let kernel_node = graph.node(kinds[k], &[u]);
+            let e = graph.int(1 - i64::from(n));
+            let power = graph.node(core::POW, &[x, e]);
+            let scale = graph.num(Number::fraction(-1, i64::from(n - 1))?);
+            terms.push(graph.node(core::MUL, &[weight, scale, kernel_node, power]));
+            let step = graph.num(Number::fraction(i64::from(derivative[k].1), i64::from(n - 1))?);
+            weight = graph.node(core::MUL, &[weight, step, a]);
+            k = derivative[k].0;
+            n -= 1;
+        }
+        let op = graph.ops().lookup(primitive[k])?;
+        let last = graph.node(op, &[u]);
+        terms.push(graph.node(core::MUL, &[weight, last]));
+        Some(graph.node(core::ADD, &terms))
+    };
+    let body = build(graph, n, k)?;
+    constants.push(body);
+    Some(graph.node(core::MUL, &constants))
+}
+
+/// `∫ x^m / ln(x) dx = Ei((m + 1) ln x)` (`li(x)` for `m = 0`).
+fn power_over_log(
+    cx: &mut KernelCx<'_>,
+    f: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let graph = &mut *cx.graph;
+    let symbol = graph.symbol_of(x)?;
+    let ln = graph.ops().lookup("ln")?;
+    let factors = if graph.op(f) == core::MUL { graph.children(f).to_vec() } else { vec![f] };
+    let mut constants = Vec::new();
+    let mut m: Option<NodeId> = None;
+    let mut log = false;
+    for factor in factors {
+        if !depends(graph, factor, symbol) {
+            constants.push(factor);
+            continue;
+        }
+        if graph.symbol_of(factor) == Some(symbol) && m.is_none() {
+            m = Some(graph.int(1));
+            continue;
+        }
+        let (true, &[base, e]) = (graph.op(factor) == core::POW, graph.children(factor)) else {
+            return None;
+        };
+        if graph.symbol_of(base) == Some(symbol) && m.is_none() && graph.number_of(e).is_some() {
+            m = Some(e);
+        } else if graph.op(base) == ln
+            && graph.children(base).first().is_some_and(|&arg| graph.symbol_of(arg) == Some(symbol))
+            && graph.number_of(e).and_then(Number::to_i64) == Some(-1)
+            && !log
+        {
+            log = true;
+        } else {
+            return None;
+        }
+    }
+    if !log {
+        return None;
+    }
+    let ei = graph.ops().lookup("ei")?;
+    let li = graph.ops().lookup("li")?;
+    let body = match m {
+        | None => graph.node(li, &[x]),
+        | Some(m) => {
+            let one = graph.int(1);
+            let m_plus_1 = graph.node(core::ADD, &[m, one]);
+            if graph.number_of(m_plus_1).is_none_or(Number::is_zero) && graph.number_of(m).and_then(Number::to_i64) == Some(-1) {
+                return None;
+            }
+            let log_x = graph.node(ln, &[x]);
+            let argument = graph.node(core::MUL, &[m_plus_1, log_x]);
+            graph.node(ei, &[argument])
+        },
+    };
+    constants.push(body);
+    Some(graph.node(core::MUL, &constants))
+}
+
 fn erf_integral(
     cx: &mut KernelCx<'_>,
     f: NodeId,

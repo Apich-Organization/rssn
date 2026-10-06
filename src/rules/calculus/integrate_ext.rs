@@ -238,6 +238,273 @@ impl Integrator<'_, '_> {
         Some(back)
     }
 
+    fn fresh(
+        &mut self,
+        name: &str,
+    ) -> NodeId {
+        let s = self.cx.graph.interner_mut().fresh_symbol(name);
+        self.cx.graph.symbol_node(s)
+    }
+
+    /// Fractional powers `x^(p/q)` (and `sqrt(x)`) of the variable itself:
+    /// `x = t^L` with `L` the least common denominator makes the integrand
+    /// free of radicals in `x`; `dx = L t^(L-1) dt`.
+    pub(super) fn fractional_power_substitution(
+        &mut self,
+        f: NodeId,
+    ) -> Option<NodeId> {
+        let (x, fs) = (self.x, self.f);
+        let mut powers: Vec<(NodeId, BigRational)> = Vec::new();
+        let mut stack = vec![f];
+        while let Some(n) = stack.pop() {
+            let op = self.cx.graph.op(n);
+            let children = self.cx.graph.children(n).to_vec();
+            match children.as_slice() {
+                | &[b] if op == fs.sqrt && b == x => powers.push((n, BigRational::new(BigInt::one(), BigInt::from(2)))),
+                | &[b, e] if op == core::POW && b == x => {
+                    let r = self.number(e)?.to_rational()?;
+                    if !r.is_integer() {
+                        powers.push((n, r));
+                    }
+                },
+                | _ => stack.extend(children),
+            }
+        }
+        if powers.is_empty() {
+            return None;
+        }
+        let l = powers.iter().fold(BigInt::one(), |acc, (_, r)| num_integer::Integer::lcm(&acc, r.denom()));
+        let l_i = i64::try_from(&l).ok().filter(|&v| v <= 12)?;
+        let t = self.fresh("t");
+        let mut g = f;
+        for (node, r) in &powers {
+            let k = i64::try_from(&(r * BigRational::from_integer(l.clone())).to_integer()).ok()?;
+            let k = self.int(k);
+            let replacement = self.pow(t, k);
+            g = self.cx.graph.replace_subterm(g, *node, replacement);
+        }
+        let l_node = self.int(l_i);
+        let t_l = self.pow(t, l_node);
+        g = self.cx.graph.substitute(g, x, t_l);
+        let e = self.int(l_i - 1);
+        let jac = self.pow(t, e);
+        let integrand = self.mul(&[l_node, jac, g]);
+        let integrand = self.cx.simplify(integrand);
+        let primitive = super::antiderivative(self.cx, self.f, integrand, t)?;
+        let inv = self.frac(1, l_i);
+        let back = self.pow(x, inv);
+        Some(self.cx.graph.substitute(primitive, t, back))
+    }
+
+    /// Functions of `ln x` (times powers of `x`): `x = e^t`, `dx = e^t dt`.
+    pub(super) fn log_substitution(
+        &mut self,
+        f: NodeId,
+    ) -> Option<NodeId> {
+        let (x, fs) = (self.x, self.f);
+        let log_x = self.call(fs.ln, x);
+        let t = self.fresh("t");
+        let g = self.cx.graph.replace_subterm(f, log_x, t);
+        if g == f {
+            return None;
+        }
+        let e_t = self.call(fs.exp, t);
+        let g = self.cx.graph.substitute(g, x, e_t);
+        let integrand = self.mul(&[g, e_t]);
+        let integrand = self.cx.simplify(integrand);
+        let primitive = super::antiderivative(self.cx, self.f, integrand, t)?;
+        Some(self.cx.graph.substitute(primitive, t, log_x))
+    }
+
+    /// `sinh`, `cosh`, `tanh` rewritten through `exp`.
+    pub(super) fn hyperbolic_as_exponentials(
+        &mut self,
+        f: NodeId,
+        depth: usize,
+    ) -> Option<NodeId> {
+        let fs = self.f;
+        let mut g = f;
+        let mut changed = false;
+        let mut stack = vec![f];
+        let mut seen = Vec::new();
+        while let Some(n) = stack.pop() {
+            if seen.contains(&n) {
+                continue;
+            }
+            seen.push(n);
+            let op = self.cx.graph.op(n);
+            let children = self.cx.graph.children(n).to_vec();
+            if let (true, &[u]) = (op == fs.sinh || op == fs.cosh || op == fs.tanh, children.as_slice()) {
+                let plus = self.call(fs.exp, u);
+                let minus_u = self.neg(u);
+                let minus = self.call(fs.exp, minus_u);
+                let neg_minus = self.neg(minus);
+                let difference = self.add(&[plus, neg_minus]);
+                let sum = self.add(&[plus, minus]);
+                let half = self.frac(1, 2);
+                let value = if op == fs.sinh {
+                    self.mul(&[half, difference])
+                } else if op == fs.cosh {
+                    self.mul(&[half, sum])
+                } else {
+                    self.div(difference, sum)
+                };
+                g = self.cx.graph.replace_subterm(g, n, value);
+                changed = true;
+            } else {
+                stack.extend(children);
+            }
+        }
+        if !changed {
+            return None;
+        }
+        let g = self.cx.simplify(g);
+        let g = crate::rules::poly::expand_form(self.cx.graph, g).unwrap_or(g);
+        let g = self.cx.simplify(g);
+        self.integrate(g, depth + 1)
+    }
+
+    /// `∫ sec^n u` and `∫ csc^n u` (`n >= 2`, also written `cos u^(-n)`):
+    /// `sec^n = sec^(n-2) tan/(n-1) + (n-2)/(n-1) ∫ sec^(n-2)`, and
+    /// `csc^n = -csc^(n-2) cot/(n-1) + (n-2)/(n-1) ∫ csc^(n-2)`, over `a`.
+    pub(super) fn secant_power(
+        &mut self,
+        f: NodeId,
+        depth: usize,
+    ) -> Option<NodeId> {
+        let fs = self.f;
+        let graph = &*self.cx.graph;
+        let (sec, csc) = (graph.ops().lookup("sec"), graph.ops().lookup("csc"));
+        let &[base, e] = graph.children(f) else {
+            return None;
+        };
+        if graph.op(f) != core::POW {
+            return None;
+        }
+        let k = graph.number_of(e)?.to_i64()?;
+        let (is_cos, n) = match graph.op(base) {
+            | op if op == fs.cos && k <= -2 => (true, -k),
+            | op if op == fs.sin && k <= -2 => (false, -k),
+            | op if Some(op) == sec && k >= 2 => (true, k),
+            | op if Some(op) == csc && k >= 2 => (false, k),
+            | _ => return None,
+        };
+        let &[u] = graph.children(base) else {
+            return None;
+        };
+        let a = self.linear(u)?;
+        let (c, s) = (self.call(fs.cos, u), self.call(fs.sin, u));
+        // sec^(n-2) tan = sin / cos^(n-1);  -csc^(n-2) cot = -cos / sin^(n-1)
+        let (num, den) = if is_cos { (s, c) } else { (c, s) };
+        let e = self.int(1 - n);
+        let raised = self.pow(den, e);
+        let sign = self.int(if is_cos { 1 } else { -1 });
+        let scale = self.frac(1, n - 1);
+        let head = self.mul(&[sign, scale, num, raised]);
+        let head = self.div(head, a);
+        let lower = if n == 2 {
+            None
+        } else {
+            let e = self.int(2 - n);
+            let rest = self.pow(den, e);
+            let rest = self.cx.simplify(rest);
+            let inner = self.integrate(rest, depth + 1)?;
+            let weight = self.frac(n - 2, n - 1);
+            Some(self.mul(&[weight, inner]))
+        };
+        Some(match lower {
+            | Some(l) => self.add(&[head, l]),
+            | None => head,
+        })
+    }
+
+    /// `∫ (B x + C) Q^(-(n + 1/2)) dx`, `n >= 1`, for a quadratic `Q`:
+    /// `B/(2a) Q'` integrates directly; `J_n = ∫ Q^(-(n+1/2))` satisfies
+    /// `J_n = 2(2a x + b)/((2n-1) Δ Q^(n-1/2)) + 8a(n-1)/((2n-1)Δ) J_(n-1)`
+    /// with `Δ = 4ac - b²`, down to `J_1 = 2(2ax + b)/(Δ √Q)`.
+    pub(super) fn quadratic_radical_power(
+        &mut self,
+        f: NodeId,
+    ) -> Option<NodeId> {
+        let factors = if self.cx.graph.op(f) == core::MUL { self.cx.graph.children(f).to_vec() } else { vec![f] };
+        let mut constants = Vec::new();
+        let mut linear: Option<QPoly> = None;
+        let mut radical: Option<(NodeId, i64)> = None;
+        for factor in factors {
+            if !self.depends(factor) {
+                constants.push(factor);
+                continue;
+            }
+            if let (true, &[q, e]) = (self.cx.graph.op(factor) == core::POW, self.cx.graph.children(factor)) {
+                if let Some(r) = self.number(e).and_then(|v| v.to_rational()) {
+                    if *r.denom() == BigInt::from(2) && r.is_negative() && radical.is_none() {
+                        // r = -(n + 1/2)
+                        let n = i64::try_from(&(-(r + BigRational::new(BigInt::one(), BigInt::from(2)))).to_integer()).ok()?;
+                        if n >= 1 {
+                            radical = Some((q, n));
+                            continue;
+                        }
+                    }
+                }
+            }
+            if linear.is_none() {
+                let p = self.q_poly_of(factor)?;
+                if p.len() <= 2 {
+                    linear = Some(p);
+                    continue;
+                }
+            }
+            return None;
+        }
+        let (q_node, n) = radical?;
+        let q = self.q_poly_of(q_node)?;
+        let [c, b, a] = q.as_slice() else {
+            return None;
+        };
+        let lin = linear.unwrap_or_else(|| vec![BigRational::one()]);
+        let big_c = lin.first().cloned().unwrap_or_else(BigRational::zero);
+        let big_b = lin.get(1).cloned().unwrap_or_else(BigRational::zero);
+        let two = BigRational::from_integer(BigInt::from(2));
+        let delta = BigRational::from_integer(BigInt::from(4)) * a * c - b * b;
+        if delta.is_zero() {
+            return None;
+        }
+        let mut pieces = Vec::new();
+        let derivative_scale = &big_b / (&two * a);
+        if !derivative_scale.is_zero() {
+            // ∫ Q' Q^(-(n+1/2)) = Q^(1/2 - n)/(1/2 - n)
+            let exponent = BigRational::new(BigInt::from(1 - 2 * n), BigInt::from(2));
+            let e = self.cx.graph.num(Number::rat(exponent.clone()));
+            let raised = self.pow(q_node, e);
+            let scale = self.cx.graph.num(Number::rat(&derivative_scale / exponent));
+            pieces.push(self.mul(&[scale, raised]));
+        }
+        let mut weight = &big_c - &derivative_scale * b;
+        if !weight.is_zero() {
+            let lin_node = {
+                let coefficients = [b.clone(), &two * a];
+                self.polynomial(&coefficients)
+            };
+            let mut k = n;
+            while k >= 1 {
+                let denominator = BigRational::from_integer(BigInt::from(2 * k - 1)) * &delta;
+                let exponent = BigRational::new(BigInt::from(1 - 2 * k), BigInt::from(2));
+                let e = self.cx.graph.num(Number::rat(exponent));
+                let raised = self.pow(q_node, e);
+                let scale = self.cx.graph.num(Number::rat(&weight * &two / &denominator));
+                pieces.push(self.mul(&[scale, lin_node, raised]));
+                weight = weight * BigRational::from_integer(BigInt::from(8 * (k - 1))) * a / &denominator;
+                if weight.is_zero() {
+                    break;
+                }
+                k -= 1;
+            }
+        }
+        let body = self.add(&pieces);
+        constants.push(body);
+        Some(self.mul(&constants))
+    }
+
     /// Rational functions of `sin u`, `cos u`, `tan u`, `u = a x + b`, by
     /// `t = tan(u/2)`.
     pub(super) fn weierstrass(
