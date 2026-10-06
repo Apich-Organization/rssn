@@ -316,7 +316,7 @@ fn hyp2f1_log_case(a: f64, b: f64, m: u32, y: f64) -> f64 {
         t *= (a + nf) * (b + nf) / ((nf + 1.0) * (nf + 1.0 - mf)) * y;
     }
     // infinite part
-    let pref2 = gamma_ratio(&[c], &[a, b]) * if m % 2 == 0 { 1.0 } else { -1.0 };
+    let pref2 = gamma_ratio(&[c], &[a, b]) * if m.is_multiple_of(2) { 1.0 } else { -1.0 };
     let mut psi_n1 = euler; // psi(n+1)
     let mut psi_nm1 = digamma_numerical(mf + 1.0); // psi(n+m+1)
     let mut psi_am = digamma_numerical(a + mf);
@@ -522,10 +522,7 @@ fn bessel_j_miller(n: usize, x: f64) -> f64 {
     let top = miller_start(n, x);
     let (mut bjp, mut bj) = (0.0_f64, 1e-30_f64);
     let mut sum = 0.0;
-    let mut ans = 0.0;
-    if top == n {
-        ans = bj;
-    }
+    let mut ans = if top == n { bj } else { 0.0 };
     for k in (1..=top).rev() {
         let bjm = 2.0 * k as f64 / x * bj - bjp;
         bjp = bj;
@@ -591,10 +588,7 @@ fn bessel_i_miller_scaled(n: usize, x: f64) -> f64 {
     let top = miller_start(n, x);
     let (mut ip, mut i) = (0.0_f64, 1e-30_f64);
     let mut sum = 0.0;
-    let mut ans = 0.0;
-    if top == n {
-        ans = i;
-    }
+    let mut ans = if top == n { i } else { 0.0 };
     for k in (1..=top).rev() {
         let im = ip + 2.0 * k as f64 / x * i;
         ip = i;

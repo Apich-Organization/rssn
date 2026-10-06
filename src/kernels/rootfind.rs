@@ -695,9 +695,7 @@ fn jt_next_h(p_q: &[Cx], pv: Cx, h: &[Cx], s: Cx) -> (Vec<Cx>, bool) {
     let tiny = hv.norm() <= eta * 10.0 * h[h.len() - 1].norm();
     let mut out = vec![Cx::new(0.0, 0.0); n];
     if tiny {
-        for j in 1..n {
-            out[j] = qh[j - 1];
-        }
+        out[1..n].copy_from_slice(&qh[..(n - 1)]);
     } else {
         let t = -pv / hv;
         out[0] = p_q[0];
@@ -850,9 +848,7 @@ pub fn polynomial_roots_jenkins_traub_complex(coeffs: &[(f64, f64)]) -> Result<V
                     hn[j] = h[j - 1] + t * p[j];
                 }
             } else {
-                for j in 1..n {
-                    hn[j] = h[j - 1];
-                }
+                hn[1..n].copy_from_slice(&h[..(n - 1)]);
             }
             h = hn;
         }
@@ -1194,7 +1190,7 @@ pub fn homotopy_system_with_gamma(
         .iter()
         .map(|eq| eq.iter().map(|t| t.exps.iter().sum::<u32>()).max().unwrap_or(0))
         .collect();
-    if deg.iter().any(|&d| d == 0) {
+    if deg.contains(&0) {
         return Err(RootError::Invalid);
     }
     let total: usize = deg.iter().map(|&d| d as usize).product();

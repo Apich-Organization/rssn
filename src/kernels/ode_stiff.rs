@@ -29,7 +29,8 @@
     clippy::unreadable_literal,
     clippy::excessive_precision,
     clippy::while_float,
-    clippy::needless_pass_by_value
+    clippy::needless_pass_by_value,
+    clippy::option_if_let_else
 )]
 
 use crate::kernels::dense::{self, Lu, Mat};
@@ -56,6 +57,23 @@ fn fd_jacobian<F: Fn(f64, &[f64], &mut [f64])>(f: &F, t: f64, y: &[f64], f0: &[f
         }
     }
     jac
+}
+
+/// Jacobian from the user callback or, without one, by finite differences.
+fn jacobian_of<F: Fn(f64, &[f64], &mut [f64])>(
+    f: &F,
+    jac_fn: Option<&dyn Fn(f64, &[f64]) -> Mat>,
+    t: f64,
+    y: &[f64],
+    f0: &[f64],
+    nfev: &mut usize,
+) -> Mat {
+    if let Some(j) = jac_fn {
+        j(t, y)
+    } else {
+        *nfev += y.len();
+        fd_jacobian(f, t, y, f0)
+    }
 }
 
 const RADAU_C_SQ6: f64 = 2.449489742783178; // sqrt(6)
@@ -214,7 +232,7 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
     let rtol = opts.rtol.max(100.0 * f64::EPSILON);
     let atol = opts.atol;
     let newton_tol = (10.0 * f64::EPSILON / rtol).max(0.03_f64.min(rtol.sqrt()));
-    let mu_real = 3.0 + 3.0_f64.powf(2.0 / 3.0) - 3.0_f64.powf(1.0 / 3.0);
+    let mu_real = 3.0 + 3.0_f64.powf(2.0 / 3.0) - 3.0_f64.cbrt();
     let e_w = [(-13.0 - 7.0 * RADAU_C_SQ6) / 3.0, (-13.0 + 7.0 * RADAU_C_SQ6) / 3.0, -1.0 / 3.0];
     let mut t = t0;
     let mut y = y0.to_vec();
@@ -226,13 +244,7 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
         .unwrap_or_else(|| initial_step(f, t0, y0, &f0, dir, 5.0, rtol, atol))
         .abs()
         .min(opts.hmax);
-    let mut jac = match jac_fn {
-        Some(j) => j(t, &y),
-        None => {
-            nfev += n;
-            fd_jacobian(f, t, &y, &f0)
-        }
-    };
+    let mut jac = jacobian_of(f, jac_fn, t, &y, &f0, &mut nfev);
     let mut current_jac = true;
     let mut lus: Option<(Lu, Lu)> = None;
     let mut sol = OdeSolution::start(t0, y0);
@@ -267,13 +279,12 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
                         real.set(p, q, v);
                     }
                 }
-                match (full, dense::lu_factor(&real)) {
-                    (Ok(l1), Ok(l2)) => lus = Some((l1, l2)),
-                    _ => {
-                        h_abs *= 0.5;
-                        sol.rejected += 1;
-                        continue;
-                    }
+                if let (Ok(l1), Ok(l2)) = (full, dense::lu_factor(&real)) {
+                    lus = Some((l1, l2));
+                } else {
+                    h_abs *= 0.5;
+                    sol.rejected += 1;
+                    continue;
                 }
             }
             let Some((lu_full, lu_real)) = lus.as_ref() else {
@@ -285,18 +296,11 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
             else {
                 if current_jac {
                     h_abs *= 0.5;
-                    lus = None;
                 } else {
-                    jac = match jac_fn {
-                        Some(j) => j(t, &y),
-                        None => {
-                            nfev += n;
-                            fd_jacobian(f, t, &y, &f0)
-                        }
-                    };
+                    jac = jacobian_of(f, jac_fn, t, &y, &f0, &mut nfev);
                     current_jac = true;
-                    lus = None;
                 }
+                lus = None;
                 sol.rejected += 1;
                 rejected_last = true;
                 continue;
@@ -355,9 +359,10 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
     Ok(sol)
 }
 
-/// Constant-step Radau IIA(5): `n_steps` equal steps from `t0` to `t1`
-/// with an exact-Jacobian-free (finite-difference, refreshed every step)
-/// fully converged Newton iteration. Returns the final state; used to
+/// Constant-step Radau IIA(5): `n_steps` equal steps from `t0` to `t1`.
+///
+/// The Jacobian is a finite-difference one refreshed every step and the
+/// Newton iteration is fully converged. Returns the final state; used to
 /// measure the order of convergence (5).
 ///
 /// # Errors
@@ -399,6 +404,7 @@ pub fn radau5_fixed<F: Fn(f64, &[f64], &mut [f64])>(
 // ------------------------------------------------------------------ BDF
 
 const BDF_MAX_ORDER: usize = 5;
+const MAXIT: usize = 4;
 const BDF_KAPPA: [f64; 6] = [0.0, -0.1850, -1.0 / 9.0, -0.0823, -0.0415, 0.0];
 
 fn bdf_consts() -> ([f64; 6], [f64; 6], [f64; 7]) {
@@ -521,7 +527,6 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     let rtol = opts.rtol.max(100.0 * f64::EPSILON);
     let atol = opts.atol;
     let newton_tol = (10.0 * f64::EPSILON / rtol).max(0.03_f64.min(rtol.sqrt()));
-    const MAXIT: usize = 4;
     let mut t = t0;
     let mut y = y0.to_vec();
     let mut f0 = vec![0.0; n];
@@ -533,17 +538,11 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
         .abs()
         .min(opts.hmax);
     let mut d = vec![vec![0.0; n]; BDF_MAX_ORDER + 3];
-    d[0] = y.clone();
+    d[0].clone_from(&y);
     for q in 0..n {
         d[1][q] = f0[q] * h_abs * dir;
     }
-    let mut jac = match jac_fn {
-        Some(j) => j(t, &y),
-        None => {
-            nfev += n;
-            fd_jacobian(f, t, &y, &f0)
-        }
-    };
+    let mut jac = jacobian_of(f, jac_fn, t, &y, &f0, &mut nfev);
     let mut order = 1usize;
     let mut n_equal = 0usize;
     let mut lu: Option<Lu> = None;
@@ -648,14 +647,13 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
                     if current_jac || lu.is_none() {
                         break;
                     }
-                    jac = match jac_fn {
-                        Some(j) => j(t_new, &y_pred),
-                        None => {
-                            let mut fp = vec![0.0; n];
-                            f(t_new, &y_pred, &mut fp);
-                            nfev += n + 1;
-                            fd_jacobian(f, t_new, &y_pred, &fp)
-                        }
+                    jac = if let Some(j) = jac_fn {
+                        j(t_new, &y_pred)
+                    } else {
+                        let mut fp = vec![0.0; n];
+                        f(t_new, &y_pred, &mut fp);
+                        nfev += n + 1;
+                        fd_jacobian(f, t_new, &y_pred, &fp)
                     };
                     lu = None;
                     current_jac = true;
