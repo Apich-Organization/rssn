@@ -5,7 +5,8 @@
 //!   annealing (seeded, deterministic);
 //! * constrained: augmented Lagrangian for equality and inequality
 //!   constraints;
-//! * linear programming: two-phase simplex method with Bland's rule.
+//! * linear programming: two-phase tableau simplex with Dantzig or
+//!   steepest-edge pricing and Bland's rule as an anti-cycling fallback.
 #![allow(
     clippy::manual_midpoint,
     clippy::missing_const_for_fn,
@@ -626,10 +627,70 @@ pub enum LpStatus {
     Unbounded,
 }
 
+/// Entering-variable pricing rule of the simplex method.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pricing {
+    /// Most negative reduced cost (Dantzig's rule).
+    Dantzig,
+    /// Largest `d_j^2 / (1 + ||B^-1 a_j||^2)`: the steepest edge in the
+    /// space of all variables (exact, from the tableau column norms).
+    SteepestEdge,
+    /// Smallest index with negative reduced cost (Bland's rule; slow but
+    /// cycle-free).
+    Bland,
+}
+
+/// Result of [`simplex_with`]: the status plus pivoting statistics.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LpResult {
+    /// Outcome of the program.
+    pub status: LpStatus,
+    /// Total number of pivots over both phases.
+    pub iterations: usize,
+    /// Number of pivots made under the Bland anti-cycling fallback.
+    pub bland_pivots: usize,
+}
+
 /// Two-phase simplex: minimise `c . x` subject to rows `a_i . x (rel_i) b_i`
-/// and `x >= 0`.
+/// and `x >= 0`, with steepest-edge pricing and the Bland anti-cycling
+/// fallback; see [`simplex_with`].
 #[must_use]
 pub fn simplex(c: &[f64], a: &[Vec<f64>], rel: &[Relation], b: &[f64]) -> LpStatus {
+    simplex_with(c, a, rel, b, Pricing::SteepestEdge).status
+}
+
+/// Two-phase tableau simplex with a selectable pricing rule.
+///
+/// For [`Pricing::Dantzig`] and [`Pricing::SteepestEdge`] the solver
+/// monitors degeneracy: after a run of consecutive pivots that do not
+/// improve the objective it switches to Bland's rule (smallest-index
+/// entering variable, ties in the ratio test broken by smallest basic
+/// index) until a strictly improving pivot occurs, which guarantees
+/// termination on cycling examples such as Beale's. The leaving-variable
+/// tie-break is always Bland's.
+#[must_use]
+pub fn simplex_with(
+    c: &[f64],
+    a: &[Vec<f64>],
+    rel: &[Relation],
+    b: &[f64],
+    pricing: Pricing,
+) -> LpResult {
+    let iters = std::cell::Cell::new(0usize);
+    let bland_n = std::cell::Cell::new(0usize);
+    let status = simplex_core(c, a, rel, b, pricing, &iters, &bland_n);
+    LpResult { status, iterations: iters.get(), bland_pivots: bland_n.get() }
+}
+
+fn simplex_core(
+    c: &[f64],
+    a: &[Vec<f64>],
+    rel: &[Relation],
+    b: &[f64],
+    pricing: Pricing,
+    iters: &std::cell::Cell<usize>,
+    bland_n: &std::cell::Cell<usize>,
+) -> LpStatus {
     let n = c.len();
     let m = a.len();
     // Normalise so that b >= 0.
@@ -689,8 +750,39 @@ pub fn simplex(c: &[f64], a: &[Vec<f64>], rel: &[Relation], b: &[f64]) -> LpStat
                 }
             }
         }
+        let mut degenerate_run = 0usize;
+        let stall_limit = 2 * (m + 1);
+        let mut last_obj = rc[total];
         for _ in 0..50_000 {
-            let Some(e) = (0..limit).find(|&j| rc[j] < -eps) else { return true };
+            let use_bland = pricing == Pricing::Bland || degenerate_run >= stall_limit;
+            let entering = if use_bland {
+                (0..limit).find(|&j| rc[j] < -eps)
+            } else if pricing == Pricing::Dantzig {
+                let mut best: Option<(usize, f64)> = None;
+                for j in 0..limit {
+                    if rc[j] < -eps && best.map_or(true, |(_, v)| rc[j] < v) {
+                        best = Some((j, rc[j]));
+                    }
+                }
+                best.map(|(j, _)| j)
+            } else {
+                let mut best: Option<(usize, f64)> = None;
+                for j in 0..limit {
+                    if rc[j] < -eps {
+                        let gamma = 1.0 + (0..m).map(|i| t[i][j] * t[i][j]).sum::<f64>();
+                        let score = rc[j] * rc[j] / gamma;
+                        if best.map_or(true, |(_, v)| score > v) {
+                            best = Some((j, score));
+                        }
+                    }
+                }
+                best.map(|(j, _)| j)
+            };
+            let Some(e) = entering else { return true };
+            iters.set(iters.get() + 1);
+            if use_bland {
+                bland_n.set(bland_n.get() + 1);
+            }
             let mut best: Option<(usize, f64)> = None;
             for i in 0..m {
                 if t[i][e] > eps {
@@ -722,6 +814,13 @@ pub fn simplex(c: &[f64], a: &[Vec<f64>], rel: &[Relation], b: &[f64]) -> LpStat
                 rc[j] -= fct * t[r][j];
             }
             basis[r] = e;
+            // rc[total] tracks minus the objective: reset the stall counter on strict progress
+            if (rc[total] - last_obj).abs() > 1e-12 * (1.0 + last_obj.abs()) {
+                degenerate_run = 0;
+                last_obj = rc[total];
+            } else {
+                degenerate_run += 1;
+            }
         }
         true
     };
