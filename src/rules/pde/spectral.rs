@@ -1353,7 +1353,7 @@ pub(super) fn solve_box(
         items.extend(boundary_items(cx, iv, level, cjj));
     }
     if time_index.is_none() && !gauged && lifting.is_none() {
-        if let Some(solution) = faces(cx, p, conditions, &intervals, &spatial, source)? {
+        if let Faces::Solved(solution) = faces(cx, p, conditions, &intervals, &spatial, source)? {
             return Some(solution);
         }
     }
@@ -1425,11 +1425,18 @@ fn lift(
     Some(cx.simplify(w))
 }
 
+/// The outcome of the face superposition.
+enum Faces {
+    /// Not a problem of that kind: another method applies.
+    Other,
+    Solved(NodeId),
+}
+
 /// Steady problems with Dirichlet data on faces of a box: the data of each
 /// face is expanded in the modes of the other axes with the profile
 /// `sinh(κ (L - ξ))/sinh(κ L)` across (Laplace's equation, Helmholtz-type
 /// operators), plus the expansion of the source with homogeneous ends.
-/// `Some(None)` when the problem is not of this kind.
+/// [`Faces::Other`] when the problem is not of this kind.
 #[allow(clippy::too_many_lines)]
 fn faces(
     cx: &mut Cx<'_>,
@@ -1438,9 +1445,9 @@ fn faces(
     intervals: &[Interval],
     spatial: &[(Vec<u32>, NodeId)],
     source: NodeId,
-) -> Option<Option<NodeId>> {
+) -> Option<Faces> {
     if intervals.len() < 2 {
-        return Some(None);
+        return Some(Faces::Other);
     }
     let data_faces: Vec<(usize, bool)> = intervals
         .iter()
@@ -1460,7 +1467,7 @@ fn faces(
         })
         .collect();
     if data_faces.is_empty() {
-        return Some(None);
+        return Some(Faces::Other);
     }
     let mut parts = Vec::new();
     for &(level, near) in &data_faces {
@@ -1470,7 +1477,7 @@ fn faces(
         // (Data on the opposite end belongs to the problem of that face.)
         let neumann_data = opposite.kind == Kind::Neumann && !cx.is_zero(opposite.value);
         if end.kind != Kind::Dirichlet || !matches!(opposite.kind, Kind::Dirichlet | Kind::Neumann) || neumann_data {
-            return Some(None);
+            return Some(Faces::Other);
         }
         // The operator: a pure second derivative in this axis.
         let mut cjj = None;
@@ -1482,7 +1489,7 @@ fn faces(
             } else if here == 1 && halves.iter().enumerate().all(|(k, &h)| k == level || h == 0) && cjj.is_none() {
                 cjj = Some(*c);
             } else {
-                return Some(None);
+                return Some(Faces::Other);
             }
         }
         let cjj = cjj?;
@@ -1516,7 +1523,7 @@ fn faces(
     if is_closed(cx, total) && (!verified(cx, p, total) || !satisfies(cx, p, conditions, total)) {
         return None;
     }
-    Some(Some(total))
+    Some(Faces::Solved(total))
 }
 
 /// The initial-data items of an evolution problem (none for a steady

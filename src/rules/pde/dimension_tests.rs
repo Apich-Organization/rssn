@@ -183,14 +183,14 @@ fn robin_reference(
         if g(k) * g(next) < 0.0 {
             let (mut lo, mut hi) = (k, next);
             for _ in 0..60 {
-                let mid = 0.5 * (lo + hi);
+                let mid = f64::midpoint(lo, hi);
                 if g(lo) * g(mid) <= 0.0 {
                     hi = mid;
                 } else {
                     lo = mid;
                 }
             }
-            let root = 0.5 * (lo + hi);
+            let root = f64::midpoint(lo, hi);
             let numerator = root.sin() / root;
             let norm = 0.5 + (2.0 * root).sin() / (4.0 * root);
             total += numerator / norm * (-root * root * t).exp() * (root * x).cos();
@@ -545,7 +545,7 @@ fn riemann(
     (0..n)
         .map(|k| {
             let s = x - t + h * (f64::from(k) + 0.5);
-            let r = (t * t - (x - s) * (x - s)).max(0.0).sqrt();
+            let r = (t * t - (x - s).powi(2)).max(0.0).sqrt();
             f(s) * kernel(r) * h
         })
         .sum()
@@ -566,7 +566,7 @@ fn klein_gordon_and_telegraph_on_the_line() {
     // Telegraph equation u_tt + 2 u_t = u_xx with u(x, 0) = e^{-x²}: u = e^{-t} w,
     // w_tt = w_xx + w, w(0) = f, w_t(0) = f.
     let w = |x: f64, t: f64| {
-        0.5 * (gauss(x + t) + gauss(x - t))
+        f64::midpoint(gauss(x + t), gauss(x - t))
             + 0.5 * riemann(x, t, &gauss, &|r| bessel_i(0.0, r))
             + 0.5 * t * riemann(x, t, &gauss, &|r| if r < 1e-9 { 0.5 } else { bessel_i(1.0, r) / r })
     };
