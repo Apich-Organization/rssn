@@ -14,8 +14,8 @@
 //! | `solve_euler_lagrange(L, y(x), x)` | the extremals: `dsolve` applied to the Euler–Lagrange equation |
 //! | `hamiltons_principle(L, q(t), t)` | the equations of motion, `euler_lagrange(L, q(t), t)` |
 //! | `action(L, y(x), path, x, a, b)` | `∫_a^b L dx` along the given path |
-//! | `momentum(L, y(x), x)`, `natural_boundary(L, y(x), x)` | `∂L/∂y'` (a list for a list of functions): the canonical momentum, which also vanishes at a free end (natural boundary condition) |
-//! | `hamiltonian(L, y(x), x)` | `H = Σ q' ∂L/∂q' - L` |
+//! | `canonical_momentum(L, y(x), x)`, `natural_boundary(L, y(x), x)` | `∂L/∂y'` (a list for a list of functions): the canonical momentum, which also vanishes at a free end (natural boundary condition) |
+//! | `hamiltonian_of(L, y(x), x)` | `H = Σ q' ∂L/∂q' - L` |
 //! | `legendre_condition(L, y(x), x)` | `∂²L/∂y'²`, non-negative along a minimising extremal |
 //! | `jacobi_equation(L, y(x), x, h(x))` | `(P h')' - Q h` with `P = L_{y'y'}`, `Q = L_{yy} - (L_{yy'})'`: the Jacobi (accessory) equation of the second variation when set to zero |
 //! | `weierstrass_e(L, y(x), x, p)` | the excess function `L(x, y, p) - L(x, y, y') - (p - y') L_{y'}` |
@@ -84,8 +84,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("euler_lagrange", 3, Request::EulerLagrange),
         ("action", 6, Request::Action),
         ("first_integral", 3, Request::FirstIntegral),
-        ("momentum", 3, Request::Momentum),
-        ("hamiltonian", 3, Request::Hamiltonian),
+        ("canonical_momentum", 3, Request::Momentum),
+        ("hamiltonian_of", 3, Request::Hamiltonian),
         ("legendre_condition", 3, Request::Legendre),
         ("jacobi_equation", 4, Request::Jacobi),
         ("weierstrass_e", 4, Request::Weierstrass),
@@ -97,7 +97,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "solve_euler_lagrange(L, y, x) := dsolve(euler_lagrange(L, y, x) = 0, y)",
         "hamiltons_principle(L, q, t) := euler_lagrange(L, q, t)",
         "isoperimetric(L, G, y, x, lam) := euler_lagrange(L + lam * G, y, x)",
-        "natural_boundary(L, y, x) := momentum(L, y, x)",
+        "natural_boundary(L, y, x) := canonical_momentum(L, y, x)",
     ])
 }
 
@@ -475,11 +475,11 @@ mod tests {
 
     #[test]
     fn momentum_hamiltonian_and_second_variation() {
-        assert_eq!(run("momentum(m*diff(q(t), t)^2/2 - k*q(t)^2/2, q(t), t)"), run("m*diff(q(t), t)"));
+        assert_eq!(run("canonical_momentum(m*diff(q(t), t)^2/2 - k*q(t)^2/2, q(t), t)"), run("m*diff(q(t), t)"));
         assert_eq!(run("natural_boundary(diff(y(x), x)^2, y(x), x)"), run("2*diff(y(x), x)"));
-        assert_eq!(run("momentum(diff(x(t), t)^2 + diff(y(t), t)^3, list(x(t), y(t)), t)"), run("list(2*diff(x(t), t), 3*diff(y(t), t)^2)"));
+        assert_eq!(run("canonical_momentum(diff(x(t), t)^2 + diff(y(t), t)^3, list(x(t), y(t)), t)"), run("list(2*diff(x(t), t), 3*diff(y(t), t)^2)"));
         assert_eq!(
-            run("hamiltonian(diff(y(x), x)^2/2 - y(x)^2/2, y(x), x)"),
+            run("hamiltonian_of(diff(y(x), x)^2/2 - y(x)^2/2, y(x), x)"),
             run("diff(y(x), x)^2/2 + y(x)^2/2")
         );
         assert_eq!(run("legendre_condition((1 + diff(y(x), x)^2)^(1/2), y(x), x)"), run("1/(1 + diff(y(x), x)^2)^(1/2) - diff(y(x), x)^2/(1 + diff(y(x), x)^2)^(3/2)"));

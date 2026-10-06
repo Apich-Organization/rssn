@@ -5,7 +5,7 @@
 //!
 //! # Families
 //!
-//! `cauchy(x0, gamma)`, `laplace(mu, b)`, `lognormal(mu, sigma)`,
+//! `cauchy(x0, gamma)`, `laplace_dist(mu, b)`, `lognormal(mu, sigma)`,
 //! `weibull(k, lambda)` (shape, scale), `geometric(p)` (trials up to the
 //! first success, support `1, 2, ...`), `negative_binomial(r, p)`
 //! (failures before the `r`-th success), `f_dist(d1, d2)`,
@@ -96,7 +96,7 @@ pub(super) const FAMILIES: [Family; 11] = [
         entropy: Some("ln(4 * pi * ?b)"),
     },
     Family {
-        name: "laplace",
+        name: "laplace_dist",
         params: 2,
         pdf: "exp(-abs(?x - ?a) / ?b) / (2 * ?b)",
         cdf: "1/2 + sign(?x - ?a) / 2 * (1 - exp(-abs(?x - ?a) / ?b))",
@@ -207,7 +207,7 @@ pub(super) fn admissible(
     let positive = |i: usize| p(i).is_none_or(|v| v > 0.0);
     let probability = |i: usize| p(i).is_none_or(|v| v > 0.0 && v <= 1.0);
     Some(match name {
-        | "cauchy" | "laplace" | "lognormal" | "logistic" | "gumbel" => positive(1),
+        | "cauchy" | "laplace_dist" | "lognormal" | "logistic" | "gumbel" => positive(1),
         | "weibull" | "f_dist" | "pareto" => positive(0) && positive(1),
         | "geometric" => probability(0),
         | "negative_binomial" => positive(0) && probability(1),
@@ -351,7 +351,7 @@ const EXTRAS: [Extra; 21] = [
         Some("?a + ?b * tan(pi * (?x - 1/2))"),
     ),
     extra(
-        "laplace",
+        "laplace_dist",
         Some("exp(I * ?a * ?x) / (1 + ?b^2 * ?x^2)"),
         Some("0"),
         Some("3"),
@@ -506,13 +506,13 @@ fn heaviside_free(text: &str) -> String {
         }
         let before = out[..start].trim_end_matches(' ');
         let after = &out[end..];
-        let mut head = if before.ends_with('*') { before[..before.len() - 1].trim_end().to_owned() } else { before.to_owned() };
+        let mut head = before.strip_suffix('*').map_or(before, str::trim_end).to_owned();
         let mut tail = after.to_owned();
         if head.is_empty() {
             if let Some(rest) = tail.trim_start().strip_prefix("* ") {
                 tail = rest.to_owned();
             } else if tail.trim_start().starts_with('/') {
-                head = "1".to_owned();
+                "1".clone_into(&mut head);
             }
         }
         let joined = if tail.starts_with(' ') || tail.is_empty() || head.is_empty() { format!("{head}{tail}") } else { format!("{head} {tail}") };
@@ -649,7 +649,7 @@ fn support(
     let zero = graph.int(0);
     let one = graph.int(1);
     Some(match name {
-        | "normal" | "cauchy" | "laplace" | "logistic" | "gumbel" | "student_t" => (minus_infinity, infinity, false),
+        | "normal" | "cauchy" | "laplace_dist" | "logistic" | "gumbel" | "student_t" => (minus_infinity, infinity, false),
         | "uniform" => (*params.first()?, *params.get(1)?, false),
         | "exponential" | "gamma_dist" | "chi_squared" | "weibull" | "rayleigh" | "f_dist" | "lognormal" => {
             (zero, infinity, false)
@@ -771,7 +771,7 @@ fn affine(
             | "exponential" => "exponential(?a / ?x)",
             | "gamma_dist" => "gamma_dist(?a, ?b / ?x)",
             | "cauchy" => "cauchy(?x * ?a, abs(?x) * ?b)",
-            | "laplace" => "laplace(?x * ?a, abs(?x) * ?b)",
+            | "laplace_dist" => "laplace_dist(?x * ?a, abs(?x) * ?b)",
             | "lognormal" => "lognormal(?a + ln(?x), ?b)",
             | "weibull" => "weibull(?a, ?x * ?b)",
             | "pareto" => "pareto(?x * ?a, ?b)",
@@ -785,7 +785,7 @@ fn affine(
             | "normal" => "normal(?a + ?x, ?b)",
             | "uniform" => "uniform(?a + ?x, ?b + ?x)",
             | "cauchy" => "cauchy(?a + ?x, ?b)",
-            | "laplace" => "laplace(?a + ?x, ?b)",
+            | "laplace_dist" => "laplace_dist(?a + ?x, ?b)",
             | "logistic" => "logistic(?a + ?x, ?b)",
             | "gumbel" => "gumbel(?a + ?x, ?b)",
             | _ => return None,
@@ -818,7 +818,7 @@ fn bayes(
     let numbers: Option<Vec<f64>> = items.iter().map(|&v| f64_of(cx.graph, v)).collect();
     let text = match (name.as_str(), model_name.as_str()) {
         | ("beta_dist", "bernoulli") => {
-            if numbers.is_some_and(|v| v.iter().any(|&x| x != 0.0 && x != 1.0)) {
+            if numbers.is_some_and(|v| v.iter().any(|&x| x.abs() > 1e-12 && (x - 1.0).abs() > 1e-12)) {
                 return None;
             }
             "beta_dist(?a + ?s, ?b + ?n - ?s)"
@@ -1100,8 +1100,8 @@ mod tests {
     #[test]
     fn new_families_have_closed_forms() {
         assert_eq!(run("cdf(cauchy(0, 1), 1)"), "3/4");
-        assert_eq!(run("expectation(laplace(2, 3))"), "2");
-        assert_eq!(run("variance_of(laplace(2, 3))"), "18");
+        assert_eq!(run("expectation(laplace_dist(2, 3))"), "2");
+        assert_eq!(run("variance_of(laplace_dist(2, 3))"), "18");
         assert_eq!(run("expectation(geometric(1/4))"), "4");
         assert_eq!(run("variance_of(geometric(1/2))"), "2");
         assert_eq!(run("expectation(negative_binomial(3, 1/2))"), "3");
@@ -1119,7 +1119,7 @@ mod tests {
     #[test]
     fn densities_integrate_to_the_cdf() {
         // Weibull and lognormal cdf against the pdf at a point via a symmetric difference quotient.
-        for (dist, x) in [("weibull(2, 3)", 2.0), ("lognormal(0, 1/2)", 1.5), ("gumbel(1, 2)", 0.5), ("logistic(0, 1)", 0.7), ("f_dist(3, 5)", 1.2), ("pareto(1, 2)", 2.0), ("rayleigh(2)", 1.0), ("laplace(0, 2)", 0.3)] {
+        for (dist, x) in [("weibull(2, 3)", 2.0), ("lognormal(0, 1/2)", 1.5), ("gumbel(1, 2)", 0.5), ("logistic(0, 1)", 0.7), ("f_dist(3, 5)", 1.2), ("pareto(1, 2)", 2.0), ("rayleigh(2)", 1.0), ("laplace_dist(0, 2)", 0.3)] {
             let h = 1e-5;
             let upper = value(&format!("cdf({dist}, x)"), &[("x", x + h)]);
             let lower = value(&format!("cdf({dist}, x)"), &[("x", x - h)]);
@@ -1130,7 +1130,7 @@ mod tests {
 
     #[test]
     fn quantiles_invert_the_cdf() {
-        for dist in ["normal(1, 2)", "exponential(3)", "weibull(2, 3)", "logistic(0, 1)", "gumbel(0, 1)", "laplace(0, 1)", "rayleigh(2)", "pareto(1, 2)", "lognormal(0, 1)", "cauchy(0, 1)", "uniform(1, 4)"] {
+        for dist in ["normal(1, 2)", "exponential(3)", "weibull(2, 3)", "logistic(0, 1)", "gumbel(0, 1)", "laplace_dist(0, 1)", "rayleigh(2)", "pareto(1, 2)", "lognormal(0, 1)", "cauchy(0, 1)", "uniform(1, 4)"] {
             let p = 0.3;
             let q = value(&format!("quantile_of({dist}, p)"), &[("p", p)]);
             let back = value(&format!("cdf({dist}, x)"), &[("x", q)]);

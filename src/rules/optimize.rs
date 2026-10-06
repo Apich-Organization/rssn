@@ -44,11 +44,12 @@ use crate::rules::poly::best;
 
 use super::calculus::derivative;
 use super::linalg::linalg;
+use super::logic::logic;
 
 /// The optimisation rule set.
 #[must_use]
 pub fn optimize() -> RuleSet {
-    RuleSet::new("optimize", install).needs(linalg())
+    RuleSet::new("optimize", install).needs(linalg()).needs(logic())
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {

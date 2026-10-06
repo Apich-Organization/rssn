@@ -171,7 +171,7 @@ fn necklaces(
     }
     let mut total = BigInt::zero();
     for d in 1..=n {
-        if n % d == 0 {
+        if n.is_multiple_of(d) {
             let phi = (1..=d).filter(|&x| gcd_u64(x, d) == 1).count();
             total += BigInt::from(phi) * num_traits::pow::pow(k.clone(), usize::try_from(n / d).ok()?);
         }
@@ -373,7 +373,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let m = n - k;
         let (mut previous, mut current) = (BigInt::one(), BigInt::zero());
         let derangements = match m {
-            | 0 => previous.clone(),
+            | 0 => previous,
             | _ => {
                 for j in 2..=m {
                     let next = (&previous + &current) * (j - 1);
@@ -483,7 +483,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     })?;
     exact_lists(i, SET, unary("permutation_sign"), |a| {
         let [items] = a else { return None };
-        let even = inversions(&permutation(items)?) % 2 == 0;
+        let even = inversions(&permutation(items)?).is_multiple_of(2);
         Some(Value::Int(BigInt::from(if even { 1 } else { -1 })))
     })?;
     exact_lists(i, SET, unary("cycle_type"), |a| {

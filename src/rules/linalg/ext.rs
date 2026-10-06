@@ -11,7 +11,6 @@
 //! | operator | value |
 //! |---|---|
 //! | `kron(A, B)` | the Kronecker product |
-//! | `matrix_commutator(A, B)` | `A B - B A` |
 //! | `diag(list(d1, ...))`, `vandermonde(list(x1, ...))`, `hilbert(n)`, `companion(p, x)` | special matrices (`companion` of a monic-normalised polynomial) |
 //! | `adjugate(A)`, `cofactors(A)` | the adjugate (classical adjoint) and the matrix of cofactors |
 //! | `colspace(A)`, `rowspace(A)`, `left_nullspace(A)` | bases, as lists of vectors |
@@ -383,9 +382,7 @@ fn matrix_function(
             entries.push(normal(cx, term));
         }
         for row in 0..size {
-            for col in row..size {
-                middle[at + row][at + col] = entries[col - row];
-            }
+            middle[at + row][at + row..at + size].copy_from_slice(&entries[..size - row]);
         }
         at += size;
     }
@@ -435,7 +432,7 @@ fn matrix_power(
     exponent: NodeId,
 ) -> Option<Mat> {
     if let Some(e) = cx.graph.number_of(exponent).and_then(Number::to_i64) {
-        let magnitude = u64::try_from(e.unsigned_abs()).ok().filter(|&v| v <= 100_000)?;
+        let magnitude = Some(e.unsigned_abs()).filter(|&v| v <= 100_000)?;
         if e >= 0 {
             return integer_power(cx, m, magnitude);
         }
@@ -534,22 +531,14 @@ fn matrix_polynomial(
     let gx = gens.index(cx.graph, x);
     let poly = crate::rules::poly::repr::from_term(cx.graph, &mut gens, p, crate::rules::poly::repr::Limits::default())?;
     // Coefficients by repeated differentiation at zero: c_k = p^(k)(0)/k!.
-    let degree = {
-        let mut d = 0_usize;
-        let mut current = poly.clone();
-        while !current.is_zero() {
-            d += 1;
-            current = current.derivative(gx);
-        }
-        d
-    };
-    let mut coefficients = Vec::with_capacity(degree);
+    let mut coefficients = Vec::new();
     let mut current = poly;
     let zero = cx.graph.int(0);
     let mut factorial = BigInt::one();
-    for k in 0..degree {
-        if k > 0 {
-            factorial *= k;
+    let mut order = 0_u32;
+    while !current.is_zero() {
+        if order > 0 {
+            factorial *= order;
         }
         let term = crate::rules::poly::repr::to_term(cx.graph, &gens, &current);
         let at_zero = cx.graph.substitute(term, x, zero);
@@ -557,6 +546,7 @@ fn matrix_polynomial(
         let value = mul(cx.graph, &[divisor, at_zero]);
         coefficients.push(cx.simplify(value));
         current = current.derivative(gx);
+        order += 1;
     }
     let identity = identity_rows(cx.graph, n);
     let mut acc = zero_matrix(cx.graph, n, n);
@@ -655,10 +645,10 @@ fn is_symmetric(
     if !square(m) {
         return false;
     }
-    for i in 0..m.len() {
-        for j in i + 1..m.len() {
+    for (i, row) in m.iter().enumerate() {
+        for (j, &entry) in row.iter().enumerate().skip(i + 1) {
             let negated = neg(cx.graph, m[j][i]);
-            let difference = add(cx.graph, &[m[i][j], negated]);
+            let difference = add(cx.graph, &[entry, negated]);
             if !cx.is_zero(difference) {
                 return false;
             }
@@ -871,9 +861,9 @@ fn smith(a: &Ints) -> (Ints, Ints, Ints) {
             }
             // Divisibility of the rest by the pivot.
             let mut offender = None;
-            'search: for i in t + 1..rows {
-                for j in t + 1..cols {
-                    if !(&d[i][j] % &pivot).is_zero() {
+            'search: for (i, row) in d.iter().enumerate().skip(t + 1) {
+                for entry in row.iter().skip(t + 1) {
+                    if !(entry % &pivot).is_zero() {
                         offender = Some(i);
                         break 'search;
                     }
@@ -977,12 +967,12 @@ fn kron(
     let (ar, ac) = (a.len(), a.first().map_or(0, Vec::len));
     let (br, bc) = (b.len(), b.first().map_or(0, Vec::len));
     let mut out = Vec::with_capacity(ar * br);
-    for i in 0..ar {
-        for k in 0..br {
+    for a_row in a {
+        for b_row in b {
             let mut row = Vec::with_capacity(ac * bc);
-            for j in 0..ac {
-                for l in 0..bc {
-                    let p = mul(cx.graph, &[a[i][j], b[k][l]]);
+            for &x in a_row {
+                for &y in b_row {
+                    let p = mul(cx.graph, &[x, y]);
                     row.push(cx.simplify(p));
                 }
             }
@@ -1038,7 +1028,7 @@ fn companion(
     let gx = gens.index(cx.graph, x);
     let poly = crate::rules::poly::repr::from_term(cx.graph, &mut gens, p, crate::rules::poly::repr::Limits::default())?;
     let mut degree = 0_usize;
-    let mut current = poly.clone();
+    let mut current = poly;
     let mut coefficients = Vec::new();
     let zero = cx.graph.int(0);
     let mut factorial = BigInt::one();
@@ -1072,7 +1062,7 @@ fn companion(
 }
 
 fn positive_definite(
-    graph: &mut Graph,
+    graph: &Graph,
     m: &[Vec<NodeId>],
 ) -> Option<bool> {
     if !square(m) {
@@ -1080,9 +1070,9 @@ fn positive_definite(
     }
     let q: Vec<Vec<BigRational>> =
         m.iter().map(|r| r.iter().map(|&e| graph.number_of(e).and_then(Number::to_rational)).collect()).collect::<Option<_>>()?;
-    for i in 0..q.len() {
-        for j in 0..i {
-            if q[i][j] != q[j][i] {
+    for (i, row) in q.iter().enumerate() {
+        for (j, entry) in row.iter().enumerate().take(i) {
+            if *entry != q[j][i] {
                 return Some(false);
             }
         }
@@ -1094,11 +1084,11 @@ fn positive_definite(
         if !work[col][col].is_positive() {
             return Some(false);
         }
-        for r in col + 1..n {
-            let factor = &work[r][col] / &work[col][col];
-            for k in col..n {
-                let delta = &factor * &work[col][k];
-                work[r][k] -= delta;
+        let pivot_row = work[col].clone();
+        for row in work.iter_mut().skip(col + 1) {
+            let factor = &row[col] / &pivot_row[col];
+            for (value, p) in row.iter_mut().zip(&pivot_row).skip(col) {
+                *value -= &factor * p;
             }
         }
     }
@@ -1112,7 +1102,6 @@ fn positive_definite(
 #[derive(Copy, Clone)]
 enum Kind {
     Kron,
-    Commutator,
     Diag,
     Vandermonde,
     Hilbert,
@@ -1172,12 +1161,6 @@ impl Extension {
                 let (a, b) = (matrix(cx.graph, arg(0)?)?, matrix(cx.graph, arg(1)?)?);
                 let k = kron(cx, &a, &b);
                 Some(matrix_term(cx.graph, &k))
-            },
-            | Kind::Commutator => {
-                let (a, b) = (matrix(cx.graph, arg(0)?)?, matrix(cx.graph, arg(1)?)?);
-                let (ab, ba) = (product(cx, &a, &b)?, product(cx, &b, &a)?);
-                let difference = sum(cx, &ab, &ba, -1)?;
-                Some(matrix_term(cx.graph, &difference))
             },
             | Kind::Diag => {
                 let d = vector(cx.graph, arg(0)?)?;
@@ -1405,7 +1388,6 @@ impl Kernel for Extension {
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, arity, kind) in [
         ("kron", 2, Kind::Kron),
-        ("matrix_commutator", 2, Kind::Commutator),
         ("diag", 1, Kind::Diag),
         ("vandermonde", 1, Kind::Vandermonde),
         ("hilbert", 1, Kind::Hilbert),
@@ -1462,7 +1444,6 @@ mod tests {
             run("kron(list(list(1, 2), list(3, 4)), list(list(0, 1), list(1, 0)))"),
             "list(list(0, 1, 0, 2), list(1, 0, 2, 0), list(0, 3, 0, 4), list(3, 0, 4, 0))"
         );
-        assert_eq!(run("matrix_commutator(list(list(0, 1), list(0, 0)), list(list(0, 0), list(1, 0)))"), "list(list(1, 0), list(0, -1))");
         assert_eq!(run("diag(list(1, a, 3))"), "list(list(1, 0, 0), list(0, a, 0), list(0, 0, 3))");
         assert_eq!(run("vandermonde(list(1, 2, 3))"), "list(list(1, 1, 1), list(1, 2, 4), list(1, 3, 9))");
         assert_eq!(run("hilbert(2)"), "list(list(1, 1/2), list(1/2, 1/3))");
@@ -1505,8 +1486,8 @@ mod tests {
         // A P = P J.
         let pj = run(&format!("jordan({B})"));
         assert!(pj.starts_with("list(list("), "{pj}");
-        let p = super::tests_part(&pj, 0);
-        let j = super::tests_part(&pj, 1);
+        let p = tests_part(&pj, 0);
+        let j = tests_part(&pj, 1);
         assert_eq!(run(&format!("madd(matmul({B}, {p}), smul(-1, matmul({p}, {j})))")), "list(list(0, 0, 0), list(0, 0, 0), list(0, 0, 0))");
         // exp(A t) for a Jordan block: e^(2t) (I + t N).
         assert_eq!(run(&format!("matexp({A}, t)")), "list(list(exp(2*t), t*exp(2*t)), list(0, exp(2*t)))");
@@ -1551,38 +1532,37 @@ mod tests {
         let a = "list(list(2, 4, 4), list(-6, 6, 12), list(10, 4, 16))";
         assert_eq!(run(&format!("invariant_factors({a})")), "list(2, 2, 156)");
         let smith = run(&format!("smith({a})"));
-        let (u, d, v) = (super::tests_part(&smith, 0), super::tests_part(&smith, 1), super::tests_part(&smith, 2));
+        let (u, d, v) = (tests_part(&smith, 0), tests_part(&smith, 1), tests_part(&smith, 2));
         assert_eq!(run(&format!("matmul({u}, {a}, {v})")), d);
         assert_eq!(run("det(list(list(1, 0), list(0, 1)))"), "1");
         let hermite = run("hermite_form(list(list(2, 3, 6, 2), list(5, 6, 1, 6), list(8, 3, 1, 1)))");
-        let (h, u) = (super::tests_part(&hermite, 0), super::tests_part(&hermite, 1));
+        let (h, u) = (tests_part(&hermite, 0), tests_part(&hermite, 1));
         assert_eq!(run(&format!("matmul({u}, list(list(2, 3, 6, 2), list(5, 6, 1, 6), list(8, 3, 1, 1)))")), h);
         assert_eq!(h, "list(list(1, 0, 50, -11), list(0, 3, 28, -2), list(0, 0, 61, -13))");
         assert_eq!(run("det(list(list(1, 2), list(3, 4)))"), "-2");
     }
-}
 
-/// The `index`-th top-level item of a `list(...)` text (for tests).
-#[cfg(test)]
-fn tests_part(
-    text: &str,
-    index: usize,
-) -> String {
-    let inner = text.strip_prefix("list(").and_then(|s| s.strip_suffix(')')).unwrap_or("");
-    let mut depth = 0_i32;
-    let mut start = 0;
-    let mut items = Vec::new();
-    for (i, ch) in inner.char_indices() {
-        match ch {
-            | '(' => depth += 1,
-            | ')' => depth -= 1,
-            | ',' if depth == 0 => {
-                items.push(inner[start..i].trim().to_owned());
-                start = i + 1;
-            },
-            | _ => {},
+    /// The `index`-th top-level item of a `list(...)` text.
+    fn tests_part(
+        text: &str,
+        index: usize,
+    ) -> String {
+        let inner = text.strip_prefix("list(").and_then(|s| s.strip_suffix(')')).unwrap_or("");
+        let mut depth = 0_i32;
+        let mut start = 0;
+        let mut items = Vec::new();
+        for (i, ch) in inner.char_indices() {
+            match ch {
+                | '(' => depth += 1,
+                | ')' => depth -= 1,
+                | ',' if depth == 0 => {
+                    items.push(inner[start..i].trim().to_owned());
+                    start = i + 1;
+                },
+                | _ => {},
+            }
         }
+        items.push(inner[start..].trim().to_owned());
+        items.get(index).cloned().unwrap_or_default()
     }
-    items.push(inner[start..].trim().to_owned());
-    items.get(index).cloned().unwrap_or_default()
 }

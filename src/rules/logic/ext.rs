@@ -447,7 +447,7 @@ impl Extension {
     /// atoms.
     fn read(
         &self,
-        graph: &mut Graph,
+        graph: &Graph,
         args: &[NodeId],
     ) -> Option<Problem> {
         let mut reader = Reader { graph, ops: &self.ops, classes: Vec::new(), nodes: Vec::new() };

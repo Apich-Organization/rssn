@@ -59,6 +59,7 @@ fn small(n: &BigInt) -> Option<u64> {
     n.to_u64().filter(|&v| v >= 1)
 }
 
+#[allow(clippy::unnecessary_wraps)] // used as a `fn(T) -> Option<Value>` in `and_then`
 fn int(v: impl Into<BigInt>) -> Option<Value> {
     Some(Value::Int(v.into()))
 }
@@ -431,7 +432,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     exact(i, SET, unary("liouville"), |a| {
         let [n] = a else { return None };
         let total: u32 = factor(n)?.iter().map(|&(_, e)| e).sum();
-        int(if total % 2 == 0 { 1 } else { -1 })
+        int(if total.is_multiple_of(2) { 1 } else { -1 })
     })?;
     exact(i, SET, unary("omega"), |a| {
         let [n] = a else { return None };

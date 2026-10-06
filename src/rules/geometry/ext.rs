@@ -3,13 +3,12 @@
 //!
 //! | operator | value |
 //! |---|---|
-//! | `geodesic_acceleration(g, vars, v)` | `a^k = -Γ^k_ij v^i v^j`: the coordinate acceleration of a geodesic with velocity `v` |
+//! | `metric_geodesic_acceleration(g, vars, v)` | `a^k = -Γ^k_ij v^i v^j`: the coordinate acceleration of a geodesic with velocity `v` |
 //! | `kretschmann(g, vars)` | the curvature invariant `R_abcd R^abcd` |
 //! | `gaussian_curvature(g, vars)` | `R / 2` of a two-dimensional metric |
 //! | `volume_element(g, vars)` | `sqrt(det g)` |
 //! | `laplace_beltrami(f, g, vars)` | `(1/√g) ∂_i (√g g^ij ∂_j f)` |
 //! | `covariant_divergence(V, g, vars)` | `(1/√g) ∂_i (√g V^i)` |
-//! | `lie_bracket(V, W, vars)` | `[V, W]^i = V^j ∂_j W^i - W^j ∂_j V^i` |
 //! | `killing_tensor(xi, g, vars)` | the Lie derivative `L_ξ g_ab = ξ^c ∂_c g_ab + g_cb ∂_a ξ^c + g_ac ∂_b ξ^c` (a matrix) |
 //! | `is_killing(xi, g, vars)` | whether `L_ξ g` vanishes: `ξ` generates an isometry |
 
@@ -47,7 +46,6 @@ enum Kind {
     Volume,
     Beltrami,
     Divergence,
-    Bracket,
     KillingTensor,
     IsKilling,
 }
@@ -89,11 +87,11 @@ fn kretschmann(
     let inverse = invert(cx, g)?;
     // R_abcd = g_ae R^e_bcd, kept only where non-zero.
     let mut lower = Tensor::zeros(cx.graph, vec![n, n, n, n]);
-    for a in 0..n {
+    for (a, g_row) in g.iter().enumerate() {
         for b in 0..n {
             for c in 0..n {
                 for e in 0..n {
-                    let terms: Vec<NodeId> = (0..n).map(|f| mul(cx.graph, &[g[a][f], r.get(&[f, b, c, e])])).collect();
+                    let terms: Vec<NodeId> = (0..n).map(|f| mul(cx.graph, &[g_row[f], r.get(&[f, b, c, e])])).collect();
                     let value = simplified_sum(cx, &terms);
                     lower.set(&[a, b, c, e], value);
                 }
@@ -235,26 +233,6 @@ impl Extension {
                 let value = mul(cx.graph, &[inverse_root, total]);
                 Some(normal_form(cx, value))
             },
-            | Kind::Bracket => {
-                let (v, w) = (vector(cx.graph, arg(0)?)?, vector(cx.graph, arg(1)?)?);
-                let vars = vector(cx.graph, arg(2)?)?;
-                if v.len() != vars.len() || w.len() != vars.len() {
-                    return None;
-                }
-                let dw = derivative_of(cx, &w, &vars)?;
-                let dv = derivative_of(cx, &v, &vars)?;
-                let mut out = Vec::with_capacity(vars.len());
-                for i in 0..vars.len() {
-                    let mut terms = Vec::new();
-                    for j in 0..vars.len() {
-                        terms.push(mul(cx.graph, &[v[j], dw[i][j]]));
-                        let t = mul(cx.graph, &[w[j], dv[i][j]]);
-                        terms.push(neg(cx.graph, t));
-                    }
-                    out.push(simplified_sum(cx, &terms));
-                }
-                Some(cx.graph.node(core::LIST, &out))
-            },
             | Kind::KillingTensor | Kind::IsKilling => {
                 let xi = vector(cx.graph, arg(0)?)?;
                 let g = square(cx.graph, arg(1)?)?;
@@ -312,13 +290,12 @@ impl Kernel for Extension {
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, arity, kind) in [
-        ("geodesic_acceleration", 3, Kind::Geodesic),
+        ("metric_geodesic_acceleration", 3, Kind::Geodesic),
         ("kretschmann", 2, Kind::Kretschmann),
         ("gaussian_curvature", 2, Kind::Gaussian),
         ("volume_element", 2, Kind::Volume),
         ("laplace_beltrami", 3, Kind::Beltrami),
         ("covariant_divergence", 3, Kind::Divergence),
-        ("lie_bracket", 3, Kind::Bracket),
         ("killing_tensor", 3, Kind::KillingTensor),
         ("is_killing", 3, Kind::IsKilling),
     ] {
@@ -337,6 +314,13 @@ mod tests {
         simplify(&[geometry()], src)
     }
 
+    /// With `r` positive.
+    fn run_positive(src: &str) -> String {
+        let (text, reduced) = crate::rules::testing::reduce_with(&[geometry()], src, &[("r", crate::graph::Facts::POSITIVE)]);
+        assert!(reduced, "{text}");
+        text
+    }
+
     const SPHERE: &str = "list(list(1, 0), list(0, sin(t)^2))";
 
     #[test]
@@ -345,28 +329,26 @@ mod tests {
         assert_eq!(run(&format!("kretschmann({SPHERE}, list(t, p))")), "4");
         assert_eq!(run("kretschmann(list(list(1, 0), list(0, 1)), list(x, y))"), "0");
         // A sphere of radius r has Gaussian curvature 1/r^2 and Kretschmann 4/r^4.
-        assert_eq!(run("gaussian_curvature(list(list(r^2, 0), list(0, r^2*sin(t)^2)), list(t, p))"), "r^(-2)");
+        assert_eq!(run_positive("gaussian_curvature(list(list(r^2, 0), list(0, r^2*sin(t)^2)), list(t, p))"), "1/r^2");
     }
 
     #[test]
     fn geodesics_and_operators() {
         // On the sphere a meridian is a geodesic: no acceleration for v = (1, 0).
-        assert_eq!(run(&format!("geodesic_acceleration({SPHERE}, list(t, p), list(1, 0))")), "list(0, 0)");
+        assert_eq!(run(&format!("metric_geodesic_acceleration({SPHERE}, list(t, p), list(1, 0))")), "list(0, 0)");
         // Moving along a latitude needs a centripetal term.
         assert_eq!(
-            run(&format!("geodesic_acceleration({SPHERE}, list(t, p), list(0, 1))")),
+            run(&format!("metric_geodesic_acceleration({SPHERE}, list(t, p), list(0, 1))")),
             "list(cos(t)*sin(t), 0)"
         );
-        assert_eq!(run("volume_element(list(list(1, 0), list(0, r^2)), list(r, t))"), "r");
+        assert_eq!(run_positive("volume_element(list(list(1, 0), list(0, r^2)), list(r, t))"), "r");
         // The Laplace–Beltrami operator in polar coordinates.
-        assert_eq!(run("laplace_beltrami(r^2, list(list(1, 0), list(0, r^2)), list(r, t))"), "4");
-        assert_eq!(run("covariant_divergence(list(r, 0), list(list(1, 0), list(0, r^2)), list(r, t))"), "2");
+        assert_eq!(run_positive("laplace_beltrami(r^2, list(list(1, 0), list(0, r^2)), list(r, t))"), "4");
+        assert_eq!(run_positive("covariant_divergence(list(r, 0), list(list(1, 0), list(0, r^2)), list(r, t))"), "2");
     }
 
     #[test]
-    fn lie_brackets_and_killing_fields() {
-        assert_eq!(run("lie_bracket(list(1, 0), list(0, x), list(x, y))"), "list(0, 1)");
-        assert_eq!(run("lie_bracket(list(x, 0), list(0, y), list(x, y))"), "list(0, 0)");
+    fn killing_fields() {
         // Rotation is Killing for the flat plane; scaling is not.
         assert_eq!(run("is_killing(list(-y, x), list(list(1, 0), list(0, 1)), list(x, y))"), "true");
         assert_eq!(run("is_killing(list(x, y), list(list(1, 0), list(0, 1)), list(x, y))"), "false");

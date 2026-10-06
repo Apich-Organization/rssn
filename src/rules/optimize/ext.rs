@@ -71,7 +71,7 @@ struct Tableau {
 }
 
 impl Tableau {
-    fn columns(&self) -> usize {
+    const fn columns(&self) -> usize {
         self.objective.len() - 1
     }
 
@@ -343,11 +343,11 @@ fn rational_determinant(m: &[Vec<Q>]) -> Q {
             det = -det;
         }
         det *= work[col][col].clone();
-        for r in col + 1..n {
-            let factor = &work[r][col] / &work[col][col];
-            for k in col..n {
-                let delta = &factor * &work[col][k];
-                work[r][k] -= delta;
+        let pivot_row = work[col].clone();
+        for row in work.iter_mut().skip(col + 1) {
+            let factor = &row[col] / &pivot_row[col];
+            for (value, p) in row.iter_mut().zip(&pivot_row).skip(col) {
+                *value -= &factor * p;
             }
         }
     }
@@ -540,7 +540,6 @@ fn inequality(
     node: NodeId,
 ) -> Option<NodeId> {
     let node = best(cx.graph, node)?;
-    eprintln!("DEBUG ineq {}", cx.graph.display(node));
     let mut negated = false;
     let mut current = node;
     let mut name = cx.graph.ops().get(cx.graph.op(current)).name.to_string();
