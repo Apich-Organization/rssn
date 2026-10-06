@@ -273,12 +273,92 @@ fn comparison_set(
     Some(out)
 }
 
+/// A comparison or equation between `floor(u)` / `ceil(u)` and a number,
+/// rewritten as a condition on `u` (an interval): `floor(u) < c` is
+/// `u < ceil(c)`, `floor(u) = c` is `c <= u < c + 1` for an integer `c`,
+/// and so on. `None` when `node` is not of that shape; `Some(None)` when
+/// the condition is unsatisfiable.
+fn floor_condition(
+    graph: &mut Graph,
+    node: NodeId,
+) -> Option<Option<NodeId>> {
+    let (floor, ceil) = (graph.ops().lookup("floor")?, graph.ops().lookup("ceil")?);
+    let op = graph.op(node);
+    let names = ["lt", "le", "gt", "ge"];
+    let kind = names.iter().position(|n| graph.ops().lookup(n) == Some(op));
+    let is_eq = op == core::EQ;
+    if kind.is_none() && !is_eq {
+        return None;
+    }
+    let &[a, b] = graph.children(node) else {
+        return None;
+    };
+    let rounding = |g: &Graph, n: NodeId| (g.op(n) == floor || g.op(n) == ceil) && g.children(n).len() == 1;
+    // (rounding node, constant, kind seen from the rounding side)
+    let (r, c, kind) = if rounding(graph, a) {
+        (a, b, kind)
+    } else if rounding(graph, b) {
+        (b, a, kind.map(|k| [2, 3, 0, 1][k]))
+    } else {
+        return None;
+    };
+    let value = graph.eval(c, &Env::numeric(0.0)).filter(|v| v.is_finite())?;
+    let u = *graph.children(r).first()?;
+    let is_floor = graph.op(r) == floor;
+    let (lt, le, gt, ge) = (
+        graph.ops().lookup("lt")?,
+        graph.ops().lookup("le")?,
+        graph.ops().lookup("gt")?,
+        graph.ops().lookup("ge")?,
+    );
+    let and = graph.ops().lookup("and")?;
+    let int = |graph: &mut Graph, v: f64| graph.int(v as i64);
+    let (lo, hi) = (value.floor(), value.ceil());
+    match kind {
+        | None => {
+            if (value - lo).abs() > 0.0 {
+                return Some(None);
+            }
+            let (low, high) = (int(graph, lo), int(graph, lo + 1.0));
+            let (below, above) = if is_floor {
+                (graph.node(ge, &[u, low]), graph.node(lt, &[u, high]))
+            } else {
+                let previous = int(graph, lo - 1.0);
+                let top = int(graph, lo);
+                (graph.node(gt, &[u, previous]), graph.node(le, &[u, top]))
+            };
+            Some(Some(graph.node(and, &[below, above])))
+        },
+        | Some(k) => {
+            // The bound on `u` and the comparison it takes.
+            let (bound, cmp) = match (is_floor, k) {
+                | (true, 0) => (hi, lt),
+                | (true, 1) => (lo + 1.0, lt),
+                | (true, 2) => (lo + 1.0, ge),
+                | (true, _) => (hi, ge),
+                | (false, 0) => (hi - 1.0, le),
+                | (false, 1) => (lo, le),
+                | (false, 2) => (lo, gt),
+                | (false, _) => (hi - 1.0, gt),
+            };
+            let _ = (le, gt);
+            let b = int(graph, bound);
+            Some(Some(graph.node(cmp, &[u, b])))
+        },
+    }
+}
+
 /// The set described by the condition `node`.
 fn condition_set(
     graph: &mut Graph,
     node: NodeId,
     x: NodeId,
 ) -> Option<Set> {
+    match floor_condition(graph, node) {
+        | Some(Some(rewritten)) => return condition_set(graph, rewritten, x),
+        | Some(None) => return Some(Vec::new()),
+        | None => {},
+    }
     let op = graph.op(node);
     let names = ["lt", "le", "gt", "ge"];
     let kinds: Vec<Option<OpId>> = names.iter().map(|n| graph.ops().lookup(n)).collect();
@@ -349,7 +429,11 @@ pub(super) fn is_condition(
     node: NodeId,
 ) -> bool {
     let op = graph.op(node);
-    ["lt", "le", "gt", "ge", "ne", "and", "or"].iter().any(|n| graph.ops().lookup(n) == Some(op))
+    let rounded = |n: NodeId| {
+        ["floor", "ceil"].iter().any(|name| graph.ops().lookup(name) == Some(graph.op(n)))
+    };
+    (op == core::EQ && graph.children(node).iter().any(|&c| rounded(c)))
+        || ["lt", "le", "gt", "ge", "ne", "and", "or"].iter().any(|n| graph.ops().lookup(n) == Some(op))
         || (op == core::LIST
             && !graph.children(node).is_empty()
             && graph.children(node).iter().any(|&c| is_condition(graph, c)))

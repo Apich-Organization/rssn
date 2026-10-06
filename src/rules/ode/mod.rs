@@ -79,6 +79,8 @@ use super::solve::solve_for;
 use super::solve::solve_linear;
 
 mod lie;
+#[cfg(test)]
+mod probe;
 mod reduce;
 mod series_method;
 mod systems;

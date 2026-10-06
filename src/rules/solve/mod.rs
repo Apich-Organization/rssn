@@ -1308,6 +1308,19 @@ mod tests {
     }
 
     #[test]
+    fn floor_and_ceiling_give_intervals() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        assert_eq!(run("solve(floor(x) = 2, x)"), "and(le(2, x), lt(x, 3))");
+        assert_eq!(run("solve(ceil(x) = 2, x)"), "and(le(x, 2), lt(1, x))");
+        assert_eq!(run("solve(floor(x) = 1/2, x)"), "false");
+        assert_eq!(run("solve(lt(floor(x), 3), x)"), "lt(x, 3)");
+        assert_eq!(run("solve(ge(floor(x), 3), x)"), "le(3, x)");
+        assert_eq!(run("solve(floor(2*x + 1) = 3, x)"), "and(le(1, x), lt(x, 3/2))");
+        assert_eq!(run("solve(list(floor(x) = 2, gt(x, 2.5)), x)"), "and(lt(2.5, x), lt(x, 3))");
+    }
+
+    #[test]
     fn numeric_fallbacks() {
         // sin(x) = x/3 has three real roots, 0 and +-2.2788626600758283.
         let roots = numbers(&numeric_text("solve(sin(x) = x/3, x)"));
