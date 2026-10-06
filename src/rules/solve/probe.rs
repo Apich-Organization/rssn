@@ -358,9 +358,139 @@ pub(super) const ALGEBRAIC: &[Case] = &[
     general!("sin(x) = a", [("a", 0.3)]),
 ];
 
+/// `(equations, unknowns, parameters, expected number of real tuples)`.
+type SystemCase = (&'static [&'static str], &'static [&'static str], &'static [(&'static str, f64)], Option<usize>);
+
+pub(super) const SYSTEMS: &[SystemCase] = &[
+    (&["x^2 + y^2 = 25", "x*y = 12"], &["x", "y"], &[], Some(4)),
+    (&["x + y = 5", "x*y = 6"], &["x", "y"], &[], Some(2)),
+    (&["x^2 - y = 1", "x + y = 3"], &["x", "y"], &[], Some(2)),
+    (&["x^2 + y^2 + z^2 = 3", "x = y", "y = z"], &["x", "y", "z"], &[], Some(2)),
+    (&["x*y = 1", "x + y = 3"], &["x", "y"], &[], Some(2)),
+    (&["x^2 - y^2 = 3", "x*y = 2"], &["x", "y"], &[], Some(2)),
+    (&["y = exp(x)", "y = x + 2"], &["x", "y"], &[], Some(2)),
+    (&["sin(x) = y", "y = 1/2"], &["x", "y"], &[], None),
+    (&["x + y = 1", "x^2 + y^2 = 1"], &["x", "y"], &[], Some(2)),
+    (&["exp(x)*exp(y) = 6", "x - y = 0"], &["x", "y"], &[], Some(1)),
+    (&["x^2*y = 4", "x*y^2 = 2"], &["x", "y"], &[], Some(1)),
+    (&["x + y + z = 6", "x*y*z = 6", "x*y + y*z + z*x = 11"], &["x", "y", "z"], &[], Some(6)),
+    (&["x + y = 1"], &["x", "y"], &[], Some(1)),
+    (&["x^2 + y^2 = 1", "z = x + y"], &["x", "y", "z"], &[], Some(2)),
+    (&["x + y = 3", "x - y = 1", "2*x + y = 5"], &["x", "y"], &[], Some(1)),
+    (&["x + y = 1", "x + y = 2"], &["x", "y"], &[], Some(0)),
+    (&["x^2 + y^2 = 1", "x + y = a"], &["x", "y"], &[("a", 1.0)], Some(2)),
+    (&["y = x^2", "y = 2*x + 3"], &["x", "y"], &[], Some(2)),
+    (&["x^2 + y = 7", "x + y^2 = 11"], &["x", "y"], &[], None),
+    (&["ln(x) + ln(y) = ln(6)", "x + y = 5"], &["x", "y"], &[], Some(2)),
+    (&["x*exp(y) = 1", "y = ln(2)"], &["x", "y"], &[], Some(1)),
+    (&["cos(x) = y", "sin(x) = y"], &["x", "y"], &[], None),
+    (&["x + y + z = 1", "x - y = 0"], &["x", "y", "z"], &[], Some(1)),
+    (&["x*y = 1", "x^2 + y^2 = a"], &["x", "y"], &[("a", 3.0)], Some(4)),
+    (&["x^2 = y^2", "x + y = 2"], &["x", "y"], &[], Some(1)),
+    (&["x^3 + y^3 = 9", "x + y = 3"], &["x", "y"], &[], Some(2)),
+    (&["x = y + 1", "y = z + 1", "z = 1"], &["x", "y", "z"], &[], Some(1)),
+    (&["a*x + b*y = e", "c*x + d*y = f"], &["x", "y"], &[("a", 1.0), ("b", 2.0), ("c", 3.0), ("d", 5.0), ("e", 1.0), ("f", 2.0)], Some(1)),
+    (&["x^2 + y^2 = 4", "x*y = 1"], &["x", "y"], &[], Some(4)),
+    (&["x*y + x + y = 5", "x*y - x - y = -1"], &["x", "y"], &[], Some(2)),
+    (&["x^2 - 2*y^2 = 1", "x + y = 2"], &["x", "y"], &[], Some(2)),
+    (&["x^2 + y^2 = r^2", "y = m*x"], &["x", "y"], &[("r", 2.0), ("m", 0.5)], Some(2)),
+    (&["x*z = 1", "y = 2*z", "x + y = 3"], &["x", "y", "z"], &[], Some(2)),
+    (&["x^4 + y^4 = 17", "x^2 + y^2 = 5"], &["x", "y"], &[], Some(8)),
+    (&["exp(x) + y = 3", "x - y = 1"], &["x", "y"], &[], Some(1)),
+    (&["x^2 + y = 0", "x + y = 0"], &["x", "y"], &[], Some(2)),
+    (&["u + v = 3", "u*v = 2", "w = u - v"], &["u", "v", "w"], &[], Some(2)),
+];
+
+pub(super) fn audit_system(case: &SystemCase) -> Report {
+    let (eqs, unknowns, params, expected) = *case;
+    let rules = crate::rules::standard();
+    let mut g = Graph::new();
+    let Ok(engine) = Engine::install(&mut g, &rules) else {
+        return Report { status: "install".into(), text: String::new() };
+    };
+    let src = format!("solve(list({}), list({}))", eqs.join(", "), unknowns.join(", "));
+    let Ok(root) = g.parse(&src) else {
+        return Report { status: "parse".into(), text: src };
+    };
+    engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
+    let Some(answer) = Extractor::new(&g, &[root], &ClosedForm).build(&mut g, root) else {
+        return Report { status: "UNSOLVED".into(), text: String::new() };
+    };
+    let text = g.display(answer);
+    if g.op(answer) != crate::graph::op::core::LIST {
+        return Report { status: "UNSOLVED".into(), text };
+    }
+    let residuals: Vec<NodeId> = eqs.iter().filter_map(|e| g.parse(&residual_text(e)).ok()).collect();
+    let unknown_symbols: Vec<crate::graph::SymbolId> = unknowns.iter().map(|n| g.interner_mut().symbol(n)).collect();
+    let param_symbols: Vec<(crate::graph::SymbolId, f64)> = params.iter().map(|&(n, v)| (g.interner_mut().symbol(n), v)).collect();
+    let mut real = 0;
+    for tuple in g.children(answer).to_vec() {
+        let mut env = Env::numeric(0.0);
+        for &(s, v) in &param_symbols {
+            env.bind(s, v);
+        }
+        // Free unknowns that occur in the tuple itself.
+        for (i, &s) in unknown_symbols.iter().enumerate() {
+            env.bind(s, 0.7 + 0.1 * f64::from(i32::try_from(i).unwrap_or(0)));
+        }
+        let mut values = Vec::new();
+        for &item in g.children(tuple) {
+            values.push(g.eval(item, &env).filter(|v| v.is_finite()));
+        }
+        if values.iter().any(Option::is_none) {
+            continue;
+        }
+        let mut env2 = Env::numeric(0.0);
+        for &(s, v) in &param_symbols {
+            env2.bind(s, v);
+        }
+        // The free unknowns keep their sample values.
+        for (&s, v) in unknown_symbols.iter().zip(&values) {
+            env2.bind(s, v.unwrap_or(0.0));
+        }
+        for &r in &residuals {
+            match g.eval(r, &env2) {
+                | Some(v) if v.is_finite() && v.abs() < 1e-6 => {},
+                | other => return Report { status: format!("WRONG({other:?})"), text },
+            }
+        }
+        real += 1;
+    }
+    if let Some(n) = expected {
+        if real != n {
+            return Report { status: format!("COUNT(got {real}, want {n})"), text };
+        }
+    } else if real == 0 {
+        return Report { status: "EMPTY".into(), text };
+    }
+    Report { status: "ok".into(), text }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[ignore = "reports the pass rate of the systems probe battery"]
+    fn system_battery() {
+        let mut passed = 0;
+        for case in SYSTEMS {
+            let start = std::time::Instant::now();
+            let report = audit_system(case);
+            let ok = report.status == "ok";
+            if ok {
+                passed += 1;
+            }
+            eprintln!(
+                "{:6} {:>6.2}s {}  ->  {}",
+                if ok { "ok" } else { "FAIL" },
+                start.elapsed().as_secs_f64(),
+                case.0.join(", "),
+                if ok { report.text } else { format!("{} {}", report.status, report.text) }
+            );
+        }
+        eprintln!("SYSTEMS {passed}/{}", SYSTEMS.len());
+    }
 
     #[test]
     #[ignore = "reports the pass rate of the algebraic probe battery"]

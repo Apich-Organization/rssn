@@ -64,10 +64,6 @@ use crate::kernels::solve::solve_root;
 
 use super::elementary::elementary;
 use super::poly::best;
-use super::poly::from_groebner;
-use super::poly::groebner::groebner;
-use super::poly::groebner::GroebnerLimits;
-use super::poly::groebner::Order;
 use super::poly::poly;
 use super::poly::ratio;
 use super::poly::repr::from_term;
@@ -75,13 +71,13 @@ use super::poly::repr::to_term;
 use super::poly::repr::Gens;
 use super::poly::repr::Limits;
 use super::poly::repr::Poly;
-use super::poly::to_groebner;
 use super::poly::univariate;
 
 mod elim;
 mod heuristics;
 mod normalize;
 mod symbolic;
+mod system;
 mod trig;
 #[cfg(test)]
 mod probe;
@@ -903,22 +899,8 @@ pub(crate) fn solve_linear(
     Some(solution)
 }
 
-/// Solves a polynomial system with rational coefficients through a
-/// lexicographic Gröbner basis and back-substitution.
-fn solve_polynomial_system(
-    graph: &mut Graph,
-    equations: NodeId,
-    unknowns: NodeId,
-) -> Option<Vec<Vec<NodeId>>> {
-    let (generators, gens) = to_groebner(graph, equations, unknowns, Order::Lex)?;
-    let basis = groebner(&generators, Order::Lex, GroebnerLimits::default())?;
-    let terms: Vec<NodeId> = basis.iter().map(|g| from_groebner(graph, &gens, g)).collect();
-    let variables = graph.children(unknowns).to_vec();
-    back_substitute(graph, &terms, &variables)
-}
-
 /// Solves a triangular system for the last variable first.
-fn back_substitute(
+pub(super) fn back_substitute(
     graph: &mut Graph,
     basis: &[NodeId],
     variables: &[NodeId],
@@ -990,11 +972,7 @@ impl Kernel for Symbolic {
             }
             let equations = graph.children(equation).to_vec();
             let unknowns = graph.children(unknown).to_vec();
-            let tuples = match solve_linear(graph, &equations, &unknowns) {
-                | Some(single) => Some(vec![single]),
-                | None => solve_polynomial_system(graph, equation, unknown)
-                    .or_else(|| heuristics::eliminate(graph, &equations, &unknowns, 0)),
-            };
+            let tuples = system::solve_system(graph, &equations, &unknowns);
             tuples.map(|tuples| tuples.iter().map(|t| graph.node(core::LIST, t)).collect::<Vec<_>>())
         } else if ["lt", "le", "gt", "ge"].iter().any(|n| graph.ops().lookup(n) == Some(graph.op(equation))) {
             return solve_inequality(graph, equation, unknown).map_or(Outcome::Pass, Outcome::Equal);

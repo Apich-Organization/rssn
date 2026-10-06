@@ -800,67 +800,6 @@ fn value_of_nonnegative(
     value(graph, node).is_none_or(|v| v >= 0.0)
 }
 
-/// Systems that are not polynomial: eliminate an unknown that one
-/// equation determines, recurse, and back-substitute.
-pub(super) fn eliminate(
-    graph: &mut Graph,
-    equations: &[NodeId],
-    unknowns: &[NodeId],
-    depth: usize,
-) -> Option<Vec<Vec<NodeId>>> {
-    if depth > 4 {
-        return None;
-    }
-    if unknowns.is_empty() {
-        return Some(vec![Vec::new()]);
-    }
-    let exprs: Vec<NodeId> = equations.iter().map(|&e| super::as_expression(graph, e)).collect();
-    for (i, &expr) in exprs.iter().enumerate() {
-        for (j, &u) in unknowns.iter().enumerate() {
-            let Some(values) = solve_for(graph, expr, u, 0) else {
-                continue;
-            };
-            if values.is_empty() {
-                continue;
-            }
-            let rest_eqs: Vec<NodeId> = exprs.iter().enumerate().filter(|&(k, _)| k != i).map(|(_, &e)| e).collect();
-            let rest_unknowns: Vec<NodeId> = unknowns.iter().enumerate().filter(|&(k, _)| k != j).map(|(_, &v)| v).collect();
-            let mut out = Vec::new();
-            for value in values {
-                let substituted: Vec<NodeId> = rest_eqs.iter().map(|&e| graph.substitute(e, u, value)).collect();
-                let tails = if rest_unknowns.is_empty() {
-                    // Every remaining equation must hold.
-                    let ok = substituted.iter().all(|&e| value_of_zero(graph, e));
-                    if ok { vec![Vec::new()] } else { Vec::new() }
-                } else {
-                    // Underdetermined or unsolvable: give up rather than
-                    // report a partial solution set.
-                    eliminate(graph, &substituted, &rest_unknowns, depth + 1)?
-                };
-                for tail in tails {
-                    // Insert u's value (with the others substituted) at j.
-                    let mut full = tail.clone();
-                    let mut v = value;
-                    for (k, &other) in rest_unknowns.iter().enumerate() {
-                        v = graph.substitute(v, other, tail[k]);
-                    }
-                    full.insert(j, v);
-                    out.push(full);
-                }
-            }
-            return (!out.is_empty()).then_some(out);
-        }
-    }
-    None
-}
-
-fn value_of_zero(
-    graph: &Graph,
-    e: NodeId,
-) -> bool {
-    value(graph, e).is_none_or(|v| v.abs() < 1e-9)
-}
-
 /// Radicals of any index: each radical `r = b^(p/q)` is a generator with the
 /// relation `r^q = b^p`, and the resultant with respect to `r` removes it
 /// from the numerator (one radical at a time). Square roots alone are left

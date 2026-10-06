@@ -293,7 +293,7 @@ fn families(
     let (a_s, b_s) = split_parity(&by_s, gc);
     let by_c = reduce_circle(&numer, gs, gc, gs, gc)?;
     let (a_c, b_c) = split_parity(&by_c, gs);
-    let mut add_theta = |graph: &mut Graph, base: NodeId, period: &BigRational, theta: &mut Vec<Family>| {
+    let add_theta = |graph: &mut Graph, base: NodeId, period: &BigRational, theta: &mut Vec<Family>| {
         theta.push(Family { base, rational: None, period: period.clone() });
         let _ = graph;
     };
