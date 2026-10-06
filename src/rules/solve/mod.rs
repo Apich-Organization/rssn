@@ -77,7 +77,10 @@ use super::poly::repr::Poly;
 use super::poly::to_groebner;
 use super::poly::univariate;
 
+mod elim;
 mod heuristics;
+mod normalize;
+mod symbolic;
 #[cfg(test)]
 mod probe;
 
@@ -177,6 +180,10 @@ fn rational(
 
 const MAX_DEPTH: usize = 8;
 
+pub(super) fn cap_default() -> usize {
+    Limits::default().terms
+}
+
 /// Solves `expr = 0` for `x`. `None` means "could not solve"; `Some` is
 /// the complete list of solutions that were found on principal branches.
 pub(crate) fn solve_for(
@@ -197,7 +204,7 @@ pub(crate) fn solve_for(
     }
     // Write exp(n*u) as exp(u)^n so that `exp(2*x) - 3*exp(x) + 2` is a
     // polynomial in the single generator exp(x).
-    let term = split_integer_multiples(graph, term);
+    let term = normalize::exponentials(graph, term, symbol);
     let mut gens = Gens::default();
     let gx = gens.index(graph, x);
     let fraction = ratio(graph, &mut gens, term, Limits::default())?;
@@ -207,7 +214,9 @@ pub(crate) fn solve_for(
         .into_iter()
         .filter(|&g| gens.node(g).is_some_and(|n| graph.depends_on(graph.find(n), symbol)))
         .collect();
+    let split = if dependent.len() >= 2 { split_by_factors(graph, &gens, &fraction.numer, x, depth) } else { None };
     let candidates = match dependent.as_slice() {
+        | _ if split.is_some() => split.unwrap_or_default(),
         | [] => Vec::new(),
         | &[g] if g == gx => polynomial_roots(graph, &gens, &fraction.numer, gx)?,
         | &[g] => {
@@ -234,17 +243,7 @@ pub(crate) fn solve_for(
     // Discard candidates at which the original expression is not zero
     // (poles of a cancelled denominator, roots introduced by squaring),
     // wherever that can be checked numerically.
-    let mut solutions: Vec<NodeId> = Vec::new();
-    for candidate in candidates {
-        let substituted = graph.substitute(term, x, candidate);
-        let keep = match graph.eval(substituted, &Env::numeric(0.0)) {
-            | Some(v) => v.abs() <= 1e-7,
-            | None => true,
-        };
-        if keep && !solutions.iter().any(|&s| graph.same(s, candidate) || s == candidate) {
-            solutions.push(candidate);
-        }
-    }
+    let mut solutions = filter_candidates(graph, term, x, candidates);
     // Ascending order when every solution is a number.
     let values: Option<Vec<f64>> = solutions.iter().map(|&s| graph.eval(s, &Env::numeric(0.0))).collect();
     if let Some(values) = values {
@@ -254,6 +253,103 @@ pub(crate) fn solve_for(
         solutions = keyed.into_iter().map(|(_, node)| node).collect();
     }
     Some(solutions)
+}
+
+/// When the numerator factors over `Q` into several pieces that involve
+/// the unknown, the solutions are those of the pieces.
+fn split_by_factors(
+    graph: &mut Graph,
+    gens: &Gens,
+    numer: &Poly,
+    x: NodeId,
+    depth: usize,
+) -> Option<Vec<NodeId>> {
+    let symbol = graph.symbol_of(x)?;
+    let vars = numer.support();
+    let (_, factors) = crate::rules::poly::multifactor::factor(numer, &vars)?;
+    let pieces: Vec<Poly> = factors
+        .into_iter()
+        .map(|(f, _)| f)
+        .filter(|f| f.support().into_iter().any(|g| gens.node(g).is_some_and(|n| graph.depends_on(graph.find(n), symbol))))
+        .collect();
+    if pieces.len() < 2 {
+        return None;
+    }
+    let mut out = Vec::new();
+    for piece in pieces {
+        let term = to_term(graph, gens, &piece);
+        out.extend(solve_for(graph, term, x, depth + 1)?);
+    }
+    Some(out)
+}
+
+/// Generic assignments of the free symbols of `nodes` (other than `skip`)
+/// for numeric spot checks of formulas in several parameters.
+pub(crate) fn sample_envs(
+    graph: &Graph,
+    nodes: &[NodeId],
+    skip: Option<SymbolId>,
+) -> Vec<Env> {
+    let mut symbols: Vec<SymbolId> = Vec::new();
+    for &node in nodes {
+        for &s in graph.free_symbols(graph.find(node)) {
+            if Some(s) != skip && !symbols.contains(&s) {
+                symbols.push(s);
+            }
+        }
+    }
+    const BASE: [f64; 6] = [1.3, 0.7, 2.1, 0.45, 1.7, 0.9];
+    (0..4_usize)
+        .map(|k| {
+            let mut env = Env::numeric(0.0);
+            for (i, &s) in symbols.iter().enumerate() {
+                let magnitude = BASE.get((i + 2 * k) % 6).copied().unwrap_or(1.0) * (1.0 + 0.11 * f64::from(u8::try_from(k).unwrap_or(0)));
+                let sign = if k > 0 && (i + k) % 3 == 0 { -1.0 } else { 1.0 };
+                env.bind(s, sign * magnitude);
+            }
+            env
+        })
+        .collect()
+}
+
+/// The candidates that make `term` vanish. Candidates with parameters are
+/// spot-checked at several assignments: one that is finite and wrong at any
+/// of them is discarded, one that is undefined everywhere is kept (it may
+/// be real elsewhere in the parameter space).
+pub(crate) fn filter_candidates(
+    graph: &mut Graph,
+    term: NodeId,
+    x: NodeId,
+    candidates: Vec<NodeId>,
+) -> Vec<NodeId> {
+    let symbol = graph.symbol_of(x);
+    let mut solutions: Vec<NodeId> = Vec::new();
+    for candidate in candidates {
+        let substituted = graph.substitute(term, x, candidate);
+        let free = graph.free_symbols(graph.find(substituted)).to_vec();
+        let keep = if free.is_empty() {
+            match graph.eval(substituted, &Env::numeric(0.0)) {
+                | Some(v) => v.abs() <= 1e-7,
+                | None => true,
+            }
+        } else {
+            let mut wrong = false;
+            for env in sample_envs(graph, &[substituted, candidate], symbol) {
+                let (Some(residual), Some(at)) = (graph.eval(substituted, &env), graph.eval(candidate, &env)) else {
+                    continue;
+                };
+                if residual.is_finite() && at.is_finite() && residual.abs() > 1e-7 * (1.0 + at.abs().powi(3)) {
+                    wrong = true;
+                    break;
+                }
+            }
+            !wrong
+        };
+        if keep && !solutions.iter().any(|&s| graph.same(s, candidate) || s == candidate) {
+            solutions.push(candidate);
+        }
+    }
+    solutions
 }
 
 /// `sqrt(u)` written `u^(1/2)` throughout, so that one radical heuristic
@@ -421,71 +517,6 @@ fn solve_inequality(
     })
 }
 
-/// Rewrites `exp(n*u)` as `exp(u)^n` and `b^(n*u)` as `(b^u)^n` for
-/// integer literals `n`, throughout the concrete term `term`.
-fn split_integer_multiples(
-    graph: &mut Graph,
-    term: NodeId,
-) -> NodeId {
-    let exp = graph.ops().lookup("exp");
-    let mut done: std::collections::HashMap<NodeId, NodeId> = std::collections::HashMap::new();
-    let mut stack = vec![(term, false)];
-    while let Some((node, expanded)) = stack.pop() {
-        if done.contains_key(&node) {
-            continue;
-        }
-        let children = graph.children(node).to_vec();
-        if children.is_empty() {
-            done.insert(node, node);
-            continue;
-        }
-        if !expanded {
-            stack.push((node, true));
-            stack.extend(children.iter().filter(|c| !done.contains_key(c)).map(|&c| (c, false)));
-            continue;
-        }
-        let rebuilt: Vec<NodeId> = children.iter().map(|c| done.get(c).copied().unwrap_or(*c)).collect();
-        let op = graph.op(node);
-        // The argument that may carry the integer multiple: the only
-        // argument of exp, the exponent of a power.
-        let exponent_index = if Some(op) == exp {
-            Some(0)
-        } else if op == core::POW {
-            Some(1)
-        } else {
-            None
-        };
-        let split = exponent_index.and_then(|index| {
-            let argument = *rebuilt.get(index)?;
-            if graph.op(argument) != core::MUL {
-                return None;
-            }
-            let factors = graph.children(argument).to_vec();
-            let position = factors.iter().position(|&f| {
-                graph.as_number(f).and_then(Number::to_i64).is_some_and(|n| n.abs() > 1)
-            })?;
-            let multiple = *factors.get(position)?;
-            let rest: Vec<NodeId> =
-                factors.iter().enumerate().filter(|&(i, _)| i != position).map(|(_, &f)| f).collect();
-            Some((index, multiple, product(graph, &rest)))
-        });
-        let new = match split {
-            | Some((index, multiple, rest)) => {
-                let mut inner_args = rebuilt.clone();
-                if let Some(slot) = inner_args.get_mut(index) {
-                    *slot = rest;
-                }
-                let inner = graph.node(op, &inner_args);
-                graph.node(core::POW, &[inner, multiple])
-            },
-            | None if rebuilt == children => node,
-            | None => graph.try_node(op, &rebuilt).unwrap_or(node),
-        };
-        done.insert(node, new);
-    }
-    done.get(&term).copied().unwrap_or(term)
-}
-
 /// Solves `g(x) = value` for `x`, where `g` is the term `inner`.
 fn invert(
     graph: &mut Graph,
@@ -568,34 +599,8 @@ fn polynomial_roots(
         roots.extend(rational_polynomial_roots(graph, &numbers)?);
         return Some(roots);
     }
-    // Symbolic coefficients: formulas for degree one and two.
-    let terms: Vec<NodeId> = coefficients.iter().map(|c| to_term(graph, gens, c)).collect();
-    match *terms.as_slice() {
-        | [c0, c1] => {
-            let minus_one = graph.int(-1);
-            let inverse = reciprocal(graph, c1);
-            roots.push(product(graph, &[minus_one, c0, inverse]));
-        },
-        | [_, _, _] => {
-            let (c, b, a) = (coefficients.first()?, coefficients.get(1)?, coefficients.get(2)?);
-            let cap = Limits::default().terms;
-            let four_ac = a.mul(c, cap)?.scale(&Number::from(4));
-            let discriminant = to_term(graph, gens, &b.mul(b, cap)?.sub(&four_ac));
-            let half = graph.num(Number::fraction(1, 2)?);
-            let root = graph.node(core::POW, &[discriminant, half]);
-            let neg_b = to_term(graph, gens, &b.neg());
-            let two_a = to_term(graph, gens, &a.scale(&Number::from(2)));
-            let inverse = reciprocal(graph, two_a);
-            for sign in [-1, 1] {
-                let s = graph.int(sign);
-                let signed_root = product(graph, &[s, root]);
-                let numerator = graph.node(core::ADD, &[neg_b, signed_root]);
-                roots.push(product(graph, &[numerator, inverse]));
-            }
-        },
-        | _ => return None,
-    }
-    Some(roots)
+    // Symbolic coefficients: factor over the parameters, then formulas.
+    symbolic::roots(graph, gens, poly, generator, 0)
 }
 
 /// Real roots of a polynomial with rational coefficients (ascending
