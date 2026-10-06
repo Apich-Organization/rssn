@@ -346,6 +346,9 @@ impl Integrator<'_, '_> {
         if let Some(found) = self.substitution(f, depth) {
             return Some(found);
         }
+        if let Some(found) = self.radicand_monomial_denominator(f, depth) {
+            return Some(found);
+        }
         self.by_parts(f, depth)
     }
 
@@ -597,6 +600,67 @@ impl Integrator<'_, '_> {
             pieces.push(self.partial_fraction(&piece.factor, base, piece.power, &piece.numerator)?);
         }
         Some(self.add(&pieces))
+    }
+
+    /// `(N / (c x^m))^q` rewritten as `N^q c^(-q) x^(-m q)` (for `x > 0`;
+    /// the result is verified like every other): radicands such as
+    /// `a - 1/x²` hide a substitution behind a monomial denominator.
+    fn radicand_monomial_denominator(
+        &mut self,
+        f: NodeId,
+        depth: usize,
+    ) -> Option<NodeId> {
+        let x = self.x;
+        let mut changed = false;
+        let mut rewritten = f;
+        let mut stack = vec![f];
+        let mut seen = Vec::new();
+        while let Some(node) = stack.pop() {
+            if seen.contains(&node) {
+                continue;
+            }
+            seen.push(node);
+            stack.extend_from_slice(self.cx.graph.children(node));
+            let (true, &[base, exponent]) = (self.cx.graph.op(node) == core::POW, self.cx.graph.children(node)) else {
+                continue;
+            };
+            let Some(q) = self.number(exponent).and_then(|n| n.to_rational()) else {
+                continue;
+            };
+            if q.is_integer() || self.cx.graph.op(base) != core::ADD || !self.depends(base) {
+                continue;
+            }
+            let mut gens = Gens::default();
+            let gx = gens.index(self.cx.graph, x);
+            let Some(fraction) = ratio(self.cx.graph, &mut gens, base, Limits::default()) else {
+                continue;
+            };
+            let Some((mono, coeff)) = fraction.denom.leading().map(|(m, c)| (m.clone(), c.clone())) else {
+                continue;
+            };
+            if fraction.denom.len() != 1 || mono.iter().any(|&(g, _)| g != gx) {
+                continue;
+            }
+            let m = mono.iter().find(|&&(g, _)| g == gx).map_or(0, |&(_, e)| e);
+            if m == 0 {
+                continue;
+            }
+            let numer = to_term(self.cx.graph, &gens, &fraction.numer);
+            let c = self.cx.graph.num(coeff);
+            let minus_q = self.cx.graph.num(Number::rat(-q.clone()));
+            let x_power = self.cx.graph.num(Number::rat(-(q.clone() * BigRational::from_integer(BigInt::from(m)))));
+            let n_q = self.pow(numer, exponent);
+            let c_q = self.pow(c, minus_q);
+            let x_q = self.pow(x, x_power);
+            let replacement = self.mul(&[n_q, c_q, x_q]);
+            rewritten = self.cx.graph.replace_subterm(rewritten, node, replacement);
+            changed = true;
+        }
+        if !changed {
+            return None;
+        }
+        let rewritten = self.cx.simplify(rewritten);
+        self.integrate(rewritten, depth + 1)
     }
 
     /// Rational functions whose coefficients involve parameters, with a

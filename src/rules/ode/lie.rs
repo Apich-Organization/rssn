@@ -352,6 +352,318 @@ pub(super) fn first_order(
     None
 }
 
+// ---------------------------------------------------------------------------
+// Higher-order equations
+
+/// `D f = f_x + Σ p_{k+1} ∂f/∂p_k` with `p_0 = y` (the `jets` are
+/// `y, y', y'', …`, extended on demand).
+fn total_x(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    x: NodeId,
+    jets: &mut Vec<NodeId>,
+) -> Option<NodeId> {
+    let mut terms = vec![derivative(cx.graph, f, x)?];
+    let count = jets.len();
+    for k in 0..count {
+        let partial = derivative(cx.graph, f, jets[k])?;
+        let partial = cx.simplify(partial);
+        if cx.is_zero(partial) {
+            continue;
+        }
+        if k + 1 == jets.len() {
+            let symbol = cx.graph.interner_mut().fresh_symbol(&format!("y{}", k + 1));
+            jets.push(cx.graph.symbol_node(symbol));
+        }
+        terms.push(mul(cx.graph, &[jets[k + 1], partial]));
+    }
+    let sum = add(cx.graph, &terms);
+    Some(cx.simplify(sum))
+}
+
+/// Point symmetries `(ξ, η)` of `y^(n) = ω(x, y, …, y^(n-1))` with
+/// bivariate polynomial infinitesimals of degree ≤ 2, from the prolonged
+/// symmetry condition `η^(n) = ξ ω_x + η ω_y + Σ_k η^(k) ω_{y^(k)}` on
+/// solutions, where `η^(k) = D^k Q + ξ y^(k+1)` and `Q = η - ξ y'`.
+pub(super) fn higher_order_symmetries(
+    cx: &mut Cx<'_>,
+    problem: &Problem,
+    omega: NodeId,
+) -> Option<Vec<(NodeId, NodeId)>> {
+    let n = problem.order();
+    let x = problem.x;
+    let mut jets: Vec<NodeId> = problem.stand[..n].to_vec();
+    let y = jets[0];
+    let basis = monomials(2);
+    let mut unknowns = Vec::new();
+    let mut xi_terms = Vec::new();
+    let mut eta_terms = Vec::new();
+    for &(i, j) in &basis {
+        let (px, py) = (power(cx.graph, x, i), power(cx.graph, y, j));
+        let m = mul(cx.graph, &[px, py]);
+        for terms in [&mut xi_terms, &mut eta_terms] {
+            let symbol = cx.graph.interner_mut().fresh_symbol("a");
+            let u = cx.graph.symbol_node(symbol);
+            unknowns.push(u);
+            terms.push(mul(cx.graph, &[u, m]));
+        }
+    }
+    let xi = add(cx.graph, &xi_terms);
+    let eta = add(cx.graph, &eta_terms);
+    let minus = cx.graph.int(-1);
+    // Q = η - ξ y'
+    let q = {
+        let t = mul(cx.graph, &[minus, xi, jets[1]]);
+        add(cx.graph, &[eta, t])
+    };
+    // η^(k) for k = 1..n.
+    let mut prolonged = Vec::with_capacity(n + 1);
+    let mut d = q;
+    for k in 1..=n {
+        d = total_x(cx, d, x, &mut jets)?;
+        while jets.len() <= k + 1 {
+            let symbol = cx.graph.interner_mut().fresh_symbol(&format!("y{}", jets.len()));
+            jets.push(cx.graph.symbol_node(symbol));
+        }
+        let shift = mul(cx.graph, &[xi, jets[k + 1]]);
+        prolonged.push(add(cx.graph, &[d, shift]));
+    }
+    // Condition, then on shell: y^(n) → ω, y^(n+1) → D ω.
+    let (omega_x, omega_y) = (derivative(cx.graph, omega, x)?, derivative(cx.graph, omega, y)?);
+    let mut rhs = vec![mul(cx.graph, &[xi, omega_x]), mul(cx.graph, &[eta, omega_y])];
+    for k in 1..n {
+        let partial = derivative(cx.graph, omega, jets[k])?;
+        rhs.push(mul(cx.graph, &[prolonged[k - 1], partial]));
+    }
+    let rhs = add(cx.graph, &rhs);
+    let mut condition = sub(cx.graph, prolonged[n - 1], rhs);
+    let mut omega_jets: Vec<NodeId> = problem.stand[..n].to_vec();
+    let d_omega = total_x(cx, omega, x, &mut omega_jets)?;
+    // D ω may reference y^(n) (as jets[n]); replace it by ω as well.
+    let d_omega = cx.graph.substitute(d_omega, omega_jets.get(n).copied().unwrap_or(jets[n]), omega);
+    condition = cx.graph.substitute(condition, jets[n + 1], d_omega);
+    condition = cx.graph.substitute(condition, jets[n], omega);
+    let solutions = solve_identity(cx.graph, condition, &unknowns)?;
+    let mut out = Vec::new();
+    for v in solutions {
+        let mut pair = [xi, eta];
+        for f in &mut pair {
+            for (u, value) in unknowns.iter().zip(&v) {
+                let value = cx.graph.num(Number::rat(value.clone()));
+                *f = cx.graph.substitute(*f, *u, value);
+            }
+            *f = cx.simplify(*f);
+        }
+        if !(cx.is_zero(pair[0]) && cx.is_zero(pair[1])) {
+            out.push((pair[0], pair[1]));
+        }
+    }
+    Some(out)
+}
+
+/// Canonical coordinates `(r, s)` of `X = ξ ∂x + η ∂y`: `X r = 0`,
+/// `X s = 1`. `r` comes from the characteristic equation `dy/dx = η/ξ`
+/// (solved by the ODE solver), `s` from `∫ dx/ξ` along characteristics (or
+/// `∫ dy/η` when `ξ = 0`).
+fn canonical_coordinates(
+    cx: &mut Cx<'_>,
+    x: NodeId,
+    y: NodeId,
+    xi: NodeId,
+    eta: NodeId,
+    depth: u32,
+) -> Option<(NodeId, NodeId)> {
+    if cx.is_zero(xi) {
+        // r = x, s = ∫ dy / η(x, y).
+        let minus = cx.graph.int(-1);
+        let inverse = cx.graph.node(core::POW, &[eta, minus]);
+        let s = integrate(cx, inverse, y)?;
+        return Some((x, s));
+    }
+    // dY/dx = η(x, Y)/ξ(x, Y).
+    let f_symbol = cx.graph.interner_mut().fresh_symbol("Y");
+    let f = cx.graph.symbol_node(f_symbol);
+    let big_y = cx.graph.node(core::APPLY, &[f, x]);
+    let minus = cx.graph.int(-1);
+    let inverse = cx.graph.node(core::POW, &[xi, minus]);
+    let slope = mul(cx.graph, &[eta, inverse]);
+    let slope = cx.graph.substitute(slope, y, big_y);
+    let diff = cx.graph.ops().lookup("diff")?;
+    let dy = cx.graph.node(diff, &[big_y, x]);
+    let equation = cx.graph.node(core::EQ, &[dy, slope]);
+    let (_, answer) = super::solve_equation(cx, equation, big_y, depth + 1)?;
+    // The constant of the characteristic is the invariant r.
+    let c1 = cx.graph.sym("C1");
+    let relation = super::super::solve::as_expression(cx.graph, answer);
+    let relation = cx.graph.replace_subterm(relation, big_y, y);
+    let r = *super::solve_for(cx.graph, relation, c1, 0)?.first()?;
+    let r = cx.simplify(r);
+    // Along a characteristic y = Y(x; r): s = ∫ dx / ξ(x, Y(x; r)).
+    let r_symbol = cx.graph.interner_mut().fresh_symbol("rho");
+    let rho = cx.graph.symbol_node(r_symbol);
+    let level = sub(cx.graph, r, rho);
+    let along = *super::solve_for(cx.graph, level, y, 0)?.first()?;
+    let xi_along = cx.graph.substitute(xi, y, along);
+    let integrand = cx.graph.node(core::POW, &[xi_along, minus]);
+    let integrand = cx.simplify(integrand);
+    let s = integrate(cx, integrand, x)?;
+    let s = cx.graph.substitute(s, rho, r);
+    let s = cx.simplify(s);
+    Some((r, s))
+}
+
+/// Second-order equations by one point symmetry: canonical coordinates
+/// turn `y'' = ω` into a first-order equation for `v = ds/dr`.
+pub(super) fn second_order(
+    cx: &mut Cx<'_>,
+    problem: &mut Problem,
+    depth: u32,
+) -> Option<NodeId> {
+    if problem.order() != 2 || depth > 2 {
+        return None;
+    }
+    let (x, y, dy, ddy) = (problem.x, problem.stand[0], problem.stand[1], problem.stand[2]);
+    let omega = *super::solve_for(cx.graph, problem.expr, ddy, 0)?.first()?;
+    let omega = cx.simplify(omega);
+    let symmetries = higher_order_symmetries(cx, problem, omega)?;
+    for (xi, eta) in symmetries {
+        let saved = problem.constants;
+        if let Some(found) = reduce_by_symmetry(cx, problem, x, y, dy, ddy, xi, eta, depth) {
+            return Some(found);
+        }
+        problem.constants = saved;
+    }
+    None
+}
+
+#[allow(clippy::too_many_arguments)] // the coordinates and stand-ins of one problem
+fn reduce_by_symmetry(
+    cx: &mut Cx<'_>,
+    problem: &mut Problem,
+    x: NodeId,
+    y: NodeId,
+    dy: NodeId,
+    ddy: NodeId,
+    xi: NodeId,
+    eta: NodeId,
+    depth: u32,
+) -> Option<NodeId> {
+    let (r, s) = canonical_coordinates(cx, x, y, xi, eta, depth)?;
+    // v = (s_x + s_y y')/(r_x + r_y y'), so y' = (s_x - v r_x)/(v r_y - s_y).
+    let (rx, ry, sx, sy) = (
+        derivative(cx.graph, r, x)?,
+        derivative(cx.graph, r, y)?,
+        derivative(cx.graph, s, x)?,
+        derivative(cx.graph, s, y)?,
+    );
+    let v_symbol = cx.graph.interner_mut().fresh_symbol("v");
+    let v = cx.graph.symbol_node(v_symbol);
+    let w_symbol = cx.graph.interner_mut().fresh_symbol("w");
+    let w = cx.graph.symbol_node(w_symbol);
+    let minus = cx.graph.int(-1);
+    let y1 = {
+        let top = {
+            let t = mul(cx.graph, &[minus, v, rx]);
+            add(cx.graph, &[sx, t])
+        };
+        let bottom = {
+            let t = mul(cx.graph, &[v, ry]);
+            let u = mul(cx.graph, &[minus, sy]);
+            add(cx.graph, &[t, u])
+        };
+        let inverse = cx.graph.node(core::POW, &[bottom, minus]);
+        let q = mul(cx.graph, &[top, inverse]);
+        cx.simplify(q)
+    };
+    // y'' = Y1_x + Y1_y Y1 + Y1_v w (r_x + r_y Y1)
+    let y2 = {
+        let a = derivative(cx.graph, y1, x)?;
+        let b = derivative(cx.graph, y1, y)?;
+        let c = derivative(cx.graph, y1, v)?;
+        let speed = {
+            let t = mul(cx.graph, &[ry, y1]);
+            add(cx.graph, &[rx, t])
+        };
+        let bt = mul(cx.graph, &[b, y1]);
+        let ct = mul(cx.graph, &[c, w, speed]);
+        let sum = add(cx.graph, &[a, bt, ct]);
+        cx.simplify(sum)
+    };
+    let mut reduced = cx.graph.substitute(problem.expr, ddy, y2);
+    reduced = cx.graph.substitute(reduced, dy, y1);
+    // Express x, y through (R, S) and fix S: the equation does not depend
+    // on S (checked numerically at two values).
+    let big_r_symbol = cx.graph.interner_mut().fresh_symbol("R");
+    let big_r = cx.graph.symbol_node(big_r_symbol);
+    let level_r = sub(cx.graph, r, big_r);
+    let y_of = *super::solve_for(cx.graph, level_r, y, 0)?.first()?;
+    let s_on = cx.graph.substitute(s, y, y_of);
+    let in_rs = |cx: &mut Cx<'_>, s0: i64| -> Option<NodeId> {
+        let target = cx.graph.int(s0);
+        let level_s = sub(cx.graph, s_on, target);
+        let x_of = *super::solve_for(cx.graph, level_s, x, 0)?.first()?;
+        let y_at = cx.graph.substitute(y_of, x, x_of);
+        let e = cx.graph.substitute(reduced, y, y_at);
+        let e = cx.graph.substitute(e, x, x_of);
+        Some(cx.simplify(e))
+    };
+    let (e0, e1) = (in_rs(cx, 0)?, in_rs(cx, 1)?);
+    for point in [0.37, 0.81, 1.43] {
+        let mut env = crate::graph::Env::numeric(0.0);
+        env.bind(big_r_symbol, point);
+        env.bind(v_symbol, 0.6 + point);
+        env.bind(w_symbol, 0.3 + point);
+        let others: Vec<_> = cx.graph.free_symbols(cx.graph.find(e0)).to_vec();
+        for sym in others {
+            if sym != big_r_symbol && sym != v_symbol && sym != w_symbol {
+                env.bind(sym, 0.9);
+            }
+        }
+        let (a, b) = (cx.graph.eval(e0, &env)?, cx.graph.eval(e1, &env)?);
+        // Invariance up to a common non-zero factor.
+        if (a.abs() < 1e-12) != (b.abs() < 1e-12) {
+            return None;
+        }
+    }
+    // First-order equation for V(R).
+    let f_symbol = cx.graph.interner_mut().fresh_symbol("V");
+    let f = cx.graph.symbol_node(f_symbol);
+    let big_v = cx.graph.node(core::APPLY, &[f, big_r]);
+    let diff = cx.graph.ops().lookup("diff")?;
+    let dv = cx.graph.node(diff, &[big_v, big_r]);
+    let first = cx.graph.substitute(e0, w, dv);
+    let first = cx.graph.substitute(first, v, big_v);
+    let zero = cx.graph.int(0);
+    let equation = cx.graph.node(core::EQ, &[first, zero]);
+    let (_, answer) = super::solve_equation(cx, equation, big_v, depth + 1)?;
+    let &[lhs, slope] = cx.graph.children(answer) else {
+        return None;
+    };
+    if lhs != big_v {
+        return None;
+    }
+    problem.constants = problem.constants.max(constants_in(cx, slope));
+    // s = ∫ V(R) dR + C, R = r(x, y).
+    let integral = integrate(cx, slope, big_r)?;
+    let c = problem.constant(cx.graph);
+    let integral = cx.graph.substitute(integral, big_r, r);
+    let rhs = add(cx.graph, &[integral, c]);
+    let relation = sub(cx.graph, s, rhs);
+    implicit(cx, problem, relation)
+}
+
+fn constants_in(
+    cx: &Cx<'_>,
+    node: NodeId,
+) -> usize {
+    cx.graph
+        .free_symbols(cx.graph.find(node))
+        .iter()
+        .filter_map(|&s| cx.graph.interner().symbol_name(s).strip_prefix('C')?.parse::<usize>().ok())
+        .max()
+        .unwrap_or(0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

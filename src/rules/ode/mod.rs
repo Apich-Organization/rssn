@@ -79,7 +79,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let series = i.op(OpDescriptor::new("ode_series", Arity::Fixed(4)).flags(OpFlags::HEAVY).cost(100))?;
     let rsolve = i.op(OpDescriptor::new("rsolve_z", Arity::Variadic).flags(OpFlags::HEAVY).cost(100))?;
     let classify = i.op(OpDescriptor::new("ode_classify", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("ode/extras", Tier::Reduce, Extras { series, rsolve, classify });
+    let symmetries = i.op(OpDescriptor::new("ode_symmetries", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("ode/extras", Tier::Reduce, Extras { series, rsolve, classify, symmetries });
     i.kernel("ode/odeint", Tier::Reduce, Odeint { odeint });
     Ok(())
 }
@@ -1154,6 +1155,7 @@ fn dispatch(
         reduce::autonomous,
         reduce::scale_invariant,
         reduce::equidimensional_in_x,
+        lie::second_order,
     ] {
         if let Some(found) = attempt(cx, problem, method) {
             return Some(found);
@@ -1205,11 +1207,12 @@ struct Extras {
     series: OpId,
     rsolve: OpId,
     classify: OpId,
+    symmetries: OpId,
 }
 
 impl Kernel for Extras {
     fn ops(&self) -> Vec<OpId> {
-        vec![self.series, self.rsolve, self.classify]
+        vec![self.series, self.rsolve, self.classify, self.symmetries]
     }
 
     fn reduce(
@@ -1230,6 +1233,11 @@ impl Kernel for Extras {
                 | [e, u, c] => series_method::rsolve(cx, e, u, Some(c)),
                 | _ => None,
             }
+        } else if op == self.symmetries {
+            match *args.as_slice() {
+                | [e, u] => symmetry_list(cx, e, u),
+                | _ => None,
+            }
         } else {
             match *args.as_slice() {
                 | [e, u] => classify(cx, e, u),
@@ -1238,6 +1246,34 @@ impl Kernel for Extras {
         };
         found.map_or(Outcome::Pass, Outcome::Pinned)
     }
+}
+
+/// `ode_symmetries(eq, y(x))`: point symmetries `list(ξ, η)` with
+/// polynomial infinitesimals (degree ≤ 2 in `x` and `y`).
+fn symmetry_list(
+    cx: &mut Cx<'_>,
+    equation: NodeId,
+    unknown: NodeId,
+) -> Option<NodeId> {
+    let problem = parse(cx.graph, equation, unknown)?;
+    let order = problem.order();
+    let top = problem.stand[order];
+    let omega = *solve_for(cx.graph, problem.expr, top, 0)?.first()?;
+    let omega = cx.simplify(omega);
+    let pairs = if order == 1 {
+        lie::first_order_symmetries(cx, problem.x, problem.stand[0], omega, 2)
+    } else {
+        lie::higher_order_symmetries(cx, &problem, omega)?
+    };
+    let items: Vec<NodeId> = pairs
+        .into_iter()
+        .map(|(xi, eta)| {
+            let eta = cx.graph.substitute(eta, problem.stand[0], unknown);
+            let xi = cx.graph.substitute(xi, problem.stand[0], unknown);
+            cx.graph.node(core::LIST, &[xi, eta])
+        })
+        .collect();
+    Some(cx.graph.node(core::LIST, &items))
 }
 
 /// The classes an equation belongs to, as a list of symbols, in the
@@ -1561,6 +1597,24 @@ mod tests {
         assert!(reduced && text.contains("exp(4*t)") && text.contains("C2"), "{text}");
         let three = run("dsolve(list(diff(a(t), t) = b(t), diff(b(t), t) = c(t), diff(c(t), t) = a(t)), list(a(t), b(t), c(t)))");
         assert!(three.contains("exp(t)") && three.contains("C3"), "{three}");
+    }
+
+    #[test]
+    fn lie_point_symmetries_of_higher_order() {
+        // y'' = 0 has the eight-dimensional projective algebra sl(3).
+        let mut g = Graph::new();
+        let rules = crate::rules::standard();
+        let _ = &mut g;
+        let count = simplify(&rules, "ode_symmetries(diff(diff(y(x), x), x) = 0, y(x))");
+        assert_eq!(count.matches("list(").count() - 1, 8, "{count}");
+        // y'' = y'^2/y + y'/x has the scaling x ∂x and y ∂y; Lie reduction
+        // through canonical coordinates solves it.
+        let (text, reduced) = reduce_with(&rules, "dsolve(diff(diff(y(x), x), x) = diff(y(x), x)^2/y(x) - diff(y(x), x)/x, y(x))", &[]);
+        assert!(reduced && text.contains("C1"), "{text}");
+        // Only the symmetry ∂x + ∂y reduces y'' = (y - x)^(-3): canonical
+        // coordinates r = y - x, s = x.
+        let (text, reduced) = reduce_with(&rules, "dsolve(diff(diff(y(x), x), x) = (y(x) - x)^(-3), y(x))", &[]);
+        assert!(reduced && text.contains("C2"), "{text}");
     }
 
     #[test]
