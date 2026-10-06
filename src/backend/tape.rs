@@ -1473,6 +1473,20 @@ mod tests {
     }
 
     #[test]
+    fn special_functions_lower_to_direct_calls() {
+        let mut g = Graph::new();
+        assert!(crate::graph::Engine::install(&mut g, &crate::rules::standard()).is_ok());
+        let root = g.parse("gamma(x) + erf(x) + besselj(1, x) + floor(x)").unwrap_or_else(|e| panic!("{e}"));
+        let x = g.interner_mut().symbol("x");
+        let tape = lower(&g, &[root], &[x], &[]).unwrap_or_else(|e| panic!("{e}")).optimise();
+        assert!(!tape.insts.iter().any(|i| matches!(i, Inst::Call(..))), "{:?}", tape.insts);
+        let mut out = [0.0];
+        tape.eval(&[2.5], &[], &mut out);
+        let want = 1.329_340_388_179_137 + 0.999_593_047_982_555 + 0.497_094_102_464_274_4 + 2.0;
+        assert!((out[0] - want).abs() < 1e-12, "{}", out[0]);
+    }
+
+    #[test]
     fn interval_enclosures_are_rigorous() {
         let t = tape("x^2 - 2*x*y + sin(x) + exp(-y^2)");
         let boxed = [Interval { lo: 0.9, hi: 1.1 }, Interval { lo: -0.2, hi: 0.3 }];

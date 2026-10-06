@@ -16,6 +16,8 @@ use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
+use crate::backend::Intrinsic;
+use crate::backend::Lowering;
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Facts;
@@ -137,6 +139,52 @@ fn zeta(s: f64) -> f64 {
         k += 2.0;
     }
     sum
+}
+
+extern "C" fn c_gamma(x: f64) -> f64 {
+    num::gamma_numerical(x)
+}
+
+extern "C" fn c_lgamma(x: f64) -> f64 {
+    lgamma(x)
+}
+
+extern "C" fn c_digamma(x: f64) -> f64 {
+    num::digamma_numerical(x)
+}
+
+extern "C" fn c_erf(x: f64) -> f64 {
+    num::erf_numerical(x)
+}
+
+extern "C" fn c_erfc(x: f64) -> f64 {
+    num::erfc_numerical(x)
+}
+
+extern "C" fn c_zeta(x: f64) -> f64 {
+    zeta(x)
+}
+
+extern "C" fn c_si(x: f64) -> f64 {
+    num::sine_integral(x)
+}
+
+extern "C" fn c_ci(x: f64) -> f64 {
+    num::cosine_integral(x)
+}
+
+extern "C" fn c_beta(
+    x: f64,
+    y: f64,
+) -> f64 {
+    beta(x, y)
+}
+
+extern "C" fn c_besselj(
+    n: f64,
+    x: f64,
+) -> f64 {
+    order_and_point(&[n, x], num::bessel_j)
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -320,6 +368,27 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             i.graph().ops_mut().set_attr(op, OnReals(on_reals));
         }
         registered.push((name, op));
+    }
+    // Compiled backends call these directly instead of through the generic
+    // evaluation shim.
+    let lowerings: [(&str, Lowering); 12] = [
+        ("gamma", Lowering::Extern1(c_gamma)),
+        ("lgamma", Lowering::Extern1(c_lgamma)),
+        ("digamma", Lowering::Extern1(c_digamma)),
+        ("erf", Lowering::Extern1(c_erf)),
+        ("erfc", Lowering::Extern1(c_erfc)),
+        ("zeta", Lowering::Extern1(c_zeta)),
+        ("si", Lowering::Extern1(c_si)),
+        ("ci", Lowering::Extern1(c_ci)),
+        ("beta", Lowering::Extern2(c_beta)),
+        ("besselj", Lowering::Extern2(c_besselj)),
+        ("floor", Lowering::Intrinsic(Intrinsic::Floor)),
+        ("ceil", Lowering::Intrinsic(Intrinsic::Ceil)),
+    ];
+    for (name, lowering) in lowerings {
+        if let Some(&(_, op)) = registered.iter().find(|r| r.0 == name) {
+            i.graph().ops_mut().set_attr(op, lowering);
+        }
     }
     let op_named = |name: &str| registered.iter().find(|r| r.0 == name).map(|r| r.1);
     let pi = i
