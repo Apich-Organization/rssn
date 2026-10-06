@@ -33,7 +33,7 @@
 //! | [`finite_field`] | `gf_*` (prime field), `gfp_*` (polynomials over GF(p)), `gfx_*` (extension fields GF(p)\[x\]/(m)) |
 //! | [`gf_factor`] | factorisation over GF(p): `gfp_squarefree`, `gfp_ddf`, `gfp_edf`, `gfp_factor`, `gfp_berlekamp`, `factor_mod`, `gfp_powmod`, `gfp_invmod` |
 //! | [`graphs`] | `graph`/`digraph` terms, `graph_*` queries, traversals, shortest paths, spanning trees, flows, matchings, colouring, isomorphism, products |
-//! | [`topology`] | `sc`, `sc_complex`, `sc_dimension`, `sc_simplices`, `sc_euler_characteristic`, `sc_boundary`, `sc_boundary_matrix`, `sc_coboundary_matrix`, `sc_chain_boundary`, `sc_betti`, `sc_cohomology_betti`, `sc_verify_boundary`, `sc_verify_coboundary`, `sc_components`, `sc_grid`, `sc_torus`, `vietoris_rips`, `vietoris_rips_filtration`, `betti_at_radius`, `persistence`, `euclidean_distance` |
+//! | [`topology`] | `sc`, `sc_complex`, `sc_dimension`, `sc_simplices`, `sc_euler_characteristic`, `sc_boundary`, `sc_boundary_matrix`, `sc_coboundary_matrix`, `sc_chain_boundary`, `sc_betti`, `sc_cohomology_betti`, `sc_verify_boundary`, `sc_verify_coboundary`, `sc_components`, `sc_grid`, `sc_torus`, `vietoris_rips`, `vietoris_rips_filtration`, `betti_at_radius`, `persistence`, `euclidean_distance`, `sc_homology`, `sc_homology_all`, `sc_reduced_homology`, `sc_cohomology`, `sc_homology_mod`, `sc_relative_homology`, `sc_union`, `sc_intersection`, `sc_is_subcomplex`, `sc_skeleton`, `sc_mayer_vietoris_check`, `sc_mayer_vietoris_ranks`, `sc_euler_from_betti`, `sc_verify_euler`, `sc_simplex`, `sc_sphere`, `sc_klein_bottle`, `sc_projective_plane`, `sc_dunce_cap`, `sc_cone`, `sc_suspension`, `sc_join`, `sc_wedge`, `sc_product`, `sc_fundamental_group`, `sc_fundamental_group_raw`, `sc_pi1_abelianization`, `presentation_abelianization`, `sc_is_simplicial_map`, `sc_induced_homology`, `sc_induced_homology_rank`, `persistent_homology`, `rips_filtration`, `rips_persistence`, `rips_persistence_diagram`, `bottleneck_distance`, `cubical_betti`, `cubical_euler_characteristic` |
 //! | [`fractal`] | `mandelbrot_escape`, `julia_escape`, `burning_ship_escape`, `multibrot_escape`, `newton_fractal_root`, `mandelbrot_iterate`, `mandelbrot_orbit`, `mandelbrot_fixed_points`, `mandelbrot_stability`, `complex_map_fixed_points`, `complex_map_stability`, `map_fixed_points`, `map_stability`, `lyapunov_exponent`, `logistic_iterate`, `logistic_bifurcation`, `logistic_lyapunov`, `lorenz`, `lorenz_orbit`, `lorenz_lyapunov`, `rossler_orbit`, `henon_orbit`, `tinkerbell_orbit`, `ifs_apply`, `ifs_generate`, `similarity_dimension`, `moran_dimension`, `box_counting`, `correlation_dimension`, `orbit_density`, `orbit_entropy` |
 //! | [`graphics`] | `translation_2d/3d`, `scaling_2d/3d`, `shear_2d`, `rotation_2d`, `rotation_3d_x/y/z`, `rotation_axis_angle`, `reflection_2d/3d`, `perspective`, `orthographic`, `look_at`, `apply_transform`, `apply_transform_vector`, `bezier`, `bezier_derivative`, `bezier_split`, `bspline`, `catmull_rom`, `quat_mul`, `quat_conj`, `quat_inverse`, `quat_norm`, `quat_normalize`, `quat_from_axis_angle`, `quat_rotate`, `quat_to_matrix`, `quat_slerp`, `mesh_transform`, `mesh_normals`, `mesh_triangulate`, `ray_sphere`, `ray_plane`, `ray_triangle`, `reflect`, `refract`, `barycentric` |
 //! | [`groups`] | `group` term; `cyclic_group`, `dihedral_group`, `symmetric_group`, `klein_four_group`, `group_from_table`; `group_elements`, `group_order`, `group_identity`, `group_mul`, `group_inverse`, `group_is_abelian`, `group_element_order`, `group_conjugacy_classes`, `group_center`, `group_is_valid`, `group_subgroups`, `group_cosets`, `group_is_normal`; `representation_is_valid`, `group_character`; `perm_compose`, `perm_inverse`, `perm_order`, `perm_cycles`, `perm_sign` |
@@ -115,6 +115,10 @@ pub(crate) enum V {
     Bool(bool),
     /// A float.
     Float(f64),
+    /// An exact rational.
+    Rat(BigRational),
+    /// A string literal.
+    Str(String),
     /// `list(...)`.
     List(Vec<Self>),
 }
@@ -145,6 +149,8 @@ impl V {
             | Self::Int(v) => graph.num(Number::Int(v)),
             | Self::Bool(b) => graph.lit(Payload::Bool(b)),
             | Self::Float(x) => graph.float(x),
+            | Self::Rat(r) => graph.num(Number::rat(r)),
+            | Self::Str(s) => graph.lit(Payload::Str(s.into())),
             | Self::List(items) => {
                 let nodes: Vec<NodeId> = items.into_iter().map(|v| v.build(graph)).collect();
                 graph.node(core::LIST, &nodes)

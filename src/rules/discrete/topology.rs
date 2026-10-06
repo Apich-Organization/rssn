@@ -30,6 +30,44 @@
 //! | `betti_at_radius(points, eps, max_dim)` | `list(b0, ..., b_max_dim)` of the Vietoris-Rips complex |
 //! | `persistence(points, max_eps, steps, max_dim)` | per dimension the list of `list(birth, death)` (naive algorithm: Betti numbers tracked over `steps + 1` radii) |
 //! | `euclidean_distance(p, q)` | the distance of two points (float) |
+//!
+//! # Exact and general homology
+//!
+//! Homology is computed over `Z` from the Smith normal form of the integer
+//! boundary matrices (`BigInt`, exact). A group is written `list(rank,
+//! list(t_1, ...))`: the free rank and the torsion coefficients, so `H_1(RP²)
+//! = Z/2` is `list(0, list(2))`. Simplicial maps are lists of vertex pairs
+//! `list(list(v, f(v)), ...)`. A *filtered* complex is `list(list(value,
+//! simplex), ...)`; infinite deaths of persistence bars are `oo`.
+//!
+//! | operator | value |
+//! |---|---|
+//! | `sc_homology(K, k)`, `sc_homology_all(K)` | `H_k(K; Z)` (resp. every degree) with torsion |
+//! | `sc_reduced_homology(K, k)` | reduced homology |
+//! | `sc_cohomology(K, k)` | `H^k(K; Z)` by universal coefficients (free part of `H_k`, torsion of `H_{k-1}`) |
+//! | `sc_homology_mod(K, k, p)` | `dim H_k(K; Z/p)` for a prime `p` |
+//! | `sc_relative_homology(K, L, k)` | `H_k(K, L; Z)` for a subcomplex `L` |
+//! | `sc_union(K, L)`, `sc_intersection(K, L)`, `sc_is_subcomplex(L, K)`, `sc_skeleton(K, d)` | set operations and skeleta |
+//! | `sc_mayer_vietoris_check(A, B)`, `sc_mayer_vietoris_ranks(A, B)` | whether the Mayer-Vietoris sequence of `A ∪ B` is exact at the level of ranks (with Euler characteristics adding up), and the ranks of its connecting maps |
+//! | `sc_euler_from_betti(K)`, `sc_verify_euler(K)` | `sum (-1)^k b_k`, and whether it equals the alternating cell count |
+//! | `sc_simplex(n)`, `sc_sphere(n)` | the `n`-simplex, the sphere `S^n` (boundary of the `(n+1)`-simplex) |
+//! | `sc_klein_bottle(m, n)` | triangulated Klein bottle (`m, n >= 3`) |
+//! | `sc_projective_plane(k)` | `k = 0`: the 6-vertex triangulation of `RP²`; `k >= 3`: a finer one (disc with `2k` boundary edges, antipodal points identified) |
+//! | `sc_dunce_cap(k)` | the dunce cap (`k >= 3` edges per boundary arc): contractible, not collapsible |
+//! | `sc_cone(K)`, `sc_suspension(K)`, `sc_join(K, L)` | cone, suspension, join |
+//! | `sc_wedge(K, L[, u, v])` | wedge sum (gluing the smallest vertices, or `u` of `K` to `v` of `L`) |
+//! | `sc_product(K, L)` | triangulated product (ordered chains of vertex pairs) |
+//! | `sc_fundamental_group(K)` | `list(n, relators)`: the edge-path presentation of `pi_1` of the component of the smallest vertex (spanning tree; a relator per triangle) after Tietze simplification; words are lists of nonzero integers, negative for inverses |
+//! | `sc_fundamental_group_raw(K)` | `list(n, relators, edges)` before simplification, with the edge of each generator |
+//! | `sc_pi1_abelianization(K)`, `presentation_abelianization(n, relators)` | the abelianisation by Smith normal form (agrees with `H_1`) |
+//! | `sc_is_simplicial_map(K, L, f)` | whether `f` sends simplices to simplices |
+//! | `sc_induced_homology(K, L, f, k)`, `sc_induced_homology_rank(K, L, f, k)` | the matrix (over `Q`, in homology bases chosen by the implementation) and rank of `f_*` on `H_k` |
+//! | `persistent_homology(filtration, max_dim)` | the barcode by the standard column reduction over `Z/2`: per dimension the list of `list(birth, death)` |
+//! | `rips_filtration(points, max_eps, max_dim)` | the Vietoris-Rips filtration with exact values (diameters) up to dimension `max_dim + 1` |
+//! | `rips_persistence(points, max_eps, max_dim)`, `rips_persistence_diagram(points, max_eps, max_dim)` | the barcodes `H_0 .. H_max_dim`; the same as a flat list of `list(dim, birth, death)` |
+//! | `bottleneck_distance(D1, D2)` | the bottleneck distance of two diagrams (lists of `list(birth, death)`) |
+//! | `cubical_betti(image[, 4 or 8])` | `list(b0, b1)` of a binary image (list of rows of 0/1): union of closed pixels (8-connected foreground, default) or 4-connected foreground |
+//! | `cubical_euler_characteristic(image[, 4 or 8])` | `b0 - b1` |
 
 use super::apply;
 use super::def;
@@ -49,8 +87,11 @@ use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::NodeId;
 use crate::graph::RuleError;
+use crate::kernels::homology as kh;
+use crate::kernels::qlinalg as ql;
 use crate::kernels::topology as kt;
 use crate::kernels::topology::Simplex;
+use std::collections::HashMap;
 
 /// Largest point cloud / `max_dim` / step count accepted.
 const MAX_POINTS: usize = 300;
@@ -416,6 +457,516 @@ fn euclidean_distance(
     (p.len() == q.len()).then(|| V::Float(kt::euclidean_distance(&p, &q)))
 }
 
+// ----------------------------------------------------------------------
+// Exact homology, standard complexes, fundamental groups, maps
+// ----------------------------------------------------------------------
+
+/// Largest number of simplices of one dimension for the exact (Smith
+/// normal form) operators.
+const MAX_EXACT: usize = 3000;
+/// Largest number of simplices of a filtration.
+const MAX_FILTRATION: usize = 400_000;
+/// Largest size of a triangulated product.
+const MAX_PRODUCT: usize = 200_000;
+
+fn exact_ok(complex: &[Simplex]) -> bool {
+    let top = kt::complex_dimension(complex).map_or(0, |d| d + 1);
+    (0..top).all(|k| kt::simplices_of_dim(complex, k).len() <= MAX_EXACT)
+}
+
+fn exact_complex(
+    g: &Graph,
+    n: NodeId,
+) -> Option<Vec<Simplex>> {
+    read_complex(g, n).filter(|c| exact_ok(c))
+}
+
+fn group_v(group: &kh::Group) -> V {
+    V::List(vec![V::uint(group.rank), V::List(group.torsion.iter().map(|t| V::Int(t.clone())).collect())])
+}
+
+fn sc_homology(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [k, d] = a else { return None };
+    let complex = exact_complex(cx.graph, *k)?;
+    Some(group_v(&kh::complex_chains(&complex).homology(idx(cx.graph, *d)?)))
+}
+
+fn sc_homology_all(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let cc = kh::complex_chains(&exact_complex(cx.graph, *a.first()?)?);
+    Some(V::List((0..cc.dims.len()).map(|k| group_v(&cc.homology(k))).collect()))
+}
+
+fn sc_reduced_homology(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [k, d] = a else { return None };
+    let complex = exact_complex(cx.graph, *k)?;
+    Some(group_v(&kh::reduced_homology(&kh::complex_chains(&complex), idx(cx.graph, *d)?)))
+}
+
+fn sc_cohomology(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [k, d] = a else { return None };
+    let complex = exact_complex(cx.graph, *k)?;
+    Some(group_v(&kh::complex_chains(&complex).cohomology(idx(cx.graph, *d)?)))
+}
+
+fn sc_homology_mod(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [k, d, p] = a else { return None };
+    let complex = exact_complex(cx.graph, *k)?;
+    let p = u64::try_from(idx(cx.graph, *p)?).ok().filter(|&p| p < (1 << 31) && kh::is_prime(p))?;
+    Some(V::uint(kh::complex_chains(&complex).homology_mod_p(idx(cx.graph, *d)?, p)))
+}
+
+fn sc_relative_homology(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [k, l, d] = a else { return None };
+    let complex = exact_complex(cx.graph, *k)?;
+    let sub = read_complex(cx.graph, *l)?;
+    if !kh::is_subcomplex(&sub, &complex) {
+        return None;
+    }
+    Some(group_v(&kh::relative_chains(&complex, &sub).homology(idx(cx.graph, *d)?)))
+}
+
+fn sc_union(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [k, l] = a else { return None };
+    let (k, l) = (read_complex(cx.graph, *k)?, read_complex(cx.graph, *l)?);
+    complex_v(cx.graph, &kh::union(&k, &l))
+}
+
+fn sc_intersection(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [k, l] = a else { return None };
+    let (k, l) = (read_complex(cx.graph, *k)?, read_complex(cx.graph, *l)?);
+    complex_v(cx.graph, &kh::intersection(&k, &l))
+}
+
+fn sc_is_subcomplex(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [l, k] = a else { return None };
+    Some(V::Bool(kh::is_subcomplex(&read_complex(cx.graph, *l)?, &read_complex(cx.graph, *k)?)))
+}
+
+fn sc_skeleton(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [k, d] = a else { return None };
+    let (complex, d) = (read_complex(cx.graph, *k)?, idx(cx.graph, *d)?);
+    complex_v(cx.graph, &complex.into_iter().filter(|s| s.len() <= d + 1).collect::<Vec<_>>())
+}
+
+fn sc_mayer_vietoris_ranks(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [x, y] = a else { return None };
+    let (x, y) = (exact_complex(cx.graph, *x)?, exact_complex(cx.graph, *y)?);
+    Some(V::List(kh::mayer_vietoris(&x, &y)?.into_iter().map(V::uint).collect()))
+}
+
+fn sc_mayer_vietoris_check(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [x, y] = a else { return None };
+    let (x, y) = (exact_complex(cx.graph, *x)?, exact_complex(cx.graph, *y)?);
+    Some(V::Bool(kh::mayer_vietoris(&x, &y).is_some()))
+}
+
+fn sc_euler_from_betti(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let betti = kh::betti_list(&exact_complex(cx.graph, *a.first()?)?);
+    Some(V::int(betti.iter().enumerate().map(|(k, &b)| if k % 2 == 0 { b as i64 } else { -(b as i64) }).sum()))
+}
+
+fn sc_verify_euler(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let complex = exact_complex(cx.graph, *a.first()?)?;
+    let betti: i64 = kh::betti_list(&complex).iter().enumerate().map(|(k, &b)| if k % 2 == 0 { b as i64 } else { -(b as i64) }).sum();
+    Some(V::Bool(betti == kt::euler_characteristic(&complex)))
+}
+
+fn sc_simplex(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    complex_v(cx.graph, &kh::full_simplex(count(cx.graph, *a.first()?, 40)?))
+}
+
+fn sc_sphere(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    complex_v(cx.graph, &kh::sphere(count(cx.graph, *a.first()?, 12)?))
+}
+
+fn sc_klein_bottle(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [m, n] = a else { return None };
+    let (m, n) = (count(cx.graph, *m, 200)?, count(cx.graph, *n, 200)?);
+    if m < 3 || n < 3 {
+        return None;
+    }
+    complex_v(cx.graph, &kh::klein_bottle(m, n))
+}
+
+fn sc_projective_plane(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let k = count(cx.graph, *a.first()?, 100)?;
+    (k == 0 || k >= 3).then(|| complex_v(cx.graph, &kh::projective_plane(k))).flatten()
+}
+
+fn sc_dunce_cap(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let k = count(cx.graph, *a.first()?, 100)?;
+    (k >= 3).then(|| complex_v(cx.graph, &kh::dunce_cap(k))).flatten()
+}
+
+fn sc_cone(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    complex_v(cx.graph, &kh::cone(&complex_arg(cx, a)?))
+}
+
+fn sc_suspension(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    complex_v(cx.graph, &kh::suspension(&complex_arg(cx, a)?))
+}
+
+fn sc_join(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [k, l] = a else { return None };
+    let (k, l) = (read_complex(cx.graph, *k)?, read_complex(cx.graph, *l)?);
+    complex_v(cx.graph, &kh::join(&k, &l))
+}
+
+fn sc_wedge(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let (k, l, bases) = match a {
+        | [k, l] => (k, l, None),
+        | [k, l, u, v] => (k, l, Some((idx(cx.graph, *u)?, idx(cx.graph, *v)?))),
+        | _ => return None,
+    };
+    let (k, l) = (read_complex(cx.graph, *k)?, read_complex(cx.graph, *l)?);
+    let first = |c: &[Simplex]| kt::simplices_of_dim(c, 0).first().map(|s| s[0]);
+    let (vk, vl) = match bases {
+        | Some(pair) => pair,
+        | None => (first(&k)?, first(&l)?),
+    };
+    let has = |c: &[Simplex], v: usize| c.contains(&vec![v]);
+    (has(&k, vk) && has(&l, vl)).then(|| complex_v(cx.graph, &kh::wedge(&k, &l, vk, vl))).flatten()
+}
+
+fn sc_product(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [k, l] = a else { return None };
+    let (k, l) = (read_complex(cx.graph, *k)?, read_complex(cx.graph, *l)?);
+    complex_v(cx.graph, &kh::product(&k, &l, MAX_PRODUCT)?)
+}
+
+fn words_v(words: &[Vec<i64>]) -> V {
+    V::List(words.iter().map(|w| V::ints(w.iter().copied())).collect())
+}
+
+fn sc_fundamental_group(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let raw = kh::pi1_presentation(&complex_arg(cx, a)?)?;
+    let p = kh::simplify_presentation(&raw);
+    Some(V::List(vec![V::uint(p.count), words_v(&p.relators)]))
+}
+
+fn sc_fundamental_group_raw(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let p = kh::pi1_presentation(&complex_arg(cx, a)?)?;
+    let edges = V::List(p.edges.iter().map(|&(u, v)| V::ints([u as u64, v as u64])).collect());
+    Some(V::List(vec![V::uint(p.count), words_v(&p.relators), edges]))
+}
+
+fn sc_pi1_abelianization(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let raw = kh::pi1_presentation(&complex_arg(cx, a)?)?;
+    Some(group_v(&kh::abelianization(&raw)))
+}
+
+fn presentation_abelianization(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [n, words] = a else { return None };
+    let count = count(cx.graph, *n, 500)?;
+    let mut relators = Vec::new();
+    for w in items(cx.graph, *words)? {
+        let letters: Vec<i64> = items(cx.graph, w)?.into_iter().map(|x| super::small(cx.graph, x)).collect::<Option<_>>()?;
+        if letters.iter().any(|&x| x == 0 || usize::try_from(x.abs()).map_or(true, |g| g > count)) {
+            return None;
+        }
+        relators.push(letters);
+    }
+    Some(group_v(&kh::abelianization(&kh::Presentation { count, relators, edges: Vec::new() })))
+}
+
+fn vertex_map(
+    g: &Graph,
+    n: NodeId,
+) -> Option<HashMap<usize, usize>> {
+    let mut map = HashMap::new();
+    for pair in items(g, n)? {
+        let [v, w] = idxs(g, pair)?.as_slice().try_into().ok()?;
+        map.insert(v, w);
+    }
+    Some(map)
+}
+
+fn sc_is_simplicial_map(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [k, l, f] = a else { return None };
+    let (k, l) = (read_complex(cx.graph, *k)?, read_complex(cx.graph, *l)?);
+    Some(V::Bool(kh::is_simplicial_map(&k, &l, &vertex_map(cx.graph, *f)?)))
+}
+
+fn induced(
+    cx: &Cx<'_>,
+    a: &[NodeId],
+) -> Option<ql::QMat> {
+    let [k, l, f, d] = a else { return None };
+    let (k, l) = (exact_complex(cx.graph, *k)?, exact_complex(cx.graph, *l)?);
+    kh::induced_homology(&k, &l, &vertex_map(cx.graph, *f)?, idx(cx.graph, *d)?)
+}
+
+fn sc_induced_homology(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let m = induced(cx, a)?;
+    Some(V::List(m.into_iter().map(|row| V::List(row.into_iter().map(V::Rat).collect())).collect()))
+}
+
+fn sc_induced_homology_rank(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    Some(V::uint(kh::matrix_rank(&induced(cx, a)?)))
+}
+
+// ----------------------------------------------------------------------
+// Persistent homology and cubical complexes
+// ----------------------------------------------------------------------
+
+fn end_v(
+    g: &mut Graph,
+    x: f64,
+) -> V {
+    if x.is_finite() { V::Float(x) } else { apply(g, "oo", &[]).map_or(V::Float(x), V::Node) }
+}
+
+fn bar_v(
+    g: &mut Graph,
+    b: &kh::Bar,
+) -> V {
+    let death = end_v(g, b.death);
+    V::List(vec![V::Float(b.birth), death])
+}
+
+fn barcode_v(
+    g: &mut Graph,
+    bars: &[kh::Bar],
+    max_dim: usize,
+) -> V {
+    V::List((0..=max_dim).map(|d| V::List(bars.iter().filter(|b| b.dim == d).map(|b| bar_v(g, b)).collect())).collect())
+}
+
+fn read_filtration(
+    g: &Graph,
+    n: NodeId,
+) -> Option<Vec<(f64, Simplex)>> {
+    let mut out = Vec::new();
+    for entry in items(g, n)? {
+        let [value, s] = items(g, entry)?.as_slice().try_into().ok()?;
+        out.push((float(g, value).filter(|x| x.is_finite())?, simplex(g, s)?));
+    }
+    (out.len() <= MAX_FILTRATION).then_some(out)
+}
+
+fn persistent_homology(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [f, d] = a else { return None };
+    let filtration = read_filtration(cx.graph, *f)?;
+    let max_dim = count(cx.graph, *d, MAX_DIM)?;
+    let bars = kh::persistence_bars(&filtration, max_dim)?;
+    Some(barcode_v(cx.graph, &bars, max_dim))
+}
+
+fn rips_args(
+    cx: &Cx<'_>,
+    a: &[NodeId],
+) -> Option<(Vec<(f64, Simplex)>, usize)> {
+    let [p, e, d] = a else { return None };
+    let points = read_points(cx.graph, *p)?;
+    let (eps, max_dim) = (radius(cx.graph, *e)?, count(cx.graph, *d, MAX_DIM)?);
+    let filtration = kh::rips_filtration(&kh::distance_matrix(&points), eps, max_dim + 1, MAX_FILTRATION)?;
+    Some((filtration, max_dim))
+}
+
+fn rips_filtration(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let (filtration, _) = rips_args(cx, a)?;
+    let mut sorted = filtration;
+    sorted.sort_by(|x, y| x.0.total_cmp(&y.0).then(x.1.len().cmp(&y.1.len())).then_with(|| x.1.cmp(&y.1)));
+    Some(V::List(sorted.iter().map(|(v, s)| V::List(vec![V::Float(*v), simplex_v(s)])).collect()))
+}
+
+fn rips_persistence(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let (filtration, max_dim) = rips_args(cx, a)?;
+    let bars = kh::persistence_bars(&filtration, max_dim)?;
+    Some(barcode_v(cx.graph, &bars, max_dim))
+}
+
+fn rips_persistence_diagram(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let (filtration, max_dim) = rips_args(cx, a)?;
+    let bars = kh::persistence_bars(&filtration, max_dim)?;
+    let mut out = Vec::new();
+    for b in &bars {
+        let death = end_v(cx.graph, b.death);
+        out.push(V::List(vec![V::uint(b.dim), V::Float(b.birth), death]));
+    }
+    Some(V::List(out))
+}
+
+fn read_diagram(
+    g: &Graph,
+    n: NodeId,
+) -> Option<Vec<(f64, f64)>> {
+    let mut out = Vec::new();
+    for pair in items(g, n)? {
+        let [b, d] = items(g, pair)?.as_slice().try_into().ok()?;
+        let death = float(g, d).or_else(|| (matches!(&*g.display(d), "oo" | "oo()")).then_some(f64::INFINITY))?;
+        out.push((float(g, b)?, death));
+    }
+    (out.len() <= MAX_POINTS).then_some(out)
+}
+
+fn bottleneck_distance(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let [x, y] = a else { return None };
+    let (x, y) = (read_diagram(cx.graph, *x)?, read_diagram(cx.graph, *y)?);
+    let d = kh::bottleneck_distance(&x, &y);
+    Some(end_v(cx.graph, d))
+}
+
+fn read_image(
+    g: &Graph,
+    n: NodeId,
+) -> Option<Vec<Vec<bool>>> {
+    let pixel = |c: NodeId| -> Option<bool> {
+        match g.number_of(c) {
+            | Some(v) => Some(!v.is_zero()),
+            | None => match &*g.display(c) {
+                | "true" | "true()" => Some(true),
+                | "false" | "false()" => Some(false),
+                | _ => None,
+            },
+        }
+    };
+    let rows: Vec<Vec<bool>> = items(g, n)?.into_iter().map(|r| items(g, r)?.into_iter().map(pixel).collect::<Option<Vec<bool>>>()).collect::<Option<_>>()?;
+    (rows.len() <= 512 && rows.iter().all(|r| r.len() <= 512)).then_some(rows)
+}
+
+fn connectivity(
+    cx: &Cx<'_>,
+    a: &[NodeId],
+) -> Option<(Vec<Vec<bool>>, bool)> {
+    let image = read_image(cx.graph, *a.first()?)?;
+    match a {
+        | [_] => Some((image, true)),
+        | [_, c] => match super::small(cx.graph, *c)? {
+            | 8 => Some((image, true)),
+            | 4 => Some((image, false)),
+            | _ => None,
+        },
+        | _ => None,
+    }
+}
+
+fn cubical_betti(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let (image, eight) = connectivity(cx, a)?;
+    let (b0, b1) = kh::cubical_betti(&image, eight);
+    Some(V::List(vec![V::uint(b0), V::uint(b1)]))
+}
+
+fn cubical_euler_characteristic(
+    cx: &mut Cx<'_>,
+    a: &[NodeId],
+) -> Option<V> {
+    let (image, eight) = connectivity(cx, a)?;
+    let (b0, b1) = kh::cubical_betti(&image, eight);
+    Some(V::int(i64::try_from(b0).ok()? - i64::try_from(b1).ok()?))
+}
+
 pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def_inert(i, "sc", Arity::Fixed(1))?;
     def(i, "sc_complex", Arity::Fixed(1), sc_complex)?;
@@ -439,6 +990,44 @@ pub(crate) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     def(i, "betti_at_radius", Arity::Fixed(3), betti_at_radius)?;
     def(i, "persistence", Arity::Fixed(4), persistence)?;
     def(i, "euclidean_distance", Arity::Fixed(2), euclidean_distance)?;
+    def(i, "sc_homology", Arity::Fixed(2), sc_homology)?;
+    def(i, "sc_homology_all", Arity::Fixed(1), sc_homology_all)?;
+    def(i, "sc_reduced_homology", Arity::Fixed(2), sc_reduced_homology)?;
+    def(i, "sc_cohomology", Arity::Fixed(2), sc_cohomology)?;
+    def(i, "sc_homology_mod", Arity::Fixed(3), sc_homology_mod)?;
+    def(i, "sc_relative_homology", Arity::Fixed(3), sc_relative_homology)?;
+    def(i, "sc_union", Arity::Fixed(2), sc_union)?;
+    def(i, "sc_intersection", Arity::Fixed(2), sc_intersection)?;
+    def(i, "sc_is_subcomplex", Arity::Fixed(2), sc_is_subcomplex)?;
+    def(i, "sc_skeleton", Arity::Fixed(2), sc_skeleton)?;
+    def(i, "sc_mayer_vietoris_ranks", Arity::Fixed(2), sc_mayer_vietoris_ranks)?;
+    def(i, "sc_mayer_vietoris_check", Arity::Fixed(2), sc_mayer_vietoris_check)?;
+    def(i, "sc_euler_from_betti", Arity::Fixed(1), sc_euler_from_betti)?;
+    def(i, "sc_verify_euler", Arity::Fixed(1), sc_verify_euler)?;
+    def(i, "sc_simplex", Arity::Fixed(1), sc_simplex)?;
+    def(i, "sc_sphere", Arity::Fixed(1), sc_sphere)?;
+    def(i, "sc_klein_bottle", Arity::Fixed(2), sc_klein_bottle)?;
+    def(i, "sc_projective_plane", Arity::Fixed(1), sc_projective_plane)?;
+    def(i, "sc_dunce_cap", Arity::Fixed(1), sc_dunce_cap)?;
+    def(i, "sc_cone", Arity::Fixed(1), sc_cone)?;
+    def(i, "sc_suspension", Arity::Fixed(1), sc_suspension)?;
+    def(i, "sc_join", Arity::Fixed(2), sc_join)?;
+    def(i, "sc_wedge", Arity::Variadic, sc_wedge)?;
+    def(i, "sc_product", Arity::Fixed(2), sc_product)?;
+    def(i, "sc_fundamental_group", Arity::Fixed(1), sc_fundamental_group)?;
+    def(i, "sc_fundamental_group_raw", Arity::Fixed(1), sc_fundamental_group_raw)?;
+    def(i, "sc_pi1_abelianization", Arity::Fixed(1), sc_pi1_abelianization)?;
+    def(i, "presentation_abelianization", Arity::Fixed(2), presentation_abelianization)?;
+    def(i, "sc_is_simplicial_map", Arity::Fixed(3), sc_is_simplicial_map)?;
+    def(i, "sc_induced_homology", Arity::Fixed(4), sc_induced_homology)?;
+    def(i, "sc_induced_homology_rank", Arity::Fixed(4), sc_induced_homology_rank)?;
+    def(i, "persistent_homology", Arity::Fixed(2), persistent_homology)?;
+    def(i, "rips_filtration", Arity::Fixed(3), rips_filtration)?;
+    def(i, "rips_persistence", Arity::Fixed(3), rips_persistence)?;
+    def(i, "rips_persistence_diagram", Arity::Fixed(3), rips_persistence_diagram)?;
+    def(i, "bottleneck_distance", Arity::Fixed(2), bottleneck_distance)?;
+    def(i, "cubical_betti", Arity::Variadic, cubical_betti)?;
+    def(i, "cubical_euler_characteristic", Arity::Variadic, cubical_euler_characteristic)?;
     Ok(())
 }
 
@@ -538,5 +1127,156 @@ mod tests {
         let d = s(&format!("persistence({SQUARE}, 1.5, 3, 2)"));
         assert!(d.starts_with("list(list(list("), "{d}");
         assert_eq!(d.matches("list(").count(), 10, "{d}");
+    }
+
+    #[test]
+    fn integer_homology_with_torsion() {
+        assert_eq!(s("sc_homology(sc_projective_plane(0), 0)"), "list(1, list())");
+        assert_eq!(s("sc_homology(sc_projective_plane(0), 1)"), "list(0, list(2))");
+        assert_eq!(s("sc_homology(sc_projective_plane(0), 2)"), "list(0, list())");
+        assert_eq!(s("sc_cohomology(sc_projective_plane(0), 2)"), "list(0, list(2))");
+        assert_eq!(s("sc_cohomology(sc_projective_plane(0), 1)"), "list(0, list())");
+        assert_eq!(s("sc_homology(sc_torus(3, 3), 1)"), "list(2, list())");
+        assert_eq!(s("sc_homology(sc_torus(3, 3), 2)"), "list(1, list())");
+        assert_eq!(s("sc_homology(sc_klein_bottle(4, 4), 1)"), "list(1, list(2))");
+        assert_eq!(s("sc_homology(sc_klein_bottle(4, 4), 2)"), "list(0, list())");
+        assert_eq!(s("sc_cohomology(sc_klein_bottle(4, 4), 2)"), "list(0, list(2))");
+        assert_eq!(s("sc_homology_all(sc_torus(3, 4))"), "list(list(1, list()), list(2, list()), list(1, list()))");
+        assert_eq!(s("sc_homology_mod(sc_projective_plane(0), 1, 2)"), "1");
+        assert_eq!(s("sc_homology_mod(sc_projective_plane(0), 2, 2)"), "1");
+        assert_eq!(s("sc_homology_mod(sc_projective_plane(0), 1, 3)"), "0");
+        assert_eq!(s("sc_homology_mod(sc_projective_plane(0), 1, 4)"), "sc_homology_mod(sc(list(list(0), list(1), list(2), list(3), list(4), list(5), list(0, 1), list(0, 2), list(0, 3), list(0, 4), list(0, 5), list(1, 2), list(1, 3), list(1, 4), list(1, 5), list(2, 3), list(2, 4), list(2, 5), list(3, 4), list(3, 5), list(4, 5), list(0, 1, 2), list(0, 1, 5), list(0, 2, 3), list(0, 3, 4), list(0, 4, 5), list(1, 2, 4), list(1, 3, 4), list(1, 3, 5), list(2, 3, 5), list(2, 4, 5))), 1, 4)");
+        assert_eq!(s("sc_reduced_homology(sc_sphere(2), 0)"), "list(0, list())");
+        assert_eq!(s("sc_reduced_homology(sc_sphere(0), 0)"), "list(1, list())");
+        assert_eq!(s("sc_homology(sc_sphere(3), 3)"), "list(1, list())");
+        assert_eq!(s("sc_homology(sc_dunce_cap(3), 1)"), "list(0, list())");
+        assert_eq!(s("sc_homology(sc_dunce_cap(3), 2)"), "list(0, list())");
+        assert_eq!(s("sc_euler_from_betti(sc_klein_bottle(4, 4))"), "0");
+        assert_eq!(s("sc_euler_from_betti(sc_projective_plane(0))"), "1");
+        assert_eq!(s("sc_verify_euler(sc_torus(3, 3))"), "true");
+        assert_eq!(s("sc_verify_euler(sc_dunce_cap(3))"), "true");
+        assert_eq!(s("sc_verify_euler(sc_sphere(4))"), "true");
+    }
+
+    #[test]
+    fn constructions() {
+        assert_eq!(s("sc_homology(sc_cone(sc_sphere(1)), 1)"), "list(0, list())");
+        assert_eq!(s("sc_homology(sc_suspension(sc_sphere(1)), 2)"), "list(1, list())");
+        assert_eq!(s("sc_homology_all(sc_join(sc_sphere(1), sc_sphere(1)))"), "list(list(1, list()), list(0, list()), list(0, list()), list(1, list()))");
+        assert_eq!(s("sc_homology(sc_wedge(sc_sphere(1), sc_sphere(1)), 1)"), "list(2, list())");
+        assert_eq!(s("sc_homology(sc_wedge(sc_sphere(1), sc_sphere(2), 0, 0), 2)"), "list(1, list())");
+        assert_eq!(s("sc_homology_all(sc_product(sc_sphere(1), sc_sphere(1)))"), "list(list(1, list()), list(2, list()), list(1, list()))");
+        assert_eq!(s("sc_homology(sc_product(sc_projective_plane(0), sc_sphere(1)), 1)"), "list(1, list(2))");
+        assert_eq!(s("sc_dimension(sc_product(sc_simplex(2), sc_simplex(1)))"), "3");
+        assert_eq!(s("sc_dimension(sc_skeleton(sc_simplex(3), 1))"), "1");
+        assert_eq!(s("sc_homology(sc_skeleton(sc_simplex(3), 1), 1)"), "list(3, list())");
+        assert_eq!(s("sc_is_subcomplex(sc_sphere(1), sc_simplex(2))"), "true");
+        assert_eq!(s("sc_is_subcomplex(sc_simplex(2), sc_sphere(1))"), "false");
+        assert_eq!(s("sc_sphere(1)"), "sc(list(list(0), list(1), list(2), list(0, 1), list(0, 2), list(1, 2)))");
+        assert_eq!(s("sc_union(sc_complex(list(list(0, 1))), sc_complex(list(list(1, 2))))"), "sc(list(list(0), list(1), list(2), list(0, 1), list(1, 2)))");
+        assert_eq!(s("sc_intersection(sc_complex(list(list(0, 1))), sc_complex(list(list(1, 2))))"), "sc(list(list(1)))");
+    }
+
+    #[test]
+    fn relative_homology_and_mayer_vietoris() {
+        assert_eq!(s("sc_relative_homology(sc_simplex(2), sc_sphere(1), 2)"), "list(1, list())");
+        assert_eq!(s("sc_relative_homology(sc_simplex(2), sc_sphere(1), 1)"), "list(0, list())");
+        assert_eq!(s("sc_relative_homology(sc_simplex(2), sc_sphere(1), 0)"), "list(0, list())");
+        // H_k(X, point) is reduced homology
+        assert_eq!(s("sc_relative_homology(sc_torus(3, 3), sc_complex(list(list(0))), 1)"), "list(2, list())");
+        assert_eq!(s("sc_relative_homology(sc_projective_plane(0), sc_complex(list(list(0))), 1)"), "list(0, list(2))");
+        assert_eq!(s("sc_relative_homology(sc_sphere(1), sc_simplex(2), 1)"), "sc_relative_homology(sc(list(list(0), list(1), list(2), list(0, 1), list(0, 2), list(1, 2))), sc(list(list(0), list(1), list(2), list(0, 1), list(0, 2), list(1, 2), list(0, 1, 2))), 1)");
+        let a = "sc_complex(list(list(0, 1, 3), list(1, 2, 3), list(0, 2, 3)))";
+        let b = "sc_complex(list(list(0, 1, 4), list(1, 2, 4), list(0, 2, 4)))";
+        assert_eq!(s(&format!("sc_mayer_vietoris_check({a}, {b})")), "true");
+        assert_eq!(s(&format!("sc_mayer_vietoris_ranks({a}, {b})")), "list(0, 1, 0, 0)");
+        assert_eq!(s(&format!("sc_homology(sc_union({a}, {b}), 2)")), "list(1, list())");
+        let arc1 = "sc_complex(list(list(0, 1), list(1, 2)))";
+        let arc2 = "sc_complex(list(list(2, 3), list(3, 0)))";
+        assert_eq!(s(&format!("sc_mayer_vietoris_check({arc1}, {arc2})")), "true");
+        assert_eq!(s(&format!("sc_homology(sc_union({arc1}, {arc2}), 1)")), "list(1, list())");
+    }
+
+    #[test]
+    fn fundamental_groups() {
+        assert_eq!(s("sc_fundamental_group(sc_projective_plane(0))"), "list(1, list(list(1, 1)))");
+        assert_eq!(s("sc_fundamental_group(sc_sphere(2))"), "list(0, list())");
+        assert_eq!(s("sc_fundamental_group(sc_dunce_cap(3))"), "list(0, list())");
+        assert_eq!(s("sc_fundamental_group(sc_sphere(1))"), "list(1, list())");
+        let torus = s("sc_fundamental_group(sc_torus(3, 3))");
+        assert!(torus.starts_with("list(2, list(list("), "{torus}");
+        // the abelianisation agrees with H1
+        for complex in ["sc_torus(3, 3)", "sc_projective_plane(0)", "sc_klein_bottle(4, 4)", "sc_sphere(2)", "sc_dunce_cap(3)", "sc_product(sc_projective_plane(0), sc_sphere(1))", "sc_wedge(sc_sphere(1), sc_projective_plane(0))"] {
+            assert_eq!(s(&format!("sc_pi1_abelianization({complex})")), s(&format!("sc_homology({complex}, 1)")), "{complex}");
+        }
+        assert_eq!(s("sc_pi1_abelianization(sc_klein_bottle(4, 4))"), "list(1, list(2))");
+        assert_eq!(s("presentation_abelianization(2, list(list(1, 2, -1, -2)))"), "list(2, list())");
+        assert_eq!(s("presentation_abelianization(2, list(list(1, 1, 2), list(2, 2)))"), "list(0, list(4))");
+        let raw = s("sc_fundamental_group_raw(sc_projective_plane(0))");
+        assert!(raw.starts_with("list(10, list("), "{raw}");
+    }
+
+    #[test]
+    fn simplicial_maps() {
+        let circle = "sc_sphere(1)";
+        let disc = "sc_simplex(2)";
+        assert_eq!(s(&format!("sc_is_simplicial_map({circle}, {disc}, list(list(0, 0), list(1, 1), list(2, 2)))")), "true");
+        assert_eq!(s(&format!("sc_is_simplicial_map({circle}, {circle}, list(list(0, 0), list(1, 1), list(2, 5)))")), "false");
+        assert_eq!(s(&format!("sc_induced_homology({circle}, {disc}, list(list(0, 0), list(1, 1), list(2, 2)), 1)")), "list()");
+        assert_eq!(s(&format!("sc_induced_homology({circle}, {disc}, list(list(0, 0), list(1, 1), list(2, 2)), 0)")), "list(list(1))");
+        // a reflection of the circle reverses H1
+        assert_eq!(s(&format!("sc_induced_homology({circle}, {circle}, list(list(0, 1), list(1, 0), list(2, 2)), 1)")), "list(list(-1))");
+        assert_eq!(s(&format!("sc_induced_homology_rank({circle}, {circle}, list(list(0, 1), list(1, 2), list(2, 0)), 1)")), "1");
+        // collapsing the circle to an edge kills H1
+        assert_eq!(s(&format!("sc_induced_homology_rank({circle}, {disc}, list(list(0, 0), list(1, 1), list(2, 1)), 1)")), "0");
+        // the identity of the torus induces the identity on H1
+        let id: String = (0..9).map(|v| format!("list({v}, {v})")).collect::<Vec<_>>().join(", ");
+        assert_eq!(s(&format!("sc_induced_homology_rank(sc_torus(3, 3), sc_torus(3, 3), list({id}), 1)")), "2");
+    }
+
+    #[test]
+    fn persistent_homology() {
+        use crate::rules::calculus::calculus;
+        use crate::rules::discrete::discrete;
+        use crate::rules::testing::simplify;
+        let run = |src: &str| simplify(&[discrete(), calculus()], src);
+        let circle: String = (0..12)
+            .map(|i| {
+                let t = std::f64::consts::TAU * f64::from(i) / 12.0;
+                format!("list({:.15}, {:.15})", t.cos(), t.sin())
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let bars = run(&format!("rips_persistence(list({circle}), 3, 1)"));
+        let h1 = bars.split("), list(list(").nth(1).unwrap_or("").to_owned();
+        assert_eq!(h1.matches("list(").count() + 1, 1, "one H1 bar: {bars}");
+        assert!(h1.starts_with("0.5176"), "{h1}");
+        assert_eq!(bars.matches("oo").count(), 1, "{bars}");
+        let diagram = run(&format!("rips_persistence_diagram(list({circle}), 3, 1)"));
+        assert_eq!(diagram.matches("list(").count(), 1 + 12 + 1, "{diagram}");
+        // a filtration by hand: an edge and a vertex
+        assert_eq!(run("persistent_homology(list(list(0, list(0)), list(0, list(1)), list(1, list(0, 1))), 1)"), "list(list(list(0, 1), list(0, oo)), list())");
+        // the hollow triangle: H1 born at 3, never dies
+        assert_eq!(
+            run("persistent_homology(list(list(0, list(0)), list(0, list(1)), list(0, list(2)), list(1, list(0, 1)), list(1, list(0, 2)), list(1, list(1, 2))), 1)"),
+            "list(list(list(0, 1), list(0, 1), list(0, oo)), list(list(1, oo)))"
+        );
+        assert_eq!(run("bottleneck_distance(list(list(0, 1), list(0, 3)), list(list(0, 1.5), list(0, 3)))"), "0.5");
+        assert_eq!(run("bottleneck_distance(list(list(0, 1)), list())"), "0.5");
+        assert_eq!(run("bottleneck_distance(list(list(0, oo)), list())"), "oo");
+    }
+
+    #[test]
+    fn cubical_images() {
+        assert_eq!(s("cubical_betti(list(list(1, 1, 1), list(1, 0, 1), list(1, 1, 1)))"), "list(1, 1)");
+        assert_eq!(s("cubical_betti(list(list(1, 0), list(0, 1)))"), "list(1, 0)");
+        assert_eq!(s("cubical_betti(list(list(1, 0), list(0, 1)), 4)"), "list(2, 0)");
+        assert_eq!(s("cubical_betti(list(list(0, 1, 0), list(1, 0, 1), list(0, 1, 0)), 8)"), "list(1, 1)");
+        assert_eq!(s("cubical_betti(list(list(0, 1, 0), list(1, 0, 1), list(0, 1, 0)), 4)"), "list(4, 0)");
+        assert_eq!(s("cubical_betti(list(list(1, 1, 1, 1, 1), list(1, 0, 1, 0, 1), list(1, 1, 1, 1, 1)))"), "list(1, 2)");
+        assert_eq!(s("cubical_betti(list(list(0, 0), list(0, 0)))"), "list(0, 0)");
+        assert_eq!(s("cubical_euler_characteristic(list(list(1, 1, 1), list(1, 0, 1), list(1, 1, 1)))"), "0");
+        assert_eq!(s("cubical_euler_characteristic(list(list(1, 0, 1)))"), "2");
+        assert_eq!(s("cubical_betti(list(list(1, 2)), 5)"), "cubical_betti(list(list(1, 2)), 5)");
     }
 }
