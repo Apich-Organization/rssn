@@ -40,6 +40,7 @@
 //! | [`perm_groups`] | Schreier–Sims: `perm_group_order`, `perm_group_contains`, `perm_group_base`, `perm_group_strong_generators`, `perm_group_basic_orbits`, `perm_group_orbits`, `perm_group_is_transitive`, `perm_group_stabilizer_order`, `perm_group_elements`, `group_from_perms`, `perm_group_is_abelian`, `perm_group_derived_series`, `perm_group_is_solvable`, `perm_group_lower_central_series`, `perm_group_is_nilpotent`, `perm_group_derived_subgroup`; Todd–Coxeter: `todd_coxeter`, `todd_coxeter_index`, `fp_group_order`, `fp_group` |
 //! | [`group_theory`] | `group_generate`, `group_subgroup`, `group_derived_subgroup`, `group_derived_series`, `group_is_solvable`, `group_lower_central_series`, `group_is_nilpotent`, `group_nilpotency_class`, `group_normal_subgroups`, `group_is_simple`, `group_sylow_subgroup`, `group_sylow_count`, `group_sylow_subgroups`, `group_quotient`, `group_direct_product`, `group_isomorphism`, `group_is_isomorphic`, `group_automorphism_count`, `group_inner_automorphism_count`, `group_outer_automorphism_count`, `group_exponent`, `group_element_orders`, `group_order_statistics` |
 //! | [`representations`] | Burnside–Dixon character tables: `group_class_count`, `group_class_sizes`, `group_class_representatives`, `group_class_index`, `group_character_table`, `group_character_degrees`, `character_table_is_orthogonal`, `character_inner_product`, `character_is_irreducible`, `character_decompose`, `character_tensor`, `character_sym_square`, `character_alt_square`, `character_adams`, `character_conjugate`, `character_regular`, `character_of_matrices`, `representation_decompose`, `character_projection` |
+//! | [`point_groups`] | `point_group`, `point_group_order`, `point_group_is_crystallographic`, `point_group_classes`, `point_group_class_sizes`, `point_group_irreps`, `point_group_irrep_dimensions`, `point_group_character_table`, `point_group_decompose`, `point_group_multiplicities`, `point_group_vector_character`, `point_group_rotation_character`, `point_group_ir_active`, `point_group_raman_active`, `point_group_function_irreps`, `point_group_hm`, `point_group_from_hm`, `point_group_crystal_system`, `crystallographic_point_groups`, `crystal_systems`, `bravais_lattices`, `crystallographic_restriction`, `crystallographic_min_dimension`, `molecule_symmetry_operations`, `molecule_point_group`, `molecule_decomposition`, `molecule_vibrations`, `molecule_vibrations_table`, `molecule_spectroscopy` |
 //!
 //! See the documentation of each module for the exact term formats.
 
@@ -54,6 +55,7 @@ pub mod graphs;
 pub mod group_theory;
 pub mod groups;
 pub mod perm_groups;
+pub mod point_groups;
 pub mod representations;
 pub mod topology;
 
@@ -109,6 +111,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     perm_groups::install(i)?;
     group_theory::install(i)?;
     representations::install(i)?;
+    point_groups::install(i)?;
     Ok(())
 }
 
