@@ -8,8 +8,6 @@ use std::f64::consts::FRAC_2_PI;
 
 use statrs::function::beta::beta;
 use statrs::function::beta::ln_beta;
-use statrs::function::erf::erf;
-use statrs::function::erf::erfc;
 use statrs::function::gamma::digamma;
 use statrs::function::gamma::gamma;
 use statrs::function::gamma::ln_gamma;
@@ -238,13 +236,52 @@ pub fn regularized_beta(
 /// Computes the error function, erf(x) = (2/√π) ∫₀ˣ e^(-t²) dt.
 #[must_use]
 pub fn erf_numerical(x: f64) -> f64 {
-    erf(x)
+    if x.is_nan() {
+        return f64::NAN;
+    }
+    if x.abs() < 1.5 {
+        return erf_series(x);
+    }
+    let c = erfc_tail(x.abs());
+    if x > 0.0 { 1.0 - c } else { c - 1.0 }
+}
+
+/// Maclaurin-type series `erf(x) = 2/sqrt(pi) e^(-x^2) sum 2^n x^(2n+1)/(2n+1)!!`
+/// with only positive terms (no cancellation), accurate to a few ulps for `|x| < 1.5`.
+fn erf_series(x: f64) -> f64 {
+    let x2 = x * x;
+    let mut term = x;
+    let mut sum = x;
+    for n in 1..200 {
+        term *= 2.0 * x2 / f64::from(2 * n + 1);
+        sum += term;
+        if term.abs() < 1e-17 * sum.abs() {
+            break;
+        }
+    }
+    2.0 / std::f64::consts::PI.sqrt() * (-x2).exp() * sum
+}
+
+/// `erfc(x)` for `x >= 1.5` by the continued fraction
+/// `e^(-x^2)/sqrt(pi) / (x + (1/2)/(x + 1/(x + (3/2)/(x + ...))))`.
+fn erfc_tail(x: f64) -> f64 {
+    let mut f = x;
+    for k in (1..=300).rev() {
+        f = x + f64::from(k) * 0.5 / f;
+    }
+    (-x * x).exp() / (std::f64::consts::PI.sqrt() * f)
 }
 
 /// Computes the complementary error function, erfc(x) = 1 - erf(x).
 #[must_use]
 pub fn erfc_numerical(x: f64) -> f64 {
-    erfc(x)
+    if x.is_nan() {
+        return f64::NAN;
+    }
+    if x < 0.0 {
+        return 2.0 - erfc_numerical(-x);
+    }
+    if x < 1.5 { 1.0 - erf_series(x) } else { erfc_tail(x) }
 }
 
 /// Computes the inverse error function, erf⁻¹(x).
@@ -302,9 +339,9 @@ pub fn inverse_erf_numerical(x: f64) -> f64 {
         let deriv = two_over_sqrt_pi * (-y * y).exp();
 
         let h = if x >= 0.5 {
-            (erfc(y) - (1.0 - x)) / -deriv
+            (erfc_numerical(y) - (1.0 - x)) / -deriv
         } else {
-            (erf(y) - x) / deriv
+            (erf_numerical(y) - x) / deriv
         };
 
         let step = h / (1.0 + h * y);

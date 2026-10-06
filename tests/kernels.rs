@@ -64,3 +64,21 @@ mod convergence;
 mod series;
 #[path = "kernels/indefinite_sum.rs"]
 mod indefinite_sum;
+#[path = "kernels/quadrature.rs"]
+mod quadrature;
+#[path = "kernels/dense.rs"]
+mod dense;
+#[path = "kernels/rootfind.rs"]
+mod rootfind;
+#[path = "kernels/ode_adaptive.rs"]
+mod ode_adaptive;
+#[path = "kernels/approx.rs"]
+mod approx;
+#[path = "kernels/optim.rs"]
+mod optim;
+#[path = "kernels/krylov.rs"]
+mod krylov;
+#[path = "kernels/special_ext.rs"]
+mod special_ext;
+#[path = "kernels/robust.rs"]
+mod robust;

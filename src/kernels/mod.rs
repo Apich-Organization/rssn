@@ -52,3 +52,25 @@ pub mod qlinalg;
 pub mod lie_structure;
 pub mod transforms;
 pub mod vector;
+/// Interpolation and approximation: splines, PCHIP, B-splines, Chebyshev, AAA, Pade.
+pub mod approx;
+/// Dense linear algebra: LU, Cholesky, QR, SVD, symmetric and general eigenvalues.
+pub mod dense;
+/// FFT for arbitrary lengths and fast convolution.
+pub mod fftconv;
+/// Sparse CSR matrices and Krylov solvers with preconditioners.
+pub mod krylov;
+/// Adaptive, stiff, symplectic, BVP, DAE and DDE integrators.
+pub mod ode_adaptive;
+/// Unconstrained, global and constrained optimisation and linear programming.
+pub mod optim;
+/// Adaptive Gauss-Kronrod, double-exponential, Clenshaw-Curtis, Filon and multi-dimensional quadrature.
+pub mod quadrature;
+/// Seeded deterministic random number generation.
+pub mod random;
+/// Robust statistics, quantiles and kernel density estimation.
+pub mod robust;
+/// Scalar and system root finding, polynomial roots, homotopy continuation.
+pub mod rootfind;
+/// Elliptic integrals, hypergeometric functions and integer-order Bessel functions.
+pub mod special_ext;
