@@ -49,8 +49,15 @@ use std::collections::HashMap;
 
 mod classical;
 mod conservation;
+mod curvilinear;
+mod diffusion;
 mod frameworks;
+mod numeric;
+mod spectral;
 mod symmetry;
+mod util;
+#[cfg(test)]
+mod dimension_tests;
 
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
@@ -130,6 +137,7 @@ enum Request {
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
+    numeric::install(i)?;
     let heavy = |name: &str, arity: Arity| OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100);
     let at = i.op(heavy("at", Arity::Fixed(3)).flags(OpFlags::OPAQUE_ON_APPLY))?;
     let symmetries = i.op(heavy("pde_symmetries", Arity::Fixed(2)))?;
@@ -645,6 +653,9 @@ struct Condition {
     point: NodeId,
     derivative: Index,
     value: NodeId,
+    /// `Some(h)` for a Robin condition `∂u/∂x + h u = value` (the
+    /// derivative is then the first one in the variable `on`).
+    robin: Option<NodeId>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -660,39 +671,131 @@ impl Conditions {
         if cx.graph.op(list) != core::LIST {
             return None;
         }
-        let diff = cx.graph.ops().lookup("diff")?;
-        let at = cx.graph.ops().lookup("at")?;
         let mut out = Vec::new();
         for condition in cx.graph.children(list).to_vec() {
-            let &[target, value] = cx.graph.children(condition) else {
-                return None;
-            };
-            if cx.graph.op(condition) != core::EQ {
-                return None;
-            }
-            if cx.graph.op(target) == core::APPLY {
-                // u(..., a, ...) = value: exactly one argument differs.
-                let args = cx.graph.children(target).to_vec();
-                if args.first() != Some(&p.function) || args.len() != p.vars.len() + 1 {
-                    return None;
-                }
-                let differing: Vec<usize> = (0..p.vars.len()).filter(|&k| !cx.graph.same(args[k + 1], p.vars[k])).collect();
-                let &[on] = differing.as_slice() else {
-                    return None;
-                };
-                out.push(Condition { on, point: args[on + 1], derivative: vec![0; p.vars.len()], value });
-            } else if cx.graph.op(target) == at {
-                let &[inner, x, point] = cx.graph.children(target) else {
-                    return None;
-                };
-                let derivative = p.index_of(cx.graph, diff, inner)?;
-                let on = p.vars.iter().position(|&v| cx.graph.same(v, x))?;
-                out.push(Condition { on, point, derivative, value });
-            } else {
-                return None;
-            }
+            out.push(Self::parse_one(cx, p, condition)?);
         }
         Some(Self(out))
+    }
+
+    /// If `node` is a value `u(.., a, ..)` or a derivative `at(∂u, x, a)` on
+    /// a coordinate hyperplane: `(variable, point, derivative)`.
+    fn atom_of(
+        cx: &mut Cx<'_>,
+        p: &Problem,
+        node: NodeId,
+    ) -> Option<(usize, NodeId, Index)> {
+        let diff = cx.graph.ops().lookup("diff")?;
+        let at = cx.graph.ops().lookup("at")?;
+        if cx.graph.op(node) == core::APPLY {
+            let args = cx.graph.children(node).to_vec();
+            if args.first() != Some(&p.function) || args.len() != p.vars.len() + 1 {
+                return None;
+            }
+            let differing: Vec<usize> = (0..p.vars.len()).filter(|&k| !cx.graph.same(args[k + 1], p.vars[k])).collect();
+            let &[on] = differing.as_slice() else {
+                return None;
+            };
+            Some((on, args[on + 1], vec![0; p.vars.len()]))
+        } else if cx.graph.op(node) == at {
+            let &[inner, x, point] = cx.graph.children(node) else {
+                return None;
+            };
+            let derivative = p.index_of(cx.graph, diff, inner)?;
+            let on = p.vars.iter().position(|&v| cx.graph.same(v, x))?;
+            Some((on, point, derivative))
+        } else {
+            None
+        }
+    }
+
+    /// One condition: `atom = value`, or a linear relation between the
+    /// value and the first derivative on one hyperplane (Robin).
+    fn parse_one(
+        cx: &mut Cx<'_>,
+        p: &Problem,
+        condition: NodeId,
+    ) -> Option<Condition> {
+        let &[target, value] = cx.graph.children(condition) else {
+            return None;
+        };
+        if cx.graph.op(condition) != core::EQ {
+            return None;
+        }
+        let u_symbol = cx.graph.symbol_of(p.function)?;
+        if let Some((on, point, derivative)) = Self::atom_of(cx, p, target) {
+            let mut c = Condition { on, point, derivative, value, robin: None };
+            // ∂u/∂x = rest - h u(a): a Robin condition.
+            if c.derivative == p.unit(on, 1) && cx.graph.depends_on(cx.graph.find(value), u_symbol) {
+                let atom = cx.graph.substitute(p.unknown, p.vars[on], point);
+                let k = derivative_by_node(cx, value, atom)?;
+                let ka = mul(cx.graph, &[k, atom]);
+                let rest = sub(cx.graph, value, ka);
+                let rest = cx.simplify(rest);
+                if !cx.graph.depends_on(cx.graph.find(rest), u_symbol) {
+                    c.robin = Some(neg(cx.graph, k));
+                    c.value = rest;
+                }
+            }
+            return Some(c);
+        }
+        // A sum of atoms: α ∂u/∂x + β u = value.
+        let expression = as_expression(cx.graph, condition);
+        let expression = cx.simplify(expression);
+        let mut atoms: Vec<(NodeId, usize, NodeId, Index)> = Vec::new();
+        let mut stack = vec![expression];
+        while let Some(n) = stack.pop() {
+            if let Some((on, point, derivative)) = Self::atom_of(cx, p, n) {
+                if !atoms.iter().any(|a| a.0 == n) {
+                    atoms.push((n, on, point, derivative));
+                }
+                continue;
+            }
+            stack.extend_from_slice(cx.graph.children(n));
+        }
+        let split = |cx: &mut Cx<'_>, e: NodeId, atom: NodeId| -> Option<(NodeId, NodeId)> {
+            let k = derivative_by_node(cx, e, atom)?;
+            let ka = mul(cx.graph, &[k, atom]);
+            let rest = sub(cx.graph, e, ka);
+            Some((k, cx.simplify(rest)))
+        };
+        match atoms.as_slice() {
+            | [(a, on, point, derivative)] => {
+                let (k, rest) = split(cx, expression, *a)?;
+                let minus = neg(cx.graph, rest);
+                let v = util::div(cx, minus, k);
+                let v = cx.simplify(v);
+                Some(Condition { on: *on, point: *point, derivative: derivative.clone(), value: v, robin: None })
+            },
+            | [(a, on, point, da), (b, on_b, point_b, db)] => {
+                if on != on_b || !cx.graph.same(*point, *point_b) {
+                    return None;
+                }
+                let zero = vec![0; p.vars.len()];
+                let first = p.unit(*on, 1);
+                let (d_atom, u_atom) = if *da == first && *db == zero {
+                    (*a, *b)
+                } else if *db == first && *da == zero {
+                    (*b, *a)
+                } else {
+                    return None;
+                };
+                let (k_d, rest) = split(cx, expression, d_atom)?;
+                let (k_u, rest) = split(cx, rest, u_atom)?;
+                let h = util::div(cx, k_u, k_d);
+                let h = cx.simplify(h);
+                let minus = neg(cx.graph, rest);
+                let v = util::div(cx, minus, k_d);
+                let v = cx.simplify(v);
+                Some(Condition { on: *on, point: *point, derivative: first, value: v, robin: Some(h) })
+            },
+            | _ => None,
+        }
+    }
+
+    /// Whether some condition is of Robin type.
+    fn has_robin(&self) -> bool {
+        self.0.iter().any(|c| c.robin.is_some())
     }
 
     fn find(
@@ -902,6 +1005,39 @@ fn solve(
     conditions: &Conditions,
     method: Method,
 ) -> Option<NodeId> {
+    let classical = if conditions.has_robin() { None } else { solve_classical(cx, p, conditions, method) };
+    if classical.is_some() {
+        return classical;
+    }
+    let general = matches!(
+        method,
+        Method::Any
+            | Method::Separation
+            | Method::Heat1
+            | Method::Heat3
+            | Method::Wave3
+            | Method::Laplace2
+            | Method::Laplace3
+            | Method::Poisson2
+            | Method::Poisson3
+            | Method::Helmholtz
+            | Method::Schrodinger
+            | Method::KleinGordon
+            | Method::SecondOrder
+    );
+    if !general {
+        return None;
+    }
+    let solution = spectral::solve_box(cx, p, conditions).or_else(|| curvilinear::solve(cx, p, conditions))?;
+    Some(cx.graph.node(core::EQ, &[p.unknown, solution]))
+}
+
+fn solve_classical(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+    method: Method,
+) -> Option<NodeId> {
     use Method::{Any, Characteristics, Burgers, Separation, SecondOrder, Dalembert, Wave3, Heat1, Fourier, Heat3, Schrodinger, KleinGordon, Laplace2, Laplace3, Green, Poisson2, Poisson3, Helmholtz};
     let kind = kind(cx, p);
     let try_method = |m: Method| method == Any || method == m;
@@ -951,10 +1087,11 @@ fn solve(
     {
         solution = green(cx, p);
     }
+    if solution.is_none() && matches!(method, Any | Heat1 | Heat3 | Fourier | Schrodinger) {
+        solution = diffusion::similarity(cx, p, conditions).or_else(|| diffusion::parabolic(cx, p, conditions));
+    }
     if solution.is_none() && method == Any {
-        solution = classical::drift_diffusion(cx, p, conditions)
-            .or_else(|| classical::wave_half_line(cx, p, conditions))
-            .or_else(|| frameworks::fourier_evolution(cx, p, conditions));
+        solution = classical::wave_half_line(cx, p, conditions).or_else(|| frameworks::fourier_evolution(cx, p, conditions));
     }
     if solution.is_none() && method == Any && conditions.is_empty() && p.order() == 1 && p.nonlinear {
         solution = frameworks::complete_integral(cx, p);
@@ -2049,7 +2186,8 @@ fn assemble(
     Some(cx.simplify(total))
 }
 
-/// Whether two terms agree at generic values of their symbols.
+/// Whether two terms agree at generic values of their symbols (integers
+/// for symbols declared integer).
 fn agree(
     cx: &mut Cx<'_>,
     a: NodeId,
@@ -2060,13 +2198,11 @@ fn agree(
     if cx.graph.number_of(difference).is_some_and(Number::is_zero) {
         return true;
     }
-    let symbols = cx.graph.free_symbols(cx.graph.find(difference)).to_vec();
-    let mut env = Env::numeric(0.0);
-    for &s in &symbols {
-        env.bind(s, 0.37 + 0.19 * f64::from(s.raw() % 11));
-    }
-    let scale = cx.graph.eval(b, &env).map_or(1.0, |v| v.abs().max(1.0));
-    cx.graph.eval(difference, &env).is_some_and(|v| v.is_finite() && v.abs() <= 1e-9 * scale)
+    (0..2_u32).all(|k| {
+        let env = util::sample_env(cx.graph, difference, k);
+        let scale = cx.graph.eval(b, &env).map_or(1.0, |v| v.abs().max(1.0));
+        cx.graph.eval(difference, &env).is_some_and(|v| v.is_finite() && v.abs() <= 1e-9 * scale)
+    })
 }
 
 /// Builds the time-dependent factor of a mode from its coefficients.
@@ -2452,6 +2588,38 @@ fn verified(
     evaluated > 0
 }
 
+/// `expr` with every `u(args)` replaced by the solution at `args`.
+fn evaluate_unknown(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    solution: NodeId,
+    expr: NodeId,
+) -> NodeId {
+    let mut applications = Vec::new();
+    let mut stack = vec![expr];
+    while let Some(n) = stack.pop() {
+        if cx.graph.op(n) == core::APPLY && cx.graph.children(n).first() == Some(&p.function) {
+            applications.push(n);
+            continue;
+        }
+        stack.extend_from_slice(cx.graph.children(n));
+    }
+    let mut out = expr;
+    for node in applications {
+        let args = cx.graph.children(node)[1..].to_vec();
+        let fresh: Vec<NodeId> = p.vars.iter().map(|_| fresh_symbol(cx, "w")).collect();
+        let mut value = solution;
+        for (&v, &f) in p.vars.iter().zip(&fresh) {
+            value = cx.graph.substitute(value, v, f);
+        }
+        for (&f, &a) in fresh.iter().zip(&args) {
+            value = cx.graph.substitute(value, f, a);
+        }
+        out = cx.graph.replace_subterm(out, node, value);
+    }
+    out
+}
+
 /// Whether `solution` meets every condition.
 fn satisfies(
     cx: &mut Cx<'_>,
@@ -2469,8 +2637,14 @@ fn satisfies(
                 }
             }
         }
-        let on = cx.graph.substitute(value, p.vars[c.on], c.point);
-        let difference = sub(cx.graph, on, c.value);
+        let mut on = cx.graph.substitute(value, p.vars[c.on], c.point);
+        if let Some(h) = c.robin {
+            let u_on = cx.graph.substitute(solution, p.vars[c.on], c.point);
+            let hu = mul(cx.graph, &[h, u_on]);
+            on = add(cx.graph, &[on, hu]);
+        }
+        let target = evaluate_unknown(cx, p, solution, c.value);
+        let difference = sub(cx.graph, on, target);
         if !cx.is_zero(difference) {
             return false;
         }
