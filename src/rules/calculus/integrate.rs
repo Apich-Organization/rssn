@@ -48,6 +48,9 @@ use crate::rules::poly::univariate::QPoly;
 
 use super::diff::Differentiate;
 
+#[path = "integrate_ext.rs"]
+mod ext;
+
 /// Operators the integrator builds results from.
 #[derive(Copy, Clone, Debug)]
 pub struct Functions {
@@ -312,6 +315,9 @@ impl Integrator<'_, '_> {
         if let Some(found) = self.table(f) {
             return Some(found);
         }
+        if let Some(found) = self.reciprocal_trig(f) {
+            return Some(found);
+        }
         let extensions = self
             .cx
             .graph
@@ -334,6 +340,9 @@ impl Integrator<'_, '_> {
         if let Some(found) = self.rational_parametric(f) {
             return Some(found);
         }
+        if let Some(found) = self.biquadratic(f) {
+            return Some(found);
+        }
         if let Some(found) = self.distribute(f, depth) {
             return Some(found);
         }
@@ -347,6 +356,18 @@ impl Integrator<'_, '_> {
             return Some(found);
         }
         if let Some(found) = self.radicand_monomial_denominator(f, depth) {
+            return Some(found);
+        }
+        if let Some(found) = self.quadratic_radical(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.exp_substitution(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.risch_norman(f) {
+            return Some(found);
+        }
+        if let Some(found) = self.weierstrass(f) {
             return Some(found);
         }
         self.by_parts(f, depth)
@@ -1402,8 +1423,15 @@ impl Kernel for Definite {
             },
             | _ => (variable, integrand),
         };
+        // Rational and Fourier-type integrals over the whole line: residues.
+        if lower_infinite && upper_infinite {
+            if let Some(value) = ext::by_residues(cx, integrand, variable, lower, upper) {
+                return Outcome::Equal(value);
+            }
+        }
         let Some(primitive) = antiderivative(cx, self.functions, integrand, variable) else {
-            return Outcome::Pass;
+            // No antiderivative: residues and classical tables.
+            return ext::by_residues(cx, integrand, variable, lower, upper).map_or(Outcome::Pass, Outcome::Equal);
         };
         let graph = &mut *cx.graph;
         // An improper integral is the difference of the antiderivative's

@@ -440,3 +440,50 @@ fn binomial_sums_by_recurrence() {
         }
     }
 }
+
+/// Algebraic, Weierstrass, exponential, Risch–Norman and biquadratic
+/// integration, and definite integrals by residues.
+#[test]
+fn extended_integration_methods() {
+    let rules = crate::rules::standard();
+    for f in [
+        "ln(x)^2",
+        "sqrt(1 - x^2)",
+        "1/sqrt(1 + x^2)",
+        "sqrt(x^2 + 1)",
+        "1/(x^4 + 1)",
+        "x/(x^4 + 1)",
+        "sec(x)",
+        "1/(2 + cos(x))",
+        "1/(exp(x) + 1)",
+        "1/(x^2*sqrt(x^2 - 1))",
+        "x*exp(x)/(x + 1)^2",
+        "x^2/sqrt(x^2 + 2*x + 5)",
+        "1/((x + 2)*sqrt(x^2 + 1))",
+    ] {
+        let (primitive, reduced) = reduce_with(&rules, &format!("integral({f}, x)"), &[]);
+        assert!(reduced, "∫ {f} dx not found: {primitive}");
+        let mut checked = 0;
+        for at in [0.3, 0.55, 0.8, 1.6, 2.4] {
+            let h = 1e-5;
+            let d = (eval(&rules, &primitive, &[("x", at + h)]) - eval(&rules, &primitive, &[("x", at - h)])) / (2.0 * h);
+            let want = eval(&rules, f, &[("x", at)]);
+            if d.is_finite() && want.is_finite() {
+                assert!((d - want).abs() < 1e-5 * (1.0 + want.abs()), "∫ {f} = {primitive}: {d} vs {want} at {at}");
+                checked += 1;
+            }
+        }
+        assert!(checked >= 2, "∫ {f} = {primitive} could not be checked");
+    }
+    let value = |src: &str| {
+        let (text, reduced) = reduce_with(&rules, src, &[]);
+        assert!(reduced, "{src}: {text}");
+        eval(&rules, &text, &[])
+    };
+    let pi = std::f64::consts::PI;
+    assert!((value("defint(sin(x)/x, x, 0, oo)") - pi / 2.0).abs() < 1e-12);
+    assert!((value("defint(1/(x^4 + 1), x, -oo, oo)") - pi / 2.0_f64.sqrt()).abs() < 1e-12);
+    assert!((value("defint(cos(x)/(x^2 + 1), x, -oo, oo)") - pi / std::f64::consts::E).abs() < 1e-12);
+    assert!((value("defint(cos(2*x)/(x^2 + 4), x, -oo, oo)") - pi / 2.0 * (-4.0_f64).exp()).abs() < 1e-12);
+    assert!((value("defint(x*sin(x)/(x^2 + 1), x, -oo, oo)") - pi / std::f64::consts::E).abs() < 1e-12);
+}
