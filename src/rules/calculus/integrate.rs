@@ -1635,11 +1635,63 @@ fn compile_nested(
                 }
                 body(&point)
             };
-            gauss_kronrod_any(f, a, b, tolerance, 200).value
+            robust_quadrature(f, a, b, tolerance, 200).0
         }));
     }
     let compiled = crate::backend::compile(graph, term, inputs).ok()?;
     Some(Box::new(move |args: &[f64]| compiled.call(args)))
+}
+
+/// Numeric integral over `[a, b]` (either end may be infinite) with an
+/// error estimate.
+///
+/// Plain adaptive Gauss-Kronrod is tried first; when it does not reach the
+/// tolerance (endpoint singularities, slow algebraic decay) the integral is
+/// redone with Wynn-extrapolated Gauss-Kronrod (QAGS) and the
+/// double-exponential rule matching the range, and the estimate with the
+/// smallest error is kept.
+fn robust_quadrature(
+    f: impl Fn(f64) -> f64,
+    a: f64,
+    b: f64,
+    tolerance: f64,
+    max_panels: usize,
+) -> (f64, f64) {
+    use crate::kernels::quadrature as q;
+    if a > b {
+        let (value, error) = robust_quadrature(f, b, a, tolerance, max_panels);
+        return (-value, error);
+    }
+    let first = gauss_kronrod_any(&f, a, b, tolerance, max_panels);
+    let target = |value: f64| tolerance * value.abs().max(1e-3);
+    if first.value.is_finite() && first.error <= target(first.value) {
+        return (first.value, first.error);
+    }
+    let mut candidates = vec![(first.value, first.error)];
+    let mut push = |r: q::Integral| candidates.push((r.value, r.error));
+    match (a.is_finite(), b.is_finite()) {
+        | (true, true) => {
+            push(q::integrate_gk(&f, a, b, q::GkRule::G10K21, tolerance * 1e-3, tolerance, max_panels));
+            push(q::tanh_sinh(&f, a, b, tolerance));
+        },
+        | (true, false) => {
+            push(q::integrate_semi_infinite(&f, a, tolerance));
+            push(q::exp_sinh(&f, a, tolerance));
+        },
+        | (false, true) => {
+            push(q::integrate_semi_infinite(|t| f(-t), -b, tolerance));
+            push(q::exp_sinh(|t| f(-t), -b, tolerance));
+        },
+        | (false, false) => {
+            push(q::integrate_infinite(&f, tolerance));
+            push(q::sinh_sinh(&f, tolerance));
+        },
+    }
+    candidates
+        .into_iter()
+        .filter(|(v, e)| v.is_finite() && e.is_finite())
+        .min_by(|x, y| x.1.total_cmp(&y.1))
+        .unwrap_or((first.value, first.error))
 }
 
 pub(super) struct Quadrature {
@@ -1702,9 +1754,9 @@ impl Kernel for Quadrature {
             }
             compiled(&args)
         };
-        let result = gauss_kronrod_any(f, a, b, tolerance, 4_000);
-        if result.value.is_finite() && result.error.is_finite() {
-            Outcome::Approx(Ball { mid: result.value, rad: result.error })
+        let (value, error) = robust_quadrature(f, a, b, tolerance, 4_000);
+        if value.is_finite() && error.is_finite() {
+            Outcome::Approx(Ball { mid: value, rad: error })
         } else {
             Outcome::Pass
         }

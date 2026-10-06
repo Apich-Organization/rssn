@@ -182,6 +182,20 @@ fn numeric_quadrature_without_a_closed_form() {
 }
 
 #[test]
+fn numeric_quadrature_with_endpoint_singularities() {
+    // Logarithmic singularities defeat plain Gauss-Kronrod at tight
+    // tolerances; the graph falls back to extrapolated and
+    // double-exponential rules.
+    let pi2 = std::f64::consts::PI.powi(2);
+    let (value, error) = numeric(&[calculus()], "defint(ln(x)/(1 + x), x, 0, 1)", &[], 1e-12);
+    assert!((value + pi2 / 12.0).abs() < 1e-10, "{value} ± {error}");
+    let (value, error) = numeric(&[calculus()], "defint(ln(x)*ln(1 - x), x, 0, 1)", &[], 1e-12);
+    assert!((value - (2.0 - pi2 / 6.0)).abs() < 1e-10, "{value} ± {error}");
+    let (value, error) = numeric(&[calculus()], "defint(exp(-x)*ln(x), x, 0, oo)", &[], 1e-12);
+    assert!((value + 0.577_215_664_901_532_9).abs() < 1e-9, "{value} ± {error}");
+}
+
+#[test]
 fn nested_requests() {
     assert_eq!(run("diff(defint(t^2, t, 0, x), x)"), "x^2");
     assert_eq!(run("integral(diff(x^3, x), x)"), "x^3");
