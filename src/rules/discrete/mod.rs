@@ -39,6 +39,7 @@
 //! | [`groups`] | `group` term; `cyclic_group`, `dihedral_group`, `symmetric_group`, `klein_four_group`, `group_from_table`; `group_elements`, `group_order`, `group_identity`, `group_mul`, `group_inverse`, `group_is_abelian`, `group_element_order`, `group_conjugacy_classes`, `group_center`, `group_is_valid`, `group_subgroups`, `group_cosets`, `group_is_normal`; `representation_is_valid`, `group_character`; `perm_compose`, `perm_inverse`, `perm_order`, `perm_cycles`, `perm_sign` |
 //! | [`perm_groups`] | Schreier–Sims: `perm_group_order`, `perm_group_contains`, `perm_group_base`, `perm_group_strong_generators`, `perm_group_basic_orbits`, `perm_group_orbits`, `perm_group_is_transitive`, `perm_group_stabilizer_order`, `perm_group_elements`, `group_from_perms`, `perm_group_is_abelian`, `perm_group_derived_series`, `perm_group_is_solvable`, `perm_group_lower_central_series`, `perm_group_is_nilpotent`, `perm_group_derived_subgroup`; Todd–Coxeter: `todd_coxeter`, `todd_coxeter_index`, `fp_group_order`, `fp_group` |
 //! | [`group_theory`] | `group_generate`, `group_subgroup`, `group_derived_subgroup`, `group_derived_series`, `group_is_solvable`, `group_lower_central_series`, `group_is_nilpotent`, `group_nilpotency_class`, `group_normal_subgroups`, `group_is_simple`, `group_sylow_subgroup`, `group_sylow_count`, `group_sylow_subgroups`, `group_quotient`, `group_direct_product`, `group_isomorphism`, `group_is_isomorphic`, `group_automorphism_count`, `group_inner_automorphism_count`, `group_outer_automorphism_count`, `group_exponent`, `group_element_orders`, `group_order_statistics` |
+//! | [`representations`] | Burnside–Dixon character tables: `group_class_count`, `group_class_sizes`, `group_class_representatives`, `group_class_index`, `group_character_table`, `group_character_degrees`, `character_table_is_orthogonal`, `character_inner_product`, `character_is_irreducible`, `character_decompose`, `character_tensor`, `character_sym_square`, `character_alt_square`, `character_adams`, `character_conjugate`, `character_regular`, `character_of_matrices`, `representation_decompose`, `character_projection` |
 //!
 //! See the documentation of each module for the exact term formats.
 
@@ -53,6 +54,7 @@ pub mod graphs;
 pub mod group_theory;
 pub mod groups;
 pub mod perm_groups;
+pub mod representations;
 pub mod topology;
 
 use num_bigint::BigInt;
@@ -106,6 +108,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     groups::install(i)?;
     perm_groups::install(i)?;
     group_theory::install(i)?;
+    representations::install(i)?;
     Ok(())
 }
 
