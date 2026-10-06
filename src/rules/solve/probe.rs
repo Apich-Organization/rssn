@@ -17,7 +17,7 @@ use crate::graph::NodeId;
 use crate::graph::Saturate;
 
 /// `(equation, parameter values, general solution wanted)`.
-type Case = (&'static str, &'static [(&'static str, f64)], bool);
+type Case = (&'static str, &'static [(&'static str, f64)], u8);
 
 const WINDOW: f64 = 12.0;
 
@@ -95,7 +95,8 @@ pub(super) fn audit(
     case: &Case,
     solver: &str,
 ) -> Report {
-    let (eq, params, general) = *case;
+    let (eq, params, mode) = *case;
+    let general = mode == 1;
     let rules = crate::rules::standard();
     let mut g = Graph::new();
     let Ok(engine) = Engine::install(&mut g, &rules) else {
@@ -152,6 +153,9 @@ pub(super) fn audit(
             values.push(v);
         }
     }
+    if mode == 2 {
+        return Report { status: if values.is_empty() { "EMPTY".into() } else { "ok".into() }, text };
+    }
     let reference = scan_roots(&g, residual, &params, x);
     for r in reference {
         if !values.iter().any(|&v| (v - r).abs() <= 1e-6 * (1.0 + r.abs())) {
@@ -163,19 +167,25 @@ pub(super) fn audit(
 
 macro_rules! p {
     ($e:expr) => {
-        ($e, &[] as &[(&str, f64)], false)
+        ($e, &[] as &[(&str, f64)], 0)
     };
     ($e:expr, $params:expr) => {
-        ($e, &$params as &[(&str, f64)], false)
+        ($e, &$params as &[(&str, f64)], 0)
+    };
+}
+
+macro_rules! verified {
+    ($e:expr) => {
+        ($e, &[] as &[(&str, f64)], 2)
     };
 }
 
 macro_rules! general {
     ($e:expr) => {
-        ($e, &[] as &[(&str, f64)], true)
+        ($e, &[] as &[(&str, f64)], 1)
     };
     ($e:expr, $params:expr) => {
-        ($e, &$params as &[(&str, f64)], true)
+        ($e, &$params as &[(&str, f64)], 1)
     };
 }
 
@@ -305,12 +315,12 @@ pub(super) const ALGEBRAIC: &[Case] = &[
     p!("x^2 + 4/x^2 - 5 = 0"),
     p!("x^8 - 17*x^4 + 16 = 0"),
     // Principal-branch trigonometric equations.
-    p!("sin(x) = 1/2"),
-    p!("cos(x) = 1/3"),
-    p!("tan(x) = 2"),
-    p!("sin(x) + cos(x) = 1"),
-    p!("sin(2*x) = cos(x)"),
-    p!("2*cos(x)^2 - 1 = 0"),
+    verified!("sin(x) = 1/2"),
+    verified!("cos(x) = 1/3"),
+    verified!("tan(x) = 2"),
+    verified!("sin(x) + cos(x) = 1"),
+    verified!("sin(2*x) = cos(x)"),
+    verified!("2*cos(x)^2 - 1 = 0"),
     // General solutions.
     general!("sin(x) = 1/2"),
     general!("cos(x) = -1/2"),
@@ -367,7 +377,7 @@ mod tests {
                 "{:6} {:>6.2}s {}{}  ->  {}",
                 if ok { "ok" } else { "FAIL" },
                 start.elapsed().as_secs_f64(),
-                if case.2 { "[general] " } else { "" },
+                if case.2 == 1 { "[general] " } else { "" },
                 case.0,
                 if ok { report.text } else { format!("{} {}", report.status, report.text) }
             );

@@ -43,6 +43,7 @@ use crate::graph::Arity;
 use crate::graph::Ball;
 use crate::graph::Cx;
 use crate::graph::Env;
+use crate::graph::Facts;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
@@ -81,6 +82,7 @@ mod elim;
 mod heuristics;
 mod normalize;
 mod symbolic;
+mod trig;
 #[cfg(test)]
 mod probe;
 
@@ -125,8 +127,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         i.graph().ops_mut().set_attr(op, Inverse(patterns));
     }
     let solve_op = i.op(OpDescriptor::new("solve", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
+    let general_op = i.op(OpDescriptor::new("solve_general", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
     let nsolve_op = i.op(OpDescriptor::new("nsolve", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("solve/symbolic", Tier::Reduce, Symbolic { solve: solve_op });
+    i.kernel("solve/symbolic", Tier::Reduce, Symbolic { solve: solve_op, general: general_op });
     i.kernel("solve/polynomial-numeric", Tier::Reduce, PolynomialNumeric { solve: solve_op });
     i.kernel("solve/nsolve", Tier::Reduce, RootNear { nsolve: nsolve_op });
     Ok(())
@@ -179,6 +182,24 @@ fn rational(
 }
 
 const MAX_DEPTH: usize = 8;
+
+thread_local! {
+    static GENERAL: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Whether solutions of periodic equations are being collected as families
+/// with an integer parameter.
+pub(crate) fn general_mode() -> bool {
+    GENERAL.with(std::cell::Cell::get)
+}
+
+/// Runs `f` with the general mode set.
+fn with_general<T>(f: impl FnOnce() -> T) -> T {
+    let previous = GENERAL.with(|g| g.replace(true));
+    let out = f();
+    GENERAL.with(|g| g.set(previous));
+    out
+}
 
 pub(super) fn cap_default() -> usize {
     Limits::default().terms
@@ -303,7 +324,12 @@ pub(crate) fn sample_envs(
         .map(|k| {
             let mut env = Env::numeric(0.0);
             for (i, &s) in symbols.iter().enumerate() {
-                let magnitude = BASE.get((i + 2 * k) % 6).copied().unwrap_or(1.0) * (1.0 + 0.11 * f64::from(u8::try_from(k).unwrap_or(0)));
+                if graph.assumption(s).has(Facts::INTEGER) {
+                    const INTEGERS: [f64; 4] = [1.0, 0.0, -1.0, 2.0];
+                    env.bind(s, INTEGERS.get((k + i) % 4).copied().unwrap_or(0.0));
+                    continue;
+                }
+                let magnitude = BASE.get((2 * i + k) % 6).copied().unwrap_or(1.0) * (1.0 + 0.11 * f64::from(u8::try_from(k).unwrap_or(0)));
                 let sign = if k > 0 && (i + k) % 3 == 0 { -1.0 } else { 1.0 };
                 env.bind(s, sign * magnitude);
             }
@@ -350,6 +376,23 @@ pub(crate) fn filter_candidates(
         }
     }
     solutions
+}
+
+/// All solutions of `expr = 0` for `x`, periodic families included: each
+/// family carries an integer parameter `n` (`n1`, ... if `n` is taken).
+pub(crate) fn solve_general_for(
+    graph: &mut Graph,
+    expr: NodeId,
+    x: NodeId,
+) -> Option<Vec<NodeId>> {
+    with_general(|| {
+        let term = best(graph, expr)?;
+        let term = sqrt_as_power(graph, term);
+        if let Some(found) = trig::solve(graph, term, x, true) {
+            return Some(found);
+        }
+        solve_for(graph, expr, x, 0)
+    })
 }
 
 /// `sqrt(u)` written `u^(1/2)` throughout, so that one radical heuristic
@@ -560,9 +603,15 @@ fn invert(
             | _ => return None,
         }
     } else if let &[arg] = args.as_slice() {
-        let branches = graph.ops().attr::<Inverse>(op)?.0.clone();
-        for branch in branches {
-            targets.push((arg, branch.instantiate(graph, &[value])?));
+        let periodic = if general_mode() { periodic_targets(graph, op, arg, value, inner, x) } else { None };
+        match periodic {
+            | Some(found) => targets.extend(found),
+            | None => {
+                let branches = graph.ops().attr::<Inverse>(op)?.0.clone();
+                for branch in branches {
+                    targets.push((arg, branch.instantiate(graph, &[value])?));
+                }
+            },
         }
     } else {
         return None;
@@ -571,6 +620,46 @@ fn invert(
     for (unknown, target) in targets {
         let equation = difference(graph, unknown, target);
         out.extend(solve_for(graph, equation, x, depth + 1)?);
+    }
+    Some(out)
+}
+
+/// The solutions `u` of `op(u) = value` as families with an integer
+/// parameter, for the periodic circular functions.
+fn periodic_targets(
+    graph: &mut Graph,
+    op: OpId,
+    arg: NodeId,
+    value: NodeId,
+    inner: NodeId,
+    x: NodeId,
+) -> Option<Vec<(NodeId, NodeId)>> {
+    let names = ["sin", "cos", "tan"];
+    let which = names.iter().position(|n| graph.ops().lookup(n) == Some(op))?;
+    let (pi_op, inverse) = (graph.ops().lookup("pi")?, graph.ops().lookup(["asin", "acos", "atan"][which])?);
+    let n = trig::integer_symbol(graph, &[value, inner, x]);
+    let pi = graph.node(pi_op, &[]);
+    let principal = graph.node(inverse, &[value]);
+    let minus_one = graph.int(-1);
+    let two = graph.int(2);
+    let mut out = Vec::new();
+    match which {
+        | 0 => {
+            let turn = product(graph, &[two, pi, n]);
+            out.push((arg, graph.node(core::ADD, &[principal, turn])));
+            let neg = graph.node(core::MUL, &[minus_one, principal]);
+            out.push((arg, graph.node(core::ADD, &[pi, neg, turn])));
+        },
+        | 1 => {
+            let turn = product(graph, &[two, pi, n]);
+            out.push((arg, graph.node(core::ADD, &[principal, turn])));
+            let neg = graph.node(core::MUL, &[minus_one, principal]);
+            out.push((arg, graph.node(core::ADD, &[neg, turn])));
+        },
+        | _ => {
+            let turn = product(graph, &[pi, n]);
+            out.push((arg, graph.node(core::ADD, &[principal, turn])));
+        },
     }
     Some(out)
 }
@@ -877,11 +966,12 @@ fn back_substitute(
 
 struct Symbolic {
     solve: OpId,
+    general: OpId,
 }
 
 impl Kernel for Symbolic {
     fn ops(&self) -> Vec<OpId> {
-        vec![self.solve]
+        vec![self.solve, self.general]
     }
 
     fn reduce(
@@ -890,6 +980,7 @@ impl Kernel for Symbolic {
         node: NodeId,
     ) -> Outcome {
         let graph = &mut *cx.graph;
+        let general = graph.op(node) == self.general;
         let &[equation, unknown] = graph.children(node) else {
             return Outcome::Pass;
         };
@@ -909,7 +1000,7 @@ impl Kernel for Symbolic {
             return solve_inequality(graph, equation, unknown).map_or(Outcome::Pass, Outcome::Equal);
         } else {
             let expr = as_expression(graph, equation);
-            solve_for(graph, expr, unknown, 0)
+            if general { solve_general_for(graph, expr, unknown) } else { solve_for(graph, expr, unknown, 0) }
         };
         // Not pinned: the solutions are ordinary terms and should be
         // simplified like any others.

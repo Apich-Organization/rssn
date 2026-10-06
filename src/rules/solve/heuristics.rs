@@ -331,9 +331,24 @@ fn absolute_values(
     Some(out)
 }
 
+/// Linear trigonometric equations (see the trig module), else the
+/// Weierstrass substitution for equations in sin, cos, tan of one
+/// argument of any shape.
+fn trigonometric(
+    graph: &mut Graph,
+    term: NodeId,
+    x: NodeId,
+    depth: usize,
+) -> Option<Vec<NodeId>> {
+    if let Some(found) = super::trig::solve(graph, term, x, super::general_mode()) {
+        return Some(found);
+    }
+    weierstrass(graph, term, x, depth)
+}
+
 /// Weierstrass substitution for equations in sin, cos, tan of one
 /// argument (expanded first).
-fn trigonometric(
+fn weierstrass(
     graph: &mut Graph,
     term: NodeId,
     x: NodeId,

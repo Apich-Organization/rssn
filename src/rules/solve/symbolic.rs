@@ -18,8 +18,6 @@
 //! keeps every formula that is a root wherever it is defined and discards
 //! those that are wrong at a spot check.
 
-use num_traits::Zero;
-
 use super::product;
 use super::reciprocal;
 use crate::graph::op::core;
