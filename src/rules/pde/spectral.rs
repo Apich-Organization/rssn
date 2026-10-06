@@ -1467,7 +1467,9 @@ fn faces(
         let iv = &intervals[level];
         let (end, opposite) = if near { (iv.left, iv.right) } else { (iv.right, iv.left) };
         // Dirichlet data, the opposite end Dirichlet or Neumann (homogeneous).
-        if end.kind != Kind::Dirichlet || !matches!(opposite.kind, Kind::Dirichlet | Kind::Neumann) || !cx.is_zero(opposite.value) {
+        // (Data on the opposite end belongs to the problem of that face.)
+        let neumann_data = opposite.kind == Kind::Neumann && !cx.is_zero(opposite.value);
+        if end.kind != Kind::Dirichlet || !matches!(opposite.kind, Kind::Dirichlet | Kind::Neumann) || neumann_data {
             return Some(None);
         }
         // The operator: a pure second derivative in this axis.

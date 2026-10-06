@@ -30,6 +30,7 @@ use super::Index;
 use super::solve;
 use super::util::div;
 use super::util::is_zero_number;
+use super::util::sample;
 use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::op::core;
@@ -435,7 +436,9 @@ pub(super) fn solve_system(
             let d = multiply(cx, &left, &p);
             for (i, row) in d.iter().enumerate() {
                 for (j, &entry) in row.iter().enumerate() {
-                    if i != j && !cx.is_zero(entry) {
+                    // Radicals may hide a zero from the simplifier: test numerically too.
+                    let numerically_zero = (0..2_u32).all(|k| sample(cx.graph, entry, k).is_some_and(|v| v.abs() < 1e-9));
+                    if i != j && !cx.is_zero(entry) && !numerically_zero {
                         ok = false;
                     }
                 }

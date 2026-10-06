@@ -479,3 +479,194 @@ fn drift_on_intervals_and_plates() {
     let s = run(&format!("pdsolve({d4} = sin(x)*sin(y), u(x, y), list({edges}))"));
     close(value(&rhs(&s), &[("x", 0.7), ("y", 1.1)]), 0.7_f64.sin() * 1.1_f64.sin() / 4.0, 1e-12, &s);
 }
+
+/// Replaces every `defint(body, var, lo, hi)` by the midpoint rule with
+/// `points` nodes (the integrands here are analytic).
+fn expand_integrals(
+    text: &str,
+    points: usize,
+) -> String {
+    let mut s = text.to_owned();
+    while let Some(start) = s.rfind("defint(") {
+        let open = start + 6;
+        let mut depth = 0_i32;
+        let mut end = open;
+        for (i, c) in s.char_indices().skip(open) {
+            match c {
+                | '(' => depth += 1,
+                | ')' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = i;
+                        break;
+                    }
+                },
+                | _ => {},
+            }
+        }
+        let inner = s[open + 1..end].to_owned();
+        let mut parts = Vec::new();
+        let (mut depth, mut last) = (0_i32, 0);
+        for (i, c) in inner.char_indices() {
+            match c {
+                | '(' => depth += 1,
+                | ')' => depth -= 1,
+                | ',' if depth == 0 => {
+                    parts.push(inner[last..i].trim().to_owned());
+                    last = i + 1;
+                },
+                | _ => {},
+            }
+        }
+        parts.push(inner[last..].trim().to_owned());
+        assert_eq!(parts.len(), 4, "malformed integral in {text}");
+        let (body, var, lo, hi) = (&parts[0], &parts[1], &parts[2], &parts[3]);
+        let pieces: Vec<String> = (0..points)
+            .map(|k| {
+                let fraction = (f64::from(u32::try_from(k).unwrap_or(0)) + 0.5) / f64::from(u32::try_from(points).unwrap_or(1));
+                let node = format!("(({lo}) + (({hi}) - ({lo}))*{fraction})");
+                replace_identifier(body, var, &node)
+            })
+            .collect();
+        s.replace_range(start..=end, &format!("((({hi}) - ({lo}))/{points}*({}))", pieces.join(" + ")));
+    }
+    s
+}
+
+/// `∫_{x-t}^{x+t} f(s) K(R(s)) ds` by the midpoint rule, `R² = t² - (x - s)²`.
+fn riemann(
+    x: f64,
+    t: f64,
+    f: &dyn Fn(f64) -> f64,
+    kernel: &dyn Fn(f64) -> f64,
+) -> f64 {
+    let n = 4000;
+    let h = 2.0 * t / f64::from(n);
+    (0..n)
+        .map(|k| {
+            let s = x - t + h * (f64::from(k) + 0.5);
+            let r = (t * t - (x - s) * (x - s)).max(0.0).sqrt();
+            f(s) * kernel(r) * h
+        })
+        .sum()
+}
+
+#[test]
+fn klein_gordon_and_telegraph_on_the_line() {
+    use crate::kernels::special::bessel_i;
+    use crate::kernels::special::bessel_j;
+    let gauss = |s: f64| (-s * s).exp();
+    // Klein-Gordon u_tt = u_xx - u, u(x, 0) = 0, u_t(x, 0) = e^{-x²}.
+    let kg = |x: f64, t: f64| 0.5 * riemann(x, t, &gauss, &|r| bessel_j(0.0, r));
+    let (h, x, t) = (0.02, 0.4, 0.8);
+    let residual = (kg(x, t + h) - 2.0 * kg(x, t) + kg(x, t - h)) / (h * h) - (kg(x + h, t) - 2.0 * kg(x, t) + kg(x - h, t)) / (h * h) + kg(x, t);
+    assert!(residual.abs() < 2e-3, "the Riemann formula does not solve the equation: {residual}");
+    let s = any("pdsolve(diff(diff(u(x, t), t), t) - diff(diff(u(x, t), x), x) + u(x, t) = 0, u(x, t), list(u(x, 0) = 0, at(diff(u(x, t), t), t, 0) = exp(-x^2)))");
+    close(value(&expand_integrals(&rhs(&s), 96), &[("x", x), ("t", t)]), kg(x, t), 1e-5, &s);
+    // Telegraph equation u_tt + 2 u_t = u_xx with u(x, 0) = e^{-x²}: u = e^{-t} w,
+    // w_tt = w_xx + w, w(0) = f, w_t(0) = f.
+    let w = |x: f64, t: f64| {
+        0.5 * (gauss(x + t) + gauss(x - t))
+            + 0.5 * riemann(x, t, &gauss, &|r| bessel_i(0.0, r))
+            + 0.5 * t * riemann(x, t, &gauss, &|r| if r < 1e-9 { 0.5 } else { bessel_i(1.0, r) / r })
+    };
+    let u = |x: f64, t: f64| (-t).exp() * w(x, t);
+    let residual = (u(x, t + h) - 2.0 * u(x, t) + u(x, t - h)) / (h * h) + 2.0 * (u(x, t + h) - u(x, t - h)) / (2.0 * h)
+        - (u(x + h, t) - 2.0 * u(x, t) + u(x - h, t)) / (h * h);
+    assert!(residual.abs() < 2e-3, "the damped Riemann formula does not solve the equation: {residual}");
+    let s = any("pdsolve(diff(diff(u(x, t), t), t) + 2*diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-x^2), at(diff(u(x, t), t), t, 0) = 0))");
+    close(value(&expand_integrals(&rhs(&s), 96), &[("x", x), ("t", t)]), u(x, t), 1e-5, &s);
+}
+
+#[test]
+fn robin_disks_neumann_balls_and_steady_faces() {
+    use crate::kernels::special::bessel_j;
+    let (r, t) = (0.4, 0.1);
+    // Robin condition on a disk: z J_0'(z) + 2 J_0(z) = 0.
+    let s = run("pdsolve(diff(u(r, t), t) = diff(diff(u(r, t), r), r) + diff(u(r, t), r)/r, u(r, t), list(at(diff(u(r, t), r), r, 1) + 2*u(1, t) = 0, u(r, 0) = besselj(0, bessel_root(0, 2, 1)*r)))");
+    let z = value("bessel_root(0, 2, 1)", &[]);
+    close(-z * bessel_j(1.0, z) + 2.0 * bessel_j(0.0, z), 0.0, 1e-8, "robin root");
+    close(value(&rhs(&s), &[("r", r), ("t", t)]), (-z * z * t).exp() * bessel_j(0.0, z * r), 1e-9, &s);
+    // Neumann condition on a ball: tan z = z.
+    let s = run("pdsolve(diff(u(r, t), t) = diff(diff(u(r, t), r), r) + 2*diff(u(r, t), r)/r, u(r, t), list(at(diff(u(r, t), r), r, 1) = 0, u(r, 0) = sin(bessel_root(1/2, -1/2, 1)*r)/r))");
+    let z = value("bessel_root(1/2, -1/2, 1)", &[]);
+    close(z.tan() - z, 0.0, 1e-8, "ball root");
+    close(value(&rhs(&s), &[("r", r), ("t", t)]), (-z * z * t).exp() * (z * r).sin() / r, 1e-9, &s);
+    // Laplace's equation on a rectangle with an insulated edge: cosh profile.
+    let s = run(&format!("pdsolve({LAPLACE_2D} = 0, u(x, y), list(u(0, y) = 0, u(1, y) = 0, at(diff(u(x, y), y), y, 0) = 0, u(x, 1) = sin(pi*x)))"));
+    close(value(&rhs(&s), &[("x", 0.3), ("y", 0.6)]), (PI * 0.6).cosh() * (PI * 0.3).sin() / PI.cosh(), 1e-12, &s);
+    // A harmonic function in a box with data on two opposite faces.
+    let lap3 = "diff(diff(u(x, y, z), x), x) + diff(diff(u(x, y, z), y), y) + diff(diff(u(x, y, z), z), z)";
+    let s = run(&format!(
+        "pdsolve({lap3} = 0, u(x, y, z), list(u(0, y, z) = 0, u(1, y, z) = 0, u(x, 0, z) = 0, u(x, 1, z) = 0, u(x, y, 0) = sin(pi*x)*sin(pi*y), u(x, y, 1) = 2*sin(pi*x)*sin(pi*y)))"
+    ));
+    let k = 2.0_f64.sqrt() * PI;
+    let profile = |z: f64| ((k * (1.0 - z)).sinh() + 2.0 * (k * z).sinh()) / k.sinh();
+    close(value(&rhs(&s), &[("x", 0.3), ("y", 0.45), ("z", 0.7)]), profile(0.7) * (PI * 0.3).sin() * (PI * 0.45).sin(), 1e-12, &s);
+}
+
+#[test]
+fn schroedinger_and_three_unknowns() {
+    // The free particle on the half-line with a node at the wall.
+    let s = any("pdsolve(I*diff(u(x, t), t) = -diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = exp(-x^2), u(0, t) = 0))");
+    assert!(s.contains("defint") || s.contains("erf"), "{s}");
+    // A 3x3 first-order system: U_t + A U_x = 0, A = tridiagonal(1, 2, 1).
+    let src = "pdsolve(list(diff(u(x, t), t) + 2*diff(u(x, t), x) + diff(v(x, t), x) = 0, diff(v(x, t), t) + diff(u(x, t), x) + 2*diff(v(x, t), x) + diff(w(x, t), x) = 0, diff(w(x, t), t) + diff(v(x, t), x) + 2*diff(w(x, t), x) = 0), list(u(x, t), v(x, t), w(x, t)), list(u(x, 0) = sin(x), v(x, 0) = 0, w(x, 0) = 0))";
+    let s = run(src);
+    let inner = s.trim_start_matches("list(").trim_end_matches(')');
+    let a: Vec<&str> = inner.split(", v(x, t) = ").collect();
+    assert_eq!(a.len(), 2, "{s}");
+    let b: Vec<&str> = a[1].split(", w(x, t) = ").collect();
+    assert_eq!(b.len(), 2, "{s}");
+    let parts = [a[0].trim_start_matches("u(x, t) = ").to_owned(), b[0].to_owned(), b[1].to_owned()];
+    let at = |i: usize, x: f64, t: f64| value(&parts[i], &[("x", x), ("t", t)]);
+    let (x, t, h) = (0.5, 0.3, 1e-4);
+    let (u, v, w) = (|x, t| at(0, x, t), |x, t| at(1, x, t), |x, t| at(2, x, t));
+    let dx = |f: &dyn Fn(f64, f64) -> f64| (f(x + h, t) - f(x - h, t)) / (2.0 * h);
+    let dt = |f: &dyn Fn(f64, f64) -> f64| (f(x, t + h) - f(x, t - h)) / (2.0 * h);
+    close(dt(&u) + 2.0 * dx(&u) + dx(&v), 0.0, 1e-6, &s);
+    close(dt(&v) + dx(&u) + 2.0 * dx(&v) + dx(&w), 0.0, 1e-6, &s);
+    close(dt(&w) + dx(&v) + 2.0 * dx(&w), 0.0, 1e-6, &s);
+    close(u(x, 0.0), x.sin(), 1e-12, &s);
+    close(v(x, 0.0), 0.0, 1e-12, &s);
+}
+
+#[test]
+fn transport_with_data_and_step_data() {
+    // u_t + u_x + 2 u_y + 3 u_z + u = 0 with a Gaussian: transported and damped.
+    let s = run("pdsolve(diff(u(x, y, z, t), t) + diff(u(x, y, z, t), x) + 2*diff(u(x, y, z, t), y) + 3*diff(u(x, y, z, t), z) + u(x, y, z, t) = 0, u(x, y, z, t), list(u(x, y, z, 0) = exp(-x^2 - y^2 - z^2)))");
+    let (x, y, z, t) = (0.3, 0.5, 0.7, 0.4);
+    let exact = (-t).exp() * (-(x - t).powi(2) - (y - 2.0 * t).powi(2) - (z - 3.0 * t).powi(2)).exp();
+    close(value(&rhs(&s), &[("x", x), ("y", y), ("z", z), ("t", t)]), exact, 1e-12, &s);
+    // A constant source along the characteristics.
+    let s = run("pdsolve(diff(u(x, y, z, t), t) + diff(u(x, y, z, t), x) + diff(u(x, y, z, t), y) + diff(u(x, y, z, t), z) = 1, u(x, y, z, t), list(u(x, y, z, 0) = 0))");
+    close(value(&rhs(&s), &[("x", x), ("y", y), ("z", z), ("t", t)]), t, 1e-12, &s);
+    // Step data on the line: u = erfc(-x / 2√t) / 2.
+    let s = any(&format!("pdsolve({HEAT}, u(x, t), list(u(x, 0) = heaviside(x)))"));
+    if !s.contains("defint") {
+        let want = 0.5 * crate::kernels::special::erfc_numerical(-0.3 / (2.0 * 0.5_f64.sqrt()));
+        close(value(&rhs(&s), &[("x", 0.3), ("t", 0.5)]), want, 1e-8, &s);
+    }
+}
+
+#[test]
+fn rational_three_by_three_system() {
+    // U_t + A U_x = 0 with the upper triangular A = [[1, 1, 0], [0, 2, 1], [0, 0, 3]].
+    let src = "pdsolve(list(diff(u(x, t), t) + diff(u(x, t), x) + diff(v(x, t), x) = 0, diff(v(x, t), t) + 2*diff(v(x, t), x) + diff(w(x, t), x) = 0, diff(w(x, t), t) + 3*diff(w(x, t), x) = 0), list(u(x, t), v(x, t), w(x, t)), list(u(x, 0) = 0, v(x, 0) = 0, w(x, 0) = sin(x)))";
+    let s = run(src);
+    let inner = s.trim_start_matches("list(").trim_end_matches(')');
+    let a: Vec<&str> = inner.split(", v(x, t) = ").collect();
+    assert_eq!(a.len(), 2, "{s}");
+    let b: Vec<&str> = a[1].split(", w(x, t) = ").collect();
+    assert_eq!(b.len(), 2, "{s}");
+    let parts = [a[0].trim_start_matches("u(x, t) = ").to_owned(), b[0].to_owned(), b[1].to_owned()];
+    let at = |i: usize, x: f64, t: f64| value(&parts[i], &[("x", x), ("t", t)]);
+    let (x, t, h) = (0.5, 0.3, 1e-4);
+    let dx = |i: usize| (at(i, x + h, t) - at(i, x - h, t)) / (2.0 * h);
+    let dt = |i: usize| (at(i, x, t + h) - at(i, x, t - h)) / (2.0 * h);
+    close(dt(0) + dx(0) + dx(1), 0.0, 1e-6, &s);
+    close(dt(1) + 2.0 * dx(1) + dx(2), 0.0, 1e-6, &s);
+    close(dt(2) + 3.0 * dx(2), 0.0, 1e-6, &s);
+    close(at(2, x, 0.0), x.sin(), 1e-12, &s);
+    close(at(0, x, 0.0), 0.0, 1e-12, &s);
+}

@@ -917,6 +917,9 @@ fn kind(
     if order == 1 {
         return if p.nonlinear { "burgers" } else { "transport" };
     }
+    if order == 4 && !p.nonlinear {
+        return if spectral::evolution_time(cx, p).is_some() { "beam" } else { "biharmonic" };
+    }
     if order != 2 {
         return "unknown";
     }
@@ -937,6 +940,21 @@ fn kind(
             | (_, _) if has_u => "klein_gordon",
             | _ => "wave",
         };
+    }
+    if let Some(t) = spectral::evolution_time(cx, p) {
+        let second = p.coefficient(cx.graph, &p.unit(t, 2));
+        let first = p.coefficient(cx.graph, &p.unit(t, 1));
+        let drift = (0..p.dimension()).filter(|&j| j != t).any(|j| {
+            let c = p.coefficient(cx.graph, &p.unit(j, 1));
+            !cx.graph.number_of(c).is_some_and(Number::is_zero)
+        });
+        let nonzero = |graph: &Graph, n: NodeId| !graph.number_of(n).is_some_and(Number::is_zero);
+        if nonzero(cx.graph, second) && nonzero(cx.graph, first) {
+            return "telegraph";
+        }
+        if nonzero(cx.graph, first) && !nonzero(cx.graph, second) && drift {
+            return "advection_diffusion";
+        }
     }
     // All pure second derivatives with one sign, no mixed or first ones.
     let mut signs = Vec::new();
@@ -1036,13 +1054,16 @@ fn classify_term(
     let methods: &[&str] = match kind {
         | "transport" => &["characteristics"],
         | "burgers" => &["characteristics", "hopf_cole"],
-        | "heat" => &["separation_of_variables", "fourier_transform", "heat_kernel"],
-        | "wave" => &["dalembert", "separation_of_variables", "kirchhoff"],
-        | "laplace" => &["separation_of_variables", "greens_function"],
-        | "poisson" => &["greens_function"],
-        | "helmholtz" => &["greens_function", "separation_of_variables"],
+        | "heat" => &["separation_of_variables", "fourier_transform", "heat_kernel", "images"],
+        | "wave" => &["dalembert", "separation_of_variables", "kirchhoff", "descent", "images"],
+        | "laplace" => &["separation_of_variables", "greens_function", "images"],
+        | "poisson" => &["greens_function", "separation_of_variables", "images"],
+        | "helmholtz" => &["greens_function", "separation_of_variables", "images"],
         | "schrodinger" => &["fourier_transform", "separation_of_variables"],
-        | "klein_gordon" => &["plane_waves"],
+        | "klein_gordon" => &["plane_waves", "separation_of_variables", "riemann"],
+        | "telegraph" => &["separation_of_variables", "riemann"],
+        | "advection_diffusion" => &["gauge_transformation", "heat_kernel", "separation_of_variables"],
+        | "beam" | "biharmonic" => &["separation_of_variables"],
         | _ => &[],
     };
     let graph = &mut *cx.graph;
@@ -1471,7 +1492,7 @@ fn transport_n(
     p: &Problem,
     conditions: &Conditions,
 ) -> Option<NodeId> {
-    if !conditions.0.is_empty() {
+    if conditions.0.len() > 1 {
         return None;
     }
     let n = p.dimension();
@@ -1484,6 +1505,9 @@ fn transport_n(
     let c = p.coefficient(cx.graph, &vec![0; n]);
     if !coefficients.iter().chain([&c]).all(|&k| p.constant(cx.graph, k)) {
         return None;
+    }
+    if let Some(data) = conditions.0.first() {
+        return transport_with_data(cx, p, data, &coefficients, c);
     }
     let lead = coefficients.iter().position(|&k| cx.graph.number_of(k).is_none_or(|v| !v.is_zero()))?;
     let (a_l, x_l) = (coefficients[lead], p.vars[lead]);
@@ -1530,6 +1554,76 @@ fn transport_n(
     let solution = cx.simplify(solution);
     let sample = with_sample_function(cx, solution)?;
     verified(cx, p, sample).then_some(solution)
+}
+
+/// `Σ a_j ∂_j u + c u = f` with `u = g` on the hyperplane `x_k = x_0`: along
+/// the characteristic through `x`, which meets the hyperplane at
+/// `x - a λ` with `λ = (x_k - x_0)/a_k`,
+/// `u(x) = e^{-cλ} g(x - aλ) + ∫_0^λ e^{-cσ} f(x - aσ) dσ`.
+fn transport_with_data(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    data: &Condition,
+    coefficients: &[NodeId],
+    c: NodeId,
+) -> Option<NodeId> {
+    if data.derivative.iter().any(|&d| d != 0) || data.robin.is_some() {
+        return None;
+    }
+    let k = data.on;
+    let a_k = coefficients[k];
+    if cx.is_zero(a_k) {
+        return None;
+    }
+    let exp = cx.graph.ops().lookup("exp")?;
+    // λ = (x_k - x_0) / a_k.
+    let lambda = {
+        let gap = sub(cx.graph, p.vars[k], data.point);
+        let inverse = powi(cx.graph, a_k, -1);
+        let q = mul(cx.graph, &[gap, inverse]);
+        cx.simplify(q)
+    };
+    // The data at the foot of the characteristic (all variables at once).
+    let shifted = |cx: &mut Cx<'_>, node: NodeId, distance: NodeId, skip: Option<usize>| -> NodeId {
+        let fresh: Vec<NodeId> = p.vars.iter().map(|_| fresh_symbol(cx, "w")).collect();
+        let mut out = node;
+        for (j, &v) in p.vars.iter().enumerate() {
+            if Some(j) != skip {
+                out = cx.graph.substitute(out, v, fresh[j]);
+            }
+        }
+        for (j, &w) in fresh.iter().enumerate() {
+            if Some(j) != skip {
+                let step = mul(cx.graph, &[coefficients[j], distance]);
+                let foot = sub(cx.graph, p.vars[j], step);
+                out = cx.graph.substitute(out, w, foot);
+            }
+        }
+        out
+    };
+    let decay = {
+        let cl = mul(cx.graph, &[c, lambda]);
+        let minus = neg(cx.graph, cl);
+        cx.graph.node(exp, &[minus])
+    };
+    let g = shifted(cx, data.value, lambda, Some(k));
+    let mut terms = vec![mul(cx.graph, &[decay, g])];
+    if !p.homogeneous(cx.graph) {
+        let (s, _) = dummy(cx, p, "s");
+        let f = neg(cx.graph, p.source);
+        let f = shifted(cx, f, s, None);
+        let cs = mul(cx.graph, &[c, s]);
+        let minus = neg(cx.graph, cs);
+        let weight = cx.graph.node(exp, &[minus]);
+        let body = mul(cx.graph, &[weight, f]);
+        let zero = cx.graph.int(0);
+        let defint = cx.graph.ops().lookup("defint")?;
+        terms.push(cx.graph.node(defint, &[body, s, zero, lambda]));
+    }
+    let solution = add(cx.graph, &terms);
+    let solution = cx.simplify(solution);
+    let has_integral = util::contains_op(cx.graph, solution, "defint");
+    (has_integral || verified(cx, p, solution)).then_some(solution)
 }
 
 /// `a u_x + b u_y + c u = f` with variable coefficients (Lagrange): the
@@ -2620,7 +2714,7 @@ mod tests {
     fn classification() {
         assert_eq!(
             run("pde_classify(diff(u(x, t), t) - k*diff(diff(u(x, t), x), x), u(x, t))"),
-            "list(heat, 2, 2, true, true, parabolic, list(separation_of_variables, fourier_transform, heat_kernel))"
+            "list(heat, 2, 2, true, true, parabolic, list(separation_of_variables, fourier_transform, heat_kernel, images))"
         );
         assert!(run("pde_classify(diff(diff(u(x, t), t), t) - c^2*diff(diff(u(x, t), x), x), u(x, t))").starts_with("list(wave, 2, 2, true, true, hyperbolic"));
         assert!(run("pde_classify(diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y), u(x, y))").starts_with("list(laplace, 2, 2, true, true, elliptic"));
@@ -2631,6 +2725,11 @@ mod tests {
         // Mixed derivatives: u_xx + 3 u_xy + u_yy has discriminant 5.
         assert!(run("pde_classify(diff(diff(u(x, y), x), x) + 3*diff(diff(u(x, y), x), y) + diff(diff(u(x, y), y), y), u(x, y))").contains("hyperbolic"));
         assert_eq!(run("pde_order(diff(diff(diff(u(x, t), x), x), x) + diff(u(x, t), t), u(x, t))"), "3");
+        // Telegraph, advection-diffusion, beam and biharmonic equations.
+        assert!(run("pde_classify(diff(diff(u(x, t), t), t) + 2*diff(u(x, t), t) - diff(diff(u(x, t), x), x), u(x, t))").starts_with("list(telegraph, 2, 2, true, true, hyperbolic"));
+        assert!(run("pde_classify(diff(u(x, t), t) + 2*diff(u(x, t), x) - diff(diff(u(x, t), x), x), u(x, t))").starts_with("list(advection_diffusion, 2, 2, true, true, parabolic"));
+        assert!(run("pde_classify(diff(diff(u(x, t), t), t) + diff(diff(diff(diff(u(x, t), x), x), x), x), u(x, t))").starts_with("list(beam, 4, 2, true, true"));
+        assert!(run("pde_classify(diff(diff(diff(diff(u(x, y), x), x), x), x) + 2*diff(diff(diff(diff(u(x, y), x), x), y), y) + diff(diff(diff(diff(u(x, y), y), y), y), y), u(x, y))").starts_with("list(biharmonic, 4, 2, true, true"));
     }
 
     #[test]
