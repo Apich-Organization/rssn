@@ -44,5 +44,11 @@ pub mod stats;
 pub mod tensor;
 /// Computational topology: simplicial complexes, Betti numbers, persistence.
 pub mod topology;
+/// Exact homology with torsion, persistent homology, cubical complexes.
+pub mod homology;
+/// Exact linear algebra over the rationals.
+pub mod qlinalg;
+/// Semisimple Lie algebras: root systems, weights, representations; structure theory.
+pub mod lie_structure;
 pub mod transforms;
 pub mod vector;
