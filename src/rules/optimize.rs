@@ -9,7 +9,19 @@
 //! variable the kind comes from the first non-vanishing higher
 //! derivative; with several from Sylvester's criterion on the Hessian, and
 //! for constrained problems from the bordered Hessian (two variables, one
-//! constraint) when it is not degenerate (`critical` otherwise).
+//! constraint) when it is not degenerate, otherwise from the Hessian of the
+//! Lagrangian projected onto the tangent space of the constraints (any
+//! number of variables and constraints; `isolated` when the constraints
+//! determine the point, `critical` when the projection is degenerate).
+//!
+//! The `ext` submodule adds exact linear programming (`linprog`,
+//! `linprog_max`, `linprog_eq`), KKT points for inequality constraints
+//! (`kkt_points`, `kkt_minimum`), convexity and definiteness checks
+//! (`is_convex`, `is_concave`, `hessian_definiteness`), equality
+//! constrained quadratic programs (`qp_eq`) and `legendre_transform`; see
+//! its table.
+
+mod ext;
 
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
@@ -45,6 +57,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("optimize/find_extrema", Tier::Reduce, Extrema { op, constrained: false });
     let op = i.op(heavy("find_constrained_extrema", 3))?;
     i.kernel("optimize/find_constrained_extrema", Tier::Reduce, Extrema { op, constrained: true });
+    ext::install(i)?;
     Ok(())
 }
 
@@ -309,7 +322,9 @@ fn constrained(
     let mut out = Vec::with_capacity(solutions.len());
     for solution in solutions {
         let (point, lambdas) = solution.split_at(vars.len());
-        let kind = bordered_kind(cx, lagrangian, &constraints, &all, &solution).unwrap_or("critical");
+        let kind = bordered_kind(cx, lagrangian, &constraints, &all, &solution)
+            .or_else(|| ext::projected_kind(cx, lagrangian, &constraints, &all, &solution))
+            .unwrap_or("critical");
         let value = substitute_point(cx.graph, f, &vars, point);
         let value = cx.simplify(value);
         let tuple = cx.graph.node(core::LIST, point);

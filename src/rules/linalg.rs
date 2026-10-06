@@ -20,7 +20,10 @@
 //! | `lu(A)`, `qr(A)`, `svd(A)` | `list(P, L, U)` with `P A = L U`; `list(Q, R)`; `list(U, S, V)` (numeric for float entries, exact otherwise) |
 //! | `dot`, `cross`, `norm`, `normalize`, `angle`, `project`, `outer` | vector operations |
 //! | `grad(f, vars)`, `div(F, vars)`, `curl(F, vars)`, `laplacian(f, vars)`, `jacobian(F, vars)`, `hessian(f, vars)`, `directional(f, vars, v)` | vector calculus |
+//! | `kron`, `commutator`, `diag`, `vandermonde`, `hilbert`, `companion`, `adjugate`, `cofactors`, `colspace`, `rowspace`, `left_nullspace`, `pinv`, `lstsq`, `minpoly`, `matpoly`, `cayley_hamilton`, `jordan`, `jordan_blocks`, `matfun`, `matexp`, `mpow`, `matsqrt`, `spectral`, `ldl`, `cholesky`, `orthogonalize`, `orthonormalize`, `smith`, `invariant_factors`, `hermite`, `is_symmetric`, `is_orthogonal`, `is_positive_definite` | exact matrix functions and factorisations, documented in the `ext` submodule's table |
 //! | `line_integral(f, curve, t, a, b)`, `line_integral_vec(F, curve, t, a, b)`, `surface_integral(f, surface, u, v, ua, ub, va, vb)`, `volume_integral(f, vars, bounds)` | integrals over parametrised curves, surfaces and boxes, reduced to definite integrals |
+
+mod ext;
 
 use num_rational::BigRational;
 use num_traits::One;
@@ -151,6 +154,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         i.kernel(&format!("linalg/{name}"), Tier::Reduce, LinalgKernel { op, request });
     }
     i.kernel("linalg/broadcast", Tier::Normalize, Broadcast);
+    ext::install(i)?;
     Ok(())
 }
 
@@ -290,7 +294,7 @@ fn list(
     graph.node(core::LIST, items)
 }
 
-fn matrix_term(
+pub(crate) fn matrix_term(
     graph: &mut Graph,
     rows: &[Vec<NodeId>],
 ) -> NodeId {

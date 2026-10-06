@@ -4,6 +4,19 @@
 //! Operators are reduced by exact kernels on literal integers. Results grow
 //! super-exponentially, so each kernel declines inputs whose answer would
 //! run to tens of thousands of bits; the term then stays symbolic.
+//!
+//! Core operators: `factorial`, `double_factorial`, `binomial`,
+//! `multinomial`, `fibonacci`, `lucas`, `catalan`, `bell`, `stirling1`,
+//! `stirling2`, `partitions`, `derangements`, `harmonic`, `permutations`,
+//! `falling`, `rising`, `inclusion_exclusion`, `rsolve` and `gf_coeffs`.
+//! The `ext` submodule adds `lah`, `eulerian`, `narayana`, `motzkin`,
+//! `schroeder`, `fubini`, `central_binomial`, `ballot`, `involutions`,
+//! `rencontres`, `partitions_k`, `partitions_max`, `partitions_distinct`,
+//! `partition_list`, `compositions`, `weak_compositions`, `necklaces`,
+//! `bracelets`, `bernoulli_number`, `euler_number`, `zigzag`,
+//! `permutation_rank`, `permutation_unrank`, `inversions`,
+//! `permutation_sign`, `cycle_type`, `permutation_order`, `hook_lengths`
+//! and `syt_count`.
 
 use std::collections::BTreeMap;
 
@@ -28,6 +41,8 @@ use crate::graph::RuleSet;
 use crate::graph::Tier;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
+
+mod ext;
 
 use super::arith::arith;
 use super::number_theory::Value;
@@ -1073,6 +1088,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         },
     )?;
     exact_lists(i, set, unary("multinomial"), multinomial)?;
+    ext::install(i)?;
     exact(
         i,
         set,
