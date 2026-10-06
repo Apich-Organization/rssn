@@ -37,6 +37,10 @@
 //! | [`fractal`] | `mandelbrot_escape`, `julia_escape`, `burning_ship_escape`, `multibrot_escape`, `newton_fractal_root`, `mandelbrot_iterate`, `mandelbrot_orbit`, `mandelbrot_fixed_points`, `mandelbrot_stability`, `complex_map_fixed_points`, `complex_map_stability`, `map_fixed_points`, `map_stability`, `lyapunov_exponent`, `logistic_iterate`, `logistic_bifurcation`, `logistic_lyapunov`, `lorenz`, `lorenz_orbit`, `lorenz_lyapunov`, `rossler_orbit`, `henon_orbit`, `tinkerbell_orbit`, `ifs_apply`, `ifs_generate`, `similarity_dimension`, `moran_dimension`, `box_counting`, `correlation_dimension`, `orbit_density`, `orbit_entropy` |
 //! | [`graphics`] | `translation_2d/3d`, `scaling_2d/3d`, `shear_2d`, `rotation_2d`, `rotation_3d_x/y/z`, `rotation_axis_angle`, `reflection_2d/3d`, `perspective`, `orthographic`, `look_at`, `apply_transform`, `apply_transform_vector`, `bezier`, `bezier_derivative`, `bezier_split`, `bspline`, `catmull_rom`, `quat_mul`, `quat_conj`, `quat_inverse`, `quat_norm`, `quat_normalize`, `quat_from_axis_angle`, `quat_rotate`, `quat_to_matrix`, `quat_slerp`, `mesh_transform`, `mesh_normals`, `mesh_triangulate`, `ray_sphere`, `ray_plane`, `ray_triangle`, `reflect`, `refract`, `barycentric` |
 //! | [`groups`] | `group` term; `cyclic_group`, `dihedral_group`, `symmetric_group`, `klein_four_group`, `group_from_table`; `group_elements`, `group_order`, `group_identity`, `group_mul`, `group_inverse`, `group_is_abelian`, `group_element_order`, `group_conjugacy_classes`, `group_center`, `group_is_valid`, `group_subgroups`, `group_cosets`, `group_is_normal`; `representation_is_valid`, `group_character`; `perm_compose`, `perm_inverse`, `perm_order`, `perm_cycles`, `perm_sign` |
+//! | [`perm_groups`] | Schreier–Sims: `perm_group_order`, `perm_group_contains`, `perm_group_base`, `perm_group_strong_generators`, `perm_group_basic_orbits`, `perm_group_orbits`, `perm_group_is_transitive`, `perm_group_stabilizer_order`, `perm_group_elements`, `group_from_perms`, `perm_group_is_abelian`, `perm_group_derived_series`, `perm_group_is_solvable`, `perm_group_lower_central_series`, `perm_group_is_nilpotent`, `perm_group_derived_subgroup`; Todd–Coxeter: `todd_coxeter`, `todd_coxeter_index`, `fp_group_order`, `fp_group` |
+//! | [`group_theory`] | `group_generate`, `group_subgroup`, `group_derived_subgroup`, `group_derived_series`, `group_is_solvable`, `group_lower_central_series`, `group_is_nilpotent`, `group_nilpotency_class`, `group_normal_subgroups`, `group_is_simple`, `group_sylow_subgroup`, `group_sylow_count`, `group_sylow_subgroups`, `group_quotient`, `group_direct_product`, `group_isomorphism`, `group_is_isomorphic`, `group_automorphism_count`, `group_inner_automorphism_count`, `group_outer_automorphism_count`, `group_exponent`, `group_element_orders`, `group_order_statistics` |
+//! | [`representations`] | Burnside–Dixon character tables: `group_class_count`, `group_class_sizes`, `group_class_representatives`, `group_class_index`, `group_character_table`, `group_character_degrees`, `character_table_is_orthogonal`, `character_inner_product`, `character_is_irreducible`, `character_decompose`, `character_tensor`, `character_sym_square`, `character_alt_square`, `character_adams`, `character_conjugate`, `character_regular`, `character_of_matrices`, `representation_decompose`, `character_projection` |
+//! | [`point_groups`] | `point_group`, `point_group_order`, `point_group_is_crystallographic`, `point_group_classes`, `point_group_class_sizes`, `point_group_irreps`, `point_group_irrep_dimensions`, `point_group_character_table`, `point_group_decompose`, `point_group_multiplicities`, `point_group_vector_character`, `point_group_rotation_character`, `point_group_ir_active`, `point_group_raman_active`, `point_group_function_irreps`, `point_group_hm`, `point_group_from_hm`, `point_group_crystal_system`, `crystallographic_point_groups`, `crystal_systems`, `bravais_lattices`, `crystallographic_restriction`, `crystallographic_min_dimension`, `molecule_symmetry_operations`, `molecule_point_group`, `molecule_decomposition`, `molecule_vibrations`, `molecule_vibrations_table`, `molecule_spectroscopy` |
 //!
 //! See the documentation of each module for the exact term formats.
 
@@ -48,7 +52,11 @@ pub mod gf_factor;
 pub mod fractal;
 pub mod graphics;
 pub mod graphs;
+pub mod group_theory;
 pub mod groups;
+pub mod perm_groups;
+pub mod point_groups;
+pub mod representations;
 pub mod topology;
 
 use num_bigint::BigInt;
@@ -75,6 +83,7 @@ use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
 
+use super::complex::complex;
 use super::elementary::elementary;
 use super::linalg::linalg;
 use super::number_theory::number_theory;
@@ -86,6 +95,7 @@ pub fn discrete() -> RuleSet {
         .needs(elementary())
         .needs(number_theory())
         .needs(linalg())
+        .needs(complex())
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -98,6 +108,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     fractal::install(i)?;
     graphics::install(i)?;
     groups::install(i)?;
+    perm_groups::install(i)?;
+    group_theory::install(i)?;
+    representations::install(i)?;
+    point_groups::install(i)?;
     Ok(())
 }
 
@@ -557,6 +571,35 @@ pub(crate) mod test_util {
     /// The closed form of `src`.
     pub fn s(src: &str) -> String {
         simplify(&[discrete()], src)
+    }
+
+    /// The numeric rows of the closed form of `src`, a list of lists.
+    pub fn num_rows(src: &str) -> Vec<Vec<num_complex::Complex64>> {
+        use std::collections::HashMap;
+
+        use crate::graph::Budget;
+        use crate::graph::ClosedForm;
+        use crate::graph::Engine;
+        use crate::graph::Env;
+        use crate::graph::Extractor;
+        use crate::graph::Graph;
+        use crate::graph::Saturate;
+        let mut g = Graph::new();
+        let engine = Engine::install(&mut g, &[discrete()]).unwrap_or_else(|e| panic!("{e}"));
+        let root = g.parse(src).unwrap_or_else(|e| panic!("cannot parse `{src}`: {e}"));
+        engine.run(&mut g, &[root], &Env::symbolic(), &Saturate, &Budget::default());
+        let node = Extractor::new(&g, &[root], &ClosedForm).build(&mut g, root).unwrap_or_else(|| panic!("`{src}` not reduced"));
+        let bindings = HashMap::new();
+        let rows = super::items(&g, node).unwrap_or_else(|| panic!("`{src}` is not a list"));
+        rows.into_iter()
+            .map(|r| {
+                super::items(&g, r)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|x| g.eval_complex(x, &bindings).unwrap_or_else(|| panic!("cannot evaluate {}", g.display(x))))
+                    .collect()
+            })
+            .collect()
     }
 
     /// A small deterministic generator.
