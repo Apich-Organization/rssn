@@ -75,6 +75,8 @@ use super::poly::univariate;
 
 mod elim;
 mod heuristics;
+mod inequality;
+mod numeric;
 mod normalize;
 mod symbolic;
 mod system;
@@ -128,6 +130,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("solve/symbolic", Tier::Reduce, Symbolic { solve: solve_op, general: general_op });
     i.kernel("solve/polynomial-numeric", Tier::Reduce, PolynomialNumeric { solve: solve_op });
     i.kernel("solve/nsolve", Tier::Reduce, RootNear { nsolve: nsolve_op });
+    i.kernel("solve/numeric", Tier::Reduce, numeric::NumericSolve { solve: solve_op, nsolve: nsolve_op });
     Ok(())
 }
 
@@ -414,146 +417,6 @@ fn sqrt_as_power(
         out = graph.replace_subterm(out, r, power);
     }
     out
-}
-
-/// Solves the inequality `cmp(lhs, rhs)` (`cmp` one of `lt`, `le`, `gt`,
-/// `ge`) for real `x`: the boundary points are the real roots of
-/// `lhs - rhs` and the poles of its denominator; the sign of `lhs - rhs`
-/// is tested between them. The answer is a formula in `x`: `or` of
-/// `and(lt(a, x), lt(x, b))` pieces (with `le` where an endpoint is
-/// included), `true` or `false`.
-fn solve_inequality(
-    graph: &mut Graph,
-    inequality: NodeId,
-    x: NodeId,
-) -> Option<NodeId> {
-    let names = ["lt", "le", "gt", "ge"];
-    let ops: Vec<OpId> = names.iter().map(|n| graph.ops().lookup(n)).collect::<Option<_>>()?;
-    let kind = ops.iter().position(|&op| op == graph.op(inequality))?;
-    let &[lhs, rhs] = graph.children(inequality) else {
-        return None;
-    };
-    let symbol = graph.symbol_of(x)?;
-    let f = difference(graph, lhs, rhs);
-    let f = best(graph, f)?;
-    let holds = |v: f64| match kind {
-        | 0 => v < 0.0,
-        | 1 => v <= 0.0,
-        | 2 => v > 0.0,
-        | _ => v >= 0.0,
-    };
-    let strict = kind == 0 || kind == 2;
-    let eval_at = |graph: &mut Graph, at: f64| -> Option<f64> {
-        let mut env = Env::numeric(0.0);
-        env.bind(symbol, at);
-        graph.eval(f, &env).filter(|v| v.is_finite())
-    };
-    // Boundary points: roots and poles, with their numeric values.
-    let mut boundary: Vec<(f64, NodeId, bool)> = Vec::new();
-    for root in solve_for(graph, f, x, 0)? {
-        if let Some(v) = graph.eval(root, &Env::numeric(0.0)) {
-            boundary.push((v, root, true));
-        }
-    }
-    let mut gens = Gens::default();
-    gens.index(graph, x);
-    if let Some(fraction) = ratio(graph, &mut gens, f, Limits::default()) {
-        if fraction.denom.as_constant().is_none() {
-            let denominator = crate::rules::poly::repr::to_term(graph, &gens, &fraction.denom);
-            for pole in solve_for(graph, denominator, x, 0)? {
-                if let Some(v) = graph.eval(pole, &Env::numeric(0.0)) {
-                    boundary.push((v, pole, false));
-                }
-            }
-        }
-    }
-    boundary.retain(|b| b.0.is_finite());
-    boundary.sort_by(|a, b| a.0.total_cmp(&b.0));
-    boundary.dedup_by(|a, b| {
-        let same = (a.0 - b.0).abs() <= 1e-12 * (1.0 + a.0.abs());
-        if same {
-            b.2 = b.2 && a.2;
-        }
-        same
-    });
-    // Sample the sign on each open interval and decide each boundary point.
-    let mut pieces: Vec<(Option<NodeId>, bool, Option<NodeId>, bool)> = Vec::new(); // (lo, lo closed, hi, hi closed)
-    let mut current: Option<(Option<NodeId>, bool)> = None;
-    let count = boundary.len();
-    for i in 0..=count {
-        let sample = match (i.checked_sub(1).map(|j| boundary[j].0), boundary.get(i).map(|b| b.0)) {
-            | (None, None) => 0.0,
-            | (None, Some(b)) => b - 1.0 - b.abs(),
-            | (Some(a), None) => a + 1.0 + a.abs(),
-            | (Some(a), Some(b)) => f64::midpoint(a, b),
-        };
-        let inside = eval_at(graph, sample).is_some_and(holds);
-        let left = i.checked_sub(1).map(|j| boundary[j]);
-        if inside {
-            if current.is_none() {
-                current = Some(match left {
-                    | None => (None, false),
-                    | Some((_, node, is_root)) => (Some(node), !strict && is_root),
-                });
-            }
-        } else if let Some((lo, lo_closed)) = current.take() {
-            let (_, node, is_root) = left?;
-            pieces.push((lo, lo_closed, Some(node), !strict && is_root));
-        } else if let Some((value, node, is_root)) = left {
-            // An isolated boundary point that satisfies a non-strict test.
-            let _ = value;
-            if !strict && is_root && i >= 1 {
-                let previous_inside = pieces.last().is_some_and(|p| p.2 == Some(node));
-                if !previous_inside {
-                    pieces.push((Some(node), true, Some(node), true));
-                }
-            }
-        }
-        // A boundary point between two satisfied intervals that fails the
-        // test splits them.
-        if let (Some((lo, lo_closed)), Some((_, node, is_root))) = (current, boundary.get(i).copied()) {
-            let next_sample = match boundary.get(i + 1) {
-                | Some(b) => f64::midpoint(boundary[i].0, b.0),
-                | None => boundary[i].0 + 1.0 + boundary[i].0.abs(),
-            };
-            let point_ok = !strict && is_root;
-            let next_inside = eval_at(graph, next_sample).is_some_and(holds);
-            if !point_ok && next_inside {
-                pieces.push((lo, lo_closed, Some(node), false));
-                current = Some((Some(node), false));
-            }
-        }
-    }
-    if let Some((lo, lo_closed)) = current {
-        pieces.push((lo, lo_closed, None, false));
-    }
-    let (lt, le, and, or) = (ops[0], ops[1], graph.ops().lookup("and")?, graph.ops().lookup("or")?);
-    let mut formulas = Vec::new();
-    for (lo, lo_closed, hi, hi_closed) in pieces {
-        let mut conditions = Vec::new();
-        if let (Some(a), Some(b), true, true) = (lo, hi, lo_closed, hi_closed) {
-            if a == b {
-                formulas.push(graph.node(core::EQ, &[x, a]));
-                continue;
-            }
-        }
-        if let Some(a) = lo {
-            conditions.push(graph.node(if lo_closed { le } else { lt }, &[a, x]));
-        }
-        if let Some(b) = hi {
-            conditions.push(graph.node(if hi_closed { le } else { lt }, &[x, b]));
-        }
-        formulas.push(match conditions.as_slice() {
-            | [] => graph.node(graph.ops().lookup("true")?, &[]),
-            | [only] => *only,
-            | _ => graph.node(and, &conditions),
-        });
-    }
-    Some(match formulas.as_slice() {
-        | [] => graph.node(graph.ops().lookup("false")?, &[]),
-        | [only] => *only,
-        | _ => graph.node(or, &formulas),
-    })
 }
 
 /// Solves `g(x) = value` for `x`, where `g` is the term `inner`.
@@ -974,8 +837,8 @@ impl Kernel for Symbolic {
             let unknowns = graph.children(unknown).to_vec();
             let tuples = system::solve_system(graph, &equations, &unknowns);
             tuples.map(|tuples| tuples.iter().map(|t| graph.node(core::LIST, t)).collect::<Vec<_>>())
-        } else if ["lt", "le", "gt", "ge"].iter().any(|n| graph.ops().lookup(n) == Some(graph.op(equation))) {
-            return solve_inequality(graph, equation, unknown).map_or(Outcome::Pass, Outcome::Equal);
+        } else if inequality::is_condition(graph, equation) {
+            return inequality::solve_condition(graph, equation, unknown).map_or(Outcome::Pass, Outcome::Equal);
         } else {
             let expr = as_expression(graph, equation);
             if general { solve_general_for(graph, expr, unknown) } else { solve_for(graph, expr, unknown, 0) }
@@ -1317,8 +1180,8 @@ mod tests {
             "list(list(3/7, 6/7, 17/7))"
         );
         assert_eq!(run("solve(list(a*x + y = 1, x - y = 0), list(x, y))"), "list(list(1/(a + 1), 1/(a + 1)))");
-        let (text, reduced) = reduce_with(&[solve()], "solve(list(x + y = 1, 2*x + 2*y = 2), list(x, y))", &[]);
-        assert!(!reduced, "a singular system has no unique solution: {text}");
+        // A singular system has a line of solutions, given with a free unknown.
+        assert_eq!(run("solve(list(x + y = 1, 2*x + 2*y = 2), list(x, y))"), "list(list(-(y - 1), y))");
     }
 
     #[test]
@@ -1370,5 +1233,97 @@ mod tests {
         assert_eq!(run("solve(le(x^2, 0), x)"), "x = 0");
         assert_eq!(run("solve(gt(x^2 + 1, 0), x)"), "true");
         assert_eq!(run("solve(lt(x^2 + 1, 0), x)"), "false");
+    }
+
+    /// The numeric-mode answer of `src` as text.
+    fn numeric_text(src: &str) -> String {
+        let rules = crate::rules::standard();
+        let mut g = Graph::new();
+        let engine = crate::graph::Engine::install(&mut g, &rules).unwrap_or_else(|e| panic!("{e}"));
+        let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
+        engine.run(&mut g, &[root], &Env::numeric(1e-12), &crate::graph::Saturate, &crate::graph::Budget::default());
+        let answer = crate::graph::Extractor::new(&g, &[root], &crate::graph::ClosedForm).build(&mut g, root);
+        answer.map(|n| g.display(n)).unwrap_or_default()
+    }
+
+    fn numbers(text: &str) -> Vec<f64> {
+        text.replace("list", "")
+            .split(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-' || c == 'e' || c == 'E'))
+            .filter_map(|t| t.parse().ok())
+            .collect()
+    }
+
+    #[test]
+    fn general_solutions_carry_an_integer_parameter() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        assert_eq!(run("solve_general(sin(x) = 0, x)"), "list(n*pi)");
+        assert_eq!(run("solve_general(cos(x) = 0, x)"), "list(n*pi + 1/2*pi)");
+        assert_eq!(run("solve_general(tan(x) = 1, x)"), "list(n*pi + 1/4*pi)");
+        assert_eq!(run("solve_general(sin(x) = 1/2, x)"), "list(2*n*pi + 1/6*pi, 2*n*pi + 5/6*pi)");
+        assert_eq!(run("solve_general(sin(x)^2 = cos(x)^2, x)"), "list(1/2*n*pi + 1/4*pi)");
+        assert_eq!(run("solve_general(sin(x) = a, x)"), "list(2*n*pi + asin(a), 2*n*pi - asin(a) + pi)");
+        // Not periodic: the same as `solve`.
+        assert_eq!(run("solve_general(exp(x) = 3, x)"), "list(ln(3))");
+        // Through an inner function.
+        let text = run("solve_general(sin(x^2) = 1/2, x)");
+        assert!(text.contains("n*pi"), "{text}");
+        // No real solution.
+        assert_eq!(run("solve_general(sin(x) = 2, x)"), "list()");
+    }
+
+    #[test]
+    fn parameters_factors_and_exponential_forms() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        assert_eq!(run("solve(exp(x)*(x - 1) = 0, x)"), "list(1)");
+        assert_eq!(run("solve(4^x - 3*2^x - 4 = 0, x)"), "list(ln(4)/ln(2))");
+        assert_eq!(run("solve(exp(x) + exp(-x) = 4, x)"), "list(ln(2 - 3^(1/2)), ln(2 + 3^(1/2)))");
+        assert_eq!(run("solve(sinh(x) + cosh(x) = 2, x)"), "list(ln(2))");
+        assert_eq!(run("solve(2^x = 3^(x - 1), x)"), "list(-ln(3)/(ln(2) - ln(3)))");
+        assert_eq!(run("solve(x^3*ln(x) = 0, x)"), "list(1)");
+        assert_eq!(run("solve(atan(2*x) + atan(3*x) = pi/4, x)"), "list(1/6)");
+        assert_eq!(run("solve(asin(x) - acos(x) = 0, x)"), "list(1/2*2^(1/2))");
+        let text = run("solve((x^2 - a)*(x - b) = 0, x)");
+        assert!(text.contains("b") && text.contains("a^(1/2)"), "{text}");
+        let text = run("solve(x^3 - (a + b + c)*x^2 + (a*b + a*c + b*c)*x - a*b*c = 0, x)");
+        assert!(text.contains('a') && text.contains('b') && text.contains('c'), "{text}");
+    }
+
+    #[test]
+    fn systems_with_free_parameters_and_conditions() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        assert_eq!(run("solve(list(x + y = 1), list(x, y))"), "list(list(-(y - 1), y))");
+        assert_eq!(run("solve(list(x + y + z = 1, x - y = 0), list(x, y, z))"), "list(list(1/2 - 1/2*z, 1/2 - 1/2*z, z))");
+        assert_eq!(run("solve(list(x + y = 1, x + y = 2), list(x, y))"), "list()");
+        assert_eq!(run("solve(list(x^2 - y = 1, x + y = 3), list(x, y))").matches("list(").count(), 3);
+        assert_eq!(run("solve(list(gt(x, 1), lt(x, 5)), x)"), "and(lt(1, x), lt(x, 5))");
+        assert_eq!(run("solve(list(gt(x^2, 1), lt(x, 0)), x)"), "lt(x, -1)");
+        assert_eq!(run("solve(list(gt(x, 3), lt(x, 1)), x)"), "false");
+        assert_eq!(run("solve(gt(exp(x), 2), x)"), "lt(ln(2), x)");
+        assert_eq!(run("solve(lt(ln(x), 1), x)"), "and(lt(0, x), lt(x, E))");
+        assert_eq!(run("solve(list(le(x, 2), x^2 = 4), x)"), "or(x = -2, x = 2)");
+        assert_eq!(run("solve(list(gt(x, 0), lt(x^2, 9), ne(x, 1)), x)").matches("and").count(), 2);
+    }
+
+    #[test]
+    fn numeric_fallbacks() {
+        // sin(x) = x/3 has three real roots, 0 and +-2.2788626600758283.
+        let roots = numbers(&numeric_text("solve(sin(x) = x/3, x)"));
+        assert_eq!(roots.len(), 3, "{roots:?}");
+        assert!(roots.iter().any(|r| r.abs() < 1e-9));
+        assert!(roots.iter().any(|r| (r - 2.278_862_660_075_828_3).abs() < 1e-8));
+        // The circle meets exp(x) + y = 1 twice.
+        let tuples = numbers(&numeric_text("solve(list(x^2 + y^2 = 4, exp(x) + y = 1), list(x, y))"));
+        assert_eq!(tuples.len(), 4, "{tuples:?}");
+        for pair in tuples.chunks(2) {
+            let (x, y) = (pair[0], pair[1]);
+            assert!((x * x + y * y - 4.0).abs() < 1e-8 && (x.exp() + y - 1.0).abs() < 1e-8, "{pair:?}");
+        }
+        // Newton from a guess.
+        let root = numbers(&numeric_text("nsolve(list(x^2 + y^2 = 4, x*y = 1), list(x, y), list(2, 0.5))"));
+        assert_eq!(root.len(), 2);
+        assert!((root[0] * root[1] - 1.0).abs() < 1e-9);
     }
 }

@@ -285,7 +285,7 @@ pub(super) const ALGEBRAIC: &[Case] = &[
     p!("atan(x) = 1"),
     p!("asin(x) = 1/2"),
     p!("acos(2*x) = pi/3"),
-    p!("asin(x) = acos(x)"),
+    p!("asin(x) - acos(x) = 0"),
     p!("2*atan(x) = pi/2"),
     p!("atan(2*x) + atan(3*x) = pi/4"),
     p!("atan(x)^2 - atan(x) - 2 = 0"),
@@ -471,7 +471,6 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore = "reports the pass rate of the systems probe battery"]
     fn system_battery() {
         let mut passed = 0;
         for case in SYSTEMS {
@@ -490,10 +489,10 @@ mod tests {
             );
         }
         eprintln!("SYSTEMS {passed}/{}", SYSTEMS.len());
+        assert_eq!(passed, SYSTEMS.len(), "some probe systems failed; run with --nocapture");
     }
 
     #[test]
-    #[ignore = "reports the pass rate of the algebraic probe battery"]
     fn algebraic_battery() {
         let mut passed = 0;
         for case in ALGEBRAIC {
@@ -513,6 +512,7 @@ mod tests {
             );
         }
         eprintln!("ALGEBRAIC {passed}/{}", ALGEBRAIC.len());
+        assert_eq!(passed, ALGEBRAIC.len(), "some probe equations failed; run with --nocapture");
     }
 }
 

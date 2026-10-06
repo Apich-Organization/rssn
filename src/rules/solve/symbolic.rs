@@ -163,7 +163,12 @@ fn quadratic(
 ) -> Option<Vec<NodeId>> {
     let (c0, b, a) = (c.first()?, c.get(1)?, c.get(2)?);
     let four_ac = a.mul(c0, cap())?.scale(&Number::from(4));
-    let discriminant = to_term(graph, gens, &b.mul(b, cap())?.sub(&four_ac));
+    let discriminant_poly = b.mul(b, cap())?.sub(&four_ac);
+    // A negative constant discriminant: no real roots.
+    if discriminant_poly.as_constant().is_some_and(|d| d.to_f64() < 0.0) {
+        return Some(Vec::new());
+    }
+    let discriminant = to_term(graph, gens, &discriminant_poly);
     let half = graph.num(Number::fraction(1, 2)?);
     let root = graph.node(core::POW, &[discriminant, half]);
     let neg_b = to_term(graph, gens, &b.neg());
