@@ -75,6 +75,7 @@ pub mod functional;
 pub mod geometric_algebra;
 pub mod geometry;
 pub mod lie;
+pub mod lie_structure;
 pub mod linalg;
 pub mod logic;
 pub mod number_theory;
@@ -104,6 +105,7 @@ pub use functional::functional;
 pub use geometric_algebra::geometric_algebra;
 pub use geometry::geometry;
 pub use lie::lie;
+pub use lie_structure::lie_structure;
 pub use linalg::linalg;
 pub use logic::logic;
 pub use number_theory::number_theory;
@@ -126,7 +128,7 @@ use crate::graph::RuleSet;
 /// Every rule set shipped with rssn.
 #[must_use]
 pub fn standard() -> Vec<RuleSet> {
-    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), variational(), pde(), functional(), physics(), optimize(), verify(), discrete(), rewriting(), lie(), geometric_algebra(), units()]
+    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), variational(), pde(), functional(), physics(), optimize(), verify(), discrete(), rewriting(), lie(), lie_structure(), geometric_algebra(), units()]
 }
 
 #[cfg(test)]

@@ -1,5 +1,8 @@
 //! Lie algebras: brackets, structure constants, adjoint and Killing forms,
-//! the exponential map and the Baker–Campbell–Hausdorff series.
+//! the exponential map and the Baker–Campbell–Hausdorff series. Root
+//! systems, representations, structure theory (radical, Levi, Cartan
+//! subalgebras), the classical bases and the matrix logarithm are in
+//! [`super::lie_structure`].
 //!
 //! An element of a *matrix* Lie algebra is a square matrix
 //! `list(list(..), ..)`; an element of a Lie algebra of *vector fields* is
