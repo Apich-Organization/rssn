@@ -613,7 +613,7 @@ fn schroedinger_and_three_unknowns() {
     // A 3x3 first-order system: U_t + A U_x = 0, A = tridiagonal(1, 2, 1).
     let src = "pdsolve(list(diff(u(x, t), t) + 2*diff(u(x, t), x) + diff(v(x, t), x) = 0, diff(v(x, t), t) + diff(u(x, t), x) + 2*diff(v(x, t), x) + diff(w(x, t), x) = 0, diff(w(x, t), t) + diff(v(x, t), x) + 2*diff(w(x, t), x) = 0), list(u(x, t), v(x, t), w(x, t)), list(u(x, 0) = sin(x), v(x, 0) = 0, w(x, 0) = 0))";
     let s = run(src);
-    let inner = s.trim_start_matches("list(").trim_end_matches(')');
+    let inner = s.trim_start_matches("list(").strip_suffix(')').unwrap_or("");
     let a: Vec<&str> = inner.split(", v(x, t) = ").collect();
     assert_eq!(a.len(), 2, "{s}");
     let b: Vec<&str> = a[1].split(", w(x, t) = ").collect();
@@ -635,7 +635,7 @@ fn schroedinger_and_three_unknowns() {
 fn transport_with_data_and_step_data() {
     // u_t + u_x + 2 u_y + 3 u_z + u = 0 with a Gaussian: transported and damped.
     let s = run("pdsolve(diff(u(x, y, z, t), t) + diff(u(x, y, z, t), x) + 2*diff(u(x, y, z, t), y) + 3*diff(u(x, y, z, t), z) + u(x, y, z, t) = 0, u(x, y, z, t), list(u(x, y, z, 0) = exp(-x^2 - y^2 - z^2)))");
-    let (x, y, z, t) = (0.3, 0.5, 0.7, 0.4);
+    let (x, y, z, t): (f64, f64, f64, f64) = (0.3, 0.5, 0.7, 0.4);
     let exact = (-t).exp() * (-(x - t).powi(2) - (y - 2.0 * t).powi(2) - (z - 3.0 * t).powi(2)).exp();
     close(value(&rhs(&s), &[("x", x), ("y", y), ("z", z), ("t", t)]), exact, 1e-12, &s);
     // A constant source along the characteristics.
@@ -654,7 +654,7 @@ fn rational_three_by_three_system() {
     // U_t + A U_x = 0 with the upper triangular A = [[1, 1, 0], [0, 2, 1], [0, 0, 3]].
     let src = "pdsolve(list(diff(u(x, t), t) + diff(u(x, t), x) + diff(v(x, t), x) = 0, diff(v(x, t), t) + 2*diff(v(x, t), x) + diff(w(x, t), x) = 0, diff(w(x, t), t) + 3*diff(w(x, t), x) = 0), list(u(x, t), v(x, t), w(x, t)), list(u(x, 0) = 0, v(x, 0) = 0, w(x, 0) = sin(x)))";
     let s = run(src);
-    let inner = s.trim_start_matches("list(").trim_end_matches(')');
+    let inner = s.trim_start_matches("list(").strip_suffix(')').unwrap_or("");
     let a: Vec<&str> = inner.split(", v(x, t) = ").collect();
     assert_eq!(a.len(), 2, "{s}");
     let b: Vec<&str> = a[1].split(", w(x, t) = ").collect();
