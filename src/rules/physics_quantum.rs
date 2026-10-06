@@ -296,7 +296,7 @@ fn spherical_harmonic(
         return None;
     };
     let (l, m) = (graph.number_of(l)?.to_i64()?, graph.number_of(m)?.to_i64()?);
-    if l < 0 || l > 40 {
+    if !(0..=40).contains(&l) {
         return None;
     }
     if m.abs() > l {
