@@ -1835,6 +1835,15 @@ mod tests {
     }
 
     #[test]
+    fn symbolic_binomial_expansion() {
+        let rules = crate::rules::standard();
+        assert_eq!(simplify(&rules, "expand_binomial(1, 1, n)"), "2^n");
+        assert_eq!(simplify(&rules, "expand_binomial(x, 1, 3)"), "x^3 + 3*x^2 + 3*x + 1");
+        assert_eq!(simplify(&rules, "expand_binomial(x, y, 2)"), "x^2 + 2*x*y + y^2");
+        assert_eq!(simplify(&rules, "expand_binomial(2, 1, n)"), "3^n");
+    }
+
+    #[test]
     fn binomial_expansion_is_the_expand_request() {
         let sets = [combinatorics(), crate::rules::poly()];
         let e = |src: &str| simplify(&sets, src);

@@ -1692,6 +1692,11 @@ mod tests {
         let svd = run("svd(list(list(3.0, 0.0), list(0.0, -2.0)))");
         let values = part(&svd, 1);
         assert!(values.contains('3') && values.contains('2'), "{svd}");
+        // Exact input: the symbolic SVD keeps exact singular values.
+        let exact = run("svd(list(list(3, 0), list(0, -2)))");
+        let values = part(&exact, 1);
+        assert!(!exact.contains('.') && values.contains('3') && values.contains('2'), "{exact}");
+        assert_eq!(values, "list(3, 2)", "{exact}");
     }
 
     /// The `index`-th top-level item of a `list(...)` text.

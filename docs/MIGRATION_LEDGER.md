@@ -413,7 +413,7 @@ The remaining `pending` and `partial` rows are listed by domain in
 
 | legacy function | new home | status |
 |---|---|---|
-| `try_closed_form_sum` | `rules::calculus` `antidifference(t, k)` (Gosper: polynomials, c^k, factorials, binomials, rational terms) and `harmonic(n)` for sums of 1/k; missing: closed forms for sin(a k)/cos(a k), ln k (lgamma) and k^a (Hurwitz zeta) | partial |
+| `try_closed_form_sum` | `rules::calculus` `antidifference` (Gosper), `sum` with polygamma for rational terms, recurrence guessing, and `special_sum` for sin/cos(ak+b), ln k (lgamma) and k^s (Hurwitz zeta) (tests gosper_sums, rational_sums_by_polygamma, special_closed_form_sums) | done |
 | `eval_antidiff` | `kernels::indefinite_sum::indefinite_sum` (test tests/kernels/indefinite_sum.rs) (Euler-Maclaurin and Taylor/Bernoulli strategies; the legacy Abel-Plana engine is not reproduced, the normalisation `F(h) = 0` is built in) | done |
 | `eval_normalized` | `kernels::indefinite_sum::indefinite_sum` (test tests/kernels/indefinite_sum.rs) (Euler-Maclaurin and Taylor/Bernoulli strategies; the legacy Abel-Plana engine is not reproduced, the normalisation `F(h) = 0` is built in) | done |
 | `new` | `kernels::indefinite_sum::indefinite_sum` (test tests/kernels/indefinite_sum.rs) (Euler-Maclaurin and Taylor/Bernoulli strategies; the legacy Abel-Plana engine is not reproduced, the normalisation `F(h) = 0` is built in) | done |
@@ -1184,13 +1184,13 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `substitute_expr` | `graph::Graph::substitute` (graph/subst.rs test replaces_free_occurrences) | done |
 | `evaluate_at_point` | `Term::eval` with bindings (api.rs) | done |
 | `definite_integrate` | `rules::calculus` `defint` (test definite_integrals_agree_across_phases) | done |
-| `check_analytic` |  | pending (in progress: transforms/complex/finite-field/units branch) |
+| `check_analytic` | `rules::complex` `check_analytic(f, z)` via Cauchy–Riemann (test analyticity_by_cauchy_riemann) | done |
 | `find_poles` | `rules::complex::analysis` operator `poles(f, z)` (test rules::complex::analysis::tests) | done |
 | `calculate_residue` | `rules::complex::analysis` operator `residue(f, z, a)` (test rules::complex::analysis::tests) | done |
-| `is_inside_contour` |  | pending (in progress: transforms/complex/finite-field/units branch) |
+| `is_inside_contour` | `rules::complex` `is_inside_contour(p, C)`, `winding_number(p, C)` (test points_inside_contours) | done |
 | `path_integrate` | `rules::complex::analysis` operator `contour_integral(f, z, path(g(t), t, t0, t1))` (test rules::complex::analysis::tests) | done |
 | `factorial` | `rules::combinatorics` `factorial` (test factorials) | done |
-| `improper_integral` | `defint` over `oo` limits (antiderivative or `Quadrature`, test numeric_quadrature_without_a_closed_form); `poles`/`residue` exist, but no operator evaluates `∫_{-oo}^{oo}` of a rational function as `2 pi I * sum of upper-half-plane residues` | partial |
+| `improper_integral` | `defint` over `(-oo, oo)` by the residue theorem with Jordan's lemma for rational and rational·cos/sin integrands (`integrate_ext::by_residues`; test extended_integration_methods) | done |
 | `limit` | `rules::calculus` `limit` (tests limits_by_continuity_and_cancellation, limits_at_infinity) | done |
 | `limit_internal` | `rules::calculus` `limit` (tests limits_by_continuity_and_cancellation, limits_at_infinity) | done |
 
@@ -1249,7 +1249,7 @@ The remaining `pending` and `partial` rows are listed by domain in
 
 | legacy function | new home | status |
 |---|---|---|
-| `expand_binomial` | `expand((a+b)^n)` for literal n; symbolic n has no `expand_binomial(a, b, n)` operator returning `sum(binomial(n, k) a^(n-k) b^k, k, 0, n)` (`sum` and `binomial` exist; binomial sums are closed by rules::calculus recurrence guessing) | partial |
+| `expand_binomial` | `rules::combinatorics` definition `expand_binomial(a, b, n)` = binomial sum, closed by recurrence guessing for symbolic n (test symbolic_binomial_expansion) | done |
 | `permutations` | `permutations` | done |
 | `combinations` | `binomial` | done |
 | `solve_recurrence` | `rsolve(eq, a(n), list(init))`: rational/quadratic-irrational roots, repeated roots, polynomial*exponential forcing | done |
@@ -1763,8 +1763,8 @@ The remaining `pending` and `partial` rows are listed by domain in
 | legacy function | new home | status |
 |---|---|---|
 | `integrate_rational_function` | `rules::calculus` `integral` partial-fraction stage, exact over Q (test rational_functions) | done |
-| `risch_norman_integrate` | `rules::calculus` `integral` staged heuristics (table, partial fractions, substitution, by parts, verified by differentiation); no Risch-Norman undetermined-coefficients ansatz | partial |
-| `integrate_poly_exp` | `integral` by_parts stage integrates polynomial*exp(a x) (test by_parts) and `erfi`/`erf` for Gaussians; no general exp-extension (towers `exp(g(x))` with polynomial-in-t coefficients, `g` non-linear) integrator | partial |
+| `risch_norman_integrate` | `rules::calculus` `integrate_ext::risch_norman`: undetermined-coefficients ansatz in one extension `exp(g)` or `ln x` (test extended_integration_methods, table_integrals) | done |
+| `integrate_poly_exp` | `integrate_ext::risch_norman` with `θ = exp(g)`, `g` polynomial: polynomial-in-θ ansatz, `erf`/`erfi` for Gaussians (tests table_integrals, extended_integration_methods) | done |
 | `poly_from_coeffs` | `poly::repr::Poly::from_univariate` | done |
 | `partial_fraction_integrate` | `rules::calculus` `integral` partial-fraction stage, exact over Q (test rational_functions) | done |
 | `hermite_integrate_rational` | `rules::calculus` `integral` partial-fraction stage, exact over Q (test rational_functions) | done |
@@ -1829,7 +1829,7 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `null_space` | `rules::linalg` `nullspace` | done |
 | `null_space_internal` | `rules::linalg` `nullspace` | done |
 | `eigen_decomposition` | `rules::linalg` `eigenvals`, `eigenvects` (closed-form roots only) | done |
-| `svd_decomposition` | `rules::linalg` `svd` (numeric, faer); no exact symbolic SVD | partial |
+| `svd_decomposition` | `rules::linalg` `svd`: numeric (faer), exact symbolic fallback `symbolic_svd` through the eigen-decomposition of AᵀA (test decompositions) | done |
 | `rank` | `rules::linalg` `rank` | done |
 | `gaussian_elimination` | `rules::linalg` `rref` | done |
 | `is_zero_matrix` | `rules::linalg` `rank(A) = 0` | done |
@@ -1884,8 +1884,8 @@ The remaining `pending` and `partial` rows are listed by domain in
 |---|---|---|
 | `solve_ode` | `rules::ode` `dsolve` (tests first_order_linear_and_separable ... cauchy_euler) | done |
 | `solve_ode_internal` | `rules::ode` `dsolve` (tests first_order_linear_and_separable ... cauchy_euler) | done |
-| `solve_ode_system` | `rules::ode` `odeint` (numeric systems only); `dsolve` takes a single equation: no symbolic solver for linear/first-order systems | partial |
-| `solve_ode_system_internal` | `rules::ode` `odeint` (numeric systems only); `dsolve` takes a single equation: no symbolic solver for linear/first-order systems | partial |
+| `solve_ode_system` | `rules::ode` `dsolve(list(eqs), list(unknowns))`: constant-coefficient linear systems by Faddeev–LeVerrier and Krylov elimination (test linear_systems) | done |
+| `solve_ode_system_internal` | `rules::ode` `dsolve(list(eqs), list(unknowns))`: constant-coefficient linear systems by Faddeev–LeVerrier and Krylov elimination (test linear_systems) | done |
 | `solve_separable_ode` | `rules::ode` `dsolve` (test first_order_linear_and_separable) | done |
 | `solve_separable_ode_internal` | `rules::ode` `dsolve` (test first_order_linear_and_separable) | done |
 | `solve_first_order_linear_ode` | `rules::ode` `dsolve` (test first_order_linear_and_separable) | done |
@@ -1896,12 +1896,12 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `solve_riccati_ode_internal` | `rules::ode` `dsolve` (test bernoulli_riccati_homogeneous_exact) | done |
 | `solve_cauchy_euler_ode` | `rules::ode` `dsolve` (test cauchy_euler) | done |
 | `solve_cauchy_euler_ode_internal` | `rules::ode` `dsolve` (test cauchy_euler) | done |
-| `solve_by_reduction_of_order` |  | pending |
-| `solve_by_reduction_of_order_internal` |  | pending |
+| `solve_by_reduction_of_order` | `rules::ode::reduce` `variable_coefficients`: a family solution found, then reduction of order for the second (test reductions_of_order) | done |
+| `solve_by_reduction_of_order_internal` | `rules::ode::reduce` `variable_coefficients`: a family solution found, then reduction of order for the second (test reductions_of_order) | done |
 | `solve_exact_ode` | `rules::ode` `dsolve` (test bernoulli_riccati_homogeneous_exact) | done |
 | `solve_exact_ode_internal` | `rules::ode` `dsolve` (test bernoulli_riccati_homogeneous_exact) | done |
-| `solve_ode_by_series` |  | pending |
-| `solve_ode_by_series_internal` |  | pending |
+| `solve_ode_by_series` | `rules::ode` `ode_series(eq, y(x), x0, n)` power-series method (test series_and_transform_methods) | done |
+| `solve_ode_by_series_internal` | `rules::ode` `ode_series(eq, y(x), x0, n)` power-series method (test series_and_transform_methods) | done |
 | `solve_ode_by_fourier` | needs the Fourier derivative theorem (transforms branch) to turn the ODE into an algebraic equation | pending |
 | `solve_ode_by_fourier_internal` | needs the Fourier derivative theorem (transforms branch) to turn the ODE into an algebraic equation | pending |
 
@@ -1960,13 +1960,13 @@ The remaining `pending` and `partial` rows are listed by domain in
 
 | legacy function | new home | status |
 |---|---|---|
-| `factor_gf` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
-| `poly_derivative_gf` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
-| `square_free_factorization_gf` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
-| `berlekamp_factorization` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
+| `factor_gf` | `rules::discrete::gf_factor` operators `gfp_derivative`, `gfp_squarefree`, `gfp_ddf`, `gfp_edf` (Cantor–Zassenhaus), `gfp_berlekamp`, `gfp_factor`, `factor_mod` (tests squarefree_decomposition, distinct_degree_factorisation, equal_degree_factorisation, complete_factorisation) | done |
+| `poly_derivative_gf` | `rules::discrete::gf_factor` operators `gfp_derivative`, `gfp_squarefree`, `gfp_ddf`, `gfp_edf` (Cantor–Zassenhaus), `gfp_berlekamp`, `gfp_factor`, `factor_mod` (tests squarefree_decomposition, distinct_degree_factorisation, equal_degree_factorisation, complete_factorisation) | done |
+| `square_free_factorization_gf` | `rules::discrete::gf_factor` operators `gfp_derivative`, `gfp_squarefree`, `gfp_ddf`, `gfp_edf` (Cantor–Zassenhaus), `gfp_berlekamp`, `gfp_factor`, `factor_mod` (tests squarefree_decomposition, distinct_degree_factorisation, equal_degree_factorisation, complete_factorisation) | done |
+| `berlekamp_factorization` | `rules::discrete::gf_factor` operators `gfp_derivative`, `gfp_squarefree`, `gfp_ddf`, `gfp_edf` (Cantor–Zassenhaus), `gfp_berlekamp`, `gfp_factor`, `factor_mod` (tests squarefree_decomposition, distinct_degree_factorisation, equal_degree_factorisation, complete_factorisation) | done |
 | `berlekamp_zassenhaus` | `rules::poly::univariate::factor` (Berlekamp-Zassenhaus over Q; tests known_factorisations, factorisation_reproduces_the_input) | done |
-| `cantor_zassenhaus` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
-| `distinct_degree_factorization` | no public GF(p) operator: only the private helper inside `rules::poly::univariate` used by `factor` over Q | pending (in progress: transforms/complex/finite-field/units branch) |
+| `cantor_zassenhaus` | `rules::discrete::gf_factor` operators `gfp_derivative`, `gfp_squarefree`, `gfp_ddf`, `gfp_edf` (Cantor–Zassenhaus), `gfp_berlekamp`, `gfp_factor`, `factor_mod` (tests squarefree_decomposition, distinct_degree_factorisation, equal_degree_factorisation, complete_factorisation) | done |
+| `distinct_degree_factorization` | `rules::discrete::gf_factor` operators `gfp_derivative`, `gfp_squarefree`, `gfp_ddf`, `gfp_edf` (Cantor–Zassenhaus), `gfp_berlekamp`, `gfp_factor`, `factor_mod` (tests squarefree_decomposition, distinct_degree_factorisation, equal_degree_factorisation, complete_factorisation) | done |
 | `poly_gcd_gf` | `rules::discrete::finite_field` operator `gfp_gcd(f, g, p)` (tests rules::discrete::finite_field::tests) | done |
 | `poly_pow_mod` | `rules::discrete::finite_field` operator `gfx_pow(a, e, m, p)` (tests rules::discrete::finite_field::tests) (power modulo the polynomial `m` over GF(p)) | done |
 | `poly_mul_scalar` | `rules::discrete::finite_field` operator `gfp_mul(f, list(c), p)` (tests rules::discrete::finite_field::tests) (scalar as a constant polynomial) | done |
@@ -2056,8 +2056,8 @@ The remaining `pending` and `partial` rows are listed by domain in
 
 | legacy function | new home | status |
 |---|---|---|
-| `simplify_radicals` |  | pending |
-| `denest_sqrt` |  | pending |
+| `simplify_radicals` | `rules::radicals` `simplify_radicals(e)`: denesting plus conjugate rationalisation (test denesting_and_rationalising) | done |
+| `denest_sqrt` | `rules::radicals` `denest_sqrt(e)` and automatic `Denest` kernel (test denesting_and_rationalising) | done |
 
 ## `src/symbolic/real_roots.rs` (4)
 
@@ -2273,7 +2273,7 @@ The remaining `pending` and `partial` rows are listed by domain in
 |---|---|---|
 | `simple_linear_regression_symbolic` | `linear_regression` | done |
 | `nonlinear_regression_symbolic` | `nonlinear_regression` (builds a `solve` request; needs the solve rules) | done |
-| `polynomial_regression_symbolic` | `polynomial_regression` (rules::stats): exact and float data only; symbolic (non-numeric) data points are not supported | partial |
+| `polynomial_regression_symbolic` | `polynomial_regression` (rules::stats) with symbolic fallback solving the normal equations exactly (test multiple_and_polynomial_regression) | done |
 
 ## `src/symbolic/tensor.rs` (15)
 
@@ -2343,14 +2343,14 @@ The remaining `pending` and `partial` rows are listed by domain in
 |---|---|---|
 | `fourier_time_shift` | `rules::transforms` `fourier` (shift/modulation theorems applied inside the kernel) | done |
 | `fourier_frequency_shift` | `rules::transforms` `fourier` modulation by exp(I a t), cos, sin | done |
-| `fourier_scaling` | `rules::transforms` `fourier` (linear arguments through the table); no general scaling theorem `F(f(a t)) = F(w/a)/|a|` | partial (in progress: transforms/complex/finite-field/units branch) |
-| `fourier_differentiation` | `rules::transforms` `fourier` (multiplication-by-t theorem); derivative theorem `F(f-prime) = I w F(f)` not applied | partial (in progress: transforms/complex/finite-field/units branch) |
+| `fourier_scaling` | `rules::transforms` `fourier(y(a t + b), t, w) = exp(I w b/a) F(w/a)/abs(a)` (test fourier_derivative_scaling_and_shifts) | done |
+| `fourier_differentiation` | `rules::transforms` Fourier derivative theorem (test fourier_derivative_scaling_and_shifts) | done |
 | `laplace_time_shift` | `rules::transforms` `laplace` heaviside(t - c) shift theorem | done |
 | `laplace_differentiation` | `rules::transforms` `laplace` of `diff(y(t), t)` = s L[y] - y(0) (first order) | done |
 | `laplace_frequency_shift` | `rules::transforms` `laplace` exp(a t) shift theorem | done |
 | `laplace_scaling` | `rules::transforms` `laplace` (linear arguments in the table) | done |
 | `laplace_integration` | `rules::transforms` `laplace` of `defint(g, u, 0, t)` = G/s | done |
-| `z_time_shift` | `rules::transforms` `ztransform` of `kronecker(n - k)`; general shifted sequences `f(n - k)` not detected | partial (in progress: transforms/complex/finite-field/units branch) |
+| `z_time_shift` | `rules::transforms` z delay/advance theorems for `y(n - k)` (test z_time_shift_and_scaling) | done |
 | `z_scaling` | `rules::transforms` `ztransform` a^n g(n) = G(z/a) | done |
 | `z_differentiation` | `rules::transforms` `ztransform` n g(n) = -z G'(z) | done |
 | `fourier_transform` | `rules::transforms` `fourier` (table + theorems, numerically checked; test fourier_transforms) | done |
@@ -2367,14 +2367,14 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `inverse_z_transform_internal` | `rules::transforms` `inverse_ztransform` | done |
 | `partial_fraction_decomposition` | `rules::poly` `apart(f, x)` over Q | done |
 | `partial_fraction_decomposition_internal` | `rules::poly::apart::apart` | done |
-| `convolution_fourier` | `rules::transforms` `convolve` builds the convolution integral; the transform-product theorem is not applied | partial (in progress: transforms/complex/finite-field/units branch) |
+| `convolution_fourier` | `rules::transforms` convolution theorems for Fourier, Laplace and z (tests fourier_convolution_theorem, laplace_convolution_theorem, z_convolution_theorem) | done |
 | `convolution_laplace` | `rules::transforms` `convolve(f, g, t)` = ∫_0^t f(u) g(t-u) du (test convolution) | done |
 
 ## `src/symbolic/unit_unification.rs` (1)
 
 | legacy function | new home | status |
 |---|---|---|
-| `unify_expression` |  | pending (in progress: transforms/complex/finite-field/units branch) |
+| `unify_expression` | `rules::units` `unify_expression(e)` (tests sums_convert_to_the_first_unit, mismatched_dimensions_do_not_reduce, products_quotients_and_powers) | done |
 
 ## `src/symbolic/vector.rs` (15)
 
