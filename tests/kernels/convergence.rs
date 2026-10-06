@@ -3,7 +3,7 @@
 use std::f64::consts::{LN_2, PI};
 
 use rssn::kernels::convergence::{
-    aitken_acceleration, find_sequence_limit, richardson_extrapolation,
+    LevinVariant, aitken_acceleration, find_sequence_limit, levin_sum, levin_transform, richardson_extrapolation,
     richardson_extrapolation_with, sum_series_numerical, wynn_epsilon,
 };
 
@@ -104,4 +104,57 @@ fn sum_series_numerical_stops_at_small_terms() {
     assert!((s - 2.0).abs() < 1e-12);
     let s = sum_series_numerical(|n| n, 1, 10, 0.0);
     assert_eq!(s, 55.0);
+}
+
+fn ps(term: impl Fn(usize) -> f64, count: usize) -> Vec<f64> {
+    let mut s = 0.0;
+    (0..count)
+        .map(|i| {
+            s += term(i);
+            s
+        })
+        .collect()
+}
+
+#[test]
+fn levin_alternating_ln2() {
+    // sum (-1)^k / (k+1) = ln 2
+    let t = |k: usize| if k % 2 == 0 { 1.0 } else { -1.0 } / (k as f64 + 1.0);
+    let sums = ps(t, 16);
+    for variant in [LevinVariant::T, LevinVariant::U, LevinVariant::V] {
+        let est = levin_transform(&sums, variant, 1.0);
+        let best = est.iter().map(|e| (e - LN_2).abs()).fold(f64::INFINITY, f64::min);
+        assert!(best < 1e-10, "{variant:?}: {best}");
+        // far better than the raw partial sum
+        assert!((sums[15] - LN_2).abs() > 1e-2);
+    }
+    let (v, err) = levin_sum(t, 20, LevinVariant::T).unwrap();
+    assert!((v - LN_2).abs() < 1e-12, "{v}");
+    assert!(err < 1e-9);
+}
+
+#[test]
+fn levin_logarithmic_zeta2() {
+    // sum 1/(k+1)^2 = pi^2/6: logarithmic convergence, Aitken is poor
+    let t = |k: usize| 1.0 / ((k + 1) as f64).powi(2);
+    let target = PI * PI / 6.0;
+    let (v, err) = levin_sum(t, 24, LevinVariant::U).unwrap();
+    assert!((v - target).abs() < 1e-10, "u: {} err {err}", (v - target).abs());
+    // zeta(3) (Apery) with the u transform
+    let (v, _) = levin_sum(|k| 1.0 / ((k + 1) as f64).powi(3), 24, LevinVariant::U).unwrap();
+    assert!((v - 1.202_056_903_159_594_2).abs() < 1e-10);
+    // compare: Aitken on the same data is much worse
+    let sums = ps(t, 24);
+    let aitken = aitken_acceleration(&sums);
+    let a_err = (aitken.last().unwrap() - target).abs();
+    assert!(a_err > 1e-6, "aitken {a_err}");
+}
+
+#[test]
+fn levin_edge_cases() {
+    assert!(levin_transform(&[], LevinVariant::U, 1.0).is_empty());
+    assert!(levin_sum(|_| 1.0, 2, LevinVariant::U).is_err());
+    // geometric series is summed essentially exactly
+    let (v, _) = levin_sum(|k| 0.5_f64.powi(k as i32), 12, LevinVariant::T).unwrap();
+    assert!((v - 2.0).abs() < 1e-10);
 }
