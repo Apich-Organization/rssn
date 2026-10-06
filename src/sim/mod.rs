@@ -11,6 +11,8 @@
 #![allow(unsafe_code)]
 
 pub mod classical;
+/// Finite elements (P1/P2) on unstructured triangle meshes, adaptive.
+pub mod fem_triangles;
 /// Compressible gas dynamics (Euler equations, HLLC, MUSCL).
 pub mod gas_dynamics;
 /// Symplectic and stiff (implicit, Rosenbrock) integrators.
