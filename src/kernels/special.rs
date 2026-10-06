@@ -1840,3 +1840,127 @@ mod exponential_integral_tests {
         assert!(close(sinh_integral(3.0), 4.973_440_475_859_807));
     }
 }
+
+/// `Ai(0)`.
+const AIRY_AI0: f64 = 0.355_028_053_887_817_2;
+/// `-Ai'(0)`.
+const AIRY_AIP0: f64 = 0.258_819_403_792_806_8;
+
+/// `K_ν(z) = ∫_0^∞ e^(-z cosh t) cosh(ν t) dt` for `z > 0`, by the
+/// trapezoidal rule (exponentially convergent for this integrand).
+fn bessel_k_fractional(
+    nu: f64,
+    z: f64,
+) -> f64 {
+    let h = 0.05;
+    let mut sum = 0.5 * (-z).exp();
+    let mut k = 1.0_f64;
+    loop {
+        let t = k * h;
+        let term = (-z * t.cosh()).exp() * (nu * t).cosh();
+        sum += term;
+        if term < 1e-18 * sum || k > 4000.0 {
+            break;
+        }
+        k += 1.0;
+    }
+    sum * h
+}
+
+/// `(y, y')` at `x` of the solution of `y'' = x y` with `y(0) = y0`,
+/// `y'(0) = dy0`, by Taylor steps (the Airy equation's coefficients follow
+/// `a_(n+2) = (x0 a_n + a_(n-1)) / ((n+2)(n+1))` at any centre `x0`).
+fn airy_taylor(
+    x: f64,
+    y0: f64,
+    dy0: f64,
+) -> (f64, f64) {
+    let steps = (x.abs() / 0.5).ceil().max(1.0);
+    let h = x / steps;
+    let (mut y, mut dy, mut x0) = (y0, dy0, 0.0_f64);
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+    let steps_count = steps as usize;
+    for _ in 0..steps_count {
+        let mut a = [0.0_f64; 64];
+        a[0] = y;
+        a[1] = dy;
+        a[2] = x0 * y / 2.0;
+        for n in 1..62 {
+            a[n + 2] = x0.mul_add(a[n], a[n - 1]) / (((n + 2) * (n + 1)) as f64);
+        }
+        let (mut value, mut slope, mut power) = (0.0, 0.0, 1.0);
+        for (n, &c) in a.iter().enumerate() {
+            value += c * power;
+            if n + 1 < a.len() {
+                slope += (n + 1) as f64 * a[n + 1] * power;
+            }
+            power *= h;
+        }
+        y = value;
+        dy = slope;
+        x0 += h;
+    }
+    (y, dy)
+}
+
+/// The Airy function `Ai(x)`.
+#[must_use]
+pub fn airy_ai(x: f64) -> f64 {
+    if x.is_nan() {
+        return f64::NAN;
+    }
+    if x > 0.0 {
+        let zeta = 2.0 / 3.0 * x.powf(1.5);
+        return (x / 3.0).sqrt() * bessel_k_fractional(1.0 / 3.0, zeta) / std::f64::consts::PI;
+    }
+    airy_taylor(x, AIRY_AI0, -AIRY_AIP0).0
+}
+
+/// `Ai'(x)`.
+#[must_use]
+pub fn airy_ai_prime(x: f64) -> f64 {
+    if x.is_nan() {
+        return f64::NAN;
+    }
+    if x > 0.0 {
+        let zeta = 2.0 / 3.0 * x.powf(1.5);
+        return -x / (std::f64::consts::PI * 3.0_f64.sqrt()) * bessel_k_fractional(2.0 / 3.0, zeta);
+    }
+    airy_taylor(x, AIRY_AI0, -AIRY_AIP0).1
+}
+
+/// The Airy function `Bi(x)`.
+#[must_use]
+pub fn airy_bi(x: f64) -> f64 {
+    let r3 = 3.0_f64.sqrt();
+    airy_taylor(x, r3 * AIRY_AI0, r3 * AIRY_AIP0).0
+}
+
+/// `Bi'(x)`.
+#[must_use]
+pub fn airy_bi_prime(x: f64) -> f64 {
+    let r3 = 3.0_f64.sqrt();
+    airy_taylor(x, r3 * AIRY_AI0, r3 * AIRY_AIP0).1
+}
+
+#[cfg(test)]
+mod airy_tests {
+    use super::*;
+
+    #[test]
+    fn reference_values() {
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-11 * (1.0 + b.abs()) || (a / b - 1.0).abs() < 1e-10;
+        assert!(close(airy_ai(1.0), 0.135_292_416_312_881_4));
+        assert!(close(airy_ai(5.0), 1.083_444_281_360_744e-4));
+        assert!(close(airy_ai(-5.0), 0.350_761_009_024_114));
+        assert!(close(airy_bi(1.0), 1.207_423_594_952_871));
+        assert!(close(airy_bi(-5.0), -0.138_369_134_901_600_5));
+        assert!(close(airy_ai_prime(1.0), -0.159_147_441_296_793_2));
+        assert!(close(airy_bi_prime(0.0), 0.448_288_357_353_826_4));
+        // The Wronskian Ai Bi' - Ai' Bi = 1/π.
+        for x in [-7.3, -1.2, 0.4, 2.9, 6.1] {
+            let w = airy_ai(x) * airy_bi_prime(x) - airy_ai_prime(x) * airy_bi(x);
+            assert!((w - 1.0 / std::f64::consts::PI).abs() < 1e-10, "{x}: {w}");
+        }
+    }
+}

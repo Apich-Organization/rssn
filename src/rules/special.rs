@@ -141,7 +141,7 @@ fn zeta(s: f64) -> f64 {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // name, arity, semantics, what is known of the value for real arguments
-    let functions: [(&str, u8, EvalFn, Facts); 35] = [
+    let functions: [(&str, u8, EvalFn, Facts); 39] = [
         (
             "gamma",
             1,
@@ -293,6 +293,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         }, Facts::NONE),
         ("lambertw", 1, |a| a.first().map_or(f64::NAN, |&x| num::lambert_w(x, true)), Facts::REAL),
         ("ei", 1, |a| a.first().map_or(f64::NAN, |&x| num::exp_integral_ei(x)), Facts::NONE),
+        ("airyai", 1, |a| a.first().map_or(f64::NAN, |&x| num::airy_ai(x)), Facts::REAL),
+        ("airybi", 1, |a| a.first().map_or(f64::NAN, |&x| num::airy_bi(x)), Facts::REAL),
+        ("airyaiprime", 1, |a| a.first().map_or(f64::NAN, |&x| num::airy_ai_prime(x)), Facts::REAL),
+        ("airybiprime", 1, |a| a.first().map_or(f64::NAN, |&x| num::airy_bi_prime(x)), Facts::REAL),
         ("li", 1, |a| a.first().map_or(f64::NAN, |&x| num::log_integral(x)), Facts::NONE),
         ("si", 1, |a| a.first().map_or(f64::NAN, |&x| num::sine_integral(x)), Facts::REAL),
         ("ci", 1, |a| a.first().map_or(f64::NAN, |&x| num::cosine_integral(x)), Facts::NONE),
@@ -368,6 +372,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     integral_rule(i, gaussian_integral);
     integral_rule(i, erf_integral);
     partials(i, "ei", &["exp(?a)/?a"])?;
+    partials(i, "airyai", &["airyaiprime(?a)"])?;
+    partials(i, "airybi", &["airybiprime(?a)"])?;
+    partials(i, "airyaiprime", &["?a*airyai(?a)"])?;
+    partials(i, "airybiprime", &["?a*airybi(?a)"])?;
     partials(i, "li", &["1/ln(?a)"])?;
     partials(i, "si", &["sin(?a)/?a"])?;
     partials(i, "ci", &["cos(?a)/?a"])?;

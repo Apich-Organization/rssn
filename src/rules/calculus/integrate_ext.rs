@@ -375,13 +375,18 @@ impl Integrator<'_, '_> {
         let fs = self.f;
         let graph = &*self.cx.graph;
         let (sec, csc) = (graph.ops().lookup("sec"), graph.ops().lookup("csc"));
-        let &[base, e] = graph.children(f) else {
+        let &[mut base, e] = graph.children(f) else {
             return None;
         };
         if graph.op(f) != core::POW {
             return None;
         }
-        let k = graph.number_of(e)?.to_i64()?;
+        let mut k = graph.number_of(e)?.to_i64()?;
+        // (cos u^m)^(-1)
+        if let (true, &[inner, m]) = (graph.op(base) == core::POW && k == -1, graph.children(base)) {
+            k = -graph.number_of(m)?.to_i64()?;
+            base = inner;
+        }
         let (is_cos, n) = match graph.op(base) {
             | op if op == fs.cos && k <= -2 => (true, -k),
             | op if op == fs.sin && k <= -2 => (false, -k),

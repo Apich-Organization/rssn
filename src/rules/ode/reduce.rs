@@ -157,7 +157,15 @@ pub(super) fn autonomous(
     let minus_one = cx.graph.int(-1);
     let reciprocal = cx.graph.node(core::POW, &[slope, minus_one]);
     let reciprocal = cx.simplify(reciprocal);
-    let left = integrate(cx, reciprocal, u)?;
+    // Without a closed form (elliptic integrals, typically) the quadrature
+    // stays an inert integral in the implicit relation.
+    let left = match integrate(cx, reciprocal, u) {
+        | Some(found) => found,
+        | None => {
+            let op = cx.graph.ops().lookup("integral")?;
+            cx.graph.node(op, &[reciprocal, u])
+        },
+    };
     let c = problem.constant(cx.graph);
     let right = add(cx.graph, &[problem.x, c]);
     let relation = sub(cx.graph, left, right);

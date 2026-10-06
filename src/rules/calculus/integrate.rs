@@ -1382,6 +1382,54 @@ impl Integrator<'_, '_> {
     }
 }
 
+/// `sec`, `csc`, `cot` written through `cos` and `sin` when they occur
+/// mixed with `cos` or `sin`, so that one form is integrated.
+fn reciprocal_trig_as_cos_sin(
+    cx: &mut Cx<'_>,
+    functions: Functions,
+    term: NodeId,
+) -> NodeId {
+    let graph = &*cx.graph;
+    let names: Vec<Option<OpId>> = ["sec", "csc", "cot"].iter().map(|n| graph.ops().lookup(n)).collect();
+    let mut found = Vec::new();
+    let mut plain = false;
+    let mut stack = vec![term];
+    while let Some(n) = stack.pop() {
+        let op = graph.op(n);
+        if names.contains(&Some(op)) {
+            found.push(n);
+        } else if op == functions.cos || op == functions.sin {
+            plain = true;
+        }
+        stack.extend_from_slice(graph.children(n));
+    }
+    if found.is_empty() || !plain {
+        return term;
+    }
+    let mut out = term;
+    for n in found {
+        let op = cx.graph.op(n);
+        let &[u] = cx.graph.children(n) else {
+            continue;
+        };
+        let minus_one = cx.graph.int(-1);
+        let replacement = if Some(op) == names[0] {
+            let c = cx.graph.node(functions.cos, &[u]);
+            cx.graph.node(core::POW, &[c, minus_one])
+        } else if Some(op) == names[1] {
+            let s = cx.graph.node(functions.sin, &[u]);
+            cx.graph.node(core::POW, &[s, minus_one])
+        } else {
+            let c = cx.graph.node(functions.cos, &[u]);
+            let s = cx.graph.node(functions.sin, &[u]);
+            let inv = cx.graph.node(core::POW, &[s, minus_one]);
+            cx.graph.node(core::MUL, &[c, inv])
+        };
+        out = cx.graph.replace_subterm(out, n, replacement);
+    }
+    cx.simplify(out)
+}
+
 /// Finds a checked antiderivative of the best form of `integrand`.
 pub(super) fn antiderivative(
     cx: &mut Cx<'_>,
@@ -1411,6 +1459,7 @@ pub(super) fn antiderivative(
     let _level = Level;
     let symbol = cx.graph.symbol_of(variable)?;
     let term = cx.simplify(integrand);
+    let term = reciprocal_trig_as_cos_sin(cx, functions, term);
     if opaque_in(cx.graph, term, symbol, functions.diff) {
         return None;
     }

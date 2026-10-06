@@ -666,9 +666,27 @@ fn homogeneous(
     let v = cx.graph.symbol_node(v_symbol);
     let vx = mul(cx.graph, &[v, x]);
     let in_v = cx.graph.substitute(rhs, y, vx);
-    let in_v = cx.simplify(in_v);
+    let mut in_v = cx.simplify(in_v);
     if problem.depends_on_x(cx.graph, in_v) {
-        return None;
+        // Radicals such as sqrt(x² + v² x²) hide the cancellation: test
+        // F(λx, λy) = F(x, y) numerically (λ > 0) and read F(v) at x = 1.
+        let (x_symbol, y_symbol) = (problem.x_symbol, cx.graph.symbol_of(y)?);
+        let at = |graph: &mut Graph, xv: f64, yv: f64| -> Option<f64> {
+            let mut env = Env::numeric(0.0);
+            env.bind(x_symbol, xv);
+            env.bind(y_symbol, yv);
+            graph.eval(rhs, &env).filter(|v| v.is_finite())
+        };
+        for (a, b, l) in [(0.7, 0.3, 1.9), (1.3, -0.8, 0.45), (2.1, 1.7, 3.2)] {
+            let (f1, f2) = (at(cx.graph, a, b)?, at(cx.graph, l * a, l * b)?);
+            if (f1 - f2).abs() > 1e-9 * (1.0 + f1.abs()) {
+                return None;
+            }
+        }
+        let one = cx.graph.int(1);
+        let at_one = cx.graph.substitute(rhs, y, v);
+        let at_one = cx.graph.substitute(at_one, x, one);
+        in_v = cx.simplify(at_one);
     }
     // ∫ dv / (F(v) - v) = ln x + C
     let gap = sub(cx.graph, in_v, v);
@@ -780,8 +798,9 @@ fn linear_higher_order(
 ) -> Option<NodeId> {
     let x = problem.x;
     let order = problem.order();
-    // Peel the equation apart: expr = sum_k a_k(x) y_k - r(x).
-    let mut rest = problem.expr;
+    // Peel the equation apart: expr = sum_k a_k(x) y_k - r(x), after
+    // clearing denominators in y and its derivatives (y''/y = c, say).
+    let mut rest = cleared_denominators(cx, problem).unwrap_or(problem.expr);
     let mut coefficients = vec![NodeId::NONE; order + 1];
     for k in (0..=order).rev() {
         let parts = coefficients_in(cx.graph, rest, *problem.stand.get(k)?)?;
@@ -805,8 +824,11 @@ fn linear_higher_order(
 
     let numeric: Option<Vec<BigRational>> =
         coefficients.iter().map(|&c| cx.graph.number_of(c).and_then(Number::to_rational)).collect();
+    let symbolic_constant = coefficients.iter().all(|&c| !problem.depends_on_x(cx.graph, c));
     let basis = if let Some(numbers) = numeric {
         constant_coefficient_basis(cx.graph, &numbers, x)?
+    } else if symbolic_constant && order <= 2 {
+        symbolic_constant_basis(cx, &coefficients, x)?
     } else {
         cauchy_euler_basis(cx, &coefficients, x)?
     };
@@ -823,6 +845,78 @@ fn linear_higher_order(
     }
     let solution = add(cx.graph, &terms);
     Some(explicit(cx, problem, solution))
+}
+
+/// The numerator of the equation when its denominator involves `y` or a
+/// derivative (and is therefore not a mere coefficient).
+fn cleared_denominators(
+    cx: &mut Cx<'_>,
+    problem: &Problem,
+) -> Option<NodeId> {
+    let mut gens = crate::rules::poly::repr::Gens::default();
+    for &s in &problem.stand {
+        gens.index(cx.graph, s);
+    }
+    let term = crate::rules::poly::best(cx.graph, problem.expr)?;
+    let fraction = crate::rules::poly::ratio(cx.graph, &mut gens, term, crate::rules::poly::repr::Limits::default())?;
+    let denominator = crate::rules::poly::repr::to_term(cx.graph, &gens, &fraction.denom);
+    if !problem.stand.iter().any(|&s| occurs(cx.graph, denominator, s)) {
+        return None;
+    }
+    let numerator = crate::rules::poly::repr::to_term(cx.graph, &gens, &fraction.numer);
+    Some(cx.simplify(numerator))
+}
+
+/// `a y'' + b y' + c y = 0` (or first order) with constant symbolic
+/// coefficients: `e^(r x)` for the roots `r = (-b ± √(b² - 4ac))/(2a)`,
+/// assumed distinct (a repeated root needs the coefficients to satisfy a
+/// relation the symbols do not show).
+fn symbolic_constant_basis(
+    cx: &mut Cx<'_>,
+    coefficients: &[NodeId],
+    x: NodeId,
+) -> Option<Vec<NodeId>> {
+    let exp = cx.graph.ops().lookup("exp")?;
+    let roots: Vec<NodeId> = match *coefficients {
+        | [c0, c1] => {
+            let r = div(cx.graph, c0, c1);
+            vec![neg(cx.graph, r)]
+        },
+        | [c, b, a] => {
+            let two = cx.graph.int(2);
+            let four = cx.graph.int(4);
+            let b2 = cx.graph.node(core::POW, &[b, two]);
+            let fac = mul(cx.graph, &[four, a, c]);
+            let discriminant = sub(cx.graph, b2, fac);
+            let discriminant = cx.simplify(discriminant);
+            if cx.is_zero(discriminant) {
+                return None;
+            }
+            let half = cx.graph.num(Number::fraction(1, 2)?);
+            let root = cx.graph.node(core::POW, &[discriminant, half]);
+            let minus_b = neg(cx.graph, b);
+            let two_a = mul(cx.graph, &[two, a]);
+            let mut out = Vec::new();
+            for sign in [-1, 1] {
+                let s = cx.graph.int(sign);
+                let signed = mul(cx.graph, &[s, root]);
+                let numerator = add(cx.graph, &[minus_b, signed]);
+                out.push(div(cx.graph, numerator, two_a));
+            }
+            out
+        },
+        | _ => return None,
+    };
+    Some(
+        roots
+            .into_iter()
+            .map(|r| {
+                let r = cx.simplify(r);
+                let rx = mul(cx.graph, &[r, x]);
+                cx.graph.node(exp, &[rx])
+            })
+            .collect(),
+    )
 }
 
 /// Cauchy–Euler equations `sum_k c_k x^k y^(k) = 0`: `y = x^m` with `m` a
@@ -909,7 +1003,7 @@ fn cauchy_euler_basis(
 }
 
 /// A particular solution of `a_n y^(n) + ... = r` from a fundamental
-/// system, for orders one and two.
+/// system (any order up to five).
 fn variation_of_parameters(
     cx: &mut Cx<'_>,
     basis: &[NodeId],
@@ -931,7 +1025,7 @@ fn variation_of_parameters(
             let first = mul(cx.graph, &[y1, d2]);
             let second = mul(cx.graph, &[y2, d1]);
             let wronskian = sub(cx.graph, first, second);
-            let wronskian = cx.simplify(wronskian);
+            let wronskian = expanded(cx, wronskian);
             // y_p = -y1 ∫ y2 r / W + y2 ∫ y1 r / W
             let inverse = inv(cx.graph, wronskian);
             let u1 = mul(cx.graph, &[y2, normalised, inverse]);
@@ -944,7 +1038,79 @@ fn variation_of_parameters(
             let right = mul(cx.graph, &[y2, i2]);
             Some(add(cx.graph, &[left, right]))
         },
+        | _ if basis.len() <= 5 => {
+            // Cramer's rule on the Wronskian system W u' = (0, ..., 0, r):
+            // u_i' = r C_(n-1, i) / W with C the cofactors of the last row.
+            let n = basis.len();
+            let mut rows: Vec<Vec<NodeId>> = vec![basis.to_vec()];
+            for _ in 1..n {
+                let last = rows.last()?.clone();
+                let next: Vec<NodeId> = last
+                    .iter()
+                    .map(|&f| {
+                        let d = derivative(cx.graph, f, x)?;
+                        Some(cx.simplify(d))
+                    })
+                    .collect::<Option<_>>()?;
+                rows.push(next);
+            }
+            let wronskian = determinant_of(cx, &rows)?;
+            let wronskian = expanded(cx, wronskian);
+            if cx.is_zero(wronskian) {
+                return None;
+            }
+            let inverse = inv(cx.graph, wronskian);
+            let mut terms = Vec::with_capacity(n);
+            for (i, &yi) in basis.iter().enumerate() {
+                let minor: Vec<Vec<NodeId>> =
+                    rows[..n - 1].iter().map(|r| r.iter().enumerate().filter(|&(j, _)| j != i).map(|(_, &v)| v).collect()).collect();
+                let cofactor = determinant_of(cx, &minor)?;
+                let sign = cx.graph.int(if (n - 1 + i).is_multiple_of(2) { 1 } else { -1 });
+                let ui = mul(cx.graph, &[sign, cofactor, normalised, inverse]);
+                let ui = cx.simplify(ui);
+                let ui = crate::rules::poly::expand_form(cx.graph, ui).unwrap_or(ui);
+                let ui = cx.simplify(ui);
+                let integral = integrate(cx, ui, x)?;
+                terms.push(mul(cx.graph, &[yi, integral]));
+            }
+            Some(add(cx.graph, &terms))
+        },
         | _ => None,
+    }
+}
+
+/// `e` simplified, expanded and simplified again (Wronskians such as
+/// `(x e^x + e^x) e^x - x e^(2x)` collapse only once expanded).
+fn expanded(
+    cx: &mut Cx<'_>,
+    e: NodeId,
+) -> NodeId {
+    let e = cx.simplify(e);
+    let e = crate::rules::poly::expand_form(cx.graph, e).unwrap_or(e);
+    cx.simplify(e)
+}
+
+/// The determinant of a small square matrix of terms, by cofactor
+/// expansion along the first row.
+fn determinant_of(
+    cx: &mut Cx<'_>,
+    m: &[Vec<NodeId>],
+) -> Option<NodeId> {
+    match m.len() {
+        | 0 => Some(cx.graph.int(1)),
+        | 1 => m[0].first().copied(),
+        | n => {
+            let mut terms = Vec::with_capacity(n);
+            for (j, &entry) in m[0].iter().enumerate() {
+                let minor: Vec<Vec<NodeId>> =
+                    m[1..].iter().map(|r| r.iter().enumerate().filter(|&(k, _)| k != j).map(|(_, &v)| v).collect()).collect();
+                let sub_det = determinant_of(cx, &minor)?;
+                let sign = cx.graph.int(if j.is_multiple_of(2) { 1 } else { -1 });
+                terms.push(mul(cx.graph, &[sign, entry, sub_det]));
+            }
+            let sum = add(cx.graph, &terms);
+            Some(cx.simplify(sum))
+        },
     }
 }
 
@@ -1652,6 +1818,27 @@ mod tests {
     }
 
     #[test]
+    fn harder_equations() {
+        let rules = crate::rules::standard();
+        let d = "diff(y(x), x)";
+        let dd = "diff(diff(y(x), x), x)";
+        for (eq, contains) in [
+            (format!("{d} + y(x)*tan(x) = sec(x)"), "cos(x)"),
+            (format!("{dd} - 2*{d} + y(x) = exp(x)/x"), "ln(x)"),
+            (format!("{dd} = x*y(x)"), "airyai(x)"),
+            (format!("diff({dd}, x) - 3*{dd} + 3*{d} - y(x) = exp(x)"), "x^3*exp(x)"),
+            (format!("x*{d} = y(x) + sqrt(x^2 + y(x)^2)"), "C1"),
+            (format!("{dd} = 2*y(x)^3"), "integral("),
+            // The pendulum: energy integral, the quadrature left inert.
+            (format!("{dd} + sin(y(x)) = 0"), "cos(y(x))"),
+            (format!("{dd} = lambda*y(x)"), "exp(lambda^(1/2)*x)"),
+        ] {
+            let got = simplify(&rules, &format!("dsolve({eq}, y(x))"));
+            assert!(got.contains(contains) && !got.starts_with("dsolve"), "{eq}: {got}");
+        }
+    }
+
+    #[test]
     fn series_and_transform_methods() {
         let rules = crate::rules::standard();
         // Airy-type y'' = x y about 0: 1 + x^3/6 + … and x + x^4/12 + ….
@@ -1734,7 +1921,7 @@ mod tests {
     fn unsolved_equations_stay_requests() {
         for src in [
             "dsolve(diff(y(x), x) = sin(x*y(x)), y(x))",
-            "dsolve(diff(diff(y(x), x), x) + sin(y(x)) = 0, y(x))",
+            "dsolve(diff(diff(y(x), x), x) + sin(y(x)) = x, y(x))",
             "dsolve(y(x) = x, y(x))",
         ] {
             let (text, reduced) = reduce_with(&[ode()], src, &[]);
