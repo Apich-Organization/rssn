@@ -1902,8 +1902,8 @@ The remaining `pending` and `partial` rows are listed by domain in
 | `solve_exact_ode_internal` | `rules::ode` `dsolve` (test bernoulli_riccati_homogeneous_exact) | done |
 | `solve_ode_by_series` | `rules::ode` `ode_series(eq, y(x), x0, n)` power-series method (test series_and_transform_methods) | done |
 | `solve_ode_by_series_internal` | `rules::ode` `ode_series(eq, y(x), x0, n)` power-series method (test series_and_transform_methods) | done |
-| `solve_ode_by_fourier` | needs the Fourier derivative theorem (transforms branch) to turn the ODE into an algebraic equation | pending |
-| `solve_ode_by_fourier_internal` | needs the Fourier derivative theorem (transforms branch) to turn the ODE into an algebraic equation | pending |
+| `solve_ode_by_fourier` | `rules::ode` `ode_fourier(eq, y(x))`: Fourier transform of the equation, solved for the transform, inverted by residues (`transforms` `inverse_fourier_by_residues`; tests series_and_transform_methods, fourier_transforms) | done |
+| `solve_ode_by_fourier_internal` | `rules::ode` `ode_fourier(eq, y(x))`: Fourier transform of the equation, solved for the transform, inverted by residues (`transforms` `inverse_fourier_by_residues`; tests series_and_transform_methods, fourier_transforms) | done |
 
 ## `src/symbolic/optimize.rs` (4)
 

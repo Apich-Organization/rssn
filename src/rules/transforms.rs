@@ -1842,6 +1842,9 @@ impl Tx<'_, '_> {
         if let Some(r) = self.inverse_fourier_by_duality(f) {
             return Some(r);
         }
+        if let Some(r) = self.inverse_fourier_by_residues(f) {
+            return Some(r);
+        }
         if rest.len() < 2 {
             return None;
         }
@@ -1868,6 +1871,130 @@ impl Tx<'_, '_> {
                 self.cx.graph.node(self.ops.inverse_fourier, &[h, w, t])
             },
         })
+    }
+
+    /// A rational `F(w)` that vanishes at infinity and has no real poles:
+    /// `f(t) = (1/2π) ∫ F e^{I w t} dw`, closed in the upper half plane
+    /// for `t > 0` and in the lower for `t < 0` (Jordan's lemma).
+    fn inverse_fourier_by_residues(
+        &mut self,
+        f: NodeId,
+    ) -> Option<NodeId> {
+        let (w, t) = (self.x, self.y);
+        let w_symbol = self.cx.graph.as_symbol(w)?;
+        let (poles_op, residue_op) = (
+            self.cx.graph.ops().lookup("poles")?,
+            self.cx.graph.ops().lookup("residue")?,
+        );
+        // Only `w` may occur, and F must decay.
+        let mut env = HashMap::new();
+        if self.cx.graph.free_symbols(self.cx.graph.find(f)) != [w_symbol] {
+            return None;
+        }
+        for big in [1e4, 1e6] {
+            env.insert(w_symbol, Complex64::new(big, 0.0));
+            let v = self.cx.graph.eval_complex(f, &env)?;
+            if !(v.norm() * big).is_finite() || v.norm() * big.sqrt() > 1.0 {
+                return None;
+            }
+        }
+        let i_unit = self
+            .cx
+            .graph
+            .ops()
+            .lookup("I")
+            .map(|op| self.cx.graph.node(op, &[]))?;
+        let request = self.cx.graph.node(poles_op, &[f, w]);
+        let mut poles = self.cx.simplify(request);
+        if self.cx.graph.op(poles) != core::LIST {
+            // F = G(I w) with G real (constant-coefficient equations): the
+            // poles of G(s), mapped back by w = -I s.
+            let s_symbol = self.cx.graph.interner_mut().fresh_symbol("s");
+            let s_node = self.cx.graph.symbol_node(s_symbol);
+            let minus_i = neg(self.cx.graph, i_unit);
+            let w_of_s = mul(self.cx.graph, &[minus_i, s_node]);
+            let g = self.cx.graph.substitute(f, w, w_of_s);
+            let g = crate::rules::poly::expand_form(self.cx.graph, g).unwrap_or(g);
+            let g = self.cx.simplify(g);
+            let request = self.cx.graph.node(poles_op, &[g, s_node]);
+            let in_s = self.cx.simplify(request);
+            if self.cx.graph.op(in_s) != core::LIST {
+                return None;
+            }
+            let mut mapped = Vec::new();
+            for pole in self.cx.graph.children(in_s).to_vec() {
+                let &[p, m] = self.cx.graph.children(pole) else {
+                    return None;
+                };
+                let p_w = self.cx.graph.substitute(w_of_s, s_node, p);
+                let p_w = self.cx.simplify(p_w);
+                mapped.push(self.cx.graph.node(core::LIST, &[p_w, m]));
+            }
+            poles = self.cx.graph.node(core::LIST, &mapped);
+        }
+        let iwt = mul(self.cx.graph, &[i_unit, w, t]);
+        let kernel = call(self.cx.graph, self.ops.exp, &[iwt]);
+        let integrand = mul(self.cx.graph, &[f, kernel]);
+        let (mut upper, mut lower) = (Vec::new(), Vec::new());
+        for pole in self.cx.graph.children(poles).to_vec() {
+            let &[p, _] = self.cx.graph.children(pole) else {
+                return None;
+            };
+            let z = self.cx.graph.eval_complex(p, &HashMap::new())?;
+            let request = self.cx.graph.node(residue_op, &[integrand, w, p]);
+            let r = self.cx.simplify(request);
+            if self.cx.graph.op(r) == residue_op {
+                return None;
+            }
+            if z.im > 1e-12 {
+                upper.push(r);
+            } else if z.im < -1e-12 {
+                lower.push(r);
+            } else {
+                return None;
+            }
+        }
+        if upper.is_empty() && lower.is_empty() {
+            return None;
+        }
+        // t > 0: I Σ_upper;  t < 0: -I Σ_lower.
+        let i_unit = self
+            .cx
+            .graph
+            .ops()
+            .lookup("I")
+            .map(|op| self.cx.graph.node(op, &[]))?;
+        let sum_upper = add(self.cx.graph, &upper);
+        let positive = mul(self.cx.graph, &[i_unit, sum_upper]);
+        let positive = self.cx.simplify(positive);
+        let positive = crate::rules::poly::expand_form(self.cx.graph, positive).unwrap_or(positive);
+        let positive = self.cx.simplify(positive);
+        let minus_i = neg(self.cx.graph, i_unit);
+        let sum_lower = add(self.cx.graph, &lower);
+        let negative = mul(self.cx.graph, &[minus_i, sum_lower]);
+        let negative = self.cx.simplify(negative);
+        let negative = crate::rules::poly::expand_form(self.cx.graph, negative).unwrap_or(negative);
+        let negative = self.cx.simplify(negative);
+        // Even or odd in t: write the answer with abs(t).
+        let minus_t = neg(self.cx.graph, t);
+        let mirrored = self.cx.graph.substitute(positive, t, minus_t);
+        let mirrored = self.cx.simplify(mirrored);
+        let abs_t = call(self.cx.graph, self.ops.abs, &[t]);
+        let difference = sub(self.cx.graph, mirrored, negative);
+        let difference = self.cx.simplify(difference);
+        if self
+            .cx
+            .graph
+            .number_of(difference)
+            .is_some_and(Number::is_zero)
+        {
+            return Some(self.cx.graph.substitute(positive, t, abs_t));
+        }
+        let step = call(self.cx.graph, self.ops.heaviside, &[t]);
+        let back_step = call(self.cx.graph, self.ops.heaviside, &[minus_t]);
+        let a = mul(self.cx.graph, &[step, positive]);
+        let b = mul(self.cx.graph, &[back_step, negative]);
+        Some(add(self.cx.graph, &[a, b]))
     }
 
     fn inverse_fourier_by_duality(
@@ -2486,6 +2613,10 @@ mod tests {
         assert_eq!(run("fourier(cos(3*t)*exp(-t^2), t, w)"), "1/2*exp(-1/4*(w - 3)^2)*pi^(1/2) + 1/2*exp(-1/4*(w + 3)^2)*pi^(1/2)");
         assert_eq!(run("fourier(dirac(t - 2), t, w)"), "exp(-2*w*I)");
         assert_eq!(run("inverse_fourier(2/(w^2 + 1), w, t)"), "exp(-abs(t))");
+        // Repeated and complex-coefficient denominators by residues.
+        assert_eq!(run("inverse_fourier(4/(w^2 + 1)^2, w, t)"), "abs(t)*exp(-abs(t)) + exp(-abs(t))");
+        let one_sided = run("inverse_fourier(2/((1 + w^2)*(1 + I*w)), w, t)");
+        assert!(one_sided.contains("heaviside(t)") && one_sided.contains("heaviside(-t)") && !one_sided.contains("fourier"), "{one_sided}");
     }
 
     #[test]

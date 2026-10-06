@@ -202,6 +202,43 @@ pub(super) fn laplace_ivp(
     Some(cx.graph.node(core::EQ, &[unknown, back]))
 }
 
+/// `ode_fourier(eq, y(x))`: the solution of a linear constant-coefficient
+/// equation on the whole line that decays at `±∞`, by the Fourier
+/// transform: `P(I w) Y(w) = F(w)`, `y = F⁻¹(F/P(I w))`.
+pub(super) fn fourier_solution(
+    cx: &mut Cx<'_>,
+    equation: NodeId,
+    unknown: NodeId,
+) -> Option<NodeId> {
+    let (fourier, inverse) = (
+        cx.graph.ops().lookup("fourier")?,
+        cx.graph.ops().lookup("inverse_fourier")?,
+    );
+    let x = *cx.graph.children(unknown).get(1)?;
+    let w_symbol = cx.graph.interner_mut().fresh_symbol("w");
+    let w = cx.graph.symbol_node(w_symbol);
+    cx.graph.assume(w_symbol, crate::graph::Facts::REAL);
+    let expr = as_expression(cx.graph, equation);
+    let pieces = transform_terms(cx, fourier, expr, x, w);
+    let transformed = add(cx.graph, &pieces);
+    let big_y = cx.graph.node(fourier, &[unknown, x, w]);
+    let y_symbol = cx.graph.interner_mut().fresh_symbol("Y");
+    let y_node = cx.graph.symbol_node(y_symbol);
+    let algebraic = cx.graph.replace_subterm(transformed, big_y, y_node);
+    let algebraic = cx.simplify(algebraic);
+    if contains_op(cx, algebraic, &[fourier]) {
+        return None;
+    }
+    let solved = *super::solve_for(cx.graph, algebraic, y_node, 0)?.first()?;
+    let solved = cx.simplify(solved);
+    let back = cx.graph.node(inverse, &[solved, w, x]);
+    let back = cx.simplify(back);
+    if contains_op(cx, back, &[fourier, inverse]) {
+        return None;
+    }
+    Some(cx.graph.node(core::EQ, &[unknown, back]))
+}
+
 /// `T(expr)` term by term (the transforms are linear), each piece
 /// simplified on its own so nested runs stay small.
 fn transform_terms(

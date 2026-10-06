@@ -19,6 +19,23 @@
 //! `x1` of the solution of `y' = f(x, y)`, `y(x0) = y0`, by an adaptive
 //! Runge–Kutta method; with lists for `f`, `y` and `y0` it integrates a
 //! system and returns the list of final values.
+//!
+//! Beyond the classical classes, `dsolve` tries in turn: Bessel and Airy
+//! equations; variable-coefficient linear equations (a family solution,
+//! then reduction of order); missing dependent variable; autonomous,
+//! scale-invariant and equidimensional equations; and the Lie
+//! point-symmetry method (prolonged determining equations, canonical
+//! coordinates, reduction of order). With a list of unknowns it solves
+//! constant-coefficient linear systems; with initial conditions and a
+//! discontinuous forcing it falls back to the Laplace transform.
+//!
+//! | operator | value |
+//! |---|---|
+//! | `ode_series(eq, y(x), x0, n)` | the power-series solution about `x0` to order `n` |
+//! | `rsolve_z(eq, y(n), conditions?)` | a linear recurrence solved by the z transform |
+//! | `ode_classify(eq, y(x))` | the list of classes the equation belongs to |
+//! | `ode_symmetries(eq, y(x))` | Lie point symmetries `list(ξ, η)` (polynomial ansatz) |
+//! | `ode_fourier(eq, y(x))` | the solution on the whole line decaying at `±∞` of a linear constant-coefficient equation, by the Fourier transform (inverted by residues) |
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -80,7 +97,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let rsolve = i.op(OpDescriptor::new("rsolve_z", Arity::Variadic).flags(OpFlags::HEAVY).cost(100))?;
     let classify = i.op(OpDescriptor::new("ode_classify", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
     let symmetries = i.op(OpDescriptor::new("ode_symmetries", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("ode/extras", Tier::Reduce, Extras { series, rsolve, classify, symmetries });
+    let fourier = i.op(OpDescriptor::new("ode_fourier", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("ode/extras", Tier::Reduce, Extras { series, rsolve, classify, symmetries, fourier });
     i.kernel("ode/odeint", Tier::Reduce, Odeint { odeint });
     Ok(())
 }
@@ -1211,17 +1229,19 @@ impl Kernel for Dsolve {
     }
 }
 
-/// `ode_series`, `rsolve` and `ode_classify`.
+/// `ode_series`, `rsolve_z`, `ode_classify`, `ode_symmetries` and
+/// `ode_fourier`.
 struct Extras {
     series: OpId,
     rsolve: OpId,
     classify: OpId,
     symmetries: OpId,
+    fourier: OpId,
 }
 
 impl Kernel for Extras {
     fn ops(&self) -> Vec<OpId> {
-        vec![self.series, self.rsolve, self.classify, self.symmetries]
+        vec![self.series, self.rsolve, self.classify, self.symmetries, self.fourier]
     }
 
     fn reduce(
@@ -1240,6 +1260,11 @@ impl Kernel for Extras {
             match *args.as_slice() {
                 | [e, u] => series_method::rsolve(cx, e, u, None),
                 | [e, u, c] => series_method::rsolve(cx, e, u, Some(c)),
+                | _ => None,
+            }
+        } else if op == self.fourier {
+            match *args.as_slice() {
+                | [e, u] => series_method::fourier_solution(cx, e, u),
                 | _ => None,
             }
         } else if op == self.symmetries {
@@ -1651,6 +1676,23 @@ mod tests {
         let geometric = simplify(&rules, "rsolve_z(y(n + 1) = 2*y(n) + 1, y(n), list(y(0) = 0))");
         assert_eq!(geometric, "y(n) = 2^n - 1");
         // Classification.
+        // Fourier method on the whole line: the solutions decaying at ±∞,
+        // checked by central differences away from the kink at 0.
+        for (src, order, forcing) in [
+            ("ode_fourier(diff(diff(y(x), x), x) - y(x) = -2*exp(-abs(x)), y(x))", 2, "-2*exp(-abs(x))"),
+            ("ode_fourier(diff(y(x), x) + y(x) = exp(-abs(x)), y(x))", 1, "exp(-abs(x))"),
+        ] {
+            let got = simplify(&rules, src);
+            assert!(got.starts_with("y(x) = ") && !got.contains("fourier"), "{got}");
+            let rhs = got.trim_start_matches("y(x) = ");
+            let y = |at: f64| crate::rules::testing::eval(&rules, rhs, &[("x", at)]);
+            for at in [0.7_f64, 1.9, -1.3, -0.4] {
+                let h = 1e-4;
+                let lhs = if order == 2 { (y(at + h) - 2.0 * y(at) + y(at - h)) / (h * h) - y(at) } else { (y(at + h) - y(at - h)) / (2.0 * h) + y(at) };
+                let want = crate::rules::testing::eval(&rules, forcing, &[("x", at)]);
+                assert!((lhs - want).abs() < 1e-5, "{got}: {lhs} vs {want} at {at}");
+            }
+        }
         let classes = simplify(&rules, "ode_classify(diff(y(x), x) = x*y(x), y(x))");
         assert!(classes.contains("linear") && classes.contains("separable"), "{classes}");
     }
