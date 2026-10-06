@@ -9,6 +9,7 @@
 
 mod diff;
 mod gosper;
+pub mod indefinite;
 mod integrate;
 mod limits;
 mod powerseries;
@@ -247,6 +248,13 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     // antidifference(t, k): T with T(k+1) - T(k) = t(k).
     let antidifference = i.op(request("antidifference", 2))?;
     i.kernel("calculus/antidifference", Tier::Reduce, Antidifference { op: antidifference });
+    // real_integral(f, x): the antiderivative with ln|u|.
+    let real_integral = i.op(request("real_integral", 2))?;
+    i.kernel("calculus/real-integral", Tier::Reduce, RealIntegral { op: real_integral });
+    // indefinite_sum(f, k), indefinite_product(f, k).
+    let indefinite_sum = i.op(request("indefinite_sum", 2))?;
+    let indefinite_product = i.op(request("indefinite_product", 2))?;
+    i.kernel("calculus/indefinite", Tier::Reduce, indefinite::Indefinite { sum: indefinite_sum, product: indefinite_product });
     i.kernel("calculus/sum-numeric", Tier::Reduce, series::NumericSum { sum: ops.sum, product: ops.product });
     i.rewrites(
         Tier::Reduce,
@@ -285,6 +293,82 @@ pub fn derivative(
     let diff = graph.ops().lookup("diff")?;
     let symbol = graph.symbol_of(x)?;
     Some(diff::Differentiate { diff }.derive(graph, f, symbol, x))
+}
+
+/// Kernel for `real_integral(f, x)`: an antiderivative valid on every real
+/// interval where `f` is defined, with `ln(u)` written `ln(abs(u))`
+/// wherever `u` is not known to be positive (so `∫ dx/x = ln|x|` and
+/// `∫ sec x dx` is real on every branch).
+struct RealIntegral {
+    op: crate::graph::OpId,
+}
+
+impl crate::graph::Kernel for RealIntegral {
+    fn ops(&self) -> Vec<crate::graph::OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> crate::graph::Outcome {
+        let &[f, x] = cx.graph.children(node) else {
+            return crate::graph::Outcome::Pass;
+        };
+        let Some(primitive) = antiderivative(cx, f, x) else {
+            return crate::graph::Outcome::Pass;
+        };
+        let (Some(ln), Some(abs)) = (cx.graph.ops().lookup("ln"), cx.graph.ops().lookup("abs")) else {
+            return crate::graph::Outcome::Pass;
+        };
+        let Some(term) = crate::rules::poly::best(cx.graph, primitive) else {
+            return crate::graph::Outcome::Pass;
+        };
+        let mut logs = Vec::new();
+        let mut stack = vec![term];
+        while let Some(n) = stack.pop() {
+            if cx.graph.op(n) == ln {
+                if let Some(&u) = cx.graph.children(n).first() {
+                    if !cx.graph.facts(u).has(crate::graph::Facts::POSITIVE) && cx.graph.op(u) != abs {
+                        logs.push((n, u));
+                    }
+                }
+            }
+            stack.extend_from_slice(cx.graph.children(n));
+        }
+        let mut out = term;
+        for (n, u) in logs {
+            let a = cx.graph.node(abs, &[u]);
+            let replacement = cx.graph.node(ln, &[a]);
+            out = cx.graph.replace_subterm(out, n, replacement);
+        }
+        // Check d/dx = f where both are real, on both signs of x.
+        let Some(d) = derivative(cx.graph, out, x) else {
+            return crate::graph::Outcome::Pass;
+        };
+        let minus = cx.graph.int(-1);
+        let neg_f = cx.graph.node(crate::graph::op::core::MUL, &[minus, f]);
+        let residual = cx.graph.node(crate::graph::op::core::ADD, &[d, neg_f]);
+        let residual = cx.simplify(residual);
+        let Some(symbol) = cx.graph.symbol_of(x) else {
+            return crate::graph::Outcome::Pass;
+        };
+        let others: Vec<crate::graph::SymbolId> = cx.graph.free_symbols(cx.graph.find(residual)).iter().copied().filter(|&s| s != symbol).collect();
+        for point in [-2.3, -0.7, 0.45, 1.9, 3.3] {
+            let mut env = crate::graph::Env::numeric(0.0);
+            env.bind(symbol, point);
+            for (j, &s) in others.iter().enumerate() {
+                env.bind(s, 0.6 + 0.2 * f64::from(u32::try_from(j % 5).unwrap_or(0)));
+            }
+            if let Some(v) = cx.graph.eval(residual, &env) {
+                if v.is_finite() && v.abs() > 1e-7 {
+                    return crate::graph::Outcome::Pass;
+                }
+            }
+        }
+        crate::graph::Outcome::Equal(out)
+    }
 }
 
 /// Kernel for `antidifference(t, k)`, by Gosper's algorithm.

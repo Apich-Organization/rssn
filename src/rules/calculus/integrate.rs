@@ -21,8 +21,6 @@ use num_rational::BigRational;
 use num_traits::Signed;
 use num_traits::Zero;
 
-use crate::backend::Backend;
-use crate::backend::Interpreter;
 use crate::graph::op::core;
 use crate::graph::Ball;
 use crate::graph::Cx;
@@ -1640,7 +1638,7 @@ fn compile_nested(
             gauss_kronrod_any(f, a, b, tolerance, 200).value
         }));
     }
-    let compiled = Interpreter.compile(graph, term, inputs).ok()?;
+    let compiled = crate::backend::compile(graph, term, inputs).ok()?;
     Some(Box::new(move |args: &[f64]| compiled.call(args)))
 }
 

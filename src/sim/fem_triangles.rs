@@ -144,7 +144,7 @@ impl TriMesh {
         // triangle with any marked edge has its longest edge marked too.
         let mut split: HashMap<(usize, usize), usize> = HashMap::new();
         let mut nodes = self.nodes.clone();
-        let mut mark = |e: (usize, usize), nodes: &mut Vec<[f64; 2]>, split: &mut HashMap<(usize, usize), usize>| -> bool {
+        let mark = |e: (usize, usize), nodes: &mut Vec<[f64; 2]>, split: &mut HashMap<(usize, usize), usize>| -> bool {
             if split.contains_key(&e) {
                 return false;
             }

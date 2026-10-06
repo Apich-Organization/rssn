@@ -173,6 +173,11 @@ impl Graph {
                 }
             }
         }
+        // Without a witness, a rigorous interval enclosure of a member (the
+        // tape interpreter with outward rounding) can still decide the sign.
+        if !facts.has(Facts::POSITIVE) && !facts.has(Facts::NEGATIVE) && self.free_symbols(class).is_empty() {
+            facts = facts | self.enclosure_sign(class);
+        }
         // All members denote the same value: what any of them proves
         // holds. Members hidden from matching by leaf collapse still count.
         for member in self.members(class) {
@@ -181,6 +186,35 @@ impl Graph {
             }
         }
         facts
+    }
+
+    /// The sign of a constant class from an interval enclosure of one of
+    /// its members.
+    fn enclosure_sign(
+        &self,
+        class: ClassId,
+    ) -> Facts {
+        for member in self.members(class) {
+            if self.children(member).is_empty() || self.is_redundant(member) {
+                continue;
+            }
+            let Ok(tape) = crate::backend::tape::lower(self, &[member], &[], &[]) else {
+                continue;
+            };
+            if tape.insts.len() > 400 {
+                continue;
+            }
+            let Some(e) = tape.enclose(&[], &[]).first().copied() else {
+                continue;
+            };
+            if e.lo > 0.0 {
+                return Facts::POSITIVE;
+            }
+            if e.hi < 0.0 {
+                return Facts::NEGATIVE;
+            }
+        }
+        Facts::NONE
     }
 
     fn node_facts(
@@ -309,6 +343,16 @@ mod tests {
         g.assume(p, Facts::POSITIVE);
         g.assume(r, Facts::REAL);
         g
+    }
+
+    #[test]
+    fn interval_enclosures_decide_signs_of_constants() {
+        let mut g = Graph::new();
+        assert!(crate::graph::Engine::install(&mut g, &crate::rules::standard()).is_ok());
+        // sqrt(2) - 1.41 > 0 and pi - 22/7 < 0 without any numeric phase.
+        assert!(facts_of(&mut g, "sqrt(2) - 141/100").has(Facts::POSITIVE));
+        assert!(facts_of(&mut g, "pi - 22/7").has(Facts::NEGATIVE));
+        assert!(facts_of(&mut g, "exp(1) - 2718281828/1000000000").has(Facts::POSITIVE));
     }
 
     #[test]

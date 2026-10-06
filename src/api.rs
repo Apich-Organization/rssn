@@ -641,7 +641,9 @@ impl<'s> Term<'s> {
     }
 
     /// Compiles the term to a function of the named symbols, in order,
-    /// using the reference [`Interpreter`](crate::backend::Interpreter).
+    /// with the [current](crate::backend::current) backend (the reference
+    /// [`Interpreter`](crate::backend::Interpreter) unless another one was
+    /// selected).
     ///
     /// # Errors
     /// See [`BackendError`](crate::backend::BackendError).
@@ -649,7 +651,7 @@ impl<'s> Term<'s> {
         self,
         inputs: &[&str],
     ) -> Result<Box<dyn crate::backend::Compiled>, crate::backend::BackendError> {
-        self.compile_with(&crate::backend::Interpreter, inputs)
+        self.compile_with(&*crate::backend::current(), inputs)
     }
 
     /// Compiles the term with a specific backend.

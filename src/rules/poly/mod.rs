@@ -295,15 +295,39 @@ impl Kernel for PolyKernel {
         cx: &mut Cx<'_>,
         node: NodeId,
     ) -> Outcome {
+        let args = cx.graph.children(node).to_vec();
+        // Form requests pin their answer, so an inner request (definition,
+        // sum, other kernel) would be frozen unreduced inside it. When the
+        // raw argument gives nothing new, retry on its simplified form; the
+        // raw form is tried first because simplification may hide structure
+        // (exp(t)^2 - 1 becomes exp(2*t) - 1).
+        if let Some((&first, rest)) = args.split_first() {
+            let form = |graph: &mut Graph, e: NodeId| match (self.request, rest) {
+                | (Request::Expand, &[]) => expand(graph, e),
+                | (Request::Collect, &[x]) => collect(graph, e, x),
+                | (Request::Factor, &[]) => factor(graph, e),
+                | (Request::Together, &[]) => together(graph, e, false),
+                | (Request::Cancel, &[]) => together(graph, e, true),
+                | (Request::Apart, &[x]) => apart_term(graph, e, x),
+                | _ => None,
+            };
+            if matches!(
+                self.request,
+                Request::Expand | Request::Collect | Request::Factor | Request::Together | Request::Cancel | Request::Apart
+            ) {
+                let raw = form(cx.graph, first).filter(|&r| cx.graph.find(r) != cx.graph.find(first));
+                if let Some(r) = raw {
+                    return Outcome::Pinned(r);
+                }
+                let simplified = cx.simplify(first);
+                if cx.graph.find(simplified) == cx.graph.find(first) {
+                    return form(cx.graph, first).map_or(Outcome::Pass, Outcome::Pinned);
+                }
+                return form(cx.graph, simplified).map_or(Outcome::Pass, Outcome::Pinned);
+            }
+        }
         let graph = &mut *cx.graph;
-        let args = graph.children(node).to_vec();
         let result = match (self.request, args.as_slice()) {
-            | (Request::Expand, &[e]) => expand(graph, e).map(Outcome::Pinned),
-            | (Request::Collect, &[e, x]) => collect(graph, e, x).map(Outcome::Pinned),
-            | (Request::Factor, &[e]) => factor(graph, e).map(Outcome::Pinned),
-            | (Request::Together, &[e]) => together(graph, e, false).map(Outcome::Pinned),
-            | (Request::Cancel, &[e]) => together(graph, e, true).map(Outcome::Pinned),
-            | (Request::Apart, &[e, x]) => apart_term(graph, e, x).map(Outcome::Pinned),
             | (Request::Degree, &[p, x]) => degree(graph, p, x).map(Outcome::Equal),
             | (Request::Coeff, &[p, x, n]) => coeff(graph, p, x, n).map(Outcome::Equal),
             | (Request::Quo, &[p, q, x]) => divide(graph, p, q, x).map(|(quo, _)| Outcome::Equal(quo)),

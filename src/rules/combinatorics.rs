@@ -1841,6 +1841,8 @@ mod tests {
         assert_eq!(simplify(&rules, "expand_binomial(x, 1, 3)"), "x^3 + 3*x^2 + 3*x + 1");
         assert_eq!(simplify(&rules, "expand_binomial(x, y, 2)"), "x^2 + 2*x*y + y^2");
         assert_eq!(simplify(&rules, "expand_binomial(2, 1, n)"), "3^n");
+        // Inside a form request the definition is unfolded first.
+        assert_eq!(simplify(&rules, "expand(expand_binomial(x, 1, 3))"), "x^3 + 3*x^2 + 3*x + 1");
     }
 
     #[test]

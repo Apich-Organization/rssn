@@ -7,8 +7,10 @@
 //!   `[-L, L]`.
 //! * `sum(f, k, a, b)` and `product(f, k, a, b)`: finite sums are written
 //!   out; polynomial, geometric and a few classical infinite summands have
-//!   closed forms; anything else is summed numerically, with convergence
-//!   acceleration, when a number is wanted.
+//!   closed forms; symbolic bounds fall back on the indefinite sum and
+//!   product (`indefinite_sum`, `indefinite_product`, see the
+//!   `indefinite` module); anything else is summed numerically, with
+//!   convergence acceleration, when a number is wanted.
 //! * `converges(f, k)`: divergence, ratio, root, alternating, p-series and
 //!   condensation tests for the series with general term `f`.
 
@@ -17,8 +19,6 @@ use num_rational::BigRational;
 use num_traits::One;
 use num_traits::Zero;
 
-use crate::backend::Backend;
-use crate::backend::Interpreter;
 use crate::graph::op::core;
 use crate::graph::Ball;
 use crate::graph::Cx;
@@ -663,7 +663,15 @@ fn sum(
             .collect();
         return Some(add(cx.graph, &terms));
     }
-    symbolic_sum(cx, f, k, lower, upper)
+    if let Some(found) = symbolic_sum(cx, f, k, lower, upper) {
+        return Some(found);
+    }
+    let infinity = cx.graph.ops().lookup("oo");
+    if infinity.is_some_and(|oo| cx.graph.op(upper) == oo) {
+        return None;
+    }
+    let body = best(cx.graph, f)?;
+    super::indefinite::definite_sum(cx, body, k, lower, upper)
 }
 
 fn product(
@@ -703,7 +711,11 @@ fn product(
         let inverse = graph.node(core::POW, &[bottom, minus_one]);
         return Some(mul(graph, &[top, inverse]));
     }
-    None
+    let infinity = graph.ops().lookup("oo");
+    if infinity.is_some_and(|oo| graph.op(upper) == oo) {
+        return None;
+    }
+    super::indefinite::definite_product(cx, body, k, lower, upper)
 }
 
 /// The numeric value of `lim_{k→∞} e`, if the limit engine finds one.
@@ -1029,7 +1041,7 @@ impl Kernel for NumericSum {
                 values.push(v);
             }
         }
-        let Ok(compiled) = Interpreter.compile(graph, term, &inputs) else {
+        let Ok(compiled) = crate::backend::compile(graph, term, &inputs) else {
             return Outcome::Pass;
         };
         let at = |index: f64| {

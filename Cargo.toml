@@ -63,6 +63,11 @@ overflow-checks = false
 incremental = true
 
 [dependencies]
+cranelift-codegen = { version = "0.130", optional = true }
+cranelift-frontend = { version = "0.130", optional = true }
+cranelift-jit = { version = "0.130", optional = true }
+cranelift-module = { version = "0.130", optional = true }
+cranelift-native = { version = "0.130", optional = true }
 # Not upgrading because of argmin
 ndarray = { version = "0.16", features = ["serde"] }
 statrs = "0.19"
@@ -113,9 +118,11 @@ vergen-gitcl = { version = "10.0", features = [
 
 [features]
 default = []
+# Cranelift JIT backend (`rssn::backend::jit`).
+jit = ["dep:cranelift-codegen", "dep:cranelift-frontend", "dep:cranelift-jit", "dep:cranelift-module", "dep:cranelift-native"]
 # Reading and writing `.npy` files in `rssn::io`.
 npy = ["dep:ndarray-npy"]
-full = ["npy"]
+full = ["npy", "jit"]
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }

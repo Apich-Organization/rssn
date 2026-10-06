@@ -532,3 +532,60 @@ fn integration_battery() {
     assert_eq!(crate::rules::testing::simplify(&rules, "integral(sin(x)/x, x)"), "si(x)");
     assert_eq!(crate::rules::testing::simplify(&rules, "integral(1/ln(x), x)"), "li(x)");
 }
+
+/// Indefinite sums and products, and definite ones through them.
+#[test]
+fn indefinite_sums_and_products() {
+    let rules = crate::rules::standard();
+    let check_sum = |f: &str| {
+        let t = crate::rules::testing::simplify(&rules, &format!("indefinite_sum({f}, k)"));
+        assert!(!t.contains("indefinite_sum"), "{f}: {t}");
+        for k in [2.0, 3.5, 6.0] {
+            let d = eval(&rules, &t, &[("k", k + 1.0), ("a", 0.7)]) - eval(&rules, &t, &[("k", k), ("a", 0.7)]);
+            let want = eval(&rules, f, &[("k", k), ("a", 0.7)]);
+            assert!((d - want).abs() < 1e-8 * (1.0 + want.abs()), "Σ {f} = {t}: {d} vs {want} at {k}");
+        }
+    };
+    for f in ["k^3", "k*2^k", "1/(k*(k + 1))", "1/k", "1/(k + 1/2)^2", "1/(k^2 - 2)", "sin(2*k)", "cos(a*k + 1)", "ln(k)", "k^(1/2)", "k^2 + 1/k + 3^k", "k*factorial(k)"] {
+        check_sum(f);
+    }
+    let check_product = |f: &str| {
+        let p = crate::rules::testing::simplify(&rules, &format!("indefinite_product({f}, k)"));
+        assert!(!p.contains("indefinite_product"), "{f}: {p}");
+        for k in [2.0, 3.5, 6.0] {
+            let r = eval(&rules, &p, &[("k", k + 1.0), ("a", 0.7)]) / eval(&rules, &p, &[("k", k), ("a", 0.7)]);
+            let want = eval(&rules, f, &[("k", k), ("a", 0.7)]);
+            assert!((r - want).abs() < 1e-8 * (1.0 + want.abs()), "Π {f} = {p}: {r} vs {want} at {k}");
+        }
+    };
+    for f in ["k", "2", "k + 1/2", "(k + 1)/(k + 3)", "k^2 - 3", "2*k*(k - 1/3)", "exp(k)", "a^k", "k^2/(k^2 + k - 1)"] {
+        check_product(f);
+    }
+    // Definite forms with symbolic bounds.
+    let s = crate::rules::testing::simplify(&rules, "sum(1/k^2, k, 1, n)");
+    assert!(!s.contains("sum("), "{s}");
+    assert!((eval(&rules, &s, &[("n", 10.0)]) - (1..=10).map(|k| 1.0 / f64::from(k * k)).sum::<f64>()).abs() < 1e-10, "{s}");
+    let p = crate::rules::testing::simplify(&rules, "product((k + 1)/k, k, 1, n)");
+    assert!((eval(&rules, &p, &[("n", 7.0)]) - 8.0).abs() < 1e-10, "{p}");
+    let p = crate::rules::testing::simplify(&rules, "product(1 - 1/(k + 1)^2, k, 1, n)");
+    let want: f64 = (1..=12).map(|k| 1.0 - 1.0 / f64::from((k + 1) * (k + 1))).product();
+    assert!((eval(&rules, &p, &[("n", 12.0)]) - want).abs() < 1e-9 * want, "{p}");
+}
+
+/// Real-domain antiderivatives: logarithms of absolute values.
+#[test]
+fn real_integrals_use_absolute_values() {
+    let rules = crate::rules::standard();
+    for f in ["1/x", "1/(x^2 - 1)", "tan(x)", "1/(x^6 - 1)", "1/cos(x)^3"] {
+        let p = crate::rules::testing::simplify(&rules, &format!("real_integral({f}, x)"));
+        assert!(p.contains("abs("), "{f}: {p}");
+        for at in [-2.3, -0.4, 0.3, 2.6] {
+            let h = 1e-5;
+            let d = (eval(&rules, &p, &[("x", at + h)]) - eval(&rules, &p, &[("x", at - h)])) / (2.0 * h);
+            let want = eval(&rules, f, &[("x", at)]);
+            if want.is_finite() && want.abs() < 1e6 {
+                assert!((d - want).abs() < 1e-4 * (1.0 + want.abs()), "{f} = {p}: {d} vs {want} at {at}");
+            }
+        }
+    }
+}

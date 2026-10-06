@@ -46,5 +46,31 @@ fn compiled(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, symbolic, numeric, compiled);
+/// Interpreter against the Cranelift JIT on the same batch, plus the JIT's
+/// compile latency (the tiering threshold is chosen from these numbers).
+#[cfg(feature = "jit")]
+fn jit(c: &mut Criterion) {
+    use rssn::backend::jit::CraneliftBackend;
+    let s = Session::new();
+    let f = s.parse("sin(x)*exp(-x^2/2) + x^3 - 2*x/(1 + x^2) + sqrt(x + 1)").expect("parses");
+    let xs: Vec<f64> = (0..10_000).map(|i| f64::from(i) * 1e-3).collect();
+    let mut out = vec![0.0; xs.len()];
+    let interpreted = f.compile_with(&rssn::backend::Interpreter, &["x"]).expect("compiles");
+    c.bench_function("jit/interpreter_batch_10k", |b| {
+        b.iter(|| interpreted.call_batch(&[black_box(&xs)], &mut out));
+    });
+    let backend = CraneliftBackend::new();
+    let compiled = f.compile_with(&backend, &["x"]).expect("compiles");
+    c.bench_function("jit/cranelift_batch_10k", |b| {
+        b.iter(|| compiled.call_batch(&[black_box(&xs)], &mut out));
+    });
+    c.bench_function("jit/compile_latency", |b| {
+        b.iter(|| f.compile_with(&CraneliftBackend::new(), &["x"]).expect("compiles"));
+    });
+}
+
+#[cfg(not(feature = "jit"))]
+fn jit(_: &mut Criterion) {}
+
+criterion_group!(benches, symbolic, numeric, compiled, jit);
 criterion_main!(benches);
