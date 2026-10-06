@@ -83,6 +83,7 @@ pub mod ode;
 pub mod optimize;
 pub mod pde;
 pub mod physics;
+pub mod physics_quantum;
 pub mod poly;
 pub mod radicals;
 pub mod rewriting;
@@ -114,6 +115,7 @@ pub use ode::ode;
 pub use optimize::optimize;
 pub use pde::pde;
 pub use physics::physics;
+pub use physics_quantum::physics_quantum;
 pub use poly::poly;
 pub use radicals::radicals;
 pub use rewriting::rewriting;
@@ -130,7 +132,7 @@ use crate::graph::RuleSet;
 /// Every rule set shipped with rssn.
 #[must_use]
 pub fn standard() -> Vec<RuleSet> {
-    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), variational(), pde(), functional(), physics(), optimize(), verify(), discrete(), rewriting(), lie(), lie_structure(), geometric_algebra(), units(), radicals()]
+    vec![arith(), elementary(), calculus(), poly(), solve(), ode(), linalg(), geometry(), complex(), number_theory(), combinatorics(), logic(), special(), stats(), transforms(), variational(), pde(), functional(), physics(), physics_quantum(), optimize(), verify(), discrete(), rewriting(), lie(), lie_structure(), geometric_algebra(), units(), radicals()]
 }
 
 #[cfg(test)]

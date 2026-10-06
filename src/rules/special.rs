@@ -1039,8 +1039,13 @@ fn gaussian_integral(
                 return None;
             }
             n = n.checked_add(integer(graph, e)?.to_u32()?)?;
-        } else if graph.op(factor) == exp && exponent.is_none() {
-            exponent = graph.children(factor).first().copied();
+        } else if graph.op(factor) == exp {
+            // Several exponentials multiply into one.
+            let argument = *graph.children(factor).first()?;
+            exponent = Some(match exponent {
+                | None => argument,
+                | Some(previous) => graph.node(core::ADD, &[previous, argument]),
+            });
         } else {
             return None;
         }
