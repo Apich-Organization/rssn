@@ -21,7 +21,6 @@ use super::Conditions;
 use super::Problem;
 use super::dummy;
 use crate::graph::Cx;
-use crate::graph::Env;
 use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::rules::complex::build::add;
@@ -40,62 +39,8 @@ fn div(
     mul(cx.graph, &[a, inverse])
 }
 
-/// The coefficients `(a, b, c, d)` and source of a 1+1 parabolic
-/// equation, all constant except the source.
-struct Parabolic {
-    time: usize,
-    space: usize,
-    diffusivity: NodeId,
-    drift: NodeId,
-    reaction: NodeId,
-    /// `f / a`.
-    forcing: NodeId,
-}
-
-fn parabolic(
-    cx: &mut Cx<'_>,
-    p: &Problem,
-) -> Option<Parabolic> {
-    if p.dimension() != 2 || p.nonlinear {
-        return None;
-    }
-    let time = p.time(cx.graph);
-    let space = 1 - time;
-    let ut = p.unit(time, 1);
-    let (ux, uxx, u) = (p.unit(space, 1), p.unit(space, 2), vec![0; 2]);
-    if !p.only(cx.graph, &[ut.clone(), ux.clone(), uxx.clone(), u.clone()]) {
-        return None;
-    }
-    let a = p.coefficient(cx.graph, &ut);
-    if cx.is_zero(a) {
-        return None;
-    }
-    // a u_t + b' u_xx + c' u_x + d' u + source = 0
-    let coefficient = |cx: &mut Cx<'_>, index: &[u32]| {
-        let c = p.coefficient(cx.graph, index);
-        let ratio = div(cx, c, a);
-        let ratio = neg(cx.graph, ratio);
-        cx.simplify(ratio)
-    };
-    let diffusivity = coefficient(cx, &uxx);
-    let drift = coefficient(cx, &ux);
-    let reaction = coefficient(cx, &u);
-    if [diffusivity, drift, reaction].iter().any(|&c| !p.constant(cx.graph, c)) {
-        return None;
-    }
-    if !cx.graph.eval(diffusivity, &Env::numeric(0.0)).is_none_or(|v| v > 0.0) || cx.is_zero(diffusivity) {
-        return None;
-    }
-    let forcing = {
-        let ratio = div(cx, p.source, a);
-        let negated = neg(cx.graph, ratio);
-        cx.simplify(negated)
-    };
-    Some(Parabolic { time, space, diffusivity, drift, reaction, forcing })
-}
-
 /// The 1-D heat kernel `(4π D τ)^(-1/2) exp(-(ξ)²/(4 D τ))`.
-fn kernel(
+pub(super) fn kernel(
     cx: &mut Cx<'_>,
     d: NodeId,
     xi: NodeId,
@@ -114,118 +59,6 @@ fn kernel(
     let half = cx.graph.num(Number::fraction(-1, 2)?);
     let normalisation = pow(cx.graph, base, half);
     Some(mul(cx.graph, &[normalisation, gaussian]))
-}
-
-/// Initial-value problems for drift–diffusion–reaction equations on the
-/// line, or on `x > 0` with a homogeneous boundary condition at 0.
-pub(super) fn drift_diffusion(
-    cx: &mut Cx<'_>,
-    p: &Problem,
-    conditions: &Conditions,
-) -> Option<NodeId> {
-    let e = parabolic(cx, p)?;
-    let (x, t) = (p.vars[e.space], p.vars[e.time]);
-    let zero_index = vec![0; 2];
-    let initial = conditions.find(cx.graph, e.time, &zero_index, None)?;
-    if !cx.graph.number_of(initial.point).is_some_and(Number::is_zero) {
-        return None;
-    }
-    // A boundary condition at x = 0 selects the half-line.
-    let dirichlet = conditions.find(cx.graph, e.space, &zero_index, None);
-    let neumann = conditions.find(cx.graph, e.space, &p.unit(e.space, 1), None);
-    let boundary_sign: Option<i64> = match (dirichlet, neumann) {
-        | (Some(c), None) if cx.is_zero(c.value) && cx.graph.number_of(c.point).is_some_and(Number::is_zero) => Some(-1),
-        | (None, Some(c)) if cx.is_zero(c.value) && cx.graph.number_of(c.point).is_some_and(Number::is_zero) => Some(1),
-        | (None, None) => None,
-        | _ => return None,
-    };
-    let expected = 1 + usize::from(boundary_sign.is_some());
-    if conditions.0.len() != expected {
-        return None;
-    }
-    // Images need the gauge to be even in x: no drift.
-    if boundary_sign.is_some() && !cx.is_zero(e.drift) {
-        return None;
-    }
-    let exp = cx.graph.ops().lookup("exp")?;
-    let defint = cx.graph.ops().lookup("defint")?;
-    let infinity = cx.graph.ops().lookup("oo")?;
-    let oo = cx.graph.node(infinity, &[]);
-    let d = e.diffusivity;
-    // α = -C/(2D), β = R - C²/(4D)
-    let two = cx.graph.int(2);
-    let four = cx.graph.int(4);
-    let alpha = {
-        let two_d = mul(cx.graph, &[two, d]);
-        let r = div(cx, e.drift, two_d);
-        let r = neg(cx.graph, r);
-        cx.simplify(r)
-    };
-    let beta = {
-        let c2 = powi(cx.graph, e.drift, 2);
-        let four_d = mul(cx.graph, &[four, d]);
-        let r = div(cx, c2, four_d);
-        let r = sub(cx.graph, e.reaction, r);
-        cx.simplify(r)
-    };
-    let (s, _) = dummy(cx, p, "s");
-    // v(x, 0) = exp(-α x) g(x) at the dummy point s.
-    let g_at_s = cx.graph.substitute(initial.value, x, s);
-    let minus_alpha_s = {
-        let product = mul(cx.graph, &[alpha, s]);
-        neg(cx.graph, product)
-    };
-    let gauge_s = cx.graph.node(exp, &[minus_alpha_s]);
-    let data = mul(cx.graph, &[gauge_s, g_at_s]);
-    let x_minus_s = sub(cx.graph, x, s);
-    let mut weight = kernel(cx, d, x_minus_s, t)?;
-    let lower = if let Some(sign) = boundary_sign {
-        let x_plus_s = add(cx.graph, &[x, s]);
-        let image = kernel(cx, d, x_plus_s, t)?;
-        let sign = cx.graph.int(sign);
-        let image = mul(cx.graph, &[sign, image]);
-        weight = add(cx.graph, &[weight, image]);
-        cx.graph.int(0)
-    } else {
-        neg(cx.graph, oo)
-    };
-    let integrand = mul(cx.graph, &[weight, data]);
-    let mut v = cx.graph.node(defint, &[integrand, s, lower, oo]);
-    // Duhamel: ∫_0^t ∫ K(x - s, t - τ) f̃(s, τ) ds dτ.
-    if !cx.is_zero(e.forcing) {
-        let (tau, _) = dummy(cx, p, "tau");
-        let source = cx.graph.substitute(e.forcing, x, s);
-        let source = cx.graph.substitute(source, t, tau);
-        let phase = {
-            let ax = mul(cx.graph, &[alpha, s]);
-            let bt = mul(cx.graph, &[beta, tau]);
-            let sum = add(cx.graph, &[ax, bt]);
-            neg(cx.graph, sum)
-        };
-        let gauge = cx.graph.node(exp, &[phase]);
-        let elapsed = sub(cx.graph, t, tau);
-        let mut w = kernel(cx, d, x_minus_s, elapsed)?;
-        if let Some(sign) = boundary_sign {
-            let x_plus_s = add(cx.graph, &[x, s]);
-            let image = kernel(cx, d, x_plus_s, elapsed)?;
-            let sign = cx.graph.int(sign);
-            let image = mul(cx.graph, &[sign, image]);
-            w = add(cx.graph, &[w, image]);
-        }
-        let body = mul(cx.graph, &[w, gauge, source]);
-        let inner = cx.graph.node(defint, &[body, s, lower, oo]);
-        let zero = cx.graph.int(0);
-        let duhamel = cx.graph.node(defint, &[inner, tau, zero, t]);
-        v = add(cx.graph, &[v, duhamel]);
-    }
-    let phase = {
-        let ax = mul(cx.graph, &[alpha, x]);
-        let bt = mul(cx.graph, &[beta, t]);
-        add(cx.graph, &[ax, bt])
-    };
-    let gauge = cx.graph.node(exp, &[phase]);
-    let u = mul(cx.graph, &[gauge, v]);
-    Some(cx.simplify(u))
 }
 
 /// `u_tt = c² u_xx` on `x > 0` with `u(0, t) = 0` (odd extension) or
@@ -248,10 +81,13 @@ pub(super) fn wave_half_line(
     let dirichlet = conditions.find(cx.graph, space, &zero_index, None);
     let neumann = conditions.find(cx.graph, space, &p.unit(space, 1), None);
     let odd = match (dirichlet, neumann) {
-        | (Some(c), None) if cx.is_zero(c.value) => true,
-        | (None, Some(c)) if cx.is_zero(c.value) => false,
+        | (Some(c), None) if cx.is_zero(c.value) && cx.is_zero(c.point) => true,
+        | (None, Some(c)) if cx.is_zero(c.value) && cx.is_zero(c.point) => false,
         | _ => return None,
     };
+    if conditions.0.len() != 2 + usize::from(velocity.is_some()) {
+        return None;
+    }
     let (sign, abs) = (cx.graph.ops().lookup("sign")?, cx.graph.ops().lookup("abs")?);
     let half = cx.graph.num(Number::fraction(1, 2)?);
     let speed = pow(cx.graph, e.speed, half);
