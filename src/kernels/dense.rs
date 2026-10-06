@@ -717,9 +717,6 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
     let mut nn = n;
     let mut t = 0.0;
     let (mut p, mut q, mut r, mut s, mut x, mut y, mut z, mut w);
-    p = 0.0;
-    q = 0.0;
-    r = 0.0;
     while nn >= 1 {
         let mut its = 0;
         loop {

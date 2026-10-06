@@ -27,7 +27,6 @@
 //! | `farey(n)` | the Farey sequence of order `n` as `list(list(num, den), ...)` |
 
 use num_bigint::BigInt;
-use num_integer::Roots;
 use num_traits::One;
 use num_traits::Signed;
 use num_traits::ToPrimitive;

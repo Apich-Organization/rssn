@@ -886,6 +886,52 @@ fn eigenvalues(
     (total == m.len()).then_some(out)
 }
 
+/// Eigenvalues by the shifted QR algorithm, for a matrix of numbers with
+/// at least one float entry (or in a numeric run) whose characteristic
+/// polynomial has no closed-form roots. Complex pairs become `re + im*I`.
+fn numeric_eigenvalues(
+    cx: &mut Cx<'_>,
+    m: &[Vec<NodeId>],
+) -> Option<NodeId> {
+    let mut floats = cx.env.numeric;
+    let mut rows = Vec::with_capacity(m.len());
+    for row in m {
+        let mut values = Vec::with_capacity(row.len());
+        for &e in row {
+            let number = cx.graph.number_of(e)?;
+            floats |= matches!(number, Number::Float(_));
+            values.push(number.to_f64());
+        }
+        rows.push(values);
+    }
+    if !floats {
+        return None;
+    }
+    let a = crate::kernels::dense::Mat::from_rows(&rows).ok()?;
+    let mut values = crate::kernels::dense::eigenvalues(&a).ok()?;
+    values.sort_by(|x, y| x.0.total_cmp(&y.0).then(x.1.total_cmp(&y.1)));
+    let unit = cx.graph.ops().lookup("I");
+    let mut terms = Vec::with_capacity(values.len());
+    for (re, im) in values {
+        let real = cx.graph.float(re);
+        if im.abs() < f64::MIN_POSITIVE {
+            terms.push(real);
+        } else {
+            let unit = match unit {
+                | Some(op) => cx.graph.node(op, &[]),
+                | None => {
+                    let minus_one = cx.graph.int(-1);
+                    sqrt(cx.graph, minus_one)?
+                },
+            };
+            let imag = cx.graph.float(im);
+            let imag = mul(cx.graph, &[imag, unit]);
+            terms.push(add(cx.graph, &[real, imag]));
+        }
+    }
+    Some(list(cx.graph, &terms))
+}
+
 fn eigenvectors(
     cx: &mut Cx<'_>,
     m: &[Vec<NodeId>],
@@ -1359,7 +1405,9 @@ impl LinalgKernel {
             },
             | Request::Eigenvals => {
                 let m = matrix(cx.graph, arg(0)?)?;
-                let values = eigenvalues(cx, &m)?;
+                let Some(values) = eigenvalues(cx, &m) else {
+                    return numeric_eigenvalues(cx, &m);
+                };
                 let mut flat = Vec::new();
                 for (value, multiplicity) in values {
                     flat.extend(std::iter::repeat_n(value, multiplicity));
@@ -1676,6 +1724,11 @@ mod tests {
         assert_eq!(run("eigenvals(list(list(2, 0), list(0, 3)))"), "list(2, 3)");
         assert_eq!(run("eigenvals(list(list(2, 1), list(1, 2)))"), "list(1, 3)");
         assert_eq!(run("eigenvals(list(list(1, 1), list(0, 1)))"), "list(1, 1)");
+        // x^5 - x - 1.5 has no closed-form roots: the companion matrix with
+        // a float entry falls back to the QR algorithm.
+        let quintic = run("eigenvals(list(list(0, 0, 0, 0, 1.5), list(1, 0, 0, 0, 1), list(0, 1, 0, 0, 0), list(0, 0, 1, 0, 0), list(0, 0, 0, 1, 0)))");
+        assert!(quintic.starts_with("list(") && quintic.contains("1.22171074511"), "{quintic}");
+        assert_eq!(quintic.matches("(-1)^(1/2)").count(), 4, "{quintic}");
         assert_eq!(run("eigenvects(list(list(2, 1), list(1, 2)))"), "list(list(1, 1, list(list(-1, 1))), list(3, 1, list(list(1, 1))))");
         // Symbolic entries.
         assert_eq!(run("charpoly(list(list(a, b), list(b, a)), l)"), "a^2 - 2*a*l - b^2 + l^2");
