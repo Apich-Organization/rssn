@@ -15,11 +15,18 @@
 //!
 //! When the equation involves several functions of the unknown, the
 //! sub-solvers of the heuristics module transform it (absolute values,
-//! the Weierstrass substitution, Lambert W, logarithmic and radical
-//! substitutions) and hand the result back to the solver; polynomials of
+//! the Weierstrass substitution, Lambert W, `x^x`, sums of logarithms
+//! combined into one, logarithmic substitutions, square roots isolated and
+//! squared one at a time) and hand the result back to the solver; polynomials of
 //! degree three and four get Cardano's and Ferrari's formulas, higher ones
 //! numeric roots; non-polynomial systems are solved by elimination. Every
 //! candidate is checked against the original equation.
+//!
+//! `solve(lt(f, g), x)` (likewise `le`, `gt`, `ge`) solves an inequality
+//! over the reals: the roots of `f - g` and the poles of its denominator
+//! split the line, the sign is tested on each piece, and the answer is a
+//! formula such as `or(and(lt(1, x), lt(x, 2)), lt(3, x))`, or `true` /
+//! `false`.
 //!
 //! Inverse functions are taken on their principal branch, so periodic
 //! equations yield one representative solution per branch of the inverse,
@@ -181,6 +188,7 @@ pub(crate) fn solve_for(
     }
     let symbol = graph.symbol_of(x)?;
     let term = best(graph, expr)?;
+    let term = sqrt_as_power(graph, term);
     if !graph.depends_on(graph.find(term), symbol) {
         // `0 = 0` is solved by everything, which a list cannot express.
         return if graph.number_of(term).is_some_and(Number::is_zero) { None } else { Some(Vec::new()) };
@@ -204,11 +212,20 @@ pub(crate) fn solve_for(
             // A polynomial in one function of x: solve for the function,
             // then invert it.
             let inner = gens.node(g)?;
-            let mut out = Vec::new();
+            let mut out = Some(Vec::new());
             for value in polynomial_roots(graph, &gens, &fraction.numer, g)? {
-                out.extend(invert(graph, inner, value, x, depth + 1)?);
+                match invert(graph, inner, value, x, depth + 1) {
+                    | Some(found) => out.as_mut()?.extend(found),
+                    | None => {
+                        out = None;
+                        break;
+                    },
+                }
             }
-            out
+            match out {
+                | Some(found) => found,
+                | None => heuristics::multi_generator(graph, term, x, depth)?,
+            }
         },
         | _ => heuristics::multi_generator(graph, term, x, depth)?,
     };
@@ -235,6 +252,171 @@ pub(crate) fn solve_for(
         solutions = keyed.into_iter().map(|(_, node)| node).collect();
     }
     Some(solutions)
+}
+
+/// `sqrt(u)` written `u^(1/2)` throughout, so that one radical heuristic
+/// covers both spellings.
+fn sqrt_as_power(
+    graph: &mut Graph,
+    term: NodeId,
+) -> NodeId {
+    let Some(sqrt) = graph.ops().lookup("sqrt") else {
+        return term;
+    };
+    let roots = heuristics::nodes_with(graph, term, |g, n| g.op(n) == sqrt);
+    let Some(half) = Number::fraction(1, 2) else {
+        return term;
+    };
+    let half = graph.num(half);
+    let mut out = term;
+    for r in roots {
+        let &[u] = graph.children(r) else {
+            continue;
+        };
+        let power = graph.node(core::POW, &[u, half]);
+        out = graph.replace_subterm(out, r, power);
+    }
+    out
+}
+
+/// Solves the inequality `cmp(lhs, rhs)` (`cmp` one of `lt`, `le`, `gt`,
+/// `ge`) for real `x`: the boundary points are the real roots of
+/// `lhs - rhs` and the poles of its denominator; the sign of `lhs - rhs`
+/// is tested between them. The answer is a formula in `x`: `or` of
+/// `and(lt(a, x), lt(x, b))` pieces (with `le` where an endpoint is
+/// included), `true` or `false`.
+fn solve_inequality(
+    graph: &mut Graph,
+    inequality: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let names = ["lt", "le", "gt", "ge"];
+    let ops: Vec<OpId> = names.iter().map(|n| graph.ops().lookup(n)).collect::<Option<_>>()?;
+    let kind = ops.iter().position(|&op| op == graph.op(inequality))?;
+    let &[lhs, rhs] = graph.children(inequality) else {
+        return None;
+    };
+    let symbol = graph.symbol_of(x)?;
+    let f = difference(graph, lhs, rhs);
+    let f = best(graph, f)?;
+    let holds = |v: f64| match kind {
+        | 0 => v < 0.0,
+        | 1 => v <= 0.0,
+        | 2 => v > 0.0,
+        | _ => v >= 0.0,
+    };
+    let strict = kind == 0 || kind == 2;
+    let eval_at = |graph: &mut Graph, at: f64| -> Option<f64> {
+        let mut env = Env::numeric(0.0);
+        env.bind(symbol, at);
+        graph.eval(f, &env).filter(|v| v.is_finite())
+    };
+    // Boundary points: roots and poles, with their numeric values.
+    let mut boundary: Vec<(f64, NodeId, bool)> = Vec::new();
+    for root in solve_for(graph, f, x, 0)? {
+        if let Some(v) = graph.eval(root, &Env::numeric(0.0)) {
+            boundary.push((v, root, true));
+        }
+    }
+    let mut gens = Gens::default();
+    gens.index(graph, x);
+    if let Some(fraction) = ratio(graph, &mut gens, f, Limits::default()) {
+        if fraction.denom.as_constant().is_none() {
+            let denominator = crate::rules::poly::repr::to_term(graph, &gens, &fraction.denom);
+            for pole in solve_for(graph, denominator, x, 0)? {
+                if let Some(v) = graph.eval(pole, &Env::numeric(0.0)) {
+                    boundary.push((v, pole, false));
+                }
+            }
+        }
+    }
+    boundary.retain(|b| b.0.is_finite());
+    boundary.sort_by(|a, b| a.0.total_cmp(&b.0));
+    boundary.dedup_by(|a, b| {
+        let same = (a.0 - b.0).abs() <= 1e-12 * (1.0 + a.0.abs());
+        if same {
+            b.2 = b.2 && a.2;
+        }
+        same
+    });
+    // Sample the sign on each open interval and decide each boundary point.
+    let mut pieces: Vec<(Option<NodeId>, bool, Option<NodeId>, bool)> = Vec::new(); // (lo, lo closed, hi, hi closed)
+    let mut current: Option<(Option<NodeId>, bool)> = None;
+    let count = boundary.len();
+    for i in 0..=count {
+        let sample = match (i.checked_sub(1).map(|j| boundary[j].0), boundary.get(i).map(|b| b.0)) {
+            | (None, None) => 0.0,
+            | (None, Some(b)) => b - 1.0 - b.abs(),
+            | (Some(a), None) => a + 1.0 + a.abs(),
+            | (Some(a), Some(b)) => f64::midpoint(a, b),
+        };
+        let inside = eval_at(graph, sample).is_some_and(holds);
+        let left = i.checked_sub(1).map(|j| boundary[j]);
+        if inside {
+            if current.is_none() {
+                current = Some(match left {
+                    | None => (None, false),
+                    | Some((_, node, is_root)) => (Some(node), !strict && is_root),
+                });
+            }
+        } else if let Some((lo, lo_closed)) = current.take() {
+            let (_, node, is_root) = left?;
+            pieces.push((lo, lo_closed, Some(node), !strict && is_root));
+        } else if let Some((value, node, is_root)) = left {
+            // An isolated boundary point that satisfies a non-strict test.
+            let _ = value;
+            if !strict && is_root && i >= 1 {
+                let previous_inside = pieces.last().is_some_and(|p| p.2 == Some(node));
+                if !previous_inside {
+                    pieces.push((Some(node), true, Some(node), true));
+                }
+            }
+        }
+        // A boundary point between two satisfied intervals that fails the
+        // test splits them.
+        if let (Some((lo, lo_closed)), Some((_, node, is_root))) = (current, boundary.get(i).copied()) {
+            let next_sample = match boundary.get(i + 1) {
+                | Some(b) => f64::midpoint(boundary[i].0, b.0),
+                | None => boundary[i].0 + 1.0 + boundary[i].0.abs(),
+            };
+            let point_ok = !strict && is_root;
+            let next_inside = eval_at(graph, next_sample).is_some_and(holds);
+            if !point_ok && next_inside {
+                pieces.push((lo, lo_closed, Some(node), false));
+                current = Some((Some(node), false));
+            }
+        }
+    }
+    if let Some((lo, lo_closed)) = current {
+        pieces.push((lo, lo_closed, None, false));
+    }
+    let (lt, le, and, or) = (ops[0], ops[1], graph.ops().lookup("and")?, graph.ops().lookup("or")?);
+    let mut formulas = Vec::new();
+    for (lo, lo_closed, hi, hi_closed) in pieces {
+        let mut conditions = Vec::new();
+        if let (Some(a), Some(b), true, true) = (lo, hi, lo_closed, hi_closed) {
+            if a == b {
+                formulas.push(graph.node(core::EQ, &[x, a]));
+                continue;
+            }
+        }
+        if let Some(a) = lo {
+            conditions.push(graph.node(if lo_closed { le } else { lt }, &[a, x]));
+        }
+        if let Some(b) = hi {
+            conditions.push(graph.node(if hi_closed { le } else { lt }, &[x, b]));
+        }
+        formulas.push(match conditions.as_slice() {
+            | [] => graph.node(graph.ops().lookup("true")?, &[]),
+            | [only] => *only,
+            | _ => graph.node(and, &conditions),
+        });
+    }
+    Some(match formulas.as_slice() {
+        | [] => graph.node(graph.ops().lookup("false")?, &[]),
+        | [only] => *only,
+        | _ => graph.node(or, &formulas),
+    })
 }
 
 /// Rewrites `exp(n*u)` as `exp(u)^n` and `b^(n*u)` as `(b^u)^n` for
@@ -716,6 +898,8 @@ impl Kernel for Symbolic {
                     .or_else(|| heuristics::eliminate(graph, &equations, &unknowns, 0)),
             };
             tuples.map(|tuples| tuples.iter().map(|t| graph.node(core::LIST, t)).collect::<Vec<_>>())
+        } else if ["lt", "le", "gt", "ge"].iter().any(|n| graph.ops().lookup(n) == Some(graph.op(equation))) {
+            return solve_inequality(graph, equation, unknown).map_or(Outcome::Pass, Outcome::Equal);
         } else {
             let expr = as_expression(graph, equation);
             solve_for(graph, expr, unknown, 0)
@@ -1093,5 +1277,22 @@ mod tests {
         assert!(error <= 1e-12);
         let (value, _) = numeric(&[solve()], "nsolve(x^2 = a, x, 1)", &[("a", 2.0)], 1e-12);
         assert!((value - 2.0_f64.sqrt()).abs() < 1e-10);
+    }
+
+    #[test]
+    fn radicals_logarithms_self_powers_and_inequalities() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        assert_eq!(run("solve(sqrt(x + 3) = x - 3, x)"), "list(6)");
+        assert_eq!(run("solve(sqrt(x) + sqrt(x - 5) = 5, x)"), "list(9)");
+        assert_eq!(run("solve(ln(x) + ln(x - 1) = ln(6), x)"), "list(3)");
+        assert_eq!(run("solve(x^x = 4, x)"), "list(exp(lambertw(ln(4))))");
+        assert_eq!(run("solve(gt(x^3 - 6*x^2 + 11*x - 6, 0), x)"), "or(and(lt(1, x), lt(x, 2)), lt(3, x))");
+        assert_eq!(run("solve(lt(x^2 - 4, 0), x)"), "and(lt(-2, x), lt(x, 2))");
+        assert_eq!(run("solve(lt(abs(x), 2), x)"), "and(lt(-2, x), lt(x, 2))");
+        assert_eq!(run("solve(ge((x - 1)/(x + 2), 0), x)"), "or(le(1, x), lt(x, -2))");
+        assert_eq!(run("solve(le(x^2, 0), x)"), "x = 0");
+        assert_eq!(run("solve(gt(x^2 + 1, 0), x)"), "true");
+        assert_eq!(run("solve(lt(x^2 + 1, 0), x)"), "false");
     }
 }

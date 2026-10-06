@@ -39,6 +39,7 @@ use crate::graph::Number;
 use crate::graph::op::core;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
+use crate::rules::poly::repr::Poly;
 use crate::rules::poly::univariate;
 
 fn value(
@@ -249,7 +250,7 @@ fn quartic(
 }
 
 /// Every node of `term` with operator `op`.
-fn nodes_with(
+pub(super) fn nodes_with(
     graph: &Graph,
     term: NodeId,
     pred: impl Fn(&Graph, NodeId) -> bool,
@@ -274,7 +275,7 @@ pub(super) fn multi_generator(
 ) -> Option<Vec<NodeId>> {
     let symbol = graph.symbol_of(x)?;
     let depends = |graph: &Graph, n: NodeId| graph.depends_on(graph.find(n), symbol);
-    for method in [absolute_values, trigonometric, lambert, logarithmic, radicals] {
+    for method in [absolute_values, trigonometric, lambert, self_power, logarithm_sum, logarithmic, radicals] {
         if let Some(found) = method(graph, term, x, depth) {
             return Some(found);
         }
@@ -471,6 +472,98 @@ fn branches(
     out
 }
 
+/// `x^x = c`: `x ln x = ln c`, so `ln x = W(ln c)` and `x = e^(W(ln c))`
+/// (both real branches when `-1/e < ln c < 0`).
+fn self_power(
+    graph: &mut Graph,
+    term: NodeId,
+    x: NodeId,
+    depth: usize,
+) -> Option<Vec<NodeId>> {
+    let (exp, ln, w0, wm1) =
+        (graph.ops().lookup("exp")?, graph.ops().lookup("ln")?, graph.ops().lookup("lambertw")?, graph.ops().lookup("lambertw_m1")?);
+    let x_to_x = graph.node(core::POW, &[x, x]);
+    if !super::super::ode::occurs_in(graph, term, x_to_x) {
+        return None;
+    }
+    let w_symbol = graph.interner_mut().fresh_symbol("w");
+    let w = graph.symbol_node(w_symbol);
+    let replaced = graph.replace_subterm(term, x_to_x, w);
+    if super::super::ode::occurs_in(graph, replaced, x) {
+        return None;
+    }
+    let mut out = Vec::new();
+    for c in solve_for(graph, replaced, w, depth + 1)? {
+        if value(graph, c).is_some_and(|v| v <= 0.0) {
+            continue;
+        }
+        let log_c = graph.node(ln, &[c]);
+        for branch in branches(graph, log_c, w0, wm1) {
+            out.push(graph.node(exp, &[branch]));
+        }
+    }
+    Some(out)
+}
+
+/// `Σ k_i ln(g_i(x)) + C = 0` with integers `k_i` and `C` free of `x`:
+/// `Π g_i^(k_i) = e^(-C)`, solved as a rational equation; candidates where
+/// some `g_i` is not positive are discarded (real logarithms).
+fn logarithm_sum(
+    graph: &mut Graph,
+    term: NodeId,
+    x: NodeId,
+    depth: usize,
+) -> Option<Vec<NodeId>> {
+    let (exp, ln) = (graph.ops().lookup("exp")?, graph.ops().lookup("ln")?);
+    let symbol = graph.symbol_of(x)?;
+    let summands = if graph.op(term) == core::ADD { graph.children(term).to_vec() } else { vec![term] };
+    let mut logs: Vec<(NodeId, i64)> = Vec::new();
+    let mut constants = Vec::new();
+    for t in summands {
+        if !graph.depends_on(graph.find(t), symbol) {
+            constants.push(t);
+            continue;
+        }
+        let (k, inner) = match (graph.op(t), graph.children(t)) {
+            | (op, &[g]) if op == ln => (1, g),
+            | (op, &[c, l]) if op == core::MUL && graph.op(l) == ln => (graph.number_of(c)?.to_i64()?, *graph.children(l).first()?),
+            | (op, &[l, c]) if op == core::MUL && graph.op(l) == ln => (graph.number_of(c)?.to_i64()?, *graph.children(l).first()?),
+            | _ => return None,
+        };
+        logs.push((inner, k));
+    }
+    if logs.len() < 2 && constants.is_empty() {
+        return None;
+    }
+    let (mut positive, mut negative) = (Vec::new(), Vec::new());
+    for &(g, k) in &logs {
+        let e = graph.int(k.abs());
+        let p = graph.node(core::POW, &[g, e]);
+        if k > 0 { positive.push(p) } else { negative.push(p) }
+    }
+    let constant = if constants.is_empty() { graph.int(0) } else { graph.node(core::ADD, &constants) };
+    let minus_one = graph.int(-1);
+    let minus_c = graph.node(core::MUL, &[minus_one, constant]);
+    let rhs_scale = graph.node(exp, &[minus_c]);
+    let one = graph.int(1);
+    let left = if positive.is_empty() { one } else { product(graph, &positive) };
+    let mut right_factors = negative;
+    right_factors.push(rhs_scale);
+    let right = product(graph, &right_factors);
+    let equation = difference(graph, left, right);
+    let mut out = Vec::new();
+    for candidate in solve_for(graph, equation, x, depth + 1)? {
+        let all_positive = logs.iter().all(|&(g, _)| {
+            let at = graph.substitute(g, x, candidate);
+            graph.eval(at, &Env::numeric(0.0)).is_none_or(|v| v > 0.0)
+        });
+        if all_positive {
+            out.push(candidate);
+        }
+    }
+    Some(out)
+}
+
 /// `x` together with `ln(x)`: `x = e^y`.
 fn logarithmic(
     graph: &mut Graph,
@@ -541,31 +634,56 @@ fn radicals(
         }
         return Some(out);
     }
-    // A single square root: A + B √f = 0  ⇒  A² - B² f = 0.
-    let &[root] = roots.as_slice() else {
-        return None;
-    };
-    let exponent = graph.number_of(*graph.children(root).get(1)?)?.to_rational()?;
-    if exponent != BigRational::new(BigInt::one(), BigInt::from(2)) {
-        return None;
-    }
-    let f = *graph.children(root).first()?;
-    let r_symbol = graph.interner_mut().fresh_symbol("r");
-    let r = graph.symbol_node(r_symbol);
-    let replaced = graph.replace_subterm(term, root, r);
+    // Square roots isolated one at a time: with every root a generator and
+    // s_i² reduced to f_i, the numerator is A + B s for the first root s,
+    // and A² - B² f is free of s; the recursive call removes the rest.
+    // Candidates introduced by squaring are dropped by `solve_for`.
+    let half = BigRational::new(BigInt::one(), BigInt::from(2));
     let mut gens = Gens::default();
-    let gr = gens.index(graph, r);
-    let fraction = crate::rules::poly::ratio(graph, &mut gens, replaced, Limits::default())?;
-    let parts = fraction.numer.coefficients_in(gr);
+    gens.index(graph, x);
+    let mut square_roots: Vec<(u32, NodeId)> = Vec::new();
+    for &r in &roots {
+        if graph.number_of(*graph.children(r).get(1)?)?.to_rational()? != half {
+            return None;
+        }
+        let g = gens.index(graph, r);
+        square_roots.push((g, *graph.children(r).first()?));
+    }
+    let fraction = crate::rules::poly::ratio(graph, &mut gens, term, Limits::default())?;
+    let mut radicands = Vec::with_capacity(square_roots.len());
+    for &(g, f) in &square_roots {
+        let f = crate::rules::poly::best(graph, f)?;
+        let p = crate::rules::poly::repr::from_term(graph, &mut gens, f, Limits::default())?;
+        if square_roots.iter().any(|&(h, _)| p.degree_in(h) > 0) {
+            return None;
+        }
+        radicands.push((g, p));
+    }
+    let reduce = |p: &Poly| -> Option<Poly> {
+        let mut p = p.clone();
+        for (g, f) in &radicands {
+            let mut out = Poly::zero();
+            for (k, c) in p.coefficients_in(*g).iter().enumerate() {
+                let k = u32::try_from(k).ok()?;
+                let mut term = c.mul(&f.pow(k / 2, 4096)?, 4096)?;
+                if k % 2 == 1 {
+                    term = term.mul(&Poly::generator(*g), 4096)?;
+                }
+                out = out.add(&term);
+            }
+            p = out;
+        }
+        Some(p)
+    };
+    let numer = reduce(&fraction.numer)?;
+    let (g, f) = radicands.iter().find(|(g, _)| numer.degree_in(*g) == 1)?;
+    let parts = numer.coefficients_in(*g);
     let [a, b] = parts.as_slice() else {
         return None;
     };
-    let (a, b) = (crate::rules::poly::repr::to_term(graph, &gens, a), crate::rules::poly::repr::to_term(graph, &gens, b));
-    let two = graph.int(2);
-    let a2 = graph.node(core::POW, &[a, two]);
-    let b2 = graph.node(core::POW, &[b, two]);
-    let b2f = product(graph, &[b2, f]);
-    let squared = difference(graph, a2, b2f);
+    let squared = a.mul(a, 4096)?.sub(&b.mul(b, 4096)?.mul(f, 4096)?);
+    let squared = reduce(&squared)?;
+    let squared = crate::rules::poly::repr::to_term(graph, &gens, &squared);
     solve_for(graph, squared, x, depth + 1)
 }
 
