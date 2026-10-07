@@ -78,3 +78,7 @@ pub mod rootfind;
 pub mod special_ext;
 /// Fill-reducing orderings: approximate minimum degree and nested dissection.
 pub mod ordering;
+/// MINRES, BiCGSTAB(l), IDR(s) and flexible GMRES.
+pub mod krylov_ext;
+/// Lanczos and Arnoldi eigensolvers with restarts and shift-invert.
+pub mod eigs;

@@ -94,3 +94,5 @@ mod ode_stiff_ext;
 mod special_hyp;
 #[path = "kernels/ordering.rs"]
 mod ordering;
+#[path = "kernels/krylov_ext.rs"]
+mod krylov_ext;
