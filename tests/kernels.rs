@@ -88,3 +88,5 @@ mod special_ext;
 mod robust;
 #[path = "kernels/ode_stiff.rs"]
 mod ode_stiff;
+#[path = "kernels/ode_stiff_ext.rs"]
+mod ode_stiff_ext;

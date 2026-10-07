@@ -60,7 +60,7 @@ pub mod dense;
 pub mod fftconv;
 /// Sparse CSR matrices and Krylov solvers with preconditioners.
 pub mod krylov;
-/// Radau IIA(5) and variable-order BDF stiff integrators.
+/// Radau IIA(5/9/13) and variable-order BDF stiff integrators with dense output, events and DAEs.
 pub mod ode_stiff;
 /// Adaptive, stiff, symplectic, BVP, DAE and DDE integrators.
 pub mod ode_adaptive;
