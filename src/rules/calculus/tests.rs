@@ -603,3 +603,4 @@ fn real_integrals_use_absolute_values() {
         }
     }
 }
+

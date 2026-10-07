@@ -32,7 +32,9 @@
 //! Further classes: Riccati equations by a particular solution among
 //! simple shapes (`k x^n`, `k e^(±x)`, `k sin x`, …) or, failing that,
 //! through the linear second-order equation for `u` (`y = -u'/(q2 u)`,
-//! written with one constant); Bernoulli with rational exponents; exact
+//! written with one constant); `y' = F(k x + y)` (detected by a constant
+//! `f_x / f_y`, then separable in `u = k x + y`); Bernoulli with rational
+//! exponents; exact
 //! equations with integrating factors `μ(x)`, `μ(y)`, `μ(x + y)`,
 //! `μ(x y)`; equations that are nonlinear in `y'` (branches of `y'`;
 //! Clairaut `y = C x + g(C)`; d'Alembert/Lagrange and `x`-solved equations
@@ -490,6 +492,9 @@ fn first_order_explicit(
     if let Some(found) = homogeneous(cx, problem, rhs) {
         return Some(found);
     }
+    if let Some(found) = linear_argument(cx, problem, rhs) {
+        return Some(found);
+    }
     // Integrating factors of M + N y' = 0.
     let dy = *problem.stand.get(1)?;
     if let Some(&[m, n]) = coefficients_in(cx.graph, problem.expr, dy).as_deref()
@@ -498,6 +503,58 @@ fn first_order_explicit(
         }
     // Lie point symmetries cover what the classical recipes miss.
     lie::first_order(cx, problem, rhs)
+}
+
+/// `y' = F(k x + y)`: `f` is constant along `(1, -k)` exactly when
+/// `f_x / f_y = k` is a constant. With `u = k x + y`, `u' = k + F(u)` is
+/// separable, so `∫ du / (k + F(u)) = x + C`.
+fn linear_argument(
+    cx: &mut Cx<'_>,
+    problem: &mut Problem,
+    rhs: NodeId,
+) -> Option<NodeId> {
+    let y = *problem.stand.first()?;
+    let x = problem.x;
+    let (y_symbol, x_symbol) = (cx.graph.symbol_of(y)?, cx.graph.symbol_of(x)?);
+    let depends = |graph: &Graph, n: NodeId| {
+        let class = graph.find(n);
+        graph.depends_on(class, y_symbol) || graph.depends_on(class, x_symbol)
+    };
+    let fx = derivative(cx.graph, rhs, x)?;
+    let fx = cx.simplify(fx);
+    let fy = derivative(cx.graph, rhs, y)?;
+    let fy = cx.simplify(fy);
+    if cx.is_zero(fy) || cx.is_zero(fx) {
+        // Separable in one variable alone: other methods apply.
+        return None;
+    }
+    let minus_one = cx.graph.int(-1);
+    let inverse = cx.graph.node(core::POW, &[fy, minus_one]);
+    let ratio = mul(cx.graph, &[fx, inverse]);
+    let k = cx.simplify(ratio);
+    if depends(cx.graph, k) {
+        return None;
+    }
+    // y = u - k x
+    let u_symbol = cx.graph.interner_mut().fresh_symbol("u");
+    let u = cx.graph.symbol_node(u_symbol);
+    let kx = mul(cx.graph, &[k, x]);
+    let argument = add(cx.graph, &[kx, y]);
+    let y_of_u = sub(cx.graph, u, kx);
+    let f = cx.graph.substitute(rhs, y, y_of_u);
+    let f = cx.simplify(f);
+    if depends(cx.graph, f) {
+        return None;
+    }
+    let slope = add(cx.graph, &[k, f]);
+    let reciprocal = cx.graph.node(core::POW, &[slope, minus_one]);
+    let reciprocal = cx.simplify(reciprocal);
+    let left = integrate(cx, reciprocal, u)?;
+    let c = problem.constant(cx.graph);
+    let right = add(cx.graph, &[x, c]);
+    let relation = sub(cx.graph, left, right);
+    let relation = cx.graph.substitute(relation, u, argument);
+    implicit(cx, problem, relation)
 }
 
 /// Wraps an explicit solution as the equation `y(x) = solution`.
@@ -1990,6 +2047,8 @@ mod tests {
         // y' = F(x + y) (translation), linear fractional, and equations
         // with a scaling symmetry beyond the classical recipes.
         check("diff(y(x), x) = (x + y(x))^2", 1);
+        // y' = F(y - x): u = y - x is separable.
+        check("diff(y(x), x) = 1 - (y(x) - x)^3", 1);
         // Linear fractional: an implicit solution (log + atan about the
         // centre of the scaling symmetry).
         let (text, reduced) = reduce_with(&[ode()], "dsolve(diff(y(x), x) = (x + y(x) + 1)/(x - y(x) + 3), y(x))", &[]);
