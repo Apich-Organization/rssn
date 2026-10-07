@@ -111,6 +111,7 @@ mod frameworks;
 mod modes;
 mod numeric;
 mod spectral;
+mod sturm;
 mod symmetry;
 mod systems;
 mod util;
@@ -1113,7 +1114,7 @@ fn solve(
     if !general {
         return None;
     }
-    let solution = spectral::solve_box(cx, p, conditions).or_else(|| curvilinear::solve(cx, p, conditions))?;
+    let solution = spectral::solve_box(cx, p, conditions).or_else(|| curvilinear::solve(cx, p, conditions)).or_else(|| sturm::solve(cx, p, conditions))?;
     Some(cx.graph.node(core::EQ, &[p.unknown, solution]))
 }
 

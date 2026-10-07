@@ -128,7 +128,6 @@ pub(super) enum Shape {
     Polar { azimuth: bool },
     /// The interval `[-1, 1]` with regularity at both ends: Legendre
     /// polynomials of the variable itself.
-    #[allow(dead_code)]
     Legendre,
     /// A radius `[0, R]` (`[a, R]` with `inner = Some((a, end))`); `sphere`
     /// for a ball (weight `r²`); `has_angle` when the Bessel order comes

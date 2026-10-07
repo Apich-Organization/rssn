@@ -533,6 +533,62 @@ pub(super) fn expand_integrals(
     s
 }
 
+/// Replaces every `defint(body, var, 0, 1)` whose integrand has inverse
+/// square-root endpoint singularities by the midpoint rule after the
+/// substitution `var = sin(π q / 2)` with `points` nodes.
+pub(super) fn expand_unit_integrals(
+    text: &str,
+    points: usize,
+) -> String {
+    let mut s = text.to_owned();
+    while let Some(start) = s.rfind("defint(") {
+        let open = start + 6;
+        let mut depth = 0_i32;
+        let mut end = open;
+        for (i, c) in s.char_indices().skip(open) {
+            match c {
+                | '(' => depth += 1,
+                | ')' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = i;
+                        break;
+                    }
+                },
+                | _ => {},
+            }
+        }
+        let inner = s[open + 1..end].to_owned();
+        let mut parts = Vec::new();
+        let (mut depth, mut last) = (0_i32, 0);
+        for (i, c) in inner.char_indices() {
+            match c {
+                | '(' => depth += 1,
+                | ')' => depth -= 1,
+                | ',' if depth == 0 => {
+                    parts.push(inner[last..i].trim().to_owned());
+                    last = i + 1;
+                },
+                | _ => {},
+            }
+        }
+        parts.push(inner[last..].trim().to_owned());
+        assert_eq!(parts.len(), 4, "malformed integral in {text}");
+        let (body, var, lo, hi) = (&parts[0], &parts[1], &parts[2], &parts[3]);
+        let pieces: Vec<String> = (0..points)
+            .map(|k| {
+                let fraction = (f64::from(u32::try_from(k).unwrap_or(0)) + 0.5) / f64::from(u32::try_from(points).unwrap_or(1));
+                let angle = format!("({fraction}*pi/2)");
+                let node = format!("sin({angle})");
+                format!("({})*cos({angle})", replace_identifier(body, var, &node))
+            })
+            .collect();
+        let _ = (lo, hi);
+        s.replace_range(start..=end, &format!("(pi/2/{points}*({}))", pieces.join(" + ")));
+    }
+    s
+}
+
 /// `∫_{x-t}^{x+t} f(s) K(R(s)) ds` by the midpoint rule, `R² = t² - (x - s)²`.
 fn riemann(
     x: f64,

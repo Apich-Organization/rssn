@@ -477,3 +477,129 @@ fn exterior_domains() {
     let s = any(&format!("pdsolve({heat}, u(r, t), list(u(1, t) = 1, u(oo, t) = 0, u(r, 0) = 0))"));
     close(value(&rhs(&s), &[("r", r), ("t", t)]), crate::kernels::special::erfc_numerical(x / (2.0 * t.sqrt())) / r, 1e-8, &s);
 }
+
+#[test]
+fn massive_and_damped_waves_in_free_space() {
+    use super::dimension_tests::expand_integrals;
+    let w3 = "diff(diff(u(x, y, z, t), t), t) = diff(diff(u(x, y, z, t), x), x) + diff(diff(u(x, y, z, t), y), y) + diff(diff(u(x, y, z, t), z), z)";
+    let at = [("x", 0.3), ("y", 0.5), ("z", 0.2), ("t", 0.9)];
+    let (r2, t) = (0.3_f64 * 0.3 + 0.25 + 0.04, 0.9_f64);
+    // Klein-Gordon u_tt = Δu - u: u = cos t |x|² + 3 t sin t for u(0) = |x|², u_t(0) = 0.
+    let s = any(&format!("pdsolve({w3} - u(x, y, z, t), u(x, y, z, t), list(u(x, y, z, 0) = x^2 + y^2 + z^2, at(diff(u(x, y, z, t), t), t, 0) = 0))"));
+    assert!(s.contains("besselj(1,"), "{s}");
+    close(value(&expand_integrals(&rhs(&s), 400), &at), t.cos() * r2 + 3.0 * t * t.sin(), 1e-5, &s);
+    // Velocity data 1: u = sin t.
+    let s = any(&format!("pdsolve({w3} - u(x, y, z, t), u(x, y, z, t), list(u(x, y, z, 0) = 0, at(diff(u(x, y, z, t), t), t, 0) = 1))"));
+    close(value(&expand_integrals(&rhs(&s), 400), &at), t.sin(), 1e-5, &s);
+    // A negative mass (u_tt = Δu + u): I Bessel kernels, u = cosh t |x|² + 3 t sinh t.
+    let s = any(&format!("pdsolve({w3} + u(x, y, z, t), u(x, y, z, t), list(u(x, y, z, 0) = x^2 + y^2 + z^2, at(diff(u(x, y, z, t), t), t, 0) = 0))"));
+    assert!(s.contains("besseli(1,"), "{s}");
+    close(value(&expand_integrals(&rhs(&s), 400), &at), t.cosh() * r2 + 3.0 * t * t.sinh(), 1e-5, &s);
+    // The damped wave u_tt + 2 u_t = Δu: u = |x|² + 3 t - 3 e^{-t} sinh t for u(0) = |x|², u_t(0) = 0.
+    let s = any(&format!("pdsolve({w3} - 2*diff(u(x, y, z, t), t), u(x, y, z, t), list(u(x, y, z, 0) = x^2 + y^2 + z^2, at(diff(u(x, y, z, t), t), t, 0) = 0))"));
+    close(value(&expand_integrals(&rhs(&s), 400), &at), r2 + 3.0 * t - 3.0 * (-t).exp() * t.sinh(), 1e-5, &s);
+    // Two dimensions: u = cos t (x² + y²) + 2 t sin t.
+    let w2 = "diff(diff(u(x, y, t), t), t) = diff(diff(u(x, y, t), x), x) + diff(diff(u(x, y, t), y), y)";
+    let s = any(&format!("pdsolve({w2} - u(x, y, t), u(x, y, t), list(u(x, y, 0) = x^2 + y^2, at(diff(u(x, y, t), t), t, 0) = 0))"));
+    close(value(&super::dimension_tests::expand_unit_integrals(&rhs(&s), 200), &[("x", 0.3), ("y", 0.5), ("t", 0.9)]), t.cos() * 0.34 + 2.0 * t * t.sin(), 1e-6, &s);
+}
+
+#[test]
+fn massive_and_damped_waves_on_bounded_domains() {
+    let (t, h) = (0.7_f64, 0.0_f64);
+    let _ = h;
+    // Klein-Gordon in a cube: omega² = 3 + 1.
+    let w3 = "diff(diff(u(x, y, z, t), t), t) = diff(diff(u(x, y, z, t), x), x) + diff(diff(u(x, y, z, t), y), y) + diff(diff(u(x, y, z, t), z), z) - u(x, y, z, t)";
+    let s = run(&format!("pdsolve({w3}, u(x, y, z, t), list(u(0, y, z, t) = 0, u(pi, y, z, t) = 0, u(x, 0, z, t) = 0, u(x, pi, z, t) = 0, u(x, y, 0, t) = 0, u(x, y, pi, t) = 0, u(x, y, z, 0) = sin(x)*sin(y)*sin(z), at(diff(u(x, y, z, t), t), t, 0) = 0))"));
+    close(value(&rhs(&s), &[("x", 0.4), ("y", 0.9), ("z", 1.3), ("t", t)]), (2.0 * t).cos() * 0.4_f64.sin() * 0.9_f64.sin() * 1.3_f64.sin(), 1e-12, &s);
+    // The damped wave in a disk: u = e^{-t}(cos ωt + sin ωt/ω) J0(z r), ω² = z² - 1.
+    let s = run("pdsolve(diff(diff(u(r, t), t), t) + 2*diff(u(r, t), t) = diff(diff(u(r, t), r), r) + diff(u(r, t), r)/r, u(r, t), list(u(1, t) = 0, u(r, 0) = besselj(0, bessel_zero(0, 1)*r), at(diff(u(r, t), t), t, 0) = 0))");
+    let z = 2.404_825_557_695_773_f64;
+    let w = (z * z - 1.0).sqrt();
+    close(value(&rhs(&s), &[("r", 0.4), ("t", t)]), (-t).exp() * ((w * t).cos() + (w * t).sin() / w) * bessel_j(0.0, z * 0.4), 1e-9, &s);
+    // A massive wave in a ball (3D, radial): sin(pi r)/r with omega² = pi² + 4.
+    let s = run("pdsolve(diff(diff(u(r, t), t), t) = diff(diff(u(r, t), r), r) + 2*diff(u(r, t), r)/r - 4*u(r, t), u(r, t), list(u(1, t) = 0, u(r, 0) = sin(pi*r)/r, at(diff(u(r, t), t), t, 0) = 0))");
+    close(value(&rhs(&s), &[("r", 0.4), ("t", t)]), ((PI * PI + 4.0).sqrt() * t).cos() * (PI * 0.4).sin() / 0.4, 1e-12, &s);
+}
+
+#[test]
+fn jordan_chains_in_systems() {
+    let (x, t) = (0.7_f64, 0.4_f64);
+    let parts = |s: &str, names: &[&str]| -> Vec<String> {
+        let inner = s.trim_start_matches("list(").strip_suffix(')').unwrap_or("");
+        let mut pieces = Vec::new();
+        let mut rest = inner.to_owned();
+        for (i, name) in names.iter().enumerate().rev() {
+            let marker = format!("{name}(x, t) = ");
+            if let Some(at) = rest.rfind(&marker) {
+                let tail = rest[at + marker.len()..].trim_end_matches(", ").to_owned();
+                pieces.push(tail.trim_end_matches(", ").to_owned());
+                rest.truncate(at);
+                let _ = i;
+            }
+        }
+        pieces.reverse();
+        pieces.iter().map(|p| p.trim_end_matches(", ").to_owned()).collect()
+    };
+    // u_t + u_x + v_x = 0, v_t + v_x = 0: A = [[1, 1], [0, 1]], a single Jordan block.
+    let s = any("pdsolve(list(diff(u(x, t), t) + diff(u(x, t), x) + diff(v(x, t), x) = 0, diff(v(x, t), t) + diff(v(x, t), x) = 0), list(u(x, t), v(x, t)), list(u(x, 0) = sin(x), v(x, 0) = cos(x)))");
+    let p = parts(&s, &["u", "v"]);
+    assert_eq!(p.len(), 2, "{s}");
+    close(value(&p[0], &[("x", x), ("t", t)]), (1.0 + t) * (x - t).sin(), 1e-12, &s);
+    close(value(&p[1], &[("x", x), ("t", t)]), (x - t).cos(), 1e-12, &s);
+    // A chain of length three.
+    let s = any("pdsolve(list(diff(u(x, t), t) + diff(u(x, t), x) + diff(v(x, t), x) = 0, diff(v(x, t), t) + diff(v(x, t), x) + diff(w(x, t), x) = 0, diff(w(x, t), t) + diff(w(x, t), x) = 0), list(u(x, t), v(x, t), w(x, t)), list(u(x, 0) = sin(x), v(x, 0) = cos(x), w(x, 0) = sin(2*x)))");
+    let inner = s.trim_start_matches("list(").strip_suffix(')').unwrap_or("");
+    let (a, rest) = inner.split_once(", v(x, t) = ").unwrap_or((inner, ""));
+    let (b, c) = rest.split_once(", w(x, t) = ").unwrap_or((rest, ""));
+    let a = a.trim_start_matches("u(x, t) = ");
+    // w = sin(2(x - t)); v = cos(x - t) - t w'; u = sin(x - t) - t v0' + t²/2 w0''.
+    let y = x - t;
+    close(value(c, &[("x", x), ("t", t)]), (2.0 * y).sin(), 1e-12, &s);
+    close(value(b, &[("x", x), ("t", t)]), y.cos() - t * 2.0 * (2.0 * y).cos(), 1e-12, &s);
+    close(value(a, &[("x", x), ("t", t)]), y.sin() + t * y.sin() - 0.5 * t * t * 4.0 * (2.0 * y).sin(), 1e-12, &s);
+    // Coupled heat equations u_t = u_xx + v_xx, v_t = v_xx (Jordan block, whole line).
+    let s = any("pdsolve(list(diff(u(x, t), t) = diff(diff(u(x, t), x), x) + diff(diff(v(x, t), x), x), diff(v(x, t), t) = diff(diff(v(x, t), x), x)), list(u(x, t), v(x, t)), list(u(x, 0) = exp(-x^2), v(x, 0) = exp(-x^2)))");
+    let sg = 1.0 + 4.0 * t;
+    let gauss = (-x * x / sg).exp() / sg.sqrt();
+    let gauss_xx = (4.0 * x * x / (sg * sg) - 2.0 / sg) * gauss;
+    let inner = s.trim_start_matches("list(").strip_suffix(')').unwrap_or("");
+    let (a, b) = inner.split_once(", v(x, t) = ").unwrap_or((inner, ""));
+    let a = a.trim_start_matches("u(x, t) = ");
+    let numeric = |text: &str| crate::rules::testing::numeric(&crate::rules::standard(), text, &[("x", x), ("t", t)], 1e-10).0;
+    close(numeric(b), gauss, 1e-7, &s);
+    close(numeric(a), gauss + t * gauss_xx, 1e-7, &s);
+}
+
+#[test]
+fn variable_coefficient_sturm_liouville_problems() {
+    let (x, t) = (2.5_f64, 0.3_f64);
+    // Euler-Cauchy: u_t = x² u_xx + x u_x on [1, e^pi], x = e^s: u = e^{-t} sin(ln x).
+    let s = run("pdsolve(diff(u(x, t), t) = x^2*diff(diff(u(x, t), x), x) + x*diff(u(x, t), x), u(x, t), list(u(1, t) = 0, u(exp(pi), t) = 0, u(x, 0) = sin(ln(x))))");
+    close(value(&rhs(&s), &[("x", x), ("t", t)]), (-t).exp() * x.ln().sin(), 1e-12, &s);
+    // With a first-order term and a potential: u_t = x² u_xx + 3 x u_x - u: s-drift 2 and decay.
+    let s = any("pdsolve(diff(u(x, t), t) = x^2*diff(diff(u(x, t), x), x) + 3*x*diff(u(x, t), x) - u(x, t), u(x, t), list(u(1, t) = 0, u(exp(pi), t) = 0, u(x, 0) = sin(ln(x))/x))");
+    // u = e^{-s} v: v_t = v_ss - v - 1 ... checked through the equation residual.
+    let u = |x: f64, t: f64| series(&s, &[("x", x), ("t", t)], 20);
+    let h = 1e-4;
+    let residual = (u(x, t + h) - u(x, t - h)) / (2.0 * h) - x * x * (u(x + h, t) - 2.0 * u(x, t) + u(x - h, t)) / (h * h) - 3.0 * x * (u(x + h, t) - u(x - h, t)) / (2.0 * h) + u(x, t);
+    close(residual, 0.0, 2e-4, &s);
+    // A Neumann end in the Euler variable: u_x(1) = 0 and u_x(e^pi) = 0, u = cos(ln x) is not invariant,
+    // but u = 1 is.
+    let s = any("pdsolve(diff(u(x, t), t) = x^2*diff(diff(u(x, t), x), x) + x*diff(u(x, t), x), u(x, t), list(at(diff(u(x, t), x), x, 1) = 0, at(diff(u(x, t), x), x, exp(pi)) = 0, u(x, 0) = 1))");
+    close(series(&s, &[("x", x), ("t", t)], 6), 1.0, 1e-9, &s);
+    // Legendre type: u_t = ((1 - x²) u_x)_x with u(x, 0) = P_2(x) decays as e^{-6 t}.
+    let leg = "diff(u(x, t), t) = (1 - x^2)*diff(diff(u(x, t), x), x) - 2*x*diff(u(x, t), x)";
+    let s = run(&format!("pdsolve({leg}, u(x, t), list(u(x, 0) = (3*x^2 - 1)/2))"));
+    close(value(&rhs(&s), &[("x", 0.4), ("t", t)]), (-6.0 * t).exp() * (3.0 * 0.16 - 1.0) / 2.0, 1e-12, &s);
+    // Polynomial data: x² = (2 P_2 + 1)/3.
+    let s = run(&format!("pdsolve({leg}, u(x, t), list(u(x, 0) = x^2))"));
+    close(value(&rhs(&s), &[("x", 0.4), ("t", t)]), 1.0 / 3.0 + 2.0 / 3.0 * (-6.0 * t).exp() * (3.0 * 0.16 - 1.0) / 2.0, 1e-12, &s);
+    // The Legendre wave equation: u = cos(sqrt(6) t) P_2.
+    let s = run("pdsolve(diff(diff(u(x, t), t), t) = (1 - x^2)*diff(diff(u(x, t), x), x) - 2*x*diff(u(x, t), x), u(x, t), list(u(x, 0) = (3*x^2 - 1)/2, at(diff(u(x, t), t), t, 0) = 0))");
+    close(value(&rhs(&s), &[("x", 0.4), ("t", t)]), (6.0_f64.sqrt() * t).cos() * (3.0 * 0.16 - 1.0) / 2.0, 1e-12, &s);
+    // Bessel type in a variable not called r: u_t = u_xx + u_x/x on 0 < x < 1.
+    let s = run("pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x) + diff(u(x, t), x)/x, u(x, t), list(u(1, t) = 0, u(x, 0) = besselj(0, bessel_zero(0, 1)*x)))");
+    let z = 2.404_825_557_695_773_f64;
+    close(value(&rhs(&s), &[("x", 0.4), ("t", t)]), (-z * z * t).exp() * bessel_j(0.0, z * 0.4), 1e-9, &s);
+}

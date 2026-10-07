@@ -20,6 +20,13 @@
 //!   matrices (`U_t = D U_xx + B U`, `U_tt = A U_xx`), in any dimension and
 //!   on any domain the scalar solvers handle.
 //!
+//! When no combination of the matrices has distinct eigenvalues, a common
+//! Jordan basis `P⁻¹ A_α P = λ_α I + Σ_k μ_{α,k} N^k` (upper triangular
+//! Toeplitz blocks, `N` the nilpotent shift) decouples the system into
+//! triangular chains: for first-order systems without sources on whole
+//! space, `w_a = Σ_j q_j(t, ∂) S_{a+j}` with `S` the scalar solutions and
+//! `q_j` the coefficients of `exp(t Σ_k N^k M_k)` — polynomials in `t`.
+//!
 //! The answer is `list(u(x, t) = …, v(x, t) = …)`.
 
 use super::Condition;
@@ -419,7 +426,7 @@ pub(super) fn solve_system(
         }
         candidates.push(combination);
     }
-    for g in candidates {
+    for g in candidates.clone() {
         if is_zero_matrix(cx, &g) {
             continue;
         }
@@ -450,12 +457,24 @@ pub(super) fn solve_system(
             break;
         }
     }
+    let mut jordan: Option<JordanData> = None;
+    if found.is_none() && order == 1 && source.iter().all(|&e| cx.is_zero(e)) {
+        // No distinct eigenvalues: Jordan chains (polynomial factors in t).
+        if let Some((p, p_inverse, diagonals, data)) = jordan_decouple(cx, &a_matrices, &candidates) {
+            found = Some((p, p_inverse, diagonals));
+            jordan = Some(data);
+        }
+    }
     let (p_matrix, p_inverse, diagonals) = found?;
     // Conditions per component, grouped by shape.
     let shapes = match conditions {
         | Some(list) => group_conditions(cx, &problems, list)?,
         | None => Vec::new(),
     };
+    if jordan.is_some() && shapes.iter().any(|shape| shape.on != time) {
+        // Derivatives of the solution do not preserve boundary conditions.
+        return None;
+    }
     let source_w = apply(cx, &p_inverse, &source);
     let mut solutions = Vec::new();
     for i in 0..n {
@@ -492,6 +511,9 @@ pub(super) fn solve_system(
         };
         solutions.push(rename_functions(cx, rhs, i));
     }
+    if let Some(data) = &jordan {
+        solutions = jordan_combine(cx, data, &vars, vars[time], &solutions)?;
+    }
     // U = P W.
     let mut result = Vec::new();
     for (j, &u) in us.iter().enumerate() {
@@ -501,6 +523,382 @@ pub(super) fn solve_system(
         result.push(cx.graph.node(core::EQ, &[u, value]));
     }
     Some(cx.graph.node(core::LIST, &result))
+}
+
+// ----------------------------------------------------------------------
+// Jordan chains
+// ----------------------------------------------------------------------
+
+/// Whether `e` is zero, to rounding if the simplifier cannot tell.
+fn vanishes(
+    cx: &mut Cx<'_>,
+    e: NodeId,
+) -> bool {
+    cx.is_zero(e) || (0..2_u32).all(|k| sample(cx.graph, e, k).is_some_and(|v| v.abs() < 1e-9))
+}
+
+/// Gauss–Jordan elimination of the rows: the reduced rows and their pivot
+/// columns.
+fn row_reduce(
+    cx: &mut Cx<'_>,
+    mut rows: Matrix,
+    columns: usize,
+) -> (Matrix, Vec<usize>) {
+    let mut pivots = Vec::new();
+    let mut top = 0;
+    for col in 0..columns {
+        let Some(found) = (top..rows.len()).find(|&r| !vanishes(cx, rows[r][col])) else {
+            continue;
+        };
+        rows.swap(top, found);
+        let pivot = rows[top][col];
+        for c in 0..columns {
+            let q = div(cx, rows[top][c], pivot);
+            rows[top][c] = cx.simplify(q);
+        }
+        for r in 0..rows.len() {
+            if r == top {
+                continue;
+            }
+            let factor = rows[r][col];
+            if vanishes(cx, factor) {
+                continue;
+            }
+            for c in 0..columns {
+                let t = mul(cx.graph, &[factor, rows[top][c]]);
+                let d = sub(cx.graph, rows[r][c], t);
+                rows[r][c] = cx.simplify(d);
+            }
+        }
+        pivots.push(col);
+        top += 1;
+    }
+    (rows, pivots)
+}
+
+/// A basis of the null space of `m`.
+fn null_space(
+    cx: &mut Cx<'_>,
+    m: &Matrix,
+) -> Vec<Vec<NodeId>> {
+    let n = m.len();
+    let (rows, pivots) = row_reduce(cx, m.clone(), n);
+    let mut out = Vec::new();
+    for free in (0..n).filter(|c| !pivots.contains(c)) {
+        let mut v: Vec<NodeId> = (0..n).map(|_| cx.graph.int(0)).collect();
+        v[free] = cx.graph.int(1);
+        for (i, &pc) in pivots.iter().enumerate() {
+            v[pc] = neg(cx.graph, rows[i][free]);
+        }
+        out.push(v);
+    }
+    out
+}
+
+/// The blocks of a Jordan form: for each, the first column, the size and
+/// the eigenvalue.
+type Blocks = Vec<(usize, usize, NodeId)>;
+
+/// A Jordan basis of `g`: the matrix `P` whose columns are the chains
+/// (`g p₁ = λ p₁`, `g p_{j+1} = λ p_{j+1} + p_j`) and the blocks.
+fn jordan_basis(
+    cx: &mut Cx<'_>,
+    g: &Matrix,
+) -> Option<(Matrix, Blocks)> {
+    let n = g.len();
+    let lambda_symbol = cx.graph.interner_mut().fresh_symbol("lambda");
+    let lambda = cx.graph.symbol_node(lambda_symbol);
+    let characteristic = {
+        let mut m = g.clone();
+        for (i, row) in m.iter_mut().enumerate() {
+            row[i] = sub(cx.graph, row[i], lambda);
+        }
+        determinant(cx, &m)
+    };
+    let found = solve_for(cx.graph, characteristic, lambda, 0)?;
+    let mut roots: Vec<NodeId> = Vec::new();
+    for r in found {
+        let r = cx.simplify(r);
+        let mut duplicate = false;
+        for &q in &roots {
+            let gap = sub(cx.graph, r, q);
+            duplicate |= vanishes(cx, gap);
+        }
+        if !duplicate {
+            roots.push(r);
+        }
+    }
+    let mut columns: Vec<Vec<NodeId>> = Vec::new();
+    let mut blocks: Blocks = Vec::new();
+    for &root in &roots {
+        let mut shifted = g.clone();
+        for (i, row) in shifted.iter_mut().enumerate() {
+            row[i] = sub(cx.graph, row[i], root);
+        }
+        let shifted: Matrix = shifted.iter().map(|row| row.iter().map(|&e| cx.simplify(e)).collect()).collect();
+        // Kernels of the powers.
+        let mut kernels: Vec<Vec<Vec<NodeId>>> = vec![Vec::new()];
+        let mut power = shifted.clone();
+        for j in 1..=n {
+            if j > 1 {
+                power = multiply(cx, &power, &shifted);
+            }
+            let k = null_space(cx, &power);
+            let done = kernels.last().is_some_and(|prev| prev.len() == k.len());
+            if done {
+                break;
+            }
+            kernels.push(k);
+        }
+        let height = kernels.len() - 1;
+        let dimension: Vec<usize> = kernels.iter().map(Vec::len).collect();
+        let mut chains: Vec<Vec<Vec<NodeId>>> = Vec::new();
+        for j in (1..=height).rev() {
+            let below = dimension[j - 1];
+            let here = dimension[j];
+            let above = if j < height { dimension[j + 1] } else { here };
+            let count = (here - below).checked_sub(above - here)?;
+            // Vectors already independent: the lower kernel and the images of longer chains.
+            let mut spanned: Vec<Vec<NodeId>> = kernels[j - 1].clone();
+            for chain in &chains {
+                // chain[0] is the top vector, of height `chain.len()`; its
+                // image of height j is chain[chain.len() - j].
+                let idx = chain.len().checked_sub(j)?;
+                spanned.push(chain.get(idx)?.clone());
+            }
+            let mut chosen = 0;
+            for candidate in &kernels[j] {
+                if chosen == count {
+                    break;
+                }
+                let mut trial = spanned.clone();
+                trial.push(candidate.clone());
+                let (_, pivots) = row_reduce(cx, trial, n);
+                let (_, base) = row_reduce(cx, spanned.clone(), n);
+                if pivots.len() > base.len() {
+                    spanned.push(candidate.clone());
+                    // The chain v, M v, ..., M^{j-1} v.
+                    let mut chain = vec![candidate.clone()];
+                    for _ in 1..j {
+                        let last = chain.last()?.clone();
+                        let next = apply(cx, &shifted, &last);
+                        chain.push(next);
+                    }
+                    chains.push(chain);
+                    chosen += 1;
+                }
+            }
+            if chosen != count {
+                return None;
+            }
+        }
+        for chain in chains {
+            blocks.push((columns.len(), chain.len(), root));
+            // Ascending: the eigenvector first.
+            for v in chain.into_iter().rev() {
+                columns.push(v);
+            }
+        }
+    }
+    if columns.len() != n {
+        return None;
+    }
+    let mut p = zero_matrix(cx, n);
+    for (j, column) in columns.iter().enumerate() {
+        for (i, &e) in column.iter().enumerate() {
+            p[i][j] = e;
+        }
+    }
+    Some((p, blocks))
+}
+
+/// The data of a decoupling into Jordan blocks: for each block, the
+/// superdiagonal coefficients `μ_k` (`k ≥ 1`) of every `A_α`.
+struct JordanData {
+    blocks: Blocks,
+    /// `couplings[block][k - 1]`: `(index, μ)` for each derivative.
+    couplings: Vec<Vec<Vec<(Index, NodeId)>>>,
+}
+
+/// Simultaneous Jordan decoupling: `P⁻¹ A_α P` must be block diagonal with
+/// upper triangular Toeplitz blocks. The diagonals `λ_{α,block}` are
+/// returned like the eigenvalues of a diagonalisation.
+#[allow(clippy::type_complexity)]
+fn jordan_decouple(
+    cx: &mut Cx<'_>,
+    a_matrices: &[(Index, Matrix)],
+    candidates: &[Matrix],
+) -> Option<(Matrix, Matrix, Vec<Vec<NodeId>>, JordanData)> {
+    for g in candidates {
+        if is_zero_matrix(cx, g) {
+            continue;
+        }
+        let Some((p, blocks)) = jordan_basis(cx, g) else {
+            continue;
+        };
+        let Some(p_inverse) = inverse(cx, &p) else {
+            continue;
+        };
+        let n = p.len();
+        let mut diagonals = Vec::new();
+        let mut couplings: Vec<Vec<Vec<(Index, NodeId)>>> = blocks.iter().map(|&(_, size, _)| vec![Vec::new(); size.saturating_sub(1)]).collect();
+        let mut ok = true;
+        'matrices: for (index, a) in a_matrices {
+            let left = multiply(cx, &p_inverse, a);
+            let t = multiply(cx, &left, &p);
+            let mut diagonal = vec![cx.graph.int(0); n];
+            for (b, &(start, size, _)) in blocks.iter().enumerate() {
+                for i in 0..n {
+                    for j in 0..n {
+                        let entry = t[i][j];
+                        let in_i = i >= start && i < start + size;
+                        let in_j = j >= start && j < start + size;
+                        if in_i && in_j {
+                            continue;
+                        }
+                        if (in_i || in_j) && !vanishes(cx, entry) {
+                            ok = false;
+                            break 'matrices;
+                        }
+                    }
+                }
+                // Toeplitz structure inside the block.
+                let mut values: Vec<Option<NodeId>> = vec![None; size];
+                for a_idx in 0..size {
+                    for b_idx in 0..size {
+                        let entry = t[start + a_idx][start + b_idx];
+                        if b_idx < a_idx {
+                            if !vanishes(cx, entry) {
+                                ok = false;
+                                break 'matrices;
+                            }
+                            continue;
+                        }
+                        let k = b_idx - a_idx;
+                        match values[k] {
+                            | None => values[k] = Some(entry),
+                            | Some(first) => {
+                                let gap = sub(cx.graph, first, entry);
+                                if !vanishes(cx, gap) {
+                                    ok = false;
+                                    break 'matrices;
+                                }
+                            },
+                        }
+                    }
+                }
+                let lambda_value = values[0]?;
+                for slot in diagonal.iter_mut().skip(start).take(size) {
+                    *slot = lambda_value;
+                }
+                for k in 1..size {
+                    let mu = values[k]?;
+                    if !vanishes(cx, mu) {
+                        couplings[b][k - 1].push((index.clone(), mu));
+                    }
+                }
+            }
+            diagonals.push(diagonal);
+        }
+        if ok && blocks.iter().any(|&(_, size, _)| size > 1) {
+            return Some((p, p_inverse, diagonals, JordanData { blocks, couplings }));
+        }
+    }
+    None
+}
+
+/// A constant-coefficient differential operator: `(index, coefficient)`.
+type Operator = Vec<(Index, NodeId)>;
+
+fn multiply_operators(
+    cx: &mut Cx<'_>,
+    a: &Operator,
+    b: &Operator,
+) -> Operator {
+    let mut out: Operator = Vec::new();
+    for (ia, ca) in a {
+        for (ib, cb) in b {
+            let index: Index = ia.iter().zip(ib).map(|(x, y)| x + y).collect();
+            let c = mul(cx.graph, &[*ca, *cb]);
+            match out.iter_mut().find(|(i, _)| *i == index) {
+                | Some((_, existing)) => *existing = add(cx.graph, &[*existing, c]),
+                | None => out.push((index, c)),
+            }
+        }
+    }
+    for (_, c) in &mut out {
+        *c = cx.simplify(*c);
+    }
+    out
+}
+
+/// The solution `w_a = Σ_j q_j(t, ∂) S_{a+j}` of a Jordan block, with `q_j`
+/// the coefficients of `exp(t Σ_k N^k M_k)`.
+fn jordan_combine(
+    cx: &mut Cx<'_>,
+    data: &JordanData,
+    vars: &[NodeId],
+    time_var: NodeId,
+    solutions: &[NodeId],
+) -> Option<Vec<NodeId>> {
+    let dimension = vars.len();
+    let mut out = solutions.to_vec();
+    let one = cx.graph.int(1);
+    for (b, &(start, size, _)) in data.blocks.iter().enumerate() {
+        if size == 1 {
+            continue;
+        }
+        let identity: Operator = vec![(vec![0; dimension], one)];
+        // x_k = t M_k.
+        let x: Vec<Operator> = data.couplings[b]
+            .iter()
+            .map(|terms| terms.iter().map(|(i, mu)| (i.clone(), mul(cx.graph, &[time_var, *mu]))).collect())
+            .collect();
+        let mut q: Vec<Operator> = vec![identity];
+        for j in 1..size {
+            // j q_j = Σ_{k=1}^{j} k x_k q_{j-k}.
+            let mut total: Operator = Vec::new();
+            for k in 1..=j {
+                let xk = x.get(k - 1)?;
+                let product = multiply_operators(cx, xk, &q[j - k]);
+                let scale = cx.graph.int(i64::try_from(k).ok()?);
+                for (i, c) in product {
+                    let c = mul(cx.graph, &[scale, c]);
+                    match total.iter_mut().find(|(t, _)| *t == i) {
+                        | Some((_, e)) => *e = add(cx.graph, &[*e, c]),
+                        | None => total.push((i, c)),
+                    }
+                }
+            }
+            let inverse_j = {
+                let jn = cx.graph.int(i64::try_from(j).ok()?);
+                div(cx, one, jn)
+            };
+            for (_, c) in &mut total {
+                *c = mul(cx.graph, &[inverse_j, *c]);
+                *c = cx.simplify(*c);
+            }
+            q.push(total);
+        }
+        for a in 0..size {
+            let mut terms = Vec::new();
+            for j in 0..(size - a) {
+                let source = solutions[start + a + j];
+                for (index, c) in &q[j] {
+                    let mut d = source;
+                    for (k, &order) in index.iter().enumerate() {
+                        for _ in 0..order {
+                            d = crate::rules::calculus::derivative(cx.graph, d, vars[k])?;
+                        }
+                    }
+                    terms.push(mul(cx.graph, &[*c, d]));
+                }
+            }
+            let total = add(cx.graph, &terms);
+            out[start + a] = cx.simplify(total);
+        }
+    }
+    Some(out)
 }
 
 struct Shape {
