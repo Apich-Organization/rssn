@@ -19,6 +19,20 @@ use serde::Serialize;
 ///
 /// The value is stored as a `u64`, and all arithmetic operations are performed
 /// modulo the specified `modulus`.
+///
+/// # Modulus-agnostic elements
+/// A `modulus` of `0` marks a *modulus-agnostic* element: the integer
+/// `value` (a non-negative multiple of the field's `1`) that has not yet
+/// been bound to a field. [`Zero::zero`] and [`One::one`] return such
+/// elements, so they can be created without knowing the field. In a binary
+/// operation the result adopts the modulus of the concrete operand, and the
+/// agnostic value is reduced modulo it; `x + zero() == x` and
+/// `x * one() == x` hold for every concrete `x`. Between two agnostic
+/// elements the operations act on non-negative integers (addition and
+/// multiplication saturate at `u64::MAX`, subtraction saturates at `0`);
+/// negating a non-zero agnostic element is not representable and leaves it
+/// unchanged. When both operands are concrete with different moduli the
+/// left operand's modulus is used.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PrimeFieldElement {
     /// The value of the field element.
@@ -41,9 +55,32 @@ impl PrimeFieldElement {
         modulus: u64,
     ) -> Self {
         Self {
-            value: value % modulus,
+            value: if modulus == 0 { value } else { value % modulus },
             modulus,
         }
+    }
+
+    /// Returns `true` for a modulus-agnostic element (see the type docs).
+    #[must_use]
+    pub const fn is_agnostic(&self) -> bool {
+        self.modulus == 0
+    }
+
+    /// Modulus the result of a binary operation adopts: the left operand's
+    /// unless it is agnostic.
+    const fn result_modulus(
+        &self,
+        rhs: &Self,
+    ) -> u64 {
+        if self.modulus == 0 { rhs.modulus } else { self.modulus }
+    }
+
+    /// The value reduced modulo `m` (unchanged for `m == 0`).
+    const fn reduced(
+        &self,
+        m: u64,
+    ) -> u64 {
+        if m == 0 { self.value } else { self.value % m }
     }
 
     /// Computes the multiplicative inverse of the element.
@@ -61,6 +98,11 @@ impl PrimeFieldElement {
     /// the modulus is a valid `u64`.
     #[must_use]
     pub fn inverse(&self) -> Option<Self> {
+        if self.modulus == 0 {
+            // Only 1 is invertible among agnostic integers.
+            return (self.value == 1).then_some(*self);
+        }
+
         let (g, x, _) = extended_gcd_u64(self.value, self.modulus);
 
         if g == 1 {
@@ -80,7 +122,12 @@ impl PrimeFieldElement {
         &self,
         mut exp: u64,
     ) -> Self {
-        let mut res = 1u128;
+        if self.modulus == 0 {
+            // Agnostic integers: saturating power.
+            return Self::new(self.value.saturating_pow(u32::try_from(exp).unwrap_or(u32::MAX)), 0);
+        }
+
+        let mut res = 1u128 % u128::from(self.modulus);
 
         let mut base = u128::from(self.value);
 
@@ -107,7 +154,8 @@ use num_traits::Zero;
 
 impl Zero for PrimeFieldElement {
     fn zero() -> Self {
-        Self { value: 0, modulus: 2 } // Dummy modulus, should be careful
+        // Modulus-agnostic zero: adopts the modulus of the other operand.
+        Self { value: 0, modulus: 0 }
     }
 
     fn is_zero(&self) -> bool {
@@ -117,7 +165,8 @@ impl Zero for PrimeFieldElement {
 
 impl One for PrimeFieldElement {
     fn one() -> Self {
-        Self { value: 1, modulus: 2 } // Dummy modulus
+        // Modulus-agnostic one: adopts the modulus of the other operand.
+        Self { value: 1, modulus: 0 }
     }
 }
 
@@ -125,7 +174,7 @@ impl Neg for PrimeFieldElement {
     type Output = Self;
 
     fn neg(self) -> Self {
-        if self.value == 0 {
+        if self.value == 0 || self.modulus == 0 {
             self
         } else {
             Self::new(self.modulus - self.value, self.modulus)
@@ -176,9 +225,15 @@ impl Add for PrimeFieldElement {
         self,
         rhs: Self,
     ) -> Self {
-        let val = (self.value + rhs.value) % self.modulus;
+        let m = self.result_modulus(&rhs);
 
-        Self::new(val, self.modulus)
+        let sum = u128::from(self.reduced(m)) + u128::from(rhs.reduced(m));
+
+        if m == 0 {
+            return Self::new(u64::try_from(sum).unwrap_or(u64::MAX), 0);
+        }
+
+        Self::new((sum % u128::from(m)) as u64, m)
     }
 }
 
@@ -190,9 +245,16 @@ impl Sub for PrimeFieldElement {
         self,
         rhs: Self,
     ) -> Self {
-        let val = (self.value + self.modulus - rhs.value) % self.modulus;
+        let m = self.result_modulus(&rhs);
 
-        Self::new(val, self.modulus)
+        if m == 0 {
+            return Self::new(self.value.saturating_sub(rhs.value), 0);
+        }
+
+        let val = (u128::from(self.reduced(m)) + u128::from(m) - u128::from(rhs.reduced(m)))
+            % u128::from(m);
+
+        Self::new(val as u64, m)
     }
 }
 
@@ -207,10 +269,15 @@ impl Mul for PrimeFieldElement {
         self,
         rhs: Self,
     ) -> Self {
-        let val =
-            ((u128::from(self.value) * u128::from(rhs.value)) % u128::from(self.modulus)) as u64;
+        let m = self.result_modulus(&rhs);
 
-        Self::new(val, self.modulus)
+        let prod = u128::from(self.reduced(m)) * u128::from(rhs.reduced(m));
+
+        if m == 0 {
+            return Self::new(u64::try_from(prod).unwrap_or(u64::MAX), 0);
+        }
+
+        Self::new((prod % u128::from(m)) as u64, m)
     }
 }
 
@@ -222,8 +289,12 @@ impl Div for PrimeFieldElement {
         self,
         rhs: Self,
     ) -> Self {
+        let m = self.result_modulus(&rhs);
+
+        let rhs = Self::new(rhs.value, m);
+
         let Some(inv_rhs) = rhs.inverse() else {
-            return Self::new(0, self.modulus);
+            return Self::new(0, m);
         };
 
         self * inv_rhs

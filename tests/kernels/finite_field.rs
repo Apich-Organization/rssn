@@ -157,3 +157,76 @@ proptest! {
         prop_assert_eq!(gf256_mul(a, gf256_add(b, c)), gf256_add(gf256_mul(a, b), gf256_mul(a, c)));
     }
 }
+
+mod modulus_agnostic {
+    use num_traits::{One, Zero};
+    use rssn::kernels::finite_field::PrimeFieldElement;
+
+    #[test]
+    fn zero_and_one_adopt_the_other_operands_modulus() {
+        let x = PrimeFieldElement::new(5, 7);
+        for (a, b) in [(x + PrimeFieldElement::zero(), x), (PrimeFieldElement::zero() + x, x)] {
+            assert_eq!(a, b);
+        }
+        assert_eq!(x * PrimeFieldElement::one(), x);
+        assert_eq!(PrimeFieldElement::one() * x, x);
+        assert_eq!(x - PrimeFieldElement::zero(), x);
+        assert_eq!((PrimeFieldElement::zero() - x).value, 2);
+        assert_eq!((PrimeFieldElement::zero() - x).modulus, 7);
+        assert_eq!((x / PrimeFieldElement::one()), x);
+        assert_eq!((PrimeFieldElement::one() / x).value, 3); // 5 * 3 = 15 = 1 mod 7
+    }
+
+    #[test]
+    fn constants_are_flagged_and_zero_one_predicates_work() {
+        assert!(PrimeFieldElement::zero().is_agnostic());
+        assert!(PrimeFieldElement::one().is_agnostic());
+        assert!(PrimeFieldElement::zero().is_zero());
+        assert!(PrimeFieldElement::one().is_one());
+        assert!(!PrimeFieldElement::new(3, 7).is_agnostic());
+        assert!(PrimeFieldElement::new(7, 7).is_zero());
+    }
+
+    #[test]
+    fn sums_and_products_fold_from_the_identity() {
+        let xs: Vec<_> = (1..=6).map(|v| PrimeFieldElement::new(v, 7)).collect();
+        let sum = xs.iter().fold(PrimeFieldElement::zero(), |a, &b| a + b);
+        assert_eq!((sum.value, sum.modulus), (0, 7)); // 21 mod 7
+        let prod = xs.iter().fold(PrimeFieldElement::one(), |a, &b| a * b);
+        assert_eq!((prod.value, prod.modulus), (6, 7)); // Wilson: 6! = -1 mod 7
+    }
+
+    #[test]
+    fn agnostic_values_reduce_when_bound() {
+        let two = PrimeFieldElement::one() + PrimeFieldElement::one();
+        assert_eq!(two.value, 2);
+        assert!(two.is_agnostic());
+        let y = PrimeFieldElement::new(6, 7);
+        assert_eq!((y + two).value, 1);
+        assert_eq!((two * y).value, 5);
+        // an agnostic value larger than the modulus is reduced, not wrapped
+        let big = PrimeFieldElement::new(100, 0);
+        assert_eq!((PrimeFieldElement::new(0, 7) + big).value, 2);
+    }
+
+    #[test]
+    fn agnostic_arithmetic_never_panics() {
+        let z = PrimeFieldElement::zero();
+        let o = PrimeFieldElement::one();
+        assert_eq!((z - o).value, 0); // saturates
+        assert_eq!(o.inverse(), Some(o));
+        assert_eq!(z.inverse(), None);
+        assert_eq!((o / z).value, 0);
+        assert_eq!(o.pow(1000).value, 1);
+        assert_eq!((-z).value, 0);
+    }
+
+    #[test]
+    fn large_modulus_does_not_overflow() {
+        let p = 18_446_744_073_709_551_557_u64; // largest prime below 2^64
+        let a = PrimeFieldElement::new(p - 1, p);
+        assert_eq!((a + a).value, p - 2);
+        assert_eq!((PrimeFieldElement::new(1, p) - a).value, 2);
+        assert_eq!((a * a).value, 1);
+    }
+}
