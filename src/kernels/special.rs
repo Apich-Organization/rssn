@@ -1005,15 +1005,26 @@ pub fn binomial(
     gamma((n + 1) as f64) / (gamma((k + 1) as f64) * gamma((n - k + 1) as f64))
 }
 
-/// Computes the Riemann zeta function ζ(s) for real s > 1
-/// (`+∞` at s = 1, `NaN` for s < 1).
+/// Computes the Riemann zeta function ζ(s) for real `s`.
 ///
-/// Uses Euler-Maclaurin summation (via [`hurwitz_zeta`] with q = 1): the first
-/// terms directly, the tail by its integral plus Bernoulli-number corrections;
-/// accurate to about 1e-15.
+/// * `s > 1`: Euler-Maclaurin summation (via [`hurwitz_zeta`] with q = 1):
+///   the first terms directly, the tail by its integral plus
+///   Bernoulli-number corrections; accurate to about 1e-15.
+/// * `s = 1`: `+∞` (the pole).
+/// * `-1/2 < s < 1`: the alternating eta series
+///   `η(s) = (1 - 2^(1-s)) ζ(s)` accelerated with Borwein's algorithm
+///   (relative error about `1e-15`); `s = 0` is exactly `-1/2`.
+/// * `s <= -1/2`: the analytic continuation by the functional equation
+///   `ζ(s) = 2^s π^(s-1) sin(πs/2) Γ(1-s) ζ(1-s)`. The trivial zeros at the
+///   negative even integers are returned as exactly `0`, and
+///   `ζ(-1) = -1/12`, `ζ(-3) = 1/120`, ... follow from the same formula.
+///
+/// Returns `NaN` for `NaN` or `-∞`, and `±∞` where the value overflows
+/// (roughly `s < -170`).
 #[must_use]
+#[allow(clippy::float_cmp)] // exact comparison against sentinel / integer-valued input is intended
 pub fn riemann_zeta(s: f64) -> f64 {
-    if s.is_nan() {
+    if s.is_nan() || s == f64::NEG_INFINITY {
         return f64::NAN;
     }
 
@@ -1021,11 +1032,62 @@ pub fn riemann_zeta(s: f64) -> f64 {
         return f64::INFINITY;
     }
 
-    if s < 1.0 {
-        return f64::NAN; // Analytic continuation is not implemented.
+    if s > 1.0 {
+        return hurwitz_zeta(s, 1.0);
     }
 
-    hurwitz_zeta(s, 1.0)
+    if s == 0.0 {
+        return -0.5;
+    }
+
+    if s > -0.5 {
+        return zeta_via_eta(s);
+    }
+
+    // s <= -0.5: trivial zeros at negative even integers.
+    if s == s.round() && (s / 2.0) == (s / 2.0).round() {
+        return 0.0;
+    }
+
+    // sin(pi s / 2) with exact argument reduction modulo 4.
+    let r = s - 4.0 * (s / 4.0).floor();
+    let sin_part = (std::f64::consts::FRAC_PI_2 * r).sin();
+    let one_minus_s = 1.0 - s;
+    let zeta_reflected = hurwitz_zeta(one_minus_s, 1.0);
+    let g = gamma(one_minus_s);
+    if g.is_infinite() {
+        // Overflow: only the sign is meaningful.
+        return (sin_part.signum() * zeta_reflected.signum()) * f64::INFINITY;
+    }
+    (2.0_f64).powf(s) * std::f64::consts::PI.powf(s - 1.0) * sin_part * g * zeta_reflected
+}
+
+/// ζ(s) for `-1/2 < s < 1` through Borwein's accelerated alternating series for
+/// the Dirichlet eta function.
+fn zeta_via_eta(s: f64) -> f64 {
+    const N: usize = 32;
+    // d_k = N * sum_{i<=k} (N+i-1)! 4^i / ((N-i)! (2i)!), built from term ratios.
+    let n = N as f64;
+    let mut d = [0.0_f64; N + 1];
+    let mut term = 1.0_f64;
+    let mut acc = 1.0_f64;
+    d[0] = acc;
+    for i in 0..N {
+        let fi = i as f64;
+        term *= (n + fi) * 4.0 * (n - fi) / ((2.0 * fi + 1.0) * (2.0 * fi + 2.0));
+        acc += term;
+        d[i + 1] = acc;
+    }
+    let dn = d[N];
+    let mut sum = 0.0;
+    for (k, dk) in d.iter().enumerate().take(N) {
+        let sign = if k % 2 == 0 { 1.0 } else { -1.0 };
+        sum += sign * (dk - dn) / ((k + 1) as f64).powf(s);
+    }
+    let eta = -sum / dn;
+    // 1 - 2^(1-s) computed without cancellation near s = 1
+    let denom = -((1.0 - s) * std::f64::consts::LN_2).exp_m1();
+    eta / denom
 }
 
 /// Computes the sinc function sinc(x) = sin(πx) / (πx).

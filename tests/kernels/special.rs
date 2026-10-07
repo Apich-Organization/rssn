@@ -947,6 +947,67 @@ fn riemann_zeta_matches_references() {
             "zeta({s}) = {got:e}, want {want:e}"
         );
     }
-    assert!(riemann_zeta(0.5).is_nan());
+    assert!(riemann_zeta(f64::NAN).is_nan());
+    assert!(riemann_zeta(f64::NEG_INFINITY).is_nan());
     assert!((hurwitz_zeta(2.0, 0.5) - PI * PI / 2.0).abs() < 1e-13);
+}
+
+#[test]
+fn riemann_zeta_analytic_continuation() {
+    // (s, reference value) from a multiprecision evaluation
+    let table: &[(f64, f64)] = &[
+        (0.5, -1.4603545088095868),
+        (-0.5, -0.20788622497735457),
+        (0.9, -9.4301140194022555),
+        (0.1, -0.60303751985624177),
+        (0.99, -99.423512977728095),
+        (0.999, -999.42285715578794),
+        (-2.5, 0.008516928777850331),
+        (-10.5, 0.011146122473942813),
+        (-20.5, -108.21747505877606),
+        (-1e-6, -0.49999908106246999),
+        (-1.0, -1.0 / 12.0),
+        (-3.0, 1.0 / 120.0),
+        (-5.0, -1.0 / 252.0),
+        (-7.0, 1.0 / 240.0),
+        (-9.0, -1.0 / 132.0),
+        (-11.0, 691.0 / 32760.0),
+        (-13.0, -1.0 / 12.0),
+    ];
+    for &(s, want) in table {
+        let got = riemann_zeta(s);
+        assert!(
+            (got - want).abs() <= 1e-12 * want.abs(),
+            "zeta({s}) = {got:e}, want {want:e}"
+        );
+    }
+    assert_eq!(riemann_zeta(0.0), -0.5);
+    for k in 1..40 {
+        assert_eq!(riemann_zeta(-2.0 * f64::from(k)), 0.0, "trivial zero -{}", 2 * k);
+    }
+    assert_eq!(riemann_zeta(1.0), f64::INFINITY);
+}
+
+#[test]
+fn riemann_zeta_continuous_across_one_and_zero() {
+    // zeta(s) ~ 1/(s-1) + gamma_E near the pole, from both sides
+    let gamma_e = 0.577_215_664_901_532_9;
+    for &e in &[1e-3, 1e-5] {
+        assert!((riemann_zeta(1.0 + e) - (1.0 / e + gamma_e)).abs() < 10.0 * e);
+        assert!((riemann_zeta(1.0 - e) - (-1.0 / e + gamma_e)).abs() < 10.0 * e);
+    }
+    // continuity at the seam between the eta series and the functional equation
+    assert!((riemann_zeta(1e-9) - riemann_zeta(-1e-9)).abs() < 1e-8);
+    assert!((riemann_zeta(1e-9) + 0.5).abs() < 1e-8);
+}
+
+#[test]
+fn riemann_zeta_functional_equation_holds() {
+    // zeta(s) = 2^s pi^(s-1) sin(pi s / 2) Gamma(1-s) zeta(1-s) for 0 < s < 1 too
+    for &s in &[0.1, 0.3, 0.5, 0.7, 0.95] {
+        let rhs = 2f64.powf(s) * PI.powf(s - 1.0) * (PI * s / 2.0).sin() * gamma_numerical(1.0 - s) * riemann_zeta(1.0 - s);
+        assert!((riemann_zeta(s) - rhs).abs() < 1e-11 * rhs.abs(), "s = {s}");
+    }
+    assert!(riemann_zeta(-200.0) == 0.0);
+    assert!(riemann_zeta(-201.0).is_infinite());
 }
