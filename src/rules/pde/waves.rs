@@ -294,9 +294,6 @@ pub(super) fn wave(
         return None;
     };
     let reduced_massless = kind == 0;
-    if d > 1 && !reduced_massless && !p.homogeneous(cx.graph) {
-        return None;
-    }
     // Domains and conditions.
     let zero_index = vec![0; n];
     let displacement = conditions.find(cx.graph, time, &zero_index, None);
@@ -470,6 +467,22 @@ pub(super) fn wave(
                         terms.push(defint(cx, integrand, tau, zero_tau, one_tau)?);
                     }
                 }
+            }
+            if !cx.is_zero(forcing) {
+                // Duhamel: ∫_0^t S(t - τ)[forcing(·, τ)] dτ with the
+                // velocity-data kernel at the elapsed time.
+                let (tau, _) = dummy(cx, p, "sigma");
+                let elapsed = sub(cx.graph, t, tau);
+                let h = cx.graph.substitute(forcing_e, t, tau);
+                let descent = massive_descent(cx, p, &xs, h, (elapsed, c, m, kind), false)?;
+                let mut inner = vec![descent.base];
+                if let Some((integrand, tau2)) = descent.integral {
+                    let (zero_tau, one_tau) = (cx.graph.int(0), cx.graph.int(1));
+                    inner.push(defint(cx, integrand, tau2, zero_tau, one_tau)?);
+                }
+                let inner = add(cx.graph, &inner);
+                let inner = cx.simplify(inner);
+                terms.push(defint(cx, inner, tau, zero, t)?);
             }
         }
     }

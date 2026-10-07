@@ -39,6 +39,7 @@ use crate::graph::NodeId;
 use crate::graph::op::core;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
+use crate::rules::complex::build::neg;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
 
@@ -97,9 +98,34 @@ fn euler(
         if *index == p.unit(j, 2) || *index == p.unit(j, 1) || is_zero_number(cx.graph, *c) {
             continue;
         }
-        if index[j] != 0 || !p.constant(cx.graph, *c) {
+        if index[j] != 0 {
             return None;
         }
+        if p.constant(cx.graph, *c) {
+            continue;
+        }
+        // Another Euler variable: `c x_k^m ∂_k^m` with a constant `c`.
+        let others: Vec<usize> = (0..n).filter(|&k| index[k] != 0).collect();
+        let &[k] = others.as_slice() else {
+            return None;
+        };
+        let order = i64::from(index[k]);
+        if Some(k) == time || !(1..=2).contains(&order) || power_ratio(cx, p, *c, p.vars[k], order).is_none() {
+            return None;
+        }
+    }
+    // The branch: the interval of x lies in x > 0 or in x < 0.
+    let mut negative = false;
+    let mut positive = false;
+    for c in conditions.0.iter().filter(|c| c.on == j) {
+        match super::modes::exact_value(cx, c.point) {
+            | Some(v) if v < 0.0 => negative = true,
+            | Some(v) if v > 0.0 => positive = true,
+            | _ => {},
+        }
+    }
+    if negative && positive {
+        return None;
     }
     // The new problem for w(s, ...).
     let (s, _) = dummy(cx, p, "s");
@@ -132,7 +158,10 @@ fn euler(
         mul(cx.graph, &[gap, d])
     };
     terms.push(first);
-    let exp_s = call(cx, "exp", &[s])?;
+    let exp_s = {
+        let e = call(cx, "exp", &[s])?;
+        if negative { neg(cx.graph, e) } else { e }
+    };
     let source = cx.graph.substitute(p.source, x, exp_s);
     terms.push(source);
     let lhs = add(cx.graph, &terms);
@@ -145,7 +174,8 @@ fn euler(
         let mut value = c.value;
         if c.on == j {
             let x0 = c.point;
-            let point = call(cx, "ln", &[x0])?;
+            let magnitude = if negative { neg(cx.graph, x0) } else { x0 };
+            let point = call(cx, "ln", &[magnitude])?;
             let point = cx.simplify(point);
             if c.derivative.iter().all(|&d| d == 0) {
                 list.push(Condition { on: j, point, derivative: c.derivative.clone(), value, robin: None });
@@ -179,7 +209,8 @@ fn euler(
     let &[_, w] = cx.graph.children(found) else {
         return None;
     };
-    let ln_x = call(cx, "ln", &[x])?;
+    let magnitude = if negative { neg(cx.graph, x) } else { x };
+    let ln_x = call(cx, "ln", &[magnitude])?;
     let solution = cx.graph.substitute(w, s, ln_x);
     let solution = cx.simplify(solution);
     if !super::util::contains_op(cx.graph, solution, "sum") && !super::util::contains_op(cx.graph, solution, "defint") && !verified(cx, p, solution) {
