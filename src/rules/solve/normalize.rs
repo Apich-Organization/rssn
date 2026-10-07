@@ -153,8 +153,8 @@ pub(super) fn exponentials(
         let rebuilt_node = if children == graph.children(node) { node } else { graph.try_node(graph.op(node), children)? };
         let (op, base, argument) = exponential_parts(graph, rebuilt_node, symbol, exp)?;
         // Perfect-power base: 4^u = 2^(2u).
-        if base != NodeId::NONE {
-            if let Some(n) = graph.number_of(base).and_then(Number::to_rational) {
+        if base != NodeId::NONE
+            && let Some(n) = graph.number_of(base).and_then(Number::to_rational) {
                 if n.is_integer() {
                     if let Some((r, k)) = perfect_power(&n.to_integer()) {
                         let r_node = graph.num(Number::Int(r));
@@ -162,16 +162,14 @@ pub(super) fn exponentials(
                         let scaled = graph.node(core::MUL, &[k_node, argument]);
                         return graph.try_node(op, &[r_node, scaled]);
                     }
-                } else if n.numer().is_one() && n.is_positive() {
-                    if let Some(inverse) = n.recip().to_integer().to_i64() {
+                } else if n.numer().is_one() && n.is_positive()
+                    && let Some(inverse) = n.recip().to_integer().to_i64() {
                         let r_node = graph.int(inverse);
                         let minus_one = graph.int(-1);
                         let negated = graph.node(core::MUL, &[minus_one, argument]);
                         return graph.try_node(op, &[r_node, negated]);
                     }
-                }
             }
-        }
         if graph.op(argument) == core::ADD {
             let (mut dependent, mut free) = (Vec::new(), Vec::new());
             for &t in graph.children(argument) {

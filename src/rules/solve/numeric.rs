@@ -205,11 +205,10 @@ pub(super) fn system_roots(
         all.extend(starts(n, radius, count, &mut seed));
     }
     for start in all {
-        if let Some(root) = newton(&system, &start) {
-            if !roots.iter().any(|r| r.iter().zip(&root).all(|(a, b)| (a - b).abs() < 1e-6 * (1.0 + a.abs()))) {
+        if let Some(root) = newton(&system, &start)
+            && !roots.iter().any(|r| r.iter().zip(&root).all(|(a, b)| (a - b).abs() < 1e-6 * (1.0 + a.abs()))) {
                 roots.push(root);
             }
-        }
     }
     roots.sort_by(|a, b| a.iter().zip(b).map(|(x, y)| x.total_cmp(y)).find(|o| o.is_ne()).unwrap_or(std::cmp::Ordering::Equal));
     Some(roots)

@@ -401,8 +401,8 @@ fn recognise_families(
     let pi_node = graph.node(pi, &[]);
     let mut out = Vec::with_capacity(theta.len());
     for mut f in theta {
-        if let Some(v) = value(graph, f.base) {
-            if let Some(r) = recognise(v / std::f64::consts::PI) {
+        if let Some(v) = value(graph, f.base)
+            && let Some(r) = recognise(v / std::f64::consts::PI) {
                 let node = if r.is_zero() {
                     graph.int(0)
                 } else {
@@ -412,7 +412,6 @@ fn recognise_families(
                 f.base = node;
                 f.rational = Some(r);
             }
-        }
         out.push(f);
     }
     out

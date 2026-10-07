@@ -407,7 +407,7 @@ mod tests {
                 .spawn(move || {
                     let _ = tx.send(audit(&owned, order));
                 })
-                .map_or((), |_| ());
+                .map_or((), drop);
             let report = rx
                 .recv_timeout(std::time::Duration::from_secs(20))
                 .unwrap_or_else(|_| Report { status: "TIMEOUT".into(), text: String::new() });
@@ -542,14 +542,13 @@ mod system_tests {
                     if !ok {
                         continue;
                     }
-                    if let (Some(a), Some(b)) = (g.eval(lhs, &env), g.eval(rhs, &env)) {
-                        if a.is_finite() && b.is_finite() {
+                    if let (Some(a), Some(b)) = (g.eval(lhs, &env), g.eval(rhs, &env))
+                        && a.is_finite() && b.is_finite() {
                             checked += 1;
                             if (a - b).abs() > 1e-4 * (1.0 + a.abs()) {
                                 return Report { status: format!("WRONG({a} vs {b} at t = {tv})"), text };
                             }
                         }
-                    }
                 }
             }
         } else {

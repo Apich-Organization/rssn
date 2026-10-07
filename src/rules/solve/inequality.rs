@@ -192,13 +192,12 @@ fn comparison_set(
     add(graph, f_roots);
     let mut gens = Gens::default();
     gens.index(graph, x);
-    if let Some(fraction) = ratio(graph, &mut gens, f, Limits::default()) {
-        if fraction.denom.as_constant().is_none() {
+    if let Some(fraction) = ratio(graph, &mut gens, f, Limits::default())
+        && fraction.denom.as_constant().is_none() {
             let denominator = to_term(graph, &gens, &fraction.denom);
             let poles = solve_for(graph, denominator, x, 0)?;
             add(graph, poles);
         }
-    }
     // Domain boundaries of logarithms and roots.
     let ln = graph.ops().lookup("ln");
     let sqrt = graph.ops().lookup("sqrt");
@@ -210,11 +209,10 @@ fn comparison_set(
                 || (op == core::POW && g.children(n).get(1).and_then(|&e| g.number_of(e)).is_some_and(|e| !e.is_integer())))
     });
     for n in domain {
-        if let Some(&arg) = graph.children(n).first() {
-            if let Some(roots) = solve_for(graph, arg, x, 0) {
+        if let Some(&arg) = graph.children(n).first()
+            && let Some(roots) = solve_for(graph, arg, x, 0) {
                 add(graph, roots);
             }
-        }
     }
     boundary.sort_by(|a, b| a.0.total_cmp(&b.0));
     boundary.dedup_by(|a, b| (a.0 - b.0).abs() <= 1e-12 * (1.0 + a.0.abs()));
@@ -455,12 +453,11 @@ fn formula(
     let (and, or) = (graph.ops().lookup("and")?, graph.ops().lookup("or")?);
     let mut formulas = Vec::new();
     for i in set {
-        if let (Some(a), Some(b)) = (i.lo, i.hi) {
-            if a.closed && b.closed && (a.value - b.value).abs() <= 1e-12 * (1.0 + a.value.abs()) {
+        if let (Some(a), Some(b)) = (i.lo, i.hi)
+            && a.closed && b.closed && (a.value - b.value).abs() <= 1e-12 * (1.0 + a.value.abs()) {
                 formulas.push(graph.node(core::EQ, &[x, a.node]));
                 continue;
             }
-        }
         let mut conditions = Vec::new();
         if let Some(a) = i.lo {
             conditions.push(graph.node(if a.closed { le } else { lt }, &[a.node, x]));

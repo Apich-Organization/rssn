@@ -498,11 +498,10 @@ fn collect_solutions(
             }
             let y = cx.graph.substitute(shape, lambda, root);
             let y = cx.simplify(y);
-            if let Some(check) = residual(cx, a, y, x) {
-                if cx.is_zero(check) {
+            if let Some(check) = residual(cx, a, y, x)
+                && cx.is_zero(check) {
                     found.push(y);
                 }
-            }
         }
     }
     Some(())
@@ -528,13 +527,13 @@ fn independent(
 pub(super) fn variable_coefficients(
     cx: &mut Cx<'_>,
     problem: &mut Problem,
-    _depth: u32,
+    depth: u32,
 ) -> Option<NodeId> {
     let (a, forcing) = linear_second_order(cx, problem)?;
     let x = problem.x;
     let solutions = family_solutions(cx, &a, x);
     let Some(&y1) = solutions.first() else {
-        return super::classes::normal_form(cx, problem, &a, forcing, _depth);
+        return super::classes::normal_form(cx, problem, &a, forcing, depth);
     };
     let second = solutions.iter().skip(1).copied().find(|&y| independent(cx, y1, y, x));
     let y2 = match second {

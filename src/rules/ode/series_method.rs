@@ -352,11 +352,10 @@ pub(super) fn rsolve(
         for &sym in cx.graph.free_symbols(cx.graph.find(check)) {
             env.bind(sym, if sym == n_symbol { m } else { 0.7 + 0.11 * f64::from(sym.raw() % 5) });
         }
-        if let Some(v) = cx.graph.eval(check, &env) {
-            if v.is_finite() && v.abs() > 1e-7 {
+        if let Some(v) = cx.graph.eval(check, &env)
+            && v.is_finite() && v.abs() > 1e-7 {
                 return None;
             }
-        }
     }
     Some(cx.graph.node(core::EQ, &[unknown, back]))
 }

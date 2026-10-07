@@ -518,11 +518,10 @@ pub(super) fn solve(
     if let Some(found) = time_scaled_linear(cx, &system, depth) {
         return Some(found);
     }
-    if n == 2 {
-        if let Some(found) = autonomous_integral(cx, &system, depth) {
+    if n == 2
+        && let Some(found) = autonomous_integral(cx, &system, depth) {
             return Some(found);
         }
-    }
     if system.primary.len() == n {
         return polynomial_integrals(cx, &system);
     }

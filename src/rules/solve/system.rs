@@ -47,11 +47,10 @@ pub(super) fn solve_system(
     if unknowns.is_empty() {
         return None;
     }
-    if equations.len() == unknowns.len() {
-        if let Some(single) = solve_linear(graph, equations, unknowns) {
+    if equations.len() == unknowns.len()
+        && let Some(single) = solve_linear(graph, equations, unknowns) {
             return Some(vec![single]);
         }
-    }
     let exprs: Vec<NodeId> = equations
         .iter()
         .map(|&e| {
@@ -102,11 +101,10 @@ fn holds(
     for env in sample_envs(graph, &all, None) {
         let magnitude = tuple.iter().filter_map(|&n| graph.eval(n, &env)).filter(|v| v.is_finite()).map(f64::abs).fold(0.0, f64::max);
         for &t in &substituted {
-            if let Some(v) = graph.eval(t, &env) {
-                if v.is_finite() && v.abs() > 1e-7 * (1.0 + magnitude.powi(3)) {
+            if let Some(v) = graph.eval(t, &env)
+                && v.is_finite() && v.abs() > 1e-7 * (1.0 + magnitude.powi(3)) {
                     return false;
                 }
-            }
         }
     }
     true
@@ -322,11 +320,10 @@ pub(super) fn eliminate(
         let involved: Vec<usize> = (0..unknowns.len()).filter(|&j| graph.depends_on(graph.find(e), symbols[j])).collect();
         if involved.is_empty() {
             // A condition without unknowns.
-            if let Some(v) = graph.eval(e, &Env::numeric(0.0)) {
-                if v.abs() > 1e-9 {
+            if let Some(v) = graph.eval(e, &Env::numeric(0.0))
+                && v.abs() > 1e-9 {
                     return Some(Vec::new());
                 }
-            }
             continue;
         }
         for &j in &involved {

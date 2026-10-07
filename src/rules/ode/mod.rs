@@ -464,11 +464,10 @@ fn first_order_explicit(
             .filter(|&(_, &c)| !cx.graph.number_of(c).is_some_and(Number::is_zero))
             .map(|(k, _)| k)
             .collect();
-        if let [1, n] | [n] = *nonzero.as_slice() {
-            if n >= 2 {
+        if let [1, n] | [n] = *nonzero.as_slice()
+            && n >= 2 {
                 return bernoulli(cx, problem, &coefficients, n);
             }
-        }
         // Riccati: y' = q0 + q1 y + q2 y^2.
         if coefficients.len() == 3 {
             if let Some(found) = riccati(cx, problem, rhs, &coefficients) {
@@ -493,11 +492,10 @@ fn first_order_explicit(
     }
     // Integrating factors of M + N y' = 0.
     let dy = *problem.stand.get(1)?;
-    if let Some(&[m, n]) = coefficients_in(cx.graph, problem.expr, dy).as_deref() {
-        if let Some(found) = classes::integrating_factor(cx, problem, m, n) {
+    if let Some(&[m, n]) = coefficients_in(cx.graph, problem.expr, dy).as_deref()
+        && let Some(found) = classes::integrating_factor(cx, problem, m, n) {
             return Some(found);
         }
-    }
     // Lie point symmetries cover what the classical recipes miss.
     lie::first_order(cx, problem, rhs)
 }
@@ -1517,11 +1515,10 @@ fn dispatch(
         }
         found
     };
-    if problem.order() == 1 {
-        if let Some(found) = attempt(cx, problem, first_order) {
+    if problem.order() == 1
+        && let Some(found) = attempt(cx, problem, first_order) {
             return Some(found);
         }
-    }
     for method in [
         (|cx: &mut Cx<'_>, p: &mut Problem, _| linear_higher_order(cx, p)) as fn(&mut Cx<'_>, &mut Problem, u32) -> Option<NodeId>,
         reduce::special_function_equation,

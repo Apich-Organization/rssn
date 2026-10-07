@@ -961,17 +961,15 @@ fn expand_log(
         let parts: Vec<NodeId> = children.iter().map(|&c| expand_log(graph, c, ln, exp)).collect();
         return graph.node(core::ADD, &parts);
     }
-    if graph.op(node) == core::POW {
-        if let &[base, power] = children.as_slice() {
+    if graph.op(node) == core::POW
+        && let &[base, power] = children.as_slice() {
             let log = expand_log(graph, base, ln, exp);
             return product(graph, &[power, log]);
         }
-    }
-    if graph.op(node) == exp {
-        if let Some(&a) = children.first() {
+    if graph.op(node) == exp
+        && let Some(&a) = children.first() {
             return a;
         }
-    }
     graph.node(ln, &[node])
 }
 
@@ -1075,9 +1073,9 @@ fn substitution(
         let u = graph.symbol_node(u_symbol);
         let mut replaced = term;
         // x^(km) = u^k when f = x^m.
-        if let (core::POW, &[base, m]) = (graph.op(f), graph.children(f)) {
-            if base == x {
-                if let Some(m) = graph.number_of(m).and_then(Number::to_i64).filter(|&m| m >= 2) {
+        if let (core::POW, &[base, m]) = (graph.op(f), graph.children(f))
+            && base == x
+                && let Some(m) = graph.number_of(m).and_then(Number::to_i64).filter(|&m| m >= 2) {
                     let mut rewrite = |graph: &mut Graph, node: NodeId, children: &[NodeId]| -> Option<NodeId> {
                         if graph.op(node) != core::POW {
                             return None;
@@ -1093,8 +1091,6 @@ fn substitution(
                     };
                     replaced = super::normalize::map_term(graph, replaced, &mut rewrite);
                 }
-            }
-        }
         replaced = graph.replace_subterm(replaced, f, u);
         if graph.depends_on(graph.find(replaced), symbol) {
             continue;

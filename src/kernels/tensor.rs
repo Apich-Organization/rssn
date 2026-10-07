@@ -188,68 +188,39 @@ pub fn inner_product(
     Ok(a_flat.iter().zip(b_flat.iter()).map(|(x, y)| x * y).sum())
 }
 
-/// Contracts a single tensor along two specified axes.
+/// Contracts a single tensor along two specified axes (a generalised
+/// trace): the result has rank `ndim - 2` and entries
+/// `sum_t a[..., t, ..., t, ...]`, the remaining axes in their original
+/// order.
 ///
 /// # Errors
-/// Returns an error if axes are the same, dimensions mismatch, or if general rank contraction is not yet implemented.
+/// Returns an error if the axes are equal, out of range, or of different
+/// lengths.
 pub fn contract(
     a: &ArrayD<f64>,
     axis1: usize,
     axis2: usize,
 ) -> Result<ArrayD<f64>, String> {
     if axis1 == axis2 {
-        return Err("Axes must be \
-                    different for \
-                    contraction."
-            .to_string());
+        return Err("Axes must be different for contraction.".to_string());
     }
-
-    if a.shape()[axis1] != a.shape()[axis2] {
-        return Err("Dimensions \
-                    along contraction \
-                    axes must be \
-                    equal."
-            .to_string());
+    let (Some(&n), Some(&m)) = (a.shape().get(axis1), a.shape().get(axis2)) else {
+        return Err("Contraction axis out of range.".to_string());
+    };
+    if n != m {
+        return Err("Dimensions along contraction axes must be equal.".to_string());
     }
-
-    let n = a.shape()[axis1];
-
-    #[warn(clippy::collection_is_never_read)]
-    let mut new_shape = Vec::new();
-
-    for i in 0..a.ndim() {
-        if i != axis1 && i != axis2 {
-            new_shape.push(a.shape()[i]);
-        }
+    // Remove the higher axis first so the lower index stays valid.
+    let (low, high) = if axis1 < axis2 { (axis1, axis2) } else { (axis2, axis1) };
+    let shape: Vec<usize> =
+        a.shape().iter().enumerate().filter(|&(i, _)| i != low && i != high).map(|(_, &d)| d).collect();
+    let mut out = ArrayD::<f64>::zeros(IxDyn(&shape));
+    for t in 0..n {
+        let diagonal = a.index_axis(ndarray::Axis(high), t);
+        let diagonal = diagonal.index_axis(ndarray::Axis(low), t);
+        out += &diagonal;
     }
-
-    // if new_shape.is_empty() {
-    //     let mut sum = 0.0;
-    //     for i in 0..n {
-    //         // This is actually a bit complex to index generically without recursion or specific tools
-    //         // For now, simpler implementation for trace-like contraction
-    //     }
-    // }
-
-    // Fallback: use tensordot with identity-like structure if needed, or implement manually
-    // For now, let's keep it simple or use a placeholder if it's too complex for a quick edit.
-    // Actually, sprs or ndarray might have better support.
-
-    // Simplified: Only support rank 2 (trace) for now if we want to be safe, or implement full.
-    if a.ndim() == 2 {
-        let mut sum = 0.0;
-
-        for i in 0..n {
-            sum += a[[i, i]];
-        }
-
-        return Ok(ndarray::Array0::from_elem((), sum).into_dyn());
-    }
-
-    Err("General tensor contraction \
-         (trace) for rank > 2 not yet \
-         implemented."
-        .to_string())
+    Ok(out)
 }
 
 /// Computes the Frobenius norm of a tensor.
