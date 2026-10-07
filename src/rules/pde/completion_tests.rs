@@ -264,3 +264,104 @@ fn exterior_heat_in_the_plane() {
     let text = expand_integrals(&rhs(&text), 90);
     close(value(&text, &[("r", r), ("t", t_end)]), reference, 6e-3, &s);
 }
+
+/// The argument list of the numeric Sturm–Liouville operators for the
+/// coefficients `p`, `q`, `w` on `[a, b]` with the end conditions `ends`.
+fn sl_arguments(
+    a: f64,
+    b: f64,
+    ends: [f64; 4],
+    p: &dyn Fn(f64) -> f64,
+    q: &dyn Fn(f64) -> f64,
+    w: &dyn Fn(f64) -> f64,
+) -> Vec<f64> {
+    let n = 24_usize;
+    let mut args = vec![a, b, ends[0], ends[1], ends[2], ends[3], n as f64];
+    let xs: Vec<f64> = (0..=n).map(|k| 0.5 * (a + b) + 0.5 * (b - a) * (PI * k as f64 / n as f64).cos()).collect();
+    for f in [p, q, w] {
+        args.extend(xs.iter().map(|&x| f(x)));
+    }
+    args
+}
+
+#[test]
+fn numeric_sturm_liouville_operators() {
+    use super::sl::sl_eigen;
+    use super::sl::sl_mode;
+    use super::sl::sl_weight;
+    let with = |m: f64, rest: &[f64]| {
+        let mut v = vec![m];
+        v.extend_from_slice(rest);
+        v
+    };
+    // p = w = e^x on [0, π] with Dirichlet ends: μ_m = m² + 1/4, y_m = e^{-x/2} sin(m x)/√(π/2).
+    let args = sl_arguments(0.0, PI, [1.0, 0.0, 1.0, 0.0], &f64::exp, &|_| 0.0, &f64::exp);
+    for m in 1..=6 {
+        let mu = sl_eigen(&with(f64::from(m), &args));
+        close(mu, f64::from(m * m) + 0.25, 1e-7, "eigenvalue of e^x");
+    }
+    for x in [0.4_f64, 1.3, 2.9] {
+        let mut mode_args = vec![3.0, x];
+        mode_args.extend_from_slice(&args);
+        close(sl_mode(&mode_args), (-x / 2.0).exp() * (3.0 * x).sin() / (PI / 2.0).sqrt(), 1e-8, "eigenfunction");
+        let mut weight_args = vec![x];
+        weight_args.extend_from_slice(&args);
+        close(sl_weight(&weight_args), x.exp(), 1e-12, "weight");
+    }
+    // Euler type: p = x, w = 1/x on [1, 2]: μ_m = (m π / ln 2)².
+    let args = sl_arguments(1.0, 2.0, [1.0, 0.0, 1.0, 0.0], &|x| x, &|_| 0.0, &|x| 1.0 / x);
+    for m in 1..=4 {
+        let want = (f64::from(m) * PI / 2.0_f64.ln()).powi(2);
+        close(sl_eigen(&with(f64::from(m), &args)) / want, 1.0, 1e-8, "Euler eigenvalue");
+    }
+    // Robin ends with a negative eigenvalue: y'(0) = 2 y(0), y'(1) + 3 y(1) = 0 (p0 = -2, q0 = 1, p1 = 3, q1 = 1).
+    let args = sl_arguments(0.0, 1.0, [5.0, 1.0, 3.0, 1.0], &|_| 1.0, &|_| 0.0, &|_| 1.0);
+    let kappa = super::numeric::sl_neg_root(&[5.0, 1.0, 3.0, 1.0, 1.0]);
+    assert!(kappa.is_finite());
+    close(sl_eigen(&with(1.0, &args)), -kappa * kappa, 1e-8, "negative Robin eigenvalue");
+    for m in 1..=4 {
+        let k = super::numeric::sl_root(&[5.0, 1.0, 3.0, 1.0, 1.0, f64::from(m)]);
+        close(sl_eigen(&with(f64::from(m + 1), &args)), k * k, 1e-7, "positive Robin eigenvalue");
+    }
+    // With a potential: p = w = 1, q = 3 + x on [0, 1], Dirichlet: compare with the Rayleigh quotient of the mode.
+    let q = |x: f64| 3.0 + x;
+    let args = sl_arguments(0.0, 1.0, [1.0, 0.0, 1.0, 0.0], &|_| 1.0, &q, &|_| 1.0);
+    let mu = sl_eigen(&with(1.0, &args));
+    let mode = |x: f64| {
+        let mut v = vec![1.0, x];
+        v.extend_from_slice(&args);
+        sl_mode(&v)
+    };
+    let h = 1e-4;
+    let hr = 1e-5;
+    let rayleigh = simpson(&|x| ((mode(x + hr) - mode(x - hr)) / (2.0 * hr)).powi(2) + q(x) * mode(x).powi(2), 2e-5, 1.0 - 2e-5);
+    close(simpson(&|x| mode(x).powi(2), 0.0, 1.0), 1.0, 1e-6, "normalisation");
+    close(rayleigh, mu, 2e-3, "Rayleigh quotient");
+    let residual = |x: f64| -(mode(x + h) - 2.0 * mode(x) + mode(x - h)) / (h * h) + q(x) * mode(x) - mu * mode(x);
+    close(residual(0.37), 0.0, 5e-3, "residual of the eigenfunction");
+}
+
+#[test]
+fn separation_of_variables_for_variable_coefficients() {
+    // u_t = (1 + x)² u_xx + (1 + x) u_x on [0, 1] (Dirichlet): s = ln(1 + x), modes sin(m π s / ln 2).
+    let eq = "diff(u(x, t), t) = (1 + x)^2*diff(diff(u(x, t), x), x) + (1 + x)*diff(u(x, t), x)";
+    let l = 2.0_f64.ln();
+    let data = "sin(pi*ln(1 + x)/ln(2)) + sin(3*pi*ln(1 + x)/ln(2))/2";
+    let s = any(&format!("pdsolve({eq}, u(x, t), list(u(0, t) = 0, u(1, t) = 0, u(x, 0) = {data}))"));
+    assert!(s.contains("sl_mode") && s.contains("sl_eigen"), "{s}");
+    let (x, t) = (0.45_f64, 0.01_f64);
+    let s_x = (1.0 + x).ln();
+    let exact = (-(PI / l).powi(2) * t).exp() * (PI * s_x / l).sin() + 0.5 * (-(3.0 * PI / l).powi(2) * t).exp() * (3.0 * PI * s_x / l).sin();
+    let text = expand_integrals(&expand_sums(&rhs(&s), 5), 160);
+    close(value(&text, &[("x", x), ("t", t)]), exact, 2e-4, &s);
+    // A potential and general data: u_t = u_xx + x u_x - u on [0, 1] with a Robin end, residual of the series.
+    let eq = "diff(u(x, t), t) = diff(diff(u(x, t), x), x) + x*diff(u(x, t), x) - u(x, t)";
+    let s = any(&format!("pdsolve({eq}, u(x, t), list(u(0, t) = 0, at(diff(u(x, t), x), x, 1) + 2*u(1, t) = 0, u(x, 0) = x*(1 - x)))"));
+    assert!(s.contains("sl_mode"), "{s}");
+    let text = expand_integrals(&expand_sums(&rhs(&s), 8), 120);
+    let u = |x: f64, t: f64| value(&text, &[("x", x), ("t", t)]);
+    let (x0, t0, h) = (0.4, 0.05, 1e-3);
+    let residual = (u(x0, t0 + h) - u(x0, t0 - h)) / (2.0 * h) - (u(x0 + h, t0) - 2.0 * u(x0, t0) + u(x0 - h, t0)) / (h * h) - x0 * (u(x0 + h, t0) - u(x0 - h, t0)) / (2.0 * h) + u(x0, t0);
+    close(residual, 0.0, 5e-3, "residual of the series");
+    close(u(1.0, t0) * 2.0 + (u(1.0 + h, t0) - u(1.0 - h, t0)) / (2.0 * h), 0.0, 2e-2, "Robin end");
+}
