@@ -36,9 +36,10 @@
 //!
 //! See `ARCHITECTURE.md` for the design.
 
+// -------------------------------------------------------------------------
+// LEVEL 1: CRITICAL ERRORS (Deny)
+// -------------------------------------------------------------------------
 #![deny(
-    // Rust Compiler Errors
-    dead_code,
     unreachable_code,
     improper_ctypes_definitions,
     future_incompatible,
@@ -48,37 +49,27 @@
     clippy::correctness,
     clippy::suspicious,
     clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
     clippy::missing_safety_doc,
     clippy::same_item_push,
     clippy::implicit_clone,
     clippy::all,
     clippy::pedantic,
+    missing_docs,
     clippy::nursery,
     clippy::single_call_fn,
-    missing_docs,
-    unsafe_code,
 )]
 // -------------------------------------------------------------------------
 // LEVEL 2: STYLE WARNINGS (Warn)
 // -------------------------------------------------------------------------
 #![warn(
+    dead_code,
     warnings,
-    // To avoid performance issues in hot paths
-    clippy::expect_used,
-    // To avoid simd optimization issues
-    clippy::indexing_slicing,
-    // To avoid simd optimization issues
-    clippy::arithmetic_side_effects,
-    // Precision loss is allowed here because we need to introduce bigint to all places otherwise --- that will require a lot of work and results in breaking change and loss of performance. So we will have to handle it later.
-    // DEBT: Handle precision loss when possible (add more suites of code)
-    // Possible Truncation warnned, due to CPU branch prediction and simd optimization programs, we will just warn this problems instead deny it.
-    clippy::cast_precision_loss,
-    clippy::cast_possible_wrap,
-    clippy::cast_possible_truncation,
+    unsafe_code,
     clippy::dbg_macro,
     clippy::todo,
-    // This is usually a sign of dead code --- but for development purposes, we will just warn it.
-    clippy::used_underscore_binding,
     clippy::unnecessary_safety_comment
 )]
 // -------------------------------------------------------------------------
@@ -86,28 +77,30 @@
 // -------------------------------------------------------------------------
 #![allow(
     clippy::restriction,
-    // `mul_add` is a slow libm call on targets without hardware FMA, and
-    // fused rounding changes results across targets.
-    clippy::suboptimal_flops,
-    // Fires on `&[a, b]` built from separately computed bindings.
-    clippy::tuple_array_conversions,
     clippy::inline_always,
     unused_doc_comments,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::empty_line_after_doc_comments
+)]
+// -------------------------------------------------------------------------
+// Scientific-computing compromises (documented downgrades)
+// -------------------------------------------------------------------------
+#![allow(
+    // `mul_add` is a slow libm call on targets without hardware FMA, and a
+    // fused rounding changes results between targets; the kernels keep the
+    // written evaluation order so results are reproducible everywhere.
+    clippy::suboptimal_flops,
+    // Counts and indices become `f64` throughout numerics (sample sizes,
+    // node positions, orders); they stay far below 2^53.
+    clippy::cast_precision_loss,
+    // Formulas follow the notation of the literature (`a, b, c, x, y, z`,
+    // `x0, x1`, `p, q, r, s`), which reads better than spelled-out names.
     clippy::many_single_char_names,
     clippy::similar_names,
-    clippy::redundant_else,
-    clippy::needless_continue,
-    clippy::empty_line_after_doc_comments,
-    clippy::empty_line_after_outer_attr,
-    clippy::manual_let_else,
-    // It is always reporting on normal math writings.
-    clippy::doc_markdown,
-    // We thinks do not collapsible if makes the code more extensible.
-    clippy::collapsible_if,
-    clippy::collapsible_match,
-    clippy::collapsible_else_if,
-    clippy::no_effect_underscore_binding,
-    clippy::must_use_candidate
+    // Fires on `[a, b]` built from separately computed bindings.
+    clippy::tuple_array_conversions
 )]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/logo.png"

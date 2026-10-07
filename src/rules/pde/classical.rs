@@ -109,8 +109,8 @@ pub(super) fn wave_half_line(
     let (g_plus, g_minus) = (extend(cx, displacement.value, plus), extend(cx, displacement.value, minus));
     let sum = add(cx.graph, &[g_plus, g_minus]);
     let mut u = mul(cx.graph, &[half, sum]);
-    if let Some(v) = velocity {
-        if !cx.is_zero(v.value) {
+    if let Some(v) = velocity
+        && !cx.is_zero(v.value) {
             // (1/2c) ∫_{x-ct}^{x+ct} h_ext(s) ds
             let defint = cx.graph.ops().lookup("defint")?;
             let (s, _) = dummy(cx, p, "s");
@@ -127,7 +127,6 @@ pub(super) fn wave_half_line(
             let part = div(cx, integral, two_c);
             u = add(cx.graph, &[u, part]);
         }
-    }
     Some(cx.simplify(u))
 }
 

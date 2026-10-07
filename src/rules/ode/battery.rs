@@ -402,12 +402,11 @@ mod tests {
             let (tx, rx) = std::sync::mpsc::channel();
             let owned = eq.to_string();
             // A case that does not finish is abandoned (its thread leaks).
-            std::thread::Builder::new()
+            let _ = std::thread::Builder::new()
                 .stack_size(64 << 20)
                 .spawn(move || {
                     let _ = tx.send(audit(&owned, order));
-                })
-                .map_or((), drop);
+                });
             let report = rx
                 .recv_timeout(std::time::Duration::from_secs(20))
                 .unwrap_or_else(|_| Report { status: "TIMEOUT".into(), text: String::new() });

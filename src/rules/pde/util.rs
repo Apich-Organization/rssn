@@ -1,6 +1,9 @@
 //! Small builders shared by the PDE solvers.
 
 use crate::graph::Cx;
+use crate::graph::SymbolId;
+use num_complex::Complex64;
+use std::collections::HashMap;
 use crate::graph::Env;
 use crate::graph::Facts;
 use crate::graph::Graph;
@@ -140,4 +143,44 @@ pub(super) fn sample(
 ) -> Option<f64> {
     let env = sample_env(graph, node, k);
     graph.eval(node, &env).filter(|v| v.is_finite())
+}
+
+/// The derivative `∂^α f` as unevaluated `diff` nodes.
+pub(super) fn jet(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    vars: &[NodeId],
+    index: &[u32],
+) -> Option<NodeId> {
+    let diff = cx.graph.ops().lookup("diff")?;
+    let mut out = f;
+    for (k, &order) in index.iter().enumerate() {
+        for _ in 0..order {
+            out = cx.graph.node(diff, &[out, *vars.get(k)?]);
+        }
+    }
+    Some(out)
+}
+
+/// The magnitude of `node` at the sample point `k`: the real value, or
+/// the complex one when the term contains complex numbers.
+pub(super) fn sample_abs(
+    graph: &Graph,
+    node: NodeId,
+    k: u32,
+) -> Option<f64> {
+    if let Some(v) = sample(graph, node, k) {
+        return Some(v.abs());
+    }
+    let symbols = graph.free_symbols(graph.find(node)).to_vec();
+    let mut bindings: HashMap<SymbolId, Complex64> = HashMap::new();
+    for &s in &symbols {
+        let value = if graph.assumption(s).has(Facts::INTEGER) {
+            f64::from(2 + (s.raw() + k) % 5)
+        } else {
+            0.31 + 0.17 * f64::from(k) + 0.13 * f64::from(s.raw() % 7)
+        };
+        bindings.insert(s, Complex64::new(value, 0.0));
+    }
+    graph.eval_complex(node, &bindings).filter(|v| v.re.is_finite() && v.im.is_finite()).map(Complex64::norm)
 }

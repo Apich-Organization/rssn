@@ -94,18 +94,53 @@ No call unwinds: a panic becomes `RSSN_STATUS_PANIC`. See `examples/c/smoke.c` f
 
 - **New operator or domain.** Write a `RuleSet` containing operators, rewrites, definitions and kernels. Add it with `Config::with`, or with `Session::with_rules` for a session. The soundness test checks your rewrites numerically.
 - **New integral forms.** Register extra antiderivative functions in the `rules::calculus::IntegralTable` attribute of the `integral` operator.
-- **New backend.** Implement `backend::Backend` and pass it to `Term::compile_with`.
+- **New backend.** Implement `backend::Backend` and pass it to `Term::compile_with`, or install it with `backend::set_default`.
+- **Faster special functions.** Attach a `backend::Lowering` attribute to an operator so compiled code calls it directly.
 
-## Planned: JIT and `rssn-advanced`
+## Compiled evaluation and the JIT
 
-Native code generation will live in a separate crate, `rssn-advanced`, so the core crate keeps a small, dependency-light build. That crate will provide:
+Every compiled evaluation goes through `backend::current()`: the reference
+`Interpreter` by default, replaced globally with `backend::set_default` or
+for one scope with `backend::with_backend`.
 
-- a Cranelift backend implementing `Backend`, a drop-in for `Interpreter`, with batch evaluation and SIMD;
-- an optional LLVM backend;
-- GPU kernels for `sim`;
-- arbitrary precision `Number`s.
+- **Tape IR** (`backend::tape`). Terms are lowered to an SSA tape that undoes
+  the canonical form (subtraction, division, integer powers by
+  square-and-multiply, `sqrt`/`cbrt`), folds constants, removes dead code and
+  is hashed structurally. The same tape runs over `f64`, dual numbers
+  (forward-mode gradients) and outward-rounded intervals (rigorous
+  enclosures, which also decide signs of constant classes in `graph::facts`).
+- **Cranelift JIT** (`backend::jit`, feature `jit`). The tape is compiled to
+  machine code with the signature `fn(inputs, params, out)`. Compiled
+  functions are cached by structural hash; `TieredBackend` interprets first
+  and switches to machine code compiled in the background. Operators can
+  declare a `backend::Lowering` (an intrinsic or an `extern "C"` function);
+  the special functions do, others go through a generic evaluation shim.
+  All `unsafe` code is confined to the `abi` module.
+- **Users.** Numeric quadrature, infinite sums, `odeint` (with a compiled
+  symbolic Jacobian for the stiff Radau IIA fallback), `nminimize` (compiled
+  objective and gradient), `chebyshev_approx`/`rational_approx`, the numeric
+  solver and `Term::compile` all go through the current backend, so turning
+  on the JIT speeds up every one of them.
 
-The core crate only defines the traits these plug into.
+## Lint policy
+
+`src/lib.rs` applies the strict configuration: `clippy::all`, `pedantic`,
+`nursery`, `unwrap_used`, `expect_used`, `indexing_slicing`,
+`arithmetic_side_effects`, `single_call_fn` and `missing_docs` are denied
+(the later `allow(clippy::restriction)` group keeps the individual
+restriction lints at their group level); `dead_code`, `unsafe_code` and
+`warnings` warn. A few lints are deliberately allowed for scientific code,
+each with its reason next to it in `lib.rs`:
+
+| allowed | why |
+|---|---|
+| `suboptimal_flops` | `mul_add` is a slow libm call without hardware FMA, and fused rounding makes results differ between targets |
+| `cast_precision_loss` | counts and indices become `f64` throughout numerics and stay far below 2^53 |
+| `many_single_char_names`, `similar_names` | formulas keep the notation of the literature |
+| `tuple_array_conversions` | false positives on arrays built from separately computed bindings |
+| `cast_possible_truncation`, `cast_sign_loss`, `cast_possible_wrap` | from the base configuration |
+
+Local `#[allow]`s are used sparingly and carry a comment.
 
 ## Testing
 

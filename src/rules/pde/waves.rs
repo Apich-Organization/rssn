@@ -20,6 +20,7 @@ use super::Problem;
 use super::dummy;
 use super::spectral::evolution_time;
 use super::util::call;
+use super::util::contains_op;
 use super::util::defint;
 use super::util::div;
 use super::util::fraction;
@@ -78,6 +79,8 @@ fn mean(
     xs: &[NodeId],
     h: NodeId,
     radius: NodeId,
+    damping: Option<(NodeId, NodeId, i64)>,
+    rate: Option<NodeId>,
 ) -> Option<NodeId> {
     let d = xs.len();
     let pi = pi(cx)?;
@@ -106,7 +109,13 @@ fn mean(
             let gap = sub(cx.graph, one, r2);
             sqrt(cx, gap)?
         };
-        let weight = div(cx, rho, root);
+        let mut weight = div(cx, rho, root);
+        if let Some((t, m, kind)) = damping {
+            // The kernel of the massive descent: cos (cosh) of m t √(1 - ρ²).
+            let argument = mul(cx.graph, &[m, t, root]);
+            let kernel = call(cx, if kind > 0 { "cos" } else { "cosh" }, &[argument])?;
+            weight = mul(cx.graph, &[weight, kernel]);
+        }
         (dirs, weight, rho, one, powi(cx.graph, two_pi, -1))
     };
     let mut shifted = h;
@@ -132,9 +141,68 @@ fn mean(
     let body = mul(cx.graph, &[shifted, measure]);
     let inner = defint(cx, body, phi, zero, two_pi)?;
     let inner = cx.simplify(inner);
+    // `∂_t (t M[h])` by differentiating under the integral (fixed limits).
+    let inner = match rate {
+        | Some(t) => {
+            let scaled = mul(cx.graph, &[t, inner]);
+            let derived = derivative(cx.graph, scaled, t)?;
+            let derived = cx.simplify(derived);
+            if contains_op(cx.graph, derived, "diff") {
+                return None;
+            }
+            derived
+        },
+        | None => inner,
+    };
     let outer = defint(cx, inner, outer_variable, zero, outer_hi)?;
     let value = mul(cx.graph, &[normalisation, outer]);
     Some(cx.simplify(value))
+}
+
+/// The velocity-data solution of `w_tt = c² Δw - m2 w` (`m = √|m2|`,
+/// `kind` the sign of `m2`) for data `h`: `base + ∫_0^1 integrand dτ`.
+struct Descent {
+    base: NodeId,
+    integral: Option<(NodeId, NodeId)>,
+}
+
+/// Two dimensions: `t M_w[h](ct)` with the weight `cos (cosh) (m t √(1-ρ²))`.
+/// Three dimensions: `t M[h](ct) ∓ m t² ∫_0^1 τ² M[h](c t τ) Z_1(m t √(1-τ²))/√(1-τ²) dτ`
+/// (`Z = J`, upper sign for a positive mass; `I`, lower sign otherwise).
+fn massive_descent(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    xs: &[NodeId],
+    h: NodeId,
+    (t, c, m, kind): (NodeId, NodeId, NodeId, i64),
+    rate: bool,
+) -> Option<Descent> {
+    let ct = mul(cx.graph, &[c, t]);
+    if xs.len() == 2 {
+        // `rate`: the time derivative of `t M_w[h]`, taken under the integral.
+        let weighted = mean(cx, p, xs, h, ct, Some((t, m, kind)), rate.then_some(t))?;
+        let base = if rate { weighted } else { mul(cx.graph, &[t, weighted]) };
+        return Some(Descent { base: cx.simplify(base), integral: None });
+    }
+    let plain = mean(cx, p, xs, h, ct, None, None)?;
+    let base = mul(cx.graph, &[t, plain]);
+    let base = cx.simplify(base);
+    let (tau, _) = dummy(cx, p, "tau");
+    let radius = mul(cx.graph, &[ct, tau]);
+    let inner = mean(cx, p, xs, h, radius, None, None)?;
+    let one = cx.graph.int(1);
+    let tau2 = powi(cx.graph, tau, 2);
+    let root = {
+        let gap = sub(cx.graph, one, tau2);
+        sqrt(cx, gap)?
+    };
+    let argument = mul(cx.graph, &[m, t, root]);
+    let bessel = call(cx, if kind > 0 { "besselj" } else { "besseli" }, &[one, argument])?;
+    let kernel = div(cx, bessel, root);
+    let t2 = powi(cx.graph, t, 2);
+    let body = mul(cx.graph, &[m, t2, tau2, inner, kernel]);
+    let body = if kind > 0 { neg(cx.graph, body) } else { body };
+    Some(Descent { base, integral: Some((body, tau)) })
 }
 
 /// Initial-value problems for the wave equation (with damping, mass and
@@ -213,8 +281,20 @@ pub(super) fn wave(
         let m = sub(cx.graph, mass, g2);
         cx.simplify(m)
     };
-    let massless = cx.is_zero(m2) && cx.is_zero(gamma);
-    if d > 1 && !massless {
+    let _massless = cx.is_zero(m2) && cx.is_zero(gamma);
+    // The sign of the reduced mass: `w_tt = c² Δw - m2 w` with Bessel `J`
+    // kernels for a positive one and `I` kernels for a negative one.
+    let kind = if cx.is_zero(m2) {
+        0
+    } else if cx.graph.facts(m2).has(Facts::POSITIVE) || sample(cx.graph, m2, 0).is_some_and(|v| v > 0.0) {
+        1
+    } else if cx.graph.facts(m2).has(Facts::NEGATIVE) || sample(cx.graph, m2, 0).is_some_and(|v| v < 0.0) {
+        -1
+    } else {
+        return None;
+    };
+    let reduced_massless = kind == 0;
+    if d > 1 && !reduced_massless && !p.homogeneous(cx.graph) {
         return None;
     }
     // Domains and conditions.
@@ -285,16 +365,6 @@ pub(super) fn wave(
         let (tau, _) = dummy(cx, p, "tau");
         let right = add(cx.graph, &[x, ct]);
         let left = sub(cx.graph, x, ct);
-        // Bessel kernels for the mass term.
-        let kind = if cx.is_zero(m2) {
-            0
-        } else if cx.graph.facts(m2).has(Facts::POSITIVE) || sample(cx.graph, m2, 0).is_some_and(|v| v > 0.0) {
-            1
-        } else if cx.graph.facts(m2).has(Facts::NEGATIVE) || sample(cx.graph, m2, 0).is_some_and(|v| v < 0.0) {
-            -1
-        } else {
-            return None;
-        };
         let m_abs = if kind < 0 { neg(cx.graph, m2) } else { m2 };
         let m = sqrt(cx, m_abs)?;
         let mu = div(cx, m, c);
@@ -355,24 +425,52 @@ pub(super) fn wave(
         }
     } else {
         // Kirchhoff / Poisson: ∂_t (t M[f](ct)) + t M[g](ct) + Duhamel.
-        if !cx.is_zero(f) {
-            let m = mean(cx, p, &xs, f_e, ct)?;
-            let tm = mul(cx.graph, &[t, m]);
-            let tm = cx.simplify(tm);
-            terms.push(derivative(cx.graph, tm, t)?);
-        }
-        if !cx.is_zero(g) {
-            let m = mean(cx, p, &xs, g_e, ct)?;
-            terms.push(mul(cx.graph, &[t, m]));
-        }
-        if !cx.is_zero(forcing) {
-            let (tau, _) = dummy(cx, p, "tau");
-            let elapsed = sub(cx.graph, t, tau);
-            let radius = mul(cx.graph, &[c, elapsed]);
-            let f_tau = cx.graph.substitute(forcing_e, t, tau);
-            let m = mean(cx, p, &xs, f_tau, radius)?;
-            let body = mul(cx.graph, &[elapsed, m]);
-            terms.push(defint(cx, body, tau, zero, t)?);
+        if reduced_massless {
+            if !cx.is_zero(f) {
+                let m = mean(cx, p, &xs, f_e, ct, None, None)?;
+                let tm = mul(cx.graph, &[t, m]);
+                let tm = cx.simplify(tm);
+                terms.push(derivative(cx.graph, tm, t)?);
+            }
+            if !cx.is_zero(g) {
+                let m = mean(cx, p, &xs, g_e, ct, None, None)?;
+                terms.push(mul(cx.graph, &[t, m]));
+            }
+            if !cx.is_zero(forcing) {
+                let (tau, _) = dummy(cx, p, "tau");
+                let elapsed = sub(cx.graph, t, tau);
+                let radius = mul(cx.graph, &[c, elapsed]);
+                let f_tau = cx.graph.substitute(forcing_e, t, tau);
+                let m = mean(cx, p, &xs, f_tau, radius, None, None)?;
+                let body = mul(cx.graph, &[elapsed, m]);
+                terms.push(defint(cx, body, tau, zero, t)?);
+            }
+        } else {
+            // Massive or damped (`w_tt = c² Δw - m2 w`): the Bessel kernel of
+            // the descent from the unit ball, `J_1` (`I_1` for a negative
+            // mass) in three dimensions and `cos` (`cosh`) in two.
+            let m_abs = if kind < 0 { neg(cx.graph, m2) } else { m2 };
+            let m = sqrt(cx, m_abs)?;
+            for (h, source, is_displacement) in [(f_e, f, true), (g_e, g, false)] {
+                if cx.is_zero(source) {
+                    continue;
+                }
+                let descent = massive_descent(cx, p, &xs, h, (t, c, m, kind), is_displacement)?;
+                if is_displacement {
+                    terms.push(if xs.len() == 2 { descent.base } else { derivative(cx.graph, descent.base, t)? });
+                    if let Some((integrand, tau)) = descent.integral {
+                        let rate = derivative(cx.graph, integrand, t)?;
+                        let (zero_tau, one_tau) = (cx.graph.int(0), cx.graph.int(1));
+                        terms.push(defint(cx, rate, tau, zero_tau, one_tau)?);
+                    }
+                } else {
+                    terms.push(descent.base);
+                    if let Some((integrand, tau)) = descent.integral {
+                        let (zero_tau, one_tau) = (cx.graph.int(0), cx.graph.int(1));
+                        terms.push(defint(cx, integrand, tau, zero_tau, one_tau)?);
+                    }
+                }
+            }
         }
     }
     let total = add(cx.graph, &terms);

@@ -883,8 +883,14 @@ fn inverse_trig(
         }
         let (sign, h) = match (graph.op(t), graph.children(t).to_vec().as_slice()) {
             | (op, _) if op == asin || op == acos || op == atan => (1, t),
-            | (op, &[c, h]) if op == core::MUL && graph.number_of(c).and_then(Number::to_i64).is_some_and(|v| v.abs() == 1) => {
-                (graph.number_of(c).and_then(Number::to_i64)?, h)
+            // `±1 * h` with the factors in either order.
+            | (op, &[a, b]) if op == core::MUL => {
+                let unit = |n: NodeId| graph.number_of(n).and_then(Number::to_i64).filter(|v| v.abs() == 1);
+                match (unit(a), unit(b)) {
+                    | (Some(sign), None) => (sign, b),
+                    | (None, Some(sign)) => (sign, a),
+                    | _ => return None,
+                }
             },
             | _ => return None,
         };
