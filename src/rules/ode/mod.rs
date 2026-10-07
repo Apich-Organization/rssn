@@ -29,6 +29,29 @@
 //! constant-coefficient linear systems; with initial conditions and a
 //! discontinuous forcing it falls back to the Laplace transform.
 //!
+//! Further classes: Riccati equations by a particular solution among
+//! simple shapes (`k x^n`, `k e^(±x)`, `k sin x`, …) or, failing that,
+//! through the linear second-order equation for `u` (`y = -u'/(q2 u)`,
+//! written with one constant); Bernoulli with rational exponents; exact
+//! equations with integrating factors `μ(x)`, `μ(y)`, `μ(x + y)`,
+//! `μ(x y)`; equations that are nonlinear in `y'` (branches of `y'`;
+//! Clairaut `y = C x + g(C)`; d'Alembert/Lagrange and `x`-solved equations
+//! as parametric answers `list(x = X(p, C1), y(x) = Y(p, C1))` with
+//! `p = y'`); second-order linear equations by a polynomial or
+//! exponential solution and reduction of order (the second solution is
+//! an inert `integral(…)` when it has no closed form) or, without one, by
+//! the normal form `y = u exp(-½ ∫ a₁/a₂)`.
+//!
+//! Systems `dsolve(list(eqs), list(funcs))`: constant linear systems
+//! (with forcing) by elimination; higher-order systems by reduction to
+//! first order; triangular and decoupled systems one equation at a time;
+//! `X' = a(t) M X` through `s = ∫ a`; two autonomous equations through
+//! `dy/dx = g/f` (the answer is the first integral `Φ(x(t), y(t)) = 0`
+//! with a constant: the energy of a Hamiltonian system, the implicit
+//! integral of a Lotka–Volterra or SIR system); polynomial first integrals
+//! up to degree three for autonomous polynomial systems in three or four
+//! unknowns (`list(x(t)^2 + y(t)^2 - C1 = 0, …)`).
+//!
 //! | operator | value |
 //! |---|---|
 //! | `ode_series(eq, y(x), x0, n)` | the power-series solution about `x0` to order `n` |
@@ -78,7 +101,11 @@ use super::solve::solve;
 use super::solve::solve_for;
 use super::solve::solve_linear;
 
+mod classes;
 mod lie;
+mod nonlinear;
+#[cfg(test)]
+mod battery;
 mod reduce;
 mod series_method;
 mod systems;
@@ -235,6 +262,9 @@ pub(super) struct Problem {
     expr: NodeId,
     /// Next integration constant to hand out.
     constants: usize,
+    /// The answer is correct only on part of its domain, so the spot check
+    /// of [`verified`] is skipped.
+    trusted: bool,
 }
 
 impl Problem {
@@ -310,7 +340,7 @@ fn parse(
     if occurs_function(graph, expr, unknown) {
         return None;
     }
-    Some(Problem { x, x_symbol, y_of_x: unknown, stand, expr, constants: 0 })
+    Some(Problem { x, x_symbol, y_of_x: unknown, stand, expr, constants: 0, trusted: false })
 }
 
 fn occurs(
@@ -371,20 +401,46 @@ fn coefficients_in(
     Some(poly.coefficients_in(gv).iter().map(|c| to_term(graph, &gens, c)).collect())
 }
 
-/// First-order equations `y' = f(x, y)`.
+/// First-order equations `F(x, y, y') = 0`.
 fn first_order(
     cx: &mut Cx<'_>,
     problem: &mut Problem,
+    depth: u32,
 ) -> Option<NodeId> {
-    let (y, dy) = (*problem.stand.first()?, *problem.stand.get(1)?);
-    let x = problem.x;
+    let dy = *problem.stand.get(1)?;
     // Exact equations are recognised on the original form M + N y' = 0.
     if let Some(found) = exact(cx, problem) {
         return Some(found);
     }
-    let rhs = *solve_for(cx.graph, problem.expr, dy, 0)?.first()?;
-    let rhs = cx.simplify(rhs);
+    let roots = solve_for(cx.graph, problem.expr, dy, 0);
+    let several = roots.as_ref().is_none_or(|r| r.len() > 1);
+    if let Some(found) = classes::implicit_first_order(cx, problem, depth, true) {
+        return Some(found);
+    }
+    // Each branch of `y'` in turn.
+    for rhs in roots.unwrap_or_default() {
+        let rhs = cx.simplify(rhs);
+        let saved = problem.constants;
+        if let Some(found) = first_order_explicit(cx, problem, rhs, depth) {
+            return Some(found);
+        }
+        problem.constants = saved;
+    }
+    if several {
+        return classes::implicit_first_order(cx, problem, depth, false);
+    }
+    None
+}
 
+/// First-order equations `y' = f(x, y)`.
+fn first_order_explicit(
+    cx: &mut Cx<'_>,
+    problem: &mut Problem,
+    rhs: NodeId,
+    depth: u32,
+) -> Option<NodeId> {
+    let (y, _) = (*problem.stand.first()?, *problem.stand.get(1)?);
+    let x = problem.x;
     // Linear: y' = q(x) - p(x) y.
     if let Some(coefficients) = coefficients_in(cx.graph, rhs, y) {
         if coefficients.len() <= 2 {
@@ -420,7 +476,14 @@ fn first_order(
             if let Some(found) = riccati(cx, problem, rhs, &coefficients) {
                 return Some(found);
             }
+            if let Some(found) = classes::riccati_linearised(cx, problem, &coefficients, depth) {
+                return Some(found);
+            }
         }
+    }
+
+    if let Some(found) = classes::bernoulli_rational(cx, problem, rhs) {
+        return Some(found);
     }
 
     // Separable: f = g(x) h(y).
@@ -429,6 +492,13 @@ fn first_order(
     }
     if let Some(found) = homogeneous(cx, problem, rhs) {
         return Some(found);
+    }
+    // Integrating factors of M + N y' = 0.
+    let dy = *problem.stand.get(1)?;
+    if let Some(&[m, n]) = coefficients_in(cx.graph, problem.expr, dy).as_deref() {
+        if let Some(found) = classes::integrating_factor(cx, problem, m, n) {
+            return Some(found);
+        }
     }
     // Lie point symmetries cover what the classical recipes miss.
     lie::first_order(cx, problem, rhs)
@@ -454,8 +524,18 @@ fn implicit(
     let y = *problem.stand.first()?;
     let relation = cx.simplify(relation);
     if let Some(solutions) = solve_for(cx.graph, relation, y, 0) {
-        if let Some(&first) = solutions.first() {
-            return Some(explicit(cx, problem, first));
+        // The first branch that really solves the equation (a branch of a
+        // multivalued inverse may only hold on part of the domain).
+        let lambert: Vec<OpId> = ["lambertw", "lambertw_m1"].iter().filter_map(|n| cx.graph.ops().lookup(n)).collect();
+        for solution in solutions {
+            // A Lambert-W branch says less than the relation itself.
+            if lambert.iter().any(|&op| occurs_op(cx.graph, solution, op)) {
+                continue;
+            }
+            let answer = explicit(cx, problem, solution);
+            if verified(cx, problem, answer) {
+                return Some(answer);
+            }
         }
     }
     let in_function = cx.graph.substitute(relation, y, problem.y_of_x);
@@ -484,14 +564,45 @@ fn separable(
             | _ => factors.push(factor),
         }
     }
-    let (mut in_x, mut in_y) = (Vec::new(), Vec::new());
-    for factor in factors {
-        match (problem.depends_on_x(cx.graph, factor), problem.depends_on_y(cx.graph, factor)) {
-            | (true, true) => return None,
-            | (_, true) => in_y.push(factor),
-            | _ => in_x.push(factor),
+    // (a b)^k = a^k b^k for integer k: the factors of a quotient.
+    let mut flat = Vec::with_capacity(factors.len());
+    let mut stack = factors;
+    stack.reverse();
+    while let Some(factor) = stack.pop() {
+        let children = cx.graph.children(factor).to_vec();
+        match (cx.graph.op(factor), children.as_slice()) {
+            | (op, &[base, e]) if op == core::POW && cx.graph.op(base) == core::MUL && cx.graph.number_of(e).is_some_and(Number::is_integer) => {
+                for part in cx.graph.children(base).to_vec().into_iter().rev() {
+                    stack.push(cx.graph.node(core::POW, &[part, e]));
+                }
+            },
+            | (op, _) if op == core::MUL => {
+                for part in children.into_iter().rev() {
+                    stack.push(part);
+                }
+            },
+            | _ => flat.push(factor),
         }
     }
+    let classify = |cx: &mut Cx<'_>, problem: &Problem, factors: &[NodeId]| -> Option<(Vec<NodeId>, Vec<NodeId>)> {
+        let (mut in_x, mut in_y) = (Vec::new(), Vec::new());
+        for &factor in factors {
+            match (problem.depends_on_x(cx.graph, factor), problem.depends_on_y(cx.graph, factor)) {
+                | (true, true) => return None,
+                | (_, true) => in_y.push(factor),
+                | _ => in_x.push(factor),
+            }
+        }
+        Some((in_x, in_y))
+    };
+    // A quotient that was expanded may still separate after factoring.
+    let (in_x, in_y) = match classify(cx, problem, &flat) {
+        | Some(split) => split,
+        | None => {
+            let factors = factor_quotient(cx, rhs)?;
+            classify(cx, problem, &factors)?
+        },
+    };
     if in_y.is_empty() {
         return None;
     }
@@ -506,6 +617,34 @@ fn separable(
     let right = add(cx.graph, &[right, c]);
     let relation = sub(cx.graph, left, right);
     implicit(cx, problem, relation)
+}
+
+/// The irreducible factors of a rational function over `Q`, as powers
+/// (numerator factors with positive and denominator factors with negative
+/// exponents).
+fn factor_quotient(
+    cx: &mut Cx<'_>,
+    rhs: NodeId,
+) -> Option<Vec<NodeId>> {
+    let mut gens = Gens::default();
+    let fraction = crate::rules::poly::ratio(cx.graph, &mut gens, rhs, Limits::default())?;
+    let mut out = Vec::new();
+    for (poly, sign) in [(fraction.numer, 1_i64), (fraction.denom, -1)] {
+        let support = poly.support();
+        let (unit, pieces) = if support.is_empty() {
+            (poly.as_constant()?, Vec::new())
+        } else {
+            crate::rules::poly::multifactor::factor(&poly, &support)?
+        };
+        let unit = cx.graph.num(unit);
+        out.push(if sign < 0 { inv(cx.graph, unit) } else { unit });
+        for (piece, multiplicity) in pieces {
+            let base = to_term(cx.graph, &gens, &piece);
+            let e = cx.graph.int(sign * i64::from(multiplicity));
+            out.push(cx.graph.node(core::POW, &[base, e]));
+        }
+    }
+    Some(out)
 }
 
 fn bernoulli(
@@ -591,6 +730,7 @@ fn riccati(
             break;
         }
     }
+    let particular = particular.or_else(|| riccati_function_shapes(cx, rhs, y, x));
     let y1 = particular?;
     // y = y1 + 1/v with v' = -(q1 + 2 q2 y1) v - q2.
     let twice = mul(cx.graph, &[two, q2, y1]);
@@ -610,6 +750,47 @@ fn riccati(
     let correction = inv(cx.graph, v);
     let solution = add(cx.graph, &[y1, correction]);
     Some(explicit(cx, problem, solution))
+}
+
+/// A particular solution `k f(x)` of a Riccati equation among `exp(±x)`,
+/// `sin x`, `cos x`, `tan x`, `1/x^2`, `x^3`, `ln x` with a small rational
+/// `k`, checked by substitution.
+fn riccati_function_shapes(
+    cx: &mut Cx<'_>,
+    rhs: NodeId,
+    y: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    let minus_x = neg(cx.graph, x);
+    let shapes = [
+        call(cx.graph, "exp", x)?,
+        call(cx.graph, "exp", minus_x)?,
+        call(cx.graph, "sin", x)?,
+        call(cx.graph, "cos", x)?,
+        call(cx.graph, "tan", x)?,
+        call(cx.graph, "ln", x)?,
+        {
+            let m2 = cx.graph.int(-2);
+            cx.graph.node(core::POW, &[x, m2])
+        },
+        {
+            let three = cx.graph.int(3);
+            cx.graph.node(core::POW, &[x, three])
+        },
+    ];
+    for shape in shapes {
+        for (num, den) in [(1, 1), (-1, 1), (2, 1), (-2, 1), (1, 2), (-1, 2), (3, 1), (-3, 1), (1, 3), (-1, 3)] {
+            let k = cx.graph.num(Number::fraction(num, den)?);
+            let guess = mul(cx.graph, &[k, shape]);
+            let slope = derivative(cx.graph, guess, x)?;
+            let value = cx.graph.substitute(rhs, y, guess);
+            let residual = sub(cx.graph, slope, value);
+            if cx.is_zero(residual) {
+                return Some(cx.simplify(guess));
+            }
+        }
+    }
+    None
 }
 
 /// The numerator of `term` written as a single fraction.
@@ -1122,6 +1303,9 @@ fn verified(
     answer: NodeId,
 ) -> bool {
     let graph = &mut *cx.graph;
+    if problem.trusted {
+        return true;
+    }
     let &[lhs, solution] = graph.children(answer) else {
         return true;
     };
@@ -1336,7 +1520,7 @@ fn dispatch(
         found
     };
     if problem.order() == 1 {
-        if let Some(found) = attempt(cx, problem, |cx, p, _| first_order(cx, p)) {
+        if let Some(found) = attempt(cx, problem, first_order) {
             return Some(found);
         }
     }
@@ -1378,7 +1562,9 @@ impl Kernel for Dsolve {
             | _ => return Outcome::Pass,
         };
         if cx.graph.op(unknown) == core::LIST {
-            return systems::solve_system(cx, equation, unknown).map_or(Outcome::Pass, Outcome::Pinned);
+            return systems::solve_system(cx, equation, unknown)
+                .or_else(|| nonlinear::solve(cx, equation, unknown, 0))
+                .map_or(Outcome::Pass, Outcome::Pinned);
         }
         let Some((problem, answer)) = solve_equation(cx, equation, unknown, 0) else {
             // Discontinuous forcing: the Laplace transform.
@@ -1927,6 +2113,74 @@ mod tests {
             let (text, reduced) = reduce_with(&[ode()], src, &[]);
             assert!(!reduced, "{src} unexpectedly gave {text}");
         }
+    }
+
+    #[test]
+    fn more_first_order_classes() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        // Clairaut: y = C x + g(C).
+        assert_eq!(run("dsolve(y(x) = x*diff(y(x), x) + diff(y(x), x)^2, y(x))"), "y(x) = C1^2 + C1*x");
+        assert_eq!(run("dsolve(y(x) = x*diff(y(x), x) - diff(y(x), x)^3, y(x))"), "y(x) = C1*x - C1^3");
+        // d'Alembert and x-solved equations: parametric answers in p = y'.
+        let lagrange = run("dsolve(y(x) = 2*x*diff(y(x), x) + diff(y(x), x)^2, y(x))");
+        assert!(lagrange.starts_with("list(x = ") && lagrange.contains("p^3") && lagrange.contains("C1"), "{lagrange}");
+        let solved_for_x = run("dsolve(x = diff(y(x), x)^3 + diff(y(x), x), y(x))");
+        assert_eq!(solved_for_x, "list(x = p^3 + p, y(x) = 3/4*p^4 + 1/2*p^2 + C1)");
+        // Integrating factors mu(x), mu(y) and e^x.
+        check("(x^2 + y(x)^2 + x) + x*y(x)*diff(y(x), x) = 0", 1);
+        check("y(x)^2 + (3*x*y(x) - 1)*diff(y(x), x) = 0", 1);
+        check("y(x)*(x + y(x)) + (x + 2*y(x) - 1)*diff(y(x), x) = 0", 1);
+        // Riccati: a particular solution exp(x), and through the linear
+        // second-order equation (Airy functions) with one constant.
+        assert_eq!(
+            run("dsolve(diff(y(x), x) = y(x)^2 - 2*y(x)*exp(x) + exp(2*x) + exp(x), y(x))"),
+            "y(x) = exp(x) + 1/(C1 - x)"
+        );
+        let airy = run("dsolve(diff(y(x), x) = y(x)^2 + x, y(x))");
+        assert!(airy.contains("airyai(-x)") && airy.contains("C1") && !airy.contains("C2"), "{airy}");
+        // Bernoulli with a square root.
+        let bernoulli = run("dsolve(diff(y(x), x) + y(x) = x*sqrt(y(x)), y(x))");
+        assert_eq!(bernoulli, "y(x) = (x*exp(1/2*x) + C1 - 2*exp(1/2*x))^2*exp(-x)");
+        // First-order equations quadratic in y' that factor.
+        assert_eq!(run("dsolve(diff(y(x), x)^2 - (x + y(x))*diff(y(x), x) + x*y(x) = 0, y(x))"), "y(x) = 1/2*x^2 + C1");
+    }
+
+    #[test]
+    fn second_order_normal_form_and_reduction() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        // y = u/x removes the first-derivative term: spherical Bessel.
+        assert_eq!(
+            run("dsolve(x*diff(diff(y(x), x), x) + 2*diff(y(x), x) + x*y(x) = 0, y(x))"),
+            "y(x) = C1*cos(x)/x + C2*sin(x)/x"
+        );
+        // A polynomial solution and a quadrature for the second (Hermite).
+        let hermite = run("dsolve(diff(diff(y(x), x), x) - x*diff(y(x), x) + y(x) = 0, y(x))");
+        assert!(hermite.contains("C1*x") && hermite.contains("integral(exp(1/2*x^2)/x^2, x)"), "{hermite}");
+    }
+
+    #[test]
+    fn nonlinear_and_reduced_systems() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        // Triangular: the first equation is solved alone.
+        let triangular = run("dsolve(list(diff(x(t), t) = -x(t)^2, diff(y(t), t) = x(t)*y(t)), list(x(t), y(t)))");
+        assert!(triangular.contains("x(t) = 1/(C1 + t)") && triangular.contains("C2"), "{triangular}");
+        // Higher order by reduction to first order.
+        let reduced = run("dsolve(list(diff(diff(x(t), t), t) = -x(t) + y(t), diff(diff(y(t), t), t) = x(t) - y(t)), list(x(t), y(t)))");
+        assert!(reduced.contains("C4") && reduced.contains("cos(2^(1/2)*t)"), "{reduced}");
+        // Variable coefficients a(t) M: constant system in s = integral of a.
+        let scaled = run("dsolve(list(diff(x(t), t) = t*y(t), diff(y(t), t) = t*x(t)), list(x(t), y(t)))");
+        assert!(scaled.contains("exp(1/2*t^2)") && scaled.contains("exp(-1/2*t^2)"), "{scaled}");
+        // Two autonomous equations: the first integral (energy).
+        let energy = run("dsolve(list(diff(x(t), t) = y(t), diff(y(t), t) = -sin(x(t))), list(x(t), y(t)))");
+        assert!(energy.contains("cos(x(t))") && energy.contains("C1"), "{energy}");
+        let predator_prey = run("dsolve(list(diff(x(t), t) = x(t)*(2 - y(t)), diff(y(t), t) = y(t)*(x(t) - 3)), list(x(t), y(t)))");
+        assert!(predator_prey.contains("ln(x(t))") && predator_prey.contains("ln("), "{predator_prey}");
+        // Polynomial first integrals of a three-dimensional system.
+        let rigid = run("dsolve(list(diff(x(t), t) = y(t)*z(t), diff(y(t), t) = -x(t)*z(t), diff(z(t), t) = -x(t)*y(t)/2), list(x(t), y(t), z(t)))");
+        assert!(rigid.contains("x(t)^2 + y(t)^2 - C1 = 0") && rigid.contains("C2"), "{rigid}");
     }
 
     #[test]

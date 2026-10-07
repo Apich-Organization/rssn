@@ -275,13 +275,38 @@ pub(super) fn multi_generator(
 ) -> Option<Vec<NodeId>> {
     let symbol = graph.symbol_of(x)?;
     let depends = |graph: &Graph, n: NodeId| graph.depends_on(graph.find(n), symbol);
-    for method in [absolute_values, trigonometric, lambert, self_power, logarithm_sum, logarithmic, radicals] {
+    for method in [
+        absolute_values,
+        trigonometric,
+        hyperbolic,
+        lambert,
+        self_power,
+        logarithm_sum,
+        logarithmic,
+        radicals,
+        radicals_general,
+        inverse_trig,
+        log_both_sides,
+        substitution,
+    ] {
         if let Some(found) = method(graph, term, x, depth) {
             return Some(found);
         }
     }
     let _ = depends;
     None
+}
+
+/// Hyperbolic functions written through `exp`.
+fn hyperbolic(
+    graph: &mut Graph,
+    term: NodeId,
+    x: NodeId,
+    depth: usize,
+) -> Option<Vec<NodeId>> {
+    let symbol = graph.symbol_of(x)?;
+    let rewritten = super::normalize::hyperbolic_to_exponentials(graph, term, symbol)?;
+    solve_for(graph, rewritten, x, depth + 1)
 }
 
 /// `|g|` replaced by `g` and by `-g`.
@@ -306,9 +331,24 @@ fn absolute_values(
     Some(out)
 }
 
+/// Linear trigonometric equations (see the trig module), else the
+/// Weierstrass substitution for equations in sin, cos, tan of one
+/// argument of any shape.
+fn trigonometric(
+    graph: &mut Graph,
+    term: NodeId,
+    x: NodeId,
+    depth: usize,
+) -> Option<Vec<NodeId>> {
+    if let Some(found) = super::trig::solve(graph, term, x, super::general_mode()) {
+        return Some(found);
+    }
+    weierstrass(graph, term, x, depth)
+}
+
 /// Weierstrass substitution for equations in sin, cos, tan of one
 /// argument (expanded first).
-fn trigonometric(
+fn weierstrass(
     graph: &mut Graph,
     term: NodeId,
     x: NodeId,
@@ -376,6 +416,7 @@ fn lambert(
 ) -> Option<Vec<NodeId>> {
     let (exp, w0, wm1) = (graph.ops().lookup("exp")?, graph.ops().lookup("lambertw")?, graph.ops().lookup("lambertw_m1")?);
     let symbol = graph.symbol_of(x)?;
+    let term = super::normalize::powers_to_exp(graph, term, symbol).unwrap_or(term);
     let exps = nodes_with(graph, term, |g, n| g.op(n) == exp && g.depends_on(g.find(n), symbol));
     let &[e_node] = exps.as_slice() else {
         return None;
@@ -453,9 +494,70 @@ fn lambert(
         let inv_d = reciprocal(graph, d);
         branches(graph, z, w0, wm1).into_iter().map(|w| product(graph, &[w, inv_d])).collect()
     } else {
-        return None;
+        power_exponential(graph, &pattern, &coefficient, d, e_shift, w0, wm1, exp)?
     };
     Some(candidates)
+}
+
+/// `α + β x^m e^{dx+e} = 0` and `α x^m + γ e^{dx+e} = 0` for an integer
+/// `m >= 2`: taking `m`-th roots leaves `x e^{s x} = c`, so `x = W(s c)/s`.
+#[allow(clippy::too_many_arguments)]
+fn power_exponential(
+    graph: &mut Graph,
+    pattern: &[(u32, u32)],
+    coefficient: &dyn Fn(&mut Graph, u32, u32) -> NodeId,
+    d: NodeId,
+    e_shift: NodeId,
+    w0: crate::graph::OpId,
+    wm1: crate::graph::OpId,
+    exp: crate::graph::OpId,
+) -> Option<Vec<NodeId>> {
+    let m = pattern.iter().map(|p| p.0).max()?;
+    if m < 2 {
+        return None;
+    }
+    let only = |set: &[(u32, u32)]| pattern.iter().all(|p| set.contains(p));
+    let a_form = only(&[(0, 0), (m, 1)]) && pattern.contains(&(m, 1));
+    let b_form = only(&[(m, 0), (0, 1)]) && pattern.contains(&(m, 0)) && pattern.contains(&(0, 1));
+    if !a_form && !b_form {
+        return None;
+    }
+    let m_i = i64::from(m);
+    let minus_one = graph.int(-1);
+    let k = if a_form {
+        let (alpha, beta) = (coefficient(graph, 0, 0), coefficient(graph, m, 1));
+        let inv = reciprocal(graph, beta);
+        product(graph, &[minus_one, alpha, inv])
+    } else {
+        let (alpha, gamma) = (coefficient(graph, m, 0), coefficient(graph, 0, 1));
+        let inv = reciprocal(graph, alpha);
+        product(graph, &[minus_one, gamma, inv])
+    };
+    let inv_m = graph.num(Number::fraction(1, m_i)?);
+    let d_over_m = product(graph, &[d, inv_m]);
+    let e_over_m = product(graph, &[e_shift, inv_m]);
+    let (s, shift) = if a_form {
+        let neg = product(graph, &[minus_one, e_over_m]);
+        (d_over_m, graph.node(exp, &[neg]))
+    } else {
+        (product(graph, &[minus_one, d_over_m]), graph.node(exp, &[e_over_m]))
+    };
+    let root = if m % 2 == 1 {
+        vec![super::symbolic::real_root(graph, k, m_i)?]
+    } else {
+        let magnitude = graph.node(core::POW, &[k, inv_m]);
+        vec![magnitude, product(graph, &[minus_one, magnitude])]
+    };
+    let mut out = Vec::new();
+    let inverse_s = reciprocal(graph, s);
+    for r in root {
+        let c = product(graph, &[r, shift]);
+        let z = product(graph, &[s, c]);
+        for w in branches(graph, z, w0, wm1) {
+            out.push(product(graph, &[w, inverse_s]));
+        }
+    }
+    Some(out)
 }
 
 /// `W₀(z)`, and `W₋₁(z)` when `z` is known to lie in `(-1/e, 0)`.
@@ -466,7 +568,9 @@ fn branches(
     wm1: crate::graph::OpId,
 ) -> Vec<NodeId> {
     let mut out = vec![graph.node(w0, &[z])];
-    if value(graph, z).is_some_and(|v| v < 0.0 && v > -(-1.0_f64).exp()) {
+    // Symbolic arguments: the second branch is real only on part of the
+    // parameter space, where the final check keeps it.
+    if value(graph, z).is_none_or(|v| v < 0.0 && v > -(-1.0_f64).exp()) {
         out.push(graph.node(wm1, &[z]));
     }
     out
@@ -694,63 +798,325 @@ fn value_of_nonnegative(
     value(graph, node).is_none_or(|v| v >= 0.0)
 }
 
-/// Systems that are not polynomial: eliminate an unknown that one
-/// equation determines, recurse, and back-substitute.
-pub(super) fn eliminate(
+/// Radicals of any index: each radical `r = b^(p/q)` is a generator with the
+/// relation `r^q = b^p`, and the resultant with respect to `r` removes it
+/// from the numerator (one radical at a time). Square roots alone are left
+/// to [`radicals`].
+fn radicals_general(
     graph: &mut Graph,
-    equations: &[NodeId],
-    unknowns: &[NodeId],
+    term: NodeId,
+    x: NodeId,
     depth: usize,
-) -> Option<Vec<Vec<NodeId>>> {
-    if depth > 4 {
+) -> Option<Vec<NodeId>> {
+    let symbol = graph.symbol_of(x)?;
+    let roots = nodes_with(graph, term, |g, n| {
+        g.op(n) == core::POW
+            && g.children(n).get(1).and_then(|&e| g.number_of(e)).is_some_and(|e| !e.is_integer())
+            && g.depends_on(g.find(n), symbol)
+    });
+    if roots.is_empty() || roots.len() > 3 {
         return None;
     }
-    if unknowns.is_empty() {
-        return Some(vec![Vec::new()]);
+    let limits = Limits::default();
+    let mut gens = Gens::default();
+    gens.index(graph, x);
+    let mut radicals: Vec<(u32, i64, i64, NodeId)> = Vec::new();
+    let mut max_index = 0;
+    for &r in &roots {
+        let &[base, e] = graph.children(r) else {
+            return None;
+        };
+        let e = graph.number_of(e)?.to_rational()?;
+        let (p, q) = (i64::try_from(e.numer().clone()).ok()?, i64::try_from(e.denom().clone()).ok()?);
+        max_index = max_index.max(q);
+        radicals.push((gens.index(graph, r), p, q, base));
     }
-    let exprs: Vec<NodeId> = equations.iter().map(|&e| super::as_expression(graph, e)).collect();
-    for (i, &expr) in exprs.iter().enumerate() {
-        for (j, &u) in unknowns.iter().enumerate() {
-            let Some(values) = solve_for(graph, expr, u, 0) else {
-                continue;
-            };
-            if values.is_empty() {
-                continue;
+    if max_index < 3 {
+        return None;
+    }
+    let fraction = crate::rules::poly::ratio(graph, &mut gens, term, limits)?;
+    let mut numer = fraction.numer;
+    for &(g, p, q, base) in &radicals {
+        let base = crate::rules::poly::best(graph, base)?;
+        let base_poly = crate::rules::poly::repr::from_term(graph, &mut gens, base, limits)?;
+        if radicals.iter().any(|&(h, ..)| base_poly.degree_in(h) > 0) {
+            return None;
+        }
+        let power = base_poly.pow(u32::try_from(p.unsigned_abs()).ok()?, limits.terms)?;
+        let g_q = Poly::generator(g).pow(u32::try_from(q).ok()?, limits.terms)?;
+        let relation = if p > 0 {
+            g_q.sub(&power)
+        } else {
+            g_q.mul(&power, limits.terms)?.sub(&Poly::constant(Number::from(1)))
+        };
+        if numer.degree_in(g) == 0 {
+            continue;
+        }
+        numer = super::elim::resultant(&numer, &relation, g)?;
+    }
+    if numer.is_zero() {
+        return None;
+    }
+    let reduced = crate::rules::poly::repr::to_term(graph, &gens, &numer);
+    solve_for(graph, reduced, x, depth + 1)
+}
+
+/// Equations `±asin/acos/atan(g1) ± asin/acos/atan(g2) + c = 0`: the
+/// tangent of both sides gives an algebraic equation (the final check
+/// removes what the tangent introduced).
+fn inverse_trig(
+    graph: &mut Graph,
+    term: NodeId,
+    x: NodeId,
+    depth: usize,
+) -> Option<Vec<NodeId>> {
+    let (asin, acos, atan, tan) =
+        (graph.ops().lookup("asin")?, graph.ops().lookup("acos")?, graph.ops().lookup("atan")?, graph.ops().lookup("tan")?);
+    let symbol = graph.symbol_of(x)?;
+    let summands = if graph.op(term) == core::ADD { graph.children(term).to_vec() } else { vec![term] };
+    let mut inverse: Vec<(i64, NodeId)> = Vec::new();
+    let mut constants = Vec::new();
+    for t in summands {
+        if !graph.depends_on(graph.find(t), symbol) {
+            constants.push(t);
+            continue;
+        }
+        let (sign, h) = match (graph.op(t), graph.children(t).to_vec().as_slice()) {
+            | (op, _) if op == asin || op == acos || op == atan => (1, t),
+            | (op, &[c, h]) if op == core::MUL && graph.number_of(c).and_then(Number::to_i64).is_some_and(|v| v.abs() == 1) => {
+                (graph.number_of(c).and_then(Number::to_i64)?, h)
+            },
+            | _ => return None,
+        };
+        let hop = graph.op(h);
+        if hop != asin && hop != acos && hop != atan {
+            return None;
+        }
+        inverse.push((sign, h));
+    }
+    let [(s1, h1), (s2, h2)] = inverse.as_slice() else {
+        return None;
+    };
+    let tangent = |graph: &mut Graph, h: NodeId| -> Option<NodeId> {
+        let g = *graph.children(h).first()?;
+        let (one, minus_one, two) = (graph.int(1), graph.int(-1), graph.int(2));
+        let half = graph.num(Number::fraction(1, 2)?);
+        let g_sq = graph.node(core::POW, &[g, two]);
+        let neg = graph.node(core::MUL, &[minus_one, g_sq]);
+        let complement = graph.node(core::ADD, &[one, neg]);
+        Some(if graph.op(h) == asin {
+            let root = graph.node(core::POW, &[complement, half]);
+            let inv_root = reciprocal(graph, root);
+            product(graph, &[g, inv_root])
+        } else if graph.op(h) == acos {
+            let root = graph.node(core::POW, &[complement, half]);
+            let inv = reciprocal(graph, g);
+            product(graph, &[root, inv])
+        } else {
+            g
+        })
+    };
+    let (t1, t2) = (tangent(graph, *h1)?, tangent(graph, *h2)?);
+    let s = s1 * s2;
+    // s1 (h1 + s h2) + c = 0  =>  h1 + s h2 + s1 c = 0
+    let constant = if constants.is_empty() {
+        None
+    } else {
+        let sum = if constants.len() == 1 { constants[0] } else { graph.node(core::ADD, &constants) };
+        let signed = graph.int(*s1);
+        Some(product(graph, &[signed, sum]))
+    };
+    let tc = match constant {
+        | Some(c) => {
+            let t = graph.node(tan, &[c]);
+            if value(graph, t).is_none_or(|v| v.abs() > 1e9) {
+                return None;
             }
-            let rest_eqs: Vec<NodeId> = exprs.iter().enumerate().filter(|&(k, _)| k != i).map(|(_, &e)| e).collect();
-            let rest_unknowns: Vec<NodeId> = unknowns.iter().enumerate().filter(|&(k, _)| k != j).map(|(_, &v)| v).collect();
-            let mut out = Vec::new();
-            for value in values {
-                let substituted: Vec<NodeId> = rest_eqs.iter().map(|&e| graph.substitute(e, u, value)).collect();
-                let tails = if rest_unknowns.is_empty() {
-                    // Every remaining equation must hold.
-                    let ok = substituted.iter().all(|&e| value_of_zero(graph, e));
-                    if ok { vec![Vec::new()] } else { Vec::new() }
-                } else {
-                    // Underdetermined or unsolvable: give up rather than
-                    // report a partial solution set.
-                    eliminate(graph, &substituted, &rest_unknowns, depth + 1)?
-                };
-                for tail in tails {
-                    // Insert u's value (with the others substituted) at j.
-                    let mut full = tail.clone();
-                    let mut v = value;
-                    for (k, &other) in rest_unknowns.iter().enumerate() {
-                        v = graph.substitute(v, other, tail[k]);
-                    }
-                    full.insert(j, v);
-                    out.push(full);
+            Some(t)
+        },
+        | None => None,
+    };
+    let s_node = graph.int(s);
+    // t1 - s t1 t2 tc + s t2 + tc
+    let mut parts = vec![t1, product(graph, &[s_node, t2])];
+    if let Some(tc) = tc {
+        let minus_s = graph.int(-s);
+        parts.push(product(graph, &[minus_s, t1, t2, tc]));
+        parts.push(tc);
+    }
+    let equation = graph.node(core::ADD, &parts);
+    solve_for(graph, equation, x, depth + 1)
+}
+
+/// `ln` of every factor and power taken apart (positive arguments
+/// assumed): `ln(a^b c) = b ln a + ln c`.
+fn expand_log(
+    graph: &mut Graph,
+    node: NodeId,
+    ln: crate::graph::OpId,
+    exp: crate::graph::OpId,
+) -> NodeId {
+    let children = graph.children(node).to_vec();
+    if graph.op(node) == core::MUL {
+        let parts: Vec<NodeId> = children.iter().map(|&c| expand_log(graph, c, ln, exp)).collect();
+        return graph.node(core::ADD, &parts);
+    }
+    if graph.op(node) == core::POW {
+        if let &[base, power] = children.as_slice() {
+            let log = expand_log(graph, base, ln, exp);
+            return product(graph, &[power, log]);
+        }
+    }
+    if graph.op(node) == exp {
+        if let Some(&a) = children.first() {
+            return a;
+        }
+    }
+    graph.node(ln, &[node])
+}
+
+/// `t1 + t2 = 0` where a term has an exponent that involves the unknown:
+/// `ln|t1| = ln|t2|`, with the logarithms expanded.
+fn log_both_sides(
+    graph: &mut Graph,
+    term: NodeId,
+    x: NodeId,
+    depth: usize,
+) -> Option<Vec<NodeId>> {
+    let (ln, exp) = (graph.ops().lookup("ln")?, graph.ops().lookup("exp")?);
+    let symbol = graph.symbol_of(x)?;
+    if graph.op(term) != core::ADD {
+        return None;
+    }
+    let &[t1, t2] = graph.children(term) else {
+        return None;
+    };
+    let variable_exponent = nodes_with(graph, term, |g, n| {
+        g.op(n) == core::POW && g.children(n).get(1).is_some_and(|&e| g.depends_on(g.find(e), symbol))
+    });
+    if variable_exponent.is_empty() {
+        return None;
+    }
+    // Numeric sign of a term: the product of its numeric factors.
+    let sign_of = |graph: &Graph, t: NodeId| -> f64 {
+        match graph.number_of(t) {
+            | Some(n) => n.to_f64(),
+            | None if graph.op(t) == core::MUL => {
+                graph.children(t).iter().filter_map(|&c| graph.number_of(c)).map(Number::to_f64).product()
+            },
+            | None => 1.0,
+        }
+    };
+    let strip = |graph: &mut Graph, t: NodeId| -> NodeId {
+        // Remove numeric factors from a product, keeping their magnitude.
+        if graph.op(t) != core::MUL {
+            return t;
+        }
+        let kids = graph.children(t).to_vec();
+        let magnitude: Vec<NodeId> = kids
+            .iter()
+            .map(|&c| match graph.number_of(c) {
+                | Some(n) if n.to_f64() < 0.0 => graph.num(n.neg()),
+                | _ => c,
+            })
+            .collect();
+        graph.node(core::MUL, &magnitude)
+    };
+    // t1 = -t2: the signs of t1 and -t2 must agree (numeric factors).
+    let (s1, s2) = (sign_of(graph, t1), -sign_of(graph, t2));
+    if s1 * s2 < 0.0 {
+        return None;
+    }
+    let (m1, m2) = (strip(graph, t1), strip(graph, t2));
+    let left = expand_log(graph, m1, ln, exp);
+    let right = expand_log(graph, m2, ln, exp);
+    let equation = difference(graph, left, right);
+    solve_for(graph, equation, x, depth + 1)
+}
+
+fn size(
+    graph: &Graph,
+    node: NodeId,
+) -> usize {
+    let mut seen = std::collections::HashSet::new();
+    let mut stack = vec![node];
+    while let Some(n) = stack.pop() {
+        if seen.insert(n) {
+            stack.extend_from_slice(graph.children(n));
+        }
+    }
+    seen.len()
+}
+
+/// A common subterm `f(x)` through which the unknown enters the equation:
+/// with `u = f(x)` the equation is solved for `u` and each root inverted.
+fn substitution(
+    graph: &mut Graph,
+    term: NodeId,
+    x: NodeId,
+    depth: usize,
+) -> Option<Vec<NodeId>> {
+    let symbol = graph.symbol_of(x)?;
+    let mut candidates: Vec<NodeId> = Vec::new();
+    for n in nodes_with(graph, term, |g, n| !g.children(n).is_empty()) {
+        let op = graph.op(n);
+        if op == core::ADD || op == core::MUL {
+            continue;
+        }
+        for &c in graph.children(n) {
+            if c != x && !graph.children(c).is_empty() && graph.depends_on(graph.find(c), symbol) && !candidates.contains(&c) {
+                candidates.push(c);
+            }
+        }
+    }
+    candidates.sort_by_key(|&c| std::cmp::Reverse(size(graph, c)));
+    for f in candidates {
+        let u_symbol = graph.interner_mut().fresh_symbol("u");
+        let u = graph.symbol_node(u_symbol);
+        let mut replaced = term;
+        // x^(km) = u^k when f = x^m.
+        if let (core::POW, &[base, m]) = (graph.op(f), graph.children(f)) {
+            if base == x {
+                if let Some(m) = graph.number_of(m).and_then(Number::to_i64).filter(|&m| m >= 2) {
+                    let mut rewrite = |graph: &mut Graph, node: NodeId, children: &[NodeId]| -> Option<NodeId> {
+                        if graph.op(node) != core::POW {
+                            return None;
+                        }
+                        let &[b, e] = children else {
+                            return None;
+                        };
+                        let k = graph.number_of(e).and_then(Number::to_i64)?;
+                        (b == x && k % m == 0).then(|| {
+                            let power = graph.int(k / m);
+                            graph.node(core::POW, &[u, power])
+                        })
+                    };
+                    replaced = super::normalize::map_term(graph, replaced, &mut rewrite);
                 }
             }
-            return (!out.is_empty()).then_some(out);
+        }
+        replaced = graph.replace_subterm(replaced, f, u);
+        if graph.depends_on(graph.find(replaced), symbol) {
+            continue;
+        }
+        let Some(values) = solve_for(graph, replaced, u, depth + 1) else {
+            continue;
+        };
+        let mut out = Vec::new();
+        let mut complete = true;
+        for value in values {
+            let equation = difference(graph, f, value);
+            match solve_for(graph, equation, x, depth + 1) {
+                | Some(found) => out.extend(found),
+                | None => {
+                    complete = false;
+                    break;
+                },
+            }
+        }
+        if complete {
+            return Some(out);
         }
     }
     None
-}
-
-fn value_of_zero(
-    graph: &Graph,
-    e: NodeId,
-) -> bool {
-    value(graph, e).is_none_or(|v| v.abs() < 1e-9)
 }

@@ -22,15 +22,67 @@
 //! numeric roots; non-polynomial systems are solved by elimination. Every
 //! candidate is checked against the original equation.
 //!
-//! `solve(lt(f, g), x)` (likewise `le`, `gt`, `ge`) solves an inequality
-//! over the reals: the roots of `f - g` and the poles of its denominator
-//! split the line, the sign is tested on each piece, and the answer is a
-//! formula such as `or(and(lt(1, x), lt(x, 2)), lt(3, x))`, or `true` /
-//! `false`.
+//! Beyond that, the sub-solvers interlock:
 //!
-//! Inverse functions are taken on their principal branch, so periodic
-//! equations yield one representative solution per branch of the inverse,
-//! not the full solution set.
+//! * **Parameters.** A polynomial with symbolic coefficients is factored
+//!   over `Q` in the unknown and the parameters (`(x - a)(x - b)`,
+//!   `x^3 + a x^2 + a x + 1`), polynomials in `x^k` go through `u = x^k`
+//!   (`x^3 = a/b`, symbolic biquadratics), cubics get Cardano's formula
+//!   (real cube roots) together with the trigonometric form, palindromic
+//!   quartics `u = x + 1/x`; formulas are real only on part of the
+//!   parameter space and are kept when they are right wherever defined.
+//! * **Factors and substitutions.** When the numerator factors into several
+//!   pieces that involve the unknown (`e^x (x - 1)`, `x^3 ln x`) each piece
+//!   is solved; a common subterm `u = f(x)` (an argument of a function, a
+//!   power `x^m`) turns `x^2 e^(x^2) = e` into `u e^u = e`; exponentials
+//!   are made powers of one generator (`4^x` and `2^x`, `e^(x+1)`, `e^-x`),
+//!   and the hyperbolic functions are written through `exp`.
+//! * **Lambert W** for `α + β x + γ b^(dx)`, `x^m e^(dx)` and `x^m = c e^(dx)`
+//!   (both real branches, also for symbolic arguments), `x ln x`, `x^x`.
+//! * **Radicals** of any index by resultants (`∛(x+1) + ∛(x-1) = c`), sums of
+//!   inverse circular functions through their tangent, and `A^B = C^D` by
+//!   logarithms of both sides.
+//! * **Trigonometric equations** whose arguments are `k (x + s)` are
+//!   expanded into polynomials in `sin θ`, `cos θ` and solved with the
+//!   polynomial in `sin θ` or `cos θ` alone or the Weierstrass substitution
+//!   (covering `a sin x + b cos x = c`, multiple angles and sum-to-product
+//!   forms); solutions that are rational multiples of `π` are written as
+//!   such. `solve_general(eq, x)` returns *all* solutions as families with
+//!   an integer parameter `n` (`n1`, … if taken): `solve_general(sin(x) =
+//!   1/2, x)` is `list(2 n π + π/6, 2 n π + 5π/6)`. Families that agree
+//!   modulo a fraction of the period are merged, and a family valid only
+//!   for some residues of `n` is restricted to them. Other periodic
+//!   functions of an inner expression (`sin(x^2) = c`) get their families
+//!   through the inverse functions.
+//!
+//! Systems `solve(list(eqs), list(unknowns))`: a square linear system by
+//! Cramer's rule; polynomial systems (parameters allowed) by a lexicographic
+//! Gröbner basis in which the symbols other than the unknowns come last, so
+//! that an underdetermined system leaves some unknowns *free* (they appear
+//! in the answer as themselves) and the rest are read off by
+//! back-substitution; two polynomial equations by a resultant; systems with
+//! transcendental parts by elimination (an equation linear in an unknown
+//! determines it, otherwise an unknown is solved for and the branches
+//! followed). Every tuple is substituted back.
+//!
+//! Conditions in one unknown: `solve(lt(f, g), x)` (likewise `le`, `gt`,
+//! `ge`, `ne`) finds the real roots of `f - g`, the poles of its
+//! denominator and the zeros of the arguments of logarithms and roots,
+//! tests the sign between them and returns a formula such as
+//! `or(and(lt(1, x), lt(x, 2)), lt(3, x))`, `true` or `false`. `list(...)`
+//! and `and(...)` of conditions intersect, `or(...)` unites, an equation
+//! contributes its roots, and `floor(u) = c`, `ceil(u) < c` become interval
+//! conditions on `u`.
+//!
+//! In numeric mode, when no closed form exists, the residual is scanned for
+//! sign changes (one equation) or damped Newton runs from a spread of
+//! starting points find roots of a system; `nsolve(list(eqs), list(vars),
+//! list(guess))` is Newton from the guess. These are not certified, unlike
+//! the Sturm sequences used for polynomials.
+//!
+//! Inverse functions are taken on their principal branch by `solve`, so
+//! periodic equations yield one representative per branch; `solve_general`
+//! gives the whole solution set.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -43,6 +95,7 @@ use crate::graph::Arity;
 use crate::graph::Ball;
 use crate::graph::Cx;
 use crate::graph::Env;
+use crate::graph::Facts;
 use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
@@ -63,10 +116,6 @@ use crate::kernels::solve::solve_root;
 
 use super::elementary::elementary;
 use super::poly::best;
-use super::poly::from_groebner;
-use super::poly::groebner::groebner;
-use super::poly::groebner::GroebnerLimits;
-use super::poly::groebner::Order;
 use super::poly::poly;
 use super::poly::ratio;
 use super::poly::repr::from_term;
@@ -74,10 +123,18 @@ use super::poly::repr::to_term;
 use super::poly::repr::Gens;
 use super::poly::repr::Limits;
 use super::poly::repr::Poly;
-use super::poly::to_groebner;
 use super::poly::univariate;
 
+mod elim;
 mod heuristics;
+mod inequality;
+mod numeric;
+mod normalize;
+mod symbolic;
+mod system;
+mod trig;
+#[cfg(test)]
+mod battery;
 
 /// Operator attribute: the solutions `u` of `op(u) = ?a`, one pattern per
 /// branch that is returned.
@@ -120,10 +177,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         i.graph().ops_mut().set_attr(op, Inverse(patterns));
     }
     let solve_op = i.op(OpDescriptor::new("solve", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
+    let general_op = i.op(OpDescriptor::new("solve_general", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
     let nsolve_op = i.op(OpDescriptor::new("nsolve", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("solve/symbolic", Tier::Reduce, Symbolic { solve: solve_op });
+    i.kernel("solve/symbolic", Tier::Reduce, Symbolic { solve: solve_op, general: general_op });
     i.kernel("solve/polynomial-numeric", Tier::Reduce, PolynomialNumeric { solve: solve_op });
     i.kernel("solve/nsolve", Tier::Reduce, RootNear { nsolve: nsolve_op });
+    i.kernel("solve/numeric", Tier::Reduce, numeric::NumericSolve { solve: solve_op, nsolve: nsolve_op });
     Ok(())
 }
 
@@ -175,6 +234,28 @@ fn rational(
 
 const MAX_DEPTH: usize = 8;
 
+thread_local! {
+    static GENERAL: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Whether solutions of periodic equations are being collected as families
+/// with an integer parameter.
+pub(crate) fn general_mode() -> bool {
+    GENERAL.with(std::cell::Cell::get)
+}
+
+/// Runs `f` with the general mode set.
+fn with_general<T>(f: impl FnOnce() -> T) -> T {
+    let previous = GENERAL.with(|g| g.replace(true));
+    let out = f();
+    GENERAL.with(|g| g.set(previous));
+    out
+}
+
+pub(super) fn cap_default() -> usize {
+    Limits::default().terms
+}
+
 /// Solves `expr = 0` for `x`. `None` means "could not solve"; `Some` is
 /// the complete list of solutions that were found on principal branches.
 pub(crate) fn solve_for(
@@ -195,7 +276,7 @@ pub(crate) fn solve_for(
     }
     // Write exp(n*u) as exp(u)^n so that `exp(2*x) - 3*exp(x) + 2` is a
     // polynomial in the single generator exp(x).
-    let term = split_integer_multiples(graph, term);
+    let term = normalize::exponentials(graph, term, symbol);
     let mut gens = Gens::default();
     let gx = gens.index(graph, x);
     let fraction = ratio(graph, &mut gens, term, Limits::default())?;
@@ -205,7 +286,9 @@ pub(crate) fn solve_for(
         .into_iter()
         .filter(|&g| gens.node(g).is_some_and(|n| graph.depends_on(graph.find(n), symbol)))
         .collect();
+    let split = if dependent.len() >= 2 { split_by_factors(graph, &gens, &fraction.numer, x, depth) } else { None };
     let candidates = match dependent.as_slice() {
+        | _ if split.is_some() => split.unwrap_or_default(),
         | [] => Vec::new(),
         | &[g] if g == gx => polynomial_roots(graph, &gens, &fraction.numer, gx)?,
         | &[g] => {
@@ -232,17 +315,7 @@ pub(crate) fn solve_for(
     // Discard candidates at which the original expression is not zero
     // (poles of a cancelled denominator, roots introduced by squaring),
     // wherever that can be checked numerically.
-    let mut solutions: Vec<NodeId> = Vec::new();
-    for candidate in candidates {
-        let substituted = graph.substitute(term, x, candidate);
-        let keep = match graph.eval(substituted, &Env::numeric(0.0)) {
-            | Some(v) => v.abs() <= 1e-7,
-            | None => true,
-        };
-        if keep && !solutions.iter().any(|&s| graph.same(s, candidate) || s == candidate) {
-            solutions.push(candidate);
-        }
-    }
+    let mut solutions = filter_candidates(graph, term, x, candidates);
     // Ascending order when every solution is a number.
     let values: Option<Vec<f64>> = solutions.iter().map(|&s| graph.eval(s, &Env::numeric(0.0))).collect();
     if let Some(values) = values {
@@ -252,6 +325,143 @@ pub(crate) fn solve_for(
         solutions = keyed.into_iter().map(|(_, node)| node).collect();
     }
     Some(solutions)
+}
+
+/// Whether a polynomial is small enough for the factorisation to be worth
+/// attempting (the reduction to one variable is exponential in the number
+/// of variables and their degrees).
+pub(crate) fn factorable(poly: &Poly) -> bool {
+    poly.len() <= 40 && poly.total_degree() <= 12 && poly.support().len() <= 5
+}
+
+/// When the numerator factors over `Q` into several pieces that involve
+/// the unknown, the solutions are those of the pieces.
+fn split_by_factors(
+    graph: &mut Graph,
+    gens: &Gens,
+    numer: &Poly,
+    x: NodeId,
+    depth: usize,
+) -> Option<Vec<NodeId>> {
+    let symbol = graph.symbol_of(x)?;
+    if !factorable(numer) {
+        return None;
+    }
+    let vars = numer.support();
+    let (_, factors) = crate::rules::poly::multifactor::factor(numer, &vars)?;
+    let pieces: Vec<Poly> = factors
+        .into_iter()
+        .map(|(f, _)| f)
+        .filter(|f| f.support().into_iter().any(|g| gens.node(g).is_some_and(|n| graph.depends_on(graph.find(n), symbol))))
+        .collect();
+    if pieces.len() < 2 {
+        return None;
+    }
+    let mut out = Vec::new();
+    for piece in pieces {
+        let term = to_term(graph, gens, &piece);
+        out.extend(solve_for(graph, term, x, depth + 1)?);
+    }
+    Some(out)
+}
+
+/// Base magnitudes of the spot-check assignments.
+const BASE: [f64; 6] = [1.3, 0.7, 2.1, 0.45, 1.7, 0.9];
+
+/// Generic assignments of the free symbols of `nodes` (other than `skip`)
+/// for numeric spot checks of formulas in several parameters.
+pub(crate) fn sample_envs(
+    graph: &Graph,
+    nodes: &[NodeId],
+    skip: Option<SymbolId>,
+) -> Vec<Env> {
+    let mut symbols: Vec<SymbolId> = Vec::new();
+    for &node in nodes {
+        for &s in graph.free_symbols(graph.find(node)) {
+            if Some(s) != skip && !symbols.contains(&s) {
+                symbols.push(s);
+            }
+        }
+    }
+    (0..4_usize)
+        .map(|k| {
+            let mut env = Env::numeric(0.0);
+            for (i, &s) in symbols.iter().enumerate() {
+                if graph.assumption(s).has(Facts::INTEGER) {
+                    const INTEGERS: [f64; 4] = [1.0, 0.0, -1.0, 2.0];
+                    env.bind(s, INTEGERS.get((k + i) % 4).copied().unwrap_or(0.0));
+                    continue;
+                }
+                let magnitude = BASE.get((2 * i + k) % 6).copied().unwrap_or(1.0) * (1.0 + 0.11 * f64::from(u8::try_from(k).unwrap_or(0)));
+                let sign = if k > 0 && (i + k) % 3 == 0 { -1.0 } else { 1.0 };
+                env.bind(s, sign * magnitude);
+            }
+            env
+        })
+        .collect()
+}
+
+/// The candidates that make `term` vanish. Candidates with parameters are
+/// spot-checked at several assignments: one that is finite and wrong at
+/// every assignment where it is defined is discarded, one that is undefined
+/// everywhere is kept (it may be real elsewhere in the parameter space).
+pub(crate) fn filter_candidates(
+    graph: &mut Graph,
+    term: NodeId,
+    x: NodeId,
+    candidates: Vec<NodeId>,
+) -> Vec<NodeId> {
+    let symbol = graph.symbol_of(x);
+    let mut solutions: Vec<NodeId> = Vec::new();
+    for candidate in candidates {
+        let substituted = graph.substitute(term, x, candidate);
+        let free = graph.free_symbols(graph.find(substituted)).to_vec();
+        let keep = if free.is_empty() {
+            match graph.eval(substituted, &Env::numeric(0.0)) {
+                | Some(v) => v.abs() <= 1e-7,
+                | None => true,
+            }
+        } else {
+            // Right at some assignment, or undefined at all of them. A
+            // formula can be wrong at others (principal branches, regimes
+            // of the parameters), but not everywhere it is defined.
+            let (mut right, mut wrong) = (0_u32, 0_u32);
+            for env in sample_envs(graph, &[substituted, candidate], symbol) {
+                let (Some(residual), Some(at)) = (graph.eval(substituted, &env), graph.eval(candidate, &env)) else {
+                    continue;
+                };
+                if residual.is_finite() && at.is_finite() {
+                    if residual.abs() > 1e-7 * (1.0 + at.abs().powi(3)) {
+                        wrong += 1;
+                    } else {
+                        right += 1;
+                    }
+                }
+            }
+            right > 0 || wrong == 0
+        };
+        if keep && !solutions.iter().any(|&s| graph.same(s, candidate) || s == candidate) {
+            solutions.push(candidate);
+        }
+    }
+    solutions
+}
+
+/// All solutions of `expr = 0` for `x`, periodic families included: each
+/// family carries an integer parameter `n` (`n1`, ... if `n` is taken).
+pub(crate) fn solve_general_for(
+    graph: &mut Graph,
+    expr: NodeId,
+    x: NodeId,
+) -> Option<Vec<NodeId>> {
+    with_general(|| {
+        let term = best(graph, expr)?;
+        let term = sqrt_as_power(graph, term);
+        if let Some(found) = trig::solve(graph, term, x, true) {
+            return Some(found);
+        }
+        solve_for(graph, expr, x, 0)
+    })
 }
 
 /// `sqrt(u)` written `u^(1/2)` throughout, so that one radical heuristic
@@ -277,211 +487,6 @@ fn sqrt_as_power(
         out = graph.replace_subterm(out, r, power);
     }
     out
-}
-
-/// Solves the inequality `cmp(lhs, rhs)` (`cmp` one of `lt`, `le`, `gt`,
-/// `ge`) for real `x`: the boundary points are the real roots of
-/// `lhs - rhs` and the poles of its denominator; the sign of `lhs - rhs`
-/// is tested between them. The answer is a formula in `x`: `or` of
-/// `and(lt(a, x), lt(x, b))` pieces (with `le` where an endpoint is
-/// included), `true` or `false`.
-fn solve_inequality(
-    graph: &mut Graph,
-    inequality: NodeId,
-    x: NodeId,
-) -> Option<NodeId> {
-    let names = ["lt", "le", "gt", "ge"];
-    let ops: Vec<OpId> = names.iter().map(|n| graph.ops().lookup(n)).collect::<Option<_>>()?;
-    let kind = ops.iter().position(|&op| op == graph.op(inequality))?;
-    let &[lhs, rhs] = graph.children(inequality) else {
-        return None;
-    };
-    let symbol = graph.symbol_of(x)?;
-    let f = difference(graph, lhs, rhs);
-    let f = best(graph, f)?;
-    let holds = |v: f64| match kind {
-        | 0 => v < 0.0,
-        | 1 => v <= 0.0,
-        | 2 => v > 0.0,
-        | _ => v >= 0.0,
-    };
-    let strict = kind == 0 || kind == 2;
-    let eval_at = |graph: &mut Graph, at: f64| -> Option<f64> {
-        let mut env = Env::numeric(0.0);
-        env.bind(symbol, at);
-        graph.eval(f, &env).filter(|v| v.is_finite())
-    };
-    // Boundary points: roots and poles, with their numeric values.
-    let mut boundary: Vec<(f64, NodeId, bool)> = Vec::new();
-    for root in solve_for(graph, f, x, 0)? {
-        if let Some(v) = graph.eval(root, &Env::numeric(0.0)) {
-            boundary.push((v, root, true));
-        }
-    }
-    let mut gens = Gens::default();
-    gens.index(graph, x);
-    if let Some(fraction) = ratio(graph, &mut gens, f, Limits::default()) {
-        if fraction.denom.as_constant().is_none() {
-            let denominator = crate::rules::poly::repr::to_term(graph, &gens, &fraction.denom);
-            for pole in solve_for(graph, denominator, x, 0)? {
-                if let Some(v) = graph.eval(pole, &Env::numeric(0.0)) {
-                    boundary.push((v, pole, false));
-                }
-            }
-        }
-    }
-    boundary.retain(|b| b.0.is_finite());
-    boundary.sort_by(|a, b| a.0.total_cmp(&b.0));
-    boundary.dedup_by(|a, b| {
-        let same = (a.0 - b.0).abs() <= 1e-12 * (1.0 + a.0.abs());
-        if same {
-            b.2 = b.2 && a.2;
-        }
-        same
-    });
-    // Sample the sign on each open interval and decide each boundary point.
-    let mut pieces: Vec<(Option<NodeId>, bool, Option<NodeId>, bool)> = Vec::new(); // (lo, lo closed, hi, hi closed)
-    let mut current: Option<(Option<NodeId>, bool)> = None;
-    let count = boundary.len();
-    for i in 0..=count {
-        let sample = match (i.checked_sub(1).map(|j| boundary[j].0), boundary.get(i).map(|b| b.0)) {
-            | (None, None) => 0.0,
-            | (None, Some(b)) => b - 1.0 - b.abs(),
-            | (Some(a), None) => a + 1.0 + a.abs(),
-            | (Some(a), Some(b)) => f64::midpoint(a, b),
-        };
-        let inside = eval_at(graph, sample).is_some_and(holds);
-        let left = i.checked_sub(1).map(|j| boundary[j]);
-        if inside {
-            if current.is_none() {
-                current = Some(match left {
-                    | None => (None, false),
-                    | Some((_, node, is_root)) => (Some(node), !strict && is_root),
-                });
-            }
-        } else if let Some((lo, lo_closed)) = current.take() {
-            let (_, node, is_root) = left?;
-            pieces.push((lo, lo_closed, Some(node), !strict && is_root));
-        } else if let Some((value, node, is_root)) = left {
-            // An isolated boundary point that satisfies a non-strict test.
-            let _ = value;
-            if !strict && is_root && i >= 1 {
-                let previous_inside = pieces.last().is_some_and(|p| p.2 == Some(node));
-                if !previous_inside {
-                    pieces.push((Some(node), true, Some(node), true));
-                }
-            }
-        }
-        // A boundary point between two satisfied intervals that fails the
-        // test splits them.
-        if let (Some((lo, lo_closed)), Some((_, node, is_root))) = (current, boundary.get(i).copied()) {
-            let next_sample = match boundary.get(i + 1) {
-                | Some(b) => f64::midpoint(boundary[i].0, b.0),
-                | None => boundary[i].0 + 1.0 + boundary[i].0.abs(),
-            };
-            let point_ok = !strict && is_root;
-            let next_inside = eval_at(graph, next_sample).is_some_and(holds);
-            if !point_ok && next_inside {
-                pieces.push((lo, lo_closed, Some(node), false));
-                current = Some((Some(node), false));
-            }
-        }
-    }
-    if let Some((lo, lo_closed)) = current {
-        pieces.push((lo, lo_closed, None, false));
-    }
-    let (lt, le, and, or) = (ops[0], ops[1], graph.ops().lookup("and")?, graph.ops().lookup("or")?);
-    let mut formulas = Vec::new();
-    for (lo, lo_closed, hi, hi_closed) in pieces {
-        let mut conditions = Vec::new();
-        if let (Some(a), Some(b), true, true) = (lo, hi, lo_closed, hi_closed) {
-            if a == b {
-                formulas.push(graph.node(core::EQ, &[x, a]));
-                continue;
-            }
-        }
-        if let Some(a) = lo {
-            conditions.push(graph.node(if lo_closed { le } else { lt }, &[a, x]));
-        }
-        if let Some(b) = hi {
-            conditions.push(graph.node(if hi_closed { le } else { lt }, &[x, b]));
-        }
-        formulas.push(match conditions.as_slice() {
-            | [] => graph.node(graph.ops().lookup("true")?, &[]),
-            | [only] => *only,
-            | _ => graph.node(and, &conditions),
-        });
-    }
-    Some(match formulas.as_slice() {
-        | [] => graph.node(graph.ops().lookup("false")?, &[]),
-        | [only] => *only,
-        | _ => graph.node(or, &formulas),
-    })
-}
-
-/// Rewrites `exp(n*u)` as `exp(u)^n` and `b^(n*u)` as `(b^u)^n` for
-/// integer literals `n`, throughout the concrete term `term`.
-fn split_integer_multiples(
-    graph: &mut Graph,
-    term: NodeId,
-) -> NodeId {
-    let exp = graph.ops().lookup("exp");
-    let mut done: std::collections::HashMap<NodeId, NodeId> = std::collections::HashMap::new();
-    let mut stack = vec![(term, false)];
-    while let Some((node, expanded)) = stack.pop() {
-        if done.contains_key(&node) {
-            continue;
-        }
-        let children = graph.children(node).to_vec();
-        if children.is_empty() {
-            done.insert(node, node);
-            continue;
-        }
-        if !expanded {
-            stack.push((node, true));
-            stack.extend(children.iter().filter(|c| !done.contains_key(c)).map(|&c| (c, false)));
-            continue;
-        }
-        let rebuilt: Vec<NodeId> = children.iter().map(|c| done.get(c).copied().unwrap_or(*c)).collect();
-        let op = graph.op(node);
-        // The argument that may carry the integer multiple: the only
-        // argument of exp, the exponent of a power.
-        let exponent_index = if Some(op) == exp {
-            Some(0)
-        } else if op == core::POW {
-            Some(1)
-        } else {
-            None
-        };
-        let split = exponent_index.and_then(|index| {
-            let argument = *rebuilt.get(index)?;
-            if graph.op(argument) != core::MUL {
-                return None;
-            }
-            let factors = graph.children(argument).to_vec();
-            let position = factors.iter().position(|&f| {
-                graph.as_number(f).and_then(Number::to_i64).is_some_and(|n| n.abs() > 1)
-            })?;
-            let multiple = *factors.get(position)?;
-            let rest: Vec<NodeId> =
-                factors.iter().enumerate().filter(|&(i, _)| i != position).map(|(_, &f)| f).collect();
-            Some((index, multiple, product(graph, &rest)))
-        });
-        let new = match split {
-            | Some((index, multiple, rest)) => {
-                let mut inner_args = rebuilt.clone();
-                if let Some(slot) = inner_args.get_mut(index) {
-                    *slot = rest;
-                }
-                let inner = graph.node(op, &inner_args);
-                graph.node(core::POW, &[inner, multiple])
-            },
-            | None if rebuilt == children => node,
-            | None => graph.try_node(op, &rebuilt).unwrap_or(node),
-        };
-        done.insert(node, new);
-    }
-    done.get(&term).copied().unwrap_or(term)
 }
 
 /// Solves `g(x) = value` for `x`, where `g` is the term `inner`.
@@ -527,9 +532,15 @@ fn invert(
             | _ => return None,
         }
     } else if let &[arg] = args.as_slice() {
-        let branches = graph.ops().attr::<Inverse>(op)?.0.clone();
-        for branch in branches {
-            targets.push((arg, branch.instantiate(graph, &[value])?));
+        let periodic = if general_mode() { periodic_targets(graph, op, arg, value, inner, x) } else { None };
+        match periodic {
+            | Some(found) => targets.extend(found),
+            | None => {
+                let branches = graph.ops().attr::<Inverse>(op)?.0.clone();
+                for branch in branches {
+                    targets.push((arg, branch.instantiate(graph, &[value])?));
+                }
+            },
         }
     } else {
         return None;
@@ -538,6 +549,46 @@ fn invert(
     for (unknown, target) in targets {
         let equation = difference(graph, unknown, target);
         out.extend(solve_for(graph, equation, x, depth + 1)?);
+    }
+    Some(out)
+}
+
+/// The solutions `u` of `op(u) = value` as families with an integer
+/// parameter, for the periodic circular functions.
+fn periodic_targets(
+    graph: &mut Graph,
+    op: OpId,
+    arg: NodeId,
+    value: NodeId,
+    inner: NodeId,
+    x: NodeId,
+) -> Option<Vec<(NodeId, NodeId)>> {
+    let names = ["sin", "cos", "tan"];
+    let which = names.iter().position(|n| graph.ops().lookup(n) == Some(op))?;
+    let (pi_op, inverse) = (graph.ops().lookup("pi")?, graph.ops().lookup(["asin", "acos", "atan"][which])?);
+    let n = trig::integer_symbol(graph, &[value, inner, x]);
+    let pi = graph.node(pi_op, &[]);
+    let principal = graph.node(inverse, &[value]);
+    let minus_one = graph.int(-1);
+    let two = graph.int(2);
+    let mut out = Vec::new();
+    match which {
+        | 0 => {
+            let turn = product(graph, &[two, pi, n]);
+            out.push((arg, graph.node(core::ADD, &[principal, turn])));
+            let neg = graph.node(core::MUL, &[minus_one, principal]);
+            out.push((arg, graph.node(core::ADD, &[pi, neg, turn])));
+        },
+        | 1 => {
+            let turn = product(graph, &[two, pi, n]);
+            out.push((arg, graph.node(core::ADD, &[principal, turn])));
+            let neg = graph.node(core::MUL, &[minus_one, principal]);
+            out.push((arg, graph.node(core::ADD, &[neg, turn])));
+        },
+        | _ => {
+            let turn = product(graph, &[pi, n]);
+            out.push((arg, graph.node(core::ADD, &[principal, turn])));
+        },
     }
     Some(out)
 }
@@ -566,34 +617,8 @@ fn polynomial_roots(
         roots.extend(rational_polynomial_roots(graph, &numbers)?);
         return Some(roots);
     }
-    // Symbolic coefficients: formulas for degree one and two.
-    let terms: Vec<NodeId> = coefficients.iter().map(|c| to_term(graph, gens, c)).collect();
-    match *terms.as_slice() {
-        | [c0, c1] => {
-            let minus_one = graph.int(-1);
-            let inverse = reciprocal(graph, c1);
-            roots.push(product(graph, &[minus_one, c0, inverse]));
-        },
-        | [_, _, _] => {
-            let (c, b, a) = (coefficients.first()?, coefficients.get(1)?, coefficients.get(2)?);
-            let cap = Limits::default().terms;
-            let four_ac = a.mul(c, cap)?.scale(&Number::from(4));
-            let discriminant = to_term(graph, gens, &b.mul(b, cap)?.sub(&four_ac));
-            let half = graph.num(Number::fraction(1, 2)?);
-            let root = graph.node(core::POW, &[discriminant, half]);
-            let neg_b = to_term(graph, gens, &b.neg());
-            let two_a = to_term(graph, gens, &a.scale(&Number::from(2)));
-            let inverse = reciprocal(graph, two_a);
-            for sign in [-1, 1] {
-                let s = graph.int(sign);
-                let signed_root = product(graph, &[s, root]);
-                let numerator = graph.node(core::ADD, &[neg_b, signed_root]);
-                roots.push(product(graph, &[numerator, inverse]));
-            }
-        },
-        | _ => return None,
-    }
-    Some(roots)
+    // Symbolic coefficients: factor over the parameters, then formulas.
+    symbolic::roots(graph, gens, poly, generator, 0)
 }
 
 /// Real roots of a polynomial with rational coefficients (ascending
@@ -807,22 +832,8 @@ pub(crate) fn solve_linear(
     Some(solution)
 }
 
-/// Solves a polynomial system with rational coefficients through a
-/// lexicographic Gröbner basis and back-substitution.
-fn solve_polynomial_system(
-    graph: &mut Graph,
-    equations: NodeId,
-    unknowns: NodeId,
-) -> Option<Vec<Vec<NodeId>>> {
-    let (generators, gens) = to_groebner(graph, equations, unknowns, Order::Lex)?;
-    let basis = groebner(&generators, Order::Lex, GroebnerLimits::default())?;
-    let terms: Vec<NodeId> = basis.iter().map(|g| from_groebner(graph, &gens, g)).collect();
-    let variables = graph.children(unknowns).to_vec();
-    back_substitute(graph, &terms, &variables)
-}
-
 /// Solves a triangular system for the last variable first.
-fn back_substitute(
+pub(super) fn back_substitute(
     graph: &mut Graph,
     basis: &[NodeId],
     variables: &[NodeId],
@@ -870,11 +881,12 @@ fn back_substitute(
 
 struct Symbolic {
     solve: OpId,
+    general: OpId,
 }
 
 impl Kernel for Symbolic {
     fn ops(&self) -> Vec<OpId> {
-        vec![self.solve]
+        vec![self.solve, self.general]
     }
 
     fn reduce(
@@ -883,6 +895,7 @@ impl Kernel for Symbolic {
         node: NodeId,
     ) -> Outcome {
         let graph = &mut *cx.graph;
+        let general = graph.op(node) == self.general;
         let &[equation, unknown] = graph.children(node) else {
             return Outcome::Pass;
         };
@@ -892,17 +905,13 @@ impl Kernel for Symbolic {
             }
             let equations = graph.children(equation).to_vec();
             let unknowns = graph.children(unknown).to_vec();
-            let tuples = match solve_linear(graph, &equations, &unknowns) {
-                | Some(single) => Some(vec![single]),
-                | None => solve_polynomial_system(graph, equation, unknown)
-                    .or_else(|| heuristics::eliminate(graph, &equations, &unknowns, 0)),
-            };
+            let tuples = system::solve_system(graph, &equations, &unknowns);
             tuples.map(|tuples| tuples.iter().map(|t| graph.node(core::LIST, t)).collect::<Vec<_>>())
-        } else if ["lt", "le", "gt", "ge"].iter().any(|n| graph.ops().lookup(n) == Some(graph.op(equation))) {
-            return solve_inequality(graph, equation, unknown).map_or(Outcome::Pass, Outcome::Equal);
+        } else if inequality::is_condition(graph, equation) {
+            return inequality::solve_condition(graph, equation, unknown).map_or(Outcome::Pass, Outcome::Equal);
         } else {
             let expr = as_expression(graph, equation);
-            solve_for(graph, expr, unknown, 0)
+            if general { solve_general_for(graph, expr, unknown) } else { solve_for(graph, expr, unknown, 0) }
         };
         // Not pinned: the solutions are ordinary terms and should be
         // simplified like any others.
@@ -1241,8 +1250,8 @@ mod tests {
             "list(list(3/7, 6/7, 17/7))"
         );
         assert_eq!(run("solve(list(a*x + y = 1, x - y = 0), list(x, y))"), "list(list(1/(a + 1), 1/(a + 1)))");
-        let (text, reduced) = reduce_with(&[solve()], "solve(list(x + y = 1, 2*x + 2*y = 2), list(x, y))", &[]);
-        assert!(!reduced, "a singular system has no unique solution: {text}");
+        // A singular system has a line of solutions, given with a free unknown.
+        assert_eq!(run("solve(list(x + y = 1, 2*x + 2*y = 2), list(x, y))"), "list(list(-(y - 1), y))");
     }
 
     #[test]
@@ -1294,5 +1303,110 @@ mod tests {
         assert_eq!(run("solve(le(x^2, 0), x)"), "x = 0");
         assert_eq!(run("solve(gt(x^2 + 1, 0), x)"), "true");
         assert_eq!(run("solve(lt(x^2 + 1, 0), x)"), "false");
+    }
+
+    /// The numeric-mode answer of `src` as text.
+    fn numeric_text(src: &str) -> String {
+        let rules = crate::rules::standard();
+        let mut g = Graph::new();
+        let engine = crate::graph::Engine::install(&mut g, &rules).unwrap_or_else(|e| panic!("{e}"));
+        let root = g.parse(src).unwrap_or_else(|e| panic!("{e}"));
+        engine.run(&mut g, &[root], &Env::numeric(1e-12), &crate::graph::Saturate, &crate::graph::Budget::default());
+        let answer = crate::graph::Extractor::new(&g, &[root], &crate::graph::ClosedForm).build(&mut g, root);
+        answer.map(|n| g.display(n)).unwrap_or_default()
+    }
+
+    fn numbers(text: &str) -> Vec<f64> {
+        text.replace("list", "")
+            .split(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-' || c == 'e' || c == 'E'))
+            .filter_map(|t| t.parse().ok())
+            .collect()
+    }
+
+    #[test]
+    fn general_solutions_carry_an_integer_parameter() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        assert_eq!(run("solve_general(sin(x) = 0, x)"), "list(n*pi)");
+        assert_eq!(run("solve_general(cos(x) = 0, x)"), "list(n*pi + 1/2*pi)");
+        assert_eq!(run("solve_general(tan(x) = 1, x)"), "list(n*pi + 1/4*pi)");
+        assert_eq!(run("solve_general(sin(x) = 1/2, x)"), "list(2*n*pi + 1/6*pi, 2*n*pi + 5/6*pi)");
+        assert_eq!(run("solve_general(sin(x)^2 = cos(x)^2, x)"), "list(1/2*n*pi + 1/4*pi)");
+        assert_eq!(run("solve_general(sin(x) = a, x)"), "list(2*n*pi + asin(a), 2*n*pi - asin(a) + pi)");
+        // Not periodic: the same as `solve`.
+        assert_eq!(run("solve_general(exp(x) = 3, x)"), "list(ln(3))");
+        // Through an inner function.
+        let text = run("solve_general(sin(x^2) = 1/2, x)");
+        assert!(text.contains("n*pi"), "{text}");
+        // No real solution.
+        assert_eq!(run("solve_general(sin(x) = 2, x)"), "list()");
+    }
+
+    #[test]
+    fn parameters_factors_and_exponential_forms() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        assert_eq!(run("solve(exp(x)*(x - 1) = 0, x)"), "list(1)");
+        assert_eq!(run("solve(4^x - 3*2^x - 4 = 0, x)"), "list(ln(4)/ln(2))");
+        assert_eq!(run("solve(exp(x) + exp(-x) = 4, x)"), "list(ln(2 - 3^(1/2)), ln(2 + 3^(1/2)))");
+        assert_eq!(run("solve(sinh(x) + cosh(x) = 2, x)"), "list(ln(2))");
+        assert_eq!(run("solve(2^x = 3^(x - 1), x)"), "list(-ln(3)/(ln(2) - ln(3)))");
+        assert_eq!(run("solve(x^3*ln(x) = 0, x)"), "list(1)");
+        assert_eq!(run("solve(atan(2*x) + atan(3*x) = pi/4, x)"), "list(1/6)");
+        assert_eq!(run("solve(asin(x) - acos(x) = 0, x)"), "list(1/2*2^(1/2))");
+        let text = run("solve((x^2 - a)*(x - b) = 0, x)");
+        assert!(text.contains('b') && text.contains("a^(1/2)"), "{text}");
+        let text = run("solve(x^3 - (a + b + c)*x^2 + (a*b + a*c + b*c)*x - a*b*c = 0, x)");
+        assert!(text.contains('a') && text.contains('b') && text.contains('c'), "{text}");
+    }
+
+    #[test]
+    fn systems_with_free_parameters_and_conditions() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        assert_eq!(run("solve(list(x + y = 1), list(x, y))"), "list(list(-(y - 1), y))");
+        assert_eq!(run("solve(list(x + y + z = 1, x - y = 0), list(x, y, z))"), "list(list(1/2 - 1/2*z, 1/2 - 1/2*z, z))");
+        assert_eq!(run("solve(list(x + y = 1, x + y = 2), list(x, y))"), "list()");
+        assert_eq!(run("solve(list(x^2 - y = 1, x + y = 3), list(x, y))").matches("list(").count(), 3);
+        assert_eq!(run("solve(list(gt(x, 1), lt(x, 5)), x)"), "and(lt(1, x), lt(x, 5))");
+        assert_eq!(run("solve(list(gt(x^2, 1), lt(x, 0)), x)"), "lt(x, -1)");
+        assert_eq!(run("solve(list(gt(x, 3), lt(x, 1)), x)"), "false");
+        assert_eq!(run("solve(gt(exp(x), 2), x)"), "lt(ln(2), x)");
+        assert_eq!(run("solve(lt(ln(x), 1), x)"), "and(lt(0, x), lt(x, E))");
+        assert_eq!(run("solve(list(le(x, 2), x^2 = 4), x)"), "or(x = -2, x = 2)");
+        assert_eq!(run("solve(list(gt(x, 0), lt(x^2, 9), ne(x, 1)), x)").matches("and").count(), 2);
+    }
+
+    #[test]
+    fn floor_and_ceiling_give_intervals() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        assert_eq!(run("solve(floor(x) = 2, x)"), "and(le(2, x), lt(x, 3))");
+        assert_eq!(run("solve(ceil(x) = 2, x)"), "and(le(x, 2), lt(1, x))");
+        assert_eq!(run("solve(floor(x) = 1/2, x)"), "false");
+        assert_eq!(run("solve(lt(floor(x), 3), x)"), "lt(x, 3)");
+        assert_eq!(run("solve(ge(floor(x), 3), x)"), "le(3, x)");
+        assert_eq!(run("solve(floor(2*x + 1) = 3, x)"), "and(le(1, x), lt(x, 3/2))");
+        assert_eq!(run("solve(list(floor(x) = 2, gt(x, 2.5)), x)"), "and(lt(2.5, x), lt(x, 3))");
+    }
+
+    #[test]
+    fn numeric_fallbacks() {
+        // sin(x) = x/3 has three real roots, 0 and +-2.2788626600758283.
+        let roots = numbers(&numeric_text("solve(sin(x) = x/3, x)"));
+        assert_eq!(roots.len(), 3, "{roots:?}");
+        assert!(roots.iter().any(|r| r.abs() < 1e-9));
+        assert!(roots.iter().any(|r| (r - 2.278_862_660_075_828_3).abs() < 1e-8));
+        // The circle meets exp(x) + y = 1 twice.
+        let tuples = numbers(&numeric_text("solve(list(x^2 + y^2 = 4, exp(x) + y = 1), list(x, y))"));
+        assert_eq!(tuples.len(), 4, "{tuples:?}");
+        for pair in tuples.chunks(2) {
+            let (x, y) = (pair[0], pair[1]);
+            assert!((x * x + y * y - 4.0).abs() < 1e-8 && (x.exp() + y - 1.0).abs() < 1e-8, "{pair:?}");
+        }
+        // Newton from a guess.
+        let root = numbers(&numeric_text("nsolve(list(x^2 + y^2 = 4, x*y = 1), list(x, y), list(2, 0.5))"));
+        assert_eq!(root.len(), 2);
+        assert!((root[0] * root[1] - 1.0).abs() < 1e-9);
     }
 }

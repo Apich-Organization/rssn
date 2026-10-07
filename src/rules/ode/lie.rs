@@ -267,7 +267,7 @@ pub(super) fn integrate_with_symmetry(
 }
 
 /// `Φ` with `Φ_u = f` and `Φ_v = g`: `∫ f du + ∫ (g - ∂_v ∫ f du) dv`.
-fn potential(
+pub(super) fn potential(
     cx: &mut Cx<'_>,
     f: NodeId,
     g: NodeId,
@@ -290,7 +290,7 @@ fn potential(
 
 /// `e` with `u` set to a constant, when `e` is numerically independent of
 /// `u` (checked at several points of every free symbol).
-fn specialise_constant(
+pub(super) fn specialise_constant(
     cx: &mut Cx<'_>,
     e: NodeId,
     u: NodeId,
