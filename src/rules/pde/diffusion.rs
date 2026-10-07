@@ -44,6 +44,8 @@ enum Domain {
     Whole,
     /// `x > 0` with a Dirichlet (`-1`) or Neumann (`+1`) condition.
     Half(i64),
+    /// `x > 0` with the homogeneous Robin condition `u_x = κ u` at `x = 0`.
+    Robin(NodeId),
 }
 
 struct Coefficients {
@@ -139,6 +141,28 @@ fn axis_kernel(
             let image = mul(cx.graph, &[sign, image]);
             Some(add(cx.graph, &[k, image]))
         },
+        | Domain::Robin(kappa) => {
+            // K(x - s) + K(x + s) - κ e^{κ(x+s) + κ² D τ} erfc((x+s)/(2√(Dτ)) + κ √(Dτ)),
+            // the closed form of `-2κ ∫_0^∞ e^{-κ z} K(x + s + z) dz`.
+            let reflected = add(cx.graph, &[x, s]);
+            let image = kernel(cx, d, reflected, tau)?;
+            let dt = mul(cx.graph, &[d, tau]);
+            let root = sqrt(cx, dt)?;
+            let two = cx.graph.int(2);
+            let two_root = mul(cx.graph, &[two, root]);
+            let lead = div(cx, reflected, two_root);
+            let shift = mul(cx.graph, &[kappa, root]);
+            let argument = add(cx.graph, &[lead, shift]);
+            let erfc = call(cx, "erfc", &[argument])?;
+            let k_reflected = mul(cx.graph, &[kappa, reflected]);
+            let k2 = powi(cx.graph, kappa, 2);
+            let k2_dt = mul(cx.graph, &[k2, dt]);
+            let exponent = add(cx.graph, &[k_reflected, k2_dt]);
+            let exponential = call(cx, "exp", &[exponent])?;
+            let minus_kappa = neg(cx.graph, kappa);
+            let correction = mul(cx.graph, &[minus_kappa, exponential, erfc]);
+            Some(add(cx.graph, &[k, image, correction]))
+        },
     }
 }
 
@@ -186,6 +210,11 @@ pub(super) fn parabolic(
         counted += on.len();
         match on.as_slice() {
             | [] => domains.push(Domain::Whole),
+            | [b] if b.robin.is_some() && is_zero_number(cx.graph, b.point) && b.derivative == p.unit(j, 1) && cx.is_zero(b.value) => {
+                // u_x + h u = 0: u_x = κ u with κ = -h.
+                let h = b.robin?;
+                domains.push(Domain::Robin(neg(cx.graph, h)));
+            },
             | [b] if b.robin.is_none() && is_zero_number(cx.graph, b.point) => {
                 // A value that refers to the unknown itself is not data.
                 if cx.graph.depends_on(cx.graph.find(b.value), cx.graph.symbol_of(p.function)?) {
@@ -219,8 +248,12 @@ pub(super) fn parabolic(
         let alpha = cx.simplify(alpha);
         // Images need the gauge to be compatible with the condition:
         // Dirichlet always, Neumann only without drift.
+        // Neumann with drift: `v_x = -α v`, a Robin condition for the gauged unknown.
         if domains[axis] == Domain::Half(1) && !cx.is_zero(alpha) {
-            return None;
+            domains[axis] = Domain::Robin(neg(cx.graph, alpha));
+        } else if let Domain::Robin(kappa) = domains[axis] {
+            let shifted = sub(cx.graph, kappa, alpha);
+            domains[axis] = Domain::Robin(cx.simplify(shifted));
         }
         alphas.push(alpha);
         let c2 = powi(cx.graph, c.drift[axis], 2);
@@ -298,7 +331,7 @@ pub(super) fn parabolic(
     if let Some(&(axis, g)) = data.first() {
         let sign = match domains[axis] {
             | Domain::Half(s) => s,
-            | Domain::Whole => return None,
+            | Domain::Whole | Domain::Robin(_) => return None,
         };
         let (tau, _) = dummy(cx, p, "tau");
         let g_at = substitute_space(cx, g, &dummies, Some(axis));

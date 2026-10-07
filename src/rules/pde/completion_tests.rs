@@ -193,3 +193,74 @@ fn jordan_systems_with_sources_and_boundaries() {
     close(numeric(&b, x, t), (-t).exp() * x.sin(), 1e-9, &s);
     close(numeric(&a, x, t), t * (-t).exp() * x.sin(), 1e-9, &s);
 }
+
+#[test]
+fn robin_half_line_and_exterior_ball_heat() {
+    let numeric = |text: &str, at: &[(&str, f64)]| crate::rules::testing::numeric(&crate::rules::standard(), text, at, 1e-9).0;
+    let heat = "diff(u(x, t), t) = diff(diff(u(x, t), x), x)";
+    // u_x = 2 u at x = 0: u = e^{2x + 4t} is an exact solution.
+    let s = any(&format!("pdsolve({heat}, u(x, t), list(at(diff(u(x, t), x), x, 0) - 2*u(0, t) = 0, u(x, 0) = exp(2*x)))"));
+    let (x, t) = (0.5_f64, 0.3_f64);
+    close(numeric(&rhs(&s), &[("x", x), ("t", t)]), (2.0 * x + 4.0 * t).exp(), 1e-6, &s);
+    // Decaying data against the Green's function with its Robin integral computed by quadrature.
+    let s = any(&format!("pdsolve({heat}, u(x, t), list(at(diff(u(x, t), x), x, 0) + 3*u(0, t) = 0, u(x, 0) = exp(-x)))"));
+    let kernel = |y: f64| (-y * y / (4.0 * t)).exp() / (4.0 * PI * t).sqrt();
+    let kappa = -3.0_f64;
+    let green = |s_: f64| {
+        let robin = simpson(&|z| (-kappa * z).exp() * kernel(x + s_ + z), 0.0, 12.0);
+        kernel(x - s_) + kernel(x + s_) - 2.0 * kappa * robin
+    };
+    // κ < 0 makes e^{-κ z} grow, so integrate the combination stably: κ = -3, z up to 12 is enough for e^{3z - z²/(4t)}.
+    let reference = simpson(&|s_| green(s_) * (-s_).exp(), 0.0, 14.0);
+    close(numeric(&rhs(&s), &[("x", x), ("t", t)]), reference, 1e-5, &s);
+    // Neumann with drift on the half-line: constant data stays constant.
+    let s = any("pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x) + 2*diff(u(x, t), x), u(x, t), list(at(diff(u(x, t), x), x, 0) = 0, u(x, 0) = 1))");
+    close(numeric(&rhs(&s), &[("x", x), ("t", t)]), 1.0, 1e-6, &s);
+    // Outside a ball with the Robin condition u_r + 3 u = 0 at r = 1: u = e^{-2(r-1) + 4t}/r.
+    let ball = "diff(u(r, t), t) = diff(diff(u(r, t), r), r) + 2*diff(u(r, t), r)/r";
+    let s = any(&format!("pdsolve({ball}, u(r, t), list(at(diff(u(r, t), r), r, 1) + 3*u(1, t) = 0, u(oo, t) = 0, u(r, 0) = exp(-2*(r - 1))/r))"));
+    let r = 1.8_f64;
+    close(numeric(&rhs(&s), &[("r", r), ("t", 0.2)]), (-2.0 * (r - 1.0) + 0.8).exp() / r, 1e-6, &s);
+}
+
+#[test]
+fn exterior_heat_in_the_plane() {
+    let disk = "diff(u(r, t), t) = diff(diff(u(r, t), r), r) + diff(u(r, t), r)/r";
+    let data = "(r - 1)*exp(-2*(r - 1))";
+    let s = any(&format!("pdsolve({disk}, u(r, t), list(u(1, t) = 0, u(oo, t) = 0, u(r, 0) = {data}))"));
+    assert!(s.contains("bessely(0,") && s.contains("defint"), "{s}");
+    // Crank-Nicolson on [1, 13] as the independent reference.
+    let (n, steps) = (1200_usize, 250_usize);
+    let (t_end, h) = (0.5_f64, 12.0 / 1200.0);
+    let dt = t_end / steps as f64;
+    let radius = |i: usize| 1.0 + h * i as f64;
+    let mut u: Vec<f64> = (0..=n).map(|i| (radius(i) - 1.0) * (-2.0 * (radius(i) - 1.0)).exp()).collect();
+    for _ in 0..steps {
+        let (mut lower, mut diag, mut upper, mut rhs_) = (vec![0.0; n + 1], vec![1.0; n + 1], vec![0.0; n + 1], vec![0.0; n + 1]);
+        for i in 1..n {
+            let r_i = radius(i);
+            let (a, b) = (1.0 / (h * h) - 1.0 / (2.0 * h * r_i), 1.0 / (h * h) + 1.0 / (2.0 * h * r_i));
+            let operator = a * u[i - 1] - 2.0 / (h * h) * u[i] + b * u[i + 1];
+            rhs_[i] = u[i] + 0.5 * dt * operator;
+            lower[i] = -0.5 * dt * a;
+            diag[i] = 1.0 + dt / (h * h);
+            upper[i] = -0.5 * dt * b;
+        }
+        // Thomas algorithm.
+        for i in 1..=n {
+            let m = lower[i] / diag[i - 1];
+            diag[i] -= m * upper[i - 1];
+            rhs_[i] -= m * rhs_[i - 1];
+        }
+        u[n] = rhs_[n] / diag[n];
+        for i in (0..n).rev() {
+            u[i] = (rhs_[i] - upper[i] * u[i + 1]) / diag[i];
+        }
+    }
+    let r = 2.0_f64;
+    let index = ((r - 1.0) / h).round() as usize;
+    let reference = u[index];
+    let text = s.replace(", rho, 1, oo)", ", rho, 1, 9)").replace(", k, 0, oo)", ", k, 0, 6)");
+    let text = expand_integrals(&rhs(&text), 90);
+    close(value(&text, &[("r", r), ("t", t_end)]), reference, 6e-3, &s);
+}

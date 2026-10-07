@@ -1114,7 +1114,16 @@ fn solve(
     conditions: &Conditions,
     method: Method,
 ) -> Option<NodeId> {
-    let classical = if conditions.has_robin() { None } else { solve_classical(cx, p, conditions, method) };
+    let classical = if conditions.has_robin() {
+        // Robin conditions on a half-line (heat kernels with the Robin image).
+        if matches!(method, Method::Any | Method::Heat1 | Method::Heat3 | Method::Fourier) && kind(cx, p) == "heat" {
+            diffusion::parabolic(cx, p, conditions).map(|solution| cx.graph.node(core::EQ, &[p.unknown, solution]))
+        } else {
+            None
+        }
+    } else {
+        solve_classical(cx, p, conditions, method)
+    };
     if classical.is_some() {
         return classical;
     }
