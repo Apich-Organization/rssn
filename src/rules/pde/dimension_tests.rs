@@ -12,32 +12,32 @@ use crate::rules::testing::reduce_with;
 use crate::rules::testing::simplify;
 use std::f64::consts::PI;
 
-const HEAT: &str = "diff(u(x, t), t) = diff(diff(u(x, t), x), x)";
-const HEAT_2D: &str = "diff(u(x, y, t), t) = diff(diff(u(x, y, t), x), x) + diff(diff(u(x, y, t), y), y)";
-const LAPLACE_2D: &str = "diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y)";
-const WAVE: &str = "diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x)";
+pub(super) const HEAT: &str = "diff(u(x, t), t) = diff(diff(u(x, t), x), x)";
+pub(super) const HEAT_2D: &str = "diff(u(x, y, t), t) = diff(diff(u(x, y, t), x), x) + diff(diff(u(x, y, t), y), y)";
+pub(super) const LAPLACE_2D: &str = "diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y)";
+pub(super) const WAVE: &str = "diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x)";
 
-fn run(src: &str) -> String {
+pub(super) fn run(src: &str) -> String {
     simplify(&crate::rules::standard(), src)
 }
 
-fn any(src: &str) -> String {
+pub(super) fn any(src: &str) -> String {
     reduce_with(&crate::rules::standard(), src, &[]).0
 }
 
 /// The right-hand side of `lhs = rhs`.
-fn rhs(text: &str) -> String {
+pub(super) fn rhs(text: &str) -> String {
     text.split_once(" = ").map_or_else(|| text.to_owned(), |(_, r)| r.to_owned())
 }
 
-fn value(
+pub(super) fn value(
     text: &str,
     at: &[(&str, f64)],
 ) -> f64 {
     eval(&crate::rules::standard(), text, at)
 }
 
-fn close(
+pub(super) fn close(
     got: f64,
     want: f64,
     tolerance: f64,
@@ -48,7 +48,7 @@ fn close(
 
 /// Replaces every `sum(body, n, lo, oo)` by the explicit sum of its first
 /// `terms` terms.
-fn expand_sums(
+pub(super) fn expand_sums(
     text: &str,
     terms: i64,
 ) -> String {
@@ -121,7 +121,7 @@ fn replace_identifier(
 }
 
 /// A series solution evaluated with `terms` terms.
-fn series(
+pub(super) fn series(
     text: &str,
     at: &[(&str, f64)],
     terms: i64,
@@ -482,7 +482,7 @@ fn drift_on_intervals_and_plates() {
 
 /// Replaces every `defint(body, var, lo, hi)` by the midpoint rule with
 /// `points` nodes (the integrands here are analytic).
-fn expand_integrals(
+pub(super) fn expand_integrals(
     text: &str,
     points: usize,
 ) -> String {
@@ -529,6 +529,62 @@ fn expand_integrals(
             })
             .collect();
         s.replace_range(start..=end, &format!("((({hi}) - ({lo}))/{points}*({}))", pieces.join(" + ")));
+    }
+    s
+}
+
+/// Replaces every `defint(body, var, 0, 1)` whose integrand has inverse
+/// square-root endpoint singularities by the midpoint rule after the
+/// substitution `var = sin(π q / 2)` with `points` nodes.
+pub(super) fn expand_unit_integrals(
+    text: &str,
+    points: usize,
+) -> String {
+    let mut s = text.to_owned();
+    while let Some(start) = s.rfind("defint(") {
+        let open = start + 6;
+        let mut depth = 0_i32;
+        let mut end = open;
+        for (i, c) in s.char_indices().skip(open) {
+            match c {
+                | '(' => depth += 1,
+                | ')' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = i;
+                        break;
+                    }
+                },
+                | _ => {},
+            }
+        }
+        let inner = s[open + 1..end].to_owned();
+        let mut parts = Vec::new();
+        let (mut depth, mut last) = (0_i32, 0);
+        for (i, c) in inner.char_indices() {
+            match c {
+                | '(' => depth += 1,
+                | ')' => depth -= 1,
+                | ',' if depth == 0 => {
+                    parts.push(inner[last..i].trim().to_owned());
+                    last = i + 1;
+                },
+                | _ => {},
+            }
+        }
+        parts.push(inner[last..].trim().to_owned());
+        assert_eq!(parts.len(), 4, "malformed integral in {text}");
+        let (body, var, lo, hi) = (&parts[0], &parts[1], &parts[2], &parts[3]);
+        let pieces: Vec<String> = (0..points)
+            .map(|k| {
+                let fraction = (f64::from(u32::try_from(k).unwrap_or(0)) + 0.5) / f64::from(u32::try_from(points).unwrap_or(1));
+                let angle = format!("({fraction}*pi/2)");
+                let node = format!("sin({angle})");
+                format!("({})*cos({angle})", replace_identifier(body, var, &node))
+            })
+            .collect();
+        let _ = (lo, hi);
+        s.replace_range(start..=end, &format!("(pi/2/{points}*({}))", pieces.join(" + ")));
     }
     s
 }

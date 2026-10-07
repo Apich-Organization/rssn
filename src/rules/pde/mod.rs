@@ -40,31 +40,48 @@
 //! |---|---|---|---|
 //! | heat / diffusion, drift, reaction, source | whole space | 1, 2, 3 | heat kernel (gauge `exp(αx + βt)` for drift and reaction), Duhamel |
 //! | | half-space, quadrant, octant (`x_j > 0`, any subset) | 1, 2, 3 | images (`K(x - s) ∓ K(x + s)` per axis); D or N data on one face (Dirichlet kernel `x_n/(t-τ) K`, Neumann `-2D K`); constant data: similarity solution `erfc(x/2√(Dt))` |
-//! | | box `[a, b]^d`, D/N/R/P in every combination per axis; drift on D axes | 1, 2, 3 | expansion; sources by Duhamel; boundary data as boundary forcing (Green's second identity) |
-//! | | disk, ball (radial), cylinder; D/N/R at `r = R` | 1, 2, 3 | expansion in `J_n(j_{n,m} r/R)` (cylinder times axial modes), `sin(κr)/r` and `r^{-1/2} J_{l+1/2}` for balls |
+//! | | box `[a, b]^d`, D/N/R/P in every combination per axis; drift on D, N and R axes | 1, 2, 3 | expansion (the gauge `e^{αx}` turns N/R ends into R ends with shifted coefficients; Robin conditions of the wrong sign contribute a zero or a negative mode `sl_neg_root`); sources by Duhamel; boundary data as boundary forcing (Green's second identity) |
+//! | | disk, ball (also without axial symmetry: `P_l^m(cos θ) cos/sin mφ`), cylinder; D/N/R at `r = R` | 1, 2, 3 | expansion in `J_n(j_{n,m} r/R)` (cylinder times axial modes), `sin(κr)/r` and `r^{-1/2} J_{l+1/2}` for balls; Fourier–Bessel and Fourier–Legendre coefficients of polynomial data in closed form |
+//! | | annulus, spherical shell; D/N/R on both circles | 2, 3 | expansion in the cross-products `F = A J_ν(kr) - B Y_ν(kr)` with `k = annulus_root(..)`; shells with `l = 0` as intervals for `r u` |
+//! | | outside a ball, radial data; `u(oo, t) = 0` | 3 | `v = r u` on the half-line `r > R` (images, similarity solution) |
+//! | | `a x² u_xx + b x u_x + …` on `[x₀, x₁]` (Euler–Cauchy), `(1 - x²) u_xx - 2 x u_x` on `[-1, 1]` (Legendre), `u_xx + u_x/x` in any variable name | 1 | `x = e^s` to constant coefficients; Legendre modes `P_n`; the radial solver by structure |
 //! | wave `u_tt = c² Δu` | whole space | 1, 2, 3 | d'Alembert; Poisson's formula (Hadamard descent from 3D); Kirchhoff; sources by Duhamel |
 //! | | half-space (`x_j > 0`, D or N, any subset) | 1, 2, 3 | odd/even extension of data and source |
-//! | | box, disk, cylinder, ball | 1, 2, 3 | expansion (`cos(ωt)`, `sin(ωt)/ω`, Duhamel for time-dependent sources, zero modes) |
+//! | | box, disk, annulus, cylinder, ball, shell | 1, 2, 3 | expansion (`cos(ωt)`, `sin(ωt)/ω`, Duhamel for time-dependent sources, zero modes) |
 //! | Klein–Gordon, telegraph (`a u_tt + b u_t + e u`) | whole line | 1 | Riemann's formula with `J_0`, `J_1` (`I_0`, `I_1` for the telegraph equation) after `u = e^{-γt} w`; plane-wave integral without data |
-//! | | box, disk, cylinder, ball | 1, 2, 3 | expansion (`T'' + 2γ T' + (ω² ) T`, closed form for under- and over-damped modes) |
+//! | | whole plane, whole space | 2, 3 | descent from three dimensions: `t M[h](ct) ∓ m t² ∫_0^1 τ² M[h](cτt) Z_1(m t √(1-τ²))/√(1-τ²) dτ` (space), `t M_w[h](ct)` with the weight `cos (cosh)(m t √(1-ρ²))` (plane), `∂_t` for displacement data, after `u = e^{-γt} w`; homogeneous equations |
+//! | | box, disk, annulus, cylinder, ball | 1, 2, 3 | expansion (`T'' + 2γ T' + (ω² ) T`, closed form for under- and over-damped modes) |
 //! | Schrödinger `i u_t = -Δ u + V₀ u` | whole space, half-space | 1, 2, 3 | propagator (complex diffusivity in the heat formulas), images |
 //! | | box, disk, ball | 1, 2, 3 | expansion with `exp(-i s t)` |
 //! | Laplace, Poisson, Helmholtz | whole space | 1, 2, 3 | free-space Green's function |
 //! | | half-space, quadrant, octant | 1, 2, 3 | images; Poisson kernel `Γ(d/2)/π^{d/2} x_n/|x - y|^d` for D data (Laplace); single layer `2G` for N data |
-//! | | rectangle, box | 2, 3 | one data face: sinh/sin closed form; any faces, sources, N/R/mixed: expansion with boundary forcing |
-//! | | disk, ball (axisymmetric), ring | 2, 3 | harmonic series `Σ (r/R)^n(...)`, `Σ A_l (r/R)^l P_l(cos θ)`, finite data on rings; polynomial sources by a particular solution; Bessel expansion otherwise |
+//! | | rectangle, box | 2, 3 | one data face (Dirichlet, Neumann or Robin data, any homogeneous opposite face): `sinh`/`cosh` profile closed form; any faces, sources, N/R/mixed: expansion with boundary forcing |
+//! | | disk, ball (also without axial symmetry), ring | 2, 3 | harmonic series `Σ (r/R)^n(...)`, `Σ A_l (r/R)^l P_l^m(cos θ) cos mφ`, D/N/R data (profile `r^n` normalised by `p ρ(R) + q ρ'(R)`), finite data on rings; polynomial sources by a particular solution; Bessel expansion otherwise |
+//! | | outside a disk or ball; `u(oo, ·) = c` | 2, 3 | decaying harmonics `r^{-n}`, `r^{-(l+1)}`; Helmholtz with `k² > 0`: outgoing Hankel functions (Sommerfeld condition, elementary `e^{ikr}/r Σ …` for balls), `k² < 0`: `K_ν` |
 //! | | cylinder | 3 | expansion in `J_0(j_{0,m} r) × sin(kz)` |
 //! | biharmonic, beam `u_tt + k u_xxxx` | box | 1, 2 | expansion (the symbol `Σ c_α Π (-λ_j)^{α_j/2}` is generic in the even operator), simply supported / sliding edges |
 //! | advection `a·∇u + c u = f` | whole space | any | characteristics, invariants `a_j x_l - a_l x_j` |
 //! | hyperbolic and parabolic *systems* with constant matrices | any domain of the scalar solvers | 1, 2, 3 | simultaneous diagonalisation `P^{-1} A_α P = diag`, scalar solution, `U = P W` |
+//! | | first-order systems without distinct eigenvalues, whole space, no sources | 1, 2, 3 | common Jordan basis (generalised eigenvectors), `w_a = Σ_j q_j(t, ∂) S_{a+j}` with polynomial `q_j` in `t` |
 //!
 //! Limitations: the equation must have constant coefficients (apart from
-//! the polar, cylindrical and spherical Laplacians); eigenvalues of Robin
-//! problems are `sl_root(..)` / `bessel_root(..)` placeholders (roots of
-//! transcendental equations, evaluated numerically, positive spectrum
-//! assumed); a ball without axial symmetry, annuli for evolution equations
-//! and nonhomogeneous Robin data on boxes are not covered; systems need
-//! distinct eigenvalues of some combination of the coupling matrices.
+//! the polar, cylindrical and spherical Laplacians, Euler–Cauchy and
+//! Legendre operators in one variable); eigenvalues of Robin problems are
+//! `sl_root(..)` / `bessel_root(..)` / `annulus_root(..)` placeholders
+//! (roots of transcendental equations, evaluated numerically; at most one
+//! zero or negative mode per Robin interval, `sl_neg_root`; the Bessel
+//! problems of disks, balls and annuli assume a positive spectrum);
+//! azimuthal data of a ball must be a trigonometric polynomial; radial
+//! moments of odd powers (Struve functions) and of non-polynomial data stay
+//! integrals; exterior domains are covered for Laplace and Helmholtz
+//! problems with homogeneous equations and, for the heat and wave equations,
+//! radial data with a Dirichlet condition outside a ball (no exterior heat
+//! equation in the plane, no Robin condition); massive waves in two and
+//! three dimensions are homogeneous (no sources) on whole space; Jordan
+//! systems are first-order, source-free and on whole space (derivatives do
+//! not preserve boundary conditions); the Euler–Cauchy reduction handles one
+//! Euler variable with `x > 0`; general Liouville transformations
+//! (arbitrary `p(x)`, `w(x)`) are not attempted.
 //!
 //! | operator | value |
 //! |---|---|
@@ -73,7 +90,7 @@
 //! | `pde_classify(eq, u(...))` | `list(type, order, dimension, linear, homogeneous, character, list(methods...))` |
 //! | `pde_order(eq, u(...))` | the order |
 //! | `solve_pde_by_characteristics(eq, u(x, y))` | first-order linear and quasi-linear equations |
-//! | `solve_pde_by_separation_of_variables(eq, u(x, t), conditions)` | eigenfunction expansion on boxes, disks, cylinders and balls |
+//! | `solve_pde_by_separation_of_variables(eq, u(x, t), conditions)` | eigenfunction expansion on boxes, disks, annuli, cylinders, balls and shells |
 //! | `solve_pde_by_greens_function(eq, u(...))` | Poisson and Helmholtz equations in free space and half-spaces |
 //! | `solve_with_fourier_transform(eq, u(x, t), conditions)` | heat and Schrödinger equations on the line |
 //! | `solve_wave_equation_1d_dalembert`, `solve_heat_equation_1d`, `solve_heat_equation_3d`, `solve_wave_equation_3d`, `solve_laplace_equation_2d`, `solve_laplace_equation_3d`, `solve_poisson_equation_2d`, `solve_poisson_equation_3d`, `solve_helmholtz_equation`, `solve_schrodinger_equation`, `solve_klein_gordon_equation`, `solve_burgers_equation`, `solve_second_order_pde` | one method each, same arguments as `pdsolve` |
@@ -89,11 +106,15 @@
 //! | `bessel_zero(ν, m)` | the `m`-th positive zero of `J_ν` (numeric) |
 //! | `bessel_root(ν, h, m)` | the `m`-th positive root of `z J_ν'(z) + h J_ν(z) = 0` (Neumann: `h = 0`; Robin; the ball: `h → h - 1/2`) |
 //! | `sl_root(p₀, q₀, p₁, q₁, L, m)` | the `m`-th `k > 0` with `X'' = -k² X`, `p₀ X(0) + q₀ X'(0) = 0`, `p₁ X(L) + q₁ X'(L) = 0` |
+//! | `sl_neg_root(p₀, q₀, p₁, q₁, L)` | the `κ > 0` with `X'' = κ² X` and the same conditions (a negative eigenvalue `-κ²`); NaN if none |
+//! | `annulus_root(ν, pₐ, qₐ, a, p_b, q_b, b, m)` | the `m`-th `k > 0` for which `A J_ν(kr) - B Y_ν(kr)` meets `p F + q F' = 0` at `r = a` (by construction) and at `r = b` (zeros of the cross-product `J_ν(ka) Y_ν(kb) - J_ν(kb) Y_ν(ka)` for Dirichlet data) |
 //!
 //! # The expansion engine
 //!
-//! The solvers on bounded domains share one engine (`spectral`): the domain
-//! is a list of axes (interval, periodic angle, polar angle, radius), each
+//! The solvers on bounded domains share one engine (`spectral`, with the
+//! mode families and closed-form projection integrals in `modes`): the domain
+//! is a list of axes (interval, periodic angle, polar angle, Legendre
+//! interval, radius or annulus), each
 //! with eigenfunctions, a weight and a norm; the operator acts on a mode by
 //! its symbol; the time dependence of a mode (`a₂ T'' + a₁ T' + s T = -f`),
 //! initial data, sources and boundary data are projected on the modes, and
@@ -108,14 +129,18 @@ mod curvilinear;
 mod diffusion;
 mod elliptic;
 mod frameworks;
+mod modes;
 mod numeric;
 mod spectral;
+mod sturm;
 mod symmetry;
 mod systems;
 mod util;
 mod waves;
 #[cfg(test)]
 mod dimension_tests;
+#[cfg(test)]
+mod extension_tests;
 
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
@@ -1110,7 +1135,7 @@ fn solve(
     if !general {
         return None;
     }
-    let solution = spectral::solve_box(cx, p, conditions).or_else(|| curvilinear::solve(cx, p, conditions))?;
+    let solution = spectral::solve_box(cx, p, conditions).or_else(|| curvilinear::solve(cx, p, conditions)).or_else(|| sturm::solve(cx, p, conditions))?;
     Some(cx.graph.node(core::EQ, &[p.unknown, solution]))
 }
 
@@ -2505,7 +2530,17 @@ fn verified(
                 }
                 evaluated += 1;
             },
-            | _ => {},
+            | _ => {
+                // Complex-valued solutions (Hankel functions, propagators).
+                let bindings: HashMap<SymbolId, num_complex::Complex64> =
+                    symbols.iter().map(|&s| (s, num_complex::Complex64::new(0.3 + 0.23 * f64::from(sample) + 0.11 * f64::from(s.raw() % 7), 0.0))).collect();
+                if let Some(v) = cx.graph.eval_complex(residual, &bindings).filter(|v| v.re.is_finite() && v.im.is_finite()) {
+                    if v.norm() > 1e-7 {
+                        return false;
+                    }
+                    evaluated += 1;
+                }
+            },
         }
     }
     evaluated > 0
@@ -2570,7 +2605,7 @@ fn satisfies(
         let difference = sub(cx.graph, on, target);
         // Identities of special functions (a zero of J_0, a periodic
         // value) are checked numerically when the simplifier cannot.
-        let numerically_zero = |cx: &Cx<'_>| (0..3_u32).all(|k| util::sample(cx.graph, difference, k).is_some_and(|v| v.abs() < 1e-8));
+        let numerically_zero = |cx: &Cx<'_>| (0..3_u32).all(|k| util::sample_abs(cx.graph, difference, k).is_some_and(|v| v < 1e-8));
         if !cx.is_zero(difference) && !numerically_zero(cx) {
             return false;
         }
