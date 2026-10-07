@@ -220,3 +220,108 @@ proptest! {
         }
     }
 }
+
+mod channel_boundaries {
+    use super::*;
+
+    fn flow(
+        n: usize,
+        re: f64,
+        dt: f64,
+        iters: usize,
+        mask: &Array2<bool>,
+        inflow: InflowProfile,
+        walls: WallCondition,
+    ) -> (Array2<f64>, Array2<f64>, Array2<f64>) {
+        run_channel_flow_with(&ChannelFlowConfig { n, re, dt, n_iter: iters, obstacle_mask: mask, inflow, walls })
+            .unwrap_or_else(|e| panic!("{e}"))
+    }
+
+    #[test]
+    fn poiseuille_profile_is_preserved_between_no_slip_walls() {
+        let n = 33;
+        let re = 10.0;
+        let mask = Array2::<bool>::from_elem((n, n), false);
+        let (u, v, p) = flow(n, re, 1e-3, 4000, &mask, InflowProfile::Parabolic(1.0), WallCondition::NoSlip);
+        let h = 1.0 / (n - 1) as f64;
+        // no-slip walls
+        for i in 0..n {
+            assert_eq!((u[[0, i]], u[[n - 1, i]]), (0.0, 0.0));
+        }
+        // fully developed parabolic profile and vanishing cross-flow in mid-channel
+        for i in [n / 2, 3 * n / 4] {
+            for j in 0..n {
+                let y = j as f64 * h;
+                assert!((u[[j, i]] - 4.0 * y * (1.0 - y)).abs() < 0.04, "u[{j},{i}] = {}", u[[j, i]]);
+                assert!(v[[j, i]].abs() < 0.02, "v[{j},{i}] = {}", v[[j, i]]);
+            }
+        }
+        // linear pressure drop dp/dx = -8 / re (u_yy = -8, nu = 1/re)
+        let mid = n / 2;
+        let slope = (p[[mid, 24]] - p[[mid, 8]]) / (16.0 * h);
+        assert!((slope + 8.0 / re).abs() < 0.2 * 8.0 / re, "dp/dx = {slope}");
+    }
+
+    #[test]
+    fn symmetric_obstacle_gives_symmetric_no_slip_flow() {
+        let n = 33;
+        let mut mask = Array2::<bool>::from_elem((n, n), false);
+        for j in 12..21 {
+            for i in 10..14 {
+                mask[[j, i]] = true;
+            }
+        }
+        let (u, v, p) = flow(n, 50.0, 1e-3, 600, &mask, InflowProfile::Uniform(1.0), WallCondition::Slip);
+        for j in 0..n {
+            for i in 0..n {
+                let m = n - 1 - j;
+                assert!((u[[j, i]] - u[[m, i]]).abs() < 1e-8, "u symmetry at ({j},{i})");
+                assert!((v[[j, i]] + v[[m, i]]).abs() < 1e-8, "v antisymmetry at ({j},{i})");
+                assert!((p[[j, i]] - p[[m, i]]).abs() < 1e-8, "p symmetry at ({j},{i})");
+                if mask[[j, i]] {
+                    assert_eq!((u[[j, i]], v[[j, i]]), (0.0, 0.0));
+                }
+            }
+        }
+        // mass is conserved between inlet and outlet (trapezoid rule)
+        let flux = |i: usize| -> f64 { (1..n - 1).map(|j| u[[j, i]]).sum::<f64>() + 0.5 * (u[[0, i]] + u[[n - 1, i]]) };
+        assert!((flux(0) - flux(n - 1)).abs() < 0.08 * flux(0), "inlet {} outlet {}", flux(0), flux(n - 1));
+        // the block decelerates the fluid in front of it and in its wake,
+        // and deflects the flow around it (positive v above the centreline upstream)
+        assert!(u[[16, 8]] < 0.6, "stagnation u = {}", u[[16, 8]]);
+        assert!(u[[16, 15]] < 0.5, "wake u = {}", u[[16, 15]]);
+        assert!(u[[8, 12]] > 1.0, "flow accelerates above the block: {}", u[[8, 12]]);
+        assert!(v[[20, 9]] > 0.0 && v[[12, 9]] < 0.0, "flow splits around the block");
+    }
+
+    #[test]
+    fn pressure_is_not_polluted_inside_the_obstacle() {
+        let n = 17;
+        let mut mask = Array2::<bool>::from_elem((n, n), false);
+        mask[[8, 8]] = true;
+        let (u, v, p) = flow(n, 20.0, 1e-3, 50, &mask, InflowProfile::Uniform(1.0), WallCondition::NoSlip);
+        assert_eq!(p[[8, 8]], 0.0);
+        assert!(u.iter().chain(v.iter()).chain(p.iter()).all(|x| x.is_finite()));
+        // no-slip: the point just upstream of the obstacle is slowed down
+        assert!(u[[8, 7]] < 0.9);
+    }
+
+    #[test]
+    fn config_validation() {
+        let mask = Array2::<bool>::from_elem((5, 5), false);
+        let base = ChannelFlowConfig {
+            n: 6,
+            re: 10.0,
+            dt: 1e-3,
+            n_iter: 1,
+            obstacle_mask: &mask,
+            inflow: InflowProfile::Uniform(1.0),
+            walls: WallCondition::NoSlip,
+        };
+        assert!(run_channel_flow_with(&base).is_err());
+        assert!(run_channel_flow_with(&ChannelFlowConfig { n: 2, ..base.clone() }).is_err());
+        assert!(run_channel_flow_with(&ChannelFlowConfig { n: 5, ..base }).is_ok());
+        assert_eq!(InflowProfile::Parabolic(2.0).velocity(0.5), 2.0);
+        assert_eq!(InflowProfile::Uniform(3.0).velocity(0.2), 3.0);
+    }
+}

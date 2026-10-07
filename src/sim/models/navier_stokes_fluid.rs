@@ -28,6 +28,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::io::write_npy_file;
+use crate::kernels::krylov::cg;
 use crate::sim::physics_mtm::solve_poisson_2d_multigrid;
 
 /// Parameters for the Navier-Stokes simulation.
@@ -50,8 +51,62 @@ pub struct NavierStokesParameters {
 /// Type of `NavierStokesOutput`.
 pub type NavierStokesOutput = Result<(Array2<f64>, Array2<f64>, Array2<f64>), String>;
 
+/// Inflow velocity profile on the left boundary of a channel.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum InflowProfile {
+    /// Uniform axial velocity `u = u0`.
+    Uniform(f64),
+    /// Poiseuille profile `u = 4 u_max y (1 - y)` on the unit-height channel.
+    Parabolic(f64),
+}
+
+impl InflowProfile {
+    /// Axial velocity at height `y` in `[0, 1]`.
+    #[must_use]
+    pub fn velocity(
+        &self,
+        y: f64,
+    ) -> f64 {
+        match *self {
+            | Self::Uniform(u0) => u0,
+            | Self::Parabolic(u_max) => 4.0 * u_max * y * (1.0 - y),
+        }
+    }
+}
+
+/// Condition on the top and bottom channel walls.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WallCondition {
+    /// Free slip: `v = 0` and `du/dy = 0`.
+    Slip,
+    /// No slip: `u = v = 0`.
+    NoSlip,
+}
+
+/// Configuration of [`run_channel_flow_with`].
+#[derive(Clone, Debug)]
+pub struct ChannelFlowConfig<'a> {
+    /// Grid points per direction (the domain is the unit square).
+    pub n: usize,
+    /// Reynolds number.
+    pub re: f64,
+    /// Time step.
+    pub dt: f64,
+    /// Number of time steps.
+    pub n_iter: usize,
+    /// Mask of solid grid points (`true` = no-slip obstacle), shape `(n, n)`.
+    pub obstacle_mask: &'a Array2<bool>,
+    /// Inflow profile on the left boundary.
+    pub inflow: InflowProfile,
+    /// Condition on the top and bottom walls.
+    pub walls: WallCondition,
+}
+
 /// Solves the 2D Navier-Stokes equations for channel flow with an obstacle.
-/// Uses the projection method (Chorin 1968).
+///
+/// Free-slip walls and a uniform unit inflow; see [`run_channel_flow_with`]
+/// for no-slip walls and a Poiseuille inflow, and for the boundary
+/// treatment.
 ///
 /// # Arguments
 /// * `nx` - Grid width.
@@ -64,17 +119,12 @@ pub type NavierStokesOutput = Result<(Array2<f64>, Array2<f64>, Array2<f64>), St
 /// # Returns
 /// Tuple of (u, v, p) arrays.
 ///
-/// The solver works on a square `nx` x `nx` grid (`ny` must equal `nx`) whose
-/// size is `2^k + 1`, as required by the multigrid pressure solver.
+/// The solver works on a square `nx` x `nx` grid (`ny` must equal `nx`).
 ///
 /// # Errors
 /// Returns an error if the grid is smaller than 3 points, not square, or if
-/// the obstacle mask does not have shape `(ny, nx)`; also if the multigrid
-/// solver rejects the grid size.
-///
-/// # Panics
-/// Panics if an intermediate array is not contiguous, which cannot happen for
-/// arrays this function allocates itself.
+/// the obstacle mask does not have shape `(ny, nx)`; also if the pressure
+/// solver fails.
 pub fn run_channel_flow(
     nx: usize,
     ny: usize,
@@ -100,7 +150,241 @@ pub fn run_channel_flow(
         ));
     }
 
-    let n = nx;
+    run_channel_flow_with(&ChannelFlowConfig {
+        n: nx,
+        re,
+        dt,
+        n_iter,
+        obstacle_mask,
+        inflow: InflowProfile::Uniform(1.0),
+        walls: WallCondition::Slip,
+    })
+}
+
+/// Applies the channel boundary conditions to a velocity field: prescribed
+/// inflow on the left, zero-gradient outflow on the right, the wall
+/// condition on top and bottom (walls win at the corners) and no-slip
+/// (`u = v = 0`) on every obstacle point.
+fn apply_channel_bcs(
+    u: &mut Array2<f64>,
+    v: &mut Array2<f64>,
+    cfg: &ChannelFlowConfig<'_>,
+) {
+    let n = cfg.n;
+
+    let h = 1.0 / (n as f64 - 1.0);
+
+    for j in 0..n {
+        u[[j, 0]] = cfg.inflow.velocity(j as f64 * h);
+
+        v[[j, 0]] = 0.0;
+    }
+
+    for j in 0..n {
+        u[[j, n - 1]] = u[[j, n - 2]];
+
+        v[[j, n - 1]] = v[[j, n - 2]];
+    }
+
+    for i in 0..n {
+        match cfg.walls {
+            | WallCondition::Slip => {
+                u[[0, i]] = u[[1, i]];
+
+                u[[n - 1, i]] = u[[n - 2, i]];
+            },
+            | WallCondition::NoSlip => {
+                u[[0, i]] = 0.0;
+
+                u[[n - 1, i]] = 0.0;
+            },
+        }
+
+        v[[0, i]] = 0.0;
+
+        v[[n - 1, i]] = 0.0;
+    }
+
+    for ((j, i), &solid) in cfg.obstacle_mask.indexed_iter() {
+        if solid {
+            u[[j, i]] = 0.0;
+
+            v[[j, i]] = 0.0;
+        }
+    }
+}
+
+/// Solves `-lap(p) = f` for the pressure on the interior nodes of the unit
+/// square with conjugate gradients (Jacobi preconditioned).
+///
+/// Neumann (`dp/dn = 0`) conditions hold on the inflow, the walls and every
+/// obstacle face, i.e. a neighbour that is outside the fluid is dropped from
+/// the stencil; the outflow column `i = n - 1` is a Dirichlet condition
+/// `p = 0`. `p` is the warm start and receives the solution; boundary
+/// nodes are filled by copying the adjacent interior value (Neumann) or
+/// zero (outflow).
+fn solve_channel_pressure(
+    p: &mut Array2<f64>,
+    rhs: &Array2<f64>,
+    solid: &Array2<bool>,
+    h: f64,
+) -> Result<(), String> {
+    let n = p.nrows();
+
+    let inv_h2 = 1.0 / (h * h);
+
+    // Interior fluid unknowns, numbered row-major.
+    let mut id = Array2::<usize>::from_elem((n, n), usize::MAX);
+
+    let mut nodes = Vec::new();
+
+    for j in 1..n - 1 {
+        for i in 1..n - 1 {
+            if !solid[[j, i]] {
+                id[[j, i]] = nodes.len();
+
+                nodes.push((j, i));
+            }
+        }
+    }
+
+    let m = nodes.len();
+
+    if m == 0 {
+        p.fill(0.0);
+
+        return Ok(());
+    }
+
+    // Number of non-Neumann neighbours and the interior-fluid neighbours.
+    let neighbours = |j: usize, i: usize| -> (f64, [Option<usize>; 4]) {
+        let mut count = 0.0;
+
+        let mut list = [None; 4];
+
+        for (slot, (dj, di)) in [(0isize, -1isize), (0, 1), (-1, 0), (1, 0)].into_iter().enumerate() {
+            let jj = j as isize + dj;
+
+            let ii = i as isize + di;
+
+            if ii == n as isize - 1 {
+                // Dirichlet outflow column (p = 0): contributes only to the diagonal.
+                count += 1.0;
+            } else if (1..n as isize - 1).contains(&jj) && (1..n as isize - 1).contains(&ii) {
+                let k = id[[jj as usize, ii as usize]];
+
+                if k != usize::MAX {
+                    count += 1.0;
+
+                    list[slot] = Some(k);
+                }
+            }
+        }
+
+        (count, list)
+    };
+
+    let stencils: Vec<(f64, [Option<usize>; 4])> = nodes.iter().map(|&(j, i)| neighbours(j, i)).collect();
+
+    let apply = |x: &[f64], y: &mut [f64]| {
+        for (k, (count, list)) in stencils.iter().enumerate() {
+            let mut s = count * x[k];
+
+            for nb in list.iter().flatten() {
+                s -= x[*nb];
+            }
+
+            y[k] = s * inv_h2;
+        }
+    };
+
+    let diag: Vec<f64> = stencils.iter().map(|(c, _)| (c * inv_h2).max(f64::MIN_POSITIVE)).collect();
+
+    let precond = |r: &[f64], z: &mut [f64]| {
+        for k in 0..r.len() {
+            z[k] = r[k] / diag[k];
+        }
+    };
+
+    let b: Vec<f64> = nodes.iter().map(|&(j, i)| rhs[[j, i]]).collect();
+
+    let x0: Vec<f64> = nodes.iter().map(|&(j, i)| p[[j, i]]).collect();
+
+    let res = cg(apply, precond, &b, Some(&x0), 1e-10, 20 * m + 200);
+
+    if !res.residual.is_finite() {
+        return Err("Pressure solve produced a non-finite residual.".to_string());
+    }
+
+    for (k, &(j, i)) in nodes.iter().enumerate() {
+        p[[j, i]] = res.x[k];
+    }
+
+    // Boundary and solid values: Neumann copy, Dirichlet outflow.
+    for j in 0..n {
+        p[[j, n - 1]] = 0.0;
+    }
+
+    for j in 0..n {
+        p[[j, 0]] = p[[j.clamp(1, n - 2), 1]];
+    }
+
+    for i in 0..n - 1 {
+        p[[0, i]] = p[[1, i]];
+
+        p[[n - 1, i]] = p[[n - 2, i]];
+    }
+
+    for ((j, i), &s) in solid.indexed_iter() {
+        if s {
+            p[[j, i]] = 0.0;
+        }
+    }
+
+    Ok(())
+}
+
+/// Solves the 2D incompressible Navier-Stokes equations in the unit square
+/// with an optional no-slip obstacle, by Chorin's projection method.
+///
+/// Each step
+/// 1. advances an intermediate velocity explicitly (first-order upwind
+///    advection, central diffusion) at every fluid point; solid points and
+///    boundary points are then set by the boundary conditions,
+/// 2. imposes the boundary conditions: the inflow profile on the left,
+///    zero-gradient outflow on the right, the [`WallCondition`] on top and
+///    bottom, and *no slip* (`u = v = 0`) on every point of the obstacle
+///    mask (so fluid points next to the obstacle see zero velocity in
+///    their diffusion and advection stencils),
+/// 3. solves the pressure Poisson equation `lap(p) = div(u*) / dt` over the
+///    fluid points only, with `dp/dn = 0` on the inflow, the walls and all
+///    obstacle faces and `p = 0` at the outflow, by preconditioned
+///    conjugate gradients, and
+/// 4. corrects `u = u* - dt grad(p)` at fluid points, where a gradient
+///    across an obstacle face uses the Neumann (mirrored) pressure.
+///
+/// The explicit scheme needs `dt <= h^2 re / 4` and `dt <= h / |u|`.
+///
+/// # Errors
+/// Returns an error if the grid has fewer than 3 points, the mask shape is
+/// not `(n, n)`, or the pressure solve produces a non-finite residual.
+pub fn run_channel_flow_with(cfg: &ChannelFlowConfig<'_>) -> NavierStokesOutput {
+    let n = cfg.n;
+
+    if n < 3 {
+        return Err("Grid must have at least 3 points in each direction.".to_string());
+    }
+
+    if cfg.obstacle_mask.dim() != (n, n) {
+        return Err(format!(
+            "Obstacle mask has shape {:?} but the grid is ({n}, {n}).",
+            cfg.obstacle_mask.dim()
+        ));
+    }
+
+    let (re, dt) = (cfg.re, cfg.dt);
+
+    let obstacle_mask = cfg.obstacle_mask;
 
     let h = 1.0 / (n as f64 - 1.0);
 
@@ -112,31 +396,29 @@ pub fn run_channel_flow(
 
     let mut p = Array2::<f64>::zeros((n, n));
 
-    // Helper for indexing
-    let idx = |i: usize, j: usize| j * n + i;
+    // Start from the boundary data so the first step already sees the inflow.
+    apply_channel_bcs(&mut u, &mut v, cfg);
 
-    // Multigrid size
-    let mg_size = n;
+    let mut rhs = Array2::<f64>::zeros((n, n));
 
-    for _iter in 0..n_iter {
+    for _iter in 0..cfg.n_iter {
         let u_old = u.clone();
 
         let v_old = v.clone();
 
-        // 1. Advection-Diffusion (Explicit) -> Intermediate Velocity (u*, v*)
-        // u_star = u_old + dt * ( - (u grad) u + nu laplacian u )
+        // 1. Advection-diffusion at fluid points -> intermediate velocity.
         let mut u_star = u.clone();
 
         let mut v_star = v.clone();
 
         u_star
             .as_slice_mut()
-            .expect("Contiguous array")
+            .ok_or_else(|| "velocity array is not contiguous".to_string())?
             .par_iter_mut()
             .zip(
                 v_star
                     .as_slice_mut()
-                    .expect("Contiguous array")
+                    .ok_or_else(|| "velocity array is not contiguous".to_string())?
                     .par_iter_mut(),
             )
             .enumerate()
@@ -144,7 +426,8 @@ pub fn run_channel_flow(
                 let i = id % n;
                 let j = id / n;
 
-                // Skip boundaries and obstacles for now
+                // Boundary and obstacle points are set by the boundary
+                // conditions below, not by the momentum equation.
                 if i == 0 || i == n - 1 || j == 0 || j == n - 1 || obstacle_mask[[j, i]] {
                     return;
                 }
@@ -177,67 +460,25 @@ pub fn run_channel_flow(
                     v_old[[j + 1, i]] - v_curr
                 } / h;
 
-                // Diffusion (Central Difference)
-                let lap_u = (2.0f64.mul_add(
-                    -u_curr,
-                    2.0f64.mul_add(-u_curr, u_old[[j, i + 1]])
-                        + u_old[[j, i - 1]]
-                        + u_old[[j + 1, i]],
-                ) + u_old[[j - 1, i]])
+                // Diffusion (Central Difference); solid neighbours hold zero velocity.
+                let lap_u = (u_old[[j, i + 1]] + u_old[[j, i - 1]] + u_old[[j + 1, i]] + u_old[[j - 1, i]]
+                    - 4.0 * u_curr)
                     / (h * h);
 
-                let lap_v = (2.0f64.mul_add(
-                    -v_curr,
-                    2.0f64.mul_add(-v_curr, v_old[[j, i + 1]])
-                        + v_old[[j, i - 1]]
-                        + v_old[[j + 1, i]],
-                ) + v_old[[j - 1, i]])
+                let lap_v = (v_old[[j, i + 1]] + v_old[[j, i - 1]] + v_old[[j + 1, i]] + v_old[[j - 1, i]]
+                    - 4.0 * v_curr)
                     / (h * h);
 
                 *u_val = dt.mul_add(-u_curr.mul_add(du_dx, v_curr * du_dy) + nu * lap_u, u_curr);
                 *v_val = dt.mul_add(-u_curr.mul_add(dv_dx, v_curr * dv_dy) + nu * lap_v, v_curr);
             });
 
-        // Apply BCs to u_star, v_star
-        // Inflow (Left)
-        for j in 0..n {
-            u_star[[j, 0]] = 1.0;
+        // 2. Boundary conditions on the intermediate velocity.
+        apply_channel_bcs(&mut u_star, &mut v_star, cfg);
 
-            v_star[[j, 0]] = 0.0;
-        }
+        // 3. Pressure Poisson over fluid points: -lap(p) = -div(u*) / dt.
+        rhs.fill(0.0);
 
-        // Outflow (Right) - Zero Gradient
-        for j in 0..n {
-            u_star[[j, n - 1]] = u_star[[j, n - 2]];
-
-            v_star[[j, n - 1]] = v_star[[j, n - 2]];
-        }
-
-        // Walls (Top/Bottom) - We do Slip for channel here
-        for i in 0..n {
-            u_star[[0, i]] = u_star[[1, i]]; // Slip
-            v_star[[0, i]] = 0.0;
-
-            u_star[[n - 1, i]] = u_star[[n - 2, i]]; // Slip
-            v_star[[n - 1, i]] = 0.0;
-        }
-
-        // Obstacle - No Slip
-        for j in 0..n {
-            for i in 0..n {
-                if obstacle_mask[[j, i]] {
-                    u_star[[j, i]] = 0.0;
-
-                    v_star[[j, i]] = 0.0;
-                }
-            }
-        }
-
-        // 2. Pressure Correction (Poisson Step)
-        // laplacian p = div(u*) / dt
-        let mut rhs_vec = vec![0.0; n * n];
-
-        // Calculate Div U*
         for j in 1..n - 1 {
             for i in 1..n - 1 {
                 if obstacle_mask[[j, i]] {
@@ -247,28 +488,17 @@ pub fn run_channel_flow(
                 let div = (u_star[[j, i + 1]] - u_star[[j, i - 1]]) / (2.0 * h)
                     + (v_star[[j + 1, i]] - v_star[[j - 1, i]]) / (2.0 * h);
 
-                rhs_vec[idx(i, j)] = div / dt;
+                rhs[[j, i]] = -div / dt;
             }
         }
 
-        // Solve Poisson
-        // Note: Our MG solver expects "f" where "-laplacian u = f".
-        // Our equation is "laplacian p = R". So we pass "-R" as f.
-        for val in &mut rhs_vec {
-            *val = -*val;
-        }
+        solve_channel_pressure(&mut p, &rhs, obstacle_mask, h)?;
 
-        let p_flat = solve_poisson_2d_multigrid(mg_size, &rhs_vec, 2)?; // 2 V-cycles
+        // 4. Velocity correction with Neumann-mirrored pressure at solid faces.
+        let pressure_at = |j: usize, i: usize, jc: usize, ic: usize| -> f64 {
+            if obstacle_mask[[j, i]] { p[[jc, ic]] } else { p[[j, i]] }
+        };
 
-        // Copy back to P array
-        for j in 0..n {
-            for i in 0..n {
-                p[[j, i]] = p_flat[idx(i, j)];
-            }
-        }
-
-        // 3. Velocity Correction
-        // u_new = u* - dt * grad p
         for j in 1..n - 1 {
             for i in 1..n - 1 {
                 if obstacle_mask[[j, i]] {
@@ -279,9 +509,9 @@ pub fn run_channel_flow(
                     continue;
                 }
 
-                let dp_dx = (p[[j, i + 1]] - p[[j, i - 1]]) / (2.0 * h);
+                let dp_dx = (pressure_at(j, i + 1, j, i) - pressure_at(j, i - 1, j, i)) / (2.0 * h);
 
-                let dp_dy = (p[[j + 1, i]] - p[[j - 1, i]]) / (2.0 * h);
+                let dp_dy = (pressure_at(j + 1, i, j, i) - pressure_at(j - 1, i, j, i)) / (2.0 * h);
 
                 u[[j, i]] = dt.mul_add(-dp_dx, u_star[[j, i]]);
 
@@ -289,31 +519,7 @@ pub fn run_channel_flow(
             }
         }
 
-        // Re-apply BCs for u, v
-        // Inflow (Left)
-        for j in 0..n {
-            u[[j, 0]] = 1.0;
-
-            v[[j, 0]] = 0.0;
-        }
-
-        // Outflow (Right)
-        for j in 0..n {
-            u[[j, n - 1]] = u[[j, n - 2]];
-
-            v[[j, n - 1]] = v[[j, n - 2]];
-        }
-
-        // Walls (Top/Bottom)
-        for i in 0..n {
-            u[[0, i]] = u[[1, i]];
-
-            v[[0, i]] = 0.0;
-
-            u[[n - 1, i]] = u[[n - 2, i]];
-
-            v[[n - 1, i]] = 0.0;
-        }
+        apply_channel_bcs(&mut u, &mut v, cfg);
     }
 
     Ok((u, v, p))
