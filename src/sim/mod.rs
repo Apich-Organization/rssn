@@ -6,6 +6,19 @@
 //! scientific computing that is not an identity transformation. A
 //! simulation consumes closed-form terms (compiled through a
 //! [`Backend`](crate::backend::Backend)) and produces data, not terms.
+//!
+//! ## Coverage of the particle / ODE modules
+//!
+//! | Module | Dimensions | Boundaries | Highlights |
+//! |---|---|---|---|
+//! | [`md_engine`] | any (const generic) | open, periodic, reflecting, thermal, Lees-Edwards | cell+Verlet lists, LJ/Morse/Coulomb, bonded, NHC/Langevin/Berendsen, Berendsen/MTK barostat, SHAKE/RATTLE, RDF/MSD/VACF |
+//! | [`ewald`] | 3 | periodic | Ewald, smooth PME |
+//! | [`nbody`] | 1-3 (FMM: 2) | open | Barnes-Hut, 2-D FMM |
+//! | [`symplectic`] | any | - | order 2-8 schemes, TTL, KS, rigid body |
+//! | [`spin_models`] | any | periodic / open | Ising, Potts, O(N); Metropolis, heat bath, Wolff, SW, PT, WL |
+//! | [`relativity`] | 3+1 | horizon / escape events | Kerr-Newman geodesics |
+//! | [`sph`] | any | open, periodic, reflecting, fixed particles | cubic / Wendland kernels |
+//! | `classical`, `physics_md`, `physics_rkm`, `integrators` | fixed or runtime | see module docs | legacy / ODE tools |
 
 // The grid kernels index raw buffers inside parallel loops.
 #![allow(unsafe_code)]

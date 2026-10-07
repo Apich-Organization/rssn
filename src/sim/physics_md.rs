@@ -37,6 +37,21 @@
 //!
 //! let (potential, force) = lennard_jones_interaction(&p1, &p2, 1.0, 1.0).unwrap();
 //! ```
+//!
+//! ## Coverage
+//!
+//! | Capability | Support in this module |
+//! |---|---|
+//! | Dimension | runtime dimension (`Vec<f64>`), 1-3 D |
+//! | Boundaries | periodic with minimum image (`apply_pbc`, `minimum_image_distance`); open |
+//! | Initial conditions | cubic/fcc lattices, Maxwell-Boltzmann velocities |
+//! | Thermostats | rescaling, Berendsen, Langevin BAOAB, Nose-Hoover |
+//! | Neighbours | brute-force `neighbour_pairs` |
+//!
+//! The const-generic engine [`crate::sim::md_engine`] adds cell lists with
+//! Verlet skin, reflecting / thermal walls, Lees-Edwards shear, bonded
+//! forces, Nose-Hoover chains, Berendsen/MTK barostats, SHAKE/RATTLE and
+//! more observables; [`crate::sim::ewald`] provides Ewald and PME.
 
 use serde::Deserialize;
 use serde::Serialize;

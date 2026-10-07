@@ -4,6 +4,14 @@
 //! parameters in, JSON results out. This is what the C interface and other
 //! language bindings call; Rust code can use the typed functions of
 //! [`models`](super::models) directly.
+//!
+//! ## Coverage
+//!
+//! Scenarios are fixed-geometry wrappers around the typed models. The
+//! dimension-generic engines ([`crate::sim::md_engine`],
+//! [`crate::sim::spin_models`], [`crate::sim::sph`], [`crate::sim::nbody`],
+//! [`crate::sim::relativity`]) are used through their Rust APIs and are not
+//! (yet) reachable by scenario name.
 
 use ndarray::Array2;
 use num_complex::Complex;

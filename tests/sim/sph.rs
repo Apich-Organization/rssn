@@ -236,8 +236,8 @@ fn sph_reproduces_the_sod_shock_tube() {
     assert!((s.pressure(i) - 0.303_13).abs() < 0.03, "star pressure {}", s.pressure(i));
     let i = near(0.27);
     assert!((s.rho[i] - 0.265_57).abs() < 0.04, "post-shock density {}", s.rho[i]);
-    // total momentum is conserved up to the wall impulse (waves have not reached the walls)
-    assert!((s.momentum()[0] - p0).abs() < 2e-3, "momentum {} -> {}", p0, s.momentum()[0]);
+    // the closed left wall pushes on the gas with the pressure jump until the waves arrive
+    assert!((s.momentum()[0] - p0 - 0.18).abs() < 0.01, "the left wall has delivered the impulse (P_L - P_R) t = 0.18: momentum {} -> {}", p0, s.momentum()[0]);
 }
 
 #[test]

@@ -17,6 +17,16 @@
 //! - **Magnetization Tracking**: Calculates the average magnetization of the system to characterize the phase.
 //!
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/ising_phase_transition.png)
+//!
+//! ## Coverage
+//!
+//! | Capability | Support |
+//! |---|---|
+//! | Dimension | 2-D only in this module (periodic square lattice); 1-D/2-D/3-D in [`crate::sim::spin_models`] |
+//! | Algorithms | Metropolis (checkerboard), Wolff (`run_wolff_simulation`); heat bath, Swendsen-Wang, Potts/XY/Heisenberg, tempering, Wang-Landau, reweighting in [`crate::sim::spin_models`] |
+//! | Boundaries | periodic |
+//! | Initial conditions | random |
+//! | Exact references | Onsager `Tc`, energy and magnetisation in [`crate::sim::spin_models`] |
 
 use std::fmt::Write as OtherWrite;
 use std::fs::File;

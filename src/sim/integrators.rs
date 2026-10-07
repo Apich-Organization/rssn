@@ -13,6 +13,18 @@
 //!
 //! Linear systems are solved by Gaussian elimination with partial pivoting
 //! (the systems are small: one row per state variable).
+//!
+//! ## Coverage
+//!
+//! | Method | Order | Dimension | Notes |
+//! |---|---|---|---|
+//! | Verlet, Yoshida-4 (`verlet_step`, `yoshida4_step`) | 2, 4 | any (state slices) | separable `H` |
+//! | Backward Euler, implicit midpoint | 1, 2 | any | Newton with FD Jacobian |
+//! | Rosenbrock ROS2 | 2 | any | adaptive, L-stable |
+//!
+//! Higher-order (6, 8) and Blanes-Moan schemes, time-transformed and
+//! regularised integrators and rigid-body splittings are in
+//! [`crate::sim::symplectic`].
 
 #[allow(clippy::needless_range_loop)] // row operations index two rows at once
 /// Solves `a x = b` in place by Gaussian elimination with partial

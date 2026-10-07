@@ -150,7 +150,7 @@ impl KerrNewman {
         let dh_dth = d5(&|x| ham(r, x), th, dt);
         (
             [del / sig * pr, pth / sig, -dh_dr, -dh_dth],
-            [-gtt * e + gtp * l, gtp * e + gpp * l],
+            [-gtt * e + gtp * l, -gtp * e + gpp * l],
         )
     }
 

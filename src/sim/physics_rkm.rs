@@ -19,6 +19,17 @@
 //!     - `BogackiShampine23`: A 3rd order method with a 2nd order error estimate, efficient for lower accuracy needs.
 //!
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/rkm_solver_comparison.png)
+//!
+//! ## Coverage
+//!
+//! | Solver | Order | Dimension | Boundary / initial conditions |
+//! |---|---|---|---|
+//! | `solve_rk4` | 4 | any (`OdeSystem::dim`) | initial value problems |
+//! | `DormandPrince54`, `CashKarp45`, `BogackiShampine23` | 5, 5, 3 | any | initial value problems, adaptive step |
+//!
+//! Stiff problems: [`crate::sim::integrators`]. Hamiltonian problems with
+//! geometric structure: [`crate::sim::symplectic`]. Boundary value problems
+//! are not handled by this module.
 
 use rayon::prelude::*;
 use serde::Deserialize;

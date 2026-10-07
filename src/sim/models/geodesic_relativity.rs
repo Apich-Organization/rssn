@@ -17,6 +17,18 @@
 //! - **Scenario Simulation**: Pre-configured scenarios for stable orbits, plunging trajectories, and photon deflection.
 //!
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/black_hole_orbits_rust.png)
+//!
+//! ## Coverage
+//!
+//! | Capability | Support |
+//! |---|---|
+//! | Spacetime | Schwarzschild only, equatorial plane (explicit RK45) |
+//! | Integration | non-symplectic Dormand-Prince |
+//! | Events | none (fixed final time) |
+//!
+//! Kerr, Reissner-Nordstroem and Kerr-Newman geodesics with symplectic
+//! implicit-midpoint integration, constraint projection, photon orbits and
+//! horizon-crossing events are in [`crate::sim::relativity`].
 
 use std::fs::File;
 use std::io::Write;
