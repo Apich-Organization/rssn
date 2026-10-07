@@ -14,9 +14,7 @@
 //!   the given guess.
 
 use super::as_expression;
-use crate::backend::Backend;
 use crate::backend::Compiled;
-use crate::backend::Interpreter;
 use crate::graph::op::core;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -54,7 +52,7 @@ impl Compiled_ {
         for &e in equations {
             let expr = as_expression(graph, e);
             let term = best(graph, expr)?;
-            functions.push(Interpreter.compile(graph, term, &inputs).ok()?);
+            functions.push(crate::backend::compile(graph, term, &inputs).ok()?);
         }
         Some(Self { functions, parameters })
     }

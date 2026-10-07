@@ -65,8 +65,6 @@ use num_rational::BigRational;
 use num_traits::Signed;
 use num_traits::Zero;
 
-use crate::backend::Backend;
-use crate::backend::Interpreter;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::graph::Arity;
@@ -1800,31 +1798,40 @@ impl Kernel for Odeint {
                 parameters.push(v);
             }
         }
-        let mut compiled = Vec::with_capacity(rhs.len());
-        for &expression in &rhs {
-            let Some(term) = best(graph, expression) else {
-                return Outcome::Pass;
-            };
-            let Ok(function) = Interpreter.compile(graph, term, &inputs) else {
-                return Outcome::Pass;
-            };
-            compiled.push(function);
-        }
+        let Some(terms) = rhs.iter().map(|&e| best(graph, e)).collect::<Option<Vec<NodeId>>>() else {
+            return Outcome::Pass;
+        };
+        // Bound parameters are inputs too (after the state), so the right
+        // side compiles once with the current backend.
+        let Ok(compiled) = crate::backend::current().compile_multi(graph, &terms, &inputs, &[]) else {
+            return Outcome::Pass;
+        };
         let n = rhs.len();
-        let derivative = |t: f64, state: &[f64], out: &mut [f64]| {
+        let arguments = |t: f64, state: &[f64]| {
             let mut args = Vec::with_capacity(1 + n + parameters.len());
             args.push(t);
             args.extend_from_slice(state);
             args.extend_from_slice(&parameters);
-            for (slot, function) in out.iter_mut().zip(&compiled) {
-                *slot = function.call(&args);
-            }
+            args
+        };
+        let derivative = |t: f64, state: &[f64], out: &mut [f64]| {
+            compiled.eval(&arguments(t, state), &[], out);
         };
         let tolerance = cx.env.tolerance.max(1e-12);
-        let Ok(trajectory) = solve_adaptive(derivative, &start, (t0, t1), tolerance, tolerance * 1e-2, 2_000_000) else {
-            return Outcome::Pass;
+        // An explicit method first; when it exhausts its step budget the
+        // problem is stiff, and the L-stable Radau IIA method takes over
+        // with the Jacobian differentiated symbolically and compiled.
+        let explicit = solve_adaptive(derivative, &start, (t0, t1), tolerance, tolerance * 1e-2, 200_000);
+        let (last, steps) = match explicit {
+            | Ok(trajectory) => (trajectory.last().to_vec(), trajectory.t.len()),
+            | Err(_) => {
+                let Some(solution) = stiff(graph, &terms, &unknowns, &inputs, &derivative, &arguments, t0, t1, &start, tolerance)
+                else {
+                    return Outcome::Pass;
+                };
+                solution
+            },
         };
-        let last = trajectory.last();
         if is_system {
             let nodes: Vec<NodeId> = last.iter().map(|&v| graph.float(v)).collect();
             Outcome::Equal(graph.node(core::LIST, &nodes))
@@ -1833,8 +1840,7 @@ impl Kernel for Odeint {
                 // The error estimate is the local tolerance accumulated
                 // over the steps taken: an estimate, not a bound.
                 | Some(&v) => {
-                    #[allow(clippy::cast_precision_loss)]
-                    let steps = trajectory.t.len() as f64;
+                    let steps = steps as f64;
                     Outcome::Approx(Ball { mid: v, rad: tolerance * steps.max(1.0) * (1.0 + v.abs()) })
                 },
                 | None => Outcome::Pass,
@@ -1845,6 +1851,59 @@ impl Kernel for Odeint {
     fn revisit(&self) -> bool {
         true
     }
+}
+
+/// A right-hand side `f(t, y, out)`.
+type Rhs<'a> = &'a dyn Fn(f64, &[f64], &mut [f64]);
+
+/// Integrates with Radau IIA(5) and the compiled symbolic Jacobian;
+/// returns the final state and the number of steps.
+#[allow(clippy::too_many_arguments)]
+fn stiff(
+    graph: &mut Graph,
+    terms: &[NodeId],
+    unknowns: &[NodeId],
+    inputs: &[SymbolId],
+    derivative: Rhs<'_>,
+    arguments: &dyn Fn(f64, &[f64]) -> Vec<f64>,
+    t0: f64,
+    t1: f64,
+    start: &[f64],
+    tolerance: f64,
+) -> Option<(Vec<f64>, usize)> {
+    use crate::kernels::dense::Mat;
+    use crate::kernels::ode_adaptive::OdeOptions;
+    if t1 <= t0 {
+        return None;
+    }
+    let n = terms.len();
+    let mut entries = Vec::with_capacity(n * n);
+    for &term in terms {
+        for &u in unknowns {
+            entries.push(derivative_of(graph, term, u)?);
+        }
+    }
+    let jacobian = crate::backend::current().compile_multi(graph, &entries, inputs, &[]).ok()?;
+    let jac = |t: f64, state: &[f64]| {
+        let mut data = vec![0.0; n * n];
+        jacobian.eval(&arguments(t, state), &[], &mut data);
+        Mat { rows: n, cols: n, data }
+    };
+    let options = OdeOptions { rtol: tolerance, atol: tolerance * 1e-2, max_steps: 2_000_000, ..OdeOptions::default() };
+    let solution =
+        crate::kernels::ode_stiff::radau5_jac(|t: f64, y: &[f64], out: &mut [f64]| derivative(t, y, out), jac, t0, t1, start, &options)
+            .ok()?;
+    Some((solution.y.last()?.clone(), solution.t.len()))
+}
+
+/// The derivative of `term` by the symbol `u`, as a tape-ready term.
+fn derivative_of(
+    graph: &mut Graph,
+    term: NodeId,
+    u: NodeId,
+) -> Option<NodeId> {
+    let d = derivative(graph, term, u)?;
+    best(graph, d).or(Some(d))
 }
 
 #[cfg(test)]
@@ -2191,6 +2250,12 @@ mod tests {
         // With a parameter from the bindings.
         let (value, _) = numeric(&[ode()], "odeint(a*y, y, x, 0, 1, 2)", &[("a", 0.5)], 1e-10);
         assert!((value - 1.0_f64.exp()).abs() < 1e-7, "{value}");
+        // Stiff: y' = -10^6 (y - cos x) would need millions of explicit
+        // steps; Radau IIA with the symbolic Jacobian takes over.
+        let (value, error) = numeric(&[ode()], "odeint(-1000000*(y - cos(x)), y, x, 0, 0, 10)", &[], 1e-9);
+        let k = 1e6_f64;
+        let want = (k * k * 10.0_f64.cos() + k * 10.0_f64.sin()) / (k * k + 1.0);
+        assert!((value - want).abs() < 1e-7, "{value} ± {error} vs {want}");
         // A system: harmonic oscillator over a quarter period.
         let mut g = Graph::new();
         let engine = crate::graph::Engine::install(&mut g, &[ode()]).unwrap_or_else(|e| panic!("{e}"));
