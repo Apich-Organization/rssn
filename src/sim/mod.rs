@@ -38,3 +38,7 @@ pub mod physics_rkm;
 /// Spectral methods.
 pub mod physics_sm;
 pub mod scenario;
+/// Lattice spin models (Ising, Potts, XY, Heisenberg) with cluster updates.
+pub mod spin_models;
+/// Composition symplectic integrators, TTL, KS regularisation, rigid bodies.
+pub mod symplectic;

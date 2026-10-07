@@ -46,3 +46,7 @@ mod physics_mtm;
 mod physics_rkm;
 #[path = "sim/physics_sm.rs"]
 mod physics_sm;
+#[path = "sim/symplectic.rs"]
+mod symplectic;
+#[path = "sim/spin_models.rs"]
+mod spin_models;
