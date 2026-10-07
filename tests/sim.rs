@@ -50,3 +50,13 @@ mod physics_sm;
 mod symplectic;
 #[path = "sim/spin_models.rs"]
 mod spin_models;
+#[path = "sim/relativity.rs"]
+mod relativity;
+#[path = "sim/ewald.rs"]
+mod ewald;
+#[path = "sim/md_engine.rs"]
+mod md_engine;
+#[path = "sim/nbody.rs"]
+mod nbody;
+#[path = "sim/sph.rs"]
+mod sph;

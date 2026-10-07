@@ -38,6 +38,16 @@ pub mod physics_rkm;
 /// Spectral methods.
 pub mod physics_sm;
 pub mod scenario;
+/// Ewald summation and particle-mesh Ewald.
+pub mod ewald;
+/// Dimension-generic molecular dynamics engine.
+pub mod md_engine;
+/// Barnes-Hut and fast multipole N-body solvers.
+pub mod nbody;
+/// Kerr-Newman geodesics.
+pub mod relativity;
+/// Smoothed-particle hydrodynamics in 1-3 dimensions.
+pub mod sph;
 /// Lattice spin models (Ising, Potts, XY, Heisenberg) with cluster updates.
 pub mod spin_models;
 /// Composition symplectic integrators, TTL, KS regularisation, rigid bodies.
