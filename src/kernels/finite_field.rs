@@ -222,11 +222,8 @@ impl Div for PrimeFieldElement {
         self,
         rhs: Self,
     ) -> Self {
-        let inv_rhs = match rhs.inverse() {
-            | Some(inv) => inv,
-            | None => {
-                return Self::new(0, self.modulus);
-            },
+        let Some(inv_rhs) = rhs.inverse() else {
+            return Self::new(0, self.modulus);
         };
 
         self * inv_rhs

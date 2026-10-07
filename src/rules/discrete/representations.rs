@@ -336,8 +336,8 @@ pub(crate) fn entry_node(
     if nonzero.len() == 1 && nonzero[0].0 == 0 {
         return g.int(nonzero[0].1);
     }
-    if z.im.abs() < 1e-9 {
-        if let Some((a, b, d, c)) = recognise_quadratic(z.re) {
+    if z.im.abs() < 1e-9
+        && let Some((a, b, d, c)) = recognise_quadratic(z.re) {
             let mut terms = vec![rat_node(g, a, c)];
             if b != 0 {
                 let dn = g.int(d);
@@ -349,7 +349,6 @@ pub(crate) fn entry_node(
             }
             return sum(g, &terms);
         }
-    }
     let pi = apply(g, "pi", &[]);
     let unit = apply(g, "I", &[]);
     let mut terms = Vec::new();

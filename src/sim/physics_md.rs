@@ -739,8 +739,6 @@ pub fn radial_distribution_function(
         .iter()
         .enumerate()
         .map(|(i, &count)| {
-            let _r = (i as f64 + 0.5) * dr;
-
             let shell_volume =
                 (4.0 / 3.0) * pi * (((i + 1) as f64 * dr).powi(3) - (i as f64 * dr).powi(3));
 
@@ -791,17 +789,10 @@ pub fn initialize_velocities_maxwell_boltzmann(
     // Simple pseudo-random generator (LCG)
     let mut rng_state = rng_seed;
 
-    let _next_random = || {
-        rng_state = rng_state
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(1_442_695_040_888_963_407);
-
-        (rng_state >> 33) as f64 / (1u64 << 31) as f64
-    };
-
     // Box-Muller transform for Gaussian random numbers
     let gaussian = |rng: &mut dyn FnMut() -> f64| -> f64 {
-        let u1 = rng();
+        // In (0, 1], so the logarithm stays finite.
+        let u1 = 1.0 - rng();
 
         let u2 = rng();
 

@@ -159,11 +159,10 @@ fn sum_node(
             | None => rest.push(t),
         }
     }
-    if let Some(c) = constant {
-        if !c.is_zero() || rest.is_empty() {
+    if let Some(c) = constant
+        && (!c.is_zero() || rest.is_empty()) {
             rest.insert(0, g.num(c));
         }
-    }
     match rest.as_slice() {
         | [] => g.int(0),
         | [only] => *only,
@@ -571,13 +570,12 @@ fn covariance(
     if n == 0 || n != ys.len() {
         return None;
     }
-    if let (Some(a), Some(b)) = (float_items(g, xs), float_items(g, ys)) {
-        if n >= 2 {
+    if let (Some(a), Some(b)) = (float_items(g, xs), float_items(g, ys))
+        && n >= 2 {
             // The kernel divides by n - 1.
             let factor = (count(n) - 1.0) / count(n);
             return Some(g.float(num::covariance(&a, &b) * factor));
         }
-    }
     let (mx, my) = (mean_term(g, xs)?, mean_term(g, ys)?);
     let (minus_mx, minus_my) = (negate(g, mx), negate(g, my));
     let mut terms = Vec::with_capacity(n);
@@ -1110,9 +1108,8 @@ fn distribution_request(
     request: Request,
 ) -> Outcome {
     let g = &mut *cx.graph;
-    let (&dist, extra) = match args.split_first() {
-        | Some(split) => split,
-        | None => return Outcome::Pass,
+    let Some((&dist, extra)) = args.split_first() else {
+        return Outcome::Pass;
     };
     let expected = match request {
         | Request::Pdf | Request::Cdf | Request::Mgf => 1,

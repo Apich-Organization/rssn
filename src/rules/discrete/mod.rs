@@ -381,11 +381,10 @@ pub(crate) fn sum(
         }
     }
     let mut all = Vec::new();
-    if let Some(a) = acc {
-        if !a.is_zero() || rest.is_empty() {
+    if let Some(a) = acc
+        && (!a.is_zero() || rest.is_empty()) {
             all.push(g.num(a));
         }
-    }
     all.extend(rest);
     match all.as_slice() {
         | [] => g.int(0),

@@ -257,7 +257,7 @@ fn error(e: impl std::fmt::Display) -> BackendError {
 
 /// A program compiled to machine code.
 pub struct JitFunction {
-    owner: Arc<abi::Owner>,
+    _owner: Arc<abi::Owner>,
     entry: abi::Entry,
     inputs: usize,
     params: usize,
@@ -329,9 +329,8 @@ impl JitFunction {
             b.switch_to_block(block);
             b.seal_block(block);
             let params = b.block_params(block).to_vec();
-            let (in_ptr, par_ptr, out_ptr) = match params.as_slice() {
-                | &[a, p, o] => (a, p, o),
-                | _ => return Err(BackendError::Codegen("signature".to_owned())),
+            let &[in_ptr, par_ptr, out_ptr] = params.as_slice() else {
+                return Err(BackendError::Codegen("signature".to_owned()));
             };
             let flags = MemFlags::trusted();
             let mut refs = HashMap::new();
@@ -454,10 +453,10 @@ impl JitFunction {
         module.finalize_definitions().map_err(error)?;
         let code = module.get_finalized_function(id);
         // SAFETY (in `abi`): `code` is the finalized `rssn_program` with the
-        // entry signature, and the module is kept alive by `owner`.
+        // entry signature, and the module is kept alive by `_owner`.
         #[allow(unsafe_code)]
         let entry = unsafe { abi::entry(code) };
-        Ok(Self { owner: Arc::new(abi::Owner(Some(module))), entry, inputs: tape.inputs, params: tape.params, outputs: tape.outputs.len() })
+        Ok(Self { _owner: Arc::new(abi::Owner(Some(module))), entry, inputs: tape.inputs, params: tape.params, outputs: tape.outputs.len() })
     }
 
     fn run(
@@ -466,7 +465,6 @@ impl JitFunction {
         params: &[f64],
         out: &mut [f64],
     ) {
-        let _alive = &self.owner;
         // Pad short argument lists with NaN, as the interpreter does.
         let pad = |values: &[f64], n: usize| -> Option<Vec<f64>> {
             (values.len() < n).then(|| {
@@ -485,7 +483,7 @@ impl JitFunction {
         } else {
             out
         };
-        // SAFETY (in `abi`): lengths were checked above and `owner` keeps
+        // SAFETY (in `abi`): lengths were checked above and `_owner` keeps
         // the code alive for the duration of the call.
         #[allow(unsafe_code)]
         unsafe {

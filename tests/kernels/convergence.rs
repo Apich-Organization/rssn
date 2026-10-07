@@ -119,7 +119,7 @@ fn ps(term: impl Fn(usize) -> f64, count: usize) -> Vec<f64> {
 #[test]
 fn levin_alternating_ln2() {
     // sum (-1)^k / (k+1) = ln 2
-    let t = |k: usize| if k % 2 == 0 { 1.0 } else { -1.0 } / (k as f64 + 1.0);
+    let t = |k: usize| if k.is_multiple_of(2) { 1.0 } else { -1.0 } / (k as f64 + 1.0);
     let sums = ps(t, 16);
     for variant in [LevinVariant::T, LevinVariant::U, LevinVariant::V] {
         let est = levin_transform(&sums, variant, 1.0);

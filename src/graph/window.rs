@@ -795,14 +795,13 @@ impl TreeWindow {
                     if !self.cell(cell).live {
                         continue 'cells;
                     }
-                    if let Some(found) = self.find_match(graph, rewrite, cell) {
-                        if self.apply(graph, rewrite, cell, &found).is_some() {
+                    if let Some(found) = self.find_match(graph, rewrite, cell)
+                        && self.apply(graph, rewrite, cell, &found).is_some() {
                             changed = true;
                             steps = steps.saturating_add(1);
                             // The cell list is stale now; restart the sweep.
                             break 'cells;
                         }
-                    }
                 }
             }
             // `rounds` also bounds passes that keep reporting changes.
@@ -860,12 +859,11 @@ impl TreeWindow {
             }
             next.sort_by_key(|(cost, _)| *cost);
             next.truncate(width.max(1));
-            if let Some((cost, state)) = next.first() {
-                if *cost < best_cost {
+            if let Some((cost, state)) = next.first()
+                && *cost < best_cost {
                     best_cost = *cost;
                     best = state.clone();
                 }
-            }
             frontier = next.into_iter().map(|(_, s)| s).collect();
         }
         best
@@ -940,11 +938,10 @@ impl Search<'_> {
                         *slot = op;
                     }
                     let ok = self.solve(&mut pending, subst);
-                    if !ok {
-                        if let Some(slot) = subst.get_mut(index) {
+                    if !ok
+                        && let Some(slot) = subst.get_mut(index) {
                             slot.clear();
                         }
-                    }
                     ok
                 },
             };

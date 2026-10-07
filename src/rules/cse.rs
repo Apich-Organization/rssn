@@ -128,8 +128,8 @@ impl Dag {
             let live = self.live(roots);
             let mut counts: HashMap<(OpId, usize, usize), usize> = HashMap::new();
             for &i in &live {
-                if let Some(Local::Op(op, kids)) = self.nodes.get(i) {
-                    if (*op == core::ADD || *op == core::MUL) && kids.len() >= 3 {
+                if let Some(Local::Op(op, kids)) = self.nodes.get(i)
+                    && (*op == core::ADD || *op == core::MUL) && kids.len() >= 3 {
                         let mut distinct = kids.clone();
                         distinct.dedup();
                         for a in 0..distinct.len() {
@@ -140,7 +140,6 @@ impl Dag {
                             }
                         }
                     }
-                }
             }
             let Some((&(op, x, y), _)) = counts.iter().filter(|&(_, &c)| c >= 2).max_by_key(|&(k, &c)| (c, std::cmp::Reverse(*k))) else {
                 return rounds;
@@ -362,8 +361,8 @@ fn plan(
         let mut memo = HashMap::new();
         let mut total = 0;
         for &i in &live {
-            if named.contains(&i) || roots.contains(&i) {
-                if let Some(Local::Op(_, kids)) = dag.nodes.get(i) {
+            if (named.contains(&i) || roots.contains(&i))
+                && let Some(Local::Op(_, kids)) = dag.nodes.get(i) {
                     total += kids.len().saturating_sub(1).max(1);
                     for &k in kids {
                         if !named.contains(&k) {
@@ -371,7 +370,6 @@ fn plan(
                         }
                     }
                 }
-            }
         }
         total
     };

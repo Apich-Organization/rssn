@@ -440,9 +440,9 @@ impl Integrator<'_, '_> {
                 constants.push(factor);
                 continue;
             }
-            if let (true, &[q, e]) = (self.cx.graph.op(factor) == core::POW, self.cx.graph.children(factor)) {
-                if let Some(r) = self.number(e).and_then(|v| v.to_rational()) {
-                    if *r.denom() == BigInt::from(2) && r.is_negative() && radical.is_none() {
+            if let (true, &[q, e]) = (self.cx.graph.op(factor) == core::POW, self.cx.graph.children(factor))
+                && let Some(r) = self.number(e).and_then(|v| v.to_rational())
+                    && *r.denom() == BigInt::from(2) && r.is_negative() && radical.is_none() {
                         // r = -(n + 1/2)
                         let n = i64::try_from(&(-(r + BigRational::new(BigInt::one(), BigInt::from(2)))).to_integer()).ok()?;
                         if n >= 1 {
@@ -450,8 +450,6 @@ impl Integrator<'_, '_> {
                             continue;
                         }
                     }
-                }
-            }
             if linear.is_none() {
                 let p = self.q_poly_of(factor)?;
                 if p.len() <= 2 {
@@ -1046,8 +1044,8 @@ pub(super) fn by_residues(
     };
     let (numer, denom) = crate::rules::poly::rational_function_in(cx.graph, r, x)?;
     // Dirichlet: sin(a x)/x on (0, ∞) or (-∞, ∞).
-    if let (Some((false, _)), Some(a)) = (wave, a) {
-        if numer.len() == 1 && denom.len() == 2 && denom[0].is_zero() && hi.is_infinite() && hi > 0.0 {
+    if let (Some((false, _)), Some(a)) = (wave, a)
+        && numer.len() == 1 && denom.len() == 2 && denom[0].is_zero() && hi.is_infinite() && hi > 0.0 {
             let c = &numer[0] / &denom[1];
             let sign = cx.graph.ops().lookup("sign")?;
             let s = cx.graph.node(sign, &[a]);
@@ -1062,7 +1060,6 @@ pub(super) fn by_residues(
             };
             return Some(cx.graph.node(core::MUL, &[c, factor, s]));
         }
-    }
     if !(lo.is_infinite() && lo < 0.0 && hi.is_infinite() && hi > 0.0) {
         return None;
     }

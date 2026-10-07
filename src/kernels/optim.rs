@@ -836,8 +836,8 @@ fn simplex_core(
         }
         // Pivot remaining (degenerate) artificials out of the basis.
         for i in 0..m {
-            if basis[i] >= n + nslack {
-                if let Some(e) = (0..n + nslack).find(|&j| t[i][j].abs() > eps) {
+            if basis[i] >= n + nslack
+                && let Some(e) = (0..n + nslack).find(|&j| t[i][j].abs() > eps) {
                     let p = t[i][e];
                     for j in 0..=total {
                         t[i][j] /= p;
@@ -852,7 +852,6 @@ fn simplex_core(
                     }
                     basis[i] = e;
                 }
-            }
         }
     }
     let mut c2 = vec![0.0; total];

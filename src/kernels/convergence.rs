@@ -150,13 +150,11 @@ pub fn wynn_epsilon(sequence: &[f64]) -> Vec<f64> {
         previous = current;
         current = next;
         even = !even;
-        if even {
-            if let Some(&last) = current.last() {
-                if last.is_finite() {
+        if even
+            && let Some(&last) = current.last()
+                && last.is_finite() {
                     estimates.push(last);
                 }
-            }
-        }
     }
     estimates
 }

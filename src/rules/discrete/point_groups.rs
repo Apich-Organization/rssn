@@ -479,11 +479,10 @@ impl Geo {
         }
         let mut axes: Vec<[f64; 3]> = Vec::new();
         for k in kinds {
-            if let Kind::Rot { axis, n, .. } = k {
-                if *n == nmax && !axes.iter().any(|&a| parallel(a, *axis)) {
+            if let Kind::Rot { axis, n, .. } = k
+                && *n == nmax && !axes.iter().any(|&a| parallel(a, *axis)) {
                     axes.push(*axis);
                 }
-            }
         }
         let polyhedral = nmax >= 3 && axes.len() > 1;
         let principal = if nmax == 1 || polyhedral {

@@ -666,11 +666,10 @@ fn cholesky(
     }
     let (mut l, d) = ldl(cx, m)?;
     for (j, &dj) in d.iter().enumerate() {
-        if let Some(q) = cx.graph.number_of(dj).and_then(Number::to_rational) {
-            if !q.is_positive() {
+        if let Some(q) = cx.graph.number_of(dj).and_then(Number::to_rational)
+            && !q.is_positive() {
                 return None;
             }
-        }
         let root = sqrt(cx.graph, dj)?;
         let root = cx.simplify(root);
         for row in &mut l {

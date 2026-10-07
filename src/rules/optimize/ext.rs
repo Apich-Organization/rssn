@@ -484,11 +484,10 @@ fn convexity(
                 cx.graph.int(v)
             })
             .collect();
-        if let Some(values) = rational_hessian_at(cx, &h, &vars, &point) {
-            if !principal_minors_nonnegative(&values) {
+        if let Some(values) = rational_hessian_at(cx, &h, &vars, &point)
+            && !principal_minors_nonnegative(&values) {
                 return Some(truth(cx.graph, false));
             }
-        }
     }
     // Proof: every principal minor provably non-negative.
     for mask in 1_u32..1 << n {

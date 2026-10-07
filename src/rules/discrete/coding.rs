@@ -374,11 +374,10 @@ fn pgcd(
         a = b;
         b = strip(r);
     }
-    if let Some(&lead) = a.first() {
-        if let Ok(inv) = ff::gf256_inv(lead) {
+    if let Some(&lead) = a.first()
+        && let Ok(inv) = ff::gf256_inv(lead) {
             a = a.iter().map(|&c| ff::gf256_mul(c, inv)).collect();
         }
-    }
     a
 }
 

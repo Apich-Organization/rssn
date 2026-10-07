@@ -38,7 +38,7 @@ fn pchip_is_monotone() {
     for i in 0..=500 {
         let v = p.eval(f64::from(i) * 0.01);
         assert!(v >= prev - 1e-12);
-        assert!(v >= -1e-12 && v <= 5.1 + 1e-12);
+        assert!((-1e-12..=5.1 + 1e-12).contains(&v));
         prev = v;
     }
     assert!((p.eval(2.0) - 0.1).abs() < 1e-14);

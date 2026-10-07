@@ -828,11 +828,10 @@ fn exp_closed(
     if n == 2 {
         return two_by_two_exp(cx, &a);
     }
-    if n == 3 {
-        if let Some(e) = rodrigues(cx, &a) {
+    if n == 3
+        && let Some(e) = rodrigues(cx, &a) {
             return Some(e);
         }
-    }
     eigen_exp(cx, rows)
 }
 

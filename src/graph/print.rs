@@ -301,12 +301,11 @@ impl Graph {
                 .then_with(|| self.term_cmp(a, b))
         });
         // Lead with a positive term when there is one: `1 - x^2`.
-        if terms.first().is_some_and(|&t| self.negated(t).is_some()) {
-            if let Some(i) = terms.iter().position(|&t| self.negated(t).is_none()) {
+        if terms.first().is_some_and(|&t| self.negated(t).is_some())
+            && let Some(i) = terms.iter().position(|&t| self.negated(t).is_none()) {
                 let positive = terms.remove(i);
                 terms.insert(0, positive);
             }
-        }
         terms
     }
 

@@ -1068,7 +1068,7 @@ pub fn softplus(x: f64) -> f64 {
     }
 }
 
-/// Computes the n-th Bernoulli number B_n.
+/// Computes the n-th Bernoulli number `B_n`.
 #[must_use]
 pub fn bernoulli_number(n: u32) -> f64 {
     // Precomputed first few Bernoulli numbers
@@ -1126,7 +1126,7 @@ pub fn bernoulli_number(n: u32) -> f64 {
     b[n as usize]
 }
 
-/// Computes the n-th Bernoulli polynomial B_n(x).
+/// Computes the n-th Bernoulli polynomial `B_n(x)`.
 #[must_use]
 pub fn bernoulli_poly(
     n: u32,

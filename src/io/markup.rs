@@ -381,12 +381,11 @@ impl<D: Dialect> Walker<'_, D> {
                 .constant(name)
                 .map_or_else(|| self.d.symbol(name), str::to_owned);
         }
-        if let Some(op) = self.d.infix(name) {
-            if children.len() > 1 {
+        if let Some(op) = self.d.infix(name)
+            && children.len() > 1 {
                 let parts: Vec<String> = children.iter().map(|&c| self.term(c, PREC_ADD)).collect();
                 return parts.join(op);
             }
-        }
         match (name, children) {
             | ("not", &[x]) => self.d.not(&self.term(x, PREC_NEG)),
             | ("exp", &[x]) => self.d.pow(self.d.constant("E").unwrap_or("e"), &self.term(x, PREC_EQ)),
@@ -533,15 +532,14 @@ impl<D: Dialect> Walker<'_, D> {
             return self.pow_number(base, n);
         }
         // x^(1/n): the exponent is `n^(-1)`.
-        if let [index, minus_one] = *self.g.children(exp) {
-            if self.g.op(exp) == core::POW
+        if let [index, minus_one] = *self.g.children(exp)
+            && self.g.op(exp) == core::POW
                 && self.g.as_number(minus_one).is_some_and(|m| *m == Number::from(-1))
             {
                 return self
                     .d
                     .sqrt(&self.term(base, PREC_EQ), Some(&self.term(index, PREC_EQ)));
             }
-        }
         self.d
             .pow(&self.term(base, PREC_ATOM), &self.term(exp, PREC_EQ))
     }

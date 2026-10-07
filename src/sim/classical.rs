@@ -829,7 +829,7 @@ pub struct ProjectileParams {
 /// Simulates projectile motion with air resistance (drag).
 ///
 /// Uses Euler integration to solve equations of motion:
-/// F_drag = -0.5 * ρ * A * Cd * v² * v_hat
+/// `F_drag` = -0.5 * ρ * A * Cd * v² * `v_hat`
 ///
 /// # Arguments
 /// * `params` - Simulation parameters

@@ -392,6 +392,7 @@ pub fn sinh_sinh<F: Fn(f64) -> f64>(f: F, tol: f64) -> Integral {
 
 /// Clenshaw-Curtis nodes and weights on `[-1, 1]` with `n + 1` points
 /// (`n` is rounded up to an even number, at least 2).
+#[must_use]
 pub fn clenshaw_curtis_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
     let n = n.max(2).div_ceil(2) * 2;
     let nf = n as f64;
@@ -534,6 +535,7 @@ fn radical_inverse(mut i: u64, base: u64) -> f64 {
 const PRIMES: [u64; 16] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53];
 
 /// The `index`-th point (`index >= 1`) of the Halton sequence in `dim <= 16` dimensions.
+#[must_use]
 pub fn halton_point(index: u64, dim: usize) -> Vec<f64> {
     (0..dim.min(16)).map(|d| radical_inverse(index, PRIMES[d])).collect()
 }

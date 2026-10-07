@@ -258,11 +258,10 @@ fn ode(
     }
     let mut solution = best(cx.graph, solution)?;
     // `y(x) = expression` is accepted as well as the bare expression.
-    if let [lhs, rhs] = *cx.graph.children(solution) {
-        if cx.graph.op(solution) == core::EQ && cx.graph.same(lhs, unknown) {
+    if let [lhs, rhs] = *cx.graph.children(solution)
+        && cx.graph.op(solution) == core::EQ && cx.graph.same(lhs, unknown) {
             solution = rhs;
         }
-    }
     let r = residual(cx.graph, equation);
     let replaced = cx.graph.replace_subterm(r, unknown, solution);
     Some(vanishes(cx, replaced) == Some(true))

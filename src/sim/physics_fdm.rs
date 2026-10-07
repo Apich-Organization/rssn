@@ -637,11 +637,10 @@ pub fn solve_poisson_2d(
                 })
                 .collect();
 
-            if let Some(d) = diffs.into_iter().max_by(|a, b| a.partial_cmp(b).unwrap()) {
-                if d > max_diff {
+            if let Some(d) = diffs.into_iter().max_by(|a, b| a.partial_cmp(b).unwrap())
+                && d > max_diff {
                     max_diff = d;
                 }
-            }
         }
 
         if max_diff < tolerance {

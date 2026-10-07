@@ -1567,11 +1567,10 @@ impl Kernel for Definite {
             | _ => (variable, integrand),
         };
         // Rational and Fourier-type integrals over the whole line: residues.
-        if lower_infinite && upper_infinite {
-            if let Some(value) = ext::by_residues(cx, integrand, variable, lower, upper) {
+        if lower_infinite && upper_infinite
+            && let Some(value) = ext::by_residues(cx, integrand, variable, lower, upper) {
                 return Outcome::Equal(value);
             }
-        }
         let Some(primitive) = antiderivative(cx, self.functions, integrand, variable) else {
             // No antiderivative: residues and classical tables.
             return ext::by_residues(cx, integrand, variable, lower, upper).map_or(Outcome::Pass, Outcome::Equal);

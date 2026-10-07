@@ -164,15 +164,14 @@ impl Graph {
         }
         // A witness on a class without free symbols holds for every binding.
         let mut facts = Facts::NONE;
-        if self.free_symbols(class).is_empty() {
-            if let Some(ball) = self.approx(class) {
+        if self.free_symbols(class).is_empty()
+            && let Some(ball) = self.approx(class) {
                 if ball.mid - ball.rad > 0.0 {
                     facts = facts | Facts::POSITIVE;
                 } else if ball.mid + ball.rad < 0.0 {
                     facts = facts | Facts::NEGATIVE;
                 }
             }
-        }
         // Without a witness, a rigorous interval enclosure of a member (the
         // tape interpreter with outward rounding) can still decide the sign.
         if !facts.has(Facts::POSITIVE) && !facts.has(Facts::NEGATIVE) && self.free_symbols(class).is_empty() {
@@ -304,11 +303,10 @@ impl Graph {
                 }
             },
             | op => {
-                if let Some(on_reals) = self.ops().attr::<OnReals>(op) {
-                    if all(Facts::REAL) {
+                if let Some(on_reals) = self.ops().attr::<OnReals>(op)
+                    && all(Facts::REAL) {
                         facts = on_reals.0;
                     }
-                }
                 if let Some(always) = self.ops().attr::<Always>(op) {
                     facts = facts | always.0;
                 }

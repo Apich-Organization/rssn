@@ -99,13 +99,11 @@ impl Codec {
         }
         let op = graph.op(node);
         let children = graph.children(node);
-        if op == core::APPLY {
-            if let Some((&f, args)) = children.split_first() {
-                if graph.as_symbol(f).is_some() {
+        if op == core::APPLY
+            && let Some((&f, args)) = children.split_first()
+                && graph.as_symbol(f).is_some() {
                     return T::App(Head::Fun(f), args.iter().map(|&a| self.read(graph, a)).collect());
                 }
-            }
-        }
         if children.is_empty() && (op == core::LIT || op == core::SYM) {
             return T::App(Head::Leaf(node), Vec::new());
         }

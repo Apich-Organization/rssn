@@ -550,15 +550,14 @@ impl ResultAnalyzer {
             func_counts.get("cost").unwrap_or(&0)
         );
 
-        if let Some(grad_counts) = func_counts.get("gradient") {
-            if *grad_counts > 0 {
+        if let Some(grad_counts) = func_counts.get("gradient")
+            && *grad_counts > 0 {
                 println!(
                     "  Gradient \
                      evaluations: \
                      {grad_counts}"
                 );
             }
-        }
     }
 
     /// Analyzes the convergence state and returns a summary string.

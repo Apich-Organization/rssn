@@ -1446,12 +1446,11 @@ fn graph_vertex_cover(
                     queue.push_back(e.to);
                 }
             }
-        } else if let Some(w) = mate[u] {
-            if !reached[w] {
+        } else if let Some(w) = mate[u]
+            && !reached[w] {
                 reached[w] = true;
                 queue.push_back(w);
             }
-        }
     }
     let cover: Vec<usize> =
         (0..gr.n).filter(|&v| (part[v] == 0 && !reached[v]) || (part[v] == 1 && reached[v])).collect();

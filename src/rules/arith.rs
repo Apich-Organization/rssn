@@ -326,11 +326,10 @@ fn split_factor(
 ) -> (CellId, Number) {
     if window.atom(factor).is_none() && window.op(factor) == core::POW {
         let mut children = window.children(factor);
-        if let (Some(base), Some(exp)) = (children.next(), children.next()) {
-            if let Some(n) = window.number(graph, exp) {
+        if let (Some(base), Some(exp)) = (children.next(), children.next())
+            && let Some(n) = window.number(graph, exp) {
                 return (base, n.clone());
             }
-        }
     }
     (factor, Number::from(1))
 }
@@ -367,9 +366,9 @@ fn product(
     }
     // A numeric coefficient is distributed over a sum so that like terms on
     // both sides of a parenthesis can meet: 2*(x + y) - 2*x.
-    if let [(base, exp)] = groups.as_slice() {
-        if let Some(&base) = base.first() {
-            if exp.is_one()
+    if let [(base, exp)] = groups.as_slice()
+        && let Some(&base) = base.first()
+            && exp.is_one()
                 && !coeff.is_one()
                 && window.atom(base).is_none()
                 && window.op(base) == core::ADD
@@ -381,8 +380,6 @@ fn product(
                     .collect();
                 return window.new_node(core::ADD, &pieces);
             }
-        }
-    }
     let mut pieces = Vec::with_capacity(groups.len().saturating_add(1));
     for (base, exp) in &groups {
         let Some(&base) = base.first() else {
@@ -418,11 +415,10 @@ fn power(
     drop(children);
     let base_num = window.number(graph, base).cloned();
     let exp_num = window.number(graph, exp).cloned();
-    if let (Some(b), Some(e)) = (&base_num, &exp_num) {
-        if let Some(folded) = b.pow(e) {
+    if let (Some(b), Some(e)) = (&base_num, &exp_num)
+        && let Some(folded) = b.pow(e) {
             return Some(number_atom(graph, window, folded));
         }
-    }
     if let Some(e) = &exp_num {
         if e.is_one() {
             return Some(window.clone_subtree(base));

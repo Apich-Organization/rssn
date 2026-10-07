@@ -156,11 +156,10 @@ fn radau_newton<F: Fn(f64, &[f64], &mut [f64])>(
         let dz = lu.solve(&rhs);
         let dn = rms(&dz, scale);
         let rate = dn_old.map(|o| dn / o);
-        if let Some(r) = rate {
-            if r >= 1.0 || r.powi((maxit - k) as i32) / (1.0 - r) * dn > tol {
+        if let Some(r) = rate
+            && (r >= 1.0 || r.powi((maxit - k) as i32) / (1.0 - r) * dn > tol) {
                 return None;
             }
-        }
         for (zi, d) in z.iter_mut().zip(&dz) {
             *zi += d;
         }
@@ -625,11 +624,10 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
                     let dy = l.solve(&rhs);
                     let dn = rms(&dy, &sc);
                     let rate = dn_old.map(|o| dn / o);
-                    if let Some(r) = rate {
-                        if r >= 1.0 || r.powi((MAXIT - k) as i32) / (1.0 - r) * dn > newton_tol {
+                    if let Some(r) = rate
+                        && (r >= 1.0 || r.powi((MAXIT - k) as i32) / (1.0 - r) * dn > newton_tol) {
                             break;
                         }
-                    }
                     for q in 0..n {
                         yy[q] += dy[q];
                         dd[q] += dy[q];

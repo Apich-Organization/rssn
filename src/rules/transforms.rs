@@ -1046,11 +1046,10 @@ impl Tx<'_, '_> {
         if factors.is_empty() {
             return Some(self.inverse(s));
         }
-        if let [g] = factors {
-            if let Some(r) = self.unknown(*g).or_else(|| self.convolution_theorem(*g)) {
+        if let [g] = factors
+            && let Some(r) = self.unknown(*g).or_else(|| self.convolution_theorem(*g)) {
                 return Some(r);
             }
-        }
         if let Some(sum) = self.distribute(factors) {
             return self.laplace(sum);
         }
@@ -1119,9 +1118,9 @@ impl Tx<'_, '_> {
             return Some(mul(self.cx.graph, &all));
         }
         // t^n g(t): (-1)^n d^n/ds^n G(s)
-        if factors.len() > 1 {
-            if let Some((k, n)) = factors.iter().enumerate().find_map(|(k, &g)| Some((k, self.power_of_x(g)?))) {
-                if n.is_integer() && n.to_f64() >= 1.0 && n.to_f64() <= 12.0 {
+        if factors.len() > 1
+            && let Some((k, n)) = factors.iter().enumerate().find_map(|(k, &g)| Some((k, self.power_of_x(g)?)))
+                && n.is_integer() && n.to_f64() >= 1.0 && n.to_f64() <= 12.0 {
                     let n = n.to_i64()?;
                     let rest: Vec<NodeId> = factors.iter().enumerate().filter(|&(j, _)| j != k).map(|(_, &g)| g).collect();
                     let mut g = self.laplace_product(&rest, depth + 1)?;
@@ -1131,8 +1130,6 @@ impl Tx<'_, '_> {
                     let sign = self.int(if n % 2 == 0 { 1 } else { -1 });
                     return Some(mul(self.cx.graph, &[sign, g]));
                 }
-            }
-        }
         // Products of two trigonometric or hyperbolic factors, and squares:
         // product-to-sum.
         if let Some(sum) = self.product_to_sum(factors) {
@@ -1314,12 +1311,11 @@ impl Tx<'_, '_> {
         let (constants, rest) = self.factors(f);
         let mut all = constants;
         // A product of inert transforms: their convolution.
-        if !rest.is_empty() {
-            if let Some(r) = self.inverse_of_inert(&rest) {
+        if !rest.is_empty()
+            && let Some(r) = self.inverse_of_inert(&rest) {
                 all.push(r);
                 return Some(mul(self.cx.graph, &all));
             }
-        }
         // exp(-c s) G(s): heaviside(t - c) g(t - c), c >= 0
         if let Some(k) = rest.iter().position(|&g| self.cx.graph.op(g) == self.ops.exp) {
             let argument = *self.cx.graph.children(rest[k]).first()?;
@@ -1663,8 +1659,8 @@ impl Tx<'_, '_> {
             }
             // exp(-a abs(t)), a > 0: 2a/(a^2 + w^2)
             let (k, rest) = self.factors(argument);
-            if let [abs] = rest.as_slice() {
-                if self.cx.graph.op(*abs) == self.ops.abs && self.cx.graph.children(*abs).first().is_some_and(|&c| self.cx.graph.same(c, self.x)) {
+            if let [abs] = rest.as_slice()
+                && self.cx.graph.op(*abs) == self.ops.abs && self.cx.graph.children(*abs).first().is_some_and(|&c| self.cx.graph.same(c, self.x)) {
                     let k = mul(self.cx.graph, &k);
                     let a = neg(self.cx.graph, k);
                     let a = self.cx.simplify(a);
@@ -1677,7 +1673,6 @@ impl Tx<'_, '_> {
                         return Some(self.div(numerator, denominator));
                     }
                 }
-            }
             return None;
         }
         if op == self.ops.dirac {
@@ -2141,13 +2136,12 @@ impl Tx<'_, '_> {
         f: NodeId,
     ) -> Option<NodeId> {
         let (constants, rest) = self.factors(f);
-        if !rest.is_empty() {
-            if let Some(r) = self.inverse_of_inert(&rest) {
+        if !rest.is_empty()
+            && let Some(r) = self.inverse_of_inert(&rest) {
                 let mut all = constants;
                 all.push(r);
                 return Some(mul(self.cx.graph, &all));
             }
-        }
         // Partial fractions of F(z)/z over Q.
         let z = self.x;
         let n = self.y;

@@ -292,11 +292,10 @@ impl Expander<'_, '_> {
         }
         let constant = if s.valuation == 0 { *s.coefficients.first()? } else { self.zero() };
         let mut rest = s.clone();
-        if s.valuation == 0 {
-            if let Some(first) = rest.coefficients.first_mut() {
+        if s.valuation == 0
+            && let Some(first) = rest.coefficients.first_mut() {
                 *first = self.cx.graph.int(0);
             }
-        }
         Some((constant, rest))
     }
 

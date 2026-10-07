@@ -821,14 +821,13 @@ pub(crate) fn ratio(
         }
         return Some(acc);
     }
-    if let (true, &[base, exp]) = (graph.op(node) == core::POW, children.as_slice()) {
-        if let Some(e) = graph.number_of(exp).and_then(Number::to_i64) {
+    if let (true, &[base, exp]) = (graph.op(node) == core::POW, children.as_slice())
+        && let Some(e) = graph.number_of(exp).and_then(Number::to_i64) {
             let magnitude = u32::try_from(e.unsigned_abs()).ok().filter(|&m| m <= limits.exponent)?;
             let r = ratio(graph, gens, base, limits)?;
             let (numer, denom) = (r.numer.pow(magnitude, limits.terms)?, r.denom.pow(magnitude, limits.terms)?);
             return Some(if e < 0 { Ratio { numer: denom, denom: numer } } else { Ratio { numer, denom } });
         }
-    }
     Some(Ratio { numer: from_term_shared(graph, gens, node, limits)?, denom: one() })
 }
 

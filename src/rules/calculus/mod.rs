@@ -328,13 +328,11 @@ impl crate::graph::Kernel for RealIntegral {
         let mut logs = Vec::new();
         let mut stack = vec![term];
         while let Some(n) = stack.pop() {
-            if cx.graph.op(n) == ln {
-                if let Some(&u) = cx.graph.children(n).first() {
-                    if !cx.graph.facts(u).has(crate::graph::Facts::POSITIVE) && cx.graph.op(u) != abs {
+            if cx.graph.op(n) == ln
+                && let Some(&u) = cx.graph.children(n).first()
+                    && !cx.graph.facts(u).has(crate::graph::Facts::POSITIVE) && cx.graph.op(u) != abs {
                         logs.push((n, u));
                     }
-                }
-            }
             stack.extend_from_slice(cx.graph.children(n));
         }
         let mut out = term;
@@ -361,11 +359,10 @@ impl crate::graph::Kernel for RealIntegral {
             for (j, &s) in others.iter().enumerate() {
                 env.bind(s, 0.6 + 0.2 * f64::from(u32::try_from(j % 5).unwrap_or(0)));
             }
-            if let Some(v) = cx.graph.eval(residual, &env) {
-                if v.is_finite() && v.abs() > 1e-7 {
+            if let Some(v) = cx.graph.eval(residual, &env)
+                && v.is_finite() && v.abs() > 1e-7 {
                     return crate::graph::Outcome::Pass;
                 }
-            }
         }
         crate::graph::Outcome::Equal(out)
     }

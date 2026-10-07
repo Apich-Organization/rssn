@@ -352,7 +352,7 @@ where
     IterResult { x, residual: res, iterations: total, converged: res <= tol }
 }
 
-/// Preconditioned BiCGSTAB for general nonsymmetric operators.
+/// Preconditioned `BiCGSTAB` for general nonsymmetric operators.
 pub fn bicgstab<A, M>(apply: A, precond: M, b: &[f64], x0: Option<&[f64]>, tol: f64, max_iter: usize) -> IterResult
 where
     A: Fn(&[f64], &mut [f64]),

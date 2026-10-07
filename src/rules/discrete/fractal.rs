@@ -381,11 +381,10 @@ fn lyapunov_exponent(
         return None;
     }
     let df = derivative(cx, f, x)?;
-    if let Some(start) = float(cx.graph, x0) {
-        if let Some(v) = numeric_lyapunov(cx, f, df, x, start, n) {
+    if let Some(start) = float(cx.graph, x0)
+        && let Some(v) = numeric_lyapunov(cx, f, df, x, start, n) {
             return Some(V::Float(v));
         }
-    }
     // Symbolic average of ln|f'| along the orbit.
     let mut cur = x0;
     let mut terms = Vec::new();

@@ -618,14 +618,13 @@ impl Printer<'_> {
         if let Some(n) = self.g.as_number(exp) {
             return self.pow_number(base, n);
         }
-        if let [index, minus_one] = *self.g.children(exp) {
-            if self.g.op(exp) == core::POW
+        if let [index, minus_one] = *self.g.children(exp)
+            && self.g.op(exp) == core::POW
                 && self.g.as_number(minus_one).is_some_and(|m| *m == Number::from(-1))
             {
                 let idx = self.term(index, PREC_EQ).lines.join("");
                 return Block::sqrt(&self.term(base, PREC_EQ), Some(&idx));
             }
-        }
         Block::sup(&self.term(base, PREC_ATOM), &self.term(exp, PREC_EQ))
     }
 

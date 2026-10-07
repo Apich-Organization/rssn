@@ -632,11 +632,10 @@ impl Analysis {
                 .fold(f64::INFINITY, f64::min);
             let radius = (nearest / 2.0).min(0.5);
             let want = numeric::residue(&function, root.value, radius, 256);
-            if let Some(got) = value_of(cx.graph, residue) {
-                if (got - want).norm() > 1e-6 * (1.0 + want.norm()) {
+            if let Some(got) = value_of(cx.graph, residue)
+                && (got - want).norm() > 1e-6 * (1.0 + want.norm()) {
                     return None;
                 }
-            }
         }
         Some(residue)
     }
@@ -1105,13 +1104,11 @@ impl Analysis {
         let mut stack = vec![term];
         while let Some(n) = stack.pop() {
             let children = cx.graph.children(n).to_vec();
-            if transcendental.contains(&cx.graph.op(n)) {
-                if let Some(&inner) = children.first() {
-                    if laurent_expansion(cx, inner, z, a, 0).is_some_and(|(v, _)| v < 0) {
+            if transcendental.contains(&cx.graph.op(n))
+                && let Some(&inner) = children.first()
+                    && laurent_expansion(cx, inner, z, a, 0).is_some_and(|(v, _)| v < 0) {
                         return true;
                     }
-                }
-            }
             stack.extend(children);
         }
         false

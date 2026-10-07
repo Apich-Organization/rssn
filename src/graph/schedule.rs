@@ -499,12 +499,11 @@ impl Engine {
                         continue;
                     }
                     for m in &matches {
-                        if let Some(new) = rewrite.build(graph, m) {
-                            if graph.union(m.root, new) {
+                        if let Some(new) = rewrite.build(graph, m)
+                            && graph.union(m.root, new) {
                                 state.applied = state.applied.saturating_add(1);
                                 changed = true;
                             }
-                        }
                     }
                 },
                 | Action::Kernel(kernel) => {

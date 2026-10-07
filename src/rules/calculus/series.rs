@@ -383,8 +383,8 @@ fn symbolic_sum(
     // c * r^k with c, r free of k.
     let factors: Vec<NodeId> = if graph.op(term) == core::MUL { graph.children(term).to_vec() } else { vec![term] };
     let (constant, varying): (Vec<NodeId>, Vec<NodeId>) = factors.iter().partition(|&&n| !depends(graph, n));
-    if let &[power] = varying.as_slice() {
-        if let (true, &[ratio, exponent]) = (graph.op(power) == core::POW, graph.children(power)) {
+    if let &[power] = varying.as_slice()
+        && let (true, &[ratio, exponent]) = (graph.op(power) == core::POW, graph.children(power)) {
             if exponent == k && !depends(graph, ratio) {
                 let one = graph.int(1);
                 let start = graph.node(core::POW, &[ratio, lower]);
@@ -423,7 +423,6 @@ fn symbolic_sum(
                 return Some(mul(graph, &all));
             }
         }
-    }
     // Hypergeometric terms: Gosper's antidifference; rational terms that
     // are not Gosper-summable: partial fractions and polygamma.
     if infinite_upper {
@@ -615,8 +614,8 @@ fn rational_sum(
     if upper.is_none() && !residue_sum.is_zero() {
         return None;
     }
-    if let Some(b) = upper {
-        if !parts.quotient.is_empty() {
+    if let Some(b) = upper
+        && !parts.quotient.is_empty() {
             let before = sub(graph, lower, one);
             for (p, coefficient) in parts.quotient.iter().enumerate() {
                 if coefficient.is_zero() {
@@ -629,7 +628,6 @@ fn rational_sum(
                 pieces.push(graph.node(core::MUL, &[c, span]));
             }
         }
-    }
     let total = add(graph, &pieces);
     Some(cx.simplify(total))
 }
@@ -780,11 +778,10 @@ fn convergence(
     };
 
     // 1. Divergence test.
-    if let Some(v) = limit_value(cx, ops, magnitude, k) {
-        if v.is_nan() || v > 1e-12 {
+    if let Some(v) = limit_value(cx, ops, magnitude, k)
+        && (v.is_nan() || v > 1e-12) {
             return (!v.is_nan()).then_some(false);
         }
-    }
 
     // 2./3. Ratio and root tests. Both quantities are first estimated
     // numerically far out, which decides clear cases cheaply; the symbolic
@@ -804,19 +801,17 @@ fn convergence(
     let raw_root = graph.node(core::POW, &[magnitude, reciprocal]);
     let root = cx.simplify(raw_root);
     for test in [ratio, root] {
-        if let Some(v) = settled_value(cx, test, k) {
-            if (v - 1.0).abs() > 0.05 {
+        if let Some(v) = settled_value(cx, test, k)
+            && (v - 1.0).abs() > 0.05 {
                 return Some(v < 1.0);
             }
-        }
     }
     let tests = if varying_power(cx.graph, term, k) { [root, ratio] } else { [ratio, root] };
     for test in tests {
-        if let Some(v) = limit_value(cx, ops, test, k) {
-            if (v - 1.0).abs() > 1e-9 {
+        if let Some(v) = limit_value(cx, ops, test, k)
+            && (v - 1.0).abs() > 1e-9 {
                 return Some(v < 1.0);
             }
-        }
     }
 
     // 4. Alternating series test: the sign alternates and |a_k| decreases
@@ -845,11 +840,10 @@ fn convergence(
     // p = 1 exactly: compare with 1/k directly, then condense.
     if same_sign {
         let weighted = cx.graph.node(core::MUL, &[k, magnitude]);
-        if let Some(v) = limit_value(cx, ops, weighted, k) {
-            if v.is_finite() && v > 1e-12 {
+        if let Some(v) = limit_value(cx, ops, weighted, k)
+            && v.is_finite() && v > 1e-12 {
                 return Some(false);
             }
-        }
         if depth < 2 {
             let graph = &mut *cx.graph;
             let two = graph.int(2);
@@ -918,11 +912,10 @@ fn varying_power(
         if !seen.insert(n) {
             continue;
         }
-        if let (true, &[base, exponent]) = (graph.op(n) == core::POW, graph.children(n)) {
-            if depends(base) && depends(exponent) {
+        if let (true, &[base, exponent]) = (graph.op(n) == core::POW, graph.children(n))
+            && depends(base) && depends(exponent) {
                 return true;
             }
-        }
         stack.extend_from_slice(graph.children(n));
     }
     false

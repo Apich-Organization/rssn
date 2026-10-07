@@ -368,13 +368,12 @@ fn lower_one(
                 }
                 continue;
             }
-            if let (true, &[base, e]) = (graph.op(child) == core::POW, graph.children(child)) {
-                if let Some(k) = literal(graph, e).filter(|k| *k < 0.0) {
+            if let (true, &[base, e]) = (graph.op(child) == core::POW, graph.children(child))
+                && let Some(k) = literal(graph, e).filter(|k| *k < 0.0) {
                     let base = reg(&base)?;
                     denominator.push(power(graph, b, base, e, -k));
                     continue;
                 }
-            }
             numerator.push(reg(&child)?);
         }
         let n = b.tree(numerator, Inst::Mul).unwrap_or_else(|| b.constant(1.0));
@@ -415,11 +414,10 @@ fn lower_one(
         | (_, _, "atan2", &[y, x]) => return Ok(b.push(Inst::Atan2(y, x))),
         | _ => {},
     }
-    if op == core::EQ {
-        if let &[x, y] = args.as_slice() {
+    if op == core::EQ
+        && let &[x, y] = args.as_slice() {
             return Ok(b.push(Inst::Cmp(Cmp::Eq, x, y)));
         }
-    }
     let f = desc.eval.ok_or_else(|| BackendError::NoSemantics(desc.name.to_string()))?;
     if args.is_empty() {
         // Constants such as `pi`.
@@ -456,13 +454,12 @@ fn negated(
             skipped = true;
             continue;
         }
-        if let (true, &[base, e]) = (graph.op(f) == core::POW, graph.children(f)) {
-            if let Some(k) = literal(graph, e).filter(|k| *k < 0.0) {
+        if let (true, &[base, e]) = (graph.op(f) == core::POW, graph.children(f))
+            && let Some(k) = literal(graph, e).filter(|k| *k < 0.0) {
                 let base = slot.get(&base).copied().ok_or(BackendError::NotNumeric)?;
                 denominator.push(power(graph, b, base, e, -k));
                 continue;
             }
-        }
         rest.push(slot.get(&f).copied().ok_or(BackendError::NotNumeric)?);
     }
     if (c + 1.0).abs() > 0.0 {
@@ -486,8 +483,8 @@ fn power(
     let exact = graph.as_number(e).and_then(crate::graph::Number::to_rational).map(|r| r.abs());
     if let Some(r) = exact {
         let (numer, denom) = (r.numer().clone(), r.denom().clone());
-        if let (Ok(p), Ok(q)) = (i64::try_from(numer), i64::try_from(denom)) {
-            if p <= 64 {
+        if let (Ok(p), Ok(q)) = (i64::try_from(numer), i64::try_from(denom))
+            && p <= 64 {
                 match q {
                     | 1 => return b.pow_int(base, p),
                     | 2 => {
@@ -501,7 +498,6 @@ fn power(
                     | _ => {},
                 }
             }
-        }
     }
     let k = b.constant(k);
     b.push(Inst::PowF(base, k))

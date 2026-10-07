@@ -302,9 +302,8 @@ pub fn solve_laplace_bem_2d(
         }
     }
 
-    let solution = match solve_linear_system(&a_mat, &b_vec)? {
-        | LinearSolution::Unique(sol) => sol,
-        | _ => return Err("BEM system has no unique solution.".to_string()),
+    let LinearSolution::Unique(solution) = solve_linear_system(&a_mat, &b_vec)? else {
+        return Err("BEM system has no unique solution.".to_string());
     };
 
     let mut u = vec![0.0; n];

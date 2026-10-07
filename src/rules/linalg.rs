@@ -270,11 +270,10 @@ fn operand(
     graph: &mut Graph,
     node: NodeId,
 ) -> Option<Operand> {
-    if let Some(m) = matrix(graph, node) {
-        if !m.is_empty() {
+    if let Some(m) = matrix(graph, node)
+        && !m.is_empty() {
             return Some(Operand::Matrix(m));
         }
-    }
     let items = vector(graph, node)?;
     let mut scalars = Vec::with_capacity(items.len());
     for item in items {
@@ -362,13 +361,11 @@ fn has_division(
         if !seen.insert(n) {
             continue;
         }
-        if graph.op(n) == core::POW {
-            if let Some(e) = graph.children(n).get(1).and_then(|&e| graph.number_of(e)) {
-                if e.to_f64() < 0.0 {
+        if graph.op(n) == core::POW
+            && let Some(e) = graph.children(n).get(1).and_then(|&e| graph.number_of(e))
+                && e.to_f64() < 0.0 {
                     return true;
                 }
-            }
-        }
         stack.extend_from_slice(graph.children(n));
     }
     false

@@ -662,7 +662,7 @@ fn eval_partial(
 }
 
 /// The projection of `polys` along the generator `y`: every coefficient
-/// in `y`, the discriminants and the pairwise resultants (McCallum's
+/// in `y`, the discriminants and the pairwise resultants (`McCallum`'s
 /// set, with the full coefficient sets for safety), without constants
 /// and duplicates. Polynomials free of `y` pass through.
 fn project(

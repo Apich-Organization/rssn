@@ -1087,11 +1087,10 @@ impl<T: Field> Matrix<T> {
     /// * `None` if the matrix is not square or is singular (not invertible).
     #[must_use]
     pub fn inverse(&self) -> Option<Self> {
-        if self.backend == Backend::Faer {
-            if let Some(res) = T::faer_inverse(self) {
+        if self.backend == Backend::Faer
+            && let Some(res) = T::faer_inverse(self) {
                 return Some(res);
             }
-        }
 
         if self.rows != self.cols {
             return None;
@@ -1665,11 +1664,10 @@ impl<T: Field> Mul for Matrix<T> {
         assert_eq!(self.cols, rhs.rows);
 
         // Try Faer backend
-        if self.backend == Backend::Faer || rhs.backend == Backend::Faer {
-            if let Some(res) = T::faer_mul(&self, &rhs) {
+        if (self.backend == Backend::Faer || rhs.backend == Backend::Faer)
+            && let Some(res) = T::faer_mul(&self, &rhs) {
                 return res.with_backend(self.backend); // Propagate lhs backend preference
             }
-        }
 
         let mut data = vec![T::zero(); self.rows * rhs.cols];
 

@@ -125,9 +125,9 @@ fn rewrite_binomials(
         return node;
     }
     let new_children: Vec<NodeId> = children.iter().map(|&c| rewrite_binomials(graph, c, binomial)).collect();
-    if Some(op) == binomial {
-        if let &[x, j] = new_children.as_slice() {
-            if let Some(j) = graph.number_of(j).and_then(Number::to_i64).filter(|j| (0..=40).contains(j)) {
+    if Some(op) == binomial
+        && let &[x, j] = new_children.as_slice()
+            && let Some(j) = graph.number_of(j).and_then(Number::to_i64).filter(|j| (0..=40).contains(j)) {
                 let mut factors = Vec::new();
                 let mut factorial = BigInt::one();
                 for i in 0..j {
@@ -138,8 +138,6 @@ fn rewrite_binomials(
                 factors.push(graph.num(Number::rat(BigRational::new(BigInt::one(), factorial))));
                 return graph.node(core::MUL, &factors);
             }
-        }
-    }
     if new_children == children { node } else { graph.try_node(op, &new_children).unwrap_or(node) }
 }
 
