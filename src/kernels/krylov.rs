@@ -9,7 +9,9 @@
 //! left-looking Gilbert-Peierls LU factorisation with threshold pivoting
 //! after a fill-reducing symmetric ordering (reverse Cuthill-McKee via
 //! [`Csr::rcm_ordering`] or minimum degree via
-//! [`Csr::min_degree_ordering`]).
+//! [`Csr::min_degree_ordering`]), approximate minimum degree
+//! ([`Csr::amd_ordering`]) or nested dissection
+//! ([`Csr::nested_dissection_ordering`]), see [`crate::kernels::ordering`].
 #![allow(
     clippy::manual_midpoint,
     clippy::missing_const_for_fn,
@@ -432,6 +434,12 @@ pub enum SparseOrdering {
     Rcm,
     /// Minimum degree on the elimination graph (fill reduction).
     MinDegree,
+    /// Approximate minimum degree on the quotient graph
+    /// ([`crate::kernels::ordering::amd_order`]); scales to millions of vertices.
+    Amd,
+    /// Nested dissection by graph bisection
+    /// ([`crate::kernels::ordering::nested_dissection_order`]).
+    NestedDissection,
 }
 
 /// Errors of the sparse direct solver.
@@ -623,6 +631,21 @@ impl Csr {
         order
     }
 
+    /// Approximate minimum degree ordering (quotient graph with element
+    /// absorption, supervariables and mass elimination); see
+    /// [`crate::kernels::ordering::amd_order`]. Returns `perm[new] = old`.
+    #[must_use]
+    pub fn amd_ordering(&self) -> Vec<usize> {
+        crate::kernels::ordering::amd_order(&self.symmetric_adjacency())
+    }
+
+    /// Nested dissection ordering; see
+    /// [`crate::kernels::ordering::nested_dissection_order`].
+    #[must_use]
+    pub fn nested_dissection_ordering(&self) -> Vec<usize> {
+        crate::kernels::ordering::nested_dissection_order(&self.symmetric_adjacency())
+    }
+
     /// Sparse LU factorisation with a fill-reducing symmetric ordering
     /// and threshold partial pivoting (left-looking Gilbert-Peierls with
     /// a depth-first symbolic reach); see [`SparseLu`].
@@ -653,6 +676,8 @@ impl Csr {
             SparseOrdering::Natural => (0..n).collect(),
             SparseOrdering::Rcm => self.rcm_ordering(),
             SparseOrdering::MinDegree => self.min_degree_ordering(),
+            SparseOrdering::Amd => self.amd_ordering(),
+            SparseOrdering::NestedDissection => self.nested_dissection_ordering(),
         };
         let b = self.permute_symmetric(&perm);
         // CSC of B

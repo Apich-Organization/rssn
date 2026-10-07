@@ -76,3 +76,5 @@ pub mod robust;
 pub mod rootfind;
 /// Elliptic integrals, hypergeometric functions (real and complex argument) and integer-order Bessel functions.
 pub mod special_ext;
+/// Fill-reducing orderings: approximate minimum degree and nested dissection.
+pub mod ordering;
