@@ -646,7 +646,7 @@ fn valid_residues(
         });
         if consistent {
             let residues: Vec<u32> = (0..modulus)
-                .filter(|&r| class(i64::from(r)).iter().any(|&f| f == Some(true)))
+                .filter(|&r| class(i64::from(r)).contains(&Some(true)))
                 .collect();
             return if residues.is_empty() { None } else { Some((modulus, residues)) };
         }

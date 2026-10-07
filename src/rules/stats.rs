@@ -3764,12 +3764,14 @@ mod tests {
         );
         // Without the solver the request stays.
         stays("nonlinear_regression(list(0, 1, 2), list(1, 3, 5), a*x + b, x, list(a, b))");
+        // The two normal equations of an exact exponential fit are now
+        // solved by elimination: a = 1, b = ln 2.
         let (text, reduced) = reduce_with(
             &[stats(), crate::rules::solve()],
             "nonlinear_regression(list(0, 1), list(1, 2), a*exp(b*x), x, list(a, b))",
             &[],
         );
-        assert!(!reduced, "{text}");
+        assert!(reduced && text == "list(list(1, ln(2)))", "{text}");
     }
 
     #[test]

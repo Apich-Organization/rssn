@@ -1,4 +1,4 @@
-//! Probe battery for the algebraic solver.
+//! Battery of equations and systems for the solver, audited independently of it.
 //!
 //! Every case is solved with the standard rules and then audited by an
 //! oracle that knows nothing about the solver: all real roots of the
@@ -103,7 +103,7 @@ pub(super) fn audit(
         return Report { status: "install".into(), text: String::new() };
     };
     let name = if general { "solve_general" } else { solver };
-    let src = format!("{name}({}, x)", eq);
+    let src = format!("{name}({eq}, x)");
     let Ok(root) = g.parse(&src) else {
         return Report { status: "parse".into(), text: src };
     };
@@ -513,22 +513,5 @@ mod tests {
         }
         eprintln!("ALGEBRAIC {passed}/{}", ALGEBRAIC.len());
         assert_eq!(passed, ALGEBRAIC.len(), "some probe equations failed; run with --nocapture");
-    }
-}
-
-#[cfg(test)]
-mod scratch {
-    #[test]
-    #[ignore = "prints the reduction of the expressions in $SCRATCH, separated by ';;'"]
-    fn scratch() {
-        let rules = crate::rules::standard();
-        for src in std::env::var("SCRATCH").unwrap_or_default().split(";;") {
-            if src.trim().is_empty() {
-                continue;
-            }
-            let start = std::time::Instant::now();
-            let (text, reduced) = crate::rules::testing::reduce_with(&rules, src.trim(), &[]);
-            eprintln!("{} {:5.2}s  {}  =>  {}", if reduced { "R" } else { "-" }, start.elapsed().as_secs_f64(), src.trim(), text);
-        }
     }
 }

@@ -45,7 +45,7 @@ pub(super) fn real_root(
     k: i64,
 ) -> Option<NodeId> {
     let exponent = graph.num(Number::fraction(1, k)?);
-    let known_sign = graph.number_of(u).map(|n| n.to_f64());
+    let known_sign = graph.number_of(u).map(Number::to_f64);
     let nonnegative = match known_sign {
         | Some(v) => v >= 0.0,
         | None => graph.facts(u).has(Facts::NONNEGATIVE),
@@ -79,7 +79,8 @@ pub(super) fn roots(
         return None;
     }
     let vars = poly.support();
-    let pieces: Vec<Poly> = match multifactor::factor(poly, &vars) {
+    let factored = if super::factorable(poly) { multifactor::factor(poly, &vars) } else { None };
+    let pieces: Vec<Poly> = match factored {
         | Some((_, factors)) => factors.into_iter().map(|(f, _)| f).collect(),
         | None => vec![poly.clone()],
     };

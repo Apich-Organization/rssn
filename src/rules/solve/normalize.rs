@@ -26,12 +26,15 @@ use crate::graph::Number;
 use crate::graph::OpId;
 use crate::graph::SymbolId;
 
+/// A rewrite of one node given its rebuilt children.
+type Rewrite<'a> = dyn FnMut(&mut Graph, NodeId, &[NodeId]) -> Option<NodeId> + 'a;
+
 /// Rebuilds `term` bottom-up; `f` may replace a node given its rebuilt
 /// children.
 pub(super) fn map_term(
     graph: &mut Graph,
     term: NodeId,
-    f: &mut dyn FnMut(&mut Graph, NodeId, &[NodeId]) -> Option<NodeId>,
+    f: &mut Rewrite<'_>,
 ) -> NodeId {
     let mut done: HashMap<NodeId, NodeId> = HashMap::new();
     let mut stack = vec![(term, false)];

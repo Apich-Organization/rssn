@@ -48,7 +48,7 @@ use crate::graph::op::core;
 use crate::rules::calculus::derivative;
 
 /// `[f, f', f'', …]` up to order `n` as `diff` requests of `f = p(v)`.
-fn chain(
+pub(super) fn chain(
     graph: &mut Graph,
     f: NodeId,
     v: NodeId,
@@ -64,7 +64,7 @@ fn chain(
 }
 
 /// A fresh undetermined function applied to `v`.
-fn fresh_function(
+pub(super) fn fresh_function(
     graph: &mut Graph,
     name: &str,
     v: NodeId,
@@ -75,7 +75,7 @@ fn fresh_function(
 }
 
 /// The largest `k` of an integration constant `Ck` in `node`.
-fn constants_in(
+pub(super) fn constants_in(
     graph: &Graph,
     node: NodeId,
 ) -> usize {
@@ -88,7 +88,7 @@ fn constants_in(
 }
 
 /// The right-hand side of an explicit answer `f(v) = rhs`.
-fn explicit_rhs(
+pub(super) fn explicit_rhs(
     graph: &Graph,
     answer: NodeId,
     unknown: NodeId,
@@ -533,7 +533,9 @@ pub(super) fn variable_coefficients(
     let (a, forcing) = linear_second_order(cx, problem)?;
     let x = problem.x;
     let solutions = family_solutions(cx, &a, x);
-    let y1 = *solutions.first()?;
+    let Some(&y1) = solutions.first() else {
+        return super::classes::normal_form(cx, problem, &a, forcing, _depth);
+    };
     let second = solutions.iter().skip(1).copied().find(|&y| independent(cx, y1, y, x));
     let y2 = match second {
         | Some(y2) => y2,
@@ -565,7 +567,14 @@ fn reduction_of_order(
     let square = cx.graph.node(core::POW, &[y1, two]);
     let integrand = super::div(cx.graph, abel, square);
     let integrand = cx.simplify(integrand);
-    let inner = integrate(cx, integrand, x)?;
+    let inner = match integrate(cx, integrand, x) {
+        | Some(found) => found,
+        | None => {
+            // Without a closed form the quadrature stays inert.
+            let op = cx.graph.ops().lookup("integral")?;
+            cx.graph.node(op, &[integrand, x])
+        },
+    };
     let y2 = mul(cx.graph, &[y1, inner]);
     Some(cx.simplify(y2))
 }
@@ -633,7 +642,15 @@ pub(super) fn special_function_equation(
         let (ai, bi) = (cx.graph.ops().lookup("airyai")?, cx.graph.ops().lookup("airybi")?);
         let b = neg(cx.graph, *slope);
         let third = cx.graph.num(Number::fraction(1, 3)?);
-        let scale = cx.graph.node(core::POW, &[b, third]);
+        // The real cube root, also for b < 0 (Ai(-|b|^(1/3) x)).
+        let negative = cx.graph.eval(b, &Env::numeric(0.0)).is_some_and(|v| v < 0.0);
+        let scale = if negative {
+            let positive = neg(cx.graph, b);
+            let root = cx.graph.node(core::POW, &[positive, third]);
+            neg(cx.graph, root)
+        } else {
+            cx.graph.node(core::POW, &[b, third])
+        };
         let argument = mul(cx.graph, &[scale, x]);
         let argument = cx.simplify(argument);
         let (y1, y2) = (cx.graph.node(ai, &[argument]), cx.graph.node(bi, &[argument]));

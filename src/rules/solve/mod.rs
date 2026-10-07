@@ -22,15 +22,67 @@
 //! numeric roots; non-polynomial systems are solved by elimination. Every
 //! candidate is checked against the original equation.
 //!
-//! `solve(lt(f, g), x)` (likewise `le`, `gt`, `ge`) solves an inequality
-//! over the reals: the roots of `f - g` and the poles of its denominator
-//! split the line, the sign is tested on each piece, and the answer is a
-//! formula such as `or(and(lt(1, x), lt(x, 2)), lt(3, x))`, or `true` /
-//! `false`.
+//! Beyond that, the sub-solvers interlock:
 //!
-//! Inverse functions are taken on their principal branch, so periodic
-//! equations yield one representative solution per branch of the inverse,
-//! not the full solution set.
+//! * **Parameters.** A polynomial with symbolic coefficients is factored
+//!   over `Q` in the unknown and the parameters (`(x - a)(x - b)`,
+//!   `x^3 + a x^2 + a x + 1`), polynomials in `x^k` go through `u = x^k`
+//!   (`x^3 = a/b`, symbolic biquadratics), cubics get Cardano's formula
+//!   (real cube roots) together with the trigonometric form, palindromic
+//!   quartics `u = x + 1/x`; formulas are real only on part of the
+//!   parameter space and are kept when they are right wherever defined.
+//! * **Factors and substitutions.** When the numerator factors into several
+//!   pieces that involve the unknown (`e^x (x - 1)`, `x^3 ln x`) each piece
+//!   is solved; a common subterm `u = f(x)` (an argument of a function, a
+//!   power `x^m`) turns `x^2 e^(x^2) = e` into `u e^u = e`; exponentials
+//!   are made powers of one generator (`4^x` and `2^x`, `e^(x+1)`, `e^-x`),
+//!   and the hyperbolic functions are written through `exp`.
+//! * **Lambert W** for `α + β x + γ b^(dx)`, `x^m e^(dx)` and `x^m = c e^(dx)`
+//!   (both real branches, also for symbolic arguments), `x ln x`, `x^x`.
+//! * **Radicals** of any index by resultants (`∛(x+1) + ∛(x-1) = c`), sums of
+//!   inverse circular functions through their tangent, and `A^B = C^D` by
+//!   logarithms of both sides.
+//! * **Trigonometric equations** whose arguments are `k (x + s)` are
+//!   expanded into polynomials in `sin θ`, `cos θ` and solved with the
+//!   polynomial in `sin θ` or `cos θ` alone or the Weierstrass substitution
+//!   (covering `a sin x + b cos x = c`, multiple angles and sum-to-product
+//!   forms); solutions that are rational multiples of `π` are written as
+//!   such. `solve_general(eq, x)` returns *all* solutions as families with
+//!   an integer parameter `n` (`n1`, … if taken): `solve_general(sin(x) =
+//!   1/2, x)` is `list(2 n π + π/6, 2 n π + 5π/6)`. Families that agree
+//!   modulo a fraction of the period are merged, and a family valid only
+//!   for some residues of `n` is restricted to them. Other periodic
+//!   functions of an inner expression (`sin(x^2) = c`) get their families
+//!   through the inverse functions.
+//!
+//! Systems `solve(list(eqs), list(unknowns))`: a square linear system by
+//! Cramer's rule; polynomial systems (parameters allowed) by a lexicographic
+//! Gröbner basis in which the symbols other than the unknowns come last, so
+//! that an underdetermined system leaves some unknowns *free* (they appear
+//! in the answer as themselves) and the rest are read off by
+//! back-substitution; two polynomial equations by a resultant; systems with
+//! transcendental parts by elimination (an equation linear in an unknown
+//! determines it, otherwise an unknown is solved for and the branches
+//! followed). Every tuple is substituted back.
+//!
+//! Conditions in one unknown: `solve(lt(f, g), x)` (likewise `le`, `gt`,
+//! `ge`, `ne`) finds the real roots of `f - g`, the poles of its
+//! denominator and the zeros of the arguments of logarithms and roots,
+//! tests the sign between them and returns a formula such as
+//! `or(and(lt(1, x), lt(x, 2)), lt(3, x))`, `true` or `false`. `list(...)`
+//! and `and(...)` of conditions intersect, `or(...)` unites, an equation
+//! contributes its roots, and `floor(u) = c`, `ceil(u) < c` become interval
+//! conditions on `u`.
+//!
+//! In numeric mode, when no closed form exists, the residual is scanned for
+//! sign changes (one equation) or damped Newton runs from a spread of
+//! starting points find roots of a system; `nsolve(list(eqs), list(vars),
+//! list(guess))` is Newton from the guess. These are not certified, unlike
+//! the Sturm sequences used for polynomials.
+//!
+//! Inverse functions are taken on their principal branch by `solve`, so
+//! periodic equations yield one representative per branch; `solve_general`
+//! gives the whole solution set.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -82,7 +134,7 @@ mod symbolic;
 mod system;
 mod trig;
 #[cfg(test)]
-mod probe;
+mod battery;
 
 /// Operator attribute: the solutions `u` of `op(u) = ?a`, one pattern per
 /// branch that is returned.
@@ -275,6 +327,13 @@ pub(crate) fn solve_for(
     Some(solutions)
 }
 
+/// Whether a polynomial is small enough for the factorisation to be worth
+/// attempting (the reduction to one variable is exponential in the number
+/// of variables and their degrees).
+pub(crate) fn factorable(poly: &Poly) -> bool {
+    poly.len() <= 40 && poly.total_degree() <= 12 && poly.support().len() <= 5
+}
+
 /// When the numerator factors over `Q` into several pieces that involve
 /// the unknown, the solutions are those of the pieces.
 fn split_by_factors(
@@ -285,6 +344,9 @@ fn split_by_factors(
     depth: usize,
 ) -> Option<Vec<NodeId>> {
     let symbol = graph.symbol_of(x)?;
+    if !factorable(numer) {
+        return None;
+    }
     let vars = numer.support();
     let (_, factors) = crate::rules::poly::multifactor::factor(numer, &vars)?;
     let pieces: Vec<Poly> = factors
@@ -303,6 +365,9 @@ fn split_by_factors(
     Some(out)
 }
 
+/// Base magnitudes of the spot-check assignments.
+const BASE: [f64; 6] = [1.3, 0.7, 2.1, 0.45, 1.7, 0.9];
+
 /// Generic assignments of the free symbols of `nodes` (other than `skip`)
 /// for numeric spot checks of formulas in several parameters.
 pub(crate) fn sample_envs(
@@ -318,7 +383,6 @@ pub(crate) fn sample_envs(
             }
         }
     }
-    const BASE: [f64; 6] = [1.3, 0.7, 2.1, 0.45, 1.7, 0.9];
     (0..4_usize)
         .map(|k| {
             let mut env = Env::numeric(0.0);
@@ -338,9 +402,9 @@ pub(crate) fn sample_envs(
 }
 
 /// The candidates that make `term` vanish. Candidates with parameters are
-/// spot-checked at several assignments: one that is finite and wrong at any
-/// of them is discarded, one that is undefined everywhere is kept (it may
-/// be real elsewhere in the parameter space).
+/// spot-checked at several assignments: one that is finite and wrong at
+/// every assignment where it is defined is discarded, one that is undefined
+/// everywhere is kept (it may be real elsewhere in the parameter space).
 pub(crate) fn filter_candidates(
     graph: &mut Graph,
     term: NodeId,
@@ -358,17 +422,23 @@ pub(crate) fn filter_candidates(
                 | None => true,
             }
         } else {
-            let mut wrong = false;
+            // Right at some assignment, or undefined at all of them. A
+            // formula can be wrong at others (principal branches, regimes
+            // of the parameters), but not everywhere it is defined.
+            let (mut right, mut wrong) = (0_u32, 0_u32);
             for env in sample_envs(graph, &[substituted, candidate], symbol) {
                 let (Some(residual), Some(at)) = (graph.eval(substituted, &env), graph.eval(candidate, &env)) else {
                     continue;
                 };
-                if residual.is_finite() && at.is_finite() && residual.abs() > 1e-7 * (1.0 + at.abs().powi(3)) {
-                    wrong = true;
-                    break;
+                if residual.is_finite() && at.is_finite() {
+                    if residual.abs() > 1e-7 * (1.0 + at.abs().powi(3)) {
+                        wrong += 1;
+                    } else {
+                        right += 1;
+                    }
                 }
             }
-            !wrong
+            right > 0 || wrong == 0
         };
         if keep && !solutions.iter().any(|&s| graph.same(s, candidate) || s == candidate) {
             solutions.push(candidate);
@@ -1285,7 +1355,7 @@ mod tests {
         assert_eq!(run("solve(atan(2*x) + atan(3*x) = pi/4, x)"), "list(1/6)");
         assert_eq!(run("solve(asin(x) - acos(x) = 0, x)"), "list(1/2*2^(1/2))");
         let text = run("solve((x^2 - a)*(x - b) = 0, x)");
-        assert!(text.contains("b") && text.contains("a^(1/2)"), "{text}");
+        assert!(text.contains('b') && text.contains("a^(1/2)"), "{text}");
         let text = run("solve(x^3 - (a + b + c)*x^2 + (a*b + a*c + b*c)*x - a*b*c = 0, x)");
         assert!(text.contains('a') && text.contains('b') && text.contains('c'), "{text}");
     }

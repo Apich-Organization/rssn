@@ -83,9 +83,9 @@ fn solve_dense(
         b.swap(col, pivot);
         for row in col + 1..n {
             let factor = a[row][col] / a[col][col];
-            for k in col..n {
-                let v = a[col][k];
-                a[row][k] -= factor * v;
+            let pivot_row = a[col].clone();
+            for (v, p) in a[row].iter_mut().zip(&pivot_row).skip(col) {
+                *v -= factor * p;
             }
             let v = b[col];
             b[row] -= factor * v;

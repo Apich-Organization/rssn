@@ -273,15 +273,22 @@ fn comparison_set(
     Some(out)
 }
 
+/// The outcome of rewriting a condition on `floor(u)` / `ceil(u)`.
+enum Rounded {
+    /// Never satisfied.
+    Never,
+    /// Satisfied exactly where this condition on `u` holds.
+    When(NodeId),
+}
+
 /// A comparison or equation between `floor(u)` / `ceil(u)` and a number,
 /// rewritten as a condition on `u` (an interval): `floor(u) < c` is
 /// `u < ceil(c)`, `floor(u) = c` is `c <= u < c + 1` for an integer `c`,
-/// and so on. `None` when `node` is not of that shape; `Some(None)` when
-/// the condition is unsatisfiable.
+/// and so on. `None` when `node` is not of that shape.
 fn floor_condition(
     graph: &mut Graph,
     node: NodeId,
-) -> Option<Option<NodeId>> {
+) -> Option<Rounded> {
     let (floor, ceil) = (graph.ops().lookup("floor")?, graph.ops().lookup("ceil")?);
     let op = graph.op(node);
     let names = ["lt", "le", "gt", "ge"];
@@ -317,7 +324,7 @@ fn floor_condition(
     match kind {
         | None => {
             if (value - lo).abs() > 0.0 {
-                return Some(None);
+                return Some(Rounded::Never);
             }
             let (low, high) = (int(graph, lo), int(graph, lo + 1.0));
             let (below, above) = if is_floor {
@@ -327,7 +334,7 @@ fn floor_condition(
                 let top = int(graph, lo);
                 (graph.node(gt, &[u, previous]), graph.node(le, &[u, top]))
             };
-            Some(Some(graph.node(and, &[below, above])))
+            Some(Rounded::When(graph.node(and, &[below, above])))
         },
         | Some(k) => {
             // The bound on `u` and the comparison it takes.
@@ -343,7 +350,7 @@ fn floor_condition(
             };
             let _ = (le, gt);
             let b = int(graph, bound);
-            Some(Some(graph.node(cmp, &[u, b])))
+            Some(Rounded::When(graph.node(cmp, &[u, b])))
         },
     }
 }
@@ -355,8 +362,8 @@ fn condition_set(
     x: NodeId,
 ) -> Option<Set> {
     match floor_condition(graph, node) {
-        | Some(Some(rewritten)) => return condition_set(graph, rewritten, x),
-        | Some(None) => return Some(Vec::new()),
+        | Some(Rounded::When(rewritten)) => return condition_set(graph, rewritten, x),
+        | Some(Rounded::Never) => return Some(Vec::new()),
         | None => {},
     }
     let op = graph.op(node);

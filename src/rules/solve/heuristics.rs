@@ -493,10 +493,8 @@ fn lambert(
         let z = product(graph, &[minus_one, d, alpha, e_inv, inv_beta]);
         let inv_d = reciprocal(graph, d);
         branches(graph, z, w0, wm1).into_iter().map(|w| product(graph, &[w, inv_d])).collect()
-    } else if let Some(found) = power_exponential(graph, &pattern, &coefficient, d, e_shift, w0, wm1, exp) {
-        found
     } else {
-        return None;
+        power_exponential(graph, &pattern, &coefficient, d, e_shift, w0, wm1, exp)?
     };
     Some(candidates)
 }
