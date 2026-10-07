@@ -13,8 +13,8 @@
 //! * a radius `0 ≤ r ≤ R` in a disk (`J_ν(κ r)`) or a ball
 //!   (`j_l(κ r)`), the order following the preceding angular axis,
 //!
-//! so that boxes in one to three dimensions (Cartesian), disks, annuli-free
-//! cylinders, balls and spheres are all instances. The operator's symbol,
+//! so that boxes in one to three dimensions (Cartesian), disks, annuli,
+//! cylinders, balls and shells are all instances. The operator's symbol,
 //! the time dependence (`a₂ T'' + a₁ T' + s T = −f`, solved in closed form
 //! with Duhamel's integral for time-dependent forcing), nonhomogeneous
 //! boundary data (as boundary terms of Green's second identity), sources
@@ -191,9 +191,8 @@ impl Axis {
         cx: &mut Cx<'_>,
     ) -> Option<NodeId> {
         Some(match &self.shape {
-            | Shape::Interval(_) | Shape::Angle => cx.graph.int(1),
+            | Shape::Interval(_) | Shape::Angle | Shape::Legendre => cx.graph.int(1),
             | Shape::Polar { .. } => call(cx, "sin", &[self.var])?,
-            | Shape::Legendre => cx.graph.int(1),
             | Shape::Radial { sphere, .. } => powi(cx.graph, self.var, if *sphere { 2 } else { 1 }),
         })
     }

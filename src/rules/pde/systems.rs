@@ -539,6 +539,7 @@ fn vanishes(
 
 /// Gauss–Jordan elimination of the rows: the reduced rows and their pivot
 /// columns.
+#[allow(clippy::needless_range_loop)]
 fn row_reduce(
     cx: &mut Cx<'_>,
     mut rows: Matrix,
@@ -723,7 +724,7 @@ struct JordanData {
 /// Simultaneous Jordan decoupling: `P⁻¹ A_α P` must be block diagonal with
 /// upper triangular Toeplitz blocks. The diagonals `λ_{α,block}` are
 /// returned like the eigenvalues of a diagonalisation.
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::needless_range_loop)]
 fn jordan_decouple(
     cx: &mut Cx<'_>,
     a_matrices: &[(Index, Matrix)],

@@ -182,5 +182,5 @@ pub(super) fn sample_abs(
         };
         bindings.insert(s, Complex64::new(value, 0.0));
     }
-    graph.eval_complex(node, &bindings).filter(|v| v.re.is_finite() && v.im.is_finite()).map(|v| v.norm())
+    graph.eval_complex(node, &bindings).filter(|v| v.re.is_finite() && v.im.is_finite()).map(Complex64::norm)
 }

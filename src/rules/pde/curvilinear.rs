@@ -254,11 +254,10 @@ fn solve_layout(
 ) -> Option<NodeId> {
     let n = p.dimension();
     // The conditions at the radii; nothing else on the angles.
-    let on_r: Vec<&Condition> = conditions.0.iter().filter(|c| c.on == layout.r).collect();
     if conditions.0.iter().any(|c| Some(c.on) == layout.theta || Some(c.on) == layout.phi) {
         return None;
     }
-    let (at_infinity, finite): (Vec<&Condition>, Vec<&Condition>) = on_r.into_iter().partition(|c| is_infinity(cx, c.point));
+    let (at_infinity, finite): (Vec<&Condition>, Vec<&Condition>) = conditions.0.iter().filter(|c| c.on == layout.r).partition(|c| is_infinity(cx, c.point));
     if let [far] = at_infinity.as_slice() {
         return exterior(cx, p, conditions, layout, time_index, (b, a0), &finite, far);
     }
@@ -383,7 +382,7 @@ fn solve_layout(
 /// (Sommerfeld radiation condition, time factor `e^{-iωt}`: Hankel functions
 /// of the first kind); the angular dependence is expanded as in the interior
 /// and each harmonic is multiplied by its decaying radial profile.
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines, clippy::too_many_arguments)]
 fn exterior(
     cx: &mut Cx<'_>,
     p: &Problem,

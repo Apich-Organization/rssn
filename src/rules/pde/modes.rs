@@ -694,7 +694,7 @@ pub(super) fn cylinder_integral(
 /// evanescent (`k² < 0`: Macdonald functions) solution of `Δu + k² u = 0`
 /// outside a disk or ball for the angular index `index`, normalised so
 /// that `p ρ(R) + q ρ'(R) = 1`.
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines, clippy::too_many_arguments)]
 pub(super) fn exterior_profile(
     cx: &mut Cx<'_>,
     r: NodeId,
@@ -716,7 +716,7 @@ pub(super) fn exterior_profile(
     };
     let literal = exact_value(cx, index).filter(|v| v.fract() == 0.0 && *v >= 0.0 && *v <= 40.0);
     let rho = match (sign, sphere) {
-        | (0, false) => powi_node(cx, r, index, if interior { 1 } else { -1 })?,
+        | (0, false) => powi_node(cx, r, index, if interior { 1 } else { -1 }),
         | (0, true) => {
             let e = if interior {
                 index
@@ -798,8 +798,8 @@ fn powi_node(
     r: NodeId,
     index: NodeId,
     sign: i64,
-) -> Option<NodeId> {
+) -> NodeId {
     let s = cx.graph.int(sign);
     let e = mul(cx.graph, &[s, index]);
-    Some(pow(cx.graph, r, e))
+    pow(cx.graph, r, e)
 }
