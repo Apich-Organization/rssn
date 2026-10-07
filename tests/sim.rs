@@ -44,5 +44,21 @@ mod physics_mm;
 mod physics_mtm;
 #[path = "sim/physics_rkm.rs"]
 mod physics_rkm;
+#[path = "sim/multigrid.rs"]
+mod multigrid;
+#[path = "sim/euler_nd.rs"]
+mod euler_nd;
+#[path = "sim/dg.rs"]
+mod dg;
+#[path = "sim/spectral.rs"]
+mod spectral;
+#[path = "sim/split_step.rs"]
+mod split_step;
+#[path = "sim/yee_fdtd.rs"]
+mod yee_fdtd;
+#[path = "sim/ns_mac.rs"]
+mod ns_mac;
+#[path = "sim/structured.rs"]
+mod structured;
 #[path = "sim/physics_sm.rs"]
 mod physics_sm;

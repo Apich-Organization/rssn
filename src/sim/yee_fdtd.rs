@@ -1,0 +1,537 @@
+//! # Yee FDTD for Maxwell's equations in 1D, 2D and 3D
+//!
+//! Second-order staggered-grid finite-difference time-domain solver for
+//! `ε E_t = ∇×H - J`, `μ H_t = -∇×E` (units `ε0 = μ0 = c = 1`) on a uniform
+//! Cartesian Yee lattice. All six field components are always carried; lower
+//! dimensions use `∂/∂x_a = 0` along the inactive axes, so one code path
+//! covers 1D (`Ey/Hz` and `Ez/Hy` polarisations), 2D (TE and TM) and 3D.
+//!
+//! | Feature | 1D | 2D | 3D |
+//! |---|---|---|---|
+//! | Yee update, isotropic dielectric `ε_r(x)` | yes | yes | yes |
+//! | PEC walls, periodic faces | yes | yes | yes |
+//! | convolutional PML (graded, `κ = 1`, `α = 0`) per face | yes | yes | yes |
+//! | soft current source (any component) | yes | yes | yes |
+//! | TF/SF plane wave along `+x` with arbitrary `(y, z)` polarisation | yes | yes | yes |
+//!
+//! Boundary faces use [`BoundaryCondition`]: `Dirichlet` is a PEC wall,
+//! `Periodic` wraps, `Absorbing` is a PML of `pml_cells` cells terminated by
+//! a PEC wall. PMC walls (`Neumann`/`Symmetry`) are rejected.
+//!
+//! The TF/SF box is a slab spanning the full transverse extent between the
+//! `x` indices `ia` and `ib` (so it needs transverse periodic, PEC or PML
+//! faces that the plane wave satisfies); the incident field comes from a
+//! one-dimensional auxiliary Yee grid with the same dispersion, so the
+//! scattered-field region is quiet to round-off in vacuum.
+//!
+//! Limitations: no dispersive or anisotropic media, no conductivity, no
+//! non-axis-aligned TF/SF boxes, PMC boundaries not available.
+#![allow(
+    clippy::manual_memcpy,
+    clippy::too_long_first_doc_paragraph,
+    clippy::cast_lossless,
+    clippy::single_match_else,
+    clippy::manual_contains,
+    clippy::too_many_lines,
+    clippy::too_many_arguments,
+    clippy::needless_range_loop,
+    clippy::missing_const_for_fn,
+    clippy::float_cmp,
+    clippy::type_complexity,
+    clippy::many_single_char_names,
+    clippy::manual_midpoint,
+    clippy::struct_excessive_bools,
+    clippy::similar_names
+)]
+
+use crate::sim::boundary::{BoundaryCondition, Face, FaceBcs};
+
+/// Field component.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Comp {
+    /// `E_x`.
+    Ex,
+    /// `E_y`.
+    Ey,
+    /// `E_z`.
+    Ez,
+    /// `H_x`.
+    Hx,
+    /// `H_y`.
+    Hy,
+    /// `H_z`.
+    Hz,
+}
+
+/// Soft current source `J(t)` added to an electric component at a cell.
+pub struct CurrentSource {
+    /// Cell index `(i, j, k)`.
+    pub cell: [usize; 3],
+    /// Electric component driven.
+    pub comp: Comp,
+    /// Waveform `J(t)`.
+    pub waveform: Box<dyn Fn(f64) -> f64 + Send + Sync>,
+}
+
+/// Plane-wave TF/SF source travelling along `+x`.
+pub struct PlaneWave {
+    /// First total-field `E` node along `x`.
+    pub ia: usize,
+    /// Last total-field `E` node along `x`.
+    pub ib: usize,
+    /// Polarisation angle in the `(y, z)` plane (`0` = `E` along `y`).
+    pub psi: f64,
+    /// Waveform of the incident electric field at the source plane.
+    pub waveform: Box<dyn Fn(f64) -> f64 + Send + Sync>,
+}
+
+/// Solver configuration.
+pub struct YeeConfig {
+    /// Cells per axis (inactive axes: 1).
+    pub n: [usize; 3],
+    /// Number of active axes.
+    pub dim: usize,
+    /// Cell size per axis.
+    pub h: [f64; 3],
+    /// Courant number (`<= 1`); `dt = cfl / sqrt(Σ 1/h²)`.
+    pub cfl: f64,
+    /// Face conditions.
+    pub bcs: FaceBcs,
+    /// PML thickness in cells.
+    pub pml_cells: usize,
+    /// PML grading exponent.
+    pub pml_order: f64,
+    /// Relative permittivity at `E` nodes (vacuum when `None`).
+    pub eps_r: Option<Box<dyn Fn([f64; 3]) -> f64 + Send + Sync>>,
+}
+
+impl YeeConfig {
+    /// Vacuum configuration with PEC walls everywhere.
+    ///
+    /// # Errors
+    /// For a bad dimension or sizes.
+    pub fn new(n: &[usize], h: &[f64]) -> Result<Self, String> {
+        let dim = n.len();
+        if !(1..=3).contains(&dim) || h.len() != dim || n.iter().any(|&m| m < 4) {
+            return Err("invalid Yee grid".into());
+        }
+        let mut c = Self {
+            n: [1; 3],
+            dim,
+            h: [1.0; 3],
+            cfl: 0.9,
+            bcs: FaceBcs::dirichlet_zero(),
+            pml_cells: 10,
+            pml_order: 3.0,
+            eps_r: None,
+        };
+        for a in 0..dim {
+            c.n[a] = n[a];
+            c.h[a] = h[a];
+        }
+        Ok(c)
+    }
+}
+
+/// Yee solver state.
+pub struct Yee {
+    cfg: YeeConfig,
+    /// Time step.
+    pub dt: f64,
+    /// Current time of the electric field.
+    pub t: f64,
+    /// Fields `[Ex, Ey, Ez, Hx, Hy, Hz]`.
+    pub f: [Vec<f64>; 6],
+    eps_inv: Vec<f64>,
+    periodic: [bool; 3],
+    pec_lo: [bool; 3],
+    // PML coefficients per axis: (b, a) at integer and half positions
+    pml_int: [Vec<(f64, f64)>; 3],
+    pml_half: [Vec<(f64, f64)>; 3],
+    psi: Vec<Vec<f64>>,
+    use_pml: bool,
+    sources: Vec<CurrentSource>,
+    pw: Option<PlaneWaveState>,
+}
+
+struct PlaneWaveState {
+    spec: PlaneWave,
+    e: Vec<f64>,
+    h: Vec<f64>,
+}
+
+fn comp_index(c: Comp) -> usize {
+    match c {
+        Comp::Ex => 0,
+        Comp::Ey => 1,
+        Comp::Ez => 2,
+        Comp::Hx => 3,
+        Comp::Hy => 4,
+        Comp::Hz => 5,
+    }
+}
+
+impl Yee {
+    /// Creates a solver.
+    ///
+    /// # Errors
+    /// For unsupported boundary conditions, inconsistent periodic faces, a
+    /// CFL number above one, or a PML thicker than half the grid.
+    pub fn new(cfg: YeeConfig) -> Result<Self, String> {
+        if !(cfg.cfl > 0.0 && cfg.cfl <= 1.0) {
+            return Err("cfl must be in (0, 1]".into());
+        }
+        let nn: usize = cfg.n.iter().product();
+        let inv_sum: f64 = (0..cfg.dim).map(|a| 1.0 / (cfg.h[a] * cfg.h[a])).sum();
+        let dt = cfg.cfl / inv_sum.sqrt();
+        let mut periodic = [false; 3];
+        let mut pec_lo = [false; 3];
+        let mut use_pml = false;
+        let mut pml_int: [Vec<(f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a]]);
+        let mut pml_half: [Vec<(f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a]]);
+        for a in 0..cfg.dim {
+            periodic[a] = cfg.bcs.axis_periodic(a)?;
+            pec_lo[a] = !periodic[a];
+            for max in [false, true] {
+                let bc = cfg.bcs.get(Face::of_axis(a, max));
+                match bc {
+                    BoundaryCondition::Dirichlet(_) | BoundaryCondition::Periodic => {},
+                    BoundaryCondition::Absorbing => {
+                        let d = cfg.pml_cells;
+                        if 2 * d >= cfg.n[a] {
+                            return Err("PML too thick for the grid".into());
+                        }
+                        use_pml = true;
+                        let n = cfg.n[a];
+                        let m = cfg.pml_order;
+                        let smax = 0.8 * (m + 1.0) / cfg.h[a];
+                        for i in 0..n {
+                            for half in [false, true] {
+                                let pos = i as f64 + if half { 0.5 } else { 0.0 };
+                                let depth = if max { pos - (n - d) as f64 } else { d as f64 - pos };
+                                if depth > 0.0 {
+                                    let sigma = smax * (depth / d as f64).powf(m);
+                                    let b = (-sigma * dt).exp();
+                                    let coef = (b, b - 1.0);
+                                    if half {
+                                        pml_half[a][i] = coef;
+                                    } else {
+                                        pml_int[a][i] = coef;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    _ => return Err("YeeConfig supports PEC (Dirichlet), periodic and PML (Absorbing) faces".into()),
+                }
+            }
+        }
+        let eps_inv: Vec<f64> = (0..nn)
+            .map(|p| {
+                let i = [p % cfg.n[0], (p / cfg.n[0]) % cfg.n[1], p / (cfg.n[0] * cfg.n[1])];
+                let x = [i[0] as f64 * cfg.h[0], i[1] as f64 * cfg.h[1], i[2] as f64 * cfg.h[2]];
+                1.0 / cfg.eps_r.as_ref().map_or(1.0, |f| f(x))
+            })
+            .collect();
+        let psi = if use_pml { vec![vec![0.0; nn]; 12] } else { Vec::new() };
+        Ok(Self {
+            cfg,
+            dt,
+            t: 0.0,
+            f: std::array::from_fn(|_| vec![0.0; nn]),
+            eps_inv,
+            periodic,
+            pec_lo,
+            pml_int,
+            pml_half,
+            psi,
+            use_pml,
+            sources: Vec::new(),
+            pw: None,
+        })
+    }
+
+    /// Adds a soft current source.
+    pub fn add_source(&mut self, s: CurrentSource) {
+        self.sources.push(s);
+    }
+
+    /// Installs the TF/SF plane-wave source.
+    ///
+    /// # Errors
+    /// If the slab is outside the grid or touches the PML.
+    pub fn set_plane_wave(&mut self, pw: PlaneWave, total_steps: usize) -> Result<(), String> {
+        let nx = self.cfg.n[0];
+        if pw.ia < 2 || pw.ib + 2 >= nx || pw.ia >= pw.ib {
+            return Err("TF/SF slab must lie inside the grid".into());
+        }
+        let n_aux = nx + (total_steps as f64 * self.cfg.cfl).ceil() as usize + 20;
+        self.pw = Some(PlaneWaveState { spec: pw, e: vec![0.0; n_aux], h: vec![0.0; n_aux] });
+        Ok(())
+    }
+
+    /// Number of cells.
+    #[must_use]
+    pub fn size(&self) -> usize {
+        self.cfg.n.iter().product()
+    }
+
+    /// Flat index of cell `(i, j, k)`.
+    #[must_use]
+    pub fn idx(&self, i: usize, j: usize, k: usize) -> usize {
+        i + self.cfg.n[0] * (j + self.cfg.n[1] * k)
+    }
+
+    /// Field values of one component.
+    #[must_use]
+    pub fn field(&self, c: Comp) -> &[f64] {
+        &self.f[comp_index(c)]
+    }
+
+    /// Mutable field values of one component (for initial conditions).
+    pub fn field_mut(&mut self, c: Comp) -> &mut [f64] {
+        &mut self.f[comp_index(c)]
+    }
+
+    /// Cell size along an axis.
+    #[must_use]
+    pub fn h(&self, a: usize) -> f64 {
+        self.cfg.h[a]
+    }
+
+    /// Cells per axis.
+    #[must_use]
+    pub fn n(&self) -> [usize; 3] {
+        self.cfg.n
+    }
+
+    /// Electromagnetic energy `½ Σ (ε E² + H²) ΔV`.
+    #[must_use]
+    pub fn energy(&self) -> f64 {
+        let dv: f64 = (0..self.cfg.dim).map(|a| self.cfg.h[a]).product();
+        let mut s = 0.0;
+        for p in 0..self.size() {
+            for c in 0..3 {
+                s += self.f[c][p] * self.f[c][p] / self.eps_inv[p] + self.f[3 + c][p] * self.f[3 + c][p];
+            }
+        }
+        0.5 * s * dv
+    }
+
+    /// Forward difference `(f[i+1] - f[i]) / h` along `a` (zero beyond a PEC wall).
+    fn dfw(&self, f: &[f64], ijk: [usize; 3], a: usize) -> f64 {
+        let n = self.cfg.n[a];
+        if n == 1 {
+            return 0.0;
+        }
+        let mut q = ijk;
+        let nb = if ijk[a] + 1 < n {
+            q[a] += 1;
+            f[self.idx(q[0], q[1], q[2])]
+        } else if self.periodic[a] {
+            q[a] = 0;
+            f[self.idx(q[0], q[1], q[2])]
+        } else {
+            0.0
+        };
+        (nb - f[self.idx(ijk[0], ijk[1], ijk[2])]) / self.cfg.h[a]
+    }
+
+    /// Backward difference `(f[i] - f[i-1]) / h` along `a`.
+    fn dbw(&self, f: &[f64], ijk: [usize; 3], a: usize) -> f64 {
+        let n = self.cfg.n[a];
+        if n == 1 {
+            return 0.0;
+        }
+        let mut q = ijk;
+        let nb = if ijk[a] > 0 {
+            q[a] -= 1;
+            f[self.idx(q[0], q[1], q[2])]
+        } else if self.periodic[a] {
+            q[a] = n - 1;
+            f[self.idx(q[0], q[1], q[2])]
+        } else {
+            0.0
+        };
+        (f[self.idx(ijk[0], ijk[1], ijk[2])] - nb) / self.cfg.h[a]
+    }
+
+    /// Curl-difference `∂_a1 F1 - ∂_a2 F2` for the H update (forward differences) with PML memory.
+    fn curl_h(&mut self, p: usize, ijk: [usize; 3], f1: usize, a1: usize, m1: usize, f2: usize, a2: usize, m2: usize) -> f64 {
+        let mut d1 = self.dfw(&self.f[f1], ijk, a1);
+        let mut d2 = self.dfw(&self.f[f2], ijk, a2);
+        if self.use_pml {
+            let (b, a) = self.pml_half[a1][ijk[a1]];
+            self.psi[m1][p] = b * self.psi[m1][p] + a * d1;
+            d1 += self.psi[m1][p];
+            let (b, a) = self.pml_half[a2][ijk[a2]];
+            self.psi[m2][p] = b * self.psi[m2][p] + a * d2;
+            d2 += self.psi[m2][p];
+        }
+        d1 - d2
+    }
+
+    fn curl_e(&mut self, p: usize, ijk: [usize; 3], f1: usize, a1: usize, m1: usize, f2: usize, a2: usize, m2: usize) -> f64 {
+        let mut d1 = self.dbw(&self.f[f1], ijk, a1);
+        let mut d2 = self.dbw(&self.f[f2], ijk, a2);
+        if self.use_pml {
+            let (b, a) = self.pml_int[a1][ijk[a1]];
+            self.psi[m1][p] = b * self.psi[m1][p] + a * d1;
+            d1 += self.psi[m1][p];
+            let (b, a) = self.pml_int[a2][ijk[a2]];
+            self.psi[m2][p] = b * self.psi[m2][p] + a * d2;
+            d2 += self.psi[m2][p];
+        }
+        d1 - d2
+    }
+
+    /// Advances `H` by `dt_h` using the current `E`.
+    fn update_h(&mut self, dt_h: f64) {
+        let n = self.cfg.n;
+        for k in 0..n[2] {
+            for j in 0..n[1] {
+                for i in 0..n[0] {
+                    let ijk = [i, j, k];
+                    let p = self.idx(i, j, k);
+                    // Hx: dy Ez - dz Ey ; Hy: dz Ex - dx Ez ; Hz: dx Ey - dy Ex
+                    let cx = self.curl_h(p, ijk, 2, 1, 0, 1, 2, 1);
+                    let cy = self.curl_h(p, ijk, 0, 2, 2, 2, 0, 3);
+                    let cz = self.curl_h(p, ijk, 1, 0, 4, 0, 1, 5);
+                    self.f[3][p] -= dt_h * cx;
+                    self.f[4][p] -= dt_h * cy;
+                    self.f[5][p] -= dt_h * cz;
+                }
+            }
+        }
+    }
+
+    fn update_e(&mut self) {
+        let n = self.cfg.n;
+        let dt = self.dt;
+        for k in 0..n[2] {
+            for j in 0..n[1] {
+                for i in 0..n[0] {
+                    let ijk = [i, j, k];
+                    let p = self.idx(i, j, k);
+                    // Ex: dy Hz - dz Hy ; Ey: dz Hx - dx Hz ; Ez: dx Hy - dy Hx
+                    let cx = self.curl_e(p, ijk, 5, 1, 6, 4, 2, 7);
+                    let cy = self.curl_e(p, ijk, 3, 2, 8, 5, 0, 9);
+                    let cz = self.curl_e(p, ijk, 4, 0, 10, 3, 1, 11);
+                    let ei = self.eps_inv[p];
+                    self.f[0][p] += dt * ei * cx;
+                    self.f[1][p] += dt * ei * cy;
+                    self.f[2][p] += dt * ei * cz;
+                }
+            }
+        }
+        // PEC at the lower faces: tangential E vanishes
+        for k in 0..n[2] {
+            for j in 0..n[1] {
+                for i in 0..n[0] {
+                    let ijk = [i, j, k];
+                    let p = self.idx(i, j, k);
+                    for a in 0..self.cfg.dim {
+                        if self.pec_lo[a] && ijk[a] == 0 {
+                            for c in 0..3 {
+                                if c != a {
+                                    self.f[c][p] = 0.0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Applies the TF/SF corrections of the H update (call after `update_h`).
+    fn tfsf_h(&mut self, dt_h: f64) {
+        let Some(pw) = &self.pw else { return };
+        let (ia, ib) = (pw.spec.ia, pw.spec.ib);
+        let (s, c) = pw.spec.psi.sin_cos();
+        let (einc_a, einc_b) = (pw.e[ia], pw.e[ib]);
+        let hx = self.cfg.h[0];
+        let [_, ny, nz] = self.cfg.n;
+        for k in 0..nz {
+            for j in 0..ny {
+                let pl = self.idx(ia - 1, j, k);
+                let pr = self.idx(ib, j, k);
+                // pair (Ey, Hz): amplitude c ; pair (Ez, Hy' = -Hy): amplitude s
+                self.f[5][pl] += dt_h / hx * c * einc_a;
+                self.f[5][pr] -= dt_h / hx * c * einc_b;
+                self.f[4][pl] -= dt_h / hx * s * einc_a;
+                self.f[4][pr] += dt_h / hx * s * einc_b;
+            }
+        }
+    }
+
+    fn tfsf_e(&mut self, hinc_at: &dyn Fn(usize) -> f64) {
+        let Some(pw) = &self.pw else { return };
+        let (ia, ib) = (pw.spec.ia, pw.spec.ib);
+        let (s, c) = pw.spec.psi.sin_cos();
+        let (ha, hb) = (hinc_at(ia - 1), hinc_at(ib));
+        let hx = self.cfg.h[0];
+        let dt = self.dt;
+        let [_, ny, nz] = self.cfg.n;
+        for k in 0..nz {
+            for j in 0..ny {
+                let pl = self.idx(ia, j, k);
+                let pr = self.idx(ib, j, k);
+                let (el, er) = (self.eps_inv[pl], self.eps_inv[pr]);
+                self.f[1][pl] += dt / hx * el * c * ha;
+                self.f[1][pr] -= dt / hx * er * c * hb;
+                self.f[2][pl] += dt / hx * el * s * ha;
+                self.f[2][pr] -= dt / hx * er * s * hb;
+            }
+        }
+    }
+
+    /// Sets `H^{-1/2}` from `E^0` assuming `H^0 = 0` (call once after setting
+    /// `E` for a standing-wave initial condition; not for PML runs).
+    pub fn half_step_h(&mut self) {
+        self.update_h(-0.5 * self.dt);
+    }
+
+    /// One leapfrog step (`H` then `E`).
+    pub fn step(&mut self) {
+        let dt = self.dt;
+        self.update_h(dt);
+        self.tfsf_h(dt);
+        // aux H update
+        if let Some(pw) = &mut self.pw {
+            let hx = self.cfg.h[0];
+            let n = pw.e.len();
+            for i in 0..n - 1 {
+                pw.h[i] -= dt / hx * (pw.e[i + 1] - pw.e[i]);
+            }
+        }
+        self.update_e();
+        let h_snapshot: Option<Vec<f64>> = self.pw.as_ref().map(|p| p.h.clone());
+        if let Some(hs) = &h_snapshot {
+            self.tfsf_e(&|i| hs[i]);
+        }
+        if let Some(pw) = &mut self.pw {
+            let hx = self.cfg.h[0];
+            let n = pw.e.len();
+            for i in 1..n {
+                let hm = if i > 0 { pw.h[i - 1] } else { 0.0 };
+                pw.e[i] -= dt / hx * (pw.h[i] - hm);
+            }
+            pw.e[0] = (pw.spec.waveform)(self.t + dt);
+        }
+        let t_now = self.t + 0.5 * dt;
+        for s in &self.sources {
+            let p = self.idx(s.cell[0], s.cell[1], s.cell[2]);
+            let ci = comp_index(s.comp);
+            self.f[ci][p] -= dt * self.eps_inv[p] * (s.waveform)(t_now);
+        }
+        self.t += dt;
+    }
+
+    /// Runs `steps` steps.
+    pub fn run(&mut self, steps: usize) {
+        for _ in 0..steps {
+            self.step();
+        }
+    }
+}
