@@ -96,3 +96,5 @@ mod special_hyp;
 mod ordering;
 #[path = "kernels/krylov_ext.rs"]
 mod krylov_ext;
+#[path = "kernels/matfun.rs"]
+mod matfun;

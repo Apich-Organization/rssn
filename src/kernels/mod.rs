@@ -82,3 +82,5 @@ pub mod ordering;
 pub mod krylov_ext;
 /// Lanczos and Arnoldi eigensolvers with restarts and shift-invert.
 pub mod eigs;
+/// Matrix functions: expm, sqrtm, logm, phi functions and exp(tA)v.
+pub mod matfun;
