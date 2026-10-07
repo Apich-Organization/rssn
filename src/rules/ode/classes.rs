@@ -50,6 +50,7 @@ use crate::rules::poly::repr::from_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
 use crate::rules::poly::repr::to_term;
+use crate::rules::solve::eliminate;
 use crate::rules::solve::solve_for;
 
 /// `v' = (1 - n)(a v + b)` for `v = y^(1 - n)`.
@@ -347,9 +348,66 @@ pub(super) fn implicit_first_order(
         let y_param = cx.graph.substitute(y_of_p, p, parameter);
         let first = cx.graph.node(core::EQ, &[x, x_param]);
         let second = cx.graph.node(core::EQ, &[problem.y_of_x, y_param]);
-        return Some(cx.graph.node(core::LIST, &[first, second]));
+        let parametric = cx.graph.node(core::LIST, &[first, second]);
+        return Some(with_elimination(cx, problem, parametric, x_param, y_param, parameter));
     }
     None
+}
+
+/// The parametric answer `x = X(p)`, `y = Y(p)` with the parameter
+/// eliminated where that can be done: solving `X(p) = x` for `p` gives the
+/// explicit branches `y(x) = Y(P(x))` (returned instead of the parametric
+/// form when every branch is short, at most three of them); otherwise the
+/// resultant of `X(p) - x` and `Y(p) - y` with respect to `p`, when both
+/// are polynomial (rational) in `p`, gives the implicit relation
+/// `F(x, y(x)) = 0`, appended as a third element of the parametric list.
+fn with_elimination(
+    cx: &mut Cx<'_>,
+    problem: &Problem,
+    parametric: NodeId,
+    x_param: NodeId,
+    y_param: NodeId,
+    parameter: NodeId,
+) -> NodeId {
+    let x = problem.x;
+    let Some(p_symbol) = cx.graph.symbol_of(parameter) else { return parametric };
+    // Explicit: p = P(x).
+    let x_minus = sub(cx.graph, x_param, x);
+    if let Some(branches) = solve_for(cx.graph, x_minus, parameter, 0)
+        && !branches.is_empty()
+        && branches.len() <= 3
+    {
+        let mut answers = Vec::new();
+        for branch in branches {
+            let branch = cx.simplify(branch);
+            let y_of_x = cx.graph.substitute(y_param, parameter, branch);
+            let y_of_x = cx.simplify(y_of_x);
+            if cx.graph.depends_on(cx.graph.find(y_of_x), p_symbol) || cx.graph.display(y_of_x).len() > 240 {
+                answers.clear();
+                break;
+            }
+            answers.push(cx.graph.node(core::EQ, &[problem.y_of_x, y_of_x]));
+        }
+        match answers.as_slice() {
+            | [] => {},
+            | &[only] => return only,
+            | _ => return cx.graph.node(core::LIST, &answers),
+        }
+    }
+    // Implicit: the resultant in p.
+    let stand_symbol = cx.graph.interner_mut().fresh_symbol("Y");
+    let stand = cx.graph.symbol_node(stand_symbol);
+    let y_minus = sub(cx.graph, y_param, stand);
+    if let Some(relation) = eliminate(cx.graph, x_minus, y_minus, parameter) {
+        let relation = cx.simplify(relation);
+        let in_function = cx.graph.substitute(relation, stand, problem.y_of_x);
+        let zero = cx.graph.int(0);
+        let equation = cx.graph.node(core::EQ, &[in_function, zero]);
+        let mut parts = cx.graph.children(parametric).to_vec();
+        parts.push(equation);
+        return cx.graph.node(core::LIST, &parts);
+    }
+    parametric
 }
 
 /// Solves `dX/dp = slope(X, p)` for `X(p)` and assembles the parametric
@@ -376,7 +434,8 @@ fn parametric(
     let x_param = cx.graph.substitute(x_of_p, p, parameter);
     let first = cx.graph.node(core::EQ, &[x, x_param]);
     let second = cx.graph.node(core::EQ, &[problem.y_of_x, y_of_p]);
-    Some(cx.graph.node(core::LIST, &[first, second]))
+    let parametric = cx.graph.node(core::LIST, &[first, second]);
+    Some(with_elimination(cx, problem, parametric, x_param, y_of_p, parameter))
 }
 
 /// A linear second-order equation with a first-derivative term, through

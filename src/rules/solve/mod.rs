@@ -127,6 +127,7 @@ use super::poly::univariate;
 
 mod certified;
 mod elim;
+pub(crate) use elim::eliminate;
 mod heuristics;
 mod inequality;
 mod numeric;

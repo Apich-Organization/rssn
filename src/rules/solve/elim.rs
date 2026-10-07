@@ -2,6 +2,12 @@
 //! unknown from a pair of polynomial equations.
 
 use super::cap_default;
+use crate::graph::Graph;
+use crate::graph::NodeId;
+use crate::rules::poly::ratio;
+use crate::rules::poly::repr::to_term;
+use crate::rules::poly::repr::Gens;
+use crate::rules::poly::repr::Limits;
 use crate::graph::Number;
 use crate::rules::poly::repr::Poly;
 
@@ -79,4 +85,39 @@ pub(super) fn resultant(
         matrix.push(row);
     }
     determinant(matrix)
+}
+
+/// Eliminates the unknown `v` from `f = 0` and `g = 0`: the resultant of
+/// their numerators with respect to `v`, as a term (`None` unless both
+/// are polynomial in `v`, i.e. no other generator depends on `v`).
+pub(crate) fn eliminate(
+    graph: &mut Graph,
+    f: NodeId,
+    g: NodeId,
+    v: NodeId,
+) -> Option<NodeId> {
+    let symbol = graph.symbol_of(v)?;
+    let mut gens = Gens::default();
+    let gv = gens.index(graph, v);
+    let mut polys = Vec::new();
+    for e in [f, g] {
+        let fraction = ratio(graph, &mut gens, e, Limits::default())?;
+        polys.push(fraction.numer);
+    }
+    for poly in &polys {
+        for generator in poly.support() {
+            let node = gens.node(generator)?;
+            if generator != gv && graph.depends_on(graph.find(node), symbol) {
+                return None;
+            }
+        }
+    }
+    let [pf, pg] = polys.as_slice() else {
+        return None;
+    };
+    let r = resultant(pf, pg, gv)?;
+    if r.is_zero() {
+        return None;
+    }
+    Some(to_term(graph, &gens, &r))
 }

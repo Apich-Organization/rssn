@@ -2241,7 +2241,21 @@ mod tests {
         let lagrange = run("dsolve(y(x) = 2*x*diff(y(x), x) + diff(y(x), x)^2, y(x))");
         assert!(lagrange.starts_with("list(x = ") && lagrange.contains("p^3") && lagrange.contains("C1"), "{lagrange}");
         let solved_for_x = run("dsolve(x = diff(y(x), x)^3 + diff(y(x), x), y(x))");
-        assert_eq!(solved_for_x, "list(x = p^3 + p, y(x) = 3/4*p^4 + 1/2*p^2 + C1)");
+        assert!(solved_for_x.starts_with("list(x = p^3 + p, y(x) = 3/4*p^4 + 1/2*p^2 + C1, "), "{solved_for_x}");
+        // The third element is the implicit relation with p eliminated by a
+        // resultant: it vanishes on the parametric curve.
+        let relation = solved_for_x.rsplit(", ").next().unwrap_or("").trim_end_matches(')').trim_end_matches(" = 0").replace("y(x)", "yy");
+        let relation = solved_for_x
+            .split_once("C1, ")
+            .map_or(relation.clone(), |(_, r)| r.trim_end_matches(')').trim_end_matches(" = 0").replace("y(x)", "yy"));
+        for p in [0.7_f64, -0.4, 1.3] {
+            let (x, y, c) = (p.powi(3) + p, 0.75 * p.powi(4) + 0.5 * p * p + 0.3, 0.3);
+            let value = crate::rules::testing::eval(&rules, &relation, &[("x", x), ("yy", y), ("C1", c)]);
+            assert!(value.abs() < 1e-9, "relation {relation} gives {value} at p = {p}");
+        }
+        // A d'Alembert equation whose parameter can be solved for: explicit.
+        let explicit = run("dsolve(y(x) = x*diff(y(x), x)^2 + diff(y(x), x)^2, y(x))");
+        assert!(!explicit.starts_with("list(x = ") || explicit.contains("= 0)"), "{explicit}");
         // Integrating factors mu(x), mu(y) and e^x.
         check("(x^2 + y(x)^2 + x) + x*y(x)*diff(y(x), x) = 0", 1);
         check("y(x)^2 + (3*x*y(x) - 1)*diff(y(x), x) = 0", 1);
