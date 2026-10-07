@@ -3,7 +3,8 @@
 //! Pure numeric algorithms for computational topology: Euclidean distances,
 //! Vietoris-Rips complexes, exact Betti numbers of simplicial complexes
 //! (ranks of integer boundary matrices are computed exactly over the
-//! rationals), naive persistence diagrams and connected components of a
+//! rationals), exact persistence diagrams (boundary-matrix reduction over
+//! `Z/2` with clearing) and connected components of a
 //! graph given by adjacency lists.
 //!
 //! A simplex is a sorted vector of distinct vertex indices; a complex is a
@@ -422,44 +423,194 @@ pub fn betti_numbers_at_radius(
     (0..=max_dim).map(|k| betti_number(&complex, k)).collect()
 }
 
-/// The (naive) persistence diagrams of a point cloud.
+/// Errors of the exact persistent-homology routines.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PersistenceError {
+    /// A simplex has a face missing from the filtration, or a face that
+    /// enters later than the simplex itself.
+    InvalidFiltration,
+    /// The Vietoris-Rips filtration would need more simplices than allowed.
+    TooManySimplices,
+}
+
+/// Default cap on the number of simplices of a Vietoris-Rips filtration.
+pub const DEFAULT_SIMPLEX_LIMIT: usize = 20_000_000;
+
+fn xor_sorted(
+    a: &[usize],
+    b: &[usize],
+) -> Vec<usize> {
+    let mut out = Vec::with_capacity(a.len() + b.len());
+    let (mut i, mut j) = (0, 0);
+    while i < a.len() && j < b.len() {
+        match a[i].cmp(&b[j]) {
+            std::cmp::Ordering::Less => {
+                out.push(a[i]);
+                i += 1;
+            }
+            std::cmp::Ordering::Greater => {
+                out.push(b[j]);
+                j += 1;
+            }
+            std::cmp::Ordering::Equal => {
+                i += 1;
+                j += 1;
+            }
+        }
+    }
+    out.extend_from_slice(&a[i..]);
+    out.extend_from_slice(&b[j..]);
+    out
+}
+
+/// Exact persistent homology over `Z/2` of a filtered simplicial complex.
 ///
-/// Betti numbers are
-/// sampled at `steps + 1` radii and a rise of `b_k` opens an interval, a
-/// fall closes the most recently opened one; intervals still open at
-/// `max_epsilon` end there.
+/// `filtration` lists `(value, simplex)` pairs in any order; every proper
+/// face of a simplex must be present with a value no larger than the
+/// simplex's. The simplices are ordered by value, then dimension, then
+/// lexicographically, and the boundary matrix is reduced by the standard
+/// left-to-right column algorithm with *clearing* (the twist
+/// optimisation): dimensions are processed from the top down, and a column
+/// that is the pivot of a reduced column of the next dimension is known to
+/// reduce to zero and is skipped.
+///
+/// Returns one [`PersistenceDiagram`] per dimension `0..=max_dim`; each
+/// interval is an exact `(birth, death)` pair of filtration values and a
+/// class that never dies has `death = f64::INFINITY`. Zero-length
+/// intervals are omitted. Intervals are sorted by birth then death.
+///
+/// # Errors
+/// [`PersistenceError::InvalidFiltration`] if the input is not a filtration.
+pub fn persistent_homology(
+    filtration: &[(f64, Simplex)],
+    max_dim: usize,
+) -> Result<Vec<PersistenceDiagram>, PersistenceError> {
+    let mut items: Vec<(f64, Simplex)> = filtration
+        .iter()
+        .map(|(v, s)| {
+            let mut s = s.clone();
+            s.sort_unstable();
+            s.dedup();
+            (*v, s)
+        })
+        .filter(|(_, s)| !s.is_empty())
+        .collect();
+    items.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.len().cmp(&b.1.len())).then_with(|| a.1.cmp(&b.1)));
+    items.dedup_by(|a, b| a.1 == b.1);
+    let m = items.len();
+    let index: HashMap<&Simplex, usize> = items.iter().enumerate().map(|(i, (_, s))| (s, i)).collect();
+    let dim_of = |i: usize| items[i].1.len() - 1;
+
+    // Boundary columns (sorted row indices), grouped by dimension.
+    let mut columns: Vec<Vec<usize>> = vec![Vec::new(); m];
+    let mut by_dim: Vec<Vec<usize>> = vec![Vec::new(); max_dim + 2];
+    for j in 0..m {
+        let s = &items[j].1;
+        let d = s.len() - 1;
+        if d <= max_dim + 1 {
+            by_dim[d].push(j);
+        }
+        if s.len() > 1 && d <= max_dim + 1 {
+            let mut col = Vec::with_capacity(s.len());
+            for skip in 0..s.len() {
+                let face: Simplex = s.iter().enumerate().filter(|&(i, _)| i != skip).map(|(_, &v)| v).collect();
+                let i = *index.get(&face).ok_or(PersistenceError::InvalidFiltration)?;
+                if i >= j {
+                    return Err(PersistenceError::InvalidFiltration);
+                }
+                col.push(i);
+            }
+            col.sort_unstable();
+            columns[j] = col;
+        }
+    }
+
+    let mut pivot_owner: Vec<Option<usize>> = vec![None; m];
+    let mut paired = vec![false; m];
+    let mut cleared = vec![false; m];
+    let mut diagrams: Vec<PersistenceDiagram> =
+        (0..=max_dim).map(|d| PersistenceDiagram { dimension: d, intervals: Vec::new() }).collect();
+
+    for d in (1..=max_dim + 1).rev() {
+        for &j in &by_dim[d] {
+            if cleared[j] {
+                continue;
+            }
+            while let Some(&low) = columns[j].last() {
+                if let Some(other) = pivot_owner[low] {
+                    let reduced = xor_sorted(&columns[j], &columns[other]);
+                    columns[j] = reduced;
+                    continue;
+                }
+                pivot_owner[low] = Some(j);
+                paired[low] = true;
+                paired[j] = true;
+                cleared[low] = true;
+                let (birth, death) = (items[low].0, items[j].0);
+                if death > birth {
+                    diagrams[dim_of(low)].intervals.push(PersistenceInterval { birth, death });
+                }
+                break;
+            }
+        }
+    }
+    for i in 0..m {
+        let d = dim_of(i);
+        if !paired[i] && d <= max_dim {
+            diagrams[d].intervals.push(PersistenceInterval { birth: items[i].0, death: f64::INFINITY });
+        }
+    }
+    for dg in &mut diagrams {
+        dg.intervals.sort_by(|a, b| a.birth.total_cmp(&b.birth).then(a.death.total_cmp(&b.death)));
+    }
+    Ok(diagrams)
+}
+
+/// Exact Vietoris-Rips persistent homology of a point cloud.
+///
+/// The filtration contains every simplex up to dimension `max_dim + 1`
+/// whose edges are all at most `max_epsilon` long, entering at its diameter
+/// (the longest edge); it is processed by [`persistent_homology`], so every
+/// `(birth, death)` pair is exact (a distance between two input points).
+/// Classes alive at `max_epsilon` get `death = f64::INFINITY`.
+///
+/// # Errors
+/// [`PersistenceError::TooManySimplices`] if more than `simplex_limit`
+/// simplices are needed (use [`DEFAULT_SIMPLEX_LIMIT`] when in doubt).
+pub fn persistent_homology_rips(
+    points: &[Vec<f64>],
+    max_epsilon: f64,
+    max_dim: usize,
+    simplex_limit: usize,
+) -> Result<Vec<PersistenceDiagram>, PersistenceError> {
+    let dist = super::homology::distance_matrix(points);
+    let filtration = super::homology::rips_filtration(&dist, max_epsilon, max_dim + 1, simplex_limit)
+        .ok_or(PersistenceError::TooManySimplices)?;
+    persistent_homology(&filtration, max_dim)
+}
+
+/// The persistence diagrams of a point cloud, `max_dim` and below.
+///
+/// This is a compatibility wrapper around [`persistent_homology_rips`]: the
+/// diagrams are now exact, not sampled on a grid of radii, so `steps` is
+/// ignored. Intervals of classes still alive at `max_epsilon` are closed at
+/// `max_epsilon` (the convention of the former grid-based routine; use
+/// [`persistent_homology_rips`] to get `f64::INFINITY` instead). If the
+/// filtration is too large to build, empty diagrams are returned.
 #[must_use]
 pub fn compute_persistence(
     points: &[Vec<f64>],
     max_epsilon: f64,
-    steps: usize,
+    _steps: usize,
     max_dim: usize,
 ) -> Vec<PersistenceDiagram> {
-    let mut diagrams: Vec<PersistenceDiagram> =
-        (0..=max_dim).map(|d| PersistenceDiagram { dimension: d, intervals: Vec::new() }).collect();
-    let mut prev = vec![0; max_dim + 1];
-    let mut open: Vec<Vec<f64>> = vec![Vec::new(); max_dim + 1];
-    for step in 0..=steps {
-        let eps = radius(max_epsilon, step, steps);
-        let current = betti_numbers_at_radius(points, eps, max_dim);
-        for d in 0..=max_dim {
-            if current[d] > prev[d] {
-                for _ in 0..(current[d] - prev[d]) {
-                    open[d].push(eps);
-                }
-            } else {
-                for _ in 0..(prev[d] - current[d]) {
-                    if let Some(birth) = open[d].pop() {
-                        diagrams[d].intervals.push(PersistenceInterval { birth, death: eps });
-                    }
-                }
+    let mut diagrams = persistent_homology_rips(points, max_epsilon, max_dim, DEFAULT_SIMPLEX_LIMIT)
+        .unwrap_or_else(|_| (0..=max_dim).map(|d| PersistenceDiagram { dimension: d, intervals: Vec::new() }).collect());
+    for dg in &mut diagrams {
+        for iv in &mut dg.intervals {
+            if iv.death.is_infinite() {
+                iv.death = max_epsilon;
             }
-        }
-        prev = current;
-    }
-    for d in 0..=max_dim {
-        while let Some(birth) = open[d].pop() {
-            diagrams[d].intervals.push(PersistenceInterval { birth, death: max_epsilon });
         }
     }
     diagrams
