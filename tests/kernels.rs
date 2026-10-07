@@ -1,5 +1,9 @@
 //! Integration tests for `rssn::kernels`.
 
+// Numeric tests index several arrays in step; index loops read closest to
+// the formulas they check.
+#![allow(clippy::needless_range_loop)]
+
 #[path = "kernels/calculus.rs"]
 mod calculus;
 #[path = "kernels/ode.rs"]

@@ -134,7 +134,6 @@ fn test_falling_factorial() {
 }
 
 #[cfg(test)]
-
 mod proptests {
 
     use proptest::prelude::*;

@@ -80,7 +80,7 @@ fn svd_cond_rank_pinv() {
         cols: 4,
         data: (0..16).map(|k| 1.0 / f64::from(k / 4 + k % 4 + 1)).collect(),
     };
-    assert!((cond(&h).unwrap() - 15513.738_738).abs() < 1e-2);
+    assert!((cond(&h).unwrap() - 15_513.738_738).abs() < 1e-2);
     let r = m(&[&[1.0, 2.0], &[2.0, 4.0], &[3.0, 6.0]]);
     assert_eq!(rank(&r, None).unwrap(), 1);
     let p = pinv(&r).unwrap();

@@ -1,5 +1,9 @@
 //! Integration tests for `rssn::sim`.
 
+// Numeric tests index several arrays in step; index loops read closest to
+// the formulas they check.
+#![allow(clippy::needless_range_loop)]
+
 #[path = "sim/classical.rs"]
 mod classical;
 #[path = "sim/models_fdtd_electrodynamics.rs"]

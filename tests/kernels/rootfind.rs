@@ -155,7 +155,7 @@ fn jenkins_traub_wilkinson_20() {
     let jt_worst = jt.iter().map(|z| backward_err(&c, *z)).fold(0.0, f64::max);
     if let Ok(ab) = polynomial_roots_aberth(&c) {
         let ab_worst = ab.iter().map(|z| backward_err(&c, *z)).fold(0.0, f64::max);
-        assert!(!(ab_worst < jt_worst) || ab_worst < 1e-12);
+        assert!(ab_worst >= jt_worst || ab_worst < 1e-12 || ab_worst.is_nan() || jt_worst.is_nan());
     }
     // QR eigenvalues of the companion matrix agree up to the conditioning
     let cq = polynomial_roots_companion(&c).unwrap();

@@ -92,7 +92,8 @@ fn midpoint_and_heun_have_second_order_closed_forms() {
 #[test]
 fn convergence_orders_of_the_explicit_schemes() {
     let exact = 1.0f64.exp();
-    let err = |solver: fn(&Exponential, &[f64], (f64, f64), f64) -> Vec<(f64, Vec<f64>)>,
+    type Solver = fn(&Exponential, &[f64], (f64, f64), f64) -> Vec<(f64, Vec<f64>)>;
+    let err = |solver: Solver,
                h: f64| {
         (last(&solver(&Exponential(1.0), &[1.0], (0.0, 1.0), h)).1 - exact).abs()
     };

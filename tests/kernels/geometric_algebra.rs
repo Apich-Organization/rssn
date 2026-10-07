@@ -122,7 +122,6 @@ fn test_inverse() {
 }
 
 #[cfg(test)]
-
 mod proptests {
 
     use assert_approx_eq::assert_approx_eq;

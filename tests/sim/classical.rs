@@ -21,25 +21,25 @@ fn test_speed_of_light() {
 #[test]
 
 fn test_planck_constant() {
-    assert!(PLANCK_CONSTANT > 6.62e-34 && PLANCK_CONSTANT < 6.63e-34);
+    const { assert!(PLANCK_CONSTANT > 6.62e-34 && PLANCK_CONSTANT < 6.63e-34) };
 }
 
 #[test]
 
 fn test_gravitational_constant() {
-    assert!(GRAVITATIONAL_CONSTANT > 6.67e-11 && GRAVITATIONAL_CONSTANT < 6.68e-11);
+    const { assert!(GRAVITATIONAL_CONSTANT > 6.67e-11 && GRAVITATIONAL_CONSTANT < 6.68e-11) };
 }
 
 #[test]
 
 fn test_boltzmann_constant() {
-    assert!(BOLTZMANN_CONSTANT > 1.38e-23 && BOLTZMANN_CONSTANT < 1.39e-23);
+    const { assert!(BOLTZMANN_CONSTANT > 1.38e-23 && BOLTZMANN_CONSTANT < 1.39e-23) };
 }
 
 #[test]
 
 fn test_elementary_charge() {
-    assert!(ELEMENTARY_CHARGE > 1.60e-19 && ELEMENTARY_CHARGE < 1.61e-19);
+    const { assert!(ELEMENTARY_CHARGE > 1.60e-19 && ELEMENTARY_CHARGE < 1.61e-19) };
 }
 
 // ============================================================================

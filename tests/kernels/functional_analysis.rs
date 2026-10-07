@@ -100,7 +100,6 @@ fn test_gram_schmidt_orthonormal() {
 }
 
 #[cfg(test)]
-
 mod proptests {
 
     use proptest::prelude::*;
