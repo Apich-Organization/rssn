@@ -1354,6 +1354,7 @@ mod tests {
         assert_eq!(run("solve(x^3*ln(x) = 0, x)"), "list(1)");
         assert_eq!(run("solve(atan(2*x) + atan(3*x) = pi/4, x)"), "list(1/6)");
         assert_eq!(run("solve(asin(x) - acos(x) = 0, x)"), "list(1/2*2^(1/2))");
+        assert_eq!(run("solve(asin(x) = acos(x), x)"), "list(1/2*2^(1/2))");
         let text = run("solve((x^2 - a)*(x - b) = 0, x)");
         assert!(text.contains('b') && text.contains("a^(1/2)"), "{text}");
         let text = run("solve(x^3 - (a + b + c)*x^2 + (a*b + a*c + b*c)*x - a*b*c = 0, x)");
