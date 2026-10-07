@@ -12,7 +12,7 @@
 //! | `hamming_distance(a, b)`, `hamming_weight(a)` | number of differing positions (equal lengths) / non-zero symbols |
 //! | `hamming_encode(d)`, `hamming_check(c)`, `hamming_decode(c)` | Hamming(7,4) with parity at positions 1, 2, 4; `decode` is `list(data, position)` with the 1-based position of the corrected bit, `0` when there was no error |
 //! | `rs_encode(data, n)`, `rs_check(c, n)`, `rs_decode(c, n)`, `rs_error_count(c, n)` | systematic Reed-Solomon with `n` parity symbols; `decode` returns the data part and stays unreduced when more than `n/2` symbols are wrong; `error_count` is the degree of the Berlekamp-Massey locator |
-//! | `bch_encode(data, t)`, `bch_decode(c, t)` | the kernel's simplified BCH with `2 t` parity bits |
+//! | `bch_encode(data, t)`, `bch_decode(c, t)` | the kernel's shortened binary BCH code correcting `t` errors |
 //! | `crc32(data)`, `crc32_verify(data, crc)`, `crc32_update(crc, data)`, `crc32_finalize(crc)`, `crc16(data)`, `crc8(data)` | checksums; `crc32(d) = crc32_finalize(crc32_update(4294967295, d))` |
 //! | `interleave(data, depth)`, `deinterleave(data, depth)`, `conv_encode(data)` | block interleaving, rate 1/2 convolutional code |
 //! | `code_min_distance(list(c1, c2, ...))`, `code_rate(k, n)` | minimum pairwise distance; `k / n` |
@@ -596,14 +596,20 @@ mod tests {
     fn bch_round_trip() {
         let data = [1, 0, 1, 1, 0, 0, 1, 0];
         let cw = nums(&s(&format!("bch_encode({}, 2)", word(&data))));
-        assert_eq!(cw.len(), data.len() + 4);
+        // 8 data bits use the shortened (31, 21) BCH code: 10 parity bits for t = 2
+        assert_eq!(cw.len(), data.len() + 10);
         assert_eq!(&cw[..8], &data);
         assert_eq!(s(&format!("bch_decode({}, 2)", word(&cw))), word(&data));
-        // a single data-bit error is corrected
-        for p in 0..data.len() {
+        // every single-bit and every double-bit error is corrected
+        for p in 0..cw.len() {
             let mut bad = cw.clone();
             bad[p] ^= 1;
             assert_eq!(s(&format!("bch_decode({}, 2)", word(&bad))), word(&data), "bit {p}");
+            for q in p + 1..cw.len() {
+                let mut worse = bad.clone();
+                worse[q] ^= 1;
+                assert_eq!(s(&format!("bch_decode({}, 2)", word(&worse))), word(&data), "bits {p},{q}");
+            }
         }
     }
 

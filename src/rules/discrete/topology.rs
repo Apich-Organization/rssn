@@ -1126,7 +1126,12 @@ mod tests {
         assert!(filtration.starts_with("list(list(0, sc(list(list(0), list(1), list(2), list(3)))), list(1, sc("), "{filtration}");
         let d = s(&format!("persistence({SQUARE}, 1.5, 3, 2)"));
         assert!(d.starts_with("list(list(list("), "{d}");
-        assert_eq!(d.matches("list(").count(), 10, "{d}");
+        // exact diagrams: three H0 bars die at 1, the fourth is closed at max_epsilon,
+        // and the one H1 bar lives from the side length to the diagonal
+        assert_eq!(
+            d,
+            "list(list(list(0, 1), list(0, 1), list(0, 1), list(0, 1.5)), list(list(1, 1.4142135623730951)), list())"
+        );
     }
 
     #[test]
