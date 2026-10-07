@@ -74,5 +74,5 @@ pub mod random;
 pub mod robust;
 /// Scalar and system root finding, polynomial roots, homotopy continuation.
 pub mod rootfind;
-/// Elliptic integrals, hypergeometric functions and integer-order Bessel functions.
+/// Elliptic integrals, hypergeometric functions (real and complex argument) and integer-order Bessel functions.
 pub mod special_ext;
