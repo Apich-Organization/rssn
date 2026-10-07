@@ -1167,6 +1167,37 @@ mod tests {
         assert!(found.len() >= 6);
     }
 
+    /// Every member of every family (`n` in -20..=20) must satisfy `f`.
+    fn check_families(
+        src: &str,
+        f: impl Fn(f64) -> f64,
+        at_least: usize,
+    ) {
+        let rules = crate::rules::standard();
+        let (text, reduced) = reduce_with(&rules, src, &[]);
+        assert!(reduced, "{src}: {text}");
+        let items = list_items(&text);
+        assert!(items.len() >= at_least, "{src}: {text}");
+        for item in &items {
+            for n in -20..=20 {
+                let x = eval(&rules, item, &[("n", f64::from(n))]);
+                assert!(f(x).abs() < 1e-8, "{item} at n = {n} (x = {x}) is not a solution of {src}: {text}");
+            }
+        }
+    }
+
+    #[test]
+    fn trigonometric_generalisations() {
+        // Different shifts in one equation.
+        check_families("solve_general(sin(x) = sin(2*x + 1), x)", |x| x.sin() - (2.0 * x + 1.0).sin(), 2);
+        check_families("solve_general(sin(x + 1) = cos(2*x), x)", |x| (x + 1.0).sin() - (2.0 * x).cos(), 2);
+        // Large multipliers.
+        check_families("solve_general(sin(30*x) = sin(2*x), x)", |x| (30.0 * x).sin() - (2.0 * x).sin(), 2);
+        check_families("solve_general(cos(27*x) = 1, x)", |x| (27.0 * x).cos() - 1.0, 1);
+        // Rational multipliers with different denominators.
+        check_families("solve_general(sin(x/3) = sin(x/2), x)", |x| (x / 3.0).sin() - (x / 2.0).sin(), 2);
+    }
+
     #[test]
     fn heuristic_sub_solvers() {
         let rules = crate::rules::standard();

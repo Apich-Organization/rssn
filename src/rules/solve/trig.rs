@@ -1,11 +1,16 @@
 //! Trigonometric equations in one unknown.
 //!
-//! All the circular functions of the unknown must have arguments `k (x + s)`
-//! with rational `k` and a common shift `s`. With `θ = g (x + s)` (`g` the
+//! All the circular functions of the unknown must have arguments `k x + c`
+//! with rational `k` (any rational multipliers) and constants `c`; the
+//! first shift `s = c/k` is the reference, and arguments with another
+//! shift are expanded by the addition formulas (`sin(kx + c) = sin kx cos c
+//! + cos kx sin c`). With `θ = g (x + s)` (`g` the
 //! rational gcd of the `k`) every argument is an integer multiple `m θ`, and
 //! `sin(mθ)`, `cos(mθ)` are polynomials in `S = sin θ`, `C = cos θ`
 //! (`tan`, `cot`, `sec`, `csc` are quotients). The numerator `N(S, C)` is
-//! reduced modulo `S² + C² = 1` and solved by the first applicable method:
+//! (multiples up to 96, with the term caps of the polynomial layer as the
+//! cost bound) reduced modulo `S² + C² = 1` and solved by the first
+//! applicable method:
 //!
 //! * a polynomial in `S` alone: `θ = asin(s) + 2πn` and `π - asin(s) + 2πn`;
 //! * a polynomial in `C` alone: `θ = ±acos(c) + 2πn`;
@@ -15,8 +20,12 @@
 //! Solutions that are numerically a rational multiple of `π` are written
 //! as such, families that differ by a fraction of the period are merged
 //! (`0 + 2πn` and `π + 2πn` become `πn`), and every family is checked
-//! against the equation for a range of `n`; a family that is valid only for
-//! some residues of `n` is restricted to them.
+//! against the equation: the dependence of the residual on `n` is proved
+//! periodic (every circular argument is affine in `n` with a rational
+//! multiple of `π` as slope, so the residual depends on `n` modulo a
+//! computed period) and the residues of one period are tested, so the
+//! verdict holds for all integers `n`; a family that is valid only for some
+//! residues of `n` is restricted to them.
 //!
 //! In the principal mode only the representative `n = 0` of each family is
 //! reported.
@@ -25,6 +34,7 @@ use num_bigint::BigInt;
 use num_integer::Integer;
 use num_rational::BigRational;
 use num_traits::One;
+use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
@@ -47,6 +57,27 @@ use crate::rules::poly::repr::to_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
 use crate::rules::poly::repr::Poly;
+
+/// Largest multiple-angle index `m` in `sin(m theta)` that is expanded
+/// into a polynomial in `sin theta`, `cos theta`; the polynomial-size
+/// limits of [`Limits`] bound the cost beyond that.
+const MAX_MULTIPLE: i64 = 96;
+
+/// `op(delta)` for a constant `delta`, with the values `0, ±1/2, ±1` that
+/// occur for rational multiples of `pi` written exactly.
+fn shift_constant(
+    graph: &mut Graph,
+    op: OpId,
+    delta: NodeId,
+) -> NodeId {
+    let node = graph.node(op, &[delta]);
+    if let Some(v) = value(graph, node)
+        && let Some(r) = recognise(v).filter(|r| r.denom() <= &BigInt::from(2))
+    {
+        return rat(graph, &r);
+    }
+    node
+}
 
 const TRIG_NAMES: [&str; 6] = ["sin", "cos", "tan", "cot", "sec", "csc"];
 
@@ -198,21 +229,9 @@ fn families(
         }
         out
     };
+    // The reference shift is the first one; arguments with another shift
+    // are expanded as sin(m theta + delta) below.
     let shift = *shifts.first()?;
-    for &other in shifts.iter().skip(1) {
-        let diff = {
-            let minus_one = graph.int(-1);
-            let neg = graph.node(core::MUL, &[minus_one, other]);
-            graph.node(core::ADD, &[shift, neg])
-        };
-        let mut equal = value(graph, diff).is_some_and(|v| v.abs() < 1e-12);
-        if !equal && value(graph, diff).is_none() {
-            equal = sample_envs(graph, &[diff], None).iter().all(|env| graph.eval(diff, env).is_none_or(|v| v.abs() < 1e-9));
-        }
-        if !equal {
-            return None;
-        }
-    }
     // The rational gcd g of the multipliers.
     let mut denominator = BigInt::one();
     for (k, _) in &lines {
@@ -243,11 +262,11 @@ fn families(
         if !graph.depends_on(graph.find(arg), symbol) {
             return None;
         }
-        let Some((k, _)) = linear_in(graph, arg, x) else {
+        let Some((k, c)) = linear_in(graph, arg, x) else {
             failed = true;
             return None;
         };
-        let m = (k / g.clone()).to_integer().to_i64().filter(|m| m.abs() <= 24);
+        let m = (k.clone() / g.clone()).to_integer().to_i64().filter(|m| m.abs() <= MAX_MULTIPLE);
         let Some(m) = m else {
             failed = true;
             return None;
@@ -257,6 +276,30 @@ fn families(
             return None;
         };
         let (sin_t, cos_t) = (to_term(graph, &gens, &sin_p), to_term(graph, &gens, &cos_p));
+        // delta = c - k shift: the argument is m theta + delta.
+        let (sin_t, cos_t) = {
+            let k_node = rat(graph, &k);
+            let minus_one = graph.int(-1);
+            let drift = product(graph, &[minus_one, k_node, shift]);
+            let delta = graph.node(core::ADD, &[c, drift]);
+            let mut zero = value(graph, delta).is_some_and(|v| v.abs() < 1e-12);
+            if !zero && value(graph, delta).is_none() {
+                zero = sample_envs(graph, &[delta], None).iter().all(|env| graph.eval(delta, env).is_none_or(|v| v.abs() < 1e-9));
+            }
+            if zero {
+                (sin_t, cos_t)
+            } else if let (Some(sin_op), Some(cos_op)) = (graph.ops().lookup("sin"), graph.ops().lookup("cos")) {
+                let (sd, cd) = (shift_constant(graph, sin_op, delta), shift_constant(graph, cos_op, delta));
+                let (a, b) = (product(graph, &[sin_t, cd]), product(graph, &[cos_t, sd]));
+                let (c1, c2) = (product(graph, &[cos_t, cd]), product(graph, &[sin_t, sd]));
+                let neg = graph.int(-1);
+                let neg_c2 = product(graph, &[neg, c2]);
+                (graph.node(core::ADD, &[a, b]), graph.node(core::ADD, &[c1, neg_c2]))
+            } else {
+                failed = true;
+                return None;
+            }
+        };
         Some(match which {
             | 0 => sin_t,
             | 1 => cos_t,
@@ -608,7 +651,11 @@ fn valid_residues(
         graph.substitute(term, x, member)
     };
     let envs = sample_envs(graph, &[substituted, member], Some(n_symbol));
-    let range: Vec<i64> = (-12..=12).collect();
+    let proven = proved_period(graph, substituted, n);
+    let range: Vec<i64> = match proven {
+        | Some(period) => (0..i64::from(period)).collect(),
+        | None => (-12..=12).collect(),
+    };
     // `None` where the equation is undefined at every sample assignment.
     let holds = |graph: &Graph, k: i64| -> Option<bool> {
         let mut defined = false;
@@ -630,11 +677,21 @@ fn valid_residues(
     };
     let flags: Vec<Option<bool>> = range.iter().map(|&k| holds(graph, k)).collect();
     if flags.iter().all(Option::is_none) {
+        // A closed formula that is undefined is no solution; one with
+        // parameters may be real elsewhere in the parameter space.
+        let closed = graph.free_symbols(graph.find(member)).iter().all(|&s| s == n_symbol);
+        if closed {
+            return None;
+        }
         // Undefined at every spot check (parameters outside the range of
         // the inverse functions): keep the family, it may be real elsewhere.
         return Some((1, vec![0]));
     }
-    for modulus in [1_u32, 2, 3, 4, 6, 12] {
+    let moduli: Vec<u32> = match proven {
+        | Some(period) => (1..=period).filter(|m| period % m == 0).collect(),
+        | None => vec![1_u32, 2, 3, 4, 6, 12],
+    };
+    for modulus in moduli {
         let class = |r: i64| -> Vec<Option<bool>> {
             range.iter().zip(&flags).filter(|&(&k, _)| k.rem_euclid(i64::from(modulus)) == r).map(|(_, &f)| f).collect()
         };
@@ -651,4 +708,56 @@ fn valid_residues(
         }
     }
     None
+}
+
+/// A period `P` such that the residual `term(n)` (with `n` an integer
+/// symbol) satisfies `term(n + P) = term(n)` for every integer `n`,
+/// *proved* structurally: `n` occurs only inside the arguments of circular
+/// functions, each affine in `n` with slope a rational multiple `a/b` of
+/// `pi`, so shifting `n` by `P` with `P a / b` an even integer adds a
+/// multiple of `2 pi` to every argument.
+fn proved_period(
+    graph: &mut Graph,
+    term: NodeId,
+    n: NodeId,
+) -> Option<u32> {
+    let symbol = graph.symbol_of(n)?;
+    let pi = graph.ops().lookup("pi")?;
+    let ops: Vec<Option<OpId>> = TRIG_NAMES.iter().map(|name| graph.ops().lookup(name)).collect();
+    let is_trig = |g: &Graph, node: NodeId| ops.iter().any(|&o| o == Some(g.op(node)));
+    let trig = super::heuristics::nodes_with(graph, term, |g, node| is_trig(g, node) && g.depends_on(g.find(node), symbol));
+    // `n` must not occur outside the arguments of those functions.
+    let placeholder = graph.interner_mut().fresh_symbol("w");
+    let placeholder_node = graph.symbol_node(placeholder);
+    let mut replace = |graph: &mut Graph, node: NodeId, _: &[NodeId]| -> Option<NodeId> {
+        (is_trig(graph, node) && graph.depends_on(graph.find(node), symbol)).then_some(placeholder_node)
+    };
+    let outside = map_term(graph, term, &mut replace);
+    if graph.depends_on(graph.find(outside), symbol) {
+        return None;
+    }
+    let mut period = BigInt::one();
+    for node in trig {
+        let arg = *graph.children(node).first()?;
+        let mut gens = Gens::default();
+        let gn = gens.index(graph, n);
+        let pi_node = graph.node(pi, &[]);
+        let gpi = gens.index(graph, pi_node);
+        let poly = from_term(graph, &mut gens, arg, Limits::default())?;
+        if poly.degree_in(gn) != 1 {
+            return None;
+        }
+        let slope = poly.coefficients_in(gn).get(1)?.clone();
+        let mut terms = slope.terms();
+        let (mono, coefficient) = terms.next()?;
+        if terms.next().is_some() || mono.as_slice() != [(gpi, 1)] {
+            return None;
+        }
+        let r = coefficient.to_rational()?;
+        // Smallest P with P a / b an even integer: P = 2b / gcd(a, 2b).
+        let two_b = r.denom() * BigInt::from(2);
+        let step = &two_b / r.numer().abs().gcd(&two_b);
+        period = period.lcm(&step);
+    }
+    period.to_u32().filter(|&p| p <= 96)
 }
