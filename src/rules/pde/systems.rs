@@ -270,13 +270,11 @@ fn rename_functions(
     let mut heads = Vec::new();
     let mut stack = vec![solution];
     while let Some(n) = stack.pop() {
-        if cx.graph.op(n) == core::APPLY {
-            if let Some(&head) = cx.graph.children(n).first() {
-                if cx.graph.symbol_of(head).is_some() && !heads.contains(&head) {
+        if cx.graph.op(n) == core::APPLY
+            && let Some(&head) = cx.graph.children(n).first()
+                && cx.graph.symbol_of(head).is_some() && !heads.contains(&head) {
                     heads.push(head);
                 }
-            }
-        }
         stack.extend_from_slice(cx.graph.children(n));
     }
     let mut out = solution;

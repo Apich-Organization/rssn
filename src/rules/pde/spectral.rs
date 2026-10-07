@@ -1292,8 +1292,8 @@ pub(super) fn solve_box(
         if !p.constant(cx.graph, *c) {
             return None;
         }
-        if let Some(t) = time_index {
-            if index[t] > 0 {
+        if let Some(t) = time_index
+            && index[t] > 0 {
                 if index.iter().enumerate().any(|(j, &d)| j != t && d != 0) {
                     return None;
                 }
@@ -1304,7 +1304,6 @@ pub(super) fn solve_box(
                 }
                 continue;
             }
-        }
         if let Some(pos) = space.iter().position(|&j| *index == p.unit(j, 1)) {
             drift.push((pos, *c));
             continue;
@@ -1490,11 +1489,10 @@ pub(super) fn solve_box(
         let cjj = cjj.filter(|c| *c != NodeId::NONE)?;
         items.extend(boundary_items(cx, iv, level, cjj));
     }
-    if time_index.is_none() && !gauged && lifting.is_none() {
-        if let Faces::Solved(solution) = faces(cx, p, conditions, &intervals, &spatial, source)? {
+    if time_index.is_none() && !gauged && lifting.is_none()
+        && let Faces::Solved(solution) = faces(cx, p, conditions, &intervals, &spatial, source)? {
             return Some(solution);
         }
-    }
     let engine = Engine { axes, time, symbol: Symbol::Cartesian(spatial), face: None, exterior: None };
     let prefactor = if gauged {
         let terms: Vec<NodeId> = alphas.iter().zip(&xs).map(|(&a, &x)| mul(cx.graph, &[a, x])).collect();

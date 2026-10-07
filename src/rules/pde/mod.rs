@@ -1164,22 +1164,20 @@ fn solve_classical(
             solution = kirchhoff(cx, p, conditions);
         }
     }
-    if solution.is_none() && kind == "heat" {
-        if solution.is_none() && (try_method(Fourier) || try_method(Heat1) || try_method(Heat3)) {
+    if solution.is_none() && kind == "heat"
+        && solution.is_none() && (try_method(Fourier) || try_method(Heat1) || try_method(Heat3)) {
             solution = heat_kernel(cx, p, conditions);
         }
-    }
     if solution.is_none() && kind == "schrodinger" && (try_method(Fourier) || try_method(Schrodinger)) {
         solution = schrodinger(cx, p, conditions);
     }
     if solution.is_none() && kind == "klein_gordon" && try_method(KleinGordon) && conditions.is_empty() {
         solution = klein_gordon(cx, p);
     }
-    if solution.is_none() && kind == "laplace" {
-        if try_method(Separation) || try_method(Laplace2) || try_method(Laplace3) {
+    if solution.is_none() && kind == "laplace"
+        && (try_method(Separation) || try_method(Laplace2) || try_method(Laplace3)) {
             solution = laplace_box(cx, p, conditions);
         }
-    }
     if solution.is_none() && method == Any && conditions.is_empty() && !p.nonlinear {
         solution = direct_integration(cx, p).or_else(|| polynomial_particular(cx, p));
     }

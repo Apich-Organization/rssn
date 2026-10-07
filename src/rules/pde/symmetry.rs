@@ -578,14 +578,13 @@ pub(super) fn similarity(
         let product = mul(cx.graph, &[gauge, f_of_z]);
         cx.simplify(product)
     };
-    if let Some(answer) = crate::rules::ode::solve_ode(cx, equation, big_f) {
-        if let [_, rhs] = *cx.graph.children(answer) {
+    if let Some(answer) = crate::rules::ode::solve_ode(cx, equation, big_f)
+        && let [_, rhs] = *cx.graph.children(answer) {
             let solved = mul(cx.graph, &[gauge, rhs]);
             let solved = cx.graph.substitute(solved, z, z_of);
             let solved = cx.simplify(solved);
             return Some(cx.graph.node(core::EQ, &[p.unknown, solved]));
         }
-    }
     let ansatz = cx.graph.node(core::EQ, &[p.unknown, form]);
     Some(cx.graph.node(core::LIST, &[ansatz, equation]))
 }

@@ -281,7 +281,7 @@ pub(super) fn wave(
         let m = sub(cx.graph, mass, g2);
         cx.simplify(m)
     };
-    let massless = cx.is_zero(m2) && cx.is_zero(gamma);
+    let _massless = cx.is_zero(m2) && cx.is_zero(gamma);
     // The sign of the reduced mass: `w_tt = c² Δw - m2 w` with Bessel `J`
     // kernels for a positive one and `I` kernels for a negative one.
     let kind = if cx.is_zero(m2) {

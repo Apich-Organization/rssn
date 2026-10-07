@@ -282,8 +282,8 @@ fn solve_layout(
         | None => None,
     };
     // Harmonic functions with Dirichlet data: the closed series.
-    if inner.is_none() && time_index.is_none() && layout.z.is_none() && layout.phi.is_none() && p.homogeneous(cx.graph) && is_zero_number(cx.graph, a0) && end.kind == Kind::Dirichlet && cx.graph.number_of(end.p).is_some() {
-        if let Some(theta) = layout.theta {
+    if inner.is_none() && time_index.is_none() && layout.z.is_none() && layout.phi.is_none() && p.homogeneous(cx.graph) && is_zero_number(cx.graph, a0) && end.kind == Kind::Dirichlet && cx.graph.number_of(end.p).is_some()
+        && let Some(theta) = layout.theta {
             let r = p.vars[layout.r];
             let found = if layout.sphere {
                 classical::laplace_ball(cx, end.value, radius, r, p.vars[theta])
@@ -294,19 +294,16 @@ fn solve_layout(
                 return Some(f);
             }
         }
-    }
-    if inner.is_none() && time_index.is_none() && layout.z.is_none() && layout.phi.is_none() && !p.homogeneous(cx.graph) && is_zero_number(cx.graph, a0) && end.kind == Kind::Dirichlet {
-        if let Some(found) = radial_poisson(cx, p, layout, b, end, radius) {
+    if inner.is_none() && time_index.is_none() && layout.z.is_none() && layout.phi.is_none() && !p.homogeneous(cx.graph) && is_zero_number(cx.graph, a0) && end.kind == Kind::Dirichlet
+        && let Some(found) = radial_poisson(cx, p, layout, b, end, radius) {
             return Some(found);
         }
-    }
     // Harmonic functions with Robin or Neumann data, or without axial
     // symmetry: each harmonic times its power of r.
-    if inner.is_none() && time_index.is_none() && layout.z.is_none() && p.homogeneous(cx.graph) && cx.is_zero(a0) && layout.theta.is_some() {
-        if let Some(found) = harmonic_interior(cx, p, conditions, layout, (b, a0), end, radius) {
+    if inner.is_none() && time_index.is_none() && layout.z.is_none() && p.homogeneous(cx.graph) && cx.is_zero(a0) && layout.theta.is_some()
+        && let Some(found) = harmonic_interior(cx, p, conditions, layout, (b, a0), end, radius) {
             return Some(found);
         }
-    }
     // Time structure.
     let (mut a2, mut a1) = (cx.graph.int(0), cx.graph.int(0));
     if let Some(t) = time_index {
