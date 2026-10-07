@@ -20,8 +20,11 @@
 //! - `hamming_weight_numerical` - Count number of 1s in codeword
 //!
 //! ### BCH Codes
-//! - `bch_encode` - BCH encoding with multiple error correction
-//! - `bch_decode` - BCH decoding with error correction
+//! - `Bch` - narrow-sense primitive binary BCH code over GF(2^m): generator
+//!   polynomial from minimal polynomials, systematic encoding, decoding with
+//!   syndromes, Berlekamp-Massey and Chien search
+//! - `bch_encode` - shortened BCH encoding of a bit vector (wrapper over `Bch`)
+//! - `bch_decode` - matching decoder with error correction
 //!
 //! ### CRC Checksums
 //! - `crc32_compute_numerical` - Compute CRC-32 checksum
@@ -1049,106 +1052,550 @@ pub const fn hamming_check_numerical(codeword: &[u8]) -> bool {
 // BCH Codes
 // ============================================================================
 
-/// Encodes data using a BCH code.
+/// Primitive polynomials of GF(2^m) (bit `i` is the coefficient of `x^i`),
+/// indexed by `m`.
+const BCH_PRIMITIVE_POLYS: [u32; 17] = [
+    0, 0, 0x7, 0xB, 0x13, 0x25, 0x43, 0x89, 0x11D, 0x211, 0x409, 0x805, 0x1053, 0x201B, 0x4443,
+    0x8003, 0x1100B,
+];
+
+/// Largest field degree `m` supported by [`Bch`] (block length `2^m - 1`).
+pub const BCH_MAX_M: usize = 16;
+
+/// A narrow-sense primitive binary BCH code of length `n = 2^m - 1`
+/// correcting `t` errors.
 ///
-/// BCH (Bose-Chaudhuri-Hocquenghem) codes are a class of cyclic error-correcting codes.
-/// This is a simplified implementation for demonstration.
+/// The generator polynomial is the least common multiple of the minimal
+/// polynomials of `alpha, alpha^2, ..., alpha^(2t)` over GF(2), where
+/// `alpha` is a root of a primitive polynomial of degree `m`; the code
+/// dimension is `k = n - deg g`. Encoding is systematic (the message bits
+/// come first, followed by the `n - k` parity bits) and decoding computes
+/// the syndromes `S_j = r(alpha^j)`, solves the key equation with the
+/// Berlekamp-Massey algorithm and locates the errors with a Chien search.
+///
+/// Bits are `u8` values `0` or `1`; the first bit of a vector is the
+/// coefficient of the highest power of `x`. Shorter messages are
+/// supported by *shortening*: a message of `l <= k` bits is encoded as if
+/// padded with `k - l` leading zeros, which are then not transmitted.
+///
+/// # Example
+/// ```
+/// use rssn::kernels::error_correction::Bch;
+///
+/// let code = Bch::new(4, 2).unwrap(); // the (15, 7) double-error-correcting code
+/// assert_eq!((code.n(), code.k()), (15, 7));
+/// let msg = [1, 0, 1, 1, 0, 0, 1];
+/// let mut cw = code.encode(&msg).unwrap();
+/// cw[2] ^= 1;
+/// cw[11] ^= 1;
+/// assert_eq!(code.decode(&cw).unwrap(), msg);
+/// ```
+#[derive(Debug, Clone)]
+pub struct Bch {
+    m: usize,
+    n: usize,
+    t: usize,
+    exp: Vec<u32>,
+    log: Vec<u32>,
+    /// Generator polynomial over GF(2), `gen[i]` the coefficient of `x^i`.
+    genpoly: Vec<u8>,
+}
+
+impl Bch {
+    /// Builds the BCH code of length `2^m - 1` correcting `t` errors.
+    ///
+    /// # Errors
+    /// Fails if `m` is outside `2..=16`, `t == 0`, or `t` is so large that
+    /// the code has no information bits (`k < 1`).
+    pub fn new(
+        m: usize,
+        t: usize,
+    ) -> Result<Self, String> {
+        if !(2..=BCH_MAX_M).contains(&m) {
+            return Err(format!("BCH field degree m must be in 2..={BCH_MAX_M}, got {m}"));
+        }
+
+        if t == 0 {
+            return Err("BCH error capability t must be at least 1".to_string());
+        }
+
+        let n = (1usize << m) - 1;
+
+        if 2 * t >= n {
+            return Err(format!("t = {t} too large for length {n}"));
+        }
+
+        let poly = BCH_PRIMITIVE_POLYS[m];
+
+        let mut exp = vec![0u32; 2 * n];
+
+        let mut log = vec![0u32; n + 1];
+
+        let mut x = 1u32;
+
+        for (i, slot) in exp.iter_mut().enumerate().take(n) {
+            *slot = x;
+
+            log[x as usize] = i as u32;
+
+            x <<= 1;
+
+            if x >> m != 0 {
+                x ^= poly;
+            }
+        }
+
+        for i in n..2 * n {
+            exp[i] = exp[i - n];
+        }
+
+        let mut code = Self { m, n, t, exp, log, genpoly: Vec::new() };
+
+        code.genpoly = code.build_generator()?;
+
+        if code.genpoly.len() > n {
+            return Err(format!("t = {t} too large for length {n}: no information bits"));
+        }
+
+        Ok(code)
+    }
+
+    /// Builds the smallest-length code of degree `m <= 16` correcting `t`
+    /// errors that carries at least `data_bits` information bits.
+    ///
+    /// # Errors
+    /// Fails if no supported code is large enough.
+    pub fn for_data_len(
+        data_bits: usize,
+        t: usize,
+    ) -> Result<Self, String> {
+        for m in 2..=BCH_MAX_M {
+            if let Ok(code) = Self::new(m, t)
+                && code.k() >= data_bits
+            {
+                return Ok(code);
+            }
+        }
+
+        Err(format!("no BCH code with t = {t} carries {data_bits} data bits"))
+    }
+
+    /// Field degree `m` (the block length is `2^m - 1`).
+    #[must_use]
+    pub const fn m(&self) -> usize {
+        self.m
+    }
+
+    /// Block length `n = 2^m - 1`.
+    #[must_use]
+    pub const fn n(&self) -> usize {
+        self.n
+    }
+
+    /// Dimension `k = n - deg g` (message bits per block).
+    #[must_use]
+    pub const fn k(&self) -> usize {
+        self.n + 1 - self.genpoly.len()
+    }
+
+    /// Designed error-correction capability `t`.
+    #[must_use]
+    pub const fn t(&self) -> usize {
+        self.t
+    }
+
+    /// Number of parity bits `n - k`.
+    #[must_use]
+    pub const fn parity_len(&self) -> usize {
+        self.genpoly.len() - 1
+    }
+
+    /// Generator polynomial coefficients over GF(2), lowest power first.
+    #[must_use]
+    pub fn generator(&self) -> &[u8] {
+        &self.genpoly
+    }
+
+    fn mul(
+        &self,
+        a: u32,
+        b: u32,
+    ) -> u32 {
+        if a == 0 || b == 0 {
+            0
+        } else {
+            self.exp[(self.log[a as usize] + self.log[b as usize]) as usize]
+        }
+    }
+
+    fn inv(
+        &self,
+        a: u32,
+    ) -> u32 {
+        self.exp[self.n - self.log[a as usize] as usize]
+    }
+
+    fn build_generator(&self) -> Result<Vec<u8>, String> {
+        let n = self.n;
+
+        let mut covered = vec![false; n];
+
+        // g(x) over GF(2^m), lowest power first.
+        let mut g: Vec<u32> = vec![1];
+
+        for i in 1..=2 * self.t {
+            if covered[i % n] {
+                continue;
+            }
+
+            // minimal polynomial of alpha^i: prod over the cyclotomic coset.
+            let mut minpoly: Vec<u32> = vec![1];
+
+            let mut j = i % n;
+
+            loop {
+                covered[j] = true;
+
+                let root = self.exp[j];
+
+                let mut next = vec![0u32; minpoly.len() + 1];
+
+                for (idx, &c) in minpoly.iter().enumerate() {
+                    next[idx + 1] ^= c;
+
+                    next[idx] ^= self.mul(c, root);
+                }
+
+                minpoly = next;
+
+                j = (j * 2) % n;
+
+                if j == i % n {
+                    break;
+                }
+            }
+
+            let mut prod = vec![0u32; g.len() + minpoly.len() - 1];
+
+            for (a, &ga) in g.iter().enumerate() {
+                for (b, &mb) in minpoly.iter().enumerate() {
+                    prod[a + b] ^= self.mul(ga, mb);
+                }
+            }
+
+            g = prod;
+        }
+
+        g.iter()
+            .map(|&c| match c {
+                0 => Ok(0u8),
+                1 => Ok(1u8),
+                _ => Err("generator polynomial is not binary".to_string()),
+            })
+            .collect()
+    }
+
+    /// Encodes `data` (`1..=k` bits) into a systematic codeword
+    /// `data ++ parity` of `data.len() + (n - k)` bits.
+    ///
+    /// # Errors
+    /// Fails for an empty message, a message longer than `k`, or entries
+    /// other than `0` and `1`.
+    pub fn encode(
+        &self,
+        data: &[u8],
+    ) -> Result<Vec<u8>, String> {
+        if data.is_empty() {
+            return Err("empty message".to_string());
+        }
+
+        if data.len() > self.k() {
+            return Err(format!("message of {} bits exceeds k = {}", data.len(), self.k()));
+        }
+
+        if data.iter().any(|&b| b > 1) {
+            return Err("message entries must be 0 or 1".to_string());
+        }
+
+        let p = self.parity_len();
+
+        // Remainder of x^p m(x) modulo g(x) by bitwise long division.
+        let mut rem = vec![0u8; p];
+
+        for &bit in data {
+            let fb = bit ^ rem[p - 1];
+
+            for i in (1..p).rev() {
+                rem[i] = rem[i - 1] ^ (fb & self.genpoly[i]);
+            }
+
+            rem[0] = fb & self.genpoly[0];
+        }
+
+        let mut cw = data.to_vec();
+
+        cw.extend(rem.iter().rev());
+
+        Ok(cw)
+    }
+
+    /// The syndromes `S_1..S_2t` of a received word (shortened words are
+    /// treated as zero-padded to length `n`).
+    fn syndromes(
+        &self,
+        word: &[u8],
+    ) -> Vec<u32> {
+        let len = word.len();
+
+        (1..=2 * self.t)
+            .map(|j| {
+                let mut s = 0u32;
+
+                for (pos, &bit) in word.iter().enumerate() {
+                    if bit == 1 {
+                        let e = len - 1 - pos;
+
+                        s ^= self.exp[(j * e) % self.n];
+                    }
+                }
+
+                s
+            })
+            .collect()
+    }
+
+    /// Whether `word` is a codeword (all syndromes vanish).
+    #[must_use]
+    pub fn is_codeword(
+        &self,
+        word: &[u8],
+    ) -> bool {
+        word.len() <= self.n && word.iter().all(|&b| b <= 1) && self.syndromes(word).iter().all(|&s| s == 0)
+    }
+
+    /// Berlekamp-Massey: the error locator polynomial `Lambda(x)` (lowest
+    /// power first, `Lambda(0) = 1`) from the syndromes.
+    fn berlekamp_massey(
+        &self,
+        s: &[u32],
+    ) -> Vec<u32> {
+        let mut c: Vec<u32> = vec![1];
+
+        let mut b: Vec<u32> = vec![1];
+
+        let mut l = 0usize;
+
+        let mut shift = 1usize;
+
+        let mut bd = 1u32;
+
+        for nn in 0..s.len() {
+            let mut d = s[nn];
+
+            for i in 1..=l.min(c.len() - 1) {
+                d ^= self.mul(c[i], s[nn - i]);
+            }
+
+            if d == 0 {
+                shift += 1;
+
+                continue;
+            }
+
+            let coef = self.mul(d, self.inv(bd));
+
+            let old = c.clone();
+
+            if c.len() < b.len() + shift {
+                c.resize(b.len() + shift, 0);
+            }
+
+            for (i, &bi) in b.iter().enumerate() {
+                c[i + shift] ^= self.mul(coef, bi);
+            }
+
+            if 2 * l <= nn {
+                l = nn + 1 - l;
+
+                b = old;
+
+                bd = d;
+
+                shift = 1;
+            } else {
+                shift += 1;
+            }
+        }
+
+        c.truncate(l + 1);
+
+        c
+    }
+
+    /// Corrects up to `t` bit errors in a (possibly shortened) codeword.
+    ///
+    /// Returns the corrected codeword and the number of corrected bits.
+    ///
+    /// # Errors
+    /// Fails if the word is empty, longer than `n`, not binary, or if the
+    /// error pattern is uncorrectable (more than `t` errors that are
+    /// detected; patterns of more than `t` errors may also be mis-decoded
+    /// to a different codeword, as for every bounded-distance decoder).
+    pub fn correct(
+        &self,
+        word: &[u8],
+    ) -> Result<(Vec<u8>, usize), String> {
+        if word.len() <= self.parity_len() || word.len() > self.n {
+            return Err(format!(
+                "codeword length {} outside {}..={}",
+                word.len(),
+                self.parity_len() + 1,
+                self.n
+            ));
+        }
+
+        if word.iter().any(|&b| b > 1) {
+            return Err("codeword entries must be 0 or 1".to_string());
+        }
+
+        let s = self.syndromes(word);
+
+        if s.iter().all(|&x| x == 0) {
+            return Ok((word.to_vec(), 0));
+        }
+
+        let lambda = self.berlekamp_massey(&s);
+
+        let deg = lambda.len() - 1;
+
+        if deg == 0 || deg > self.t {
+            return Err("Unable to correct errors".to_string());
+        }
+
+        // Chien search over the exponents e = 0..len: an error at exponent
+        // e has locator alpha^e, a root of Lambda at alpha^-e.
+        let len = word.len();
+
+        let mut corrected = word.to_vec();
+
+        let mut found = 0usize;
+
+        for e in 0..self.n {
+            let x = self.exp[(self.n - e) % self.n];
+
+            let mut acc = 0u32;
+
+            let mut xp = 1u32;
+
+            for &c in &lambda {
+                acc ^= self.mul(c, xp);
+
+                xp = self.mul(xp, x);
+            }
+
+            if acc == 0 {
+                if e >= len {
+                    return Err("Unable to correct errors".to_string());
+                }
+
+                corrected[len - 1 - e] ^= 1;
+
+                found += 1;
+            }
+        }
+
+        if found != deg || !self.is_codeword(&corrected) {
+            return Err("Unable to correct errors".to_string());
+        }
+
+        Ok((corrected, found))
+    }
+
+    /// Decodes a (possibly shortened) codeword to its message bits,
+    /// correcting up to `t` errors.
+    ///
+    /// # Errors
+    /// See [`Bch::correct`].
+    pub fn decode(
+        &self,
+        word: &[u8],
+    ) -> Result<Vec<u8>, String> {
+        let (cw, _) = self.correct(word)?;
+
+        Ok(cw[..cw.len() - self.parity_len()].to_vec())
+    }
+}
+
+/// Encodes data bits with a binary BCH code correcting `t` errors.
+///
+/// The code is the shortened narrow-sense primitive BCH code of the smallest
+/// block length `2^m - 1` that can carry `data.len()` bits (see [`Bch`]);
+/// the result is the systematic codeword `data ++ parity`. Use
+/// [`Bch::encode`] for explicit control of `(n, k)` and for error details.
 ///
 /// # Arguments
-/// * `data` - The data bits to encode.
-/// * `t` - The error correction capability (can correct up to t errors).
+/// * `data` - The data bits (`0` or `1`).
+/// * `t` - The error correction capability (corrects up to `t` bit errors).
 ///
 /// # Returns
-/// The encoded codeword.
+/// The encoded codeword, or an empty vector if the arguments are invalid
+/// (empty or non-binary data, `t == 0`, or no supported code is large
+/// enough).
 #[must_use]
 pub fn bch_encode(
     data: &[u8],
     t: usize,
 ) -> Vec<u8> {
-    // Simplified BCH encoding: append parity bits
-    let n_parity = 2 * t;
-
-    let mut codeword = data.to_vec();
-
-    // Calculate parity bits using XOR of subsets
-    for i in 0..n_parity {
-        let mut parity = 0u8;
-
-        for (j, &bit) in data.iter().enumerate() {
-            if ((j + 1) >> i) & 1 == 1 {
-                parity ^= bit;
-            }
-        }
-
-        codeword.push(parity);
-    }
-
-    codeword
+    Bch::for_data_len(data.len(), t)
+        .and_then(|code| code.encode(data))
+        .unwrap_or_default()
 }
 
-/// Decodes a BCH codeword and attempts to correct errors.
+/// Decodes a codeword produced by [`bch_encode`], correcting up to `t`
+/// bit errors.
 ///
 /// # Arguments
 /// * `codeword` - The received codeword.
 /// * `t` - The error correction capability.
 ///
 /// # Returns
-/// The decoded data, or an error if too many errors are present.
+/// The decoded data bits, or an error if too many errors are present.
 ///
 /// # Errors
 /// Returns an error if:
-/// - The codeword is shorter than the number of parity bits.
+/// - `t` is zero or the codeword length matches no shortened BCH code;
 /// - Too many errors are detected to perform reliable correction.
 pub fn bch_decode(
     codeword: &[u8],
     t: usize,
 ) -> Result<Vec<u8>, String> {
-    let n_parity = 2 * t;
+    // `bch_encode` picks the smallest m whose code holds the data, so the
+    // data length is the unique self-consistent one.
+    for m in 2..=BCH_MAX_M {
+        let Ok(code) = Bch::new(m, t) else { continue };
 
-    if codeword.len() < n_parity {
-        return Err("Codeword too \
-                    short"
-            .to_string());
-    }
+        let p = code.parity_len();
 
-    let data_len = codeword.len() - n_parity;
-
-    let data = &codeword[..data_len];
-
-    let parity_bits = &codeword[data_len..];
-
-    // Check parity and find error syndrome
-    let mut syndrome = 0usize;
-
-    for (i, &parity_bit) in parity_bits.iter().enumerate() {
-        let mut expected_parity = 0u8;
-
-        for (j, &bit) in data.iter().enumerate() {
-            if ((j + 1) >> i) & 1 == 1 {
-                expected_parity ^= bit;
-            }
+        if codeword.len() <= p {
+            continue;
         }
 
-        if expected_parity != parity_bit {
-            syndrome |= 1 << i;
+        let data_len = codeword.len() - p;
+
+        if data_len > code.k() {
+            continue;
         }
+
+        let smaller_fits = (2..m).any(|m2| Bch::new(m2, t).is_ok_and(|c| c.k() >= data_len));
+
+        if smaller_fits {
+            continue;
+        }
+
+        return code.decode(codeword);
     }
 
-    if syndrome == 0 {
-        // No errors
-        return Ok(data.to_vec());
-    }
-
-    // Attempt single error correction
-    if syndrome > 0 && syndrome <= data_len {
-        let mut corrected = data.to_vec();
-
-        corrected[syndrome - 1] ^= 1;
-
-        return Ok(corrected);
-    }
-
-    Err("Unable to correct errors".to_string())
+    Err("Codeword too short or invalid for any BCH code with this t".to_string())
 }
 
 // ============================================================================

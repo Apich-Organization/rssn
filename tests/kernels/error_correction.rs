@@ -971,7 +971,8 @@ mod strengthened {
     fn bch_corrects_a_single_data_bit_error() {
         let data = vec![1, 0, 1, 1, 0, 1, 0, 0];
         let mut cw = bch_encode(&data, 2);
-        assert_eq!(cw.len(), data.len() + 4);
+        // 8 data bits need the (31, 21) code: 10 parity bits for t = 2
+        assert_eq!(cw.len(), data.len() + 10);
         cw[3] ^= 1;
         assert_eq!(bch_decode(&cw, 2), Ok(data));
         assert!(bch_decode(&[1], 2).is_err());
@@ -1244,5 +1245,229 @@ mod ledger_rs_extra {
         // (1 + 2x) + (3) = 2 + 2x, not 1 + (2^3)x.
         let sum = PolyGF256::new(vec![1, 2]).poly_add(&PolyGF256::new(vec![3]));
         assert_eq!(sum.0, vec![2, 2]);
+    }
+}
+
+mod bch_codes {
+    use rssn::kernels::error_correction::{Bch, bch_decode, bch_encode};
+
+    struct Rng(u64);
+
+    impl Rng {
+        fn next(&mut self) -> u64 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 7;
+            self.0 ^= self.0 << 17;
+            self.0
+        }
+
+        fn below(&mut self, n: usize) -> usize {
+            (self.next() % n as u64) as usize
+        }
+
+        fn bits(&mut self, n: usize) -> Vec<u8> {
+            (0..n).map(|_| (self.next() & 1) as u8).collect()
+        }
+
+        /// `count` distinct positions in `0..n`.
+        fn positions(&mut self, n: usize, count: usize) -> Vec<usize> {
+            let mut v = Vec::new();
+            while v.len() < count {
+                let p = self.below(n);
+                if !v.contains(&p) {
+                    v.push(p);
+                }
+            }
+            v
+        }
+    }
+
+    fn gen_as_int(code: &Bch) -> u64 {
+        code.generator().iter().enumerate().map(|(i, &b)| u64::from(b) << i).sum()
+    }
+
+    #[test]
+    fn parameters_match_the_classical_tables() {
+        for &(m, t, n, k) in &[
+            (3, 1, 7, 4),
+            (4, 1, 15, 11),
+            (4, 2, 15, 7),
+            (4, 3, 15, 5),
+            (5, 1, 31, 26),
+            (5, 2, 31, 21),
+            (5, 3, 31, 16),
+            (5, 5, 31, 11),
+            (6, 3, 63, 45),
+            (6, 4, 63, 39),
+            (7, 5, 127, 92),
+            (8, 4, 255, 223),
+        ] {
+            let c = Bch::new(m, t).unwrap();
+            assert_eq!((c.n(), c.k(), c.t(), c.m()), (n, k, t, m), "BCH({n},{k},{t})");
+            assert_eq!(c.parity_len(), n - k);
+        }
+    }
+
+    #[test]
+    fn generator_polynomials_match_references() {
+        // octal 721, 2467 and 107657 (Lin & Costello, Table of BCH generators)
+        assert_eq!(gen_as_int(&Bch::new(4, 2).unwrap()), 0o721);
+        assert_eq!(gen_as_int(&Bch::new(4, 3).unwrap()), 0o2467);
+        assert_eq!(gen_as_int(&Bch::new(5, 3).unwrap()), 0o107_657);
+        // t = 1 gives the primitive polynomial itself (the Hamming code)
+        assert_eq!(gen_as_int(&Bch::new(4, 1).unwrap()), 0b10011);
+    }
+
+    #[test]
+    fn encoding_is_systematic_and_valid() {
+        let mut rng = Rng(0x9E37_79B9_7F4A_7C15);
+        for &(m, t) in &[(4, 2), (5, 3), (6, 3), (7, 4)] {
+            let c = Bch::new(m, t).unwrap();
+            for _ in 0..20 {
+                let msg = rng.bits(c.k());
+                let cw = c.encode(&msg).unwrap();
+                assert_eq!(cw.len(), c.n());
+                assert_eq!(&cw[..c.k()], &msg[..]);
+                assert!(c.is_codeword(&cw));
+            }
+        }
+    }
+
+    #[test]
+    fn codewords_form_a_linear_code_with_designed_distance() {
+        let c = Bch::new(4, 2).unwrap(); // (15, 7, d >= 5)
+        let mut min_weight = usize::MAX;
+        for m in 1u32..(1 << 7) {
+            let msg: Vec<u8> = (0..7).map(|i| ((m >> (6 - i)) & 1) as u8).collect();
+            let cw = c.encode(&msg).unwrap();
+            min_weight = min_weight.min(cw.iter().map(|&b| usize::from(b)).sum());
+        }
+        assert_eq!(min_weight, 5);
+        // linearity
+        let a = c.encode(&[1, 0, 1, 0, 0, 1, 1]).unwrap();
+        let b = c.encode(&[0, 1, 1, 0, 1, 0, 1]).unwrap();
+        let sum = c.encode(&[1, 1, 0, 0, 1, 1, 0]).unwrap();
+        assert!(a.iter().zip(&b).zip(&sum).all(|((x, y), z)| x ^ y == *z));
+    }
+
+    #[test]
+    fn corrects_every_pattern_of_up_to_t_errors_exhaustively_for_15_7_2() {
+        let c = Bch::new(4, 2).unwrap();
+        let msg = [1, 0, 0, 1, 1, 0, 1];
+        let cw = c.encode(&msg).unwrap();
+        let mut patterns = 0;
+        for i in 0..15 {
+            let mut one = cw.clone();
+            one[i] ^= 1;
+            assert_eq!(c.correct(&one).unwrap(), (cw.clone(), 1));
+            patterns += 1;
+            for j in i + 1..15 {
+                let mut two = one.clone();
+                two[j] ^= 1;
+                assert_eq!(c.correct(&two).unwrap(), (cw.clone(), 2), "errors at {i},{j}");
+                assert_eq!(c.decode(&two).unwrap(), msg);
+                patterns += 1;
+            }
+        }
+        assert_eq!(patterns, 15 + 105);
+    }
+
+    #[test]
+    fn corrects_random_errors_up_to_t() {
+        let mut rng = Rng(0xDEAD_BEEF_CAFE_F00D);
+        for &(m, t, k) in &[(4, 2, 7), (5, 3, 16), (6, 3, 45), (6, 5, 36), (7, 5, 92), (8, 4, 223)] {
+            let c = Bch::new(m, t).unwrap();
+            assert_eq!(c.k(), k);
+            for trial in 0..60 {
+                let msg = rng.bits(k);
+                let mut cw = c.encode(&msg).unwrap();
+                let errors = trial % (t + 1);
+                for p in rng.positions(c.n(), errors) {
+                    cw[p] ^= 1;
+                }
+                let (fixed, fixed_count) = c.correct(&cw).unwrap();
+                assert_eq!(fixed_count, errors);
+                assert_eq!(c.decode(&cw).unwrap(), msg, "BCH({},{k},{t}) with {errors} errors", c.n());
+                assert!(c.is_codeword(&fixed));
+            }
+        }
+    }
+
+    #[test]
+    fn t_plus_one_errors_are_detected_or_land_on_another_codeword() {
+        let mut rng = Rng(42);
+        let c = Bch::new(5, 3).unwrap();
+        let mut detected = 0;
+        for _ in 0..200 {
+            let msg = rng.bits(c.k());
+            let mut cw = c.encode(&msg).unwrap();
+            for p in rng.positions(c.n(), 4) {
+                cw[p] ^= 1;
+            }
+            match c.correct(&cw) {
+                Err(_) => detected += 1,
+                Ok((fixed, _)) => assert!(c.is_codeword(&fixed)),
+            }
+        }
+        // bounded-distance decoding detects the majority of weight-(t+1) patterns
+        assert!(detected > 100, "detected only {detected}");
+    }
+
+    #[test]
+    fn shortened_codes_work() {
+        let mut rng = Rng(7);
+        let c = Bch::new(6, 3).unwrap(); // (63, 45)
+        for len in [1usize, 10, 33, 45] {
+            let msg = rng.bits(len);
+            let mut cw = c.encode(&msg).unwrap();
+            assert_eq!(cw.len(), len + 18);
+            for p in rng.positions(cw.len(), 3) {
+                cw[p] ^= 1;
+            }
+            assert_eq!(c.decode(&cw).unwrap(), msg);
+        }
+    }
+
+    #[test]
+    fn rejects_bad_parameters_and_words() {
+        assert!(Bch::new(1, 1).is_err());
+        assert!(Bch::new(17, 1).is_err());
+        assert!(Bch::new(4, 0).is_err());
+        assert!(Bch::new(4, 8).is_err());
+        let c = Bch::new(4, 2).unwrap();
+        assert!(c.encode(&[]).is_err());
+        assert!(c.encode(&[0; 8]).is_err());
+        assert!(c.encode(&[2, 0, 0]).is_err());
+        assert!(c.decode(&[0; 16]).is_err());
+        assert!(c.decode(&[0; 8]).is_err());
+        assert!(c.decode(&[3; 15]).is_err());
+        assert!(Bch::for_data_len(1 << 20, 3).is_err());
+    }
+
+    #[test]
+    fn legacy_functions_use_the_real_code() {
+        let mut rng = Rng(99);
+        for &(len, t) in &[(4usize, 1usize), (8, 2), (11, 1), (30, 3), (100, 4)] {
+            let data = rng.bits(len);
+            let cw = bch_encode(&data, t);
+            assert!(cw.len() > len);
+            assert_eq!(&cw[..len], &data[..]);
+            assert_eq!(bch_decode(&cw, t).unwrap(), data);
+            let mut bad = cw.clone();
+            for p in rng.positions(bad.len(), t) {
+                bad[p] ^= 1;
+            }
+            assert_eq!(bch_decode(&bad, t).unwrap(), data, "len {len} t {t}");
+        }
+        // two errors, previously uncorrectable
+        let data = vec![1, 0, 1, 1, 0, 1, 0, 0];
+        let mut cw = bch_encode(&data, 2);
+        cw[0] ^= 1;
+        cw[9] ^= 1;
+        assert_eq!(bch_decode(&cw, 2).unwrap(), data);
+        assert!(bch_encode(&[], 2).is_empty());
+        assert!(bch_encode(&[1, 0], 0).is_empty());
+        assert!(bch_encode(&[1, 7], 2).is_empty());
+        assert!(bch_decode(&[1, 0, 1], 2).is_err());
     }
 }
