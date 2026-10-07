@@ -118,27 +118,28 @@ pub(super) fn kind_of(
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Special {
     Zero,
-    Negative,
+    /// The `k`-th negative eigenvalue (`k ≥ 1`, ascending in `κ`).
+    Negative(u32),
 }
 
-/// Whether the Robin problem has a mode with eigenvalue zero or a negative
-/// one (decided numerically when the coefficients are numbers).
-fn special_mode(
+/// The modes of a Robin problem with eigenvalue zero or negative: whether
+/// there is a zero mode, and how many negative ones (decided numerically
+/// when the coefficients are numbers).
+fn special_modes(
     cx: &Cx<'_>,
     ends: [NodeId; 5],
-) -> Option<Special> {
+) -> Option<(bool, u32)> {
     let v: Vec<f64> = ends.iter().map(|&e| exact_value(cx, e)).collect::<Option<_>>()?;
     let (p0, q0, p1, q1, l) = (v[0], v[1], v[2], v[3], v[4]);
     let determinant = p0 * (p1 * l + q1) - q0 * p1;
     let scale = (p0.abs() + q0.abs()) * (p1.abs() * l + q1.abs()) + (q0 * p1).abs();
-    if determinant.abs() <= 1e-12 * scale.max(1e-300) {
-        return Some(Special::Zero);
-    }
-    super::numeric::sl_neg_root(&[p0, q0, p1, q1, l]).is_finite().then_some(Special::Negative)
+    let zero = determinant.abs() <= 1e-12 * scale.max(1e-300);
+    let count = super::numeric::negative_count(p0, q0, p1, q1, l);
+    (zero || count > 0).then_some((zero, count))
 }
 
 /// The families of a Robin interval (index `n`; `numeric` when it is a
-/// number), including the zero or negative mode when there is one.
+/// number), including the zero and negative modes when there are some.
 pub(super) fn robin_families(
     cx: &mut Cx<'_>,
     iv: &Interval,
@@ -147,9 +148,18 @@ pub(super) fn robin_families(
     numeric: bool,
 ) -> Option<Vec<Family>> {
     let (p0, q0, p1, q1, l) = (iv.left.p, iv.left.q, iv.right.p, iv.right.q, iv.length);
-    let special = special_mode(cx, [p0, q0, p1, q1, l]);
-    let at_zero = numeric && cx.graph.number_of(n).is_some_and(Number::is_zero);
-    if let (Some(kind), true) = (special, at_zero) {
+    let specials = special_modes(cx, [p0, q0, p1, q1, l]);
+    let (zero_mode, negatives) = specials.unwrap_or((false, 0));
+    let total = i64::from(zero_mode) + i64::from(negatives);
+    let literal = if numeric { cx.graph.number_of(n).and_then(Number::to_i64) } else { None };
+    let chosen = literal.filter(|&m| m < total).map(|m| {
+        if zero_mode && m == 0 {
+            Special::Zero
+        } else {
+            Special::Negative(u32::try_from(m - i64::from(zero_mode) + 1).unwrap_or(1))
+        }
+    });
+    if let Some(kind) = chosen {
         let zero = cx.graph.int(0);
         return Some(vec![match kind {
             | Special::Zero => {
@@ -163,10 +173,15 @@ pub(super) fn robin_families(
                 let c = mul(cx.graph, &[third, p2, l3]);
                 let nb = neg(cx.graph, b);
                 let norm = add(cx.graph, &[a, nb, c]);
-                Family::new(cx.simplify(mode), zero, 0, 1, Some(cx.simplify(norm)))
+                Family::new(cx.simplify(mode), zero, 0, total, Some(cx.simplify(norm)))
             },
-            | Special::Negative => {
-                let placeholder = call(cx, "sl_neg_root", &[p0, q0, p1, q1, l])?;
+            | Special::Negative(k) => {
+                let placeholder = if k == 1 {
+                    call(cx, "sl_neg_root", &[p0, q0, p1, q1, l])?
+                } else {
+                    let index = cx.graph.int(i64::from(k));
+                    call(cx, "sl_neg_root_n", &[p0, q0, p1, q1, l, index])?
+                };
                 // A root that is a small rational (the drift gauge gives |α|)
                 // is written exactly: its projection integrals then close.
                 let exact = exact_value(cx, placeholder).and_then(|v| {
@@ -219,12 +234,21 @@ pub(super) fn robin_families(
                 let n2 = mul(cx.graph, &[b2, sinh_part]);
                 let n3 = mul(cx.graph, &[two, a_coeff, b_coeff, cross]);
                 let norm = add(cx.graph, &[n1, n2, n3]);
-                Family::new(cx.simplify(mode), cx.simplify(eigen), 0, 1, Some(norm))
+                Family::new(cx.simplify(mode), cx.simplify(eigen), 0, total, Some(norm))
             },
         }]);
     }
     // A Robin end: X = q0 k cos(kξ) − p0 sin(kξ).
-    let k = call(cx, "sl_root", &[p0, q0, p1, q1, l, n])?;
+    // Positive roots are numbered from 1; the indices below `total` are the
+    // zero and negative modes.
+    let root_index = if total > 1 {
+        let shift = cx.graph.int(1 - total);
+        let shifted = add(cx.graph, &[n, shift]);
+        cx.simplify(shifted)
+    } else {
+        n
+    };
+    let k = call(cx, "sl_root", &[p0, q0, p1, q1, l, root_index])?;
     let kx = mul(cx.graph, &[k, xi]);
     let (cos, sin) = (call(cx, "cos", &[kx])?, call(cx, "sin", &[kx])?);
     let a = mul(cx.graph, &[q0, k, cos]);
@@ -264,8 +288,76 @@ pub(super) fn robin_families(
         let third_term = neg(cx.graph, cross);
         add(cx.graph, &[first_term, second_term, third_term])
     };
-    let (first, forced) = if special.is_some() { (0, 1) } else { (1, 0) };
+    let (first, forced) = if total > 0 { (0, total) } else { (1, 0) };
     Some(vec![Family::new(mode, e, first, forced, Some(norm))])
+}
+
+/// The radial mode of a disk or ball with a non-positive eigenvalue: for
+/// `sign = 0` (`h + ν = 0`) the power `r^ν`, for `sign = -1` (`h + ν < 0`)
+/// the modified Bessel function `I_ν(κ r)` with `κ = bessel_neg_root(ν, h)/R`
+/// and the eigenvalue `-κ²`. `shifted` is `h R` (with the ball's shift).
+pub(super) fn radial_non_positive(
+    cx: &mut Cx<'_>,
+    r: NodeId,
+    radius: NodeId,
+    nu: NodeId,
+    shifted: NodeId,
+    sphere: bool,
+    sign: i32,
+) -> Option<Family> {
+    let zero = cx.graph.int(0);
+    let one = cx.graph.int(1);
+    let two = cx.graph.int(2);
+    let minus_half = fraction(cx, -1, 2)?;
+    let with_shell = |cx: &mut Cx<'_>, f: NodeId| {
+        if sphere {
+            let root = pow(cx.graph, r, minus_half);
+            mul(cx.graph, &[root, f])
+        } else {
+            f
+        }
+    };
+    if sign == 0 {
+        let power = pow(cx.graph, r, nu);
+        let mode = with_shell(cx, power);
+        // ∫ r^{2ν+1} dr = R^{2ν+2} / (2ν + 2).
+        let two_nu = mul(cx.graph, &[two, nu]);
+        let e = add(cx.graph, &[two_nu, two]);
+        let top = pow(cx.graph, radius, e);
+        let norm = div(cx, top, e);
+        return Some(Family::new(cx.simplify(mode), zero, 0, 1, Some(cx.simplify(norm))));
+    }
+    let root = call(cx, "bessel_neg_root", &[nu, shifted])?;
+    let inverse_radius = powi(cx.graph, radius, -1);
+    let kappa = mul(cx.graph, &[root, inverse_radius]);
+    let kr = mul(cx.graph, &[kappa, r]);
+    let i_nu = call(cx, "besseli", &[nu, kr])?;
+    let mode = with_shell(cx, i_nu);
+    let k2 = powi(cx.graph, kappa, 2);
+    let eigen = neg(cx.graph, k2);
+    // ∫ r I_ν(κ r)² dr = R²/2 [(1 + ν²/z²) I_ν(z)² - I_ν'(z)²], z = κ R.
+    let up = add(cx.graph, &[nu, one]);
+    let (i_z, i_up) = (call(cx, "besseli", &[nu, root])?, call(cx, "besseli", &[up, root])?);
+    let ratio = div(cx, nu, root);
+    let slope = {
+        let t = mul(cx.graph, &[ratio, i_z]);
+        add(cx.graph, &[i_up, t])
+    };
+    let nu2_over_z2 = powi(cx.graph, ratio, 2);
+    let factor = add(cx.graph, &[one, nu2_over_z2]);
+    let lead = {
+        let sq = powi(cx.graph, i_z, 2);
+        mul(cx.graph, &[factor, sq])
+    };
+    let tail = {
+        let sq = powi(cx.graph, slope, 2);
+        neg(cx.graph, sq)
+    };
+    let bracket = add(cx.graph, &[lead, tail]);
+    let half = fraction(cx, 1, 2)?;
+    let r2 = powi(cx.graph, radius, 2);
+    let norm = mul(cx.graph, &[half, r2, bracket]);
+    Some(Family::new(cx.simplify(mode), cx.simplify(eigen), 0, 1, Some(norm)))
 }
 
 // ----------------------------------------------------------------------
@@ -568,6 +660,93 @@ fn halves(
 /// An antiderivative `G(z)` of `z^μ Z_ν(z)` (`μ = mu2/2`, `ν = nu2/2`) in
 /// terms of Bessel functions, if a recurrence terminates.
 fn bessel_antiderivative(
+    cx: &mut Cx<'_>,
+    second: bool,
+    mu2: i64,
+    nu2: i64,
+    z: NodeId,
+) -> Option<NodeId> {
+    if let Some(found) = terminating_antiderivative(cx, second, mu2, nu2, z) {
+        return Some(found);
+    }
+    if mu2 % 2 == 0 && nu2 % 2 == 0 && mu2 >= 0 && nu2 >= 0 && !(mu2 == 0 && (nu2 / 2) % 2 == 1) {
+        return struve_antiderivative(cx, second, mu2 / 2, nu2 / 2, z);
+    }
+    None
+}
+
+/// An antiderivative of `z^μ Z_ν(z)` for integers `μ, ν ≥ 0` in terms of
+/// Bessel and Struve functions: the order is lowered by
+/// `∫ z^μ Z_ν = -z^μ Z_{ν-1} + (μ+ν-1) ∫ z^{μ-1} Z_{ν-1}` to zero, the
+/// power by Lommel's `∫ z^μ Z_0 = z^μ Z_1 + (μ-1) z^{μ-1} Z_0 - (μ-1)² ∫ z^{μ-2} Z_0`,
+/// and the base is `∫ Z_0 = z Z_0 + (π z/2)(Z_1 H_0 - Z_0 H_1)`.
+fn struve_antiderivative(
+    cx: &mut Cx<'_>,
+    second: bool,
+    mu: i64,
+    nu: i64,
+    z: NodeId,
+) -> Option<NodeId> {
+    let order = |cx: &mut Cx<'_>, k: i64| -> Option<NodeId> {
+        let k = cx.graph.int(k);
+        bessel(cx, second, k, z)
+    };
+    let power = |cx: &mut Cx<'_>, e: i64| powi(cx.graph, z, e);
+    if nu == 0 {
+        if mu == 0 {
+            let (z0, z1) = (order(cx, 0)?, order(cx, 1)?);
+            let (zero, one) = (cx.graph.int(0), cx.graph.int(1));
+            let (h0, h1) = (call(cx, "struve_h", &[zero, z])?, call(cx, "struve_h", &[one, z])?);
+            let pi = super::util::pi(cx)?;
+            let half = fraction(cx, 1, 2)?;
+            let a = mul(cx.graph, &[z, z0]);
+            let b = mul(cx.graph, &[z1, h0]);
+            let c = mul(cx.graph, &[z0, h1]);
+            let nc = neg(cx.graph, c);
+            let bracket = add(cx.graph, &[b, nc]);
+            let d = mul(cx.graph, &[half, pi, z, bracket]);
+            return Some(add(cx.graph, &[a, d]));
+        }
+        if mu == 1 {
+            let z1 = order(cx, 1)?;
+            return Some(mul(cx.graph, &[z, z1]));
+        }
+        let (z0, z1) = (order(cx, 0)?, order(cx, 1)?);
+        let pm = power(cx, mu);
+        let a = mul(cx.graph, &[pm, z1]);
+        let c1 = cx.graph.int(mu - 1);
+        let pm1 = power(cx, mu - 1);
+        let b = mul(cx.graph, &[c1, pm1, z0]);
+        let c2 = cx.graph.int(-(mu - 1) * (mu - 1));
+        let rest = struve_antiderivative(cx, second, mu - 2, 0, z)?;
+        let c = mul(cx.graph, &[c2, rest]);
+        return Some(add(cx.graph, &[a, b, c]));
+    }
+    if mu == 0 {
+        // Z_ν = Z_{ν-2} - 2 Z'_{ν-1}.
+        if nu == 1 {
+            let z0 = order(cx, 0)?;
+            return Some(neg(cx.graph, z0));
+        }
+        let lower = struve_antiderivative(cx, second, 0, nu - 2, z)?;
+        let top = order(cx, nu - 1)?;
+        let m2 = cx.graph.int(-2);
+        let b = mul(cx.graph, &[m2, top]);
+        return Some(add(cx.graph, &[lower, b]));
+    }
+    let z_low = order(cx, nu - 1)?;
+    let a = {
+        let pm = power(cx, mu);
+        let m = neg(cx.graph, pm);
+        mul(cx.graph, &[m, z_low])
+    };
+    let factor = cx.graph.int(mu + nu - 1);
+    let rest = struve_antiderivative(cx, second, mu - 1, nu - 1, z)?;
+    let b = mul(cx.graph, &[factor, rest]);
+    Some(add(cx.graph, &[a, b]))
+}
+
+fn terminating_antiderivative(
     cx: &mut Cx<'_>,
     second: bool,
     mu2: i64,

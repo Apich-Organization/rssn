@@ -361,6 +361,28 @@ fn radial_families(
     } else {
         hr
     };
+    let shifted_value = super::modes::exact_value(cx, shifted);
+    // A Robin condition of the wrong sign: `h + ν < 0` gives one mode
+    // `I_ν(κ r)` with a negative eigenvalue, `h + ν = 0` a mode `r^ν`.
+    let non_positive = match (end.kind, shifted_value, order_value) {
+        | (Kind::Dirichlet, _, _) => None,
+        | (_, Some(h), Some(v)) if !constant_mode => {
+            let total = h + v;
+            if total.abs() < 1e-12 {
+                Some(0)
+            } else if total < 0.0 {
+                Some(-1)
+            } else {
+                None
+            }
+        },
+        | (_, Some(h), None) if h < 0.0 && !constant_mode => return None,
+        | _ => None,
+    };
+    if let (Some(sign), true) = (non_positive, numeric && cx.graph.number_of(n).is_some_and(Number::is_zero)) {
+        return super::modes::radial_non_positive(cx, r, radius, nu, shifted, sphere, sign).map(|f| vec![f]);
+    }
+    let constant_mode = constant_mode || non_positive.is_some();
     let sin_form_hint = sphere && order_value.is_some_and(|v| (v - 0.5).abs() < 1e-12);
     let root = match end.kind {
         | Kind::Dirichlet if sin_form_hint => {
