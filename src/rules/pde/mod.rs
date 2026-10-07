@@ -138,6 +138,8 @@ mod systems;
 mod util;
 mod waves;
 #[cfg(test)]
+mod completion_tests;
+#[cfg(test)]
 mod dimension_tests;
 #[cfg(test)]
 mod extension_tests;
