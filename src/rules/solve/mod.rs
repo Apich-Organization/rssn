@@ -19,7 +19,7 @@
 //! combined into one, logarithmic substitutions, square roots isolated and
 //! squared one at a time) and hand the result back to the solver; polynomials of
 //! degree three and four get Cardano's and Ferrari's formulas, higher ones
-//! numeric roots; non-polynomial systems are solved by elimination. Every
+//! numeric roots (see the quintic notes below); non-polynomial systems are solved by elimination. Every
 //! candidate is checked against the original equation.
 //!
 //! Beyond that, the sub-solvers interlock:
@@ -1105,6 +1105,54 @@ mod tests {
             let value = eval(&[solve()], &residual, &[]);
             assert!(value.abs() < 1e-9, "{item} does not solve {equation}: residual {value}");
         }
+    }
+
+    /// Splits `list(a, b, ...)` at top-level commas.
+    fn list_items(text: &str) -> Vec<String> {
+        let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
+        let (mut depth, mut current, mut parts) = (0_i32, String::new(), Vec::new());
+        for ch in inner.chars() {
+            match ch {
+                | '(' => depth += 1,
+                | ')' => depth -= 1,
+                | ',' if depth == 0 => {
+                    parts.push(std::mem::take(&mut current));
+                    continue;
+                },
+                | _ => {},
+            }
+            current.push(ch);
+        }
+        if !current.trim().is_empty() {
+            parts.push(current);
+        }
+        parts
+    }
+
+    #[test]
+    fn symbolic_quartic_by_ferrari() {
+        let rules = crate::rules::standard();
+        let (text, reduced) = reduce_with(&rules, "solve(x^4 + a*x^3 + b*x + c, x)", &[]);
+        assert!(reduced, "{text}");
+        let items = list_items(&text);
+        assert!(items.len() >= 4, "{text}");
+        // At each parameter point every defined formula must be a root.
+        let mut found = Vec::new();
+        for (a, b, c) in [(-2.0, 2.0, -5.0), (1.0, -1.5, -2.0), (0.5, 3.0, -4.0)] {
+            let mut defined = 0;
+            for item in &items {
+                let at = eval(&rules, item, &[("a", a), ("b", b), ("c", c)]);
+                if !at.is_finite() {
+                    continue;
+                }
+                defined += 1;
+                let residual = at.powi(4) + a * at.powi(3) + b * at + c;
+                assert!(residual.abs() < 1e-7 * (1.0 + at.abs().powi(4)), "{item} at ({a},{b},{c}) gives {residual}");
+                found.push(at);
+            }
+            assert!(defined >= 2, "too few defined roots at ({a},{b},{c}): {text}");
+        }
+        assert!(found.len() >= 6);
     }
 
     #[test]
