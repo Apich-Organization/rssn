@@ -125,6 +125,7 @@ use super::poly::repr::Limits;
 use super::poly::repr::Poly;
 use super::poly::univariate;
 
+mod certified;
 mod elim;
 mod heuristics;
 mod inequality;
@@ -144,7 +145,7 @@ pub struct Inverse(pub Vec<Pat>);
 /// The equation-solving rule set.
 #[must_use]
 pub fn solve() -> RuleSet {
-    RuleSet::new("solve", install).needs(poly()).needs(elementary())
+    RuleSet::new("solve", install).needs(poly()).needs(elementary()).needs(super::calculus::calculus())
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -179,6 +180,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let solve_op = i.op(OpDescriptor::new("solve", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
     let general_op = i.op(OpDescriptor::new("solve_general", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
     let nsolve_op = i.op(OpDescriptor::new("nsolve", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
+    let certified_op = i.op(OpDescriptor::new("nsolve_certified", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
+    let box_op = i.op(OpDescriptor::new("solve_box", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("solve/nsolve-certified", Tier::Reduce, certified::NsolveCertified { op: certified_op });
+    i.kernel("solve/box", Tier::Reduce, certified::SolveBox { op: box_op });
     i.kernel("solve/symbolic", Tier::Reduce, Symbolic { solve: solve_op, general: general_op });
     i.kernel("solve/polynomial-numeric", Tier::Reduce, PolynomialNumeric { solve: solve_op });
     i.kernel("solve/nsolve", Tier::Reduce, RootNear { nsolve: nsolve_op });
@@ -1039,7 +1044,14 @@ impl Kernel for RootNear {
         };
         let tolerance = cx.env.tolerance.max(1e-14);
         match solve_root(f, start, tolerance, 200) {
-            | Ok(root) => Outcome::Approx(Ball { mid: root, rad: tolerance }),
+            | Ok(root) => {
+                // A verified enclosure (interval Krawczyk) replaces the
+                // error estimate when one exists.
+                let bindings = cx.env.bindings().to_vec();
+                let ball = certified::certified_ball(graph, equation, x, &bindings, root)
+                    .unwrap_or(Ball { mid: root, rad: tolerance });
+                Outcome::Approx(ball)
+            },
             | Err(_) => Outcome::Pass,
         }
     }
