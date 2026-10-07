@@ -108,6 +108,7 @@ mod curvilinear;
 mod diffusion;
 mod elliptic;
 mod frameworks;
+mod modes;
 mod numeric;
 mod spectral;
 mod symmetry;
@@ -116,6 +117,8 @@ mod util;
 mod waves;
 #[cfg(test)]
 mod dimension_tests;
+#[cfg(test)]
+mod extension_tests;
 
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
@@ -2505,7 +2508,17 @@ fn verified(
                 }
                 evaluated += 1;
             },
-            | _ => {},
+            | _ => {
+                // Complex-valued solutions (Hankel functions, propagators).
+                let bindings: HashMap<SymbolId, num_complex::Complex64> =
+                    symbols.iter().map(|&s| (s, num_complex::Complex64::new(0.3 + 0.23 * f64::from(sample) + 0.11 * f64::from(s.raw() % 7), 0.0))).collect();
+                if let Some(v) = cx.graph.eval_complex(residual, &bindings).filter(|v| v.re.is_finite() && v.im.is_finite()) {
+                    if v.norm() > 1e-7 {
+                        return false;
+                    }
+                    evaluated += 1;
+                }
+            },
         }
     }
     evaluated > 0
@@ -2570,7 +2583,7 @@ fn satisfies(
         let difference = sub(cx.graph, on, target);
         // Identities of special functions (a zero of J_0, a periodic
         // value) are checked numerically when the simplifier cannot.
-        let numerically_zero = |cx: &Cx<'_>| (0..3_u32).all(|k| util::sample(cx.graph, difference, k).is_some_and(|v| v.abs() < 1e-8));
+        let numerically_zero = |cx: &Cx<'_>| (0..3_u32).all(|k| util::sample_abs(cx.graph, difference, k).is_some_and(|v| v < 1e-8));
         if !cx.is_zero(difference) && !numerically_zero(cx) {
             return false;
         }
