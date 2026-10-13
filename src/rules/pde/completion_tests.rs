@@ -17,6 +17,8 @@ use crate::kernels::special::bessel_i;
 use crate::kernels::special::bessel_j;
 use std::f64::consts::PI;
 
+type Eigenpair = (f64, Box<dyn Fn(f64) -> f64>);
+
 fn simpson(
     f: &dyn Fn(f64) -> f64,
     a: f64,
@@ -105,7 +107,7 @@ fn robin_interval_with_two_negative_modes() {
     let s = any("pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(at(diff(u(x, t), x), x, 0) + 5*u(0, t) = 0, at(diff(u(x, t), x), x, 1) - 5*u(1, t) = 0, u(x, 0) = x))");
     let (x, t) = (0.3, 0.02);
     // Reference: the modes cosh/sinh(κ(x - 1/2)), cos/sin(k(x - 1/2)) with own root scans.
-    let mut modes: Vec<(f64, Box<dyn Fn(f64) -> f64>)> = Vec::new();
+    let mut modes: Vec<Eigenpair> = Vec::new();
     for kappa in roots(&|k: f64| k * (k / 2.0).tanh() - 5.0, 20.0, 1) {
         modes.push((-kappa * kappa, Box::new(move |y: f64| (kappa * (y - 0.5)).cosh())));
     }
@@ -277,7 +279,7 @@ fn sl_arguments(
 ) -> Vec<f64> {
     let n = 24_usize;
     let mut args = vec![a, b, ends[0], ends[1], ends[2], ends[3], n as f64];
-    let xs: Vec<f64> = (0..=n).map(|k| 0.5 * (a + b) + 0.5 * (b - a) * (PI * k as f64 / n as f64).cos()).collect();
+    let xs: Vec<f64> = (0..=n).map(|k| f64::midpoint(a, b) + 0.5 * (b - a) * (PI * k as f64 / n as f64).cos()).collect();
     for f in [p, q, w] {
         args.extend(xs.iter().map(|&x| f(x)));
     }
@@ -337,7 +339,10 @@ fn numeric_sturm_liouville_operators() {
     let rayleigh = simpson(&|x| ((mode(x + hr) - mode(x - hr)) / (2.0 * hr)).powi(2) + q(x) * mode(x).powi(2), 2e-5, 1.0 - 2e-5);
     close(simpson(&|x| mode(x).powi(2), 0.0, 1.0), 1.0, 1e-6, "normalisation");
     close(rayleigh, mu, 2e-3, "Rayleigh quotient");
-    let residual = |x: f64| -(mode(x + h) - 2.0 * mode(x) + mode(x - h)) / (h * h) + q(x) * mode(x) - mu * mode(x);
+    let residual = |x: f64| {
+        let second = (mode(x + h) - 2.0 * mode(x) + mode(x - h)) / h.powi(2);
+        q(x) * mode(x) - second - mu * mode(x)
+    };
     close(residual(0.37), 0.0, 5e-3, "residual of the eigenfunction");
 }
 
@@ -350,7 +355,7 @@ fn separation_of_variables_for_variable_coefficients() {
     let s = any(&format!("pdsolve({eq}, u(x, t), list(u(0, t) = 0, u(1, t) = 0, u(x, 0) = {data}))"));
     assert!(s.contains("sl_mode") && s.contains("sl_eigen"), "{s}");
     let (x, t) = (0.45_f64, 0.01_f64);
-    let s_x = (1.0 + x).ln();
+    let s_x = x.ln_1p();
     let exact = (-(PI / l).powi(2) * t).exp() * (PI * s_x / l).sin() + 0.5 * (-(3.0 * PI / l).powi(2) * t).exp() * (3.0 * PI * s_x / l).sin();
     let text = expand_integrals(&expand_sums(&rhs(&s), 5), 160);
     close(value(&text, &[("x", x), ("t", t)]), exact, 2e-4, &s);

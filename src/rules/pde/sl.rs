@@ -79,7 +79,7 @@ impl Chebyshev {
     ) -> Self {
         let n = values.len().saturating_sub(1).max(1);
         let nodes = (0..values.len()).map(|j| (PI * j as f64 / n as f64).cos()).collect();
-        Self { mid: 0.5 * (a + b), half: 0.5 * (b - a), nodes, values }
+        Self { mid: f64::midpoint(a, b), half: 0.5 * (b - a), nodes, values }
     }
 
     fn eval(
@@ -201,21 +201,24 @@ impl Sl {
         let target = self.end_angle() + f64::from(m - 1) * PI;
         let f = |mu: f64| grid.end_value(mu, theta0) - target;
         let mut hi = 1.0;
-        while f(hi) < 0.0 {
-            hi *= 2.0;
-            if hi > 1e12 {
-                return None;
+        for _ in 0..60 {
+            if f(hi) >= 0.0 {
+                break;
             }
+            hi *= 2.0;
         }
         let mut lo = -1.0;
-        while f(lo) > 0.0 {
-            lo *= 2.0;
-            if lo < -1e12 {
-                return None;
+        for _ in 0..60 {
+            if f(lo) <= 0.0 {
+                break;
             }
+            lo *= 2.0;
+        }
+        if f(hi) < 0.0 || f(lo) > 0.0 {
+            return None;
         }
         for _ in 0..200 {
-            let mid = 0.5 * (lo + hi);
+            let mid = f64::midpoint(lo, hi);
             if f(mid) < 0.0 {
                 lo = mid;
             } else {
@@ -225,7 +228,7 @@ impl Sl {
                 break;
             }
         }
-        Some((0.5 * (lo + hi), grid))
+        Some((f64::midpoint(lo, hi), grid))
     }
 }
 
@@ -238,7 +241,7 @@ struct Grid {
 }
 
 impl Grid {
-    fn steps(&self) -> usize {
+    const fn steps(&self) -> usize {
         self.p.len().saturating_sub(1) / 2
     }
 
@@ -470,7 +473,7 @@ pub(super) fn solve(
         return None;
     }
     // Samples of the coefficients at the Chebyshev points.
-    let (mid, half) = (0.5 * (start + stop), 0.5 * (stop - start));
+    let (mid, half) = (f64::midpoint(start, stop), 0.5 * (stop - start));
     let xs: Vec<f64> = (0..=SAMPLES).map(|k| mid + half * (PI * k as f64 / SAMPLES as f64).cos()).collect();
     let kappa = if at(cx, ca, x, mid)? > 0.0 { 1.0 } else { -1.0 };
     let a_hat = |cx: &Cx<'_>, x_value: f64| at(cx, ca, x, x_value).map(|v| kappa * v);

@@ -489,10 +489,10 @@ pub(super) fn solve_system(
     let source_w = apply(cx, &p_inverse, &source);
     let ctx = Component { vars: &vars, time, order, a_matrices: &a_matrices, diagonals: &diagonals, p_inverse: &p_inverse, shapes: &shapes };
     let mut solutions = Vec::new();
-    for i in 0..n {
+    for (i, &driven) in source_w.iter().enumerate() {
         // The chains of a Jordan system are driven through `exp(t N)`: the
         // source enters separately below.
-        let own_source = if jordan.is_some() { cx.graph.int(0) } else { source_w[i] };
+        let own_source = if jordan.is_some() { cx.graph.int(0) } else { driven };
         let found = solve_component(cx, &ctx, i, own_source, true)?;
         solutions.push(found);
     }
@@ -1048,8 +1048,8 @@ fn jordan_particular(
         let q = jordan_operators(cx, data, b, vars.len(), time_var)?;
         for a in 0..size {
             let mut terms = Vec::new();
-            for j in 0..(size - a) {
-                for (index, c) in &q[j] {
+            for (j, operator) in q.iter().enumerate().take(size - a) {
+                for (index, c) in operator {
                     let coefficients = time_coefficients(cx, *c, time_var)?;
                     for (k, &ck) in coefficients.iter().enumerate() {
                         if cx.is_zero(ck) {
