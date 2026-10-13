@@ -4,6 +4,8 @@
 // the formulas they check.
 #![allow(clippy::needless_range_loop)]
 
+#[path = "sim/chain.rs"]
+mod chain;
 #[path = "sim/classical.rs"]
 mod classical;
 #[path = "sim/models_fdtd_electrodynamics.rs"]
