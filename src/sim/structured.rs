@@ -19,8 +19,9 @@
 //! nodes with spacing `(hi - lo)/n`.
 //!
 //! Limitations: constant-coefficient Laplacian only (variable diffusion is
-//! provided by [`nonlinear_diffusion`]); scalar PML is not available (use
-//! the FDTD model for PML); the Mur condition is first order.
+//! provided by [`nonlinear_diffusion`]); the scalar wave
+//! equation with a PML is in [`crate::sim::acoustics`]; the Mur condition
+//! here is first order.
 #![allow(
     clippy::manual_memcpy,
     clippy::too_long_first_doc_paragraph,

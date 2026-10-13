@@ -9,8 +9,9 @@
 //!   Rusanov, for the Euler equations of an ideal gas and the shallow-water
 //!   equations;
 //! * **SSP-RK3** time stepping with a CFL condition summed over axes;
-//! * boundary treatment per face: transmissive, reflective wall, periodic or
-//!   a fixed (inflow) state.
+//! * boundary treatment per face: transmissive, reflective wall, periodic, a
+//!   fixed (inflow) state or a linearised characteristic **non-reflecting**
+//!   boundary (Euler only).
 //!
 //! | Equation | 1D | 2D | 3D | Riemann solvers | Reconstruction |
 //! |---|---|---|---|---|---|

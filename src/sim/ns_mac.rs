@@ -13,8 +13,12 @@
 //! * boundary faces from [`FluidFaceBcs`]: no-slip (fixed or moving wall),
 //!   slip / symmetry, prescribed inflow velocity (time dependent), outflow
 //!   with prescribed pressure, periodic;
-//! * obstacles: a Boolean cell mask; faces touching a solid cell carry zero
-//!   velocity (staircase no-slip, first-order accurate at the body).
+//! * obstacles: a Boolean cell mask (staircase no-slip, first-order at the
+//!   body) or an **immersed body** given by a level set ([`ImmersedBody`]):
+//!   Shortley–Weller viscous stencils with the exact wall distance, aperture
+//!   weighted divergence and pressure Poisson on cut cells (second order for
+//!   diffusion-dominated flow, see the Taylor–Couette test; the convective term
+//!   uses a clamped linear ghost extrapolation).
 //!
 //! | Feature | 2D | 3D |
 //! |---|---|---|

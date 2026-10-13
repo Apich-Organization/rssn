@@ -573,9 +573,10 @@ const RADON_A: f64 = 0.101_286_507_323_456_3;
 const RADON_B: f64 = 0.470_142_064_105_115_1;
 
 fn radon7() -> [([f64; 3], f64); 7] {
-    let (wa, wb) = (0.062_969_590_272_413_6, 0.066_197_076_394_253_1);
+    // Radon's weights sum to 1/2 on the reference triangle; scale them to sum to one
+    let (wa, wb) = (2.0 * 0.062_969_590_272_413_6, 2.0 * 0.066_197_076_394_253_1);
     [
-        ([1.0 / 3.0; 3], 0.1125),
+        ([1.0 / 3.0; 3], 0.225),
         ([RADON_A, RADON_A, 1.0 - 2.0 * RADON_A], wa),
         ([RADON_A, 1.0 - 2.0 * RADON_A, RADON_A], wa),
         ([1.0 - 2.0 * RADON_A, RADON_A, RADON_A], wa),

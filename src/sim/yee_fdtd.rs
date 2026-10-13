@@ -12,7 +12,8 @@
 //! | PEC walls, periodic faces | yes | yes | yes |
 //! | convolutional PML (graded, `κ = 1`, `α = 0`) per face | yes | yes | yes |
 //! | soft current source (any component) | yes | yes | yes |
-//! | TF/SF plane wave along `+x` with arbitrary `(y, z)` polarisation | yes | yes | yes |
+//! | TF/SF plane wave along `+x` with arbitrary `(y, z)` polarisation (1D auxiliary grid) | yes | yes | yes |
+//! | TF/SF plane wave on an **arbitrary box with oblique incidence** ([`ObliquePlaneWave`]) | yes | yes | yes |
 //!
 //! Boundary faces use [`BoundaryCondition`]: `Dirichlet` is a PEC wall,
 //! `Periodic` wraps, `Absorbing` is a PML of `pml_cells` cells terminated by
@@ -24,8 +25,13 @@
 //! one-dimensional auxiliary Yee grid with the same dispersion, so the
 //! scattered-field region is quiet to round-off in vacuum.
 //!
-//! Limitations: no dispersive or anisotropic media, no conductivity, no
-//! non-axis-aligned TF/SF boxes, PMC boundaries not available.
+//! The oblique TF/SF source evaluates the incident field analytically, so its
+//! leakage is set by the grid dispersion (a few per cent at ten points per
+//! wavelength; use the auxiliary-grid source for normal incidence when exact
+//! cancellation is needed).
+//!
+//! Limitations: no dispersive or anisotropic media, no conductivity,
+//! axis-aligned TF/SF boxes only, PMC boundaries not available.
 #![allow(
     clippy::manual_memcpy,
     clippy::too_long_first_doc_paragraph,

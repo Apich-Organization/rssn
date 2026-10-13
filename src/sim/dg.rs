@@ -10,9 +10,12 @@
 //! |---|---|---|---|
 //! | linear advection ([`LinearAdvection`]) | yes | yes | periodic, outflow, fixed inflow state |
 //! | Burgers ([`Burgers`]) | yes | yes | same |
-//! | Euler ([`Euler1d`]) | yes | n/a | same |
+//! | Euler ([`Euler1d`], [`Euler2d`]) | yes | yes | same |
 //!
-//! Custom systems implement [`DgLaw`]. Meshes are uniform tensor-product
+//! Shocks are handled by [`solve_dg_limited`]: a TVB minmod slope limiter on
+//! troubled elements and the Zhang–Shu positivity-preserving scaling of density
+//! and pressure, applied after every Runge–Kutta stage (an exponential modal
+//! filter is also available). Custom systems implement [`DgLaw`]. Meshes are uniform tensor-product
 //! quadrilaterals (intervals in 1D); no hanging nodes, no p-adaptivity.
 //! Smooth problems converge with order `p + 1`; shocks need the filter and
 //! are first-order accurate locally.
