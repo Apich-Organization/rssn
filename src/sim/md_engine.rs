@@ -65,6 +65,11 @@ use std::collections::HashSet;
 use crate::kernels::random::Rng;
 use crate::kernels::special::erfc_numerical;
 
+#[path = "md_cell.rs"]
+mod cell;
+
+pub use cell::{mat_det, mat_exp_phi1, mat_inverse, mat_mul, mat_vec, CellMode, FlexibleBarostat};
+
 /// Boundary condition of one box axis.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Boundary {
@@ -89,13 +94,109 @@ pub struct SimBox<const D: usize> {
     pub shear_rate: f64,
     /// Current Lees-Edwards displacement of the upper image along `x`.
     pub offset: f64,
+    /// General (triclinic) cell: row `k` is the lattice vector `a_k`. `None` for an orthorhombic
+    /// box. Set it through [`SimBox::set_cell`], which keeps `len` (the vector norms) and the
+    /// cached inverse in sync. Triclinic boxes are fully periodic and have no Lees-Edwards shear.
+    pub cell: Option<[[f64; D]; D]>,
+    cell_inv: [[f64; D]; D],
 }
 
 impl<const D: usize> SimBox<D> {
     /// Fully periodic box.
     #[must_use]
     pub fn periodic(len: [f64; D]) -> Self {
-        Self { len, bc: [Boundary::Periodic; D], shear_rate: 0.0, offset: 0.0 }
+        Self { len, bc: [Boundary::Periodic; D], shear_rate: 0.0, offset: 0.0, cell: None, cell_inv: [[0.0; D]; D] }
+    }
+
+    /// Fully periodic triclinic box with lattice vectors `h[k]` (rows).
+    ///
+    /// # Errors
+    /// Fails if the lattice vectors are linearly dependent.
+    pub fn triclinic(h: [[f64; D]; D]) -> Result<Self, String> {
+        let mut b = Self::periodic([1.0; D]);
+        b.set_cell(h)?;
+        Ok(b)
+    }
+
+    /// Sets the general cell matrix (rows are lattice vectors), refreshing `len` and the inverse.
+    ///
+    /// # Errors
+    /// Fails if the matrix is singular.
+    pub fn set_cell(
+        &mut self,
+        h: [[f64; D]; D],
+    ) -> Result<(), String> {
+        let inv = crate::sim::md_engine::mat_inverse(&h).ok_or_else(|| "cell matrix is singular".to_string())?;
+        self.cell = Some(h);
+        self.cell_inv = inv;
+        for k in 0..D {
+            self.len[k] = h[k].iter().map(|x| x * x).sum::<f64>().sqrt();
+        }
+        self.bc = [Boundary::Periodic; D];
+        self.shear_rate = 0.0;
+        Ok(())
+    }
+
+    /// Cell matrix (rows are lattice vectors; diagonal for an orthorhombic box).
+    #[must_use]
+    pub fn matrix(&self) -> [[f64; D]; D] {
+        self.cell.unwrap_or_else(|| {
+            let mut h = [[0.0; D]; D];
+            for k in 0..D {
+                h[k][k] = self.len[k];
+            }
+            h
+        })
+    }
+
+    /// Fractional coordinates `s` with `x = sum_k s_k a_k` (orthorhombic: `x / L`).
+    #[must_use]
+    pub fn to_fractional(
+        &self,
+        x: &[f64; D],
+    ) -> [f64; D] {
+        let mut s = [0.0; D];
+        if self.cell.is_some() {
+            for a in 0..D {
+                for b in 0..D {
+                    s[a] += x[b] * self.cell_inv[b][a];
+                }
+            }
+        } else {
+            for a in 0..D {
+                s[a] = x[a] / self.len[a];
+            }
+        }
+        s
+    }
+
+    /// Cartesian vector of fractional coordinates `s`.
+    #[must_use]
+    pub fn from_fractional(
+        &self,
+        s: &[f64; D],
+    ) -> [f64; D] {
+        let h = self.matrix();
+        let mut x = [0.0; D];
+        for a in 0..D {
+            for b in 0..D {
+                x[b] += s[a] * h[a][b];
+            }
+        }
+        x
+    }
+
+    /// Perpendicular width of the cell along lattice direction `a` (distance between faces).
+    #[must_use]
+    pub fn height(
+        &self,
+        a: usize,
+    ) -> f64 {
+        if self.cell.is_some() {
+            1.0 / (0..D).map(|b| self.cell_inv[b][a].powi(2)).sum::<f64>().sqrt()
+        } else {
+            self.len[a]
+        }
     }
 
     /// Box with explicit per-axis boundaries.
@@ -104,12 +205,15 @@ impl<const D: usize> SimBox<D> {
         len: [f64; D],
         bc: [Boundary; D],
     ) -> Self {
-        Self { len, bc, shear_rate: 0.0, offset: 0.0 }
+        Self { len, bc, shear_rate: 0.0, offset: 0.0, cell: None, cell_inv: [[0.0; D]; D] }
     }
 
     /// Volume (length in 1-D, area in 2-D).
     #[must_use]
     pub fn volume(&self) -> f64 {
+        if let Some(h) = &self.cell {
+            return mat_det(h).abs();
+        }
         self.len.iter().product()
     }
 
@@ -118,6 +222,39 @@ impl<const D: usize> SimBox<D> {
         &self,
         d: &mut [f64; D],
     ) {
+        if let Some(h) = &self.cell {
+            let mut s = self.to_fractional(d);
+            for c in &mut s {
+                *c -= c.round();
+            }
+            let mut base = [0.0; D];
+            for a in 0..D {
+                for b in 0..D {
+                    base[b] += s[a] * h[a][b];
+                }
+            }
+            // a skewed cell can have a shorter image in a neighbouring cell
+            let mut best = base;
+            let mut best_n = dot(&base, &base);
+            for r0 in 0..3usize.pow(D as u32) {
+                let mut r = r0;
+                let mut cand = base;
+                for a in 0..D {
+                    let o = (r % 3) as f64 - 1.0;
+                    r /= 3;
+                    for b in 0..D {
+                        cand[b] += o * h[a][b];
+                    }
+                }
+                let n = dot(&cand, &cand);
+                if n < best_n {
+                    best_n = n;
+                    best = cand;
+                }
+            }
+            *d = best;
+            return;
+        }
         if D >= 2 && self.shear_rate != 0.0 {
             let n = (d[1] / self.len[1]).round();
             d[1] -= n * self.len[1];
@@ -244,6 +381,20 @@ impl<const D: usize> MdSystem<D> {
         &mut self,
         rng: &mut Rng,
     ) {
+        if let Some(h) = self.bx.cell {
+            for i in 0..self.n() {
+                let mut s = self.bx.to_fractional(&self.pos[i]);
+                for c in &mut s {
+                    *c = c.floor();
+                }
+                for a in 0..D {
+                    for b in 0..D {
+                        self.pos[i][b] -= s[a] * h[a][b];
+                    }
+                }
+            }
+            return;
+        }
         let l = self.bx.len;
         let shear = D >= 2 && self.bx.shear_rate != 0.0;
         for i in 0..self.n() {
@@ -612,7 +763,7 @@ pub struct NeighbourList<const D: usize> {
     /// Candidate pairs `i < j` within `rcut + skin` at build time.
     pub pairs: Vec<(usize, usize)>,
     ref_pos: Vec<[f64; D]>,
-    ref_len: [f64; D],
+    ref_cell: [[f64; D]; D],
     /// Number of rebuilds so far.
     pub builds: usize,
 }
@@ -624,29 +775,68 @@ impl<const D: usize> NeighbourList<D> {
         rcut: f64,
         skin: f64,
     ) -> Self {
-        Self { rcut, skin, pairs: Vec::new(), ref_pos: Vec::new(), ref_len: [0.0; D], builds: 0 }
+        Self { rcut, skin, pairs: Vec::new(), ref_pos: Vec::new(), ref_cell: [[0.0; D]; D], builds: 0 }
     }
 
-    /// Whether the list is stale (particle moved more than `skin / 2`, box changed, or never built).
+    /// Whether the list is stale: a particle moved (beyond the affine cell deformation) so that
+    /// `2 max|dx| + |strain| (r_cut + skin) > skin`, the box shears, or the list was never built.
     #[must_use]
     pub fn needs_rebuild(
         &self,
         sys: &MdSystem<D>,
     ) -> bool {
-        if self.ref_pos.len() != sys.n() || self.ref_len != sys.bx.len || sys.bx.shear_rate != 0.0 {
+        if self.ref_pos.len() != sys.n() || sys.bx.shear_rate != 0.0 || self.builds == 0 {
             return true;
         }
-        let lim = 0.25 * self.skin * self.skin;
+        let now = sys.bx.matrix();
+        let mut strain2 = 0.0;
+        let affine = now != self.ref_cell;
+        let mut map = [[0.0; D]; D];
+        if affine {
+            let Some(inv) = mat_inverse(&self.ref_cell) else { return true };
+            map = mat_mul(&inv, &now);
+            for a in 0..D {
+                for b in 0..D {
+                    let id = if a == b { 1.0 } else { 0.0 };
+                    strain2 += (map[a][b] - id).powi(2);
+                }
+            }
+        }
+        let rl = self.rcut + self.skin;
+        let strain = strain2.sqrt();
+        if strain * rl > 0.5 * self.skin {
+            return true;
+        }
+        let tol = 0.5 * (self.skin - strain * rl);
+        let lim = tol * tol;
+        let ref_inv = if affine { mat_inverse(&self.ref_cell) } else { None };
         for i in 0..sys.n() {
+            let mut pred = self.ref_pos[i];
+            if let Some(inv) = &ref_inv {
+                // x_pred = (x_ref h_ref^{-1}) h_now
+                let mut s = [0.0; D];
+                for a in 0..D {
+                    for b in 0..D {
+                        s[a] += self.ref_pos[i][b] * inv[b][a];
+                    }
+                }
+                pred = [0.0; D];
+                for a in 0..D {
+                    for b in 0..D {
+                        pred[b] += s[a] * now[a][b];
+                    }
+                }
+            }
             let mut d = [0.0; D];
             for a in 0..D {
-                d[a] = sys.pos[i][a] - self.ref_pos[i][a];
+                d[a] = sys.pos[i][a] - pred[a];
             }
             sys.bx.min_image(&mut d);
             if d.iter().map(|x| x * x).sum::<f64>() > lim {
                 return true;
             }
         }
+        let _ = map;
         false
     }
 
@@ -661,7 +851,7 @@ impl<const D: usize> NeighbourList<D> {
         let rl2 = rl * rl;
         self.pairs.clear();
         self.ref_pos = sys.pos.clone();
-        self.ref_len = sys.bx.len;
+        self.ref_cell = sys.bx.matrix();
         let close = |i: usize, j: usize| -> bool {
             let mut d = [0.0; D];
             for a in 0..D {
@@ -681,8 +871,23 @@ impl<const D: usize> NeighbourList<D> {
             return;
         }
         // grid; open axes extend over the particle bounding range
+        let tri = sys.bx.cell.is_some();
+        let pc: Vec<[f64; D]> = if tri {
+            sys.pos
+                .iter()
+                .map(|p| {
+                    let mut s = sys.bx.to_fractional(p);
+                    for c in &mut s {
+                        *c -= c.floor();
+                    }
+                    s
+                })
+                .collect()
+        } else {
+            sys.pos.clone()
+        };
         let mut lo = [0.0; D];
-        let mut ext = sys.bx.len;
+        let mut ext = if tri { [1.0; D] } else { sys.bx.len };
         for a in 0..D {
             if sys.bx.bc[a] == Boundary::Open {
                 let (mn, mx) = sys.pos.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(m, x), p| (m.min(p[a]), x.max(p[a])));
@@ -692,7 +897,8 @@ impl<const D: usize> NeighbourList<D> {
         }
         let mut nc = [1usize; D];
         for a in 0..D {
-            let c = (ext[a] / rl).floor() as usize;
+            let width = if tri { sys.bx.height(a) } else { ext[a] };
+            let c = (width / rl).floor() as usize;
             nc[a] = if c >= 3 { c } else { 1 };
         }
         let total: usize = nc.iter().product();
@@ -709,7 +915,7 @@ impl<const D: usize> NeighbourList<D> {
         };
         let mut cells: Vec<Vec<usize>> = vec![Vec::new(); total];
         for i in 0..n {
-            cells[cell_of(&sys.pos[i])].push(i);
+            cells[cell_of(&pc[i])].push(i);
         }
         let offsets: Vec<[i64; D]> = {
             let count = 3usize.pow(D as u32);
@@ -1111,6 +1317,8 @@ pub enum Barostat {
         /// Compressibility.
         beta: f64,
     },
+    /// Flexible-cell Parrinello-Rahman / Martyna-Tobias-Klein barostat (see [`FlexibleBarostat`]).
+    Flexible(FlexibleBarostat),
     /// Isotropic MTK barostat with piston mass `w` (NPH-type dynamics).
     Mtk {
         /// Target pressure.
@@ -1153,6 +1361,9 @@ pub struct MdSimulation<const D: usize> {
     pub dt: f64,
     /// Random number generator (Langevin, thermal walls).
     pub rng: Rng,
+    /// Virial `sum r_ij (x) f_c` of the constraint forces from the last SHAKE sweep
+    /// (added to the force virial in the pressure of constrained systems).
+    pub constraint_virial: [[f64; D]; D],
 }
 
 impl<const D: usize> MdSimulation<D> {
@@ -1170,7 +1381,7 @@ impl<const D: usize> MdSimulation<D> {
         ff.rebuild_exclusions();
         let mut nl = NeighbourList::new(ff.rcut, skin);
         let forces = compute_forces(&sys, &ff, &mut nl)?;
-        Ok(Self { sys, ff, nl, forces, thermostat: Thermostat::None, barostat: Barostat::None, constraints: Vec::new(), dt, rng: Rng::new(seed) })
+        Ok(Self { sys, ff, nl, forces, thermostat: Thermostat::None, barostat: Barostat::None, constraints: Vec::new(), dt, rng: Rng::new(seed), constraint_virial: [[0.0; D]; D] })
     }
 
     /// Degrees of freedom (`D N - D - n_constraints`).
@@ -1205,7 +1416,7 @@ impl<const D: usize> MdSimulation<D> {
         }
         for a in 0..D {
             for b in 0..D {
-                p[a][b] = (p[a][b] + self.forces.virial[a][b]) / v;
+                p[a][b] = (p[a][b] + self.forces.virial[a][b] + self.constraint_virial[a][b]) / v;
             }
         }
         p
@@ -1227,6 +1438,9 @@ impl<const D: usize> MdSimulation<D> {
         }
         if let Barostat::Mtk { p0, w, p_eps } = &self.barostat {
             e += p_eps * p_eps / (2.0 * w) + p0 * self.sys.bx.volume();
+        }
+        if let Barostat::Flexible(b) = &self.barostat {
+            e += b.energy(self.sys.bx.volume());
         }
         e
     }
@@ -1274,6 +1488,7 @@ impl<const D: usize> MdSimulation<D> {
         old: &[[f64; D]],
         h: f64,
     ) {
+        self.constraint_virial = [[0.0; D]; D];
         for _ in 0..500 {
             let mut worst = 0.0_f64;
             for c in self.constraints.clone() {
@@ -1291,6 +1506,11 @@ impl<const D: usize> MdSimulation<D> {
                 let (mi, mj) = (self.sys.mass[i], self.sys.mass[j]);
                 let g = diff / (2.0 * dot(&s, &r_old) * (1.0 / mi + 1.0 / mj));
                 for a in 0..D {
+                    for b in 0..D {
+                        self.constraint_virial[a][b] -= g * r_old[a] * r_old[b] / (h * h);
+                    }
+                }
+                for a in 0..D {
                     let di = -g * r_old[a] / mi;
                     let dj = g * r_old[a] / mj;
                     self.sys.pos[i][a] += di;
@@ -1307,7 +1527,12 @@ impl<const D: usize> MdSimulation<D> {
         }
     }
 
-    fn rattle_velocities(&mut self) {
+    /// RATTLE velocity projection. With a cell velocity gradient `vg` the constraint
+    /// condition is `r . (v_i - v_j) = -r . (vg r)` (the bond is carried by the cell flow).
+    fn rattle_velocities(
+        &mut self,
+        vg: Option<&[[f64; D]; D]>,
+    ) {
         for _ in 0..500 {
             let mut worst = 0.0_f64;
             for c in self.constraints.clone() {
@@ -1320,7 +1545,15 @@ impl<const D: usize> MdSimulation<D> {
                 }
                 self.sys.bx.min_image(&mut r);
                 let (mi, mj) = (self.sys.mass[i], self.sys.mass[j]);
-                let rv = dot(&r, &v);
+                let mut target = 0.0;
+                if let Some(g) = vg {
+                    for a in 0..D {
+                        for b in 0..D {
+                            target -= r[a] * g[a][b] * r[b];
+                        }
+                    }
+                }
+                let rv = dot(&r, &v) - target;
                 worst = worst.max(rv.abs() / (c.d * c.d));
                 let k = rv / (dot(&r, &r) * (1.0 / mi + 1.0 / mj));
                 for a in 0..D {
@@ -1367,16 +1600,22 @@ impl<const D: usize> MdSimulation<D> {
     /// Advances one time step.
     ///
     /// # Errors
-    /// Fails for unsupported combinations (Langevin or MTK with constraints) or force-field errors.
+    /// Fails for unsupported combinations (isotropic MTK with a thermostat or constraints, Langevin with a flexible cell) or force-field errors.
     pub fn step(&mut self) -> Result<(), String> {
         let h = self.dt;
         let n = self.sys.n();
-        if matches!(self.thermostat, Thermostat::Langevin { .. }) {
-            if !self.constraints.is_empty() {
-                return Err("Langevin dynamics cannot be combined with constraints".into());
-            }
-            let Thermostat::Langevin { t0, gamma } = self.thermostat else { return Ok(()) };
+        if matches!(self.barostat, Barostat::Flexible(_)) {
+            return self.step_flexible();
+        }
+        if let Thermostat::Langevin { t0, gamma } = self.thermostat {
+            // BAOAB; with constraints every velocity update (B, O) is followed by a RATTLE
+            // projection and every drift (A) by SHAKE, so the constrained flow is sampled
+            // with the tangent-space Gibbs measure.
+            let constrained = !self.constraints.is_empty();
             self.half_kick(h);
+            if constrained {
+                self.rattle_velocities(None);
+            }
             self.drift(0.5 * h);
             let c1 = (-gamma * h).exp();
             let c2 = (1.0 - c1 * c1).sqrt();
@@ -1386,9 +1625,15 @@ impl<const D: usize> MdSimulation<D> {
                     self.sys.vel[i][a] = c1 * self.sys.vel[i][a] + c2 * s * self.rng.normal();
                 }
             }
+            if constrained {
+                self.rattle_velocities(None);
+            }
             self.drift(0.5 * h);
             self.recompute()?;
             self.half_kick(h);
+            if constrained {
+                self.rattle_velocities(None);
+            }
             self.sys.time += h;
             return Ok(());
         }
@@ -1408,7 +1653,7 @@ impl<const D: usize> MdSimulation<D> {
         self.recompute()?;
         self.half_kick(h);
         if !self.constraints.is_empty() {
-            self.rattle_velocities();
+            self.rattle_velocities(None);
         }
         if let Thermostat::NoseHooverChain(_) = &self.thermostat {
             let ke2 = 2.0 * self.sys.kinetic_energy();

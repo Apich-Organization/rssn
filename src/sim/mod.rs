@@ -13,7 +13,7 @@
 //! |---|---|---|---|
 //! | [`md_engine`] | any (const generic) | open, periodic, reflecting, thermal, Lees-Edwards | cell+Verlet lists, LJ/Morse/Coulomb, bonded, NHC/Langevin/Berendsen, Berendsen/MTK barostat, SHAKE/RATTLE, RDF/MSD/VACF |
 //! | [`ewald`] | 3 | periodic | Ewald, smooth PME |
-//! | [`nbody`] | 1-3 (FMM: 2) | open | Barnes-Hut, 2-D FMM |
+//! | [`nbody`], [`fmm`] | 1-3 (FMM: 2, 3) | open | Barnes-Hut, adaptive 2-D/3-D FMM |
 //! | [`symplectic`] | any | - | order 2-8 schemes, TTL, KS, rigid body |
 //! | [`spin_models`] | any | periodic / open | Ising, Potts, O(N); Metropolis, heat bath, Wolff, SW, PT, WL |
 //! | [`relativity`] | 3+1 | horizon / escape events | Kerr-Newman geodesics |
@@ -79,6 +79,8 @@ pub mod ewald;
 pub mod md_engine;
 /// Barnes-Hut and fast multipole N-body solvers.
 pub mod nbody;
+/// Adaptive 2-D and 3-D fast multipole methods.
+pub mod fmm;
 /// Kerr-Newman geodesics.
 pub mod relativity;
 /// Smoothed-particle hydrodynamics in 1-3 dimensions.
