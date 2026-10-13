@@ -10,9 +10,11 @@
 
 pub mod algebra;
 pub mod apart;
+pub mod galois;
 pub mod groebner;
 pub mod multifactor;
 pub mod repr;
+pub mod rootof;
 pub mod univariate;
 
 use num_bigint::BigInt;
@@ -101,6 +103,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("poly/groebner", Tier::Reduce, PolyKernel { op, request: Request::Groebner });
     i.kernel("poly/collapse", Tier::Normalize, Collapse);
     algebra::install(i)?;
+    rootof::install(i)?;
     Ok(())
 }
 
