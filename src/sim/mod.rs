@@ -36,6 +36,8 @@ pub mod physics_md;
 pub mod physics_mm;
 /// Multigrid methods.
 pub mod physics_mtm;
+/// P1/P2 finite elements on interval, triangle and tetrahedron meshes.
+pub mod fem_simplex;
 /// Incompressible Navier-Stokes projection solver on a MAC grid (2D/3D).
 pub mod ns_mac;
 /// Yee FDTD for Maxwell in 1D-3D with PML and TF/SF.

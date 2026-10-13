@@ -58,6 +58,8 @@ mod split_step;
 mod yee_fdtd;
 #[path = "sim/ns_mac.rs"]
 mod ns_mac;
+#[path = "sim/fem_simplex.rs"]
+mod fem_simplex;
 #[path = "sim/structured.rs"]
 mod structured;
 #[path = "sim/physics_sm.rs"]
