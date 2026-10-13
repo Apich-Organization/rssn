@@ -23,6 +23,32 @@
 //!   by exactly one path) and the offending paths are re-tracked with
 //!   successively smaller maximal steps.
 #![allow(
+    clippy::unreadable_literal,
+    clippy::excessive_precision,
+    clippy::manual_midpoint,
+    clippy::too_long_first_doc_paragraph,
+    clippy::while_float,
+    clippy::doc_markdown,
+    clippy::option_if_let_else,
+    clippy::map_unwrap_or,
+    clippy::struct_excessive_bools,
+    clippy::items_after_statements,
+    clippy::assigning_clones,
+    clippy::unnecessary_map_or,
+    clippy::redundant_closure,
+    clippy::single_match,
+    clippy::manual_let_else,
+    clippy::unnecessary_operation,
+    clippy::cast_lossless,
+    clippy::missing_errors_doc,
+    clippy::needless_for_each,
+    clippy::unnecessary_min_or_max,
+    clippy::implicit_saturating_sub,
+    clippy::manual_range_contains,
+    clippy::neg_cmp_op_on_partial_ord,
+    clippy::unnecessary_wraps,
+    clippy::needless_pass_by_value,
+    clippy::cast_possible_wrap,
     clippy::missing_const_for_fn,
     clippy::too_many_lines,
     clippy::too_many_arguments,
@@ -349,12 +375,11 @@ fn run_path(pb: &Problem, start: &[Cx], opts: &HomotopyOptions, max_step: f64) -
             for j in 0..ver {
                 let a = 1.0 - s * Cx::from_polar(1.0, 2.0 * std::f64::consts::PI * j as f64 / ver as f64);
                 let b = 1.0 - s * Cx::from_polar(1.0, 2.0 * std::f64::consts::PI * (j + 1) as f64 / ver as f64);
-                match pb.track(&cur, a, b, 0.5) {
-                    Some(v) => cur = v,
-                    None => {
-                        failed_loop = true;
-                        break 'loops;
-                    }
+                if let Some(v) = pb.track(&cur, a, b, 0.5) {
+                    cur = v;
+                } else {
+                    failed_loop = true;
+                    break 'loops;
                 }
                 pts.push(cur.clone());
             }

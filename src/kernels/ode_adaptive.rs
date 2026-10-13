@@ -3,7 +3,8 @@
 //! * [`dopri5`]: Dormand-Prince 5(4) with step-size control, a fourth-order
 //!   continuous extension ("dense output") and event detection;
 //! * [`rosenbrock23`]: the L-stable Rosenbrock pair of Shampine and
-//!   Reichelt for stiff problems (finite-difference Jacobian);
+//!   Reichelt for stiff problems (finite-difference Jacobian, cubic Hermite
+//!   dense output);
 //! * [`leapfrog`] and [`yoshida4`]: symplectic integrators for
 //!   `H = p^2/2 + V(q)`;
 //! * [`bvp_fd`]: second-order finite-difference BVP solver for
@@ -116,6 +117,8 @@ pub(crate) enum DenseKind {
     /// Newton backward-difference interpolation `sum_k D_k prod_{j<k} (s+j)/(j+1)`
     /// with `s = x - 1` (the BDF interpolant); `D_0 = y(t0 + h)`.
     Backward(Vec<Vec<f64>>),
+    /// Cubic Hermite interpolation from the end value and both end derivatives.
+    Hermite { y1: Vec<f64>, f0: Vec<f64>, f1: Vec<f64> },
 }
 
 #[derive(Debug, Clone)]
@@ -160,7 +163,7 @@ impl OdeSolution {
     }
 
     /// Evaluates the continuous extension at `t` (available for
-    /// [`dopri5`], the Radau and the BDF integrators); `None` outside the integrated range.
+    /// [`dopri5`], [`rosenbrock23`], the Radau and the BDF integrators); `None` outside the integrated range.
     #[must_use]
     pub fn eval(&self, t: f64) -> Option<Vec<f64>> {
         let (&first, &last) = (self.t.first()?, self.t.last()?);
@@ -202,6 +205,14 @@ pub(crate) fn dense_eval(s: &DenseStep, t: f64) -> Vec<f64> {
                 }
             }
             out
+        }
+        DenseKind::Hermite { y1, f0, f1 } => {
+            let (x2, x3) = (x * x, x * x * x);
+            let (h00, h10, h01, h11) =
+                (2.0 * x3 - 3.0 * x2 + 1.0, x3 - 2.0 * x2 + x, -2.0 * x3 + 3.0 * x2, x3 - x2);
+            (0..n)
+                .map(|i| h00 * s.y0[i] + h10 * s.h * f0[i] + h01 * y1[i] + h11 * s.h * f1[i])
+                .collect()
         }
         DenseKind::Backward(dd) => {
             let sv = x - 1.0;
@@ -470,7 +481,8 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
 /// Rosenbrock 2(3) (the `ode23s` pair) for stiff problems.
 ///
 /// The Jacobian and the explicit time derivative are obtained by finite
-/// differences at every step. No dense output is provided.
+/// differences at every step. Dense output is the cubic Hermite
+/// interpolant of the step ([`OdeSolution::eval`]); events are not supported.
 ///
 /// # Errors
 /// [`OdeError::StepLimit`], [`OdeError::NonFinite`] or [`OdeError::SolveFailed`].
@@ -576,6 +588,12 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
         }
         let en = err_norm(&err, &y, &ynew, opts.rtol, opts.atol);
         if en <= 1.0 {
+            sol.dense.push(DenseStep {
+                t0: t,
+                h,
+                y0: y.clone(),
+                kind: DenseKind::Hermite { y1: ynew.clone(), f0: f0.clone(), f1: f2.clone() },
+            });
             t += h;
             y = ynew;
             f0 = f2;

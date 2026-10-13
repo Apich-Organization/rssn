@@ -17,6 +17,34 @@
 //!
 //! The operator closure writes `A x` into its second argument.
 #![allow(
+    clippy::unreadable_literal,
+    clippy::excessive_precision,
+    clippy::manual_midpoint,
+    clippy::too_long_first_doc_paragraph,
+    clippy::while_float,
+    clippy::doc_markdown,
+    clippy::option_if_let_else,
+    clippy::map_unwrap_or,
+    clippy::struct_excessive_bools,
+    clippy::items_after_statements,
+    clippy::assigning_clones,
+    clippy::unnecessary_map_or,
+    clippy::redundant_closure,
+    clippy::single_match,
+    clippy::manual_let_else,
+    clippy::unnecessary_operation,
+    clippy::cast_lossless,
+    clippy::missing_errors_doc,
+    clippy::needless_for_each,
+    clippy::unnecessary_min_or_max,
+    clippy::implicit_saturating_sub,
+    clippy::manual_range_contains,
+    clippy::neg_cmp_op_on_partial_ord,
+    clippy::unnecessary_wraps,
+    clippy::needless_pass_by_value,
+    clippy::cast_possible_wrap,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
     clippy::missing_const_for_fn,
     clippy::too_many_lines,
     clippy::cognitive_complexity,
@@ -247,7 +275,7 @@ fn small_eigvec(h: &Mat, theta: (f64, f64)) -> Vec<Complex64> {
             }
             y[i] /= a[i][i];
         }
-        let s = y.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
+        let s = y.iter().map(Complex64::norm_sqr).sum::<f64>().sqrt();
         x = y.iter().map(|c| c / s).collect();
     }
     x

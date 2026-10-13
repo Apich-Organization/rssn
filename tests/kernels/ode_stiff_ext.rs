@@ -1,7 +1,7 @@
 //! Tests for dense output, events, variable order and DAEs in the stiff integrators.
 
 use rssn::kernels::dense::Mat;
-use rssn::kernels::ode_adaptive::{Event, OdeOptions};
+use rssn::kernels::ode_adaptive::{Event, OdeOptions, rosenbrock23};
 use rssn::kernels::ode_stiff::{RadauConfig, bdf_ex, radau, radau_fixed};
 
 fn decay(_t: f64, y: &[f64], dy: &mut [f64]) {
@@ -137,5 +137,16 @@ fn radau_robertson_dae() {
     let want = [0.7158270687, 9.185534764e-6, 0.2841637457];
     for i in 0..3 {
         assert!((y[i] - want[i]).abs() <= 1e-5 * want[i].max(1e-3), "y{i} = {}", y[i]);
+    }
+}
+
+#[test]
+fn rosenbrock_dense_output() {
+    let opts = OdeOptions { rtol: 1e-7, atol: 1e-9, ..OdeOptions::default() };
+    let sol = rosenbrock23(osc, 0.0, 6.0, &[1.0, 0.0], &opts).unwrap();
+    for k in 0..=60 {
+        let t = 0.1 * f64::from(k);
+        let v = sol.eval(t).unwrap();
+        assert!((v[0] - t.cos()).abs() < 2e-4 && (v[1] + t.sin()).abs() < 2e-4, "t={t}");
     }
 }

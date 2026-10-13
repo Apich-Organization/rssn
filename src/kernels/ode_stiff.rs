@@ -19,6 +19,27 @@
 //! (no sparse or banded Jacobians); DAEs are limited to index 1; the error
 //! estimate of the DAE case does not exclude algebraic components.
 #![allow(
+    clippy::manual_midpoint,
+    clippy::too_long_first_doc_paragraph,
+    clippy::doc_markdown,
+    clippy::map_unwrap_or,
+    clippy::struct_excessive_bools,
+    clippy::items_after_statements,
+    clippy::assigning_clones,
+    clippy::unnecessary_map_or,
+    clippy::redundant_closure,
+    clippy::single_match,
+    clippy::manual_let_else,
+    clippy::unnecessary_operation,
+    clippy::cast_lossless,
+    clippy::missing_errors_doc,
+    clippy::needless_for_each,
+    clippy::unnecessary_min_or_max,
+    clippy::implicit_saturating_sub,
+    clippy::manual_range_contains,
+    clippy::neg_cmp_op_on_partial_ord,
+    clippy::unnecessary_wraps,
+    clippy::cast_possible_wrap,
     clippy::missing_const_for_fn,
     clippy::too_many_lines,
     clippy::cognitive_complexity,
@@ -210,7 +231,7 @@ fn radau_matrix(tab: &RadauTab, mass: Option<&Mat>, jac: &Mat, h: f64) -> Mat {
                 for q in 0..n {
                     let mut v = -h * tab.a[bi][bj] * jac.at(p, q);
                     if bi == bj {
-                        v += mass.map_or(f64::from(u8::from(p == q)), |mm| mm.at(p, q));
+                        v += mass.map_or_else(|| f64::from(u8::from(p == q)), |mm| mm.at(p, q));
                     }
                     m.set(bi * n + p, bj * n + q, v);
                 }
@@ -467,7 +488,7 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
                 let mut real = Mat::zeros(n, n);
                 for p in 0..n {
                     for q in 0..n {
-                        let m = mass.map_or(f64::from(u8::from(p == q)), |mm| mm.at(p, q));
+                        let m = mass.map_or_else(|| f64::from(u8::from(p == q)), |mm| mm.at(p, q));
                         real.set(p, q, m - h * tab.gamma0 * jac.at(p, q));
                     }
                 }

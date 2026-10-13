@@ -20,6 +20,31 @@
 //! loops (`adj[i]` lists the neighbours of `i`, each edge in both lists) and
 //! return `perm` with `perm[new] = old`.
 #![allow(
+    clippy::unreadable_literal,
+    clippy::excessive_precision,
+    clippy::manual_midpoint,
+    clippy::too_long_first_doc_paragraph,
+    clippy::doc_markdown,
+    clippy::option_if_let_else,
+    clippy::map_unwrap_or,
+    clippy::struct_excessive_bools,
+    clippy::items_after_statements,
+    clippy::assigning_clones,
+    clippy::unnecessary_map_or,
+    clippy::redundant_closure,
+    clippy::single_match,
+    clippy::manual_let_else,
+    clippy::unnecessary_operation,
+    clippy::cast_lossless,
+    clippy::missing_errors_doc,
+    clippy::needless_for_each,
+    clippy::unnecessary_min_or_max,
+    clippy::implicit_saturating_sub,
+    clippy::manual_range_contains,
+    clippy::neg_cmp_op_on_partial_ord,
+    clippy::unnecessary_wraps,
+    clippy::needless_pass_by_value,
+    clippy::cast_possible_wrap,
     clippy::missing_const_for_fn,
     clippy::too_many_lines,
     clippy::cognitive_complexity,
@@ -97,10 +122,10 @@ pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
     };
     let remove = |v: usize, d: usize, head: &mut [usize], next: &mut [usize], prev: &mut [usize]| {
         let d = d.min(head.len() - 1);
-        if prev[v] != NIL {
-            next[prev[v]] = next[v];
-        } else {
+        if prev[v] == NIL {
             head[d] = next[v];
+        } else {
+            next[prev[v]] = next[v];
         }
         if next[v] != NIL {
             prev[next[v]] = prev[v];

@@ -19,6 +19,32 @@
 //! negative real axis (for `logm` also that `A` is nonsingular); they return
 //! an error otherwise.
 #![allow(
+    clippy::unreadable_literal,
+    clippy::excessive_precision,
+    clippy::manual_midpoint,
+    clippy::too_long_first_doc_paragraph,
+    clippy::while_float,
+    clippy::doc_markdown,
+    clippy::option_if_let_else,
+    clippy::map_unwrap_or,
+    clippy::struct_excessive_bools,
+    clippy::items_after_statements,
+    clippy::assigning_clones,
+    clippy::unnecessary_map_or,
+    clippy::redundant_closure,
+    clippy::single_match,
+    clippy::manual_let_else,
+    clippy::unnecessary_operation,
+    clippy::cast_lossless,
+    clippy::missing_errors_doc,
+    clippy::needless_for_each,
+    clippy::unnecessary_min_or_max,
+    clippy::implicit_saturating_sub,
+    clippy::manual_range_contains,
+    clippy::neg_cmp_op_on_partial_ord,
+    clippy::unnecessary_wraps,
+    clippy::needless_pass_by_value,
+    clippy::cast_possible_wrap,
     clippy::missing_const_for_fn,
     clippy::too_many_lines,
     clippy::cognitive_complexity,
@@ -133,7 +159,7 @@ pub fn expm(a: &Mat) -> Result<Mat, DenseError> {
         let mut u_in = Mat::zeros(n, n);
         let mut v = Mat::zeros(n, n);
         for k in 0..=deg / 2 {
-            if 2 * k + 1 <= deg {
+            if 2 * k < deg {
                 u_in = lin(&u_in, 1.0, &powers[k], c[2 * k + 1]);
             }
             v = lin(&v, 1.0, &powers[k], c[2 * k]);
