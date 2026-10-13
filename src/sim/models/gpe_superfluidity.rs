@@ -1,3 +1,12 @@
+//! # Gross–Pitaevskii ground states (2D)
+//!
+//! | Problem | Dimension | Method |
+//! |---|---|---|
+//! | imaginary-time ground state | 2D | split-step Fourier, periodic box |
+//!
+//! [`crate::sim::split_step`] covers 1D–3D, real-time evolution (Strang and
+//! fourth-order composition) and the linear Schrödinger equation.
+
 use ndarray::Array2;
 use num_complex::Complex;
 use rayon::prelude::*;

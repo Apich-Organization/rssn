@@ -1,3 +1,12 @@
+//! # Linear elasticity (2D quadrilaterals)
+//!
+//! | Case | Dimension | Elements | Boundaries |
+//! |---|---|---|---|
+//! | plane stress | 2D | bilinear quadrilaterals | clamped nodes, nodal loads |
+//!
+//! Plane strain, 3D tetrahedra, P2 elements and mixed displacement/traction
+//! markers are in [`crate::sim::elasticity_fem`].
+
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;

@@ -12,6 +12,15 @@
 //! * the **exact Riemann solver** (Newton iteration for the star pressure,
 //!   sampling of the self-similar solution), used for validation and for
 //!   shock-tube reference solutions.
+//!
+//! # Coverage audit
+//!
+//! | Equation | 1D | 2D | 3D | Boundaries |
+//! |---|---|---|---|---|
+//! | Euler, HLLC + MUSCL (minmod, van Leer) | yes | no | no | transmissive, reflective |
+//!
+//! [`crate::sim::euler_nd`] extends this to 2D/3D, WENO5, Roe/Rusanov fluxes,
+//! periodic and fixed-state faces and shallow water.
 
 /// Primitive state `(ρ, u, p)`.
 #[derive(Clone, Copy, Debug, PartialEq)]

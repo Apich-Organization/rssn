@@ -58,7 +58,7 @@ fn fourier_derivative_and_helmholtz_converge_spectrally() {
     let (e16, e32) = (err(16), err(32));
     assert!(e16 < 1e-6 && e32 < 1e-13, "{e16} {e32}");
     let g = SpectralGrid::new(&[8], &[1.0]).unwrap();
-    assert!(g.helmholtz(0.0, &vec![1.0; 8]).is_err());
+    assert!(g.helmholtz(0.0, &[1.0; 8]).is_err());
     assert!(g.helmholtz(0.0, &(0..8).map(|i| (2.0 * PI * i as f64 / 8.0).sin()).collect::<Vec<_>>()).is_ok());
 }
 

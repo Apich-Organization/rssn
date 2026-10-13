@@ -16,6 +16,15 @@
 //!   along its longest marked edge, recursively), so meshes concentrate
 //!   where the solution is singular, e.g. at the re-entrant corner of an
 //!   L-shaped domain.
+//!
+//! # Coverage audit
+//!
+//! | Equation | Dimension | Elements | Boundary conditions | Extras |
+//! |---|---|---|---|---|
+//! | `-∇·(k∇u) + c u = f` | 2D triangles | P1, P2 | Dirichlet `u = g` | residual estimator, adaptive refinement |
+//!
+//! 1D and 3D (tetrahedral) P1/P2 elements with Neumann and Robin markers are in
+//! [`crate::sim::fem_simplex`].
 
 use std::collections::HashMap;
 

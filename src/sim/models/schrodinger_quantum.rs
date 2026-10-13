@@ -26,6 +26,15 @@
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_033.png)
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_frame_039.png)
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/quantum_tunneling_3d.png)
+//!
+//! # Coverage audit
+//!
+//! | Equation | Dimension | Boundaries | Method |
+//! |---|---|---|---|
+//! | time-dependent Schrödinger | 2D | periodic | split-step Fourier |
+//!
+//! [`crate::sim::split_step`] covers 1D–3D, the GPE nonlinearity, fourth-order
+//! composition and imaginary-time ground states.
 
 use ndarray::Array2;
 use num_complex::Complex;

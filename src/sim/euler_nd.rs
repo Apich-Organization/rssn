@@ -483,7 +483,7 @@ fn limit(lim: SlopeLimiter, a: f64, b: f64) -> f64 {
         SlopeLimiter::VanLeer => 2.0 * a * b / (a + b),
         SlopeLimiter::Mc => {
             let c = 0.5 * (a + b);
-            let m = 2.0 * a.abs().min(2.0 * b.abs()).min(c.abs());
+            let m = (2.0 * a.abs()).min(2.0 * b.abs()).min(c.abs());
             m.copysign(a)
         },
         SlopeLimiter::Superbee => {

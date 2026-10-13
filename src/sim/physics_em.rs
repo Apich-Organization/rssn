@@ -1,3 +1,10 @@
+//! # Euler-type time integrators
+//!
+//! Forward, midpoint, Heun, semi-implicit (symplectic) and backward Euler for
+//! ODE systems and mechanical systems. Not a PDE module: spatial
+//! discretisations and boundary conditions live in the solver modules
+//! ([`crate::sim::structured`], [`crate::sim::physics_fem`], ...).
+
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;

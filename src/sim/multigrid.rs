@@ -276,6 +276,12 @@ impl MultigridSolver {
                 ext[ax] = nc;
             }
         }
+        let coarse = &self.levels[l + 1];
+        for (p, v) in cur.iter_mut().enumerate() {
+            if coarse.op.is_dirichlet(p) {
+                *v = 0.0;
+            }
+        }
         cur
     }
 

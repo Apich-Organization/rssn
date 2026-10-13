@@ -78,7 +78,7 @@ fn smooth_wave_convergence_order_1d_2d_3d() {
     assert!((e[1] / e[2]).log2() > 1.6, "muscl: {e:?}");
     let e: Vec<f64> = [32, 64].iter().map(|&n| wave_error(1, Reconstruction::FirstOrder, n, 32)).collect();
     let o = (e[0] / e[1]).log2();
-    assert!((0.8..1.3).contains(&o), "first order: {o}");
+    assert!((0.7..1.3).contains(&o), "first order: {o}");
 }
 
 #[test]

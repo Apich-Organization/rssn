@@ -1,3 +1,14 @@
+//! # Boundary element method (Laplace equation)
+//!
+//! | Problem | Dimension | Elements | Data | Solver |
+//! |---|---|---|---|---|
+//! | interior Laplace | 2D | constant segments | potential or flux per element | dense LU |
+//! | interior Laplace | 3D | constant triangles on a closed surface | potential or flux per element | dense LU |
+//!
+//! [`crate::sim::bem_aca`] adds an iterative GMRES solve with hierarchical
+//! ACA compression of the far field for the 3D problem. Exterior problems,
+//! higher-order elements and Helmholtz kernels are not available.
+
 use std::ops::Add;
 use std::ops::Mul;
 use std::ops::Sub;

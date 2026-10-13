@@ -29,6 +29,19 @@
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_18.png)
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_19.png)
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fvm_advection_frame_20.png)
+//!
+//! # Coverage audit
+//!
+//! | Equation | 1D | 2D | 3D | Scheme | Boundary conditions |
+//! |---|---|---|---|---|---|
+//! | linear advection | yes | yes | yes | first-order upwind | callback-selected fixed value |
+//! | Burgers | yes | no | no | Lax–Friedrichs | fixed |
+//! | shallow water | yes | no | no | Lax–Friedrichs | fixed |
+//!
+//! High-order finite volumes (MUSCL with four limiters, WENO5; HLLC, Roe and
+//! Rusanov solvers; Euler in 1D–3D and shallow water in 1D–2D; transmissive,
+//! reflective, periodic and fixed-state faces) are in [`crate::sim::euler_nd`];
+//! nodal discontinuous Galerkin (1D/2D) is in [`crate::sim::dg`].
 
 use rayon::prelude::*;
 use serde::Deserialize;

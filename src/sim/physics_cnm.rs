@@ -1,3 +1,14 @@
+//! # Crank–Nicolson solvers
+//!
+//! | Equation | 1D | 2D | 3D | Boundary conditions |
+//! |---|---|---|---|---|
+//! | Schrödinger | yes | no | no | vanishing wavefunction |
+//! | heat | yes | yes (ADI) | no | Dirichlet |
+//!
+//! The θ-method on 1D/2D/3D grids with Robin, Neumann, periodic faces,
+//! time-dependent data and adaptive step control is in
+//! [`crate::sim::structured`].
+
 use num_complex::Complex;
 use rayon::prelude::*;
 use serde::Deserialize;

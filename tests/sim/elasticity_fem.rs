@@ -130,7 +130,7 @@ fn manufactured_error(degree: usize, n: usize) -> f64 {
         let (da, db) = (1.0 - 2.0 * x[0], 1.0 - 2.0 * x[1]);
         let u1v = sx * sy;
         let f1 = -((lam + mu) * (-PI * PI * u1v + da * db) + mu * (-2.0 * PI * PI * u1v));
-        let f2 = -((lam + mu) * (PI * PI * cx * cy - 2.0 * a(x[0])) + mu * (-2.0 * a(x[1])));
+        let f2 = -((lam + mu) * (PI * PI * cx * cy - 2.0 * a(x[0])) + mu * (-2.0 * a(x[1]) - 2.0 * a(x[0])));
         [f1, f2, 0.0]
     };
     let bcs = MarkerBcs::with_default(ElasticBoundary::clamped());

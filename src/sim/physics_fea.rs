@@ -40,6 +40,16 @@
 //!
 //! let k = element.local_stiffness_matrix();
 //! ```
+//!
+//! # Coverage audit
+//!
+//! | Element | Dimension | Analyses | Supports / loads |
+//! |---|---|---|---|
+//! | bar, Euler–Bernoulli beam | 1D / 2D frames | static, modal | fixed DOFs, nodal loads |
+//! | CST triangle (plane stress / strain), quadrilateral | 2D | static, stress recovery | fixed DOFs, nodal loads |
+//!
+//! Distributed traction, mixed displacement/traction markers, P2 triangles and 3D
+//! tetrahedra are in [`crate::sim::elasticity_fem`].
 
 use serde::Deserialize;
 use serde::Serialize;
