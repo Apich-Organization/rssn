@@ -7,11 +7,12 @@
 //!
 //! ## Coverage
 //!
-//! Scenarios are fixed-geometry wrappers around the typed models. The
-//! dimension-generic engines ([`crate::sim::md_engine`],
-//! [`crate::sim::spin_models`], [`crate::sim::sph`], [`crate::sim::nbody`],
-//! [`crate::sim::relativity`]) are used through their Rust APIs and are not
-//! (yet) reachable by scenario name.
+//! The first group of scenarios are fixed-geometry wrappers around the typed
+//! models. The dimension-generic continuum and particle engines are reachable
+//! by name through [`ENGINE_SCENARIOS`] (see
+//! [`scenario_engines`](super::scenario_engines) for the table of problems and
+//! parameters); every parameter of those has a default, so `{}` is a valid
+//! request.
 
 use ndarray::Array2;
 use num_complex::Complex;
@@ -41,7 +42,27 @@ pub const SCENARIOS: &[&str] = &[
     "ising_wolff",
     "sod_shock_tube",
     "kepler_symplectic",
+    "poisson_multigrid",
+    "heat_nd",
+    "wave_nd",
+    "euler_fv",
+    "dg_conservation",
+    "acoustics_pml",
+    "yee_fdtd",
+    "navier_stokes_mac",
+    "split_step",
+    "fem_simplex",
+    "elasticity_fem",
+    "bem_laplace",
+    "sph",
+    "dpd",
+    "md_lj",
+    "spin_model",
+    "nbody_gravity",
+    "kerr_geodesic",
 ];
+
+pub use super::scenario_engines::ENGINE_SCENARIOS;
 
 fn parse<T: DeserializeOwned>(params: &str) -> Result<T, String> {
     serde_json::from_str(params).map_err(|e| format!("invalid parameters: {e}"))
@@ -184,11 +205,14 @@ pub fn run(
             let frames = schrodinger_quantum::run_schrodinger_simulation(&r.params, &mut r.initial_psi)?;
             json!({ "frames": encode(&frames)? })
         },
-        | _ => {
-            return Err(format!(
-                "unknown scenario `{name}`; known: {}",
-                SCENARIOS.join(", ")
-            ));
+        | other => match super::scenario_engines::run(other, params) {
+            | Some(result) => result?,
+            | None => {
+                return Err(format!(
+                    "unknown scenario `{name}`; known: {}",
+                    SCENARIOS.join(", ")
+                ));
+            },
         },
     };
     serde_json::to_string(&value).map_err(|e| e.to_string())

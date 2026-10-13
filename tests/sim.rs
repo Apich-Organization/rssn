@@ -66,6 +66,12 @@ mod elasticity_fem;
 mod bem_aca;
 #[path = "sim/continuum_ext.rs"]
 mod continuum_ext;
+#[path = "sim/continuum_ext2.rs"]
+mod continuum_ext2;
+#[path = "sim/continuum_ext3.rs"]
+mod continuum_ext3;
+#[path = "sim/scenario_engines.rs"]
+mod scenario_engines;
 #[path = "sim/structured.rs"]
 mod structured;
 #[path = "sim/physics_sm.rs"]

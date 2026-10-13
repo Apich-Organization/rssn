@@ -49,6 +49,8 @@ pub mod physics_md;
 pub mod physics_mm;
 /// Multigrid methods.
 pub mod physics_mtm;
+/// Dissipative particle dynamics (2D/3D).
+pub mod dpd;
 /// Linear acoustics / scalar wave equation with PML (1D-3D).
 pub mod acoustics;
 /// Iterative 3D BEM with ACA-compressed operators and GMRES.
@@ -75,6 +77,8 @@ pub mod physics_rkm;
 /// Spectral methods.
 pub mod physics_sm;
 pub mod scenario;
+/// Named JSON scenarios of the continuum and particle engines.
+pub mod scenario_engines;
 /// Ewald summation and particle-mesh Ewald.
 pub mod ewald;
 /// Dimension-generic molecular dynamics engine.

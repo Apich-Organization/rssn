@@ -1095,3 +1095,7 @@ pub fn refine_mesh(
 
     (new_nodes, new_elements)
 }
+
+/// Distributed loads, mixed displacement/traction markers, P2 triangles and
+/// 3D tetrahedra: see [`crate::sim::elasticity_fem`].
+pub use crate::sim::elasticity_fem::{ElasticityProblem, Model as ElasticModel, solve as solve_elasticity_simplex};

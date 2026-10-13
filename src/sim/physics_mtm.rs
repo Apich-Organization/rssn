@@ -500,3 +500,31 @@ pub fn simulate_2d_poisson_multigrid_scenario() -> Result<Vec<f64>, String> {
 
     solve_poisson_2d_multigrid(N, &f, 10)
 }
+
+/// Geometric multigrid for `-Δu + σu = f` on a 1D, 2D or 3D grid.
+///
+/// Face conditions may be Dirichlet, Neumann, Robin or periodic; V, W or full
+/// multigrid cycles. Data are stored with `x` fastest.
+///
+/// # Errors
+/// For inconsistent sizes or boundary descriptions.
+pub fn solve_poisson_multigrid_nd(
+    dims: &[usize],
+    spacing: &[f64],
+    f: &[f64],
+    sigma: f64,
+    bcs: &crate::sim::boundary::FaceBcs,
+    options: crate::sim::multigrid::MgOptions,
+) -> Result<crate::sim::multigrid::MgResult, String> {
+    if dims.len() != spacing.len() || f.len() != dims.iter().product::<usize>() {
+        return Err("inconsistent grid description".into());
+    }
+    let hi: Vec<f64> = (0..dims.len())
+        .map(|a| {
+            let periodic = bcs.axis_periodic(a).unwrap_or(false);
+            spacing[a] * if periodic { dims[a] } else { dims[a] - 1 } as f64
+        })
+        .collect();
+    let grid = crate::sim::structured::Grid::new(dims, &vec![0.0; dims.len()], &hi, bcs)?;
+    crate::sim::multigrid::MultigridSolver::new(&grid, bcs, sigma, options)?.solve(f, 0.0)
+}

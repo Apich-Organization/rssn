@@ -735,3 +735,8 @@ pub fn simulate_3d_advection_scenario() -> Vec<f64> {
 
     solve_advection_3d(&mut mesh, velocity, dt, steps, boundary_conditions)
 }
+
+/// High-order finite volumes (MUSCL / WENO5, HLLC / Roe, Euler and shallow
+/// water in 1D–3D) of [`crate::sim::euler_nd`], the successor of the
+/// first-order solvers of this module.
+pub use crate::sim::euler_nd::{FvConfig, FvGrid, GasBc, Law, Reconstruction, RiemannSolver, SlopeLimiter, solve as solve_conservation_law_nd};

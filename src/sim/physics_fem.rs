@@ -520,3 +520,18 @@ pub fn simulate_3d_poisson_scenario() -> Result<Vec<f64>, String> {
 
     solve_poisson_3d(N_ELEMENTS, force)
 }
+
+/// Poisson/reaction–diffusion `-Δu + c u = f` on interval, triangle or
+/// tetrahedron meshes with P1/P2 elements and marker boundary conditions.
+///
+/// # Errors
+/// For unsupported boundary conditions or a singular system.
+pub fn solve_poisson_simplex(
+    space: &crate::sim::fem_simplex::FemSpace,
+    c: f64,
+    source: &dyn Fn(f64, [f64; 3]) -> f64,
+    bcs: &crate::sim::boundary::MarkerBcs<crate::sim::boundary::BoundaryCondition>,
+) -> Result<Vec<f64>, String> {
+    let prob = crate::sim::fem_simplex::FemProblem { k: 1.0, c, f: source, bcs };
+    crate::sim::fem_simplex::solve_static(space, &prob, 0.0, crate::sim::structured::LinearSolver::Auto)
+}

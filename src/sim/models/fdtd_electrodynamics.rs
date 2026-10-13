@@ -192,3 +192,6 @@ pub fn simulate_and_save_final_state(
 
     Ok(())
 }
+
+/// General Yee solver (1D–3D, PEC/periodic/PML faces, TF/SF): see [`crate::sim::yee_fdtd`].
+pub use crate::sim::yee_fdtd::{Yee, YeeConfig};
