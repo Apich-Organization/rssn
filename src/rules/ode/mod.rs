@@ -39,7 +39,10 @@
 //! `μ(x y)`; equations that are nonlinear in `y'` (branches of `y'`;
 //! Clairaut `y = C x + g(C)`; d'Alembert/Lagrange and `x`-solved equations
 //! as parametric answers `list(x = X(p, C1), y(x) = Y(p, C1))` with
-//! `p = y'`); second-order linear equations by a polynomial or
+//! `p = y'`, the parameter eliminated whenever `X(p) = x` can be solved for
+//! `p` with short branches (explicit `y(x)`) or the two expressions are
+//! rational in `p` (the implicit relation `F(x, y(x)) = 0` by a resultant is
+//! then the third element of the list)); second-order linear equations by a polynomial or
 //! exponential solution and reduction of order (the second solution is
 //! an inert `integral(…)` when it has no closed form) or, without one, by
 //! the normal form `y = u exp(-½ ∫ a₁/a₂)`.
@@ -54,8 +57,18 @@
 //! up to degree three for autonomous polynomial systems in three or four
 //! unknowns (`list(x(t)^2 + y(t)^2 - C1 = 0, …)`).
 //!
+//! Linear second-order equations with polynomial coefficients that no
+//! other method solves: Gauss and Kummer equations are recognised and
+//! answered with `hyper2f1(a, b, c, x)` / `hyper1f1(a, b, x)` (both
+//! solutions, non-integer `c`, `b`); otherwise the Frobenius method at
+//! `x = 0` or at a regular singular rational root of the leading
+//! coefficient gives both exponents, with the logarithmic solution when
+//! they differ by an integer, as truncated series (eight terms, the order
+//! written `big_o(t^n)`).
+//!
 //! | operator | value |
 //! |---|---|
+//! | `ode_frobenius(eq, y(x), x0, n)` | `list(y(x) = C1 y1 + C2 y2, list(r1, r2), recurrence)`: Frobenius series to order `n` about `x0`, the indicial roots and the explicit finite recurrence of the larger exponent |
 //! | `ode_series(eq, y(x), x0, n)` | the power-series solution about `x0` to order `n` |
 //! | `rsolve_z(eq, y(n), conditions?)` | a linear recurrence solved by the z transform |
 //! | `ode_classify(eq, y(x))` | the list of classes the equation belongs to |
@@ -2281,10 +2294,9 @@ mod tests {
         assert!(solved_for_x.starts_with("list(x = p^3 + p, y(x) = 3/4*p^4 + 1/2*p^2 + C1, "), "{solved_for_x}");
         // The third element is the implicit relation with p eliminated by a
         // resultant: it vanishes on the parametric curve.
-        let relation = solved_for_x.rsplit(", ").next().unwrap_or("").trim_end_matches(')').trim_end_matches(" = 0").replace("y(x)", "yy");
         let relation = solved_for_x
             .split_once("C1, ")
-            .map_or(relation.clone(), |(_, r)| r.trim_end_matches(')').trim_end_matches(" = 0").replace("y(x)", "yy"));
+            .map_or_else(String::new, |(_, r)| r.trim_end_matches(')').trim_end_matches(" = 0").replace("y(x)", "yy"));
         for p in [0.7_f64, -0.4, 1.3] {
             let (x, y, c) = (p.powi(3) + p, 0.75 * p.powi(4) + 0.5 * p * p + 0.3, 0.3);
             let value = crate::rules::testing::eval(&rules, &relation, &[("x", x), ("yy", y), ("C1", c)]);

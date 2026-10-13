@@ -1,6 +1,8 @@
 //! `root_of(k, c0, c1, ..., cn)`: the `k`-th real root (counted from 0 in
 //! ascending order) of the polynomial `c0 + c1 x + ... + cn x^n`, as an
-//! exact object. The coefficients are the arguments, so the object has
+//! exact object.
+//!
+//! The coefficients are the arguments, so the object has
 //! numeric semantics wherever the coefficients have (they may be
 //! parameters); the kernel keeps the value canonical so that equal numbers
 //! have equal representations:
@@ -72,7 +74,7 @@ fn real_roots_by_factor(q: &[BigRational]) -> Vec<(Vec<BigInt>, usize, (BigRatio
             all.push((factor.clone(), j, refined));
         }
     }
-    all.sort_by(|a, b| (&a.2.0 + &a.2.1).cmp(&(&b.2.0 + &b.2.1)));
+    all.sort_by_key(|a| &a.2.0 + &a.2.1);
     all
 }
 

@@ -50,7 +50,7 @@ use crate::rules::poly::repr::from_term;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Limits;
 use crate::rules::poly::repr::to_term;
-use crate::rules::solve::eliminate;
+use crate::rules::solve::elim::eliminate;
 use crate::rules::solve::solve_for;
 
 /// `v' = (1 - n)(a v + b)` for `v = y^(1 - n)`.

@@ -90,7 +90,7 @@ pub(super) fn resultant(
 /// Eliminates the unknown `v` from `f = 0` and `g = 0`: the resultant of
 /// their numerators with respect to `v`, as a term (`None` unless both
 /// are polynomial in `v`, i.e. no other generator depends on `v`).
-pub(crate) fn eliminate(
+pub fn eliminate(
     graph: &mut Graph,
     f: NodeId,
     g: NodeId,

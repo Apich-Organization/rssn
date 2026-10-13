@@ -315,7 +315,8 @@ pub(super) fn frobenius_at_zero(
     // Second solution.
     let difference = &r1 - &r2;
     let (log_coefficient, second);
-    if !is_integer(&difference) {
+    let non_integer = !is_integer(&difference);
+    if non_integer {
         let mut series = vec![q(1)];
         for k in 1..=n {
             let value = step(&r2, k, &series)? / f(&(&r2 + kq(k)));

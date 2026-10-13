@@ -393,7 +393,7 @@ pub(super) struct SolveBox {
 }
 
 fn split_args(
-    graph: &mut Graph,
+    graph: &Graph,
     equations: NodeId,
     unknowns: NodeId,
 ) -> Option<(Vec<NodeId>, Vec<SymbolId>, bool)> {

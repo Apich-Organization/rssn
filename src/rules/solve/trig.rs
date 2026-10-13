@@ -1,16 +1,17 @@
 //! Trigonometric equations in one unknown.
 //!
 //! All the circular functions of the unknown must have arguments `k x + c`
-//! with rational `k` (any rational multipliers) and constants `c`; the
-//! first shift `s = c/k` is the reference, and arguments with another
-//! shift are expanded by the addition formulas (`sin(kx + c) = sin kx cos c
-//! + cos kx sin c`). With `θ = g (x + s)` (`g` the
-//! rational gcd of the `k`) every argument is an integer multiple `m θ`, and
-//! `sin(mθ)`, `cos(mθ)` are polynomials in `S = sin θ`, `C = cos θ`
-//! (`tan`, `cot`, `sec`, `csc` are quotients). The numerator `N(S, C)` is
-//! (multiples up to 96, with the term caps of the polynomial layer as the
-//! cost bound) reduced modulo `S² + C² = 1` and solved by the first
-//! applicable method:
+//! with rational `k` (any rational multipliers) and constants `c`. The
+//! first shift `s = c/k` is the reference; arguments with another shift
+//! are expanded by the addition formulas (`sin(kx + c) = sin kx cos c +
+//! cos kx sin c`).
+//!
+//! With `θ = g (x + s)` (`g` the rational gcd of the `k`) every argument is
+//! an integer multiple `m θ`, and `sin(mθ)`, `cos(mθ)` are polynomials in
+//! `S = sin θ`, `C = cos θ` (multiples up to 96, with the term caps of the
+//! polynomial layer as the cost bound; `tan`, `cot`, `sec`, `csc` are
+//! quotients). The numerator `N(S, C)` is reduced modulo `S² + C² = 1` and
+//! solved by the first applicable method:
 //!
 //! * a polynomial in `S` alone: `θ = asin(s) + 2πn` and `π - asin(s) + 2πn`;
 //! * a polynomial in `C` alone: `θ = ±acos(c) + 2πn`;

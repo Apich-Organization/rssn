@@ -17,10 +17,34 @@
 //! sub-solvers of the heuristics module transform it (absolute values,
 //! the Weierstrass substitution, Lambert W, `x^x`, sums of logarithms
 //! combined into one, logarithmic substitutions, square roots isolated and
-//! squared one at a time) and hand the result back to the solver; polynomials of
-//! degree three and four get Cardano's and Ferrari's formulas, higher ones
-//! numeric roots (see the quintic notes below); non-polynomial systems are solved by elimination. Every
-//! candidate is checked against the original equation.
+//! squared one at a time) and hand the result back to the solver;
+//! polynomials of degree three and four get Cardano's and Ferrari's
+//! formulas (also with symbolic coefficients); non-polynomial systems are
+//! solved by elimination. Every candidate is checked against the original
+//! equation.
+//!
+//! * **Quartics with parameters** by Ferrari/Descartes through the resolvent
+//!   cubic `8 m^3 + 8 p m^2 + (2 p^2 - 8 r) m - q^2`, whose largest real
+//!   root is positive (so `sqrt(2 m)` is defined); both its Cardano and
+//!   its trigonometric expression are offered, plus the biquadratic case
+//!   `q = 0`. As for cubics, a formula is real only on part of the
+//!   parameter space; formulas that are right wherever they are defined are
+//!   kept.
+//! * **Quintics and higher degrees.** An irreducible rational quintic is
+//!   classified by Dummit's sextic resolvent (exact integer arithmetic on
+//!   roots computed to 190 digits): `F20`, `C5`/`D5` are solvable, `A5`/`S5`
+//!   are not. A solvable quintic with one real root is written in radicals
+//!   through Lagrange resolvents (the real root is `shift + (1/5λ) Σ R^(1/5)`
+//!   over the roots of a quartic with coefficients in `Q(sqrt 5)`; so
+//!   `x^5 - 5 x + 12` and `x^5 + 15 x + 12` come out in radicals).
+//!   de Moivre quintics `x^5 + 5 a x^3 + 5 a^2 x + b` with parameters are
+//!   solved by `x = u - a/u` (real fifth roots, or the cosine form for five
+//!   real roots). Every other real root of an irreducible factor of degree
+//!   five or more (unsolvable quintics, solvable ones with five real roots,
+//!   higher degrees) is an exact `root_of(k, c0, ..., cn)` object, the
+//!   `k`-th real root of the polynomial, canonical across factorisations,
+//!   with rigorous numeric evaluation; `solve` therefore always returns
+//!   every real root. In numeric runs the values are returned instead.
 //!
 //! Beyond that, the sub-solvers interlock:
 //!
@@ -43,7 +67,8 @@
 //!   inverse circular functions through their tangent, and `A^B = C^D` by
 //!   logarithms of both sides.
 //! * **Trigonometric equations** whose arguments are `k (x + s)` are
-//!   expanded into polynomials in `sin θ`, `cos θ` and solved with the
+//!   (any rational multipliers up to a multiple-angle index of 96, mixed shifts
+//!   by the addition formulas) expanded into polynomials in `sin θ`, `cos θ` and solved with the
 //!   polynomial in `sin θ` or `cos θ` alone or the Weierstrass substitution
 //!   (covering `a sin x + b cos x = c`, multiple angles and sum-to-product
 //!   forms); solutions that are rational multiples of `π` are written as
@@ -51,7 +76,10 @@
 //!   an integer parameter `n` (`n1`, … if taken): `solve_general(sin(x) =
 //!   1/2, x)` is `list(2 n π + π/6, 2 n π + 5π/6)`. Families that agree
 //!   modulo a fraction of the period are merged, and a family valid only
-//!   for some residues of `n` is restricted to them. Other periodic
+//!   for some residues of `n` is restricted to them. Membership is checked
+//!   for all integers `n`: the residual is proved periodic in `n` (every
+//!   circular argument is affine in `n` with a rational multiple of `π` as
+//!   slope), and one period of residues is tested. Other periodic
 //!   functions of an inner expression (`sin(x^2) = c`) get their families
 //!   through the inverse functions.
 //!
@@ -77,8 +105,22 @@
 //! In numeric mode, when no closed form exists, the residual is scanned for
 //! sign changes (one equation) or damped Newton runs from a spread of
 //! starting points find roots of a system; `nsolve(list(eqs), list(vars),
-//! list(guess))` is Newton from the guess. These are not certified, unlike
-//! the Sturm sequences used for polynomials.
+//! list(guess))` is Newton from the guess. These searches are not
+//! exhaustive; the certified operators below are. Polynomials use Sturm
+//! sequences.
+//!
+//! Certified roots (interval Newton / Krawczyk on the interval arithmetic
+//! of the tape backend, with the symbolic Jacobian): a scalar `nsolve`
+//! returns a ball whose radius is a *proved* bound when a Krawczyk
+//! enclosure exists; `nsolve_certified(eq(s), var(s), guess)` returns the
+//! enclosing interval(s) `list(lo, hi)` of the unique root in them;
+//! `solve_box(eq(s), var(s), list(list(lo, hi), ...))` is an exhaustive
+//! bisection with exclusion tests and Krawczyk certification over a box,
+//! returning `list(verified boxes, unresolved boxes)`: every root in the
+//! region lies in a verified box (each containing exactly one root) unless
+//! the second list is non-empty (roots of even multiplicity, singular
+//! Jacobians, regions where the functions are undefined, an exhausted
+//! budget), so an empty second list is a proof of completeness.
 //!
 //! Inverse functions are taken on their principal branch by `solve`, so
 //! periodic equations yield one representative per branch; `solve_general`
@@ -126,8 +168,7 @@ use super::poly::repr::Poly;
 use super::poly::univariate;
 
 mod certified;
-mod elim;
-pub(crate) use elim::eliminate;
+pub(crate) mod elim;
 mod heuristics;
 mod inequality;
 mod numeric;
