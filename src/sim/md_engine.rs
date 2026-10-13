@@ -1507,7 +1507,7 @@ impl<const D: usize> MdSimulation<D> {
                 let g = diff / (2.0 * dot(&s, &r_old) * (1.0 / mi + 1.0 / mj));
                 for a in 0..D {
                     for b in 0..D {
-                        self.constraint_virial[a][b] -= g * r_old[a] * r_old[b] / (h * h);
+                        self.constraint_virial[a][b] -= 2.0 * g * r_old[a] * r_old[b] / (h * h);
                     }
                 }
                 for a in 0..D {

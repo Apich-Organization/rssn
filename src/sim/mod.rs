@@ -81,6 +81,8 @@ pub mod md_engine;
 pub mod nbody;
 /// Adaptive 2-D and 3-D fast multipole methods.
 pub mod fmm;
+/// Chain and algorithmic regularisation for few-body gravity.
+pub mod chain;
 /// Kerr-Newman geodesics.
 pub mod relativity;
 /// Smoothed-particle hydrodynamics in 1-3 dimensions.

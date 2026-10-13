@@ -122,6 +122,72 @@ impl Scheme {
     }
 }
 
+/// Step-size multipliers `c_i` (summing to 1) of the symmetric composition
+/// `S(c_1 h) S(c_2 h) ...` that lifts a symmetric second-order step `S` to the even `order`
+/// (Yoshida sequences for 6 and 8, Suzuki triple jumps beyond).
+///
+/// # Errors
+/// Fails for odd or zero `order`.
+pub fn composition_weights(order: usize) -> Result<Vec<f64>, String> {
+    if order == 0 || order % 2 != 0 {
+        return Err("composition order must be even and positive".into());
+    }
+    let seq = |w: &[f64]| -> Vec<f64> {
+        let w0 = 1.0 - 2.0 * w.iter().sum::<f64>();
+        let mut s: Vec<f64> = w.iter().rev().copied().collect();
+        s.push(w0);
+        s.extend(w.iter().copied());
+        s
+    };
+    let triple = |base: &[f64], p: usize| -> Vec<f64> {
+        let g = 1.0 / (2.0 - 2.0_f64.powf(1.0 / (p as f64 + 1.0)));
+        let mid = 1.0 - 2.0 * g;
+        let mut out = Vec::new();
+        for c in [g, mid, g] {
+            out.extend(base.iter().map(|w| w * c));
+        }
+        out
+    };
+    Ok(match order {
+        2 => vec![1.0],
+        4 => triple(&[1.0], 2),
+        6 => seq(&[-1.17767998417887, 0.235573213359357, 0.784513610477560]),
+        8 => seq(&[-1.61582374150097, -2.44699182370524, -0.00716989419708120, 2.44002732616735, 0.157739928123617, 1.82020630970714, 1.04242620869991]),
+        _ => {
+            let mut w = composition_weights(8)?;
+            let mut p = 8;
+            while p < order {
+                w = triple(&w, p);
+                p += 2;
+            }
+            w
+        },
+    })
+}
+
+/// Time-transformed leapfrog composed to the even `order` (4, 6, 8, ...): the TTL step is a
+/// symmetric second-order integrator of the extended Hamiltonian `ln(T + B) - ln(-V)`, so
+/// composition with [`composition_weights`] removes the `O(h^2)` energy error of the plain scheme.
+///
+/// # Errors
+/// Fails for an invalid `order`.
+pub fn ttl_step_composed<F>(
+    s: &mut TtlState,
+    mass: &[f64],
+    b: f64,
+    h: f64,
+    order: usize,
+    potential_grad: &mut F,
+) -> Result<(), String>
+where
+    F: FnMut(&[f64], &mut [f64]) -> f64,
+{
+    for c in composition_weights(order)? {
+        ttl_step(s, mass, b, c * h, potential_grad);
+    }
+    Ok(())
+}
+
 /// Symmetric composition `S(w_k h) ... S(w_1 h) S(w_0 h) S(w_1 h) ... S(w_k h)` of Verlet.
 fn yoshida_weights(w: &[f64]) -> Vec<(f64, f64)> {
     let w0 = 1.0 - 2.0 * w.iter().sum::<f64>();
