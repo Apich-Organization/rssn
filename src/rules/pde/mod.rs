@@ -62,26 +62,45 @@
 //! | biharmonic, beam `u_tt + k u_xxxx` | box | 1, 2 | expansion (the symbol `Σ c_α Π (-λ_j)^{α_j/2}` is generic in the even operator), simply supported / sliding edges |
 //! | advection `a·∇u + c u = f` | whole space | any | characteristics, invariants `a_j x_l - a_l x_j` |
 //! | hyperbolic and parabolic *systems* with constant matrices | any domain of the scalar solvers | 1, 2, 3 | simultaneous diagonalisation `P^{-1} A_α P = diag`, scalar solution, `U = P W` |
-//! | | first-order systems without distinct eigenvalues, whole space, no sources | 1, 2, 3 | common Jordan basis (generalised eigenvectors), `w_a = Σ_j q_j(t, ∂) S_{a+j}` with polynomial `q_j` in `t` |
+//! | | first-order systems without distinct eigenvalues (Jordan chains) | whole space with sources; bounded domains for derivative-free couplings and homogeneous boundary values | 1, 2, 3 | common Jordan basis, `w_a = Σ_j q_j(t, ∂) S_{a+j}` with polynomial `q_j` in `t`; sources by Duhamel with `(t - τ)^k` expanded into scalar solves with sources `τ^l s` |
+//! | `a(x) u_xx + b(x) u_x + c(x) u` with smooth `a, b, c` | interval, Dirichlet / Neumann / Robin with zero values | 1 | numeric Sturm–Liouville operators `sl_eigen`, `sl_mode`, `sl_weight` (Prüfer shooting on Chebyshev samples of `p = exp ∫ b/a`, `w = p/a`, `q = -p c/a`), expansion with integral coefficients |
+//! | | `x < 0` Euler–Cauchy, several Euler variables | 1, 2 | `x = ± e^s` per variable, recursively |
+//! | heat on the half-line with Robin condition; Neumann with drift | half-line | 1 | heat kernel with the Robin image `-κ e^{κ(x+s)+κ²Dτ} erfc(…)` |
+//! | | outside a ball, Robin / Neumann / Dirichlet, radial | 3 | `v = r u` on the half-line with Robin number `p/q - 1/R` |
+//! | | outside a disk, radial, homogeneous D / N / R | 2 | Weber's transform: `∫ k e^{-Dk²t} Φ_k(r) ∫ ρ f Φ_k dρ /(A²+B²) dk` with cylinder functions `Φ_k` |
+//! | massive and damped waves | whole space with sources | 1, 2, 3 | Duhamel with the velocity-data kernels (Riemann `J_0`/`I_0`, descent) |
+//! | | disk, ball: Robin conditions with `h + ν < 0` | 2, 3 | extra mode `I_ν(κ r)` (`bessel_neg_root`), `r^ν` for `h + ν = 0`; Robin intervals with two negative modes (`sl_neg_root_n`) |
+//! | | odd powers in Fourier–Bessel moments | 2 | closed by Struve functions `struve_h` (`struve_l` is provided for completeness) |
 //!
-//! Limitations: the equation must have constant coefficients (apart from
-//! the polar, cylindrical and spherical Laplacians, Euler–Cauchy and
-//! Legendre operators in one variable); eigenvalues of Robin problems are
-//! `sl_root(..)` / `bessel_root(..)` / `annulus_root(..)` placeholders
-//! (roots of transcendental equations, evaluated numerically; at most one
-//! zero or negative mode per Robin interval, `sl_neg_root`; the Bessel
-//! problems of disks, balls and annuli assume a positive spectrum);
-//! azimuthal data of a ball must be a trigonometric polynomial; radial
-//! moments of odd powers (Struve functions) and of non-polynomial data stay
-//! integrals; exterior domains are covered for Laplace and Helmholtz
-//! problems with homogeneous equations and, for the heat and wave equations,
-//! radial data with a Dirichlet condition outside a ball (no exterior heat
-//! equation in the plane, no Robin condition); massive waves in two and
-//! three dimensions are homogeneous (no sources) on whole space; Jordan
-//! systems are first-order, source-free and on whole space (derivatives do
-//! not preserve boundary conditions); the Euler–Cauchy reduction handles one
-//! Euler variable with `x > 0`; general Liouville transformations
-//! (arbitrary `p(x)`, `w(x)`) are not attempted.
+//! Limitations (what is still not covered):
+//!
+//! * Constant coefficients are required except for the polar, cylindrical
+//!   and spherical Laplacians, Euler–Cauchy and Legendre operators and the
+//!   one-variable regular Sturm–Liouville form above (smooth coefficients;
+//!   singular endpoints other than the Legendre and Bessel cases are not
+//!   treated; the coefficients must be free of other symbols; closed-form
+//!   Liouville normal forms are not attempted, the numeric operators are
+//!   used instead).
+//! * The Bessel problems of annuli assume a positive spectrum (no `I`/`K`
+//!   modes there); disks and balls handle one non-positive radial mode.
+//!   Robin intervals have at most two negative modes (the general maximum).
+//! * Azimuthal data of a ball must be a trigonometric polynomial (no
+//!   Fourier series in `φ`); exterior heat problems in the plane are radial
+//!   with homogeneous conditions; exterior wave problems have Dirichlet
+//!   conditions and are radial balls only.
+//! * Projections of non-polynomial radial data stay as `defint`s of numeric
+//!   integrands (evaluated by quadrature, there is no separate numeric
+//!   coefficient operator for arbitrary expressions); `struve_h` is
+//!   evaluated by series for `x < 8` and, beyond, by its integral
+//!   representation for `2ν` an integer.
+//! * Jordan systems: first order only (second-order Jordan systems are not
+//!   solved), bounded domains only with derivative-free couplings and zero
+//!   boundary values.
+//! * Green's functions are available in free space, half-spaces and, via
+//!   the eigenfunction expansion of the engines, for the bounded domains
+//!   above; a generic Green's-function constructor and a general
+//!   Fourier/Laplace/Hankel/Mellin transform fallback on unbounded domains
+//!   are not implemented beyond the Weber and Fourier solutions listed.
 //!
 //! | operator | value |
 //! |---|---|
@@ -107,6 +126,10 @@
 //! | `bessel_root(ν, h, m)` | the `m`-th positive root of `z J_ν'(z) + h J_ν(z) = 0` (Neumann: `h = 0`; Robin; the ball: `h → h - 1/2`) |
 //! | `sl_root(p₀, q₀, p₁, q₁, L, m)` | the `m`-th `k > 0` with `X'' = -k² X`, `p₀ X(0) + q₀ X'(0) = 0`, `p₁ X(L) + q₁ X'(L) = 0` |
 //! | `sl_neg_root(p₀, q₀, p₁, q₁, L)` | the `κ > 0` with `X'' = κ² X` and the same conditions (a negative eigenvalue `-κ²`); NaN if none |
+//! | `sl_neg_root_n(p₀, q₀, p₁, q₁, L, m)` | the `m`-th `κ > 0` (ascending) of the negative-eigenvalue condition (two for Robin ends of the wrong sign) |
+//! | `bessel_neg_root(ν, h)` | the `κ > 0` with `z I_ν'(z) + h I_ν(z) = 0` (NaN unless `h < -ν`) |
+//! | `struve_h(ν, x)`, `struve_l(ν, x)` | Struve functions |
+//! | `sl_eigen(m, a, b, α₀, β₀, α₁, β₁, N, p…, q…, w…)`, `sl_mode(m, x, …)`, `sl_weight(x, …)` | the `m`-th eigenvalue, normalised eigenfunction and weight of `-(p y')' + q y = μ w y` (coefficients as values at the `N + 1` Chebyshev points of `[a, b]`) |
 //! | `annulus_root(ν, pₐ, qₐ, a, p_b, q_b, b, m)` | the `m`-th `k > 0` for which `A J_ν(kr) - B Y_ν(kr)` meets `p F + q F' = 0` at `r = a` (by construction) and at `r = b` (zeros of the cross-product `J_ν(ka) Y_ν(kb) - J_ν(kb) Y_ν(ka)` for Dirichlet data) |
 //!
 //! # The expansion engine
@@ -131,12 +154,15 @@ mod elliptic;
 mod frameworks;
 mod modes;
 mod numeric;
+mod sl;
 mod spectral;
 mod sturm;
 mod symmetry;
 mod systems;
 mod util;
 mod waves;
+#[cfg(test)]
+mod completion_tests;
 #[cfg(test)]
 mod dimension_tests;
 #[cfg(test)]
@@ -221,6 +247,7 @@ enum Request {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     numeric::install(i)?;
+    sl::install(i)?;
     let heavy = |name: &str, arity: Arity| OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100);
     let at = i.op(heavy("at", Arity::Fixed(3)).flags(OpFlags::OPAQUE_ON_APPLY))?;
     let symmetries = i.op(heavy("pde_symmetries", Arity::Fixed(2)))?;
@@ -1112,7 +1139,16 @@ fn solve(
     conditions: &Conditions,
     method: Method,
 ) -> Option<NodeId> {
-    let classical = if conditions.has_robin() { None } else { solve_classical(cx, p, conditions, method) };
+    let classical = if conditions.has_robin() {
+        // Robin conditions on a half-line (heat kernels with the Robin image).
+        if matches!(method, Method::Any | Method::Heat1 | Method::Heat3 | Method::Fourier) && kind(cx, p) == "heat" {
+            diffusion::parabolic(cx, p, conditions).map(|solution| cx.graph.node(core::EQ, &[p.unknown, solution]))
+        } else {
+            None
+        }
+    } else {
+        solve_classical(cx, p, conditions, method)
+    };
     if classical.is_some() {
         return classical;
     }

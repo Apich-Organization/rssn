@@ -133,6 +133,10 @@ pub(super) enum Shape {
     /// for a ball (weight `r²`); `has_angle` when the Bessel order comes
     /// from the previous axis.
     Radial { radius: NodeId, inner: Option<(NodeId, End)>, end: End, sphere: bool, has_angle: bool },
+    /// A regular Sturm–Liouville problem on `[start, stop]` with the numeric
+    /// operators `sl_eigen`, `sl_mode`, `sl_weight` (`params` their shared
+    /// arguments after the mode index and the point).
+    General { start: NodeId, stop: NodeId, params: Vec<NodeId> },
 }
 
 #[derive(Clone, Debug)]
@@ -183,6 +187,7 @@ impl Axis {
             | Shape::Polar { .. } => Some((zero, pi(cx)?)),
             | Shape::Legendre => Some((cx.graph.int(-1), cx.graph.int(1))),
             | Shape::Radial { radius, inner, .. } => Some((inner.as_ref().map_or(zero, |(a, _)| *a), *radius)),
+            | Shape::General { start, stop, .. } => Some((*start, *stop)),
         }
     }
 
@@ -194,6 +199,11 @@ impl Axis {
             | Shape::Interval(_) | Shape::Angle | Shape::Legendre => cx.graph.int(1),
             | Shape::Polar { .. } => call(cx, "sin", &[self.var])?,
             | Shape::Radial { sphere, .. } => powi(cx.graph, self.var, if *sphere { 2 } else { 1 }),
+            | Shape::General { params, .. } => {
+                let mut args = vec![self.var];
+                args.extend(params);
+                call(cx, "sl_weight", &args)?
+            },
         })
     }
 
@@ -262,6 +272,16 @@ impl Axis {
                 let odd = add(cx.graph, &[two_n, one]);
                 let norm = div(cx, two, odd);
                 Some(vec![Family::new(mode, eigen, 0, 0, Some(norm))])
+            },
+            | Shape::General { params, .. } => {
+                let mut mode_args = vec![n, self.var];
+                mode_args.extend(params);
+                let mode = call(cx, "sl_mode", &mode_args)?;
+                let mut eigen_args = vec![n];
+                eigen_args.extend(params);
+                let eigen = call(cx, "sl_eigen", &eigen_args)?;
+                let one = cx.graph.int(1);
+                Some(vec![Family::new(mode, eigen, 1, 0, Some(one))])
             },
             | Shape::Radial { radius, inner, end, sphere, has_angle } => {
                 let order = if *has_angle { path.last()?.index } else { cx.graph.int(0) };
@@ -361,6 +381,28 @@ fn radial_families(
     } else {
         hr
     };
+    let shifted_value = super::modes::exact_value(cx, shifted);
+    // A Robin condition of the wrong sign: `h + ν < 0` gives one mode
+    // `I_ν(κ r)` with a negative eigenvalue, `h + ν = 0` a mode `r^ν`.
+    let non_positive = match (end.kind, shifted_value, order_value) {
+        | (Kind::Dirichlet, _, _) => None,
+        | (_, Some(h), Some(v)) if !constant_mode => {
+            let total = h + v;
+            if total.abs() < 1e-12 {
+                Some(0)
+            } else if total < 0.0 {
+                Some(-1)
+            } else {
+                None
+            }
+        },
+        | (_, Some(h), None) if h < 0.0 && !constant_mode => return None,
+        | _ => None,
+    };
+    if let (Some(sign), true) = (non_positive, numeric && cx.graph.number_of(n).is_some_and(Number::is_zero)) {
+        return super::modes::radial_non_positive(cx, r, radius, nu, shifted, sphere, sign).map(|f| vec![f]);
+    }
+    let constant_mode = constant_mode || non_positive.is_some();
     let sin_form_hint = sphere && order_value.is_some_and(|v| (v - 0.5).abs() < 1e-12);
     let root = match end.kind {
         | Kind::Dirichlet if sin_form_hint => {

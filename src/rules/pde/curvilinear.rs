@@ -37,6 +37,8 @@ use super::spectral::evolution_time;
 use super::spectral::finish;
 use super::spectral::interval;
 use super::spectral::time_items;
+use super::util::call;
+use super::util::defint;
 use super::util::div;
 use super::util::is_zero_number;
 use crate::graph::Cx;
@@ -498,7 +500,7 @@ fn exterior_evolution(
     far: &Condition,
 ) -> Option<NodeId> {
     let t_index = time_index?;
-    if !layout.sphere || layout.theta.is_some() || !p.homogeneous(cx.graph) || !cx.is_zero(a0) || !cx.is_zero(far.value) || end.kind != Kind::Dirichlet {
+    if layout.theta.is_some() || layout.phi.is_some() || !p.homogeneous(cx.graph) || !cx.is_zero(a0) || !cx.is_zero(far.value) {
         return None;
     }
     let n = p.dimension();
@@ -512,6 +514,9 @@ fn exterior_evolution(
     };
     let (r, t) = (p.vars[layout.r], p.vars[t_index]);
     let radius = end.point;
+    if !layout.sphere {
+        return exterior_plane_heat(cx, p, conditions, (r, t), (t_index, order), diffusivity, &end);
+    }
     // The scalar problem for w(x, t) = (x + R) u(x + R, t).
     let (x, _) = super::dummy(cx, p, "x");
     let w_symbol = cx.graph.interner_mut().fresh_symbol("w");
@@ -532,7 +537,22 @@ fn exterior_evolution(
         let q = mul(cx.graph, &[radius, q]);
         cx.simplify(q)
     };
-    list.push(Condition { on: 0, point: zero, derivative: vec![0, 0], value: boundary, robin: None });
+    if end.kind == Kind::Dirichlet {
+        list.push(Condition { on: 0, point: zero, derivative: vec![0, 0], value: boundary, robin: None });
+    } else {
+        // p u + q u_r = g at r = R with v = r u: v' + (p/q - 1/R) v = R g / q.
+        let ratio = div(cx, end.p, end.q);
+        let inverse_radius = powi(cx.graph, radius, -1);
+        let rho = sub(cx.graph, ratio, inverse_radius);
+        let rho = cx.simplify(rho);
+        let value = {
+            let q = div(cx, end.value, end.q);
+            let q = mul(cx.graph, &[radius, q]);
+            cx.simplify(q)
+        };
+        let robin = if cx.is_zero(rho) { None } else { Some(rho) };
+        list.push(Condition { on: 0, point: zero, derivative: vec![1, 0], value, robin });
+    }
     let zero_index = vec![0; n];
     for (derivative, vector) in [(zero_index.clone(), vec![0, 0]), (p.unit(t_index, 1), vec![0, 1])] {
         if let Some(c) = conditions.find(cx.graph, t_index, &derivative, None) {
@@ -554,6 +574,74 @@ fn exterior_evolution(
     let w = cx.graph.substitute(w, x, offset);
     let u = div(cx, w, r);
     Some(cx.simplify(u))
+}
+
+/// The heat equation outside a disk for radial data and a homogeneous
+/// Dirichlet, Neumann or Robin condition at `r = R` (Weber's transform):
+///
+/// `u = ∫_0^∞ k e^{-D k² t} Φ_k(r) [∫_R^∞ ρ f(ρ) Φ_k(ρ) dρ] / (A² + B²) dk`
+///
+/// with `Φ_k = A J_0(k r) - B Y_0(k r)`, `A = p Y_0(kR) - q k Y_1(kR)`,
+/// `B = p J_0(kR) - q k J_1(kR)` so that `p Φ + q Φ' = 0` at `r = R`.
+fn exterior_plane_heat(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+    (r, t): (NodeId, NodeId),
+    (t_index, order): (usize, u32),
+    diffusivity: NodeId,
+    end: &End,
+) -> Option<NodeId> {
+    if order != 1 || !cx.is_zero(end.value) {
+        return None;
+    }
+    let zero_index = vec![0; p.dimension()];
+    let initial = conditions.find(cx.graph, t_index, &zero_index, None)?;
+    if conditions.0.iter().any(|c| c.on == t_index && c.derivative != zero_index) {
+        return None;
+    }
+    let radius = end.point;
+    let (k, _) = super::dummy(cx, p, "k");
+    let (rho, _) = super::dummy(cx, p, "rho");
+    let (zero, one) = (cx.graph.int(0), cx.graph.int(1));
+    let bessel = |cx: &mut Cx<'_>, second: bool, order: NodeId, z: NodeId| call(cx, if second { "bessely" } else { "besselj" }, &[order, z]);
+    let kr0 = mul(cx.graph, &[k, radius]);
+    // A = p Y_0(kR) - q k Y_1(kR), B likewise with J.
+    let coefficient = |cx: &mut Cx<'_>, second: bool| -> Option<NodeId> {
+        let z0 = bessel(cx, second, zero, kr0)?;
+        let z1 = bessel(cx, second, one, kr0)?;
+        let first = mul(cx.graph, &[end.p, z0]);
+        let slope = mul(cx.graph, &[end.q, k, z1]);
+        Some(sub(cx.graph, first, slope))
+    };
+    let (a_coeff, b_coeff) = (coefficient(cx, true)?, coefficient(cx, false)?);
+    let phi = |cx: &mut Cx<'_>, x: NodeId| -> Option<NodeId> {
+        let kx = mul(cx.graph, &[k, x]);
+        let (j, y) = (bessel(cx, false, zero, kx)?, bessel(cx, true, zero, kx)?);
+        let first = mul(cx.graph, &[a_coeff, j]);
+        let second = mul(cx.graph, &[b_coeff, y]);
+        Some(sub(cx.graph, first, second))
+    };
+    let phi_r = phi(cx, r)?;
+    let phi_rho = phi(cx, rho)?;
+    let f_rho = cx.graph.substitute(initial.value, r, rho);
+    let oo = super::util::infinity(cx)?;
+    let body = mul(cx.graph, &[rho, f_rho, phi_rho]);
+    let inner = defint(cx, body, rho, radius, oo)?;
+    let k2 = powi(cx.graph, k, 2);
+    let decay = {
+        let e = mul(cx.graph, &[diffusivity, k2, t]);
+        let e = neg(cx.graph, e);
+        call(cx, "exp", &[e])?
+    };
+    let norm = {
+        let (a2, b2) = (powi(cx.graph, a_coeff, 2), powi(cx.graph, b_coeff, 2));
+        let total = add(cx.graph, &[a2, b2]);
+        powi(cx.graph, total, -1)
+    };
+    let outer_body = mul(cx.graph, &[k, decay, phi_r, inner, norm]);
+    let u = defint(cx, outer_body, k, zero, oo)?;
+    Some(u)
 }
 
 /// `Δu = f(r)` with a polynomial `f` and Dirichlet data on `r = R`: the

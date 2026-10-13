@@ -46,6 +46,10 @@ use crate::rules::complex::build::mul;
 use crate::rules::complex::build::neg;
 use crate::rules::complex::build::sub;
 use crate::rules::poly::best;
+use crate::rules::poly::repr::Gens;
+use crate::rules::poly::repr::Limits;
+use crate::rules::poly::repr::from_term;
+use crate::rules::poly::repr::to_term;
 use crate::rules::solve::solve_for;
 
 type Matrix = Vec<Vec<NodeId>>;
@@ -456,7 +460,7 @@ pub(super) fn solve_system(
         }
     }
     let mut jordan: Option<JordanData> = None;
-    if found.is_none() && order == 1 && source.iter().all(|&e| cx.is_zero(e)) {
+    if found.is_none() && order == 1 {
         // No distinct eigenvalues: Jordan chains (polynomial factors in t).
         if let Some((p, p_inverse, diagonals, data)) = jordan_decouple(cx, &a_matrices, &candidates) {
             found = Some((p, p_inverse, diagonals));
@@ -469,48 +473,39 @@ pub(super) fn solve_system(
         | Some(list) => group_conditions(cx, &problems, list)?,
         | None => Vec::new(),
     };
-    if jordan.is_some() && shapes.iter().any(|shape| shape.on != time) {
-        // Derivatives of the solution do not preserve boundary conditions.
-        return None;
+    if let Some(data) = &jordan {
+        // Derivatives of the solution do not preserve boundary conditions:
+        // bounded domains need couplings without derivatives and
+        // homogeneous boundary values (then `W = exp(t N) V` keeps them).
+        let bounded = shapes.iter().any(|shape| shape.on != time);
+        if bounded {
+            let plain = data.couplings.iter().flatten().flatten().all(|(index, _)| index.iter().all(|&d| d == 0));
+            let homogeneous = shapes.iter().filter(|shape| shape.on != time).all(|shape| shape.values.iter().all(|&v| cx.is_zero(v)));
+            if !plain || !homogeneous {
+                return None;
+            }
+        }
     }
     let source_w = apply(cx, &p_inverse, &source);
+    let ctx = Component { vars: &vars, time, order, a_matrices: &a_matrices, diagonals: &diagonals, p_inverse: &p_inverse, shapes: &shapes };
     let mut solutions = Vec::new();
-    for i in 0..n {
-        let f_symbol = cx.graph.interner_mut().fresh_symbol("w");
-        let f_node = cx.graph.symbol_node(f_symbol);
-        let mut args = vec![f_node];
-        args.extend(&vars);
-        let unknown = cx.graph.node(core::APPLY, &args);
-        // ∂_t^o w = Σ d ∂^α w + s.
-        let lhs = jet(cx, unknown, &vars, &problems[0][0].unit(time, order))?;
-        let mut rhs_terms = Vec::new();
-        for ((index, _), diagonal) in a_matrices.iter().zip(&diagonals) {
-            if cx.is_zero(diagonal[i]) {
-                continue;
-            }
-            let j = jet(cx, unknown, &vars, index)?;
-            rhs_terms.push(mul(cx.graph, &[diagonal[i], j]));
-        }
-        rhs_terms.push(source_w[i]);
-        let rhs = add(cx.graph, &rhs_terms);
-        let equation = cx.graph.node(core::EQ, &[lhs, rhs]);
-        let scalar = Problem::parse(cx, equation, unknown)?;
-        // Transformed conditions.
-        let mut list = Vec::new();
-        for shape in &shapes {
-            let terms: Vec<NodeId> = (0..n).map(|j| mul(cx.graph, &[p_inverse[i][j], shape.values[j]])).collect();
-            let total = add(cx.graph, &terms);
-            let value = cx.simplify(total);
-            list.push(Condition { on: shape.on, point: shape.point, derivative: shape.derivative.clone(), value, robin: None });
-        }
-        let found = solve(cx, &scalar, &Conditions(list), Method::Any)?;
-        let &[_, rhs] = cx.graph.children(found) else {
-            return None;
-        };
-        solutions.push(rename_functions(cx, rhs, i));
+    for (i, &driven) in source_w.iter().enumerate() {
+        // The chains of a Jordan system are driven through `exp(t N)`: the
+        // source enters separately below.
+        let own_source = if jordan.is_some() { cx.graph.int(0) } else { driven };
+        let found = solve_component(cx, &ctx, i, own_source, true)?;
+        solutions.push(found);
     }
     if let Some(data) = &jordan {
-        solutions = jordan_combine(cx, data, &vars, vars[time], &solutions)?;
+        let homogeneous = jordan_combine(cx, data, &vars, vars[time], &solutions)?;
+        solutions = homogeneous;
+        if source_w.iter().any(|&e| !cx.is_zero(e)) {
+            let particular = jordan_particular(cx, data, &ctx, &source_w)?;
+            for (s, extra) in solutions.iter_mut().zip(particular) {
+                let total = add(cx.graph, &[*s, extra]);
+                *s = cx.simplify(total);
+            }
+        }
     }
     // U = P W.
     let mut result = Vec::new();
@@ -521,6 +516,67 @@ pub(super) fn solve_system(
         result.push(cx.graph.node(core::EQ, &[u, value]));
     }
     Some(cx.graph.node(core::LIST, &result))
+}
+
+/// What the scalar solves of a decoupled system share.
+struct Component<'a> {
+    vars: &'a [NodeId],
+    time: usize,
+    order: u32,
+    a_matrices: &'a [(Index, Matrix)],
+    diagonals: &'a [Vec<NodeId>],
+    p_inverse: &'a Matrix,
+    shapes: &'a [Shape],
+}
+
+/// The scalar problem `∂_t^o w = Σ d_i ∂^α w + source` of characteristic
+/// variable `i` with the transformed conditions (all values zero unless
+/// `with_data`).
+fn solve_component(
+    cx: &mut Cx<'_>,
+    ctx: &Component<'_>,
+    i: usize,
+    source: NodeId,
+    with_data: bool,
+) -> Option<NodeId> {
+    let n = ctx.p_inverse.len();
+    let vars = ctx.vars;
+    let f_symbol = cx.graph.interner_mut().fresh_symbol("w");
+    let f_node = cx.graph.symbol_node(f_symbol);
+    let mut args = vec![f_node];
+    args.extend(vars);
+    let unknown = cx.graph.node(core::APPLY, &args);
+    let mut unit = vec![0; vars.len()];
+    *unit.get_mut(ctx.time)? = ctx.order;
+    let lhs = jet(cx, unknown, vars, &unit)?;
+    let mut rhs_terms = Vec::new();
+    for ((index, _), diagonal) in ctx.a_matrices.iter().zip(ctx.diagonals) {
+        if cx.is_zero(diagonal[i]) {
+            continue;
+        }
+        let j = jet(cx, unknown, vars, index)?;
+        rhs_terms.push(mul(cx.graph, &[diagonal[i], j]));
+    }
+    rhs_terms.push(source);
+    let rhs = add(cx.graph, &rhs_terms);
+    let equation = cx.graph.node(core::EQ, &[lhs, rhs]);
+    let scalar = Problem::parse(cx, equation, unknown)?;
+    let mut list = Vec::new();
+    for shape in ctx.shapes {
+        let value = if with_data {
+            let terms: Vec<NodeId> = (0..n).map(|j| mul(cx.graph, &[ctx.p_inverse[i][j], shape.values[j]])).collect();
+            let total = add(cx.graph, &terms);
+            cx.simplify(total)
+        } else {
+            cx.graph.int(0)
+        };
+        list.push(Condition { on: shape.on, point: shape.point, derivative: shape.derivative.clone(), value, robin: None });
+    }
+    let found = solve(cx, &scalar, &Conditions(list), Method::Any)?;
+    let &[_, rhs] = cx.graph.children(found) else {
+        return None;
+    };
+    Some(rename_functions(cx, rhs, i))
 }
 
 // ----------------------------------------------------------------------
@@ -831,6 +887,68 @@ fn multiply_operators(
     out
 }
 
+/// The operators `q_j(t, ∂)`, the coefficients of `exp(t Σ_k N^k M_k)`, of
+/// Jordan block `b`.
+fn jordan_operators(
+    cx: &mut Cx<'_>,
+    data: &JordanData,
+    b: usize,
+    dimension: usize,
+    time_var: NodeId,
+) -> Option<Vec<Operator>> {
+    let (_, size, _) = *data.blocks.get(b)?;
+    let one = cx.graph.int(1);
+    let identity: Operator = vec![(vec![0; dimension], one)];
+    // x_k = t M_k.
+    let x: Vec<Operator> = data.couplings[b]
+        .iter()
+        .map(|terms| terms.iter().map(|(i, mu)| (i.clone(), mul(cx.graph, &[time_var, *mu]))).collect())
+        .collect();
+    let mut q: Vec<Operator> = vec![identity];
+    for j in 1..size {
+        // j q_j = Σ_{k=1}^{j} k x_k q_{j-k}.
+        let mut total: Operator = Vec::new();
+        for k in 1..=j {
+            let xk = x.get(k - 1)?;
+            let product = multiply_operators(cx, xk, &q[j - k]);
+            let scale = cx.graph.int(i64::try_from(k).ok()?);
+            for (i, c) in product {
+                let c = mul(cx.graph, &[scale, c]);
+                match total.iter_mut().find(|(t, _)| *t == i) {
+                    | Some((_, e)) => *e = add(cx.graph, &[*e, c]),
+                    | None => total.push((i, c)),
+                }
+            }
+        }
+        let inverse_j = {
+            let jn = cx.graph.int(i64::try_from(j).ok()?);
+            div(cx, one, jn)
+        };
+        for (_, c) in &mut total {
+            *c = mul(cx.graph, &[inverse_j, *c]);
+            *c = cx.simplify(*c);
+        }
+        q.push(total);
+    }
+    Some(q)
+}
+
+/// `∂^index f`.
+fn differentiate(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    vars: &[NodeId],
+    index: &[u32],
+) -> Option<NodeId> {
+    let mut d = f;
+    for (k, &order) in index.iter().enumerate() {
+        for _ in 0..order {
+            d = crate::rules::calculus::derivative(cx.graph, d, vars[k])?;
+        }
+    }
+    Some(d)
+}
+
 /// The solution `w_a = Σ_j q_j(t, ∂) S_{a+j}` of a Jordan block, with `q_j`
 /// the coefficients of `exp(t Σ_k N^k M_k)`.
 fn jordan_combine(
@@ -840,57 +958,122 @@ fn jordan_combine(
     time_var: NodeId,
     solutions: &[NodeId],
 ) -> Option<Vec<NodeId>> {
-    let dimension = vars.len();
     let mut out = solutions.to_vec();
-    let one = cx.graph.int(1);
     for (b, &(start, size, _)) in data.blocks.iter().enumerate() {
         if size == 1 {
             continue;
         }
-        let identity: Operator = vec![(vec![0; dimension], one)];
-        // x_k = t M_k.
-        let x: Vec<Operator> = data.couplings[b]
-            .iter()
-            .map(|terms| terms.iter().map(|(i, mu)| (i.clone(), mul(cx.graph, &[time_var, *mu]))).collect())
-            .collect();
-        let mut q: Vec<Operator> = vec![identity];
-        for j in 1..size {
-            // j q_j = Σ_{k=1}^{j} k x_k q_{j-k}.
-            let mut total: Operator = Vec::new();
-            for k in 1..=j {
-                let xk = x.get(k - 1)?;
-                let product = multiply_operators(cx, xk, &q[j - k]);
-                let scale = cx.graph.int(i64::try_from(k).ok()?);
-                for (i, c) in product {
-                    let c = mul(cx.graph, &[scale, c]);
-                    match total.iter_mut().find(|(t, _)| *t == i) {
-                        | Some((_, e)) => *e = add(cx.graph, &[*e, c]),
-                        | None => total.push((i, c)),
-                    }
-                }
-            }
-            let inverse_j = {
-                let jn = cx.graph.int(i64::try_from(j).ok()?);
-                div(cx, one, jn)
-            };
-            for (_, c) in &mut total {
-                *c = mul(cx.graph, &[inverse_j, *c]);
-                *c = cx.simplify(*c);
-            }
-            q.push(total);
-        }
+        let q = jordan_operators(cx, data, b, vars.len(), time_var)?;
         for a in 0..size {
             let mut terms = Vec::new();
             for j in 0..(size - a) {
                 let source = solutions[start + a + j];
                 for (index, c) in &q[j] {
-                    let mut d = source;
-                    for (k, &order) in index.iter().enumerate() {
-                        for _ in 0..order {
-                            d = crate::rules::calculus::derivative(cx.graph, d, vars[k])?;
+                    let d = differentiate(cx, source, vars, index)?;
+                    terms.push(mul(cx.graph, &[*c, d]));
+                }
+            }
+            let total = add(cx.graph, &terms);
+            out[start + a] = cx.simplify(total);
+        }
+    }
+    Some(out)
+}
+
+/// The coefficients `c_k` of `c = Σ_k c_k t^k`.
+fn time_coefficients(
+    cx: &mut Cx<'_>,
+    c: NodeId,
+    t: NodeId,
+) -> Option<Vec<NodeId>> {
+    let symbol = cx.graph.symbol_of(t)?;
+    if !cx.graph.depends_on(cx.graph.find(c), symbol) {
+        return Some(vec![c]);
+    }
+    let mut gens = Gens::default();
+    let poly = from_term(cx.graph, &mut gens, c, Limits { terms: 4096, exponent: 40 })?;
+    let g = gens.find(cx.graph, t)?;
+    let parts = poly.coefficients_in(g);
+    let mut out = Vec::new();
+    for part in &parts {
+        let term = to_term(cx.graph, &gens, part);
+        if cx.graph.depends_on(cx.graph.find(term), symbol) {
+            return None;
+        }
+        out.push(term);
+    }
+    Some(out)
+}
+
+/// The response of the Jordan chains to the sources `s_i(x, t)` (in the
+/// characteristic variables): Duhamel with `exp((t - τ) N)`, whose
+/// polynomial `(t - τ)^k` is expanded so that each power of `τ` becomes a
+/// scalar solve with the source `τ^l s_i`.
+fn jordan_particular(
+    cx: &mut Cx<'_>,
+    data: &JordanData,
+    ctx: &Component<'_>,
+    source_w: &[NodeId],
+) -> Option<Vec<NodeId>> {
+    let vars = ctx.vars;
+    let time_var = vars[ctx.time];
+    let n = source_w.len();
+    let mut cache: Vec<Vec<Option<NodeId>>> = vec![Vec::new(); n];
+    let mut out: Vec<NodeId> = Vec::new();
+    let mut scalar = |cx: &mut Cx<'_>, i: usize, l: usize| -> Option<NodeId> {
+        if cache[i].len() <= l {
+            cache[i].resize(l + 1, None);
+        }
+        if let Some(found) = cache[i][l] {
+            return Some(found);
+        }
+        let weight = crate::rules::complex::build::powi(cx.graph, time_var, i64::try_from(l).ok()?);
+        let driven = mul(cx.graph, &[weight, source_w[i]]);
+        let driven = cx.simplify(driven);
+        let found = if cx.is_zero(driven) { cx.graph.int(0) } else { solve_component(cx, ctx, i, driven, false)? };
+        cache[i][l] = Some(found);
+        Some(found)
+    };
+    for i in 0..n {
+        out.push(if data.blocks.iter().any(|&(start, size, _)| i >= start && i < start + size && size > 1) {
+            cx.graph.int(0)
+        } else {
+            scalar(cx, i, 0)?
+        });
+    }
+    for (b, &(start, size, _)) in data.blocks.iter().enumerate() {
+        if size == 1 {
+            continue;
+        }
+        let q = jordan_operators(cx, data, b, vars.len(), time_var)?;
+        for a in 0..size {
+            let mut terms = Vec::new();
+            for (j, operator) in q.iter().enumerate().take(size - a) {
+                for (index, c) in operator {
+                    let coefficients = time_coefficients(cx, *c, time_var)?;
+                    for (k, &ck) in coefficients.iter().enumerate() {
+                        if cx.is_zero(ck) {
+                            continue;
+                        }
+                        for l in 0..=k {
+                            let v = scalar(cx, start + a + j, l)?;
+                            if cx.is_zero(v) {
+                                continue;
+                            }
+                            let d = differentiate(cx, v, vars, index)?;
+                            let binomial = {
+                                let mut value = 1_i64;
+                                for m in 0..l {
+                                    value = value * i64::try_from(k - m).ok()? / i64::try_from(m + 1).ok()?;
+                                }
+                                value
+                            };
+                            let signed = if l % 2 == 1 { -binomial } else { binomial };
+                            let factor = cx.graph.int(signed);
+                            let power = crate::rules::complex::build::powi(cx.graph, time_var, i64::try_from(k - l).ok()?);
+                            terms.push(mul(cx.graph, &[ck, factor, power, d]));
                         }
                     }
-                    terms.push(mul(cx.graph, &[*c, d]));
                 }
             }
             let total = add(cx.graph, &terms);

@@ -369,9 +369,17 @@ fn fourier_bessel_coefficients_in_closed_form() {
         })
         .sum();
     close(series(&s, &[("r", r), ("t", t)], 30), reference, 1e-9, &s);
-    // Odd powers have no closed form (Struve functions) and stay as integrals.
+    // Odd powers are closed by Struve functions.
     let s = any(&format!("pdsolve({disk}, u(r, t), list(u(1, t) = 0, u(r, 0) = 1 - r))"));
-    assert!(s.contains("defint"), "{s}");
+    assert!(s.contains("struve_h") && !s.contains("defint"), "{s}");
+    let reference: f64 = roots(&|k| bessel_j(0.0, k), 0.5, 0.05, 30)
+        .iter()
+        .map(|&j| {
+            let c = 2.0 * simpson(&|x| x * (1.0 - x) * bessel_j(0.0, j * x), 0.0, 1.0) / bessel_j(1.0, j).powi(2);
+            c * (-j * j * t).exp() * bessel_j(0.0, j * r)
+        })
+        .sum();
+    close(series(&s, &[("r", r), ("t", t)], 30), reference, 1e-8, &s);
     // Neumann disk with r^4 data.
     let s = any(&format!("pdsolve({disk}, u(r, t), list(at(diff(u(r, t), r), r, 1) = 0, u(r, 0) = r^4))"));
     assert!(!s.contains("defint"), "{s}");
