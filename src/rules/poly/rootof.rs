@@ -1,26 +1,32 @@
-//! `root_of(k, c0, c1, ..., cn)`: the `k`-th real root (counted from 0 in
-//! ascending order) of the polynomial `c0 + c1 x + ... + cn x^n`, as an
-//! exact object.
+//! `root_of(k, c0, c1, ..., cn)`: the `k`-th root (counted from 0) of the
+//! polynomial `c0 + c1 x + ... + cn x^n`, as an exact object. The real
+//! roots come first in ascending order, then the non-real roots by real
+//! part and, for equal real parts, imaginary part.
 //!
 //! The coefficients are the arguments, so the object has
 //! numeric semantics wherever the coefficients have (they may be
 //! parameters); the kernel keeps the value canonical so that equal numbers
 //! have equal representations:
 //!
-//! * `p` is factored over `Q`; the `k`-th real root of `p` is located in
-//!   one irreducible factor by exact isolation;
+//! * `p` is factored over `Q`; the `k`-th root of `p` is located in one
+//!   irreducible factor (the real roots by exact isolation, the complex
+//!   ones by their numerical values);
 //! * a root of a factor of degree one is a rational number and one of
 //!   degree two is written with a square root;
 //! * a root of a factor of degree three or more becomes
 //!   `root_of(j, f0, ..., fm)` with `f` the primitive irreducible factor with
 //!   a positive leading coefficient and `j` the index of the root among the
-//!   real roots of `f` (so `root_of(0, -1, -1, 0, 0, 0, 1)` is the one real
+//!   roots of `f` (so `root_of(0, -1, -1, 0, 0, 0, 1)` is the one real
 //!   root of `x^5 - x - 1`, and the index 1 root of `(x - 1)(x^5 - x - 1)` is
 //!   the same object);
-//! * an index that is not the index of a real root leaves the term as it
-//!   is.
+//! * an index that is not the index of a root leaves the term as it is.
+//!   A quadratic factor with a negative discriminant gives a radical with
+//!   the imaginary unit `I`.
 //!
-//! In numeric mode the value is the midpoint of an isolating interval
+//! Complex evaluation (`Graph::eval_complex`) gives all the roots; real
+//! evaluation gives the real ones and NaN for a complex index.
+//!
+//! In numeric mode the value of a real root is the midpoint of an isolating interval
 //! refined to double precision, with the interval's width as the radius
 //! of the enclosure (a rigorous bound: the interval contains exactly one
 //! root of the polynomial).
@@ -53,6 +59,7 @@ use crate::graph::Tier;
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let op = i.op(OpDescriptor::new("root_of", Arity::Variadic).cost(40).eval(evaluate))?;
+    i.graph().ops_mut().set_attr(op, crate::graph::ComplexEval(evaluate_complex));
     i.kernel("poly/root_of", Tier::Normalize, RootOf { op });
     Ok(())
 }
@@ -61,20 +68,73 @@ struct RootOf {
     op: OpId,
 }
 
-/// The real roots of the primitive irreducible factors of `q`, as
-/// `(factor, index in the factor, isolating interval)` sorted by value.
-fn real_roots_by_factor(q: &[BigRational]) -> Vec<(Vec<BigInt>, usize, (BigRational, BigRational))> {
-    let (_, factors) = univariate::factor(q);
+/// A root of a primitive irreducible factor.
+#[derive(Clone)]
+struct Root {
+    factor: Vec<BigInt>,
+    /// Index among all roots of the factor (real ones first, then the
+    /// complex ones).
+    local: usize,
+    /// An isolating interval of a real root.
+    interval: Option<(BigRational, BigRational)>,
+    /// Real and imaginary part (double precision).
+    value: (f64, f64),
+}
+
+/// Complex ordering: by real part, then by imaginary part (real parts that
+/// agree to `1e-9` count as equal, so conjugates are ordered by sign).
+fn complex_order(
+    a: (f64, f64),
+    b: (f64, f64),
+) -> std::cmp::Ordering {
+    if (a.0 - b.0).abs() <= 1e-9 * (1.0 + a.0.abs()) {
+        a.1.total_cmp(&b.1)
+    } else {
+        a.0.total_cmp(&b.0)
+    }
+}
+
+/// All roots of the irreducible integer polynomial `factor` in the
+/// canonical order: the real roots ascending, then the non-real roots by
+/// real part and imaginary part.
+fn factor_roots(factor: &[BigInt]) -> Vec<Root> {
+    let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
     let width = BigRational::new(BigInt::one(), BigInt::from(10).pow(40));
-    let mut all = Vec::new();
-    for (factor, _) in factors {
-        let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
-        for (j, interval) in isolate(&rational).into_iter().enumerate() {
-            let refined = refine_interval(&rational, interval, &width);
-            all.push((factor.clone(), j, refined));
+    let mut out = Vec::new();
+    let intervals = isolate(&rational);
+    let real_count = intervals.len();
+    for (j, interval) in intervals.into_iter().enumerate() {
+        let refined = refine_interval(&rational, interval, &width);
+        let mid = ((&refined.0 + &refined.1) / BigRational::from_integer(BigInt::from(2))).to_f64().unwrap_or(f64::NAN);
+        out.push(Root { factor: factor.to_vec(), local: j, interval: Some(refined), value: (mid, 0.0) });
+    }
+    let floats: Option<Vec<f64>> = factor.iter().map(ToPrimitive::to_f64).collect();
+    if let Some(mut approximations) = floats.and_then(|c| super::galois::durand_kerner(&c)) {
+        // The real roots are the ones with the smallest imaginary parts.
+        approximations.sort_by(|a, b| a.1.abs().total_cmp(&b.1.abs()));
+        let mut complex: Vec<(f64, f64)> = approximations.into_iter().skip(real_count).collect();
+        complex.sort_by(|a, b| complex_order(*a, *b));
+        for (i, value) in complex.into_iter().enumerate() {
+            out.push(Root { factor: factor.to_vec(), local: real_count + i, interval: None, value });
         }
     }
-    all.sort_by_key(|a| &a.2.0 + &a.2.1);
+    out
+}
+
+/// The roots of all the irreducible factors of `q` in the canonical global
+/// order (real roots ascending, then the complex ones).
+fn all_roots(q: &[BigRational]) -> Vec<Root> {
+    let (_, factors) = univariate::factor(q);
+    let mut all: Vec<Root> = Vec::new();
+    for (factor, _) in factors {
+        all.extend(factor_roots(&factor));
+    }
+    all.sort_by(|a, b| match (a.interval.is_some(), b.interval.is_some()) {
+        | (true, true) => a.value.0.total_cmp(&b.value.0),
+        | (true, false) => std::cmp::Ordering::Less,
+        | (false, true) => std::cmp::Ordering::Greater,
+        | (false, false) => complex_order(a.value, b.value),
+    });
     all
 }
 
@@ -136,6 +196,44 @@ fn evaluate(args: &[f64]) -> f64 {
     roots.get(k as usize).copied().unwrap_or(f64::NAN)
 }
 
+/// Complex semantics: index `k` counts the real roots first (ascending),
+/// then the non-real roots by real and imaginary part.
+fn evaluate_complex(args: &[num_complex::Complex64]) -> Option<num_complex::Complex64> {
+    let (k, coefficients) = args.split_first()?;
+    if k.im != 0.0 || k.re < 0.0 || k.re.fract() != 0.0 {
+        return None;
+    }
+    let ascending: Vec<f64> = coefficients.iter().map(|c| c.re).collect();
+    if coefficients.iter().any(|c| c.im != 0.0) {
+        return None;
+    }
+    let approximations = super::galois::durand_kerner(&ascending)?;
+    let tolerance = |re: f64| 1e-9 * (1.0 + re.abs());
+    let mut real: Vec<f64> = approximations.iter().filter(|r| r.1.abs() <= tolerance(r.0)).map(|r| r.0).collect();
+    real.sort_by(f64::total_cmp);
+    let mut complex: Vec<(f64, f64)> = approximations.into_iter().filter(|r| r.1.abs() > tolerance(r.0)).collect();
+    complex.sort_by(|a, b| complex_order(*a, *b));
+    let index = k.re as usize;
+    match real.get(index) {
+        | Some(&r) => Some(num_complex::Complex64::new(r, 0.0)),
+        | None => complex.get(index - real.len()).map(|&(re, im)| num_complex::Complex64::new(re, im)),
+    }
+}
+
+/// Every root of a polynomial with integer coefficients (ascending) as
+/// canonical `root_of` terms with their values, in the canonical order.
+/// Degree-one and degree-two factors are not handled here.
+pub(crate) fn all_roots_as_objects(
+    graph: &mut Graph,
+    factor: &[BigInt],
+) -> Option<Vec<((f64, f64), NodeId)>> {
+    let mut out = Vec::new();
+    for root in factor_roots(factor) {
+        out.push((root.value, make(graph, factor, root.local)?));
+    }
+    Some(out)
+}
+
 impl Kernel for RootOf {
     fn ops(&self) -> Vec<OpId> {
         vec![self.op]
@@ -162,8 +260,8 @@ impl Kernel for RootOf {
         if q.len() < 2 {
             return Outcome::Pass;
         }
-        let roots = real_roots_by_factor(&q);
-        let Some((factor, j, interval)) = roots.get(k).cloned() else { return Outcome::Pass };
+        let roots = all_roots(&q);
+        let Some(Root { factor, local: j, interval, .. }) = roots.get(k).cloned() else { return Outcome::Pass };
         let factor = positive(factor);
         match factor.as_slice() {
             | [c0, c1] => {
@@ -176,12 +274,19 @@ impl Kernel for RootOf {
                 let denominator = BigInt::from(2) * a;
                 let sign = if j == 0 { -1 } else { 1 };
                 let centre = graph.num(Number::rat(BigRational::new(-b.clone(), denominator.clone())));
+                let negative = discriminant.is_negative();
+                let magnitude = if negative { -inside } else { inside };
                 let scale = BigRational::new(outside * BigInt::from(sign), denominator);
-                let (scale_node, radicand) = (graph.num(Number::rat(scale)), graph.num(Number::Int(inside)));
+                let (scale_node, radicand) = (graph.num(Number::rat(scale)), graph.num(Number::Int(magnitude)));
                 let Some(half) = Number::fraction(1, 2) else { return Outcome::Pass };
                 let half = graph.num(half);
                 let radical = graph.node(core::POW, &[radicand, half]);
-                let offset = graph.node(core::MUL, &[scale_node, radical]);
+                let mut factors = vec![scale_node, radical];
+                if negative {
+                    let Some(unit) = graph.ops().lookup("I") else { return Outcome::Pass };
+                    factors.push(graph.node(unit, &[]));
+                }
+                let offset = graph.node(core::MUL, &factors);
                 Outcome::Equal(graph.node(core::ADD, &[centre, offset]))
             },
             | _ => {
@@ -189,6 +294,7 @@ impl Kernel for RootOf {
                 if graph.find(canonical) != graph.find(node) && !graph.same(canonical, node) {
                     return Outcome::Equal(canonical);
                 }
+                let Some(interval) = interval else { return Outcome::Pass };
                 if !numeric {
                     return Outcome::Pass;
                 }
@@ -220,4 +326,19 @@ fn square_part(value: &BigInt) -> (BigInt, BigInt) {
         p += 1;
     }
     (outside, rest)
+}
+
+/// Canonical order of root values: real ones (imaginary part negligible)
+/// first, ascending, then the others by real and imaginary part.
+pub(crate) fn canonical_order(
+    a: (f64, f64),
+    b: (f64, f64),
+) -> std::cmp::Ordering {
+    let real = |v: (f64, f64)| v.1.abs() <= 1e-12 * (1.0 + v.0.abs());
+    match (real(a), real(b)) {
+        | (true, true) => a.0.total_cmp(&b.0),
+        | (true, false) => std::cmp::Ordering::Less,
+        | (false, true) => std::cmp::Ordering::Greater,
+        | (false, false) => complex_order(a, b),
+    }
 }

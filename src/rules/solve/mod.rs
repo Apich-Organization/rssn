@@ -168,6 +168,7 @@ use super::poly::repr::Poly;
 use super::poly::univariate;
 
 mod certified;
+mod complex_roots;
 pub(crate) mod elim;
 mod heuristics;
 mod inequality;
@@ -225,6 +226,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let nsolve_op = i.op(OpDescriptor::new("nsolve", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
     let certified_op = i.op(OpDescriptor::new("nsolve_certified", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
     let box_op = i.op(OpDescriptor::new("solve_box", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
+    let complex_op = i.op(OpDescriptor::new("solve_complex", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("solve/complex", Tier::Reduce, complex_roots::SolveComplex { op: complex_op });
     i.kernel("solve/nsolve-certified", Tier::Reduce, certified::NsolveCertified { op: certified_op });
     i.kernel("solve/box", Tier::Reduce, certified::SolveBox { op: box_op });
     i.kernel("solve/symbolic", Tier::Reduce, Symbolic { solve: solve_op, general: general_op });
@@ -1620,6 +1623,11 @@ mod tests {
             let (x, y) = (pair[0], pair[1]);
             assert!((x * x + y * y - 4.0).abs() < 1e-8 && (x.exp() + y - 1.0).abs() < 1e-8, "{pair:?}");
         }
+        // Roots of even multiplicity: no sign change, found through f'.
+        let text = numeric_text("solve(cosh(x) = 1 + x^2/2 + x^4/24, x)");
+        let roots = numbers(&text);
+        assert_eq!(roots.len(), 1, "{text}");
+        assert!(roots[0].abs() < 5e-2, "{roots:?}");
         // Newton from a guess.
         let root = numbers(&numeric_text("nsolve(list(x^2 + y^2 = 4, x*y = 1), list(x, y), list(2, 0.5))"));
         assert_eq!(root.len(), 2);

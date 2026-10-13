@@ -174,8 +174,19 @@ fn taylor_shift(
 
 /// Complex roots of the monic integer polynomial by Durand–Kerner.
 fn approximate_roots(g: &[BigInt]) -> Option<Vec<(f64, f64)>> {
-    let n = g.len() - 1;
     let coeffs: Vec<f64> = g.iter().map(ToPrimitive::to_f64).collect::<Option<_>>()?;
+    durand_kerner(&coeffs)
+}
+
+/// Complex roots of a polynomial (ascending `f64` coefficients, any leading
+/// coefficient) by the Durand–Kerner iteration.
+pub(crate) fn durand_kerner(raw: &[f64]) -> Option<Vec<(f64, f64)>> {
+    let n = raw.len().checked_sub(1).filter(|&n| n >= 1)?;
+    let lead = *raw.last()?;
+    if lead == 0.0 || !lead.is_finite() {
+        return None;
+    }
+    let coeffs: Vec<f64> = raw.iter().map(|c| c / lead).collect();
     let bound = 1.0
         + (0..n)
             .map(|i| coeffs[i].abs().powf(1.0 / (n - i) as f64))
