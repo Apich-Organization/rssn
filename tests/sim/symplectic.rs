@@ -110,10 +110,7 @@ fn ttl_beats_fixed_step_on_an_eccentric_orbit() {
     let apo = [-(1.0 + e), 0.0];
     let vapo = [0.0, -((1.0 - e) / (1.0 + e)).sqrt()];
     // exact orbit started at apocentre = pericentre orbit shifted by half a period; mirror coordinates
-    let exact_at = |t: f64| {
-        let r = kepler_exact(e, t + period / 2.0);
-        r
-    };
+    let exact_at = |t: f64| kepler_exact(e, t + period / 2.0);
     // fixed step Verlet
     let mut q = apo.to_vec();
     let mut p = vapo.to_vec();

@@ -42,7 +42,7 @@ fn kerr_isco_and_photon_orbits_match_closed_forms() {
 fn reissner_nordstrom_photon_sphere_and_isco_shift() {
     for q in [0.3, 0.6, 0.9] {
         let bh = KerrNewman { m: 1.0, a: 0.0, q };
-        let exact = (3.0 + (9.0 - 8.0 * q * q as f64).sqrt()) / 2.0;
+        let exact = (3.0 + (9.0 - 8.0 * q * q).sqrt()) / 2.0;
         assert!((bh.photon_orbit(true).unwrap() - exact).abs() < 1e-6);
         let isco = bh.isco(true).unwrap();
         assert!(isco < 6.0 && isco > 4.0, "q={q}: ISCO {isco}");
