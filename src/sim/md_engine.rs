@@ -671,6 +671,9 @@ pub struct ForceField<const D: usize> {
     pub exclude_bonded: bool,
     /// Additional force callbacks (Ewald, external fields, ...).
     pub extra: Vec<ExtraForce<D>>,
+    /// Additional pairs `(i, j)` excluded from the non-bonded sum (e.g. sites of one rigid
+    /// molecule); call [`ForceField::rebuild_exclusions`] after editing.
+    pub extra_exclusions: Vec<(usize, usize)>,
     excl: HashSet<(usize, usize)>,
 }
 
@@ -691,6 +694,7 @@ impl<const D: usize> ForceField<D> {
             dihedrals: Vec::new(),
             exclude_bonded: true,
             extra: Vec::new(),
+            extra_exclusions: Vec::new(),
             excl: HashSet::new(),
         }
     }
@@ -698,6 +702,9 @@ impl<const D: usize> ForceField<D> {
     /// Rebuilds the exclusion table (call after changing bonded terms).
     pub fn rebuild_exclusions(&mut self) {
         self.excl.clear();
+        for &(i, j) in &self.extra_exclusions {
+            self.excl.insert((i.min(j), i.max(j)));
+        }
         if !self.exclude_bonded {
             return;
         }

@@ -77,6 +77,8 @@ pub mod scenario;
 pub mod ewald;
 /// Dimension-generic molecular dynamics engine.
 pub mod md_engine;
+/// Rigid-molecule molecular dynamics.
+pub mod md_rigid;
 /// Barnes-Hut and fast multipole N-body solvers.
 pub mod nbody;
 /// Adaptive 2-D and 3-D fast multipole methods.

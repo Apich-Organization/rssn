@@ -539,13 +539,13 @@ impl RigidBody {
         l
     }
 
-    /// Rotation about body axis `k` by `h * L_k / I_k` (exact flow of the split Hamiltonian).
-    fn rotate_axis(
+    /// Rotation about body axis `k` by the angle `zeta` (exact flow of `H = c L_k^2 / 2`
+    /// with `zeta = h c L_k`).
+    fn rotate_by(
         &mut self,
         k: usize,
-        h: f64,
+        zeta: f64,
     ) {
-        let zeta = h * self.l_body[k] / self.inertia[k];
         let (s, c) = (0.5 * zeta).sin_cos();
         let mut e = [c, 0.0, 0.0, 0.0];
         e[k + 1] = s;
@@ -559,6 +559,124 @@ impl RigidBody {
         let (li, lj) = (self.l_body[i], self.l_body[j]);
         self.l_body[i] = cz * li + sz * lj;
         self.l_body[j] = -sz * li + cz * lj;
+    }
+
+    /// Rotation about body axis `k` by `h * L_k / I_k` (exact flow of the split Hamiltonian).
+    /// An infinite moment of inertia marks a degenerate axis of a linear body (no rotation).
+    fn rotate_axis(
+        &mut self,
+        k: usize,
+        h: f64,
+    ) {
+        let zeta = h * self.l_body[k] / self.inertia[k];
+        self.rotate_by(k, zeta);
+    }
+
+    /// Exact flow for time `h` of the **symmetric top** obtained by replacing the two inverse
+    /// moments about the axes other than `ax` with their mean: `L` is constant in space, so
+    /// `q(h) = q_L(h) * q(0) * q_ax(h)` with `q_L` a rotation about `L` by `|L| h / I_perp` and
+    /// `q_ax` a rotation about the symmetry axis by `h L_ax (1/I_ax - 1/I_perp)`.
+    pub fn symmetric_top_flow(
+        &mut self,
+        ax: usize,
+        h: f64,
+    ) {
+        let inv = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        let (a, b) = ((ax + 1) % 3, (ax + 2) % 3);
+        let inv_perp = 0.5 * (inv[a] + inv[b]);
+        let ls = self.l_space();
+        let lmag = (ls[0] * ls[0] + ls[1] * ls[1] + ls[2] * ls[2]).sqrt();
+        if lmag > 0.0 {
+            let th = 0.5 * lmag * h * inv_perp;
+            let (sn, cs) = th.sin_cos();
+            let ql = [cs, sn * ls[0] / lmag, sn * ls[1] / lmag, sn * ls[2] / lmag];
+            self.q = quat_mul(&ql, &self.q);
+        }
+        let ang = 0.5 * h * self.l_body[ax] * (inv[ax] - inv_perp);
+        let (sn, cs) = ang.sin_cos();
+        let mut e = [cs, 0.0, 0.0, 0.0];
+        e[ax + 1] = sn;
+        self.q = quat_mul(&self.q, &e);
+        let n = self.q.iter().map(|v| v * v).sum::<f64>().sqrt();
+        for v in &mut self.q {
+            *v /= n;
+        }
+        let r = quat_to_matrix(&self.q);
+        for k in 0..3 {
+            self.l_body[k] = (0..3).map(|i| r[i][k] * ls[i]).sum();
+        }
+    }
+
+    /// Axis whose two partners have the closest inverse moments (best symmetric-top approximation).
+    fn symmetry_axis(&self) -> usize {
+        let inv = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        (0..3)
+            .min_by(|&x, &y| {
+                let dx = (inv[(x + 1) % 3] - inv[(x + 2) % 3]).abs();
+                let dy = (inv[(y + 1) % 3] - inv[(y + 2) % 3]).abs();
+                dx.total_cmp(&dy)
+            })
+            .unwrap_or(0)
+    }
+
+    /// Second-order symmetric step of the free rotor built on exact **symmetric-top flows**:
+    /// `exp(h/2 R_a) exp(h/2 R_b) exp(h S) exp(h/2 R_b) exp(h/2 R_a)` where `S` is the symmetric
+    /// top and `R_a`, `R_b` the single-axis remainders. Exact when the body is itself a symmetric
+    /// top and much more accurate than [`free_step`](Self::free_step) for nearly symmetric bodies.
+    pub fn free_step_top(
+        &mut self,
+        h: f64,
+    ) {
+        let ax = self.symmetry_axis();
+        let inv = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        let (a, b) = ((ax + 1) % 3, (ax + 2) % 3);
+        let inv_perp = 0.5 * (inv[a] + inv[b]);
+        for k in [a, b] {
+            let z = 0.5 * h * (inv[k] - inv_perp) * self.l_body[k];
+            self.rotate_by(k, z);
+        }
+        self.symmetric_top_flow(ax, h);
+        for k in [b, a] {
+            let z = 0.5 * h * (inv[k] - inv_perp) * self.l_body[k];
+            self.rotate_by(k, z);
+        }
+    }
+
+    /// Free rotation for time `h` with the chosen splitting composed to the even `order`
+    /// (2, 4, 6, 8, ...) by [`composition_weights`].
+    ///
+    /// # Errors
+    /// Fails for an invalid `order`.
+    pub fn free_step_composed(
+        &mut self,
+        h: f64,
+        top: bool,
+        order: usize,
+    ) -> Result<(), String> {
+        for c in composition_weights(order)? {
+            if top {
+                self.free_step_top(c * h);
+            } else {
+                self.free_step(c * h);
+            }
+        }
+        Ok(())
+    }
+
+    /// Adds `h * torque` (space-frame torque) to the angular momentum.
+    pub fn kick_space(
+        &mut self,
+        h: f64,
+        torque: &[f64; 3],
+    ) {
+        let r = quat_to_matrix(&self.q);
+        for k in 0..3 {
+            let mut tb = 0.0;
+            for i in 0..3 {
+                tb += r[i][k] * torque[i];
+            }
+            self.l_body[k] += h * tb;
+        }
     }
 
     /// One symmetric (NO_SQUISH / DLM) step of the free rotor, second order.
