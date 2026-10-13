@@ -734,7 +734,8 @@ pub fn solve_laplace_bem_3d_p1(mesh: &SurfaceMesh3D, bcs: &[VertexBc], exterior:
                 }
             }
             let off: f64 = (0..nv).filter(|&j| j != i).map(|j| h[j]).sum();
-            h[i] = -off;
+            // interior: rigid-body identity (constants solve the problem); exterior: complementary free term
+            h[i] = if exterior { 1.0 - off } else { -off };
             (g, h)
         })
         .collect();

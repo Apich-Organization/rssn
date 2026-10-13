@@ -52,7 +52,7 @@ fn taylor_couette_flow_between_immersed_cylinders_converges() {
     let e2 = couette(80);
     let order = (e1 / e2).log2();
     assert!(e2 < 0.02, "fine-grid error {e2}");
-    assert!(order > 1.3, "observed order {order} ({e1}, {e2})");
+    assert!(order > 1.7, "observed order {order} ({e1}, {e2})");
 }
 
 #[test]

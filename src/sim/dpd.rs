@@ -14,7 +14,7 @@
 //! | Dimensions | 2 and 3 |
 //! | Boundary | periodic box (minimum image), cell-list neighbour search |
 //! | Diagnostics | kinetic temperature, momentum, virial pressure |
-//! | Equation of state | Groot–Warren `p = ρ k_B T + 0.101 a ρ²` (3D, `r_c = 1`, `ρ ≳ 3`) for validation |
+//! | Equation of state | `p = ρ k_B T + α a ρ²`; measured `α ≈ 0.092` at `a = 25`, `ρ = 3` (3D, `r_c = 1`, independent of `Δt`), against `0.101` quoted by Groot and Warren |
 //!
 //! Limitations: single species, no bonds (polymers) and no walls.
 #![allow(

@@ -239,16 +239,11 @@ fn dg_euler_double_rarefaction_needs_and_gets_positivity() {
         }
     }
     assert!(l1 < 0.06, "L1 {l1}");
-    // the unlimited scheme either fails or is clearly worse
-    let plain = solve_dg(&mesh, &law, &bcs, &init, 0.1, 0.2, None);
-    if let Ok(p) = plain {
-        let bad = (0..mesh.elements()).any(|e| (0..mesh.nodes_per_element()).any(|nd| !(p.value(e, nd, 0) > 0.0)));
-        let _ = bad;
-    }
 }
 
 // ------------------------------------------------------ oblique TF/SF
 
+#[allow(clippy::too_many_arguments)]
 fn oblique_run(dim: usize, n: usize, pml: usize, dir: [f64; 3], pol: [f64; 3], lo: f64, hi: f64, width: f64, t_end: f64) -> (f64, f64) {
     let len = 2.0;
     let h = len / n as f64;
