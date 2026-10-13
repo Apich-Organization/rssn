@@ -84,3 +84,5 @@ pub mod krylov_ext;
 pub mod eigs;
 /// Matrix functions: expm, sqrtm, logm, phi functions and exp(tA)v.
 pub mod matfun;
+/// Geometric multigrid (V/W/FMG) and smoothed-aggregation algebraic multigrid.
+pub mod multigrid;

@@ -98,3 +98,5 @@ mod ordering;
 mod krylov_ext;
 #[path = "kernels/matfun.rs"]
 mod matfun;
+#[path = "kernels/multigrid.rs"]
+mod multigrid;
