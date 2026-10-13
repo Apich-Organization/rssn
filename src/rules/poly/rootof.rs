@@ -1,18 +1,20 @@
-//! `root_of(p, x, k)`: the `k`-th real root (counted from 0 in ascending
-//! order) of the polynomial `p` in `x`, as an exact object.
-//!
-//! The operator binds `x` in `p`. Its kernel keeps the value canonical so
-//! that equal numbers have equal representations:
+//! `root_of(k, c0, c1, ..., cn)`: the `k`-th real root (counted from 0 in
+//! ascending order) of the polynomial `c0 + c1 x + ... + cn x^n`, as an
+//! exact object. The coefficients are the arguments, so the object has
+//! numeric semantics wherever the coefficients have (they may be
+//! parameters); the kernel keeps the value canonical so that equal numbers
+//! have equal representations:
 //!
 //! * `p` is factored over `Q`; the `k`-th real root of `p` is located in
 //!   one irreducible factor by exact isolation;
 //! * a root of a factor of degree one is a rational number and one of
 //!   degree two is written with a square root;
 //! * a root of a factor of degree three or more becomes
-//!   `root_of(f, x, j)` with `f` the primitive irreducible factor with a
-//!   positive leading coefficient and `j` the index of the root among the
-//!   real roots of `f` (so `root_of(x^5 - x - 1, x, 0)` is the one real
-//!   root, and `root_of((x - 1)(x^5 - x - 1), x, 1)` is the same object);
+//!   `root_of(j, f0, ..., fm)` with `f` the primitive irreducible factor with
+//!   a positive leading coefficient and `j` the index of the root among the
+//!   real roots of `f` (so `root_of(0, -1, -1, 0, 0, 0, 1)` is the one real
+//!   root of `x^5 - x - 1`, and the index 1 root of `(x - 1)(x^5 - x - 1)` is
+//!   the same object);
 //! * an index that is not the index of a real root leaves the term as it
 //!   is.
 //!
@@ -31,9 +33,6 @@ use num_traits::Zero;
 
 use super::algebra::isolate;
 use super::algebra::refine_interval;
-use super::repr::to_term;
-use super::repr::Gens;
-use super::repr::Poly;
 use super::univariate;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
@@ -51,8 +50,8 @@ use crate::graph::RuleError;
 use crate::graph::Tier;
 
 pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
-    let op = i.op(OpDescriptor::new("root_of", Arity::Fixed(3)).binder(1, 0b1).cost(6))?;
-    i.kernel("poly/root_of", Tier::Reduce, RootOf { op });
+    let op = i.op(OpDescriptor::new("root_of", Arity::Variadic).cost(40).eval(evaluate))?;
+    i.kernel("poly/root_of", Tier::Normalize, RootOf { op });
     Ok(())
 }
 
@@ -87,41 +86,52 @@ fn positive(mut f: Vec<BigInt>) -> Vec<BigInt> {
     f
 }
 
-/// The canonical term `root_of(f, x, j)` for a primitive irreducible `f`
-/// of degree at least three.
+/// The canonical term `root_of(j, f0, ..., fm)` for a primitive irreducible
+/// `f` of degree at least three.
 pub(crate) fn make(
     graph: &mut Graph,
     factor: &[BigInt],
-    x: NodeId,
     index: usize,
 ) -> Option<NodeId> {
     let op = graph.ops().lookup("root_of")?;
-    let mut gens = Gens::default();
-    let gx = gens.index(graph, x);
-    let numbers: Vec<Number> = positive(factor.to_vec()).into_iter().map(Number::Int).collect();
-    let p = to_term(graph, &gens, &Poly::from_univariate(gx, &numbers));
-    let k = graph.int(i64::try_from(index).ok()?);
-    Some(graph.node(op, &[p, x, k]))
+    let mut args = vec![graph.int(i64::try_from(index).ok()?)];
+    for c in positive(factor.to_vec()) {
+        args.push(graph.num(Number::Int(c)));
+    }
+    Some(graph.node(op, &args))
 }
 
-/// The roots of a polynomial with rational coefficients (ascending) that
-/// have no better exact form, as canonical `root_of` terms, with their
-/// double-precision values. Degree-one and degree-two factors are not
-/// handled here.
+/// The real roots of a polynomial with integer coefficients (ascending)
+/// as canonical `root_of` terms, with their double-precision values.
+/// Degree-one and degree-two factors are not handled here.
 pub(crate) fn real_roots_as_objects(
     graph: &mut Graph,
     factor: &[BigInt],
 ) -> Option<Vec<(f64, NodeId)>> {
-    let x = graph.sym("x");
     let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
     let width = BigRational::new(BigInt::one(), BigInt::from(10).pow(17));
     let mut out = Vec::new();
     for (j, interval) in isolate(&rational).into_iter().enumerate() {
         let (a, b) = refine_interval(&rational, interval, &width);
         let mid = ((a + b) / BigRational::from_integer(BigInt::from(2))).to_f64()?;
-        out.push((mid, make(graph, factor, x, j)?));
+        out.push((mid, make(graph, factor, j)?));
     }
     Some(out)
+}
+
+/// Numeric semantics: the `k`-th real root of the polynomial whose
+/// coefficients follow `k`.
+fn evaluate(args: &[f64]) -> f64 {
+    let Some((&k, coefficients)) = args.split_first() else { return f64::NAN };
+    let descending: Vec<f64> = coefficients.iter().rev().copied().collect();
+    let polynomial = crate::kernels::polynomial::Polynomial::new(descending);
+    let Ok(mut roots) = crate::kernels::real_roots::find_roots(&polynomial, 1e-14) else { return f64::NAN };
+    roots.sort_by(f64::total_cmp);
+    roots.dedup_by(|a, b| (*a - *b).abs() < 1e-12 * (1.0 + a.abs()));
+    if k < 0.0 || k.fract() != 0.0 {
+        return f64::NAN;
+    }
+    roots.get(k as usize).copied().unwrap_or(f64::NAN)
 }
 
 impl Kernel for RootOf {
@@ -134,18 +144,19 @@ impl Kernel for RootOf {
         cx: &mut Cx<'_>,
         node: NodeId,
     ) -> Outcome {
-        let &[p, x, k] = cx.graph.children(node) else { return Outcome::Pass };
+        let args = cx.graph.children(node).to_vec();
         let numeric = cx.env.numeric;
         let graph = &mut *cx.graph;
+        let Some((&k, coefficients)) = args.split_first() else { return Outcome::Pass };
         let Some(k) = graph.number_of(k).and_then(Number::to_i64).and_then(|k| usize::try_from(k).ok()) else {
             return Outcome::Pass;
         };
-        let Some((numer, denom)) = super::rational_function_in(graph, p, x) else { return Outcome::Pass };
-        let [c] = denom.as_slice() else { return Outcome::Pass };
-        if c.is_zero() {
-            return Outcome::Pass;
+        let q: Option<Vec<BigRational>> =
+            coefficients.iter().map(|&c| graph.number_of(c).and_then(Number::to_rational)).collect();
+        let Some(mut q) = q else { return Outcome::Pass };
+        while q.last().is_some_and(Zero::is_zero) {
+            q.pop();
         }
-        let q: Vec<BigRational> = numer.iter().map(|a| a / c).collect();
         if q.len() < 2 {
             return Outcome::Pass;
         }
@@ -172,7 +183,7 @@ impl Kernel for RootOf {
                 Outcome::Equal(graph.node(core::ADD, &[centre, offset]))
             },
             | _ => {
-                let Some(canonical) = make(graph, &factor, x, j) else { return Outcome::Pass };
+                let Some(canonical) = make(graph, &factor, j) else { return Outcome::Pass };
                 if graph.find(canonical) != graph.find(node) && !graph.same(canonical, node) {
                     return Outcome::Equal(canonical);
                 }

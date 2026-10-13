@@ -245,6 +245,31 @@ thread_local! {
     static GENERAL: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
+thread_local! {
+    static NUMERIC_RUN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Whether the engine run asks for numbers: exact `root_of` objects are
+/// then replaced by their values.
+pub(crate) fn numeric_run() -> bool {
+    NUMERIC_RUN.with(std::cell::Cell::get)
+}
+
+/// Sets [`numeric_run`] for the lifetime of the guard.
+struct NumericGuard(bool);
+
+impl NumericGuard {
+    fn set(value: bool) -> Self {
+        Self(NUMERIC_RUN.with(|n| n.replace(value)))
+    }
+}
+
+impl Drop for NumericGuard {
+    fn drop(&mut self) {
+        NUMERIC_RUN.with(|n| n.set(self.0));
+    }
+}
+
 /// Whether solutions of periodic equations are being collected as families
 /// with an integer parameter.
 pub(crate) fn general_mode() -> bool {
@@ -907,6 +932,8 @@ impl Kernel for Symbolic {
         cx: &mut Cx<'_>,
         node: NodeId,
     ) -> Outcome {
+        let numeric_run = cx.env.numeric;
+        let _numeric = NumericGuard::set(numeric_run);
         let graph = &mut *cx.graph;
         let general = graph.op(node) == self.general;
         let &[equation, unknown] = graph.children(node) else {
@@ -1226,15 +1253,15 @@ mod tests {
         }
         // Unsolvable: exact root objects, canonical and numerically evaluable.
         let (text, reduced) = reduce_with(&rules, "solve(x^5 - x - 1, x)", &[]);
-        assert!(reduced && text == "list(root_of(x^5 - x - 1, x, 0))", "{text}");
+        assert!(reduced && text == "list(root_of(0, -1, -1, 0, 0, 0, 1))", "{text}");
         let (text, _) = reduce_with(&rules, "solve(x^7 - 7*x + 3, x)", &[]);
         assert!(text.matches("root_of").count() == 3, "{text}");
         // A reducible polynomial: the object lives in the irreducible factor.
-        let (text, _) = reduce_with(&rules, "root_of((x - 1)*(x^5 - x - 1), x, 2)", &[]);
-        assert_eq!(text, "root_of(x^5 - x - 1, x, 0)");
-        let (text, _) = reduce_with(&rules, "root_of(x^2 - 2, x, 1)", &[]);
+        let (text, _) = reduce_with(&rules, "root_of(1, 1, 0, -1, 0, 0, -1, 1)", &[]);
+        assert_eq!(text, "root_of(0, -1, -1, 0, 0, 0, 1)");
+        let (text, _) = reduce_with(&rules, "root_of(1, -2, 0, 1)", &[]);
         assert_eq!(text, "2^(1/2)");
-        let (value, radius) = crate::rules::testing::numeric(&rules, "root_of(x^5 - x - 1, x, 0)", &[], 1e-12);
+        let (value, radius) = crate::rules::testing::numeric(&rules, "root_of(0, -1, -1, 0, 0, 0, 1)", &[], 1e-12);
         assert!((value - 1.167_303_978_261_418_7).abs() < 1e-12 && radius < 1e-12, "{value} {radius}");
         // The de Moivre family with parameters.
         let (text, reduced) = reduce_with(&rules, "solve(x^5 + 5*a*x^3 + 5*a^2*x + b, x)", &[]);

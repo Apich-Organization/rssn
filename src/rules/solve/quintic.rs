@@ -36,6 +36,9 @@ pub(super) fn roots(
     factor: &[BigInt],
 ) -> Option<Vec<(f64, NodeId)>> {
     let objects = real_roots_as_objects(graph, factor)?;
+    if super::numeric_run() {
+        return Some(objects.into_iter().map(|(value, _)| (value, graph.float(value))).collect());
+    }
     if factor.len() == 6 {
         let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
         if let Some(analysis) = analyse_quintic(&rational)
@@ -95,12 +98,53 @@ fn radical_root(
             distinct.push((w, candidate));
         }
     }
-    if distinct.len() != 4 {
-        return None;
+    // A zero root of Φ (exactly representable) can fall in a degenerate
+    // case of the quartic formula.
+    if radical.phi.first().is_some_and(|(u, v)| u.is_zero() && v.is_zero())
+        && !distinct.iter().any(|(w, _)| w.abs() < 1e-9)
+    {
+        distinct.push((0.0, graph.int(0)));
     }
+    // Multiplicities from the derivatives of Φ (R_j can coincide).
+    let mut full: Vec<f64> = numeric.clone();
+    full.push(1.0);
+    let derivative_at = |w: f64, order: usize| -> (f64, f64) {
+        let mut coefficients = full.clone();
+        for _ in 0..order {
+            coefficients = coefficients.iter().enumerate().skip(1).map(|(i, c)| c * i as f64).collect();
+        }
+        let mut value = 0.0;
+        let mut scale = 0.0;
+        for (k, c) in coefficients.iter().enumerate() {
+            let term = c * w.powi(i32::try_from(k).unwrap_or(0));
+            value += term;
+            scale += term.abs();
+        }
+        (value, scale)
+    };
     let mut terms = Vec::new();
-    for (_, node) in distinct {
-        terms.push(symbolic::real_root(graph, node, 5)?);
+    let mut total = 0_usize;
+    for (w, node) in distinct {
+        let mut multiplicity = 1_usize;
+        while multiplicity < 4 {
+            let (value, scale) = derivative_at(w, multiplicity);
+            if value.abs() <= 1e-7 * scale.max(1e-300) {
+                multiplicity += 1;
+            } else {
+                break;
+            }
+        }
+        total += multiplicity;
+        let root = symbolic::real_root(graph, node, 5)?;
+        if multiplicity == 1 {
+            terms.push(root);
+        } else {
+            let m = graph.int(i64::try_from(multiplicity).ok()?);
+            terms.push(graph.node(core::MUL, &[m, root]));
+        }
+    }
+    if total != 4 {
+        return None;
     }
     let sum = graph.node(core::ADD, &terms);
     let factor = graph.num(Number::rat(BigRational::new(BigInt::one(), BigInt::from(5) * &radical.scale)));
