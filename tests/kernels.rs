@@ -104,3 +104,5 @@ mod multigrid;
 mod ode_ext;
 #[path = "kernels/sde.rs"]
 mod sde;
+#[path = "kernels/homotopy.rs"]
+mod homotopy;

@@ -90,3 +90,5 @@ pub mod multigrid;
 pub mod ode_ext;
 /// Stochastic differential equations: Euler-Maruyama, Milstein, SRK, Heun and adaptive steps.
 pub mod sde;
+/// Homotopy continuation in projective coordinates with Cauchy endgame and path-jumping protection.
+pub mod homotopy;
