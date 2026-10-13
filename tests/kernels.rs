@@ -102,3 +102,5 @@ mod matfun;
 mod multigrid;
 #[path = "kernels/ode_ext.rs"]
 mod ode_ext;
+#[path = "kernels/sde.rs"]
+mod sde;

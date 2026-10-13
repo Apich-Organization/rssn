@@ -88,3 +88,5 @@ pub mod matfun;
 pub mod multigrid;
 /// Exponential (ETDRK4, exp-Rosenbrock), IMEX, symplectic and variational integrators.
 pub mod ode_ext;
+/// Stochastic differential equations: Euler-Maruyama, Milstein, SRK, Heun and adaptive steps.
+pub mod sde;
