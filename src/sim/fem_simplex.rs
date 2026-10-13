@@ -293,7 +293,7 @@ impl SimplexMesh {
         g
     }
 
-    fn facet_measure(&self, cell: usize, face: usize) -> f64 {
+    pub(crate) fn facet_measure(&self, cell: usize, face: usize) -> f64 {
         let c = &self.cells[cell];
         let v: Vec<[f64; 3]> = c.iter().enumerate().filter(|(j, _)| *j != face).map(|(_, &q)| self.nodes[q]).collect();
         let sub = |a: [f64; 3], b: [f64; 3]| [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -364,7 +364,7 @@ impl FemSpace {
     }
 
     /// Basis values and barycentric derivatives at barycentric point `lam`.
-    fn basis(&self, lam: &[f64]) -> (Vec<f64>, Vec<Vec<f64>>) {
+    pub(crate) fn basis(&self, lam: &[f64]) -> (Vec<f64>, Vec<Vec<f64>>) {
         let m = lam.len();
         let mut v = Vec::new();
         let mut dl: Vec<Vec<f64>> = Vec::new();
@@ -410,7 +410,7 @@ impl FemSpace {
     }
 
     /// Dofs lying on a boundary facet `(cell, face)` (global ids).
-    fn facet_dofs(&self, cell: usize, face: usize) -> Vec<usize> {
+    pub(crate) fn facet_dofs(&self, cell: usize, face: usize) -> Vec<usize> {
         let dim = self.mesh.dim;
         let cd = &self.cell_dofs[cell];
         let mut out: Vec<usize> = (0..=dim).filter(|&j| j != face).map(|j| cd[j]).collect();

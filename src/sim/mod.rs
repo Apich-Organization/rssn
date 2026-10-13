@@ -36,6 +36,10 @@ pub mod physics_md;
 pub mod physics_mm;
 /// Multigrid methods.
 pub mod physics_mtm;
+/// Iterative 3D BEM with ACA-compressed operators and GMRES.
+pub mod bem_aca;
+/// Linear elasticity on triangle/tetrahedron meshes (P1/P2).
+pub mod elasticity_fem;
 /// P1/P2 finite elements on interval, triangle and tetrahedron meshes.
 pub mod fem_simplex;
 /// Incompressible Navier-Stokes projection solver on a MAC grid (2D/3D).

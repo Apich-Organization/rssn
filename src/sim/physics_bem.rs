@@ -781,7 +781,7 @@ fn triangle_rule() -> [([f64; 3], f64); 7] {
 /// `integral over triangle(a, b, c) of 1 / |x - y| dS(y)` by adaptive
 /// subdivision: triangles close to `x` (relative to their size) are split
 /// into four until the 7-point rule is accurate.
-fn inv_r_integral(
+pub(crate) fn inv_r_integral(
     x: V3,
     tri: [V3; 3],
     depth: usize,
@@ -817,7 +817,7 @@ fn inv_r_integral(
 
 /// Analytic `integral over triangle of 1 / |x - y| dS(y)` for a point `x` in
 /// the plane of the triangle and inside it (the singular self term).
-fn inv_r_integral_in_plane(
+pub(crate) fn inv_r_integral_in_plane(
     x: V3,
     tri: [V3; 3],
 ) -> f64 {
@@ -848,7 +848,7 @@ fn inv_r_integral_in_plane(
 
 /// Solid angle subtended at `x` by a triangle (Van Oosterom-Strackee),
 /// positive when `x` lies on the inner side of an outward-oriented triangle.
-fn solid_angle(
+pub(crate) fn solid_angle(
     x: V3,
     tri: [V3; 3],
 ) -> f64 {

@@ -60,6 +60,10 @@ mod yee_fdtd;
 mod ns_mac;
 #[path = "sim/fem_simplex.rs"]
 mod fem_simplex;
+#[path = "sim/elasticity_fem.rs"]
+mod elasticity_fem;
+#[path = "sim/bem_aca.rs"]
+mod bem_aca;
 #[path = "sim/structured.rs"]
 mod structured;
 #[path = "sim/physics_sm.rs"]
