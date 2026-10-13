@@ -17,6 +17,17 @@
 //! - **Simulation Scenarios**: Ready-to-run examples demonstrating the application of the solvers to standard test problems.
 //!
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/fem_bridge_3d_disp.png)
+//!
+//! # Coverage audit
+//!
+//! | Equation | 1D | 2D | 3D | Elements | Boundary conditions |
+//! |---|---|---|---|---|---|
+//! | Poisson | yes | yes (quads) | yes (hexahedra) | linear / bilinear / trilinear | zero Dirichlet |
+//!
+//! Unstructured simplex meshes (intervals, triangles, tetrahedra) with P1/P2
+//! elements, marker-based Dirichlet/Neumann/Robin conditions, time-dependent data
+//! and the θ-method heat equation are in [`crate::sim::fem_simplex`]; elasticity is
+//! in [`crate::sim::elasticity_fem`].
 
 use ndarray::Array1;
 use rayon::prelude::*;

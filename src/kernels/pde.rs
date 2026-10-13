@@ -21,6 +21,21 @@
 //! of the position `(x, y)` on the boundary (`y = 0` in one dimension).
 //!
 //! [`pde_solver`] is a single entry point dispatching on a [`PdeProblem`].
+//!
+//! # Coverage audit
+//!
+//! | Equation | 1D | 2D | 3D | Boundary conditions | Initial data |
+//! |---|---|---|---|---|---|
+//! | heat (Crank–Nicolson) | yes | yes | no | Dirichlet, Neumann (ghost node), per side | `u0(x, y)` |
+//! | wave (leapfrog) | yes | yes | no | Dirichlet, Neumann | `u0`, `v0` |
+//! | Poisson / Laplace | no | yes | no | Dirichlet, Neumann | source `f(x, y)` |
+//! | advection (upwind, Lax–Wendroff) | yes | no | no | periodic | `u0(x)` |
+//! | method of lines (stiff BDF / Radau) | yes | no | no | Dirichlet, Neumann | `u0(x)` |
+//!
+//! Not covered here (use [`crate::sim::structured`], [`crate::sim::multigrid`],
+//! [`crate::sim::spectral`]): 3D, Robin and periodic faces for heat/wave/Poisson,
+//! time-dependent boundary data, absorbing boundaries, adaptive time stepping,
+//! Newton–Krylov nonlinear diffusion, multigrid and spectral solves.
 #![allow(
     clippy::manual_midpoint,
     clippy::missing_const_for_fn,

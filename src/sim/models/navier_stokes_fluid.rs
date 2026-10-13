@@ -19,6 +19,16 @@
 //!     - **Lid-Driven Cavity**: A classic CFD benchmark problem for testing internal flow and vortex formation.
 //!
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/karman_velocity_mag.png)
+//!
+//! # Coverage audit
+//!
+//! | Case | Dimension | Boundaries | Notes |
+//! |---|---|---|---|
+//! | channel flow with obstacles | 2D | inflow profile, outflow, walls | first-order projection |
+//! | lid-driven cavity | 2D | moving lid, no-slip | |
+//!
+//! [`crate::sim::ns_mac`] is the second-order MAC solver for 2D and 3D with
+//! no-slip, slip, inflow, outflow and periodic faces, body forces and obstacles.
 
 use std::path::Path;
 

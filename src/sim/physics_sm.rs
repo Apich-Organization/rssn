@@ -1,3 +1,15 @@
+//! # Spectral methods (Fourier advection–diffusion)
+//!
+//! | Equation | 1D | 2D | 3D | Boundary conditions | Time stepping |
+//! |---|---|---|---|---|---|
+//! | advection–diffusion | yes | yes | yes | periodic | explicit Euler in the spectral domain |
+//!
+//! Power-of-two sizes are required. Higher-order integrators (ETDRK4),
+//! dealiasing, spectral Helmholtz solves and Chebyshev collocation for
+//! bounded domains with Dirichlet/Neumann/Robin faces are in
+//! [`crate::sim::spectral`]; split-step Fourier Schrödinger/GPE solvers are in
+//! [`crate::sim::split_step`].
+
 use num_complex::Complex;
 use rayon::prelude::*;
 use serde::Deserialize;

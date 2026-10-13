@@ -1,3 +1,13 @@
+//! # FDTD electrodynamics (2D TM)
+//!
+//! | Equations | Dimension | Boundaries | Sources |
+//! |---|---|---|---|
+//! | Maxwell TM (`Ez, Hx, Hy`) | 2D | grid edge | point source |
+//!
+//! [`crate::sim::yee_fdtd`] is the general Yee solver in 1D/2D/3D with PEC,
+//! periodic and convolutional PML faces, dielectrics, current sources and
+//! TF/SF plane waves.
+
 use ndarray::Array1;
 use ndarray::Array2;
 use rayon::prelude::*;

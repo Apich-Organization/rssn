@@ -1,3 +1,12 @@
+//! # Meshless methods (smoothed-particle hydrodynamics)
+//!
+//! | Method | Dimension | Equations | Boundaries |
+//! |---|---|---|---|
+//! | SPH (poly6 / spiky kernels) | 2D | weakly compressible fluid, dam break | reflecting box |
+//!
+//! No 1D/3D SPH, no boundary particles, no viscosity models beyond the
+//! artificial term.
+
 use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;

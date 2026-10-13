@@ -1,3 +1,13 @@
+//! # Multigrid (Poisson)
+//!
+//! | Equation | 1D | 2D | 3D | Boundary conditions | Cycles |
+//! |---|---|---|---|---|---|
+//! | Poisson | yes | yes | no | zero Dirichlet | V |
+//!
+//! [`crate::sim::multigrid`] provides geometric multigrid for
+//! `-Δu + σu = f` in 1D/2D/3D with Dirichlet, Neumann, Robin and periodic faces,
+//! V, W and full multigrid cycles.
+
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;

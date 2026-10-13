@@ -23,6 +23,8 @@
 // The grid kernels index raw buffers inside parallel loops.
 #![allow(unsafe_code)]
 
+/// Common boundary-condition description shared by the continuum solvers.
+pub mod boundary;
 pub mod classical;
 /// Finite elements (P1/P2) on unstructured triangle meshes, adaptive.
 pub mod fem_triangles;
@@ -47,6 +49,26 @@ pub mod physics_md;
 pub mod physics_mm;
 /// Multigrid methods.
 pub mod physics_mtm;
+/// Iterative 3D BEM with ACA-compressed operators and GMRES.
+pub mod bem_aca;
+/// Linear elasticity on triangle/tetrahedron meshes (P1/P2).
+pub mod elasticity_fem;
+/// P1/P2 finite elements on interval, triangle and tetrahedron meshes.
+pub mod fem_simplex;
+/// Incompressible Navier-Stokes projection solver on a MAC grid (2D/3D).
+pub mod ns_mac;
+/// Yee FDTD for Maxwell in 1D-3D with PML and TF/SF.
+pub mod yee_fdtd;
+/// Pseudo-spectral Fourier and Chebyshev solvers (1D-3D).
+pub mod spectral;
+/// Split-step Fourier Schrodinger/GPE solver (1D-3D, imaginary time).
+pub mod split_step;
+/// Nodal discontinuous Galerkin (1D/2D) for conservation laws.
+pub mod dg;
+/// High-order finite volumes for Euler and shallow water in 1D-3D.
+pub mod euler_nd;
+/// Geometric multigrid (V/W/FMG) for Poisson/Helmholtz in 1D/2D/3D.
+pub mod multigrid;
 pub mod physics_rkm;
 /// Spectral methods.
 pub mod physics_sm;
@@ -65,3 +87,5 @@ pub mod sph;
 pub mod spin_models;
 /// Composition symplectic integrators, TTL, KS regularisation, rigid bodies.
 pub mod symplectic;
+/// Dimension-generic structured-grid finite differences (1D/2D/3D).
+pub mod structured;

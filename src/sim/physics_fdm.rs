@@ -14,6 +14,22 @@
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_07.png)
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_08.png)
 //! ![refer to this image](https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/wave_surface_frame_09.png)
+//!
+//! # Coverage audit
+//!
+//! | Equation | 1D | 2D | 3D | Boundary conditions | Initial data |
+//! |---|---|---|---|---|---|
+//! | heat, explicit | no | yes | no | boundary values frozen (Dirichlet) | grid |
+//! | wave, explicit | no | yes | yes | boundary values frozen (Dirichlet) | grid + velocity |
+//! | Poisson | no | yes | no | Dirichlet | source grid |
+//! | Burgers, advection–diffusion | yes | no | no | boundary values frozen | grid |
+//!
+//! The dimension-generic layer lives in [`crate::sim::structured`]: Laplacian
+//! operators on 1D/2D/3D vertex-centred grids with Dirichlet, Neumann, Robin,
+//! periodic and symmetry faces (per face, time-dependent data), Poisson/Helmholtz
+//! with direct or Krylov solvers, θ-method heat with step-doubling error control,
+//! leapfrog waves with Mur absorbing faces and Newton–Krylov nonlinear diffusion.
+//! Boundary descriptions are shared through [`crate::sim::boundary`].
 
 use std::ops::Index;
 use std::ops::IndexMut;

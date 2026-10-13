@@ -41,6 +41,18 @@
 //!
 //! let results = solve_advection_1d(&u0, 1.0, 0.1, 0.01, 10);
 //! ```
+//!
+//! # Coverage audit
+//!
+//! | Equation | 1D | 2D | 3D | Boundary conditions |
+//! |---|---|---|---|---|
+//! | advection, diffusion, advection–diffusion, Burgers | yes | no | no | fixed end values |
+//! | Poisson (Jacobi, Gauss–Seidel, SOR) | no | yes | no | Dirichlet |
+//! | vorticity, stream function, divergence, gradient, Laplacian | no | yes | no | one-sided at the edge |
+//! | lid-driven cavity (simplified) | no | yes | no | moving lid |
+//!
+//! Second-order incompressible Navier–Stokes with no-slip, slip, inflow, outflow
+//! and periodic faces and obstacles in 2D and 3D is in [`crate::sim::ns_mac`].
 
 use serde::Deserialize;
 use serde::Serialize;
