@@ -131,6 +131,7 @@ pub(crate) use elim::eliminate;
 mod heuristics;
 mod inequality;
 mod numeric;
+mod quintic;
 mod normalize;
 mod symbolic;
 mod system;
@@ -674,7 +675,13 @@ fn rational_polynomial_roots(
                 let n = higher.len() - 1;
                 let (c0, cn) = (higher.first()?, higher.last()?);
                 if higher.get(1..n)?.iter().any(|c| !c.is_zero()) {
-                    // Cubic and quartic formulas, or numeric roots.
+                    if n >= 5 {
+                        // Radicals for solvable quintics, `root_of` objects
+                        // for the rest.
+                        roots.extend(quintic::roots(graph, higher)?);
+                        continue;
+                    }
+                    // Cubic and quartic formulas.
                     let rational: Vec<BigRational> = higher.iter().cloned().map(BigRational::from_integer).collect();
                     roots.extend(heuristics::higher_degree(graph, &rational)?);
                     continue;
@@ -1197,6 +1204,54 @@ mod tests {
         check_families("solve_general(cos(27*x) = 1, x)", |x| (27.0 * x).cos() - 1.0, 1);
         // Rational multipliers with different denominators.
         check_families("solve_general(sin(x/3) = sin(x/2), x)", |x| (x / 3.0).sin() - (x / 2.0).sin(), 2);
+    }
+
+    #[test]
+    fn quintics_and_root_objects() {
+        let rules = crate::rules::standard();
+        // Solvable: radicals, verified by substitution.
+        for (src, poly) in [
+            ("solve(x^5 - 5*x + 12, x)", (vec![12.0, -5.0, 0.0, 0.0, 0.0, 1.0])),
+            ("solve(x^5 + 15*x + 12, x)", (vec![12.0, 15.0, 0.0, 0.0, 0.0, 1.0])),
+            ("solve(x^5 + 5*x^3 + 5*x + 3, x)", (vec![3.0, 5.0, 0.0, 5.0, 0.0, 1.0])),
+        ] {
+            let (text, reduced) = reduce_with(&rules, src, &[]);
+            assert!(reduced, "{src}: {text}");
+            assert!(!text.contains("root_of"), "{src} should be in radicals: {text}");
+            let items = list_items(&text);
+            assert_eq!(items.len(), 1, "{src}: {text}");
+            let x = eval(&rules, &items[0], &[]);
+            let residual: f64 = poly.iter().rev().fold(0.0, |acc, c| acc * x + c);
+            assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(5)), "{src}: {x} gives {residual}");
+        }
+        // Unsolvable: exact root objects, canonical and numerically evaluable.
+        let (text, reduced) = reduce_with(&rules, "solve(x^5 - x - 1, x)", &[]);
+        assert!(reduced && text == "list(root_of(x^5 - x - 1, x, 0))", "{text}");
+        let (text, _) = reduce_with(&rules, "solve(x^7 - 7*x + 3, x)", &[]);
+        assert!(text.matches("root_of").count() == 3, "{text}");
+        // A reducible polynomial: the object lives in the irreducible factor.
+        let (text, _) = reduce_with(&rules, "root_of((x - 1)*(x^5 - x - 1), x, 2)", &[]);
+        assert_eq!(text, "root_of(x^5 - x - 1, x, 0)");
+        let (text, _) = reduce_with(&rules, "root_of(x^2 - 2, x, 1)", &[]);
+        assert_eq!(text, "2^(1/2)");
+        let (value, radius) = crate::rules::testing::numeric(&rules, "root_of(x^5 - x - 1, x, 0)", &[], 1e-12);
+        assert!((value - 1.167_303_978_261_418_7).abs() < 1e-12 && radius < 1e-12, "{value} {radius}");
+        // The de Moivre family with parameters.
+        let (text, reduced) = reduce_with(&rules, "solve(x^5 + 5*a*x^3 + 5*a^2*x + b, x)", &[]);
+        assert!(reduced, "{text}");
+        let items = list_items(&text);
+        let mut checked = 0;
+        for (a, b) in [(1.5, 2.0), (0.7, -3.0), (-1.0, 0.8), (-1.2, -1.5)] {
+            for item in &items {
+                let x = eval(&rules, item, &[("a", a), ("b", b)]);
+                if x.is_finite() {
+                    let residual = x.powi(5) + 5.0 * a * x.powi(3) + 5.0 * a * a * x + b;
+                    assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(5)), "{item} at a={a}, b={b}: {residual}");
+                    checked += 1;
+                }
+            }
+        }
+        assert!(checked >= 8, "{checked}: {text}");
     }
 
     #[test]

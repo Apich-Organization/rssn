@@ -13,6 +13,8 @@
 //!   discriminant is non-negative) together with the trigonometric form
 //!   (valid where it is not);
 //! * a palindromic quartic through `u = x + 1/x`;
+//! * de Moivre quintics `x^5 + 5 a x^3 + 5 a^2 x + b` (`x = u - a/u`, real
+//!   fifth roots when one root is real and the cosine form otherwise);
 //! * any other quartic by Ferrari's method with a resolvent-cubic root that
 //!   is positive (so the square roots in the formula are defined whenever
 //!   the quartic has the real roots in question).
@@ -161,6 +163,7 @@ fn irreducible(
             };
             out.extend(found);
         },
+        | 5 => out.extend(de_moivre(graph, gens, coefficients)?),
         | _ => return None,
     }
     Some(out)
@@ -322,7 +325,7 @@ fn palindromic_quartic(
 /// `s` is real; the largest root is Cardano's expression when the cubic
 /// has one real root and the trigonometric `k = 0` branch when it has
 /// three, and both are offered (each is defined only in its own regime).
-fn ferrari(
+pub(super) fn ferrari(
     graph: &mut Graph,
     gens: &Gens,
     c: &[Poly],
@@ -389,6 +392,90 @@ fn ferrari(
             }
         }
     }
-    let _ = minus_one;
+    // Biquadratic depressed quartic (q = 0), where the resolvent root
+    // m = 0 makes the formulas above undefined: y^2 = (-p +- sqrt(p^2 - 4r))/2.
+    let r_term = ratio_to(graph, &rn, &a4.scale(&n(256)));
+    let p_sq = graph.node(core::POW, &[p_term, two]);
+    let minus_four = graph.int(-4);
+    let four_r = product(graph, &[minus_four, r_term]);
+    let disc = graph.node(core::ADD, &[p_sq, four_r]);
+    let disc_root = graph.node(core::POW, &[disc, half]);
+    let minus_p = product(graph, &[minus_one, p_term]);
+    for sign in [-1_i64, 1] {
+        let sg = graph.int(sign);
+        let signed = product(graph, &[sg, disc_root]);
+        let inner = graph.node(core::ADD, &[minus_p, signed]);
+        let y_squared = product(graph, &[half, inner]);
+        let y = graph.node(core::POW, &[y_squared, half]);
+        let minus_y = product(graph, &[minus_one, y]);
+        out.push(graph.node(core::ADD, &[y, shift]));
+        out.push(graph.node(core::ADD, &[minus_y, shift]));
+    }
+    Some(out)
+}
+
+/// Quintics `x^5 + 5 a x^3 + 5 a^2 x + b` (de Moivre): `x = u - a/u` with
+/// `u^5 = (-b +- sqrt(b^2 + 4 a^5))/2`. With a general leading
+/// coefficient the polynomial is `c5 x^5 + c3 x^3 + c1 x + c0` with
+/// `5 c1 c5 = c3^2`. For `b^2 + 4 a^5 >= 0` the one real root is the sum of the
+/// real fifth roots of the two values of `u^5`; otherwise `a < 0` and the
+/// five real roots are `2 sqrt(-a) cos((acos(-b / (2 (-a)^(5/2))) + 2 pi k)/5)`.
+fn de_moivre(
+    graph: &mut Graph,
+    gens: &Gens,
+    c: &[Poly],
+) -> Option<Vec<NodeId>> {
+    let n = |v: i64| Number::from(v);
+    let (c0, c1, c2, c3, c4, c5) = (c.first()?, c.get(1)?, c.get(2)?, c.get(3)?, c.get(4)?, c.get(5)?);
+    if !c2.is_zero() || !c4.is_zero() || c3.is_zero() {
+        return None;
+    }
+    let lhs = c1.mul(c5, cap())?.scale(&n(5));
+    if lhs != c3.mul(c3, cap())? {
+        return None;
+    }
+    let ratio_to = |graph: &mut Graph, top: &Poly, bottom: &Poly| {
+        let top = to_term(graph, gens, top);
+        let bottom = to_term(graph, gens, bottom);
+        let inverse = reciprocal(graph, bottom);
+        product(graph, &[top, inverse])
+    };
+    let alpha = ratio_to(graph, c3, &c5.scale(&n(5)));
+    let s = ratio_to(graph, c0, c5);
+    let (half, two, minus_one) = (graph.num(Number::fraction(1, 2)?), graph.int(2), graph.int(-1));
+    let four = graph.int(4);
+    let five = graph.int(5);
+    let s_sq = graph.node(core::POW, &[s, two]);
+    let alpha5 = graph.node(core::POW, &[alpha, five]);
+    let four_alpha5 = product(graph, &[four, alpha5]);
+    let disc = graph.node(core::ADD, &[s_sq, four_alpha5]);
+    let root = graph.node(core::POW, &[disc, half]);
+    let minus_s = product(graph, &[minus_one, s]);
+    let neg_root = product(graph, &[minus_one, root]);
+    let (plus, minus) = (graph.node(core::ADD, &[minus_s, root]), graph.node(core::ADD, &[minus_s, neg_root]));
+    let (up, um) = (product(graph, &[half, plus]), product(graph, &[half, minus]));
+    let (r1, r2) = (real_root(graph, up, 5)?, real_root(graph, um, 5)?);
+    let mut out = vec![graph.node(core::ADD, &[r1, r2])];
+    // Five real roots for a < 0.
+    let (acos, cos, pi) = (graph.ops().lookup("acos")?, graph.ops().lookup("cos")?, graph.ops().lookup("pi")?);
+    let beta = product(graph, &[minus_one, alpha]);
+    let amplitude = {
+        let root_beta = graph.node(core::POW, &[beta, half]);
+        product(graph, &[two, root_beta])
+    };
+    let five_halves = graph.num(Number::fraction(-5, 2)?);
+    let beta_power = graph.node(core::POW, &[beta, five_halves]);
+    let argument = product(graph, &[minus_one, half, s, beta_power]);
+    let angle = graph.node(acos, &[argument]);
+    let pi_node = graph.node(pi, &[]);
+    let fifth = graph.num(Number::fraction(1, 5)?);
+    for k in 0..5_i64 {
+        let turn = graph.num(Number::fraction(2 * k, 1)?);
+        let turn_pi = product(graph, &[turn, pi_node]);
+        let total = graph.node(core::ADD, &[angle, turn_pi]);
+        let divided = product(graph, &[fifth, total]);
+        let wave = graph.node(cos, &[divided]);
+        out.push(product(graph, &[amplitude, wave]));
+    }
     Some(out)
 }
