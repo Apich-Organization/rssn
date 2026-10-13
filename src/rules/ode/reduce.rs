@@ -345,7 +345,7 @@ fn homogeneous_in_y(
 
 /// The coefficients `a₀, a₁, a₂` and forcing `r` of a linear second-order
 /// equation `a₂ y'' + a₁ y' + a₀ y = r`.
-fn linear_second_order(
+pub(super) fn linear_second_order(
     cx: &mut Cx<'_>,
     problem: &Problem,
 ) -> Option<([NodeId; 3], NodeId)> {

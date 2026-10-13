@@ -102,6 +102,7 @@ use super::solve::solve_for;
 use super::solve::solve_linear;
 
 mod classes;
+mod frobenius;
 mod lie;
 mod nonlinear;
 #[cfg(test)]
@@ -126,6 +127,11 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let symmetries = i.op(OpDescriptor::new("ode_symmetries", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
     let fourier = i.op(OpDescriptor::new("ode_fourier", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
     i.kernel("ode/extras", Tier::Reduce, Extras { series, rsolve, classify, symmetries, fourier });
+    let frobenius = i.op(OpDescriptor::new("ode_frobenius", Arity::Fixed(4)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("ode/frobenius", Tier::Reduce, FrobeniusReport { op: frobenius });
+    i.op(OpDescriptor::new("big_o", Arity::Fixed(1)).eval(|_| 0.0))?;
+    i.op(OpDescriptor::new("hyper1f1", Arity::Fixed(3)).eval(frobenius::hyper1f1))?;
+    i.op(OpDescriptor::new("hyper2f1", Arity::Fixed(4)).eval(frobenius::hyper2f1))?;
     i.kernel("ode/odeint", Tier::Reduce, Odeint { odeint });
     Ok(())
 }
@@ -1579,6 +1585,7 @@ fn dispatch(
     for method in [
         (|cx: &mut Cx<'_>, p: &mut Problem, _| linear_higher_order(cx, p)) as fn(&mut Cx<'_>, &mut Problem, u32) -> Option<NodeId>,
         reduce::special_function_equation,
+        frobenius::hypergeometric,
         reduce::variable_coefficients,
         reduce::missing_dependent,
         reduce::autonomous,
@@ -1590,7 +1597,37 @@ fn dispatch(
             return Some(found);
         }
     }
+    // No closed form: Frobenius series (truncated, so not spot-checked).
+    if problem.order() == 2 {
+        let saved = problem.constants;
+        if let Some(found) = frobenius::series_solution(cx, problem) {
+            return Some(found);
+        }
+        problem.constants = saved;
+    }
     None
+}
+
+/// `ode_frobenius(eq, y(x), x0, n)`.
+struct FrobeniusReport {
+    op: OpId,
+}
+
+impl Kernel for FrobeniusReport {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        match *cx.graph.children(node) {
+            | [e, u, x0, n] => frobenius::report(cx, e, u, x0, n).map_or(Outcome::Pass, Outcome::Pinned),
+            | _ => Outcome::Pass,
+        }
+    }
 }
 
 struct Dsolve {
@@ -2273,6 +2310,81 @@ mod tests {
         assert_eq!(bernoulli, "y(x) = (x*exp(1/2*x) + C1 - 2*exp(1/2*x))^2*exp(-x)");
         // First-order equations quadratic in y' that factor.
         assert_eq!(run("dsolve(diff(y(x), x)^2 - (x + y(x))*diff(y(x), x) + x*y(x) = 0, y(x))"), "y(x) = 1/2*x^2 + C1");
+    }
+
+    /// The right-hand side of `y(x) = rhs` evaluated with `x`, `C1`, `C2`.
+    fn solution_value(
+        rules: &[crate::graph::RuleSet],
+        rhs: &str,
+        x: f64,
+        c: (f64, f64),
+    ) -> f64 {
+        crate::rules::testing::eval(rules, rhs, &[("x", x), ("C1", c.0), ("C2", c.1)])
+    }
+
+    /// Checks `a2 y'' + a1 y' + a0 y = 0` for each basis solution of the
+    /// answer by central differences.
+    fn check_second_order(
+        rules: &[crate::graph::RuleSet],
+        answer: &str,
+        coefficients: impl Fn(f64) -> (f64, f64, f64),
+        points: &[f64],
+        tolerance: f64,
+    ) {
+        let rhs = answer.strip_prefix("y(x) = ").unwrap_or(answer);
+        for basis in [(1.0, 0.0), (0.0, 1.0)] {
+            for &x in points {
+                let h = 1e-3;
+                let f = |t: f64| solution_value(rules, rhs, t, basis);
+                let (y, up, down) = (f(x), f(x + h), f(x - h));
+                let (d1, d2) = ((up - down) / (2.0 * h), (up - 2.0 * y + down) / (h * h));
+                let (a2, a1, a0) = coefficients(x);
+                let residual = a2 * d2 + a1 * d1 + a0 * y;
+                let scale = 1.0 + (a2 * d2).abs() + (a1 * d1).abs() + (a0 * y).abs();
+                assert!(residual.abs() < tolerance * scale, "{answer} basis {basis:?} at {x}: {residual}");
+            }
+        }
+    }
+
+    #[test]
+    fn hypergeometric_and_frobenius_solutions() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        // Kummer: x y'' + (3/2 - x) y' - y/2 = 0.
+        let kummer = run("dsolve(x*diff(diff(y(x), x), x) + (3/2 - x)*diff(y(x), x) - 1/2*y(x), y(x))");
+        assert!(kummer.contains("hyper1f1"), "{kummer}");
+        check_second_order(&rules, &kummer, |x| (x, 1.5 - x, -0.5), &[0.3, 0.8, 1.7], 2e-5);
+        // Gauss: x (1 - x) y'' + (1/3 - 2 x) y' - y/4 = 0.
+        let gauss = run("dsolve(x*(1 - x)*diff(diff(y(x), x), x) + (1/3 - 2*x)*diff(y(x), x) - 1/4*y(x), y(x))");
+        assert!(gauss.contains("hyper2f1"), "{gauss}");
+        check_second_order(&rules, &gauss, |x| (x * (1.0 - x), 1.0 / 3.0 - 2.0 * x, -0.25), &[0.2, 0.45], 2e-5);
+        // An ordinary point without closed form: a truncated series.
+        let airy3 = run("dsolve(diff(diff(y(x), x), x) - (x^3 + 1)*y(x), y(x))");
+        assert!(airy3.contains("big_o"), "{airy3}");
+        check_second_order(&rules, &airy3, |x| (1.0, 0.0, -(x.powi(3) + 1.0)), &[0.1, 0.25], 1e-5);
+        // Regular singular point, both exponents, logarithm: Bessel of order 0
+        // posed so that the closed-form methods are bypassed.
+        let report = run("ode_frobenius(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + x^2*y(x), y(x), 0, 14)");
+        assert!(report.starts_with("list(y(x) = "), "{report}");
+        let inner = report.strip_prefix("list(").unwrap_or("");
+        let answer = inner.split(", list(0, 0)").next().unwrap_or("");
+        assert!(answer.contains("ln(x)") && inner.contains("list(0, 0)"), "{report}");
+        let rhs = answer.strip_prefix("y(x) = ").unwrap_or(answer);
+        for x in [0.4_f64, 0.9, 1.6] {
+            let j0 = crate::rules::testing::eval(&rules, &format!("besselj(0, {x})"), &[]);
+            let y0 = crate::rules::testing::eval(&rules, &format!("bessely(0, {x})"), &[]);
+            let first = solution_value(&rules, rhs, x, (1.0, 0.0));
+            assert!((first - j0).abs() < 1e-9, "J0({x}): {first} vs {j0}");
+            // y2 = (pi/2) Y0 - (gamma - ln 2) J0.
+            let second = solution_value(&rules, rhs, x, (0.0, 1.0));
+            let gamma = 0.577_215_664_901_532_9_f64;
+            let expected = std::f64::consts::FRAC_PI_2 * y0 - (gamma - 2.0_f64.ln()) * j0;
+            assert!((second - expected).abs() < 1e-8, "Y0({x}): {second} vs {expected}");
+        }
+        // Exponents 1/2 and -1 differ by a non-integer: two pure series. The
+        // recurrence is returned.
+        let two = run("ode_frobenius(2*x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - (1 + x)*y(x), y(x), 0, 10)");
+        assert!(two.contains("list(1, -1/2)") && two.contains("= 0)"), "{two}");
     }
 
     #[test]
