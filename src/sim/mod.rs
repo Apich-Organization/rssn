@@ -49,6 +49,8 @@ pub mod physics_md;
 pub mod physics_mm;
 /// Multigrid methods.
 pub mod physics_mtm;
+/// Linear acoustics / scalar wave equation with PML (1D-3D).
+pub mod acoustics;
 /// Iterative 3D BEM with ACA-compressed operators and GMRES.
 pub mod bem_aca;
 /// Linear elasticity on triangle/tetrahedron meshes (P1/P2).

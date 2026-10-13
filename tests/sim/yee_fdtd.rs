@@ -73,9 +73,11 @@ fn cavity_3d_error(n: usize) -> f64 {
         }
     }
     y.half_step_h();
-    let steps = (0.8 / y.dt).round() as usize;
-    y.run(steps);
+    // omega T = 3 pi / 2: the phase error is measured where cos(omega T) is stationary, so rounding
+    // the final time to a whole number of steps does not perturb the observed order
     let w = PI * 2.0_f64.sqrt();
+    let steps = (1.5 * PI / w / y.dt).round() as usize;
+    y.run(steps);
     let mut worst: f64 = 0.0;
     for k in 0..4 {
         for j in 0..n {
@@ -90,8 +92,8 @@ fn cavity_3d_error(n: usize) -> f64 {
 
 #[test]
 fn cavity_3d_mode_second_order() {
-    let (e1, e2) = (cavity_3d_error(12), cavity_3d_error(24));
-    assert!((e1 / e2).log2() > 1.4 && e2 < 2e-2, "{e1} {e2}");
+    let (e1, e2) = (cavity_3d_error(8), cavity_3d_error(16));
+    assert!((e1 / e2).log2() > 1.8 && e2 < 2e-2, "{e1} {e2}");
 }
 
 fn pulse(t: f64) -> f64 {

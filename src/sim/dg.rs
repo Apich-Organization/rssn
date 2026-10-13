@@ -43,6 +43,10 @@ pub trait DgLaw: Send + Sync {
     fn flux(&self, q: &[f64], dir: usize, out: &mut [f64]);
     /// Largest signal speed in direction `dir`.
     fn max_speed(&self, q: &[f64], dir: usize) -> f64;
+    /// Density and pressure of a state for positivity limiting (`None` for laws without such notion).
+    fn rho_p(&self, _q: &[f64]) -> Option<(f64, f64)> {
+        None
+    }
     /// Numerical flux between a left and right state (default: Rusanov).
     fn numerical_flux(&self, ql: &[f64], qr: &[f64], dir: usize, out: &mut [f64]) {
         let n = self.nvar();
@@ -114,6 +118,50 @@ impl DgLaw for Euler1d {
         let u = q[1] / q[0];
         let p = (self.gamma - 1.0) * (q[2] - 0.5 * q[1] * u);
         u.abs() + (self.gamma * p.max(0.0) / q[0]).sqrt()
+    }
+    fn rho_p(&self, q: &[f64]) -> Option<(f64, f64)> {
+        Some((q[0], self.pressure(q)))
+    }
+}
+
+impl Euler1d {
+    fn pressure(self, q: &[f64]) -> f64 {
+        (self.gamma - 1.0) * (q[2] - 0.5 * q[1] * q[1] / q[0])
+    }
+}
+
+/// Two-dimensional Euler equations `(ρ, ρu, ρv, E)`.
+#[derive(Clone, Copy, Debug)]
+pub struct Euler2d {
+    /// Adiabatic exponent.
+    pub gamma: f64,
+}
+
+impl Euler2d {
+    fn pressure(self, q: &[f64]) -> f64 {
+        (self.gamma - 1.0) * (q[3] - 0.5 * (q[1] * q[1] + q[2] * q[2]) / q[0])
+    }
+}
+
+impl DgLaw for Euler2d {
+    fn nvar(&self) -> usize {
+        4
+    }
+    fn flux(&self, q: &[f64], dir: usize, out: &mut [f64]) {
+        let p = self.pressure(q);
+        let vel = q[1 + dir] / q[0];
+        out[0] = q[1 + dir];
+        out[1] = q[1] * vel;
+        out[2] = q[2] * vel;
+        out[1 + dir] += p;
+        out[3] = (q[3] + p) * vel;
+    }
+    fn max_speed(&self, q: &[f64], dir: usize) -> f64 {
+        let p = self.pressure(q).max(0.0);
+        (q[1 + dir] / q[0]).abs() + (self.gamma * p / q[0]).sqrt()
+    }
+    fn rho_p(&self, q: &[f64]) -> Option<(f64, f64)> {
+        Some((q[0], self.pressure(q)))
     }
 }
 
@@ -467,6 +515,168 @@ impl Ctx<'_> {
     }
 }
 
+/// Slope and positivity limiters applied after every Runge–Kutta stage.
+#[derive(Clone, Copy, Debug)]
+pub struct DgLimiter {
+    /// TVB constant `M` of the minmod slope limiter (`None` disables it);
+    /// `0` is the strict TVD minmod limiter, larger values keep smooth extrema.
+    pub tvb_m: Option<f64>,
+    /// Zhang–Shu positivity-preserving scaling of density and pressure
+    /// (needs a law implementing [`DgLaw::rho_p`]).
+    pub positivity: bool,
+}
+
+fn minmod3(a: f64, b: f64, c: f64) -> f64 {
+    if a > 0.0 && b > 0.0 && c > 0.0 {
+        a.min(b).min(c)
+    } else if a < 0.0 && b < 0.0 && c < 0.0 {
+        a.max(b).max(c)
+    } else {
+        0.0
+    }
+}
+
+impl Ctx<'_> {
+    fn neighbour(&self, e: usize, axis: usize, max: bool) -> Option<usize> {
+        let m = &self.mesh;
+        let mut c = [e % m.ne[0], e / m.ne[0]];
+        let periodic = matches!(self.bcs[2 * axis], DgBc::Periodic);
+        if max {
+            if c[axis] + 1 < m.ne[axis] {
+                c[axis] += 1;
+            } else if periodic {
+                c[axis] = 0;
+            } else {
+                return None;
+            }
+        } else if c[axis] > 0 {
+            c[axis] -= 1;
+        } else if periodic {
+            c[axis] = m.ne[axis] - 1;
+        } else {
+            return None;
+        }
+        Some(c[0] + m.ne[0] * c[1])
+    }
+
+    fn node_weight(&self, nd: usize) -> f64 {
+        let n1 = self.n1;
+        let ij = [nd % n1, nd / n1];
+        (0..self.mesh.dim).map(|a| self.w[ij[a]] / 2.0).product()
+    }
+
+    fn limit(&self, q: &mut [f64], lim: &DgLimiter, xi: &[f64]) {
+        let (nv, np, n1) = (self.nv, self.np, self.n1);
+        let m = &self.mesh;
+        let ne = m.elements();
+        let mean_of = |q: &[f64], e: usize, var: usize| -> f64 {
+            (0..np).map(|nd| self.node_weight(nd) * q[(e * np + nd) * nv + var]).sum()
+        };
+        if let Some(mt) = lim.tvb_m {
+            let means: Vec<f64> = (0..ne * nv).map(|k| mean_of(q, k / nv, k % nv)).collect();
+            let old = q.to_vec();
+            for e in 0..ne {
+                for var in 0..nv {
+                    let mean = means[e * nv + var];
+                    let mut slopes = [0.0; 2];
+                    let mut troubled = false;
+                    for a in 0..m.dim {
+                        let (mut ul, mut ur) = (0.0, 0.0);
+                        let tr = if m.dim == 2 { n1 } else { 1 };
+                        for t in 0..tr {
+                            let wt = if m.dim == 2 { self.w[t] / 2.0 } else { 1.0 };
+                            let (nl, nr) = if a == 0 { (self.node(0, t), self.node(n1 - 1, t)) } else { (self.node(t, 0), self.node(t, n1 - 1)) };
+                            ul += wt * old[(e * np + nl) * nv + var];
+                            ur += wt * old[(e * np + nr) * nv + var];
+                        }
+                        let mp = self.neighbour(e, a, true).map(|k| means[k * nv + var]);
+                        let mm = self.neighbour(e, a, false).map(|k| means[k * nv + var]);
+                        let (dp, dm) = match (mp, mm) {
+                            (Some(p), Some(mi)) => (p - mean, mean - mi),
+                            (Some(p), None) => (p - mean, p - mean),
+                            (None, Some(mi)) => (mean - mi, mean - mi),
+                            (None, None) => (0.0, 0.0),
+                        };
+                        let thr = mt * m.h(a) * m.h(a);
+                        let tvb = |x: f64| if x.abs() <= thr { x } else { minmod3(x, dp, dm) };
+                        let (up, um) = (ur - mean, mean - ul);
+                        let (sp, sm) = (tvb(up), tvb(um));
+                        let scale = 1e-9 * (mean.abs() + up.abs() + um.abs() + 1e-300);
+                        if (sp - up).abs() > scale || (sm - um).abs() > scale {
+                            troubled = true;
+                            slopes[a] = 0.5 * (sp + sm);
+                        } else {
+                            slopes[a] = 0.5 * (up + um);
+                        }
+                    }
+                    if troubled {
+                        for nd in 0..np {
+                            let ij = [nd % n1, nd / n1];
+                            let mut v = mean;
+                            for a in 0..m.dim {
+                                v += slopes[a] * xi[ij[a]];
+                            }
+                            q[(e * np + nd) * nv + var] = v;
+                        }
+                    }
+                }
+            }
+        }
+        if lim.positivity {
+            let eps = 1e-10;
+            for e in 0..ne {
+                let mean: Vec<f64> = (0..nv).map(|v| mean_of(q, e, v)).collect();
+                let Some((rm, pm)) = self.law.rho_p(&mean) else { return };
+                if rm <= eps || pm <= eps {
+                    for nd in 0..np {
+                        for v in 0..nv {
+                            q[(e * np + nd) * nv + v] = mean[v];
+                        }
+                    }
+                    continue;
+                }
+                let rho_min = (0..np).map(|nd| q[(e * np + nd) * nv]).fold(f64::INFINITY, f64::min);
+                let th1 = if rho_min < eps { ((rm - eps) / (rm - rho_min)).clamp(0.0, 1.0) } else { 1.0 };
+                for nd in 0..np {
+                    for v in 0..nv {
+                        let i = (e * np + nd) * nv + v;
+                        q[i] = mean[v] + th1 * (q[i] - mean[v]);
+                    }
+                }
+                let mut th2: f64 = 1.0;
+                for nd in 0..np {
+                    let base = (e * np + nd) * nv;
+                    let node = &q[base..base + nv];
+                    let ok = |s: f64| {
+                        let st: Vec<f64> = (0..nv).map(|v| mean[v] + s * (node[v] - mean[v])).collect();
+                        self.law.rho_p(&st).is_some_and(|(r, p)| r >= eps && p >= eps)
+                    };
+                    if !ok(1.0) {
+                        let (mut lo, mut hi) = (0.0, 1.0);
+                        for _ in 0..40 {
+                            let mid = 0.5 * (lo + hi);
+                            if ok(mid) {
+                                lo = mid;
+                            } else {
+                                hi = mid;
+                            }
+                        }
+                        th2 = th2.min(lo);
+                    }
+                }
+                if th2 < 1.0 {
+                    for nd in 0..np {
+                        for v in 0..nv {
+                            let i = (e * np + nd) * nv + v;
+                            q[i] = mean[v] + th2 * (q[i] - mean[v]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Integrates `q_t + ∇·F(q) = 0` with nodal DG to `t_end`.
 ///
 /// `bcs` lists `[XMin, XMax, YMin, YMax]`; 1D meshes use the first two.
@@ -482,6 +692,24 @@ pub fn solve_dg(
     t_end: f64,
     cfl: f64,
     filter: Option<ModalFilter>,
+) -> Result<DgSolution, String> {
+    solve_dg_limited(mesh, law, bcs, init, t_end, cfl, filter, None)
+}
+
+/// As [`solve_dg`] with an optional slope / positivity limiter applied after
+/// every Runge–Kutta stage.
+///
+/// # Errors
+/// See [`solve_dg`].
+pub fn solve_dg_limited(
+    mesh: &DgMesh,
+    law: &dyn DgLaw,
+    bcs: &[DgBc; 4],
+    init: &dyn Fn([f64; 2]) -> Vec<f64>,
+    t_end: f64,
+    cfl: f64,
+    filter: Option<ModalFilter>,
+    limiter: Option<DgLimiter>,
 ) -> Result<DgSolution, String> {
     if !(1..=2).contains(&mesh.dim) || mesh.p == 0 || mesh.ne.iter().any(|&n| n == 0) {
         return Err("invalid DG mesh".into());
@@ -554,11 +782,20 @@ pub fn solve_dg(
         }
         let dt = (cfl / ((2 * mesh.p + 1) as f64 * rate)).min(t_end - t);
         let l0 = ctx.rhs(&q, t, &xi);
-        let q1: Vec<f64> = q.iter().zip(&l0).map(|(a, b)| a + dt * b).collect();
+        let mut q1: Vec<f64> = q.iter().zip(&l0).map(|(a, b)| a + dt * b).collect();
+        if let Some(lm) = &limiter {
+            ctx.limit(&mut q1, lm, &xi);
+        }
         let l1 = ctx.rhs(&q1, t + dt, &xi);
-        let q2: Vec<f64> = (0..q.len()).map(|i| 0.75 * q[i] + 0.25 * (q1[i] + dt * l1[i])).collect();
+        let mut q2: Vec<f64> = (0..q.len()).map(|i| 0.75 * q[i] + 0.25 * (q1[i] + dt * l1[i])).collect();
+        if let Some(lm) = &limiter {
+            ctx.limit(&mut q2, lm, &xi);
+        }
         let l2 = ctx.rhs(&q2, t + 0.5 * dt, &xi);
         q = (0..q.len()).map(|i| q[i] / 3.0 + 2.0 / 3.0 * (q2[i] + dt * l2[i])).collect();
+        if let Some(lm) = &limiter {
+            ctx.limit(&mut q, lm, &xi);
+        }
         if fmat.is_some() {
             apply_filter(&mut q);
         }

@@ -64,6 +64,8 @@ mod fem_simplex;
 mod elasticity_fem;
 #[path = "sim/bem_aca.rs"]
 mod bem_aca;
+#[path = "sim/continuum_ext.rs"]
+mod continuum_ext;
 #[path = "sim/structured.rs"]
 mod structured;
 #[path = "sim/physics_sm.rs"]
