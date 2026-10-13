@@ -100,3 +100,5 @@ mod krylov_ext;
 mod matfun;
 #[path = "kernels/multigrid.rs"]
 mod multigrid;
+#[path = "kernels/ode_ext.rs"]
+mod ode_ext;

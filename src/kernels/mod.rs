@@ -86,3 +86,5 @@ pub mod eigs;
 pub mod matfun;
 /// Geometric multigrid (V/W/FMG) and smoothed-aggregation algebraic multigrid.
 pub mod multigrid;
+/// Exponential (ETDRK4, exp-Rosenbrock), IMEX, symplectic and variational integrators.
+pub mod ode_ext;

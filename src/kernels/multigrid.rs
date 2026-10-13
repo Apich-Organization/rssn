@@ -586,7 +586,7 @@ impl Amg {
             let mut trip: Vec<(usize, usize, f64)> = Vec::new();
             let mut bc_entries: Vec<(usize, usize, f64)> = Vec::new();
             let mut ncols = 0usize;
-            for (g, mem) in members.iter().enumerate() {
+            for mem in &members {
                 // modified Gram-Schmidt on the columns restricted to the aggregate
                 let mut q: Vec<Vec<f64>> = Vec::new();
                 let mut rmat = vec![vec![0.0; nb]; nb];
