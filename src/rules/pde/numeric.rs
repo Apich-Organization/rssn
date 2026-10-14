@@ -37,6 +37,10 @@ use crate::graph::rule::Installer;
 use crate::graph::OpDescriptor;
 use crate::graph::RuleError;
 use crate::kernels::special::bessel_i;
+use crate::kernels::special::bessel_i0;
+use crate::kernels::special::bessel_i1;
+use crate::kernels::special::bessel_k0;
+use crate::kernels::special::bessel_k1;
 use crate::kernels::special::bessel_j;
 use crate::kernels::special::bessel_k;
 use crate::kernels::special::gamma_numerical;
@@ -214,11 +218,14 @@ pub(super) fn negative_count(
     q1: f64,
     l: f64,
 ) -> u32 {
-    let mut count = 0;
-    while count < 4 && negative_root_index(p0, q0, p1, q1, l, count + 1).is_finite() {
-        count += 1;
-    }
-    count
+    let count = cached(8, &[p0, q0, p1, q1, l], || {
+        let mut count = 0;
+        while count < 4 && negative_root_index(p0, q0, p1, q1, l, count + 1).is_finite() {
+            count += 1;
+        }
+        f64::from(count)
+    });
+    count as u32
 }
 
 /// `sl_neg_root_n(p0, q0, p1, q1, L, m)`.
@@ -360,6 +367,36 @@ fn cylinder_condition(
     p.mul_add(value, q * slope)
 }
 
+/// `I_ν(x)` with the fast integer cases.
+#[allow(clippy::float_cmp)]
+fn fast_i(
+    nu: f64,
+    x: f64,
+) -> f64 {
+    if nu == 0.0 {
+        bessel_i0(x)
+    } else if nu == 1.0 {
+        bessel_i1(x)
+    } else {
+        bessel_i(nu, x)
+    }
+}
+
+/// `K_ν(x)` with the fast integer cases.
+#[allow(clippy::float_cmp)]
+fn fast_k(
+    nu: f64,
+    x: f64,
+) -> f64 {
+    if nu == 0.0 {
+        bessel_k0(x)
+    } else if nu == 1.0 {
+        bessel_k1(x)
+    } else {
+        bessel_k(nu, x)
+    }
+}
+
 /// `p F(r) + q F'(r)` for `F = I_ν(k r)` or `K_ν(k r)` (`second`).
 fn modified_condition(
     nu: f64,
@@ -371,11 +408,11 @@ fn modified_condition(
 ) -> f64 {
     let z = k * r;
     let (value, slope) = if second {
-        let v = bessel_k(nu, z);
-        (v, k * (-bessel_k(nu + 1.0, z) + nu / z * v))
+        let v = fast_k(nu, z);
+        (v, k * (-fast_k(nu + 1.0, z) + nu / z * v))
     } else {
-        let v = bessel_i(nu, z);
-        (v, k * (bessel_i(nu + 1.0, z) + nu / z * v))
+        let v = fast_i(nu, z);
+        (v, k * (fast_i(nu + 1.0, z) + nu / z * v))
     };
     p.mul_add(value, q * slope)
 }
@@ -403,11 +440,14 @@ fn annulus_negative_index(
 
 /// The number of negative eigenvalues of the annulus problem.
 pub(super) fn annulus_neg_count(v: [f64; 7]) -> u32 {
-    let mut count = 0;
-    while count < 4 && annulus_negative_index(v, count + 1).is_finite() {
-        count += 1;
-    }
-    count
+    let count = cached(7, &v, || {
+        let mut count = 0;
+        while count < 4 && annulus_negative_index(v, count + 1).is_finite() {
+            count += 1;
+        }
+        f64::from(count)
+    });
+    count as u32
 }
 
 /// `annulus_neg_root(nu, pa, qa, a, pb, qb, b, m)`.

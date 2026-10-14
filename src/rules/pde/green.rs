@@ -131,15 +131,15 @@ fn box_expansion(
 ) -> Option<NodeId> {
     let oo = infinity(cx)?;
     let mut axes: Vec<Vec<Choice>> = Vec::new();
-    for &j in space {
+    for (position, &j) in space.iter().enumerate() {
         let iv = interval(cx, p, conditions, j)?;
         if iv.periodic || !cx.is_zero(iv.left.value) || !cx.is_zero(iv.right.value) {
             return None;
         }
         let x = p.vars[j];
         let s = source_variable(cx, x)?;
-        let n_symbol = cx.graph.interner_mut().fresh_symbol("n");
-        let n_node = cx.graph.symbol_node(n_symbol);
+        let stems = ["n", "m", "l"];
+        let (n_node, n_symbol) = super::dummy(cx, p, stems.get(position).copied().unwrap_or("q"));
         cx.graph.assume(n_symbol, Facts::INTEGER | Facts::NONNEGATIVE);
         let general = interval_families(cx, &iv, n_node, false)?;
         let [family] = general.as_slice() else {

@@ -436,8 +436,6 @@ fn robin_and_neumann_waves_on_half_lines_and_outside_balls() {
 
 #[test]
 fn annulus_with_a_negative_radial_mode() {
-    use crate::kernels::special::bessel_k;
-    use crate::kernels::special::bessel_y;
     let heat = "diff(u(r, t), t) = diff(diff(u(r, t), r), r) + diff(u(r, t), r)/r";
     // u_r + 5u = 0 at r = 1 (wrong sign for the inner circle), u_r + u = 0 at r = 2.
     let s = any(&format!("pdsolve({heat}, u(r, t), list(at(diff(u(r, t), r), r, 1) + 5*u(1, t) = 0, at(diff(u(r, t), r), r, 2) + u(2, t) = 0, u(r, 0) = 1))"));
@@ -447,23 +445,23 @@ fn annulus_with_a_negative_radial_mode() {
     // J_0 / Y_0 and I_0 / K_0 conditions p F + F' at the two radii.
     let cond_jy = |second: bool, p: f64, k: f64, radius: f64| {
         let z = k * radius;
-        if second { p * bessel_y(0.0, z) - k * bessel_y(1.0, z) } else { p * bessel_j(0.0, z) - k * bessel_j(1.0, z) }
+        if second { p * crate::kernels::special::bessel_y0(z) - k * crate::kernels::special::bessel_y1(z) } else { p * crate::kernels::special::bessel_j0(z) - k * crate::kernels::special::bessel_j1(z) }
     };
     let cond_ik = |second: bool, p: f64, k: f64, radius: f64| {
         let z = k * radius;
-        if second { p * bessel_k(0.0, z) - k * bessel_k(1.0, z) } else { p * bessel_i(0.0, z) + k * bessel_i(1.0, z) }
+        if second { p * crate::kernels::special::bessel_k0(z) - k * crate::kernels::special::bessel_k1(z) } else { p * crate::kernels::special::bessel_i0(z) + k * crate::kernels::special::bessel_i1(z) }
     };
     // Negative mode: F = cond_K(a) I_0 - cond_I(a) K_0 with cond_K(a) cond_I(b) = cond_I(a) cond_K(b).
     let g_neg = |k: f64| cond_ik(true, pa, k, 1.0) * cond_ik(false, pb, k, 2.0) - cond_ik(false, pa, k, 1.0) * cond_ik(true, pb, k, 2.0);
     let kappas = roots(&g_neg, 12.0, 1);
     assert_eq!(kappas.len(), 1, "one negative mode");
     let kappa = kappas[0];
-    let neg_mode = move |q: f64| cond_ik(true, pa, kappa, 1.0) * bessel_i(0.0, kappa * q) - cond_ik(false, pa, kappa, 1.0) * bessel_k(0.0, kappa * q);
+    let neg_mode = move |q: f64| cond_ik(true, pa, kappa, 1.0) * crate::kernels::special::bessel_i0(kappa * q) - cond_ik(false, pa, kappa, 1.0) * crate::kernels::special::bessel_k0(kappa * q);
     let coefficient = |mode: &dyn Fn(f64) -> f64| simpson(&|q| q * mode(q), 1.0, 2.0) / simpson(&|q| q * mode(q) * mode(q), 1.0, 2.0);
     let mut reference = coefficient(&neg_mode) * (kappa * kappa * t).exp() * neg_mode(r);
     let g_pos = |k: f64| cond_jy(true, pa, k, 1.0) * cond_jy(false, pb, k, 2.0) - cond_jy(false, pa, k, 1.0) * cond_jy(true, pb, k, 2.0);
     for k in roots(&g_pos, 130.0, 40) {
-        let mode = move |q: f64| cond_jy(true, pa, k, 1.0) * bessel_j(0.0, k * q) - cond_jy(false, pa, k, 1.0) * bessel_y(0.0, k * q);
+        let mode = move |q: f64| cond_jy(true, pa, k, 1.0) * crate::kernels::special::bessel_j0(k * q) - cond_jy(false, pa, k, 1.0) * crate::kernels::special::bessel_y0(k * q);
         reference += coefficient(&mode) * (-k * k * t).exp() * mode(r);
     }
     let text = expand_integrals(&expand_sums(&rhs(&s), 40), 160);
