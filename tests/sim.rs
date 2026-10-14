@@ -80,6 +80,8 @@ mod relativity;
 mod ewald;
 #[path = "sim/md_engine.rs"]
 mod md_engine;
+#[path = "sim/md_rigid.rs"]
+mod md_rigid;
 #[path = "sim/nbody.rs"]
 mod nbody;
 #[path = "sim/sph.rs"]
