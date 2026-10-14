@@ -169,6 +169,7 @@ use super::poly::univariate;
 
 mod certified;
 mod complex_roots;
+mod decompose;
 pub(crate) mod elim;
 mod heuristics;
 mod inequality;
@@ -1304,6 +1305,22 @@ mod tests {
         values.sort_by(f64::total_cmp);
         for (v, want) in values.iter().zip([-1.918_985_947_228_994_7_f64, -1.309_721_467_890_570_2, -0.284_629_676_546_570_3, 0.830_830_026_003_772_9, 1.682_507_065_662_362_4]) {
             assert!((v - want).abs() < 1e-8, "{values:?}");
+        }
+        // Decomposable and self-reciprocal polynomials of higher degree.
+        for (src, poly) in [
+            ("solve(x^6 + 3*x^5 + 6*x^4 + 7*x^3 + 6*x^2 + 3*x - 1, x)", vec![-1.0, 3.0, 6.0, 7.0, 6.0, 3.0, 1.0]),
+            ("solve(x^6 - 2*x^3 - 1, x)", vec![-1.0, 0.0, 0.0, -2.0, 0.0, 0.0, 1.0]),
+            ("solve(x^6 - x^4 - x^3 - x^2 + 1, x)", vec![1.0, 0.0, -1.0, -1.0, -1.0, 0.0, 1.0]),
+        ] {
+            let (text, reduced) = reduce_with(&rules, src, &[]);
+            assert!(reduced, "{src}: {text}");
+            let items = list_items(&text);
+            assert!(!items.is_empty() && !text.contains("root_of"), "{src}: {text}");
+            for item in &items {
+                let x = eval(&rules, item, &[]);
+                let residual: f64 = poly.iter().rev().fold(0.0, |acc, c| acc * x + c);
+                assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(6)), "{src}: {item} -> {x} gives {residual}");
+            }
         }
         // Unsolvable: exact root objects, canonical and numerically evaluable.
         let (text, reduced) = reduce_with(&rules, "solve(x^5 - x - 1, x)", &[]);

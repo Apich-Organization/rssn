@@ -36,6 +36,12 @@ pub(super) fn roots(
     graph: &mut Graph,
     factor: &[BigInt],
 ) -> Option<Vec<(f64, NodeId)>> {
+    if factor.len() >= 7
+        && !super::numeric_run()
+        && let Some(found) = super::decompose::roots(graph, factor)
+    {
+        return Some(found);
+    }
     let objects = real_roots_as_objects(graph, factor)?;
     if super::numeric_run() {
         return Some(objects.into_iter().map(|(value, _)| (value, graph.float(value))).collect());
