@@ -116,6 +116,7 @@ use super::solve::solve_linear;
 
 mod classes;
 mod frobenius;
+mod kovacic;
 mod lie;
 mod nonlinear;
 #[cfg(test)]
@@ -2354,6 +2355,30 @@ mod tests {
                 let residual = a2 * d2 + a1 * d1 + a0 * y;
                 let scale = 1.0 + (a2 * d2).abs() + (a1 * d1).abs() + (a0 * y).abs();
                 assert!(residual.abs() < tolerance * scale, "{answer} basis {basis:?} at {x}: {residual}");
+            }
+        }
+    }
+
+    #[test]
+    fn kovacic_hyperexponential_solutions() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        // x y'' = (x - 2) y: u = x exp(-x) (pole of order one, constant at infinity).
+        let coulomb = run("dsolve(x*diff(diff(y(x), x), x) - (x - 2)*y(x), y(x))");
+        // y'' = (x^2 + 3) y: x exp(x^2/2).
+        let hermite = run("dsolve(diff(diff(y(x), x), x) - (x^2 + 3)*y(x), y(x))");
+        for (answer, a) in [(coulomb, 0), (hermite, 1)] {
+            let full = answer.strip_prefix("y(x) = ").unwrap_or(&answer).to_string();
+            // The second solution carries an inert quadrature: keep the C1 term.
+            let rhs = full.rsplit(" + ").find(|t| t.contains("C1")).unwrap_or(&full).to_string();
+            // The basis solution multiplying C1 satisfies the equation.
+            for x in [0.7_f64, 1.3, 2.1] {
+                let h = 1e-3;
+                let f = |t: f64| solution_value(&rules, &rhs, t, (1.0, 0.0));
+                let (y, up, down) = (f(x), f(x + h), f(x - h));
+                let d2 = (up - 2.0 * y + down) / (h * h);
+                let residual = if a == 0 { x * d2 - (x - 2.0) * y } else { d2 - (x * x + 3.0) * y };
+                assert!(residual.abs() < 1e-3 * (1.0 + y.abs() * 10.0), "{answer} at {x}: {residual}");
             }
         }
     }

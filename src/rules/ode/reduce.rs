@@ -531,7 +531,12 @@ pub(super) fn variable_coefficients(
 ) -> Option<NodeId> {
     let (a, forcing) = linear_second_order(cx, problem)?;
     let x = problem.x;
-    let solutions = family_solutions(cx, &a, x);
+    let mut solutions = family_solutions(cx, &a, x);
+    if solutions.is_empty()
+        && let Some(y) = super::kovacic::first_solution(cx, &a, x)
+    {
+        solutions.push(y);
+    }
     let Some(&y1) = solutions.first() else {
         return super::classes::normal_form(cx, problem, &a, forcing, depth);
     };
