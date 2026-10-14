@@ -146,12 +146,14 @@
 
 use std::collections::HashMap;
 
+mod bochner;
 mod classical;
 mod conservation;
 mod curvilinear;
 mod diffusion;
 mod elliptic;
 mod frameworks;
+mod green;
 mod modes;
 mod numeric;
 mod sl;
@@ -243,6 +245,7 @@ enum Request {
     Classify,
     Order,
     At,
+    Green,
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -292,6 +295,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("pde/pde_classify", Tier::Reduce, Pde { op, request: Request::Classify });
     let op = i.op(heavy("pde_order", Arity::Fixed(2)))?;
     i.kernel("pde/pde_order", Tier::Reduce, Pde { op, request: Request::Order });
+    let op = i.op(heavy("pde_greens_function", Arity::Variadic))?;
+    i.kernel("pde/pde_greens_function", Tier::Reduce, Pde { op, request: Request::Green });
     Ok(())
 }
 
@@ -318,6 +323,24 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 };
                 Outcome::Equal(cx.graph.int(i64::from(problem.order())))
+            },
+            | Request::Green => {
+                let (equation, unknown, conditions) = match *args.as_slice() {
+                    | [e, u] => (e, u, None),
+                    | [e, u, c] => (e, u, Some(c)),
+                    | _ => return Outcome::Pass,
+                };
+                let Some(problem) = Problem::parse(cx, equation, unknown) else {
+                    return Outcome::Pass;
+                };
+                let conditions = match conditions {
+                    | Some(c) => match Conditions::parse(cx, &problem, c) {
+                        | Some(c) => c,
+                        | None => return Outcome::Pass,
+                    },
+                    | None => Conditions::default(),
+                };
+                green::greens_function(cx, &problem, &conditions).map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::Classify => {
                 let Some(problem) = args.get(..2).and_then(|a| Problem::parse(cx, a[0], a[1])) else {
@@ -1143,6 +1166,8 @@ fn solve(
         // Robin conditions on a half-line (heat kernels with the Robin image).
         if matches!(method, Method::Any | Method::Heat1 | Method::Heat3 | Method::Fourier) && kind(cx, p) == "heat" {
             diffusion::parabolic(cx, p, conditions).map(|solution| cx.graph.node(core::EQ, &[p.unknown, solution]))
+        } else if matches!(method, Method::Any | Method::Dalembert | Method::SecondOrder) && kind(cx, p) == "wave" {
+            classical::wave_half_line_robin(cx, p, conditions).map(|solution| cx.graph.node(core::EQ, &[p.unknown, solution]))
         } else {
             None
         }

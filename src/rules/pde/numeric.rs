@@ -26,6 +26,9 @@
 //!   at `z = κ` (the radial mode `I_ν(κ r/R)`, eigenvalue `-κ²/R²`, of a
 //!   disk or ball with a Robin condition of the wrong sign); NaN unless
 //!   `h < -ν`.
+//! * `annulus_neg_root(nu, pa, qa, a, pb, qb, b, m)`: the `m`-th `κ > 0`
+//!   for which `F = A I_ν(κ r) + B K_ν(κ r)` meets both Robin conditions of
+//!   an annulus (negative eigenvalue `-κ²`).
 //! * `struve_h(nu, x)`, `struve_l(nu, x)`: the Struve functions `H_ν`,
 //!   `L_ν` (needed by the Fourier–Bessel moments of odd powers).
 
@@ -35,11 +38,39 @@ use crate::graph::OpDescriptor;
 use crate::graph::RuleError;
 use crate::kernels::special::bessel_i;
 use crate::kernels::special::bessel_j;
+use crate::kernels::special::bessel_k;
 use crate::kernels::special::gamma_numerical;
 use crate::kernels::special::bessel_y;
 use crate::kernels::special::bessel_y1;
 
 const BISECTIONS: u32 = 80;
+
+thread_local! {
+    static ROOTS: std::cell::RefCell<std::collections::HashMap<Vec<u64>, f64>> = std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// Memoises the root-finding operators (the same eigenvalue is requested
+/// again at every quadrature node).
+fn cached(
+    tag: u64,
+    args: &[f64],
+    compute: impl FnOnce() -> f64,
+) -> f64 {
+    let mut key: Vec<u64> = args.iter().map(|v| v.to_bits()).collect();
+    key.push(tag);
+    if let Some(found) = ROOTS.with(|c| c.borrow().get(&key).copied()) {
+        return found;
+    }
+    let value = compute();
+    ROOTS.with(|c| {
+        let mut map = c.borrow_mut();
+        if map.len() > 8192 {
+            map.clear();
+        }
+        map.insert(key, value);
+    });
+    value
+}
 
 /// The `m`-th sign change of `g` on `x ≥ start` (steps of `step`), refined
 /// by bisection.
@@ -92,7 +123,7 @@ pub(super) fn bessel_zero(args: &[f64]) -> f64 {
         return f64::NAN;
     }
     let g = |x: f64| bessel_j(nu, x);
-    nth_sign_change(&g, 0.5_f64.mul_add(nu, 0.01), 0.1, m)
+    cached(3, args, || nth_sign_change(&g, 0.5_f64.mul_add(nu, 0.01), 0.1, m))
 }
 
 /// `bessel_root(nu, h, m)`.
@@ -104,7 +135,7 @@ pub(super) fn bessel_root(args: &[f64]) -> f64 {
         return 0.0;
     }
     let g = |x: f64| 0.5 * x * (bessel_j(nu - 1.0, x) - bessel_j(nu + 1.0, x)) + h * bessel_j(nu, x);
-    nth_sign_change(&g, 0.05, 0.05, m)
+    cached(4, args, || nth_sign_change(&g, 0.05, 0.05, m))
 }
 
 /// `sl_root(p0, q0, p1, q1, L, m)`.
@@ -119,7 +150,7 @@ pub(super) fn sl_root(args: &[f64]) -> f64 {
     }
     let g = |k: f64| (p1 * q0 - q1 * p0) * k * (k * l).cos() - (p1 * p0 + q1 * q0 * k * k) * (k * l).sin();
     let scale = std::f64::consts::PI / l;
-    nth_sign_change(&g, 1e-3 * scale, scale / 40.0, m)
+    cached(5, args, || nth_sign_change(&g, 1e-3 * scale, scale / 40.0, m))
 }
 
 /// `(p0 q0 p1 q1 L)` scanned for the root `κ` of
@@ -329,6 +360,66 @@ fn cylinder_condition(
     p.mul_add(value, q * slope)
 }
 
+/// `p F(r) + q F'(r)` for `F = I_ν(k r)` or `K_ν(k r)` (`second`).
+fn modified_condition(
+    nu: f64,
+    p: f64,
+    q: f64,
+    k: f64,
+    r: f64,
+    second: bool,
+) -> f64 {
+    let z = k * r;
+    let (value, slope) = if second {
+        let v = bessel_k(nu, z);
+        (v, k * (-bessel_k(nu + 1.0, z) + nu / z * v))
+    } else {
+        let v = bessel_i(nu, z);
+        (v, k * (bessel_i(nu + 1.0, z) + nu / z * v))
+    };
+    p.mul_add(value, q * slope)
+}
+
+/// The `m`-th negative-eigenvalue root of the annulus problem.
+fn annulus_negative_index(
+    v: [f64; 7],
+    m: u32,
+) -> f64 {
+    let [nu, pa, qa, a, pb, qb, b] = v;
+    if m == 0 || a <= 0.0 || b <= a || nu < 0.0 {
+        return f64::NAN;
+    }
+    let ratio = |p: f64, q: f64| if q == 0.0 { 0.0 } else { (p / q).abs() };
+    let top = (8.0 / (b - a) + 4.0 * ratio(pa, qa).max(ratio(pb, qb)) + 2.0 * nu / a).min(600.0 / b);
+    let g = |k: f64| {
+        let (ia, ka) = (modified_condition(nu, pa, qa, k, a, false), modified_condition(nu, pa, qa, k, a, true));
+        let (ib, kb) = (modified_condition(nu, pb, qb, k, b, false), modified_condition(nu, pb, qb, k, b, true));
+        ka * ib - ia * kb
+    };
+    let step = top / 8000.0;
+    let found = nth_sign_change(&g, step * 0.05, step, m);
+    if found.is_finite() && found < top { found } else { f64::NAN }
+}
+
+/// The number of negative eigenvalues of the annulus problem.
+pub(super) fn annulus_neg_count(v: [f64; 7]) -> u32 {
+    let mut count = 0;
+    while count < 4 && annulus_negative_index(v, count + 1).is_finite() {
+        count += 1;
+    }
+    count
+}
+
+/// `annulus_neg_root(nu, pa, qa, a, pb, qb, b, m)`.
+pub(super) fn annulus_neg_root(args: &[f64]) -> f64 {
+    let (Some(&nu), Some(&pa), Some(&qa), Some(&a), Some(&pb), Some(&qb), Some(&b), Some(m)) =
+        (args.first(), args.get(1), args.get(2), args.get(3), args.get(4), args.get(5), args.get(6), args.get(7).and_then(|&m| index(m)))
+    else {
+        return f64::NAN;
+    };
+    cached(1, args, || annulus_negative_index([nu, pa, qa, a, pb, qb, b], m))
+}
+
 /// `annulus_root(nu, pa, qa, a, pb, qb, b, m)`.
 pub(super) fn annulus_root(args: &[f64]) -> f64 {
     let (Some(&nu), Some(&pa), Some(&qa), Some(&a), Some(&pb), Some(&qb), Some(&b), Some(m)) =
@@ -347,7 +438,7 @@ pub(super) fn annulus_root(args: &[f64]) -> f64 {
         ya.mul_add(jb, -(ja * yb))
     };
     let scale = std::f64::consts::PI / (b - a);
-    nth_sign_change(&g, 1e-3 * scale, scale / 40.0, m)
+    cached(2, args, || nth_sign_change(&g, 1e-3 * scale, scale / 40.0, m))
 }
 
 /// Registers the operators.
@@ -360,6 +451,7 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.op(OpDescriptor::new("bessel_neg_root", Arity::Fixed(2)).eval(bessel_neg_root))?;
     i.op(OpDescriptor::new("struve_h", Arity::Fixed(2)).eval(struve_h))?;
     i.op(OpDescriptor::new("struve_l", Arity::Fixed(2)).eval(struve_l))?;
+    i.op(OpDescriptor::new("annulus_neg_root", Arity::Fixed(8)).eval(annulus_neg_root))?;
     i.op(OpDescriptor::new("annulus_root", Arity::Fixed(8)).eval(annulus_root))?;
     Ok(())
 }

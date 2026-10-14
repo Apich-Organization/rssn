@@ -22,7 +22,6 @@ use super::dummy;
 use super::symmetry::Jets;
 use super::symmetry::to_jets;
 use crate::graph::Cx;
-use crate::graph::Env;
 use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::graph::op::core;
@@ -288,79 +287,164 @@ fn rename_constants(
     out
 }
 
-/// `u_t = Σ aₙ ∂ₓⁿ u`, `u(x, 0) = g` on the line, by the Fourier transform.
+/// Homogeneous constant-coefficient evolution equations on whole space
+/// (`a₂ u_tt + a₁ u_t + Σ c_α ∂^α u = 0`, any order in `x`, one to three
+/// space dimensions) by the Fourier transform: with the symbol
+/// `P(ik) = Σ c_α Π (i k_j)^{α_j}` the transform solves the ordinary
+/// equation `a₂ û_tt + a₁ û_t + P û = 0`,
+///
+/// * first order: `û = û₀ e^{-P t/a₁}`;
+/// * second order: `û = e^{-a t}[û₀ (cosh β t + (a/β) sinh β t) + û₁ sinh(β t)/β]`,
+///   `a = a₁/(2 a₂)`, `β = √(a² - P/a₂)`,
+///
+/// and `u = (2π)^{-d} ∫ û e^{i k·x} dk` with `û₀(k) = ∫ g(s) e^{-i k·s} ds`.
+/// The answer is that integral representation (the inversion table of the
+/// transform module closes it only for special data).
 pub(super) fn fourier_evolution(
     cx: &mut Cx<'_>,
     p: &Problem,
     conditions: &Conditions,
 ) -> Option<NodeId> {
-    if p.vars.len() != 2 || p.nonlinear || !p.homogeneous(cx.graph) {
+    if p.nonlinear || !p.homogeneous(cx.graph) {
         return None;
     }
+    let n = p.dimension();
     let time = p.time(cx.graph);
-    let space = 1 - time;
-    let (x, t) = (p.vars[space], p.vars[time]);
-    let ut = p.unit(time, 1);
-    let a = p.coefficient(cx.graph, &ut);
-    if cx.is_zero(a) {
+    let space: Vec<usize> = (0..n).filter(|&j| j != time).collect();
+    if space.is_empty() || space.len() > 3 {
         return None;
     }
-    // Only u_t and pure x-derivatives with constant coefficients.
-    let mut symbol_terms = Vec::new();
+    let (a1, a2) = (p.coefficient(cx.graph, &p.unit(time, 1)), p.coefficient(cx.graph, &p.unit(time, 2)));
+    if !p.constant(cx.graph, a1) || !p.constant(cx.graph, a2) {
+        return None;
+    }
+    let order = if !cx.is_zero(a2) {
+        2
+    } else if !cx.is_zero(a1) {
+        1
+    } else {
+        return None;
+    };
     let i_unit = cx.graph.ops().lookup("I").map(|op| cx.graph.node(op, &[]))?;
-    let k = fresh(cx, "k");
-    let ik = mul(cx.graph, &[i_unit, k]);
+    let first_k = dummy(cx, p, "k").0;
+    let ks: Vec<NodeId> = (0..space.len()).map(|i| if i == 0 { first_k } else { fresh(cx, "k") }).collect();
+    let mut symbol_terms = Vec::new();
     for (index, c) in p.linear.clone() {
-        if index == ut {
+        if cx.is_zero(c) || index == p.unit(time, 1) || index == p.unit(time, 2) {
             continue;
         }
         if index[time] != 0 || !p.constant(cx.graph, c) {
             return None;
         }
-        let n = i64::from(index[space]);
-        // a u_t + c ∂ₓⁿ u = 0  ⇒  P(ik) contains -(c/a) (ik)^n.
-        let ratio = {
-            let inverse = powi(cx.graph, a, -1);
-            let r = mul(cx.graph, &[c, inverse]);
-            neg(cx.graph, r)
-        };
-        let power = powi(cx.graph, ik, n);
-        symbol_terms.push(mul(cx.graph, &[ratio, power]));
+        let mut factors = vec![c];
+        for (pos, &j) in space.iter().enumerate() {
+            let e = i64::from(index[j]);
+            if e > 0 {
+                let ik = mul(cx.graph, &[i_unit, ks[pos]]);
+                factors.push(powi(cx.graph, ik, e));
+            }
+        }
+        symbol_terms.push(mul(cx.graph, &factors));
     }
     if symbol_terms.is_empty() {
         return None;
     }
-    let zero_index = vec![0; 2];
-    let initial = conditions.find(cx.graph, time, &zero_index, None)?;
-    if conditions.0.len() != 1 || !cx.graph.number_of(initial.point).is_some_and(Number::is_zero) {
-        return None;
-    }
     let symbol = add(cx.graph, &symbol_terms);
     let symbol = cx.simplify(symbol);
-    let (exp, defint, infinity, pi) = (
-        cx.graph.ops().lookup("exp")?,
-        cx.graph.ops().lookup("defint")?,
-        cx.graph.ops().lookup("oo")?,
-        cx.graph.ops().lookup("pi")?,
-    );
-    let (s, _) = dummy(cx, p, "s");
-    let g = cx.graph.substitute(initial.value, x, s);
-    let phase = {
-        let diff = sub(cx.graph, x, s);
-        let a = mul(cx.graph, &[ik, diff]);
-        let b = mul(cx.graph, &[symbol, t]);
-        add(cx.graph, &[a, b])
+    let zero_index = vec![0; n];
+    let displacement = conditions.find(cx.graph, time, &zero_index, None)?;
+    let velocity = if order == 2 { conditions.find(cx.graph, time, &p.unit(time, 1), None) } else { None };
+    if conditions.0.len() != 1 + usize::from(velocity.is_some()) || !cx.graph.number_of(displacement.point).is_some_and(Number::is_zero) {
+        return None;
+    }
+    if velocity.is_some_and(|v| !cx.graph.number_of(v.point).is_some_and(Number::is_zero)) {
+        return None;
+    }
+    let t = p.vars[time];
+    let exp = |cx: &mut Cx<'_>, e: NodeId| -> Option<NodeId> { super::util::call(cx, "exp", &[e]) };
+    // The multipliers of û₀ and û₁.
+    let (m0, m1) = if order == 1 {
+        let ratio = {
+            let q = super::util::div(cx, symbol, a1);
+            neg(cx.graph, q)
+        };
+        let e = mul(cx.graph, &[ratio, t]);
+        let m0 = exp(cx, e)?;
+        (cx.simplify(m0), None)
+    } else {
+        let half = cx.graph.num(Number::fraction(1, 2)?);
+        let alpha = {
+            let q = super::util::div(cx, a1, a2);
+            let h = mul(cx.graph, &[half, q]);
+            cx.simplify(h)
+        };
+        let beta2 = {
+            let a_sq = powi(cx.graph, alpha, 2);
+            let q = super::util::div(cx, symbol, a2);
+            let nq = neg(cx.graph, q);
+            add(cx.graph, &[a_sq, nq])
+        };
+        let beta2 = cx.simplify(beta2);
+        let beta = super::util::sqrt(cx, beta2)?;
+        let bt = mul(cx.graph, &[beta, t]);
+        let (ch, sh) = (super::util::call(cx, "cosh", &[bt])?, super::util::call(cx, "sinh", &[bt])?);
+        let damp = {
+            let m = mul(cx.graph, &[alpha, t]);
+            let nm = neg(cx.graph, m);
+            exp(cx, nm)?
+        };
+        let ratio = super::util::div(cx, alpha, beta);
+        let lead = {
+            let rs = mul(cx.graph, &[ratio, sh]);
+            add(cx.graph, &[ch, rs])
+        };
+        let m0 = mul(cx.graph, &[damp, lead]);
+        let m1 = {
+            let q = super::util::div(cx, sh, beta);
+            mul(cx.graph, &[damp, q])
+        };
+        (cx.simplify(m0), Some(cx.simplify(m1)))
     };
-    let kernel = cx.graph.node(exp, &[phase]);
-    let body = mul(cx.graph, &[g, kernel]);
+    let (defint, infinity, pi) = (cx.graph.ops().lookup("defint")?, cx.graph.ops().lookup("oo")?, cx.graph.ops().lookup("pi")?);
     let oo = cx.graph.node(infinity, &[]);
     let minus_oo = neg(cx.graph, oo);
-    let inner = cx.graph.node(defint, &[body, s, minus_oo, oo]);
-    let outer = cx.graph.node(defint, &[inner, k, minus_oo, oo]);
+    let ss: Vec<NodeId> = space.iter().map(|_| dummy(cx, p, "s").0).collect();
+    // Distinct dummies for several axes.
+    let ss: Vec<NodeId> = ss.iter().enumerate().map(|(i, &s)| if i == 0 { s } else { fresh(cx, "s") }).collect();
+    let mut parts = Vec::new();
+    for (data, multiplier) in [(Some(displacement.value), Some(m0)), (velocity.map(|v| v.value), m1)] {
+        let (Some(value), Some(multiplier)) = (data, multiplier) else {
+            continue;
+        };
+        if cx.is_zero(value) {
+            continue;
+        }
+        let mut g = value;
+        for (pos, &j) in space.iter().enumerate() {
+            g = cx.graph.substitute(g, p.vars[j], ss[pos]);
+        }
+        // exp(i k·(x - s)) over every axis.
+        let mut phases = Vec::new();
+        for (pos, &j) in space.iter().enumerate() {
+            let gap = sub(cx.graph, p.vars[j], ss[pos]);
+            let kg = mul(cx.graph, &[i_unit, ks[pos], gap]);
+            phases.push(kg);
+        }
+        let phase = add(cx.graph, &phases);
+        let kernel = exp(cx, phase)?;
+        let mut body = mul(cx.graph, &[g, kernel, multiplier]);
+        for &s_var in ss.iter().rev() {
+            body = cx.graph.node(defint, &[body, s_var, minus_oo, oo]);
+        }
+        for &k_var in ks.iter().rev() {
+            body = cx.graph.node(defint, &[body, k_var, minus_oo, oo]);
+        }
+        parts.push(body);
+    }
+    let total = add(cx.graph, &parts);
     let pi = cx.graph.node(pi, &[]);
     let two = cx.graph.int(2);
     let scale = mul(cx.graph, &[two, pi]);
-    let inverse = powi(cx.graph, scale, -1);
-    let _ = Env::numeric(0.0);
-    Some(mul(cx.graph, &[inverse, outer]))
+    let inverse = powi(cx.graph, scale, -i64::try_from(space.len()).ok()?);
+    Some(mul(cx.graph, &[inverse, total]))
 }

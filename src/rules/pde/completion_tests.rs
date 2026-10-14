@@ -370,3 +370,171 @@ fn separation_of_variables_for_variable_coefficients() {
     close(residual, 0.0, 5e-3, "residual of the series");
     close(u(1.0, t0) * 2.0 + (u(1.0 + h, t0) - u(1.0 - h, t0)) / (2.0 * h), 0.0, 2e-2, "Robin end");
 }
+
+#[test]
+fn classical_orthogonal_polynomial_operators() {
+    let (x, t) = (0.7_f64, 0.4_f64);
+    let numeric = |text: &str| crate::rules::testing::numeric(&crate::rules::standard(), text, &[("x", x), ("t", t)], 1e-9).0;
+    // Hermite type (Ornstein-Uhlenbeck): u_t = u_xx - x u_x, x² = He_2 + 1.
+    let s = any("pdsolve(diff(u(x, t), t) = diff(diff(u(x, t), x), x) - x*diff(u(x, t), x), u(x, t), list(u(x, 0) = x^2))");
+    close(numeric(&rhs(&s)), 1.0 + (x * x - 1.0) * (-2.0 * t).exp(), 1e-8, &s);
+    // Laguerre type: u_t = x u_xx + (1 - x) u_x, x² = y₂ + 4 y₁ + 2.
+    let s = any("pdsolve(diff(u(x, t), t) = x*diff(diff(u(x, t), x), x) + (1 - x)*diff(u(x, t), x), u(x, t), list(u(x, 0) = x^2))");
+    close(numeric(&rhs(&s)), 2.0 + 4.0 * (-t).exp() * (x - 1.0) + (-2.0 * t).exp() * (x * x - 4.0 * x + 2.0), 1e-8, &s);
+    // Jacobi type on [0, 1]: u_t = x(1 - x) u_xx + (1/2 - 3x/2) u_x, x = 1/3 + y₁.
+    let s = any("pdsolve(diff(u(x, t), t) = x*(1 - x)*diff(diff(u(x, t), x), x) + (1/2 - 3*x/2)*diff(u(x, t), x), u(x, t), list(u(x, 0) = x))");
+    close(numeric(&rhs(&s)), 1.0 / 3.0 + (x - 1.0 / 3.0) * (-1.5 * t).exp(), 1e-8, &s);
+}
+
+/// `v_tt = v_xx` on `x > 0` with `v_x + ρ v = 0` at 0, `v(x, 0) = f`, `v_t = 0`, by leapfrog.
+fn robin_wave_reference(
+    rho: f64,
+    f: &dyn Fn(f64) -> f64,
+    at: f64,
+    t_end: f64,
+) -> f64 {
+    let (dx, dt) = (0.004_f64, 0.002_f64);
+    let n = 4500_usize;
+    let steps = (t_end / dt).round() as usize;
+    let x = |i: usize| dx * i as f64;
+    let mut previous: Vec<f64> = (0..=n).map(|i| f(x(i))).collect();
+    let laplacian = |u: &[f64]| -> Vec<f64> {
+        let mut out = vec![0.0; u.len()];
+        for i in 0..u.len() {
+            let left = if i == 0 { u[1] + 2.0 * dx * rho * u[0] } else { u[i - 1] };
+            let right = if i + 1 == u.len() { 0.0 } else { u[i + 1] };
+            out[i] = (left - 2.0 * u[i] + right) / (dx * dx);
+        }
+        out
+    };
+    let l0 = laplacian(&previous);
+    let mut current: Vec<f64> = previous.iter().zip(&l0).map(|(u, l)| u + 0.5 * dt * dt * l).collect();
+    for _ in 1..steps {
+        let l = laplacian(&current);
+        let next: Vec<f64> = (0..=n).map(|i| 2.0 * current[i] - previous[i] + dt * dt * l[i]).collect();
+        previous = current;
+        current = next;
+    }
+    current[(at / dx).round() as usize]
+}
+
+#[test]
+fn robin_and_neumann_waves_on_half_lines_and_outside_balls() {
+    let bump = |x: f64| (-4.0 * (x - 3.0) * (x - 3.0)).exp();
+    let t = 1.2_f64;
+    let wave = "diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x)";
+    let s = any(&format!("pdsolve({wave}, u(x, t), list(at(diff(u(x, t), x), x, 0) + 7/10*u(0, t) = 0, u(x, 0) = exp(-4*(x - 3)^2), at(diff(u(x, t), t), t, 0) = 0))"));
+    assert!(s.contains("defint"), "{s}");
+    let text = expand_integrals(&rhs(&s).replace(", oo)", ", 12)"), 500);
+    close(value(&text, &[("x", 2.0), ("t", t)]), robin_wave_reference(0.7, &bump, 2.0, t), 4e-3, &s);
+    // Outside the unit ball with a Neumann condition: v = r u, v_x - v = 0 (ρ = -1/R).
+    let ball = "diff(diff(u(r, t), t), t) = diff(diff(u(r, t), r), r) + 2*diff(u(r, t), r)/r";
+    let s = any(&format!("pdsolve({ball}, u(r, t), list(at(diff(u(r, t), r), r, 1) = 0, u(oo, t) = 0, u(r, 0) = exp(-4*(r - 4)^2)/r, at(diff(u(r, t), t), t, 0) = 0))"));
+    let text = expand_integrals(&rhs(&s).replace(", oo)", ", 13)"), 500);
+    close(value(&text, &[("r", 3.0), ("t", t)]), robin_wave_reference(-1.0, &bump, 2.0, t) / 3.0, 4e-3, &s);
+}
+
+#[test]
+fn annulus_with_a_negative_radial_mode() {
+    use crate::kernels::special::bessel_k;
+    use crate::kernels::special::bessel_y;
+    let heat = "diff(u(r, t), t) = diff(diff(u(r, t), r), r) + diff(u(r, t), r)/r";
+    // u_r + 5u = 0 at r = 1 (wrong sign for the inner circle), u_r + u = 0 at r = 2.
+    let s = any(&format!("pdsolve({heat}, u(r, t), list(at(diff(u(r, t), r), r, 1) + 5*u(1, t) = 0, at(diff(u(r, t), r), r, 2) + u(2, t) = 0, u(r, 0) = 1))"));
+    assert!(s.contains("annulus_neg_root"), "{s}");
+    let (r, t) = (1.4_f64, 0.02_f64);
+    let (pa, pb) = (5.0_f64, 1.0_f64);
+    // J_0 / Y_0 and I_0 / K_0 conditions p F + F' at the two radii.
+    let cond_jy = |second: bool, p: f64, k: f64, radius: f64| {
+        let z = k * radius;
+        if second { p * bessel_y(0.0, z) - k * bessel_y(1.0, z) } else { p * bessel_j(0.0, z) - k * bessel_j(1.0, z) }
+    };
+    let cond_ik = |second: bool, p: f64, k: f64, radius: f64| {
+        let z = k * radius;
+        if second { p * bessel_k(0.0, z) - k * bessel_k(1.0, z) } else { p * bessel_i(0.0, z) + k * bessel_i(1.0, z) }
+    };
+    // Negative mode: F = cond_K(a) I_0 - cond_I(a) K_0 with cond_K(a) cond_I(b) = cond_I(a) cond_K(b).
+    let g_neg = |k: f64| cond_ik(true, pa, k, 1.0) * cond_ik(false, pb, k, 2.0) - cond_ik(false, pa, k, 1.0) * cond_ik(true, pb, k, 2.0);
+    let kappas = roots(&g_neg, 12.0, 1);
+    assert_eq!(kappas.len(), 1, "one negative mode");
+    let kappa = kappas[0];
+    let neg_mode = move |q: f64| cond_ik(true, pa, kappa, 1.0) * bessel_i(0.0, kappa * q) - cond_ik(false, pa, kappa, 1.0) * bessel_k(0.0, kappa * q);
+    let coefficient = |mode: &dyn Fn(f64) -> f64| simpson(&|q| q * mode(q), 1.0, 2.0) / simpson(&|q| q * mode(q) * mode(q), 1.0, 2.0);
+    let mut reference = coefficient(&neg_mode) * (kappa * kappa * t).exp() * neg_mode(r);
+    let g_pos = |k: f64| cond_jy(true, pa, k, 1.0) * cond_jy(false, pb, k, 2.0) - cond_jy(false, pa, k, 1.0) * cond_jy(true, pb, k, 2.0);
+    for k in roots(&g_pos, 130.0, 40) {
+        let mode = move |q: f64| cond_jy(true, pa, k, 1.0) * bessel_j(0.0, k * q) - cond_jy(false, pa, k, 1.0) * bessel_y(0.0, k * q);
+        reference += coefficient(&mode) * (-k * k * t).exp() * mode(r);
+    }
+    let text = expand_integrals(&expand_sums(&rhs(&s), 40), 160);
+    close(value(&text, &[("r", r), ("t", t)]), reference, 2e-4, &s);
+}
+
+#[test]
+fn fourier_symbol_fallback_on_the_line() {
+    use super::extension_tests::complex_value;
+    let (x, t) = (0.8_f64, 0.3_f64);
+    let bounds = |text: &str| text.replace("-oo", "-8").replace(", oo)", ", 8)");
+    // Beam: u_tt + u_xxxx = 0, u(x, 0) = e^{-x²}, u_t(x, 0) = 0:  û = û₀ cos(k² t).
+    let s = any("pdsolve(diff(diff(u(x, t), t), t) + diff(diff(diff(diff(u(x, t), x), x), x), x) = 0, u(x, t), list(u(x, 0) = exp(-x^2), at(diff(u(x, t), t), t, 0) = 0))");
+    assert!(s.contains("defint"), "{s}");
+    let g_hat = |k: f64| PI.sqrt() * (-k * k / 4.0).exp();
+    let reference = simpson(&|k| g_hat(k) * (k * k * t).cos() * (k * x).cos(), -12.0, 12.0) / (2.0 * PI);
+    let text = expand_integrals(&bounds(&rhs(&s)), 110);
+    let got = complex_value(&text, &[("x", x), ("t", t)]);
+    close(got.re, reference, 2e-4, &s);
+    // Third order (linearised KdV): u_t + u_xxx = 0, û = û₀ e^{i k³ t}.
+    let s = any("pdsolve(diff(u(x, t), t) + diff(diff(diff(u(x, t), x), x), x) = 0, u(x, t), list(u(x, 0) = exp(-x^2)))");
+    let reference = simpson(&|k| g_hat(k) * (k * x + k * k * k * t).cos(), -12.0, 12.0) / (2.0 * PI);
+    let text = expand_integrals(&bounds(&rhs(&s)), 110);
+    let got = complex_value(&text, &[("x", x), ("t", t)]);
+    close(got.re, reference, 2e-4, &s);
+}
+
+#[test]
+fn greens_functions() {
+    let at = |s_x: f64, x: f64| [("x", x), ("s_x", s_x)];
+    let (x, s0) = (0.9_f64, 2.1_f64);
+    // L = d²/dx² on [0, π], Dirichlet: G = -x_<(π - x_>)/π.
+    let s = any("pde_greens_function(diff(diff(u(x), x), x) = 0, u(x), list(u(0) = 0, u(pi) = 0))");
+    let text = expand_sums(&rhs(&s), 800);
+    close(value(&text, &at(s0, x)), -x * (PI - s0) / PI, 2e-3, &s);
+    // L = d²/dx² - 1 with Neumann ends: G = -cosh(x_<) cosh(π - x_>)/sinh(π).
+    let s = any("pde_greens_function(diff(diff(u(x), x), x) - u(x) = 0, u(x), list(at(diff(u(x), x), x, 0) = 0, at(diff(u(x), x), x, pi) = 0))");
+    let text = expand_sums(&rhs(&s), 800);
+    close(value(&text, &at(s0, x)), -x.cosh() * (PI - s0).cosh() / PI.sinh(), 2e-3, &s);
+    // The heat kernel of the Dirichlet interval against the method of images.
+    let s = any("pde_greens_function(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(0, t) = 0, u(pi, t) = 0))");
+    let t = 0.3_f64;
+    let k = |y: f64| (-y * y / (4.0 * t)).exp() / (4.0 * PI * t).sqrt();
+    let images: f64 = (-6..=6).map(|m| k(x - s0 + 2.0 * PI * f64::from(m)) - k(x + s0 + 2.0 * PI * f64::from(m))).sum();
+    let text = expand_sums(&rhs(&s), 40);
+    close(value(&text, &[("x", x), ("s_x", s0), ("t", t)]), images, 1e-9, &s);
+    // Free space in the plane and the Dirichlet half-plane by images.
+    let lap = "diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y) = 0";
+    let s = any(&format!("pde_greens_function({lap}, u(x, y))"));
+    let r = ((0.3_f64 - 1.0).powi(2) + (0.5_f64 - 0.2).powi(2)).sqrt();
+    close(value(&rhs(&s), &[("x", 0.3), ("y", 0.5), ("s_x", 1.0), ("s_y", 0.2)]), r.ln() / (2.0 * PI), 1e-12, &s);
+    let s = any(&format!("pde_greens_function({lap}, u(x, y), list(u(x, 0) = 0))"));
+    let image = ((0.3_f64 - 1.0).powi(2) + (0.5_f64 + 0.2).powi(2)).sqrt();
+    close(value(&rhs(&s), &[("x", 0.3), ("y", 0.5), ("s_x", 1.0), ("s_y", 0.2)]), (r.ln() - image.ln()) / (2.0 * PI), 1e-12, &s);
+}
+
+#[test]
+fn laplace_in_a_ball_with_general_boundary_data() {
+    let lap = "diff(diff(u(r, th, ph), r), r) + 2*diff(u(r, th, ph), r)/r + diff(diff(u(r, th, ph), th), th)/r^2 + cos(th)/sin(th)*diff(u(r, th, ph), th)/r^2 + diff(diff(u(r, th, ph), ph), ph)/(r^2*sin(th)^2)";
+    let distance = |p: [f64; 3], q: [f64; 3]| ((p[0] - q[0]).powi(2) + (p[1] - q[1]).powi(2) + (p[2] - q[2]).powi(2)).sqrt();
+    let point = |r: f64, th: f64, ph: f64| [r * th.sin() * ph.cos(), r * th.sin() * ph.sin(), r * th.cos()];
+    // Inside: the potential of a charge at (1, 0.8, 1.2) outside the unit ball.
+    let outside = [1.0, 0.8, 1.2];
+    let data = "1/((sin(th)*cos(ph) - 1)^2 + (sin(th)*sin(ph) - 4/5)^2 + (cos(th) - 6/5)^2)^(1/2)";
+    let s = any(&format!("pdsolve({lap} = 0, u(r, th, ph), list(u(1, th, ph) = {data}))"));
+    let (r, th, ph) = (0.55_f64, 1.0_f64, 0.7_f64);
+    close(value(&rhs(&s), &[("r", r), ("th", th), ("ph", ph)]), 1.0 / distance(point(r, th, ph), outside), 1e-6, &s);
+    // Outside: a charge at (0.3, 0.2, 0.1) inside, decaying at infinity.
+    let inside = [0.3, 0.2, 0.1];
+    let data = "1/((sin(th)*cos(ph) - 3/10)^2 + (sin(th)*sin(ph) - 1/5)^2 + (cos(th) - 1/10)^2)^(1/2)";
+    let s = any(&format!("pdsolve({lap} = 0, u(r, th, ph), list(u(1, th, ph) = {data}, u(oo, th, ph) = 0))"));
+    let (r, th, ph) = (1.8_f64, 2.0_f64, 4.0_f64);
+    close(value(&rhs(&s), &[("r", r), ("th", th), ("ph", ph)]), 1.0 / distance(point(r, th, ph), inside), 1e-6, &s);
+}

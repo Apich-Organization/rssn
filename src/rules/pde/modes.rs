@@ -408,6 +408,120 @@ fn bessel_slope(
     Some(add(cx.graph, &[a, b]))
 }
 
+/// How many modes of the annulus have a negative eigenvalue (Robin
+/// conditions of the wrong sign). Symbolic radii are not decided; a
+/// symbolic angular order is refused (`None`) when some integer order has
+/// such a mode.
+fn annulus_negative_count(
+    cx: &Cx<'_>,
+    nu: NodeId,
+    ends: [NodeId; 6],
+    robin: bool,
+    sphere: bool,
+) -> Option<u32> {
+    if !robin {
+        return Some(0);
+    }
+    let values: Option<Vec<f64>> = ends.iter().map(|&e| exact_value(cx, e)).collect();
+    let Some(v) = values else {
+        return Some(0);
+    };
+    let [pa, qa, a, pb, qb, b] = <[f64; 6]>::try_from(v).ok()?;
+    match exact_value(cx, nu) {
+        | Some(order) => Some(super::numeric::annulus_neg_count([order, pa, qa, a, pb, qb, b])),
+        | None => {
+            let shell = if sphere { 0.5 } else { 0.0 };
+            for k in 0..=12_u32 {
+                if super::numeric::annulus_neg_count([f64::from(k) + shell, pa, qa, a, pb, qb, b]) > 0 {
+                    return None;
+                }
+            }
+            Some(0)
+        },
+    }
+}
+
+/// The `m`-th mode `F = C_K I_ν(κ r) - C_I K_ν(κ r)` (times `r^{-1/2}` for a
+/// shell) of an annulus with eigenvalue `-κ²`, `κ = annulus_neg_root(..)`,
+/// meeting the inner condition by construction.
+fn annulus_negative_mode(
+    cx: &mut Cx<'_>,
+    r: NodeId,
+    nu: NodeId,
+    ends: [NodeId; 6],
+    sphere: bool,
+    m: i64,
+) -> Option<Family> {
+    let [pa, qa, a, pb, qb, b] = ends;
+    let index = cx.graph.int(m);
+    let kappa = call(cx, "annulus_neg_root", &[nu, pa, qa, a, pb, qb, b, index])?;
+    let one = cx.graph.int(1);
+    let nu_up = add(cx.graph, &[nu, one]);
+    let modified = |cx: &mut Cx<'_>, second: bool, order: NodeId, z: NodeId| call(cx, if second { "besselk" } else { "besseli" }, &[order, z]);
+    // `Z'(z)`: `I_ν' = I_{ν+1} + (ν/z) I_ν`, `K_ν' = -K_{ν+1} + (ν/z) K_ν`.
+    let slope = |cx: &mut Cx<'_>, second: bool, z: NodeId| -> Option<NodeId> {
+        let (z_nu, z_up) = (modified(cx, second, nu, z)?, modified(cx, second, nu_up, z)?);
+        let ratio = div(cx, nu, z);
+        let a_term = mul(cx.graph, &[ratio, z_nu]);
+        let b_term = if second { neg(cx.graph, z_up) } else { z_up };
+        Some(add(cx.graph, &[a_term, b_term]))
+    };
+    // `p Z(κ a) + q κ Z'(κ a)`.
+    let ka = mul(cx.graph, &[kappa, a]);
+    let condition = |cx: &mut Cx<'_>, second: bool| -> Option<NodeId> {
+        let value = modified(cx, second, nu, ka)?;
+        let derivative = slope(cx, second, ka)?;
+        let t1 = mul(cx.graph, &[pa, value]);
+        let t2 = mul(cx.graph, &[qa, kappa, derivative]);
+        Some(add(cx.graph, &[t1, t2]))
+    };
+    let (cond_i, cond_k) = (condition(cx, false)?, condition(cx, true)?);
+    let kr = mul(cx.graph, &[kappa, r]);
+    let (i_r, k_r) = (modified(cx, false, nu, kr)?, modified(cx, true, nu, kr)?);
+    let first = mul(cx.graph, &[cond_k, i_r]);
+    let second = mul(cx.graph, &[cond_i, k_r]);
+    let minus_second = neg(cx.graph, second);
+    let profile = add(cx.graph, &[first, minus_second]);
+    let mode = if sphere {
+        let minus_half = fraction(cx, -1, 2)?;
+        let root = pow(cx.graph, r, minus_half);
+        mul(cx.graph, &[root, profile])
+    } else {
+        profile
+    };
+    // ∫ r F² dr = [r²/2 ((1 + ν²/z²) F² - F_z²)]_a^b.
+    let nu2 = powi(cx.graph, nu, 2);
+    let at = |cx: &mut Cx<'_>, point: NodeId| -> Option<NodeId> {
+        let z = mul(cx.graph, &[kappa, point]);
+        let (i_z, k_z) = (modified(cx, false, nu, z)?, modified(cx, true, nu, z)?);
+        let (di, dk) = (slope(cx, false, z)?, slope(cx, true, z)?);
+        let f = {
+            let (x1, x2) = (mul(cx.graph, &[cond_k, i_z]), mul(cx.graph, &[cond_i, k_z]));
+            sub(cx.graph, x1, x2)
+        };
+        let fz = {
+            let (x1, x2) = (mul(cx.graph, &[cond_k, di]), mul(cx.graph, &[cond_i, dk]));
+            sub(cx.graph, x1, x2)
+        };
+        let z2 = powi(cx.graph, z, 2);
+        let ratio = div(cx, nu2, z2);
+        let factor = add(cx.graph, &[one, ratio]);
+        let f2 = powi(cx.graph, f, 2);
+        let lead = mul(cx.graph, &[factor, f2]);
+        let fz2 = powi(cx.graph, fz, 2);
+        let tail = neg(cx.graph, fz2);
+        let bracket = add(cx.graph, &[lead, tail]);
+        let p2 = powi(cx.graph, point, 2);
+        let half = fraction(cx, 1, 2)?;
+        Some(mul(cx.graph, &[half, p2, bracket]))
+    };
+    let (at_b, at_a) = (at(cx, b)?, at(cx, a)?);
+    let norm = sub(cx.graph, at_b, at_a);
+    let k2 = powi(cx.graph, kappa, 2);
+    let eigen = neg(cx.graph, k2);
+    Some(Family::new(cx.simplify(mode), cx.simplify(eigen), 0, m, Some(norm)))
+}
+
 /// The modes of an annulus `a < r < b` for the Bessel order `nu` (the
 /// disk: the angular index; the ball: `l + 1/2`), `sphere` for a shell.
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
@@ -462,7 +576,23 @@ pub(super) fn annulus_families(
         return Some(vec![Family::new(one, zero, 0, 1, Some(cx.simplify(norm)))]);
     }
     let (pa, pb) = (shifted_p(cx, end_a, a, sphere), shifted_p(cx, end_b, b, sphere));
-    let k = call(cx, "annulus_root", &[nu, pa, end_a.q, a, pb, end_b.q, b, n])?;
+    let ends = [pa, end_a.q, a, pb, end_b.q, b];
+    let robin = end_a.kind == Kind::Robin || end_b.kind == Kind::Robin;
+    let negatives = annulus_negative_count(cx, nu, ends, robin, sphere)?;
+    let literal = if numeric { cx.graph.number_of(n).and_then(Number::to_i64) } else { None };
+    if let Some(m) = literal.filter(|&m| m < i64::from(negatives)) {
+        return annulus_negative_mode(cx, r, nu, ends, sphere, m + 1).map(|f| vec![f]);
+    }
+    // Positive roots are numbered from 1; the indices below `negatives` are
+    // the modes with a negative eigenvalue.
+    let root_index = if negatives > 1 {
+        let shift = cx.graph.int(1 - i64::from(negatives));
+        let shifted = add(cx.graph, &[n, shift]);
+        cx.simplify(shifted)
+    } else {
+        n
+    };
+    let k = call(cx, "annulus_root", &[nu, pa, end_a.q, a, pb, end_b.q, b, root_index])?;
     let eigen = powi(cx.graph, k, 2);
     let ka = mul(cx.graph, &[k, a]);
     // A = (p + q ν/a) Y_ν(ka) - q k Y_{ν+1}(ka), B likewise with J.
@@ -522,8 +652,8 @@ pub(super) fn annulus_families(
     let (at_b, at_a) = (at(cx, b)?, at(cx, a)?);
     let gap = sub(cx.graph, at_b, at_a);
     let norm = mul(cx.graph, &[half, gap]);
-    let first = i64::from(!constant_mode);
-    let forced = i64::from(constant_mode);
+    let first = i64::from(!constant_mode && negatives == 0);
+    let forced = if negatives > 0 { i64::from(negatives) } else { i64::from(constant_mode) };
     let cylinder = Cylinder { nu, kappa: k, power2, parts: vec![(coef_a, false), (minus_b, true)] };
     Some(vec![Family { mode, eigen, first, forced, norm: Some(norm), cylinder: Some(cylinder) }])
 }

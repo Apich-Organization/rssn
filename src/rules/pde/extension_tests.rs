@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::f64::consts::PI;
 
 /// The complex value of `text` at the real bindings.
-fn complex_value(
+pub(super) fn complex_value(
     text: &str,
     at: &[(&str, f64)],
 ) -> Complex64 {

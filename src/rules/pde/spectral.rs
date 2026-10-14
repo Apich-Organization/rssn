@@ -137,6 +137,10 @@ pub(super) enum Shape {
     /// operators `sl_eigen`, `sl_mode`, `sl_weight` (`params` their shared
     /// arguments after the mode index and the point).
     General { start: NodeId, stop: NodeId, params: Vec<NodeId> },
+    /// Polynomial eigenfunctions (Hermite, Laguerre, Jacobi type) on
+    /// `[start, stop]` with weight `weight`: `(mode, eigenvalue, norm)` per
+    /// degree.
+    Orthogonal { start: NodeId, stop: NodeId, weight: NodeId, modes: Vec<(NodeId, NodeId, NodeId)> },
 }
 
 #[derive(Clone, Debug)]
@@ -155,7 +159,7 @@ struct Step {
 /// projection.
 const WINDOW: i64 = 8;
 /// Highest degree of a Legendre expansion.
-const LEGENDRE_MAX: i64 = 10;
+pub(super) const LEGENDRE_MAX: i64 = 10;
 
 /// The region outside a disk or ball: the radial dependence is fixed by the
 /// angular indices (a decaying or outgoing profile), not expanded.
@@ -187,7 +191,7 @@ impl Axis {
             | Shape::Polar { .. } => Some((zero, pi(cx)?)),
             | Shape::Legendre => Some((cx.graph.int(-1), cx.graph.int(1))),
             | Shape::Radial { radius, inner, .. } => Some((inner.as_ref().map_or(zero, |(a, _)| *a), *radius)),
-            | Shape::General { start, stop, .. } => Some((*start, *stop)),
+            | Shape::General { start, stop, .. } | Shape::Orthogonal { start, stop, .. } => Some((*start, *stop)),
         }
     }
 
@@ -199,6 +203,7 @@ impl Axis {
             | Shape::Interval(_) | Shape::Angle | Shape::Legendre => cx.graph.int(1),
             | Shape::Polar { .. } => call(cx, "sin", &[self.var])?,
             | Shape::Radial { sphere, .. } => powi(cx.graph, self.var, if *sphere { 2 } else { 1 }),
+            | Shape::Orthogonal { weight, .. } => *weight,
             | Shape::General { params, .. } => {
                 let mut args = vec![self.var];
                 args.extend(params);
@@ -208,7 +213,7 @@ impl Axis {
     }
 
     const fn finite_only(&self) -> bool {
-        matches!(self.shape, Shape::Polar { .. } | Shape::Legendre)
+        matches!(self.shape, Shape::Polar { .. } | Shape::Legendre | Shape::Orthogonal { .. })
     }
 
     fn families(
@@ -272,6 +277,16 @@ impl Axis {
                 let odd = add(cx.graph, &[two_n, one]);
                 let norm = div(cx, two, odd);
                 Some(vec![Family::new(mode, eigen, 0, 0, Some(norm))])
+            },
+            | Shape::Orthogonal { modes, .. } => {
+                let literal = if numeric { cx.graph.number_of(n).and_then(Number::to_i64) } else { None };
+                match literal {
+                    | Some(degree) => {
+                        let &(mode, eigen, norm) = modes.get(usize::try_from(degree).ok()?)?;
+                        Some(vec![Family::new(mode, eigen, 0, 0, Some(norm))])
+                    },
+                    | None => Some(vec![Family::new(zero, zero, 0, 0, None)]),
+                }
             },
             | Shape::General { params, .. } => {
                 let mut mode_args = vec![n, self.var];

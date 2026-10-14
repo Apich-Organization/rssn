@@ -52,7 +52,7 @@ pub(super) fn solve(
     if p.nonlinear {
         return None;
     }
-    euler(cx, p, conditions).or_else(|| legendre(cx, p, conditions)).or_else(|| super::sl::solve(cx, p, conditions))
+    euler(cx, p, conditions).or_else(|| legendre(cx, p, conditions)).or_else(|| super::bochner::solve(cx, p, conditions)).or_else(|| super::sl::solve(cx, p, conditions))
 }
 
 /// `c / x^k` if it is free of every variable.

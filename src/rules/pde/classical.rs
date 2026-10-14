@@ -20,6 +20,8 @@
 use super::Conditions;
 use super::Problem;
 use super::dummy;
+use super::util::call;
+use super::util::defint;
 use crate::graph::Cx;
 use crate::graph::NodeId;
 use crate::graph::Number;
@@ -128,6 +130,100 @@ pub(super) fn wave_half_line(
             u = add(cx.graph, &[u, part]);
         }
     Some(cx.simplify(u))
+}
+
+/// The wave equation `v_tt = c² v_xx` on `x > 0` with the Robin condition
+/// `v_x + ρ v = 0` at `x = 0` and data `v(x, 0) = f`, `v_t(x, 0) = g`
+/// (`g` may be absent) that vanish for large `x`:
+///
+/// `w = v_x + ρ v` solves the wave equation with `w(0, t) = 0` and the data
+/// `f' + ρ f`, `g' + ρ g` (odd extension, d'Alembert), and the solution
+/// vanishing at infinity of `v_x + ρ v = w` is
+/// `v(x, t) = -∫_x^∞ e^{ρ (s - x)} w(s, t) ds`.
+pub(super) fn robin_wave_half_line(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    (x, t): (NodeId, NodeId),
+    speed: NodeId,
+    rho: NodeId,
+    f: NodeId,
+    g: Option<NodeId>,
+) -> Option<NodeId> {
+    let (sign, abs) = (cx.graph.ops().lookup("sign")?, cx.graph.ops().lookup("abs")?);
+    let half = cx.graph.num(Number::fraction(1, 2)?);
+    let (s, _) = dummy(cx, p, "s");
+    let (xi, _) = dummy(cx, p, "xi");
+    // w₀ = f' + ρ f, w₁ = g' + ρ g.
+    let transformed = |cx: &mut Cx<'_>, h: NodeId| -> Option<NodeId> {
+        let d = crate::rules::calculus::derivative(cx.graph, h, x)?;
+        let r = mul(cx.graph, &[rho, h]);
+        let total = add(cx.graph, &[d, r]);
+        Some(cx.simplify(total))
+    };
+    let odd = |cx: &mut Cx<'_>, h: NodeId, z: NodeId| -> NodeId {
+        let magnitude = cx.graph.node(abs, &[z]);
+        let value = cx.graph.substitute(h, x, magnitude);
+        let sg = cx.graph.node(sign, &[z]);
+        mul(cx.graph, &[sg, value])
+    };
+    let w0 = transformed(cx, f)?;
+    let ct = mul(cx.graph, &[speed, t]);
+    let plus = add(cx.graph, &[s, ct]);
+    let minus = sub(cx.graph, s, ct);
+    let (a, b) = (odd(cx, w0, plus), odd(cx, w0, minus));
+    let sum = add(cx.graph, &[a, b]);
+    let mut w = mul(cx.graph, &[half, sum]);
+    if let Some(g) = g
+        && !cx.is_zero(g) {
+            let w1 = transformed(cx, g)?;
+            let body = odd(cx, w1, xi);
+            let integral = defint(cx, body, xi, minus, plus)?;
+            let two_c = {
+                let two = cx.graph.int(2);
+                mul(cx.graph, &[two, speed])
+            };
+            let part = div(cx, integral, two_c);
+            w = add(cx.graph, &[w, part]);
+        }
+    let shift = sub(cx.graph, s, x);
+    let exponent = mul(cx.graph, &[rho, shift]);
+    let kernel = call(cx, "exp", &[exponent])?;
+    let body = mul(cx.graph, &[kernel, w]);
+    let oo = super::util::infinity(cx)?;
+    let integral = defint(cx, body, s, x, oo)?;
+    let v = neg(cx.graph, integral);
+    Some(cx.simplify(v))
+}
+
+/// `u_tt = c² u_xx` on `x > 0` with a homogeneous Robin condition
+/// `u_x + h u = 0`, for data vanishing at infinity.
+pub(super) fn wave_half_line_robin(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+) -> Option<NodeId> {
+    let e = super::evolution(cx, p)?;
+    if e.order != 2 || p.dimension() != 2 || !p.homogeneous(cx.graph) || !cx.is_zero(e.potential) {
+        return None;
+    }
+    let time = e.time;
+    let space = 1 - time;
+    let (x, t) = (p.vars[space], p.vars[time]);
+    let zero_index = vec![0; 2];
+    let displacement = conditions.find(cx.graph, time, &zero_index, None)?;
+    let velocity = conditions.find(cx.graph, time, &p.unit(time, 1), None);
+    let boundary = conditions.0.iter().find(|c| c.on == space)?;
+    let rho = boundary.robin?;
+    if boundary.derivative != p.unit(space, 1) || !cx.is_zero(boundary.value) || !cx.is_zero(boundary.point) {
+        return None;
+    }
+    if conditions.0.len() != 2 + usize::from(velocity.is_some()) {
+        return None;
+    }
+    let half = cx.graph.num(Number::fraction(1, 2)?);
+    let speed = pow(cx.graph, e.speed, half);
+    let speed = cx.simplify(speed);
+    robin_wave_half_line(cx, p, (x, t), speed, rho, displacement.value, velocity.map(|v| v.value))
 }
 
 /// `laplace_disk(f(θ), R, r, θ)`: the harmonic function in the disk of

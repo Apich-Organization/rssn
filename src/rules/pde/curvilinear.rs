@@ -41,6 +41,7 @@ use super::util::call;
 use super::util::defint;
 use super::util::div;
 use super::util::is_zero_number;
+use super::util::sqrt;
 use crate::graph::Cx;
 use crate::graph::op::core;
 use crate::graph::NodeId;
@@ -232,8 +233,183 @@ pub(super) fn solve(
         if let Some(solution) = solve_layout(cx, p, conditions, layout, time_index, b, a0) {
             return Some(solution);
         }
+        if let Some(solution) = numeric_sphere(cx, p, conditions, layout, time_index, a0) {
+            return Some(solution);
+        }
     }
     None
+}
+
+/// The Gauss–Legendre nodes and weights on `[-1, 1]`.
+fn gauss_legendre(n: usize) -> Vec<(f64, f64)> {
+    let mut out = Vec::with_capacity(n);
+    for i in 0..n {
+        let mut x = (std::f64::consts::PI * (i as f64 + 0.75) / (n as f64 + 0.5)).cos();
+        let mut derivative = 1.0;
+        for _ in 0..100 {
+            let (mut p0, mut p1) = (1.0, x);
+            for k in 2..=n {
+                let kf = k as f64;
+                let p2 = ((2.0 * kf - 1.0) * x * p1 - (kf - 1.0) * p0) / kf;
+                p0 = p1;
+                p1 = p2;
+            }
+            let nf = n as f64;
+            derivative = nf * (x * p1 - p0) / (x * x - 1.0);
+            let step = p1 / derivative;
+            x -= step;
+            if step.abs() < 1e-15 {
+                break;
+            }
+        }
+        out.push((x, 2.0 / ((1.0 - x * x) * derivative * derivative)));
+    }
+    out
+}
+
+/// `P_l^m(x)` (no Condon–Shortley phase) for all `l ≤ lmax` at fixed `m`.
+fn associated_values(
+    x: f64,
+    m: usize,
+    lmax: usize,
+) -> Vec<f64> {
+    let mut out = vec![0.0; lmax + 1];
+    let mut pmm = 1.0;
+    let s = (1.0 - x * x).max(0.0).sqrt();
+    for k in 1..=m {
+        pmm *= (2 * k - 1) as f64 * s;
+    }
+    if let Some(slot) = out.get_mut(m) {
+        *slot = pmm;
+    }
+    if m < lmax {
+        let first = x * (2 * m + 1) as f64 * pmm;
+        if let Some(slot) = out.get_mut(m + 1) {
+            *slot = first;
+        }
+        let (mut previous, mut current) = (pmm, first);
+        for l in (m + 2)..=lmax {
+            let next = ((2 * l - 1) as f64 * x * current - (l + m - 1) as f64 * previous) / (l - m) as f64;
+            if let Some(slot) = out.get_mut(l) {
+                *slot = next;
+            }
+            previous = current;
+            current = next;
+        }
+    }
+    out
+}
+
+/// Laplace's equation inside or outside a ball with Dirichlet data `g(θ, φ)`
+/// of any smoothness: the spherical-harmonic coefficients are computed at
+/// solve time by Gauss–Legendre quadrature in `cos θ` and the trapezoidal
+/// rule in `φ` (spectrally accurate), up to degree 20; the answer is the
+/// truncated series `Σ (r/R)^l P_l^m (a_lm cos mφ + b_lm sin mφ)` (exterior:
+/// `(R/r)^{l+1}`) with numeric coefficients.
+fn numeric_sphere(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+    layout: Layout,
+    time_index: Option<usize>,
+    a0: NodeId,
+) -> Option<NodeId> {
+    const DEGREE: usize = 20;
+    if !layout.sphere || time_index.is_some() || !cx.is_zero(a0) || layout.z.is_some() {
+        return None;
+    }
+    let (theta_j, phi_j) = (layout.theta?, layout.phi?);
+    let (theta, phi, r) = (p.vars[theta_j], p.vars[phi_j], p.vars[layout.r]);
+    if conditions.0.iter().any(|c| c.on != layout.r) {
+        return None;
+    }
+    let (far, near): (Vec<&Condition>, Vec<&Condition>) = conditions.0.iter().partition(|c| is_infinity(cx, c.point));
+    let [boundary] = near.as_slice() else {
+        return None;
+    };
+    let exterior = match far.as_slice() {
+        | [] => false,
+        | [c] if cx.is_zero(c.value) && c.derivative.iter().all(|&d| d == 0) => true,
+        | _ => return None,
+    };
+    if boundary.robin.is_some() || !boundary.derivative.iter().all(|&d| d == 0) {
+        return None;
+    }
+    let radius = super::modes::exact_value(cx, boundary.point).filter(|v| *v > 0.0)?;
+    let (theta_symbol, phi_symbol) = (cx.graph.symbol_of(theta)?, cx.graph.symbol_of(phi)?);
+    let data = boundary.value;
+    for symbol in cx.graph.free_symbols(cx.graph.find(data)).to_vec() {
+        if symbol != theta_symbol && symbol != phi_symbol {
+            return None;
+        }
+    }
+    let nodes = gauss_legendre(48);
+    let azimuthal = 64_usize;
+    let mut table = vec![vec![0.0; azimuthal]; nodes.len()];
+    for (i, &(x, _)) in nodes.iter().enumerate() {
+        let angle = x.acos();
+        for k in 0..azimuthal {
+            let mut env = crate::graph::Env::numeric(0.0);
+            env.bind(theta_symbol, angle);
+            env.bind(phi_symbol, 2.0 * std::f64::consts::PI * k as f64 / azimuthal as f64);
+            let value = cx.graph.eval(data, &env).filter(|v| v.is_finite())?;
+            *table.get_mut(i)?.get_mut(k)? = value;
+        }
+    }
+    let ratio = {
+        let radius_node = cx.graph.num(Number::from(radius));
+        div(cx, r, radius_node)
+    };
+    let mut terms = Vec::new();
+    for m in 0..=DEGREE {
+        // Fourier coefficients in φ of the data at each node.
+        let (mut cos_part, mut sin_part) = (vec![0.0; nodes.len()], vec![0.0; nodes.len()]);
+        for (i, row) in table.iter().enumerate() {
+            let (mut c, mut s_sum) = (0.0, 0.0);
+            for (k, &g) in row.iter().enumerate() {
+                let angle = m as f64 * 2.0 * std::f64::consts::PI * k as f64 / azimuthal as f64;
+                c += g * angle.cos();
+                s_sum += g * angle.sin();
+            }
+            *cos_part.get_mut(i)? = c * 2.0 / azimuthal as f64 / if m == 0 { 2.0 } else { 1.0 };
+            *sin_part.get_mut(i)? = s_sum * 2.0 / azimuthal as f64;
+        }
+        let m_phi = {
+            let mm = cx.graph.int(i64::try_from(m).ok()?);
+            mul(cx.graph, &[mm, phi])
+        };
+        let (cos_node, sin_node) = (super::util::call(cx, "cos", &[m_phi])?, super::util::call(cx, "sin", &[m_phi])?);
+        let values: Vec<Vec<f64>> = nodes.iter().map(|&(x, _)| associated_values(x, m, DEGREE)).collect();
+        for l in m..=DEGREE {
+            // N_lm = 2/(2l+1) (l+m)!/(l-m)!
+            let mut norm = 2.0 / (2 * l + 1) as f64;
+            for k in (l - m + 1)..=(l + m) {
+                norm *= k as f64;
+            }
+            let (mut a, mut b) = (0.0, 0.0);
+            for (i, &(_, w)) in nodes.iter().enumerate() {
+                let pv = values.get(i)?.get(l).copied()?;
+                a += w * pv * cos_part.get(i).copied()?;
+                b += w * pv * sin_part.get(i).copied()?;
+            }
+            let (a, b) = (a / norm, b / norm);
+            if a.abs() < 1e-13 && b.abs() < 1e-13 {
+                continue;
+            }
+            let angular = super::modes::associated_mode(cx, theta, i64::try_from(l).ok()?, i64::try_from(m).ok()?)?;
+            let l_signed = i64::try_from(l).ok()?;
+            let radial = if exterior { powi(cx.graph, ratio, -l_signed - 1) } else { powi(cx.graph, ratio, l_signed) };
+            if a.abs() >= 1e-13 {
+                let c = cx.graph.num(Number::from(a));
+                terms.push(mul(cx.graph, &[c, radial, angular, cos_node]));
+            }
+            if m > 0 && b.abs() >= 1e-13 {
+                let c = cx.graph.num(Number::from(b));
+                terms.push(mul(cx.graph, &[c, radial, angular, sin_node]));
+            }
+        }
+    }
+    Some(add(cx.graph, &terms))
 }
 
 /// Whether the node is `oo`.
@@ -514,6 +690,39 @@ fn exterior_evolution(
     };
     let (r, t) = (p.vars[layout.r], p.vars[t_index]);
     let radius = end.point;
+    if layout.sphere && order == 2 && end.kind != Kind::Dirichlet {
+        // Waves outside a ball with a Neumann or Robin condition: v = r u on
+        // the half-line with v' + (p/q - 1/R) v = 0.
+        if !cx.is_zero(end.value) {
+            return None;
+        }
+        let ratio = div(cx, end.p, end.q);
+        let inverse_radius = powi(cx.graph, radius, -1);
+        let rho = sub(cx.graph, ratio, inverse_radius);
+        let rho = cx.simplify(rho);
+        let (x, _) = super::dummy(cx, p, "x");
+        let shifted = add(cx.graph, &[x, radius]);
+        let zero_index = vec![0; n];
+        let mut data = Vec::new();
+        for derivative in [zero_index.clone(), p.unit(t_index, 1)] {
+            data.push(conditions.find(cx.graph, t_index, &derivative, None).map(|c| {
+                let f = cx.graph.substitute(c.value, r, shifted);
+                let value = mul(cx.graph, &[shifted, f]);
+                cx.simplify(value)
+            }));
+        }
+        if conditions.0.iter().any(|c| c.on == t_index && c.derivative != zero_index && c.derivative != p.unit(t_index, 1)) {
+            return None;
+        }
+        let f = data.first().copied().flatten()?;
+        let g = data.get(1).copied().flatten();
+        let speed = sqrt(cx, diffusivity)?;
+        let v = classical::robin_wave_half_line(cx, p, (x, t), speed, rho, f, g)?;
+        let offset = sub(cx.graph, r, radius);
+        let v = cx.graph.substitute(v, x, offset);
+        let u = div(cx, v, r);
+        return Some(cx.simplify(u));
+    }
     if !layout.sphere {
         return exterior_plane_heat(cx, p, conditions, (r, t), (t_index, order), diffusivity, &end);
     }
