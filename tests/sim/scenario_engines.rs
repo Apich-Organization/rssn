@@ -106,7 +106,7 @@ fn bem_and_particle_scenarios() {
     }
     let v = go("sph", r#"{"t_end": 0.05, "grad_h": true}"#);
     assert!(f(&v, "energy_drift").abs() < 1e-3, "{v}");
-    let v = go("dpd", r#"{"dim": 3, "box_len": 4.5, "steps": 150}"#);
+    let v = go("dpd", r#"{"dim": 3, "box_len": 4.5, "steps": 400}"#);
     assert!((f(&v, "temperature") - 1.0).abs() < 0.1, "{v}");
     assert!(v["momentum"].as_array().unwrap().iter().all(|m| m.as_f64().unwrap().abs() < 1e-8));
     let v = go("md_lj", r#"{"dim": 3, "cells": 6, "steps": 60}"#);
