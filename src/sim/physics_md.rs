@@ -46,12 +46,18 @@
 //! | Boundaries | periodic with minimum image (`apply_pbc`, `minimum_image_distance`); open |
 //! | Initial conditions | cubic/fcc lattices, Maxwell-Boltzmann velocities |
 //! | Thermostats | rescaling, Berendsen, Langevin BAOAB, Nose-Hoover |
-//! | Neighbours | brute-force `neighbour_pairs` |
+//! | Neighbours | `neighbour_pairs`: cell list of the engine ([`crate::sim::md_engine::NeighbourList`]) for 1-3 D |
+//! | Radial distribution | `radial_distribution_function`: engine [`crate::sim::md_engine::Rdf`] for 1-3 D (correct shell volume per dimension) |
+//! | Nose-Hoover | `integrate_nose_hoover` uses the engine [`crate::sim::md_engine::NoseHooverChain`] (single thermostat, Suzuki-Yoshida) |
+//! | Engine bridge | [`run_engine_md`] runs Lennard-Jones MD for a runtime dimension 1-3 on the const-generic [`crate::sim::md_engine::MdSimulation`] (cell lists, Nose-Hoover chain / Langevin / Berendsen) and writes the state back into the `Particle` vector |
 //!
-//! The const-generic engine [`crate::sim::md_engine`] adds cell lists with
-//! Verlet skin, reflecting / thermal walls, Lees-Edwards shear, bonded
-//! forces, Nose-Hoover chains, Berendsen/MTK barostats, SHAKE/RATTLE and
-//! more observables; [`crate::sim::ewald`] provides Ewald and PME.
+//! The legacy `Vec<f64>` force-callback integrators remain for arbitrary user
+//! forces; everything with a built-in force field goes through the const-generic
+//! engine [`crate::sim::md_engine`], which adds reflecting / thermal walls,
+//! Lees-Edwards shear, triclinic flexible cells with Parrinello-Rahman /
+//! MTK barostats, SHAKE/RATTLE, rigid molecules ([`crate::sim::md_rigid`]) and
+//! more observables; [`crate::sim::ewald`] provides Ewald and PME. Runtime
+//! dimensions above 3 are only available through the callback API.
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -60,6 +66,7 @@ use crate::kernels::vector::norm;
 use crate::kernels::vector::scalar_mul;
 use crate::kernels::vector::vec_add;
 use crate::kernels::vector::vec_sub;
+use crate::sim::md_engine::{self, ForceField, MdSimulation, MdSystem, NeighbourList, NoseHooverChain, PairTerm, Rdf, SimBox, Thermostat};
 
 // ============================================================================
 // Physical Constants (Reduced Units)
@@ -717,6 +724,16 @@ pub fn radial_distribution_function(
         return (vec![], vec![]);
     }
 
+    let engine = match particles[0].position.len() {
+        1 => engine_rdf::<1>(particles, box_size, num_bins, r_max),
+        2 => engine_rdf::<2>(particles, box_size, num_bins, r_max),
+        3 => engine_rdf::<3>(particles, box_size, num_bins, r_max),
+        _ => None,
+    };
+    if let Some(r) = engine {
+        return r;
+    }
+
     let dr = r_max / num_bins as f64;
 
     let mut histogram = vec![0usize; num_bins];
@@ -1022,18 +1039,14 @@ where
     F: FnMut(&mut [Particle]) -> Result<(), String>,
 {
     let degrees: f64 = particles.iter().map(|p| p.velocity.len() as f64).sum();
+    let mut chain = NoseHooverChain { t0: kt, q: vec![q_mass], xi: vec![0.0], vxi: vec![xi0], nf: degrees };
     let kinetic2 = |ps: &[Particle]| -> f64 { ps.iter().map(|p| p.mass * p.velocity.iter().map(|v| v * v).sum::<f64>()).sum() };
-    let (mut xi, mut s) = (xi0, 0.0);
     force_calculator(particles)?;
     for _ in 0..num_steps {
-        // Thermostat half step.
-        xi += 0.25 * dt * (kinetic2(particles) - degrees * kt) / q_mass;
-        let scale = (-0.5 * dt * xi).exp();
+        let scale = chain.propagate(kinetic2(particles), dt);
         for p in particles.iter_mut() {
             p.velocity.iter_mut().for_each(|v| *v *= scale);
         }
-        s += 0.5 * dt * xi;
-        xi += 0.25 * dt * (kinetic2(particles) - degrees * kt) / q_mass;
         // Velocity Verlet.
         for p in particles.iter_mut() {
             for k in 0..p.velocity.len() {
@@ -1047,15 +1060,12 @@ where
                 p.velocity[k] += 0.5 * dt * p.force[k] / p.mass;
             }
         }
-        // Thermostat half step.
-        xi += 0.25 * dt * (kinetic2(particles) - degrees * kt) / q_mass;
-        let scale = (-0.5 * dt * xi).exp();
+        let scale = chain.propagate(kinetic2(particles), dt);
         for p in particles.iter_mut() {
             p.velocity.iter_mut().for_each(|v| *v *= scale);
         }
-        s += 0.5 * dt * xi;
-        xi += 0.25 * dt * (kinetic2(particles) - degrees * kt) / q_mass;
     }
+    let (xi, s) = (chain.vxi[0], chain.xi[0]);
     Ok((xi, s))
 }
 
@@ -1073,6 +1083,25 @@ pub fn neighbour_pairs(
     cutoff: f64,
 ) -> Vec<(usize, usize)> {
     let dim = particles.first().map_or(0, |p| p.position.len());
+    let side = [box_length; 3];
+    match dim {
+        1 => {
+            if let Some(p) = engine_pairs::<1>(particles, &side[..1], cutoff) {
+                return p;
+            }
+        },
+        2 => {
+            if let Some(p) = engine_pairs::<2>(particles, &side[..2], cutoff) {
+                return p;
+            }
+        },
+        3 => {
+            if let Some(p) = engine_pairs::<3>(particles, &side[..3], cutoff) {
+                return p;
+            }
+        },
+        _ => {},
+    }
     let distance2 = |a: &[f64], b: &[f64]| -> f64 {
         a.iter()
             .zip(b)
@@ -1136,6 +1165,127 @@ pub fn neighbour_pairs(
     pairs.sort_unstable();
     pairs.dedup();
     pairs
+}
+
+// ============================================================================
+// Bridge to the const-generic engine
+// ============================================================================
+
+/// Builds an engine system from runtime-dimension particles in a periodic box
+/// (`None` if the dimensions do not match `D`).
+fn engine_system<const D: usize>(
+    particles: &[Particle],
+    box_size: &[f64],
+) -> Option<MdSystem<D>> {
+    if box_size.len() != D || particles.iter().any(|p| p.position.len() != D || p.velocity.len() != D) {
+        return None;
+    }
+    let mut len = [0.0; D];
+    len.copy_from_slice(box_size);
+    let to_arr = |v: &[f64]| -> [f64; D] {
+        let mut a = [0.0; D];
+        a.copy_from_slice(v);
+        a
+    };
+    let pos = particles.iter().map(|p| to_arr(&p.position)).collect();
+    let mut sys = MdSystem::new(pos, SimBox::periodic(len));
+    for (i, p) in particles.iter().enumerate() {
+        sys.vel[i] = to_arr(&p.velocity);
+        sys.mass[i] = p.mass;
+        sys.charge[i] = p.charge;
+    }
+    Some(sys)
+}
+
+fn engine_rdf<const D: usize>(
+    particles: &[Particle],
+    box_size: &[f64],
+    bins: usize,
+    r_max: f64,
+) -> Option<(Vec<f64>, Vec<f64>)> {
+    let sys = engine_system::<D>(particles, box_size)?;
+    let mut rdf = Rdf::<D>::new(bins, r_max);
+    rdf.add_frame(&sys);
+    let res = rdf.result();
+    Some((res.iter().map(|x| x.0).collect(), res.iter().map(|x| x.1).collect()))
+}
+
+fn engine_pairs<const D: usize>(
+    particles: &[Particle],
+    box_size: &[f64],
+    cutoff: f64,
+) -> Option<Vec<(usize, usize)>> {
+    let sys = engine_system::<D>(particles, box_size)?;
+    let mut nl = NeighbourList::new(cutoff, 0.0);
+    nl.build(&sys);
+    let mut pairs = nl.pairs;
+    pairs.sort_unstable();
+    pairs.dedup();
+    Some(pairs)
+}
+
+/// Thermostat choice of [`run_engine_md`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum EngineThermostat {
+    /// Microcanonical.
+    None,
+    /// Nose-Hoover chain (`t0`, relaxation time, chain length).
+    NoseHooverChain(f64, f64, usize),
+    /// Langevin BAOAB (`t0`, friction).
+    Langevin(f64, f64),
+    /// Berendsen weak coupling (`t0`, relaxation time).
+    Berendsen(f64, f64),
+}
+
+fn run_engine_md_dim<const D: usize>(
+    particles: &mut [Particle],
+    box_size: &[f64],
+    (epsilon, sigma, r_cut): (f64, f64, f64),
+    dt: f64,
+    steps: usize,
+    thermostat: EngineThermostat,
+) -> Result<f64, String> {
+    let sys = engine_system::<D>(particles, box_size).ok_or("dimension mismatch between particles and box")?;
+    let mut ff = ForceField::<D>::new(vec![PairTerm::LennardJones { eps: epsilon, sigma }], r_cut);
+    ff.shift_force = true;
+    let mut sim = MdSimulation::new(sys, ff, 0.3 * sigma, dt, 12345)?;
+    let dof = sim.dof();
+    sim.thermostat = match thermostat {
+        EngineThermostat::None => Thermostat::None,
+        EngineThermostat::NoseHooverChain(t0, tau, m) => Thermostat::NoseHooverChain(NoseHooverChain::new(t0, tau, m.max(1), dof)),
+        EngineThermostat::Langevin(t0, gamma) => Thermostat::Langevin { t0, gamma },
+        EngineThermostat::Berendsen(t0, tau) => Thermostat::Berendsen { t0, tau },
+    };
+    sim.run(steps)?;
+    for (i, p) in particles.iter_mut().enumerate() {
+        p.position.copy_from_slice(&sim.sys.pos[i]);
+        p.velocity.copy_from_slice(&sim.sys.vel[i]);
+        p.force.copy_from_slice(&sim.forces.f[i]);
+    }
+    Ok(sim.total_energy())
+}
+
+/// Runs Lennard-Jones molecular dynamics (`epsilon`, `sigma`, shifted-force cutoff `r_cut`) in a
+/// periodic box on the const-generic engine ([`md_engine::MdSimulation`]) for a **runtime**
+/// dimension of 1, 2 or 3, and writes positions, velocities and forces back into `particles`.
+/// Returns the final total energy.
+///
+/// # Errors
+/// Fails for dimensions other than 1-3, mismatching vector lengths or engine errors.
+pub fn run_engine_md(
+    particles: &mut [Particle],
+    box_size: &[f64],
+    lj: (f64, f64, f64),
+    dt: f64,
+    steps: usize,
+    thermostat: EngineThermostat,
+) -> Result<f64, String> {
+    match box_size.len() {
+        1 => run_engine_md_dim::<1>(particles, box_size, lj, dt, steps, thermostat),
+        2 => run_engine_md_dim::<2>(particles, box_size, lj, dt, steps, thermostat),
+        3 => run_engine_md_dim::<3>(particles, box_size, lj, dt, steps, thermostat),
+        _ => Err("the engine bridge supports dimensions 1 to 3".into()),
+    }
 }
 
 #[cfg(test)]

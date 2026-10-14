@@ -169,7 +169,7 @@ impl RigidMdSimulation {
     /// # Errors
     /// Fails if the molecules do not partition the sites or the box is not fully periodic.
     pub fn new(
-        mut sys: MdSystem<3>,
+        sys: MdSystem<3>,
         mut ff: ForceField<3>,
         skin: f64,
         dt: f64,

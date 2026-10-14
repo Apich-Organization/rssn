@@ -6,14 +6,18 @@
 //! | Capability | Dimensions | Notes |
 //! |---|---|---|
 //! | Composition schemes [`Scheme`]: Verlet (2), Forest-Ruth (4), Yoshida (4, 6, 8), Blanes-Moan (4), triple jump of any even order | any | stage tables, tested by convergence order |
-//! | Time-transformed leapfrog [`ttl_step`] (Sundman-type, extended phase space, exactly reversible) | any | attractive potentials `V < 0` |
+//! | Time-transformed leapfrog [`ttl_step`] (Sundman-type, extended phase space, exactly reversible) and its composition to any even order [`ttl_step_composed`] / [`composition_weights`] | any | attractive potentials `V < 0`; order 4, 6, 8 remove the `O(h^2)` energy error (tested) |
+//! | Chain regularisation (Mikkola-Aarseth chain), algorithmic regularisation with Gragg-Bulirsch-Stoer extrapolation | 3 | [`crate::sim::chain`] (`N` bodies, adaptive `ds`) |
 //! | Kustaanheimo-Stiefel regularisation [`ks_propagate`] | 3 (via a 4-D oscillator) | perturbed Kepler problem, regular through collision |
-//! | Rigid body (quaternion, NO_SQUISH / Dullweber-Leimkuhler-McLachlan splitting) [`RigidBody`] | 3 | symplectic, reversible, exact `|q| = 1` and `|L|` conservation in free rotation |
+//! | Rigid body (quaternion, NO_SQUISH / Dullweber-Leimkuhler-McLachlan splitting) [`RigidBody`], exact symmetric-top flows ([`RigidBody::free_step_top`], exact for symmetric bodies), composition to any even order ([`RigidBody::free_step_composed`]), space-torque kicks | 3 | symplectic, reversible, exact `|q| = 1` and `|L|` conservation in free rotation; rigid molecules in MD: [`crate::sim::md_rigid`] |
 //!
-//! Limitations: the TTL scheme uses a fixed binding energy `B` (the energy
-//! error is `O(h^2)`, not zero); chain regularisation is not implemented
-//! (KS is); the rigid-body torque kick is a second-order reversible
-//! splitting rather than an implicit RATTLE solve.
+//! Limitations: the TTL scheme uses a fixed binding energy `B` (the energy of the exact flow
+//! is preserved, but the plain scheme has `O(h^2)` energy error; use the composed or GBS
+//! versions); the torque kick is the Strang splitting of symplectic exact flows (reversible,
+//! second order, composable to higher order) rather than an implicit RATTLE solve; the free
+//! asymmetric top is not integrated with Jacobi elliptic functions (the splittings are
+//! used instead); non-separable or perturbed problems with velocity-dependent forces are not
+//! covered by the time-transformed schemes.
 #![allow(
     clippy::arithmetic_side_effects,
     clippy::assigning_clones,

@@ -8,13 +8,15 @@
 //! | Algorithm | Ising (O(1)) | XY / Heisenberg (O(N), N>=2) | Potts |
 //! |---|---|---|---|
 //! | Metropolis | yes | yes (random-walk proposal) | yes |
-//! | Heat bath | yes | no (needs von Mises / Gibbs sampling) | yes |
+//! | Heat bath | yes | yes (exact: von Mises for XY, inverse-CDF `exp(a cos theta)` for Heisenberg; field included) | yes |
 //! | Wolff cluster (embedded Ising for O(N)), `h = 0`, `J > 0` | yes | yes | yes |
 //! | Swendsen-Wang (embedded) | yes | yes | yes |
 //! | Over-relaxation (micro-canonical) | - | yes | - |
 //!
-//! Further tools: [`ParallelTempering`] (replica exchange), [`wang_landau_ising`]
-//! (density of states), single-histogram reweighting ([`reweight`],
+//! Further tools: [`ParallelTempering`] (replica exchange for O(N) models),
+//! [`PottsTempering`] (replica exchange for Potts), [`wang_landau_ising`] (density of
+//! states of the Ising model) and [`wang_landau_on`] (density of states of continuous O(N)
+//! spins on a binned energy axis), single-histogram reweighting ([`reweight`],
 //! [`canonical_from_dos`]), finite-size-scaling helpers
 //! ([`binder_crossing`], [`fit_exponent`], [`collapse_variable`]), blocking
 //! error estimates, and exact references: 1-D chain ([`ising1d_energy_per_site`]),
@@ -27,7 +29,9 @@
 //! supplied spin arrays via the public `spins` field.
 //!
 //! Limitations: only nearest-neighbour hypercubic lattices; the field `h`
-//! couples to component 0 and is incompatible with cluster updates.
+//! couples to component 0 and is incompatible with cluster updates; the heat bath is
+//! implemented for O(N) with `N <= 3`; Wang-Landau for continuous spins is restricted to a
+//! user-supplied energy window (moves leaving it are rejected) and uses single-spin moves.
 #![allow(
     clippy::arithmetic_side_effects,
     clippy::assigning_clones,
@@ -238,6 +242,76 @@ impl UnionFind {
     }
 }
 
+/// Draws a unit vector from `P(s) ~ exp(beta s . f)` on the sphere `S^(N-1)` (`N = 1, 2, 3`):
+/// the heat-bath conditional distribution of an O(N) spin in the local field `f`.
+///
+/// # Errors
+/// Fails for `N = 0` or `N > 3`.
+pub fn heat_bath_direction<const N: usize>(
+    rng: &mut Rng,
+    f: &[f64; N],
+    beta: f64,
+) -> Result<[f64; N], String> {
+    let mut out = [0.0; N];
+    let fm = dot(f, f).sqrt();
+    let a = beta * fm;
+    match N {
+        1 => {
+            let p_up = 1.0 / (1.0 + (-2.0 * beta * f[0]).exp());
+            out[0] = if rng.uniform() < p_up { 1.0 } else { -1.0 };
+        },
+        2 => {
+            let alpha = f[1].atan2(f[0]);
+            let theta = if a < 1e-10 {
+                (2.0 * rng.uniform() - 1.0) * std::f64::consts::PI
+            } else {
+                // Best-Fisher rejection sampler for the von Mises distribution
+                let tau = 1.0 + (1.0 + 4.0 * a * a).sqrt();
+                let rho = (tau - (2.0 * tau).sqrt()) / (2.0 * a);
+                let r = (1.0 + rho * rho) / (2.0 * rho);
+                loop {
+                    let (u1, u2, u3) = (rng.uniform(), rng.uniform(), rng.uniform());
+                    let z = (std::f64::consts::PI * u1).cos();
+                    let fz = (1.0 + r * z) / (r + z);
+                    let c = a * (r - fz);
+                    if c * (2.0 - c) - u2 > 0.0 || (c / u2).ln() + 1.0 - c >= 0.0 {
+                        break if u3 > 0.5 { fz.clamp(-1.0, 1.0).acos() } else { -fz.clamp(-1.0, 1.0).acos() };
+                    }
+                }
+            };
+            out[0] = (alpha + theta).cos();
+            out[1] = (alpha + theta).sin();
+        },
+        3 => {
+            let u = rng.uniform();
+            let x = if a < 1e-10 { 2.0 * u - 1.0 } else { (1.0 + (u + (1.0 - u) * (-2.0 * a).exp()).ln() / a).clamp(-1.0, 1.0) };
+            let sx = (1.0 - x * x).max(0.0).sqrt();
+            let psi = 2.0 * std::f64::consts::PI * rng.uniform();
+            let axis = if fm > 0.0 { [f[0] / fm, f[1] / fm, f[2] / fm] } else { [0.0, 0.0, 1.0] };
+            let helper = if axis[0].abs() < 0.9 { [1.0, 0.0, 0.0] } else { [0.0, 1.0, 0.0] };
+            let mut e1 = [
+                axis[1] * helper[2] - axis[2] * helper[1],
+                axis[2] * helper[0] - axis[0] * helper[2],
+                axis[0] * helper[1] - axis[1] * helper[0],
+            ];
+            let n1 = (e1[0] * e1[0] + e1[1] * e1[1] + e1[2] * e1[2]).sqrt();
+            for c in &mut e1 {
+                *c /= n1;
+            }
+            let e2 = [
+                axis[1] * e1[2] - axis[2] * e1[1],
+                axis[2] * e1[0] - axis[0] * e1[2],
+                axis[0] * e1[1] - axis[1] * e1[0],
+            ];
+            for k in 0..3 {
+                out[k] = x * axis[k] + sx * (psi.cos() * e1[k] + psi.sin() * e2[k]);
+            }
+        },
+        _ => return Err("heat bath is implemented for N = 1, 2, 3".into()),
+    }
+    Ok(out)
+}
+
 /// O(N) classical spin model on a `D`-dimensional lattice.
 #[derive(Clone, Debug)]
 pub struct OnModel<const D: usize, const N: usize> {
@@ -320,6 +394,15 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
         dot(&m, &m).sqrt() / self.lattice.sites() as f64
     }
 
+    /// Local field `h e_0 + J sum_nn s_j` acting on site `i`.
+    #[must_use]
+    pub fn local_field_public(
+        &self,
+        i: usize,
+    ) -> [f64; N] {
+        self.local_field(i)
+    }
+
     fn local_field(
         &self,
         i: usize,
@@ -372,18 +455,19 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
         acc as f64 / n as f64
     }
 
-    /// One heat-bath sweep (Ising only).
+    /// One heat-bath sweep: every site is redrawn from its exact conditional distribution
+    /// `P(s) ~ exp(beta s . f)` (`f` = local field). Ising: logistic; XY: von Mises
+    /// (Best-Fisher rejection); Heisenberg: exact inverse CDF of `exp(a cos theta)`.
     ///
     /// # Errors
-    /// Returns an error for `N != 1`.
+    /// Returns an error for `N > 3`.
     pub fn heat_bath_sweep(&mut self) -> Result<(), String> {
-        if N != 1 {
-            return Err("heat bath is implemented for N = 1 (Ising) only".into());
+        if N > 3 {
+            return Err("heat bath is implemented for N = 1, 2, 3".into());
         }
         for i in 0..self.lattice.sites() {
-            let f = self.local_field(i)[0];
-            let p_up = 1.0 / (1.0 + (-2.0 * self.beta * f).exp());
-            self.spins[i][0] = if self.rng.uniform() < p_up { 1.0 } else { -1.0 };
+            let f = self.local_field(i);
+            self.spins[i] = heat_bath_direction::<N>(&mut self.rng, &f, self.beta)?;
         }
         Ok(())
     }
@@ -766,6 +850,162 @@ impl<const D: usize, const N: usize> ParallelTempering<D, N> {
         }
         Ok(())
     }
+}
+
+/// Replica exchange for the q-state Potts model.
+#[derive(Clone, Debug)]
+pub struct PottsTempering<const D: usize> {
+    /// One replica per temperature slot.
+    pub replicas: Vec<Potts<D>>,
+    /// Inverse temperatures.
+    pub betas: Vec<f64>,
+    /// Attempted / accepted swaps per neighbouring pair.
+    pub swap_stats: Vec<(usize, usize)>,
+    rng: Rng,
+}
+
+impl<const D: usize> PottsTempering<D> {
+    /// Creates replicas at the given inverse temperatures.
+    ///
+    /// # Errors
+    /// Propagates lattice errors; requires at least two temperatures and `q >= 2`.
+    pub fn new(
+        dims: [usize; D],
+        periodic: bool,
+        q: usize,
+        betas: &[f64],
+        seed: u64,
+    ) -> Result<Self, String> {
+        if betas.len() < 2 {
+            return Err("need at least two temperatures".into());
+        }
+        let mut replicas = Vec::new();
+        for (k, &b) in betas.iter().enumerate() {
+            replicas.push(Potts::new(dims, periodic, q, b, seed.wrapping_add(2000 + k as u64))?);
+        }
+        Ok(Self { replicas, betas: betas.to_vec(), swap_stats: vec![(0, 0); betas.len() - 1], rng: Rng::new(seed ^ 0x5EED) })
+    }
+
+    /// `rounds` rounds of (`update` on every replica, then alternating even/odd exchanges
+    /// accepted with probability `min(1, exp((b_k - b_k+1)(E_k - E_k+1)))`).
+    pub fn run(
+        &mut self,
+        rounds: usize,
+        update: Update,
+        mut measure: impl FnMut(usize, &[Potts<D>]),
+    ) {
+        for round in 0..rounds {
+            for r in &mut self.replicas {
+                r.update(update);
+            }
+            let mut k = round % 2;
+            while k + 1 < self.replicas.len() {
+                let (e1, e2) = (self.replicas[k].energy(), self.replicas[k + 1].energy());
+                let d = (self.betas[k] - self.betas[k + 1]) * (e1 - e2);
+                self.swap_stats[k].0 += 1;
+                if d >= 0.0 || self.rng.uniform() < d.exp() {
+                    let (a, b) = self.replicas.split_at_mut(k + 1);
+                    std::mem::swap(&mut a[k].spins, &mut b[0].spins);
+                    self.swap_stats[k].1 += 1;
+                }
+                k += 2;
+            }
+            measure(round, &self.replicas);
+        }
+    }
+}
+
+/// Wang-Landau density of states of an O(N) model with **continuous** spins on a binned
+/// energy axis `[e_min, e_max)` with `nbins` bins (moves leaving the window are rejected).
+///
+/// Single-spin moves of width `delta`; `ln f` starts at 1 and is halved whenever the histogram
+/// of visited bins satisfies `min H > flatness * mean H` (checked every `check` attempted
+/// moves) until `ln_f_final`. Returns `(bin centre, ln g)` for the visited bins, normalised
+/// to `sum g = 1`.
+///
+/// # Errors
+/// Fails for invalid bins or lattice errors.
+pub fn wang_landau_on<const D: usize, const N: usize>(
+    dims: [usize; D],
+    periodic: bool,
+    (e_min, e_max, nbins): (f64, f64, usize),
+    delta: f64,
+    ln_f_final: f64,
+    flatness: f64,
+    seed: u64,
+) -> Result<Vec<(f64, f64)>, String> {
+    if nbins < 2 || e_max <= e_min {
+        return Err("invalid energy window".into());
+    }
+    let mut m = OnModel::<D, N>::new(dims, periodic, 1.0, seed)?;
+    let n = m.lattice.sites();
+    let width = (e_max - e_min) / nbins as f64;
+    let bin = |e: f64| -> Option<usize> {
+        if e < e_min || e >= e_max {
+            None
+        } else {
+            Some((((e - e_min) / width) as usize).min(nbins - 1))
+        }
+    };
+    let mut e = m.energy();
+    let mut cur = bin(e).ok_or_else(|| "initial energy outside the window; widen it or start cold".to_string())?;
+    let mut ln_g = vec![0.0f64; nbins];
+    let mut visited = vec![false; nbins];
+    let mut ln_f = 1.0;
+    let check = 20_000 * n;
+    let mut guard = 0usize;
+    while ln_f > ln_f_final {
+        let mut hist = vec![0usize; nbins];
+        loop {
+            for _ in 0..check {
+                let i = m.rng.below(n as u64) as usize;
+                let f = m.local_field_public(i);
+                let old = m.spins[i];
+                let mut new = old;
+                if N == 1 {
+                    new[0] = -old[0];
+                } else {
+                    for k in 0..N {
+                        new[k] = old[k] + delta * m.rng.normal();
+                    }
+                    let nn = dot(&new, &new).sqrt();
+                    for c in &mut new {
+                        *c /= nn;
+                    }
+                }
+                let mut de = 0.0;
+                for k in 0..N {
+                    de -= (new[k] - old[k]) * f[k];
+                }
+                if let Some(nb) = bin(e + de) {
+                    let d = ln_g[cur] - ln_g[nb];
+                    if d >= 0.0 || m.rng.uniform() < d.exp() {
+                        m.spins[i] = new;
+                        e += de;
+                        cur = nb;
+                    }
+                }
+                ln_g[cur] += ln_f;
+                hist[cur] += 1;
+                visited[cur] = true;
+            }
+            // resynchronise the running energy against round-off
+            e = m.energy();
+            cur = bin(e).unwrap_or(cur);
+            guard += 1;
+            let vis: Vec<usize> = (0..nbins).filter(|&k| visited[k]).map(|k| hist[k]).collect();
+            let mean = vis.iter().sum::<usize>() as f64 / vis.len() as f64;
+            let mn = vis.iter().copied().min().unwrap_or(0) as f64;
+            if mn > flatness * mean || guard > 2000 {
+                break;
+            }
+        }
+        ln_f /= 2.0;
+    }
+    let mx = (0..nbins).filter(|&k| visited[k]).map(|k| ln_g[k]).fold(f64::NEG_INFINITY, f64::max);
+    let total: f64 = (0..nbins).filter(|&k| visited[k]).map(|k| (ln_g[k] - mx).exp()).sum();
+    let shift = -(mx + total.ln());
+    Ok((0..nbins).filter(|&k| visited[k]).map(|k| (e_min + (k as f64 + 0.5) * width, ln_g[k] + shift)).collect())
 }
 
 // ---------------------------------------------------------------------------

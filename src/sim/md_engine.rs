@@ -11,16 +11,25 @@
 //! | Neighbour search ([`NeighbourList`]) | cell list + Verlet skin in any `D` (brute force under Lees-Edwards) |
 //! | Bonded forces | harmonic bonds, harmonic angles (any `D`), periodic dihedrals (`D = 3`) |
 //! | Thermostats ([`Thermostat`]) | Berendsen, Langevin (BAOAB), Nose-Hoover chains (Suzuki-Yoshida) |
-//! | Barostats ([`Barostat`]) | Berendsen, isotropic MTK (Martyna-Tobias-Klein) |
-//! | Constraints | SHAKE (positions) and RATTLE (velocities) for distance constraints |
+//! | Barostats ([`Barostat`]) | Berendsen, isotropic MTK (Martyna-Tobias-Klein), and the flexible-cell Parrinello-Rahman / MTK barostat [`FlexibleBarostat`] (full triclinic cell matrix, orthorhombic or isotropic modes, target pressure tensor, cell Nose-Hoover chain = MTTK) |
+//! | Cells | orthorhombic, and general triclinic cells ([`SimBox::triclinic`], cell lists in fractional coordinates, 3^D image refinement of the minimum image) |
+//! | Constraints | SHAKE (positions) and RATTLE (velocities) for distance constraints; composable with Nose-Hoover chains, Langevin (constrained BAOAB) and the flexible barostat (bond flow `r.(v + v_g r) = 0`, constraint virial in the pressure) |
+//! | Rigid molecules | [`crate::sim::md_rigid`]: centre-of-mass + quaternion integration (NO_SQUISH or exact symmetric-top flows, any even order), molecular virial |
 //! | Observables | kinetic/potential energy, temperature, pressure tensor, [`Rdf`], [`msd`], [`vacf`], [`energy_drift_slope`] |
 //!
 //! Long-range electrostatics (Ewald, PME) live in [`crate::sim::ewald`] and plug
-//! in through [`ForceField::extra`]. Limitations: the MTK barostat is isotropic
-//! (no full Parrinello-Rahman cell fluctuations) and cannot be combined with
-//! constraints; Langevin dynamics cannot be combined with constraints.
-//! The older [`crate::sim::physics_md`] module keeps its runtime-dimension
-//! `Vec<f64>` API.
+//! in through [`ForceField::extra`]. The older [`crate::sim::physics_md`] module
+//! keeps its runtime-dimension `Vec<f64>` API and delegates its built-in force field,
+//! neighbour search and RDF to this engine.
+//!
+//! Limitations: the legacy isotropic [`Barostat::Mtk`] is NPH-type and excludes thermostats
+//! and constraints (use [`FlexibleBarostat`] with [`CellMode::Isotropic`] for those
+//! combinations); the flexible cell needs a fully periodic box without Lees-Edwards shear and
+//! does not compose with Langevin or Berendsen barostat coupling; Ewald/PME
+//! ([`crate::sim::ewald`]) assumes an orthorhombic box; the constraint virial of the
+//! flexible barostat is the SHAKE impulse (first-order lag in the time step); the
+//! neighbour list of a triclinic cell is rebuilt when the affine deformation plus particle
+//! displacement exceed the skin.
 #![allow(
     clippy::arithmetic_side_effects,
     clippy::assigning_clones,

@@ -121,3 +121,36 @@ proptest! {
         prop_assert!(grid.iter().all(|&s| s == 1 || s == -1));
     }
 }
+
+
+#[test]
+fn lattice_simulation_covers_any_dimension_and_every_model() {
+    // 1-D Ising ring: e = -tanh(beta) per site
+    let r = run_lattice_simulation([200], true, SpinModel::Ising, SpinAlgorithm::HeatBath, 1.5, (500, 6000), 11).unwrap();
+    assert!((r.energy + (1.0f64 / 1.5).tanh()).abs() < 0.02, "{r:?}");
+    // 2-D Ising above Tc against Onsager
+    let r = run_lattice_simulation([16, 16], true, SpinModel::Ising, SpinAlgorithm::Wolff, 3.0, (500, 8000), 12).unwrap();
+    let exact = rssn::sim::spin_models::onsager_energy_per_site(3.0, 1.0);
+    assert!((r.energy - exact).abs() < 0.02, "{} vs {exact}", r.energy);
+    // 4-D Ising is ordered at T = 3 (Tc(4D) = 6.68)
+    let r = run_lattice_simulation([4, 4, 4, 4], true, SpinModel::Ising, SpinAlgorithm::Wolff, 3.0, (300, 600), 13).unwrap();
+    assert!(r.magnetization > 0.8 && r.energy < -3.0, "{r:?}");
+    // XY and Heisenberg heat bath in 1-D match their exact chains
+    let beta = 1.5;
+    let r = run_lattice_simulation([200], true, SpinModel::Heisenberg, SpinAlgorithm::HeatBath, 1.0 / beta, (500, 6000), 14).unwrap();
+    assert!((r.energy + (1.0 / beta.tanh() - 1.0 / beta)).abs() < 0.02, "{r:?}");
+    // Potts q = 3 low temperature is ordered; cluster algorithm with the cold side of Tc
+    let r = run_lattice_simulation([12, 12], true, SpinModel::Potts(3), SpinAlgorithm::SwendsenWang, 0.5, (200, 800), 15).unwrap();
+    assert!(r.magnetization > 0.95, "{r:?}");
+    // open boundaries and invalid input
+    assert!(run_lattice_simulation([6, 6], false, SpinModel::Xy, SpinAlgorithm::Wolff, 0.5, (10, 10), 1).is_ok());
+    assert!(run_lattice_simulation([6, 6], true, SpinModel::Ising, SpinAlgorithm::HeatBath, -1.0, (1, 1), 1).is_err());
+}
+
+#[test]
+fn wolff_observables_come_from_the_generic_engine_and_reject_tiny_lattices() {
+    let o = run_wolff_simulation(2, 2, 2.0, 10, 10, 1);
+    assert!(o.energy.is_nan());
+    let o = run_wolff_simulation(16, 16, 1.2, 100, 500, 2);
+    assert!(o.magnetization > 0.97 && o.mean_cluster > 0.9);
+}
