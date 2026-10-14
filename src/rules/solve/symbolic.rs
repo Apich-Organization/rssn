@@ -330,6 +330,19 @@ pub(super) fn ferrari(
     gens: &Gens,
     c: &[Poly],
 ) -> Option<Vec<NodeId>> {
+    ferrari_with_pairs(graph, gens, c, &mut Vec::new())
+}
+
+/// [`ferrari`] that also records, for each resolvent form and each sign,
+/// the real and imaginary part `(a, b)` of the complex pair of roots
+/// `a ± i b` that the quadratic factor has when its discriminant is
+/// negative (`b` is defined only there).
+pub(super) fn ferrari_with_pairs(
+    graph: &mut Graph,
+    gens: &Gens,
+    c: &[Poly],
+    pairs: &mut Vec<(NodeId, NodeId)>,
+) -> Option<Vec<NodeId>> {
     let (e, d, cc, b, a) = (c.first()?, c.get(1)?, c.get(2)?, c.get(3)?, c.get(4)?);
     let n = |v: i64| Number::from(v);
     let mul = |x: &Poly, y: &Poly| x.mul(y, cap());
@@ -384,6 +397,13 @@ pub(super) fn ferrari(
             let t3 = product(graph, &[minus_two, sg, q_term, inv_s]);
             let radicand = graph.node(core::ADD, &[t1, t2, t3]);
             let root = graph.node(core::POW, &[radicand, half]);
+            {
+                let negated = product(graph, &[minus_one, radicand]);
+                let imaginary = graph.node(core::POW, &[negated, half]);
+                let b_part = product(graph, &[half, imaginary]);
+                let a_part = graph.node(core::ADD, &[lead, shift]);
+                pairs.push((a_part, b_part));
+            }
             for eps in [-1_i64, 1] {
                 let ep = graph.int(eps);
                 let tail = product(graph, &[half, ep, root]);

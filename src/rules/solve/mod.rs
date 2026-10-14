@@ -1295,6 +1295,16 @@ mod tests {
             let residual: f64 = poly.iter().rev().fold(0.0, |acc, c| acc * x + c);
             assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(5)), "{src}: {x} gives {residual}");
         }
+        // Five real roots (cyclic group): cosines, all five roots.
+        let (text, reduced) = reduce_with(&rules, "solve(x^5 + x^4 - 4*x^3 - 3*x^2 + 3*x + 1, x)", &[]);
+        assert!(reduced && !text.contains("root_of") && text.contains("cos("), "{text}");
+        let items = list_items(&text);
+        assert_eq!(items.len(), 5, "{text}");
+        let mut values: Vec<f64> = items.iter().map(|i| eval(&rules, i, &[])).collect();
+        values.sort_by(f64::total_cmp);
+        for (v, want) in values.iter().zip([-1.918_985_947_228_994_7_f64, -1.309_721_467_890_570_2, -0.284_629_676_546_570_3, 0.830_830_026_003_772_9, 1.682_507_065_662_362_4]) {
+            assert!((v - want).abs() < 1e-8, "{values:?}");
+        }
         // Unsolvable: exact root objects, canonical and numerically evaluable.
         let (text, reduced) = reduce_with(&rules, "solve(x^5 - x - 1, x)", &[]);
         assert!(reduced && text == "list(root_of(0, -1, -1, 0, 0, 0, 1))", "{text}");

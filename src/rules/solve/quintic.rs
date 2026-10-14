@@ -25,6 +25,7 @@ use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::rules::poly::galois::analyse_quintic;
 use crate::rules::poly::galois::Radical;
+use crate::rules::poly::galois::Trigonometric;
 use crate::rules::poly::repr::Gens;
 use crate::rules::poly::repr::Poly;
 use crate::rules::poly::rootof::real_roots_as_objects;
@@ -43,10 +44,18 @@ pub(super) fn roots(
         let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
         if let Some(analysis) = analyse_quintic(&rational)
             && let Some(radical) = &analysis.radical
-            && let [(value, _)] = objects.as_slice()
-            && let Some(node) = radical_root(graph, radical, *value)
         {
-            return Some(vec![(*value, node)]);
+            if let Some(trig) = &radical.trigonometric {
+                if objects.len() == 5
+                    && let Some(found) = trigonometric_roots(graph, radical, trig, &objects)
+                {
+                    return Some(found);
+                }
+            } else if let [(value, _)] = objects.as_slice()
+                && let Some(node) = radical_root(graph, radical, *value)
+            {
+                return Some(vec![(*value, node)]);
+            }
         }
     }
     Some(objects)
@@ -157,4 +166,95 @@ fn radical_root(
     };
     let value = graph.eval(total, &env)?;
     ((value - expected).abs() <= 1e-6 * (1.0 + expected.abs())).then_some(total)
+}
+
+/// The five real roots of a solvable quintic as cosines.
+///
+/// With `R_1 = a_1 + i b_1` and `R_2 = a_2 + i b_2` the complex roots of `Φ`
+/// (found as the roots of the quadratic factors in Ferrari's method) and
+/// `t_j` fifth roots of `R_j`, the roots are
+/// `z_k = (2/5) Σ_j |R_j|^(1/5) cos((φ_j + 2π (m_j - j k))/5)` with
+/// `φ_j = arg R_j` and `m_j` fixed by the numerical values of `t_j`.
+fn trigonometric_roots(
+    graph: &mut Graph,
+    radical: &Radical,
+    trig: &Trigonometric,
+    objects: &[(f64, NodeId)],
+) -> Option<Vec<(f64, NodeId)>> {
+    let (five, half) = (graph.int(5), graph.num(Number::fraction(1, 2)?));
+    let sqrt5 = graph.node(core::POW, &[five, half]);
+    let mut gens = Gens::default();
+    let g5 = gens.index(graph, sqrt5);
+    let mut coefficients: Vec<Poly> = radical.phi.iter().map(|p| pair_poly(g5, p)).collect();
+    coefficients.push(Poly::constant(Number::from(1)));
+    let mut pairs = Vec::new();
+    symbolic::ferrari_with_pairs(graph, &gens, &coefficients, &mut pairs)?;
+    let env = Env::numeric(0.0);
+    let (acos, cos, pi) = (graph.ops().lookup("acos")?, graph.ops().lookup("cos")?, graph.ops().lookup("pi")?);
+    let pi_node = graph.node(pi, &[]);
+    let tau = std::f64::consts::TAU;
+    // For each of R_1, R_2: the pair of nodes whose values match.
+    let mut parts: Vec<(NodeId, NodeId, f64, i64, i64)> = Vec::new();
+    for (j, (r, t)) in trig.r.iter().zip(&trig.t).enumerate() {
+        let target = (r.0, r.1.abs());
+        let mut found = None;
+        for &(a_node, b_node) in &pairs {
+            let (Some(a), Some(b)) = (graph.eval(a_node, &env), graph.eval(b_node, &env)) else { continue };
+            if (a - target.0).abs() <= 1e-7 * (1.0 + target.0.abs()) && (b - target.1).abs() <= 1e-7 * (1.0 + target.1.abs()) {
+                found = Some((a_node, b_node));
+                break;
+            }
+        }
+        let (a_node, b_node) = found?;
+        // u = t if Im R > 0 else conj t: a fifth root of a + i|b|.
+        let u = (t.0, if r.1 > 0.0 { t.1 } else { -t.1 });
+        let phi = target.1.atan2(target.0);
+        let m = ((5.0 * u.1.atan2(u.0) - phi) / tau).round();
+        // Conjugating t_j turns ζ^{-jk} into ζ^{jk}.
+        let weight = if r.1 > 0.0 { i64::try_from(j + 1).ok()? } else { -i64::try_from(j + 1).ok()? };
+        parts.push((a_node, b_node, phi, m as i64, weight));
+    }
+    let mut out = Vec::new();
+    for k in 0..5_i64 {
+        let mut terms = Vec::new();
+        for &(a_node, b_node, _phi, m, weight) in &parts {
+            let two = graph.int(2);
+            let a2 = graph.node(core::POW, &[a_node, two]);
+            let b2 = graph.node(core::POW, &[b_node, two]);
+            let modulus_sq = graph.node(core::ADD, &[a2, b2]);
+            let tenth = graph.num(Number::fraction(1, 10)?);
+            let amplitude = graph.node(core::POW, &[modulus_sq, tenth]);
+            let minus_half = graph.num(Number::fraction(-1, 2)?);
+            let inverse_modulus = graph.node(core::POW, &[modulus_sq, minus_half]);
+            let ratio = graph.node(core::MUL, &[a_node, inverse_modulus]);
+            let phi_node = graph.node(acos, &[ratio]);
+            let turns = graph.int(2 * (m - weight * k));
+            let turn_pi = graph.node(core::MUL, &[turns, pi_node]);
+            let angle = graph.node(core::ADD, &[phi_node, turn_pi]);
+            let fifth = graph.num(Number::fraction(1, 5)?);
+            let divided = graph.node(core::MUL, &[fifth, angle]);
+            let wave = graph.node(cos, &[divided]);
+            terms.push(graph.node(core::MUL, &[amplitude, wave]));
+        }
+        let sum = graph.node(core::ADD, &terms);
+        let factor = graph.num(Number::rat(BigRational::new(BigInt::from(2), BigInt::from(5) * &radical.scale)));
+        let scaled = graph.node(core::MUL, &[factor, sum]);
+        let total = if radical.shift.is_zero() {
+            scaled
+        } else {
+            let shift = graph.num(Number::rat(radical.shift.clone()));
+            graph.node(core::ADD, &[shift, scaled])
+        };
+        out.push((graph.eval(total, &env)?, total));
+    }
+    // Every computed root must match one of the real roots.
+    let mut used = vec![false; objects.len()];
+    for (value, _) in &out {
+        let slot = objects.iter().position(|(v, _)| (v - value).abs() <= 1e-6 * (1.0 + v.abs()))?;
+        if std::mem::replace(used.get_mut(slot)?, true) {
+            return None;
+        }
+    }
+    out.sort_by(|a, b| a.0.total_cmp(&b.0));
+    Some(out)
 }
