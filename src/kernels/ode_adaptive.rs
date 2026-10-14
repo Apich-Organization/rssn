@@ -3,7 +3,8 @@
 //! * [`dopri5`]: Dormand-Prince 5(4) with step-size control, a fourth-order
 //!   continuous extension ("dense output") and event detection;
 //! * [`rosenbrock23`]: the L-stable Rosenbrock pair of Shampine and
-//!   Reichelt for stiff problems (finite-difference Jacobian);
+//!   Reichelt for stiff problems (finite-difference Jacobian, cubic Hermite
+//!   dense output);
 //! * [`leapfrog`] and [`yoshida4`]: symplectic integrators for
 //!   `H = p^2/2 + V(q)`;
 //! * [`bvp_fd`]: second-order finite-difference BVP solver for
@@ -105,12 +106,27 @@ pub struct EventHit {
     pub y: Vec<f64>,
 }
 
+/// Representation of the continuous extension over one accepted step.
 #[derive(Debug, Clone)]
-struct DenseStep {
-    t0: f64,
-    h: f64,
-    y0: Vec<f64>,
-    d: [Vec<f64>; 4],
+pub(crate) enum DenseKind {
+    /// `y0 + h * sum_k d[k] x^(k+1)` with `x = (t - t0) / h`.
+    Poly(Vec<Vec<f64>>),
+    /// Lagrange interpolation through the nodes `x_j` (in units of the step)
+    /// with the given values (the collocation polynomial of Radau IIA).
+    Lagrange { nodes: Vec<f64>, vals: Vec<Vec<f64>> },
+    /// Newton backward-difference interpolation `sum_k D_k prod_{j<k} (s+j)/(j+1)`
+    /// with `s = x - 1` (the BDF interpolant); `D_0 = y(t0 + h)`.
+    Backward(Vec<Vec<f64>>),
+    /// Cubic Hermite interpolation from the end value and both end derivatives.
+    Hermite { y1: Vec<f64>, f0: Vec<f64>, f1: Vec<f64> },
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct DenseStep {
+    pub(crate) t0: f64,
+    pub(crate) h: f64,
+    pub(crate) y0: Vec<f64>,
+    pub(crate) kind: DenseKind,
 }
 
 /// Solution of an adaptive integration.
@@ -126,7 +142,10 @@ pub struct OdeSolution {
     pub nfev: usize,
     /// Number of rejected steps.
     pub rejected: usize,
-    dense: Vec<DenseStep>,
+    /// Order of the method used for each accepted step (variable-order
+    /// integrators only; empty otherwise).
+    pub orders: Vec<usize>,
+    pub(crate) dense: Vec<DenseStep>,
 }
 
 impl OdeSolution {
@@ -138,12 +157,13 @@ impl OdeSolution {
             events: Vec::new(),
             nfev: 0,
             rejected: 0,
+            orders: Vec::new(),
             dense: Vec::new(),
         }
     }
 
     /// Evaluates the continuous extension at `t` (available for
-    /// [`dopri5`]); `None` outside the integrated range.
+    /// [`dopri5`], [`rosenbrock23`], the Radau and the BDF integrators); `None` outside the integrated range.
     #[must_use]
     pub fn eval(&self, t: f64) -> Option<Vec<f64>> {
         let (&first, &last) = (self.t.first()?, self.t.last()?);
@@ -159,14 +179,109 @@ impl OdeSolution {
     }
 }
 
-fn dense_eval(s: &DenseStep, t: f64) -> Vec<f64> {
+pub(crate) fn dense_eval(s: &DenseStep, t: f64) -> Vec<f64> {
     let x = (t - s.t0) / s.h;
-    let (x1, x2, x3, x4) = (x, x * x, x * x * x, x * x * x * x);
-    (0..s.y0.len())
-        .map(|i| {
-            s.y0[i] + s.h * (s.d[0][i] * x1 + s.d[1][i] * x2 + s.d[2][i] * x3 + s.d[3][i] * x4)
-        })
-        .collect()
+    let n = s.y0.len();
+    match &s.kind {
+        DenseKind::Poly(d) => {
+            let (x1, x2, x3, x4) = (x, x * x, x * x * x, x * x * x * x);
+            (0..n)
+                .map(|i| {
+                    s.y0[i] + s.h * (d[0][i] * x1 + d[1][i] * x2 + d[2][i] * x3 + d[3][i] * x4)
+                })
+                .collect()
+        }
+        DenseKind::Lagrange { nodes, vals } => {
+            let mut out = vec![0.0; n];
+            for (j, vj) in vals.iter().enumerate() {
+                let mut l = 1.0;
+                for (k, xk) in nodes.iter().enumerate() {
+                    if k != j {
+                        l *= (x - xk) / (nodes[j] - xk);
+                    }
+                }
+                for i in 0..n {
+                    out[i] += l * vj[i];
+                }
+            }
+            out
+        }
+        DenseKind::Hermite { y1, f0, f1 } => {
+            let (x2, x3) = (x * x, x * x * x);
+            let (h00, h10, h01, h11) =
+                (2.0 * x3 - 3.0 * x2 + 1.0, x3 - 2.0 * x2 + x, -2.0 * x3 + 3.0 * x2, x3 - x2);
+            (0..n)
+                .map(|i| h00 * s.y0[i] + h10 * s.h * f0[i] + h01 * y1[i] + h11 * s.h * f1[i])
+                .collect()
+        }
+        DenseKind::Backward(dd) => {
+            let sv = x - 1.0;
+            let mut out = dd[0].clone();
+            let mut p = 1.0;
+            for (k, dk) in dd.iter().enumerate().skip(1) {
+                p *= (sv + (k - 1) as f64) / k as f64;
+                for i in 0..n {
+                    out[i] += p * dk[i];
+                }
+            }
+            out
+        }
+    }
+}
+
+/// Locates the events crossed during an accepted step and updates the
+/// solution. Returns `true` when a terminal event ended the integration
+/// (the step and the event point are then already recorded).
+pub(crate) fn process_events(
+    events: &[Event<'_>],
+    gprev: &mut [f64],
+    sol: &mut OdeSolution,
+    step: DenseStep,
+    t_old: f64,
+    tn: f64,
+    ynew: &[f64],
+    dir: f64,
+) -> bool {
+    let mut hits: Vec<EventHit> = Vec::new();
+    let mut stop = false;
+    for (ei, ev) in events.iter().enumerate() {
+        let g1 = (ev.g)(tn, ynew);
+        let g0 = gprev[ei];
+        let crossing = (g0 < 0.0 && g1 >= 0.0 && ev.direction >= 0)
+            || (g0 > 0.0 && g1 <= 0.0 && ev.direction <= 0);
+        if crossing {
+            let gf = |tt: f64| (ev.g)(tt, &dense_eval(&step, tt));
+            let root =
+                rootfind::brent(gf, t_old, tn, 1e-14 * (1.0 + tn.abs()), 200).unwrap_or(tn);
+            hits.push(EventHit { index: ei, t: root, y: dense_eval(&step, root) });
+            if ev.terminal {
+                stop = true;
+            }
+        }
+        gprev[ei] = g1;
+    }
+    hits.sort_by(|a, b| ((a.t - b.t) * dir).total_cmp(&0.0));
+    if stop {
+        let mut kept = Vec::new();
+        for h in hits {
+            let term = events[h.index].terminal;
+            kept.push(h);
+            if term {
+                break;
+            }
+        }
+        let last = kept.last().cloned();
+        sol.events.extend(kept);
+        sol.dense.push(step);
+        if let Some(l) = last {
+            sol.t.push(l.t);
+            sol.y.push(l.y);
+        }
+        return true;
+    }
+    sol.events.extend(hits);
+    sol.dense.push(step);
+    false
 }
 
 const DP_A: [[f64; 6]; 6] = [
@@ -279,6 +394,7 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
         events: Vec::new(),
         nfev: 0,
         rejected: 0,
+        orders: Vec::new(),
         dense: Vec::new(),
     };
     let mut gprev: Vec<f64> = events.iter().map(|e| (e.g)(t0, y0)).collect();
@@ -332,49 +448,12 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
             let d: [Vec<f64>; 4] = std::array::from_fn(|c| {
                 (0..n).map(|i| (0..7).map(|j| DP_P[j][c] * k[j][i]).sum()).collect()
             });
-            let step = DenseStep { t0: t, h, y0: y.clone(), d };
+            let step = DenseStep { t0: t, h, y0: y.clone(), kind: DenseKind::Poly(d.to_vec()) };
             let tn = t + h;
-            // events
-            let mut hits: Vec<EventHit> = Vec::new();
-            let mut stop = false;
-            for (ei, ev) in events.iter().enumerate() {
-                let g1 = (ev.g)(tn, &ynew);
-                let g0 = gprev[ei];
-                let crossing = (g0 < 0.0 && g1 >= 0.0 && ev.direction >= 0)
-                    || (g0 > 0.0 && g1 <= 0.0 && ev.direction <= 0);
-                if crossing {
-                    let gf = |tt: f64| (ev.g)(tt, &dense_eval(&step, tt));
-                    let root = rootfind::brent(gf, t, tn, 1e-14 * (1.0 + tn.abs()), 200).unwrap_or(tn);
-                    hits.push(EventHit { index: ei, t: root, y: dense_eval(&step, root) });
-                    if ev.terminal {
-                        stop = true;
-                    }
-                }
-                gprev[ei] = g1;
-            }
-            hits.sort_by(|a, b| ((a.t - b.t) * dir).total_cmp(&0.0));
-            if stop {
-                // keep events up to and including the first terminal one
-                let mut kept = Vec::new();
-                for h in hits {
-                    let term = events[h.index].terminal;
-                    kept.push(h);
-                    if term {
-                        break;
-                    }
-                }
-                let last = kept.last().cloned();
-                sol.events.extend(kept);
-                sol.dense.push(step);
-                if let Some(l) = last {
-                    sol.t.push(l.t);
-                    sol.y.push(l.y);
-                }
+            if process_events(events, &mut gprev, &mut sol, step, t, tn, &ynew, dir) {
                 sol.nfev = nfev;
                 return Ok(sol);
             }
-            sol.events.extend(hits);
-            sol.dense.push(step);
             t = tn;
             y = ynew;
             sol.t.push(t);
@@ -402,7 +481,8 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
 /// Rosenbrock 2(3) (the `ode23s` pair) for stiff problems.
 ///
 /// The Jacobian and the explicit time derivative are obtained by finite
-/// differences at every step. No dense output is provided.
+/// differences at every step. Dense output is the cubic Hermite
+/// interpolant of the step ([`OdeSolution::eval`]); events are not supported.
 ///
 /// # Errors
 /// [`OdeError::StepLimit`], [`OdeError::NonFinite`] or [`OdeError::SolveFailed`].
@@ -437,6 +517,7 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
         events: Vec::new(),
         nfev: 0,
         rejected: 0,
+        orders: Vec::new(),
         dense: Vec::new(),
     };
     let mut steps = 0;
@@ -507,6 +588,12 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
         }
         let en = err_norm(&err, &y, &ynew, opts.rtol, opts.atol);
         if en <= 1.0 {
+            sol.dense.push(DenseStep {
+                t0: t,
+                h,
+                y0: y.clone(),
+                kind: DenseKind::Hermite { y1: ynew.clone(), f0: f0.clone(), f1: f2.clone() },
+            });
             t += h;
             y = ynew;
             f0 = f2;

@@ -9,7 +9,9 @@
 //!   systems of one complex variable per equation (total-degree start
 //!   system) via [`homotopy_univariate`], and square multivariate
 //!   polynomial systems via [`homotopy_system`] (total-degree start
-//!   system, gamma trick, RK4 predictor / Newton corrector tracking);
+//!   system, gamma trick, RK4 predictor / Newton corrector tracking; the
+//!   projective, endgame-equipped solver with solutions at infinity and
+//!   path-jumping protection is [`crate::kernels::homotopy`]);
 //! * polynomial roots by the three-stage Jenkins-Traub algorithm
 //!   ([`polynomial_roots_jenkins_traub`]).
 #![allow(
