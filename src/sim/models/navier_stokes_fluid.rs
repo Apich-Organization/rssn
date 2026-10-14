@@ -773,3 +773,6 @@ pub fn simulate_lid_driven_cavity_scenario(output_dir: &Path) {
         },
     }
 }
+
+/// Second-order 2D/3D MAC solver with obstacles and immersed bodies: see [`crate::sim::ns_mac`].
+pub use crate::sim::ns_mac::{ImmersedBody, NsConfig, NsSolver};

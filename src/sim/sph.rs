@@ -15,8 +15,13 @@
 //! | Integrator | Heun (RK2) with CFL helper |
 //! | Neighbour search | uniform cell grid, `O(N)` |
 //!
-//! Limitations: no grad-h correction terms, no Balsara switch, no
-//! dissipative particle dynamics, no self-gravity.
+//! The variational **grad-h** equations of motion (Springel & Hernquist
+//! 2002) are available through [`Sph::grad_h`]; they include the factor
+//! `Ω_i = 1 + h_i/(D ρ_i) Σ_j m_j ∂W_ij/∂h_i` and conserve energy and
+//! momentum with variable smoothing lengths. Dissipative particle dynamics
+//! lives in [`crate::sim::dpd`].
+//!
+//! Limitations: no Balsara switch, no self-gravity.
 #![allow(
     clippy::arithmetic_side_effects,
     clippy::assigning_clones,
@@ -195,6 +200,8 @@ pub struct Sph<const D: usize> {
     pub hi: [f64; D],
     /// Boundary per axis.
     pub bc: [SphBoundary; D],
+    /// Use the grad-h (Springel–Hernquist) corrected, variational equations of motion.
+    pub grad_h: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -283,6 +290,7 @@ impl<const D: usize> Sph<D> {
             lo,
             hi,
             bc,
+            grad_h: false,
         };
         // initial h guess from the bounding volume
         let vol: f64 = (0..D).map(|a| (hi[a] - lo[a]).max(1e-12)).product();
@@ -420,6 +428,27 @@ impl<const D: usize> Sph<D> {
         let mut du = vec![0.0; n];
         let p: Vec<f64> = (0..n).map(|i| self.pressure(i)).collect();
         let c: Vec<f64> = (0..n).map(|i| self.sound_speed(i)).collect();
+        // grad-h factors Omega_i = 1 + h_i / (D rho_i) * sum_j m_j dW_ij/dh_i
+        let mut omega = vec![1.0; n];
+        if self.grad_h {
+            for i in 0..n {
+                let mut sum = 0.0;
+                grid.for_near(&self.pos[i], |jj| {
+                    let j = gh[jj].src;
+                    let mut r2 = 0.0;
+                    for a in 0..D {
+                        r2 += (self.pos[i][a] - gh[jj].pos[a]).powi(2);
+                    }
+                    let r = r2.sqrt();
+                    let hi = self.h[i];
+                    if r < 2.0 * hi {
+                        let dwdh = -(D as f64 * self.kernel.w(D, r, hi) + r * self.kernel.dw(D, r, hi)) / hi;
+                        sum += self.mass[j] * dwdh;
+                    }
+                });
+                omega[i] = 1.0 + self.h[i] / (D as f64 * self.rho[i]) * sum;
+            }
+        }
         for i in 0..n {
             grid.for_near(&self.pos[i], |jj| {
                 let g = &gh[jj];
@@ -440,7 +469,8 @@ impl<const D: usize> Sph<D> {
                 if r >= 2.0 * hi.max(hj) || r == 0.0 {
                     return;
                 }
-                let gw = 0.5 * (self.kernel.dw(D, r, hi) + self.kernel.dw(D, r, hj));
+                let (dwi, dwj) = (self.kernel.dw(D, r, hi), self.kernel.dw(D, r, hj));
+                let gw = 0.5 * (dwi + dwj);
                 let vr: f64 = (0..D).map(|a| vij[a] * rij[a]).sum();
                 let mut pi = 0.0;
                 if vr < 0.0 {
@@ -449,6 +479,20 @@ impl<const D: usize> Sph<D> {
                     let cb = 0.5 * (c[i] + c[j]);
                     let rb = 0.5 * (self.rho[i] + self.rho[j]);
                     pi = (-self.alpha * cb * mu + self.beta * mu * mu) / rb;
+                }
+                if self.grad_h {
+                    let ti = p[i] / (omega[i] * self.rho[i] * self.rho[i]);
+                    let tj = p[j] / (omega[j] * self.rho[j] * self.rho[j]);
+                    let mut vdot_i = 0.0;
+                    let mut vdot_avg = 0.0;
+                    for a in 0..D {
+                        let n_a = rij[a] / r;
+                        acc[i][a] -= self.mass[j] * (ti * dwi + tj * dwj + pi * gw) * n_a;
+                        vdot_i += vij[a] * dwi * n_a;
+                        vdot_avg += vij[a] * gw * n_a;
+                    }
+                    du[i] += self.mass[j] * ti * vdot_i + 0.5 * self.mass[j] * pi * vdot_avg;
+                    return;
                 }
                 let fac = p[i] / (self.rho[i] * self.rho[i]) + p[j] / (self.rho[j] * self.rho[j]) + pi;
                 let mut vdotg = 0.0;

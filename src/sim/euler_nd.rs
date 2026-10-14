@@ -9,8 +9,9 @@
 //!   Rusanov, for the Euler equations of an ideal gas and the shallow-water
 //!   equations;
 //! * **SSP-RK3** time stepping with a CFL condition summed over axes;
-//! * boundary treatment per face: transmissive, reflective wall, periodic or
-//!   a fixed (inflow) state.
+//! * boundary treatment per face: transmissive, reflective wall, periodic, a
+//!   fixed (inflow) state or a linearised characteristic **non-reflecting**
+//!   boundary (Euler only).
 //!
 //! | Equation | 1D | 2D | 3D | Riemann solvers | Reconstruction |
 //! |---|---|---|---|---|---|
@@ -104,6 +105,11 @@ pub enum GasBc {
     Periodic,
     /// Fixed primitive state (inflow).
     Fixed(State),
+    /// Linearised characteristic non-reflecting boundary about the given
+    /// primitive far-field state (Euler only): the incoming acoustic
+    /// characteristic is set to its far-field value, the outgoing ones are
+    /// taken from the interior.
+    NonReflecting(State),
 }
 
 /// Cartesian cell grid.
@@ -534,6 +540,24 @@ fn face_states(recon: Reconstruction, line: &[State], k: usize, nv: usize) -> (S
     (l, r)
 }
 
+/// Ghost state of the linearised characteristic non-reflecting boundary.
+fn nrbc_ghost(law: Law, q: State, w_inf: &State, axis: usize, max: bool) -> State {
+    let Law::Euler { gamma } = law else { return q };
+    let wi = to_prim(law, q);
+    let c = (gamma * w_inf[4] / w_inf[0]).sqrt();
+    let rc = w_inf[0] * c;
+    let sgn = if max { 1.0 } else { -1.0 };
+    let (un_i, un_inf) = (sgn * wi[1 + axis], sgn * w_inf[1 + axis]);
+    let rp = 0.5 * ((wi[4] - w_inf[4]) + rc * (un_i - un_inf));
+    let p_g = (w_inf[4] + rp).max(1e-8);
+    let un_g = un_inf + rp / rc;
+    let mut wg = if un_inf >= 0.0 { wi } else { *w_inf };
+    wg[0] = (wg[0] + (p_g - if un_inf >= 0.0 { wi[4] } else { w_inf[4] }) / (c * c)).max(1e-8);
+    wg[4] = p_g;
+    wg[1 + axis] = sgn * un_g;
+    to_cons(law, wg)
+}
+
 const GHOST: usize = 3;
 
 struct Padded {
@@ -614,6 +638,12 @@ impl Stepper<'_> {
                                     GasBc::Periodic => gi.rem_euclid(n),
                                     GasBc::Fixed(w) => {
                                         p[pad.idx(dst)] = to_cons(law, w);
+                                        continue;
+                                    },
+                                    GasBc::NonReflecting(w_inf) => {
+                                        let mut edge = dst;
+                                        edge[a] = ((if max { n - 1 } else { 0 }) + gh) as usize;
+                                        p[pad.idx(dst)] = nrbc_ghost(law, p[pad.idx(edge)], &w_inf, a, max);
                                         continue;
                                     },
                                 };
@@ -708,6 +738,9 @@ pub fn solve(
 ) -> Result<FvSolution, String> {
     if !(cfg.cfl > 0.0 && cfg.cfl < 1.0) {
         return Err("cfl must be in (0, 1)".into());
+    }
+    if matches!(cfg.law, Law::ShallowWater { .. }) && cfg.bcs.iter().any(|b| matches!(b, GasBc::NonReflecting(_))) {
+        return Err("non-reflecting boundaries are available for the Euler equations only".into());
     }
     if matches!(cfg.law, Law::ShallowWater { .. }) && grid.dim == 3 {
         return Err("shallow water is two-dimensional at most".into());

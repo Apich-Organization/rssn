@@ -189,6 +189,72 @@ fn residual(
     (0..n).map(|i| [0, 1, 2].map(|c| -(fluxes[i + 1][c] - fluxes[i][c]) / dx)).collect()
 }
 
+/// Solves the 1D Euler equations (HLLC, MUSCL, SSP-RK3).
+///
+/// The domain is `[x0, x1]` with `cells` cells, the initial data `initial(x)`,
+/// the final time `t_end`, the CFL number `cfl` and the reconstruction
+/// `limiter`. Returns the cell centres and the primitive states.
+///
+/// This entry point delegates to the dimension-generic engine
+/// [`crate::sim::euler_nd`] (1D case); grids with fewer than six cells or a
+/// CFL number outside `(0, 1)` use the compact reference implementation.
+#[must_use]
+#[allow(clippy::too_many_arguments, clippy::option_if_let_else)]
+pub fn solve_euler_1d<I>(
+    initial: I,
+    x0: f64,
+    x1: f64,
+    cells: usize,
+    t_end: f64,
+    gamma: f64,
+    cfl: f64,
+    limiter: Limiter,
+    boundary: Boundary,
+) -> (Vec<f64>, Vec<Primitive>)
+where
+    I: Fn(f64) -> Primitive,
+{
+    use crate::sim::euler_nd::{FvConfig, FvGrid, GasBc, Reconstruction, SlopeLimiter, State, solve};
+    if cells < 6 || !(cfl > 0.0 && cfl < 1.0) {
+        return solve_euler_1d_reference(initial, x0, x1, cells, t_end, gamma, cfl, limiter, boundary);
+    }
+    let Ok(grid) = FvGrid::new(&[cells], &[x0], &[x1]) else {
+        return solve_euler_1d_reference(initial, x0, x1, cells, t_end, gamma, cfl, limiter, boundary);
+    };
+    let mut cfg = FvConfig::euler(gamma);
+    cfg.cfl = cfl;
+    cfg.recon = match limiter {
+        Limiter::None => Reconstruction::FirstOrder,
+        Limiter::Minmod => Reconstruction::Muscl(SlopeLimiter::Minmod),
+        Limiter::VanLeer => Reconstruction::Muscl(SlopeLimiter::VanLeer),
+    };
+    cfg = cfg.with_axis(
+        0,
+        match boundary {
+            Boundary::Transmissive => GasBc::Transmissive,
+            Boundary::Reflective => GasBc::Reflective,
+        },
+    );
+    let init = |x: [f64; 3]| -> State {
+        let w = initial(x[0]);
+        [w.rho, w.u, 0.0, 0.0, w.p]
+    };
+    match solve(&grid, &cfg, &init, t_end) {
+        Ok(sol) => {
+            let centres: Vec<f64> = (0..cells).map(|i| grid.centre(i)[0]).collect();
+            let prim = (0..cells)
+                .map(|i| {
+                    let w = sol.primitive(i);
+                    Primitive { rho: w[0], u: w[1], p: w[4] }
+                })
+                .collect();
+            (centres, prim)
+        },
+        Err(_) => solve_euler_1d_reference(initial, x0, x1, cells, t_end, gamma, cfl, limiter, boundary),
+    }
+}
+
+/// Compact reference implementation (small grids and unusual CFL numbers).
 /// Solves the Euler equations on `[x0, x1]` with `cells` cells from the
 /// initial data `initial(x)` up to time `t_end`:
 ///
@@ -196,7 +262,7 @@ fn residual(
 /// `cfl`. Returns the cell centres and the primitive states.
 #[must_use]
 #[allow(clippy::too_many_arguments)]
-pub fn solve_euler_1d<I>(
+fn solve_euler_1d_reference<I>(
     initial: I,
     x0: f64,
     x1: f64,

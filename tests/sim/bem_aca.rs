@@ -79,8 +79,10 @@ fn cube_with_point_source_data_and_error_cases() {
         err = err.max((sol.q[t] - (g[0] * n[0] + g[1] * n[1] + g[2] * n[2])).abs());
     }
     assert!(err < 0.15, "cube flux error {err}");
-    // pure Neumann is rejected, wrong data length is rejected
+    // wrong data length is rejected
     let neu: Vec<BoundaryCondition<f64>> = (0..mesh.triangles.len()).map(|_| BoundaryCondition::Flux(0.0)).collect();
-    assert!(solve_laplace_bem_3d_aca(&mesh, &neu, &AcaOptions::default()).is_err());
+    // zero Neumann data are compatible: the zero-mean solution is zero
+    let (zero, _) = solve_laplace_bem_3d_aca(&mesh, &neu, &AcaOptions::default()).unwrap();
+    assert!(zero.u.iter().all(|u| u.abs() < 1e-8));
     assert!(solve_laplace_bem_3d_aca(&mesh, &neu[..3], &AcaOptions::default()).is_err());
 }
