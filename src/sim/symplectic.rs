@@ -133,7 +133,7 @@ impl Scheme {
 /// # Errors
 /// Fails for odd or zero `order`.
 pub fn composition_weights(order: usize) -> Result<Vec<f64>, String> {
-    if order == 0 || order % 2 != 0 {
+    if order == 0 || !order.is_multiple_of(2) {
         return Err("composition order must be even and positive".into());
     }
     let seq = |w: &[f64]| -> Vec<f64> {

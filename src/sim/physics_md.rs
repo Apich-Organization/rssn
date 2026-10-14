@@ -66,7 +66,7 @@ use crate::kernels::vector::norm;
 use crate::kernels::vector::scalar_mul;
 use crate::kernels::vector::vec_add;
 use crate::kernels::vector::vec_sub;
-use crate::sim::md_engine::{self, ForceField, MdSimulation, MdSystem, NeighbourList, NoseHooverChain, PairTerm, Rdf, SimBox, Thermostat};
+use crate::sim::md_engine::{ForceField, MdSimulation, MdSystem, NeighbourList, NoseHooverChain, PairTerm, Rdf, SimBox, Thermostat};
 
 // ============================================================================
 // Physical Constants (Reduced Units)
@@ -1265,8 +1265,10 @@ fn run_engine_md_dim<const D: usize>(
     Ok(sim.total_energy())
 }
 
-/// Runs Lennard-Jones molecular dynamics (`epsilon`, `sigma`, shifted-force cutoff `r_cut`) in a
-/// periodic box on the const-generic engine ([`md_engine::MdSimulation`]) for a **runtime**
+/// Runs Lennard-Jones MD for a runtime dimension on the const-generic engine.
+///
+/// Parameters `(epsilon, sigma, r_cut)` give a shifted-force potential in a
+/// periodic box on the const-generic engine ([`crate::sim::md_engine::MdSimulation`]) for a **runtime**
 /// dimension of 1, 2 or 3, and writes positions, velocities and forces back into `particles`.
 /// Returns the final total energy.
 ///

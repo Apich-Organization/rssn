@@ -299,7 +299,7 @@ impl<const D: usize> MdSimulation<D> {
     }
 
     fn cell_kick(
-        &mut self,
+        &self,
         b: &mut FlexibleBarostat,
         dt: f64,
     ) {

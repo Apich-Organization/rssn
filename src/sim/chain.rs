@@ -474,7 +474,7 @@ impl ChainSystem {
             let backup = self.clone();
             self.rechain();
             let err = self.gbs_step(ds, kmax);
-            if !(err <= tol) || !self.t.is_finite() {
+            if err.is_nan() || err > tol || !self.t.is_finite() {
                 *self = backup;
                 ds *= 0.5;
                 if ds < 1e-14 {

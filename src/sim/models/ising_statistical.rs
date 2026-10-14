@@ -273,23 +273,6 @@ pub struct IsingObservables {
     pub mean_cluster: f64,
 }
 
-fn ising_energy(
-    grid: &[i8],
-    width: usize,
-    height: usize,
-) -> f64 {
-    let mut e = 0_i64;
-    for i in 0..height {
-        for j in 0..width {
-            let s = i64::from(grid[i * width + j]);
-            let right = i64::from(grid[i * width + (j + 1) % width]);
-            let down = i64::from(grid[((i + 1) % height) * width + j]);
-            e -= s * (right + down);
-        }
-    }
-    e as f64
-}
-
 /// The Wolff single-cluster algorithm:
 ///
 /// a cluster grown from a random seed spin, each aligned neighbour added
@@ -436,7 +419,9 @@ fn run_on<const D: usize, const N: usize>(
     Ok(average_series(&e, &m, beta, sites))
 }
 
-/// Monte Carlo of an Ising, Potts, XY or Heisenberg model on a hypercubic lattice of **any**
+/// Monte Carlo of a spin model on a hypercubic lattice of any dimension.
+///
+/// Ising, Potts, XY or Heisenberg on a lattice of **any**
 /// dimension `D` (periodic or open), delegating to [`crate::sim::spin_models`]. Returns the
 /// per-site averages over `sweeps` measurements after `thermalisation` updates.
 ///

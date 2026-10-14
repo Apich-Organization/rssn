@@ -126,7 +126,7 @@ fn equatorial_geodesic(
     let grr = r * r / delta;
     let b = gtp * phid;
     let c = gpp * phid * phid + grr * rd * rd + 1.0;
-    let disc = b * b - gtt * c;
+    let disc = b.powi(2) - gtt * c;
     if gtt >= 0.0 || disc < 0.0 {
         return Err("no future-directed timelike velocity with this spatial velocity".into());
     }
@@ -148,7 +148,9 @@ fn equatorial_geodesic(
     })
 }
 
-/// Equatorial timelike geodesic of the Kerr-Newman spacetime (mass `params.black_hole_mass`, spin
+/// Equatorial timelike Kerr-Newman geodesic on the symplectic engine.
+///
+/// The spacetime has (mass `params.black_hole_mass`, spin
 /// parameter `spin = a`, charge `charge = Q`, geometric units) integrated for the proper time
 /// `params.proper_time_end` with the symplectic implicit-midpoint engine of
 /// [`crate::sim::relativity`] (step `params.initial_dt`, mass-shell projection). The state is
