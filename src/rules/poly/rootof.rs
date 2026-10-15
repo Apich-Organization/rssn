@@ -1,6 +1,7 @@
-//! `root_of(k, c0, c1, ..., cn)`: the `k`-th root (counted from 0) of the
-//! polynomial `c0 + c1 x + ... + cn x^n`, as an exact object. The real
-//! roots come first in ascending order, then the non-real roots by real
+//! `root_of(k, c0, c1, ..., cn)`: the `k`-th root of a polynomial, exactly.
+//!
+//! The roots of `c0 + c1 x + ... + cn x^n` are counted from 0: the real
+//! roots in ascending order, then the non-real roots by real
 //! part and, for equal real parts, imaginary part.
 //!
 //! The coefficients are the arguments, so the object has

@@ -102,7 +102,7 @@ fn decompose_with_degree(
     d: usize,
 ) -> Option<(Vec<Q>, Vec<Q>)> {
     let n = f.len() - 1;
-    if d < 2 || n % d != 0 || n / d < 2 {
+    if d < 2 || !n.is_multiple_of(d) || n / d < 2 {
         return None;
     }
     let m = n / d;
@@ -141,7 +141,7 @@ fn decompose_with_degree(
 /// degree `2k`.
 fn reciprocal_reduction(f: &[Q]) -> Option<Vec<Q>> {
     let n = f.len() - 1;
-    if n % 2 != 0 || n < 4 || (0..=n).any(|i| f.get(i) != f.get(n - i)) {
+    if !n.is_multiple_of(2) || n < 4 || (0..=n).any(|i| f.get(i) != f.get(n - i)) {
         return None;
     }
     let k = n / 2;

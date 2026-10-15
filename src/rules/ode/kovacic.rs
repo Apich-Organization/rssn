@@ -338,9 +338,7 @@ fn solve_linear(
     let mut pivot_row = 0;
     let mut pivots = Vec::new();
     for col in 0..unknowns {
-        let Some(found) = (pivot_row..m).find(|&r| rows.get(r).is_some_and(|row| row.get(col).is_some_and(|v| !v.is_zero()))) else {
-            return None;
-        };
+        let found = (pivot_row..m).find(|&r| rows.get(r).is_some_and(|row| row.get(col).is_some_and(|v| !v.is_zero())))?;
         rows.swap(pivot_row, found);
         rhs.swap(pivot_row, found);
         let pivot = rows.get(pivot_row)?.get(col)?.clone();
@@ -413,7 +411,7 @@ pub(super) fn first_solution(
     }
     let mut chosen = vec![0_usize; poles.len()];
     for inf in &infinity {
-        chosen.iter_mut().for_each(|c| *c = 0);
+        chosen.fill(0);
         loop {
             let alpha_sum: Q = poles
                 .iter()

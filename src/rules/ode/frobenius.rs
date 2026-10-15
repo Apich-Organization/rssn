@@ -565,7 +565,7 @@ pub(super) enum Local {
 /// The equation in `t = 1/x`: `P2 (t^4 Y'' + 2 t^3 Y') - P1 t^2 Y' + P0 Y`
 /// with `P_k(t) = t^D p_k(1/t)`.
 fn at_infinity(p: &[Vec<Q>; 3]) -> [Vec<Q>; 3] {
-    let degree = p.iter().map(|v| v.len()).max().unwrap_or(1).saturating_sub(1);
+    let degree = p.iter().map(Vec::len).max().unwrap_or(1).saturating_sub(1);
     let reversed = |v: &[Q]| -> Vec<Q> {
         let mut out = vec![Q::zero(); degree + 1];
         for (i, c) in v.iter().enumerate() {
@@ -591,7 +591,7 @@ fn formal_series(
     b: &[Vec<Q>; 3],
     n: usize,
 ) -> Vec<(Q, Vec<Q>, Vec<Vec<Q>>)> {
-    let coefficient = |d: usize, j: i64| -> Q { usize::try_from(j).ok().and_then(|j| b[d].get(j as usize).cloned()).unwrap_or_else(Q::zero) };
+    let coefficient = |d: usize, j: i64| -> Q { usize::try_from(j).ok().and_then(|j| b[d].get(j).cloned()).unwrap_or_else(Q::zero) };
     // Q_e(σ) = B0[e] + B1[e + 1] σ + B2[e + 2] (σ² - σ), ascending in σ.
     let q_e = |e: i64| -> Vec<Q> {
         let (c0, c1, c2) = (coefficient(0, e), coefficient(1, e + 1), coefficient(2, e + 2));
