@@ -68,6 +68,19 @@ pub struct Radical {
     /// The coefficients `c0 … c3` of `Φ(w) = w^4 + c3 w^3 + … + c0` as
     /// pairs `(u, v)` meaning `u + v √5`.
     pub phi: Vec<(BigRational, BigRational)>,
+    /// For a quintic with five real roots: the data of the trigonometric
+    /// form, see [`Trigonometric`].
+    pub trigonometric: Option<Trigonometric>,
+}
+
+/// Five real roots: the Lagrange resolvents `t_1`, `t_2` are complex, with
+/// `R_j = t_j^5`. The roots are `z_k = (2/5) Re(t_1 ζ^{-k} + t_2 ζ^{-2k})`.
+#[derive(Clone, Debug)]
+pub struct Trigonometric {
+    /// `R_1 = t_1^5` and `R_2 = t_2^5` (real and imaginary part).
+    pub r: [(f64, f64); 2],
+    /// `t_1` and `t_2` (real and imaginary part).
+    pub t: [(f64, f64); 2],
 }
 
 /// The analysis of an irreducible quintic.
@@ -174,8 +187,19 @@ fn taylor_shift(
 
 /// Complex roots of the monic integer polynomial by Durand–Kerner.
 fn approximate_roots(g: &[BigInt]) -> Option<Vec<(f64, f64)>> {
-    let n = g.len() - 1;
     let coeffs: Vec<f64> = g.iter().map(ToPrimitive::to_f64).collect::<Option<_>>()?;
+    durand_kerner(&coeffs)
+}
+
+/// Complex roots of a polynomial (ascending `f64` coefficients, any leading
+/// coefficient) by the Durand–Kerner iteration.
+pub(crate) fn durand_kerner(raw: &[f64]) -> Option<Vec<(f64, f64)>> {
+    let n = raw.len().checked_sub(1).filter(|&n| n >= 1)?;
+    let lead = *raw.last()?;
+    if lead == 0.0 || !lead.is_finite() {
+        return None;
+    }
+    let coeffs: Vec<f64> = raw.iter().map(|c| c / lead).collect();
     let bound = 1.0
         + (0..n)
             .map(|i| coeffs[i].abs().powf(1.0 / (n - i) as f64))
@@ -412,11 +436,13 @@ pub fn analyse_quintic(c: &[BigRational]) -> Option<Quintic> {
     }
     let integer_sextic: Vec<BigInt> = sextic.iter().map(round_integer).collect::<Option<_>>()?;
     let mut rational_theta: Option<Fx> = None;
-    for (t, _) in &values {
+    let mut rational_orders: Vec<usize> = Vec::new();
+    for (t, orders) in &values {
         if let Some(n) = round_integer(t) {
             let value = integer_sextic.iter().rev().fold(BigInt::zero(), |acc, a| acc * &n + a);
             if value.is_zero() {
                 rational_theta = Some(t.clone());
+                rational_orders.clone_from(orders);
                 break;
             }
         }
@@ -435,8 +461,72 @@ pub fn analyse_quintic(c: &[BigRational]) -> Option<Quintic> {
         return Some(Quintic { group: if square { QuinticGroup::A5 } else { QuinticGroup::S5 }, radical: None });
     };
     let group = if square { QuinticGroup::C5OrD5 } else { QuinticGroup::F20 };
-    // One real root?
+    // Constants for the Lagrange resolvents.
+    let sqrt5 = ((BigInt::from(5)) << (2 * BITS)).sqrt();
+    let cos = Fx::real((&sqrt5 - one()) >> 2);
+    let sin_sq: BigInt = (BigInt::from(10) << BITS) + (&sqrt5 << 1);
+    let sin = Fx::real(Roots::sqrt(&(sin_sq << BITS)) >> 2);
+    let zeta = Fx { re: cos.re, im: sin.re };
+    let mut zeta_powers = vec![Fx::integer(&BigInt::one())];
+    for _ in 1..5 {
+        let last = zeta_powers.last()?.clone();
+        zeta_powers.push(last.mul(&zeta));
+    }
+    let lagrange = |order: &[Fx]| -> Option<Vec<Fx>> {
+        let mut out = Vec::new();
+        for j in 1..5_usize {
+            let mut t = Fx::zero();
+            for (k, x) in order.iter().enumerate() {
+                t = t.add(&zeta_powers.get((j * k) % 5)?.mul(x));
+            }
+            out.push(t);
+        }
+        Some(out)
+    };
+    let phi_pairs = |resolvents: &[Fx]| -> Option<Vec<(BigRational, BigRational)>> {
+        // Φ(w) = Π (w - R_j): elementary symmetric functions (ascending).
+        let mut phi = vec![Fx::integer(&BigInt::one())];
+        for t in resolvents {
+            let r5 = pow5(t);
+            let mut next = vec![Fx::zero(); phi.len() + 1];
+            for (i, a) in phi.iter().enumerate() {
+                next[i + 1] = next[i + 1].add(a);
+                next[i] = next[i].sub(&a.mul(&r5));
+            }
+            phi = next;
+        }
+        let mut pairs = Vec::new();
+        for coefficient in phi.iter().take(4) {
+            pairs.push(identify(coefficient, &sqrt5)?);
+        }
+        Some(pairs)
+    };
+    let to_f64 = |v: &BigInt| BigRational::new(v.clone(), one()).to_f64().unwrap_or(f64::NAN);
     let real: Vec<usize> = (0..5).filter(|&i| roots.get(i).is_some_and(|z| z.im.abs() < BigInt::one() << (BITS - 100))).collect();
+    if real.len() == 5 {
+        // Five real roots: any ordering of the class of the rational theta.
+        let Some(&code) = rational_orders.first() else {
+            return Some(Quintic { group, radical: None });
+        };
+        let mut digits = Vec::new();
+        let mut rest = code;
+        for _ in 0..5 {
+            digits.push(rest % 5);
+            rest /= 5;
+        }
+        digits.reverse();
+        let order: Vec<Fx> = digits.iter().map(|&i| roots.get(i).cloned()).collect::<Option<_>>()?;
+        let ts = lagrange(&order)?;
+        let pairs = phi_pairs(&ts)?;
+        let pack = |z: &Fx| (to_f64(&z.re), to_f64(&z.im));
+        let t = [pack(ts.first()?), pack(ts.get(1)?)];
+        let r = [pack(&pow5(ts.first()?)), pack(&pow5(ts.get(1)?))];
+        return Some(Quintic {
+            group,
+            radical: Some(Radical { shift, scale, phi: pairs, trigonometric: Some(Trigonometric { r, t }) }),
+        });
+    }
+    // One real root.
     let [r] = real.as_slice() else {
         return Some(Quintic { group, radical: None });
     };
@@ -460,45 +550,13 @@ pub fn analyse_quintic(c: &[BigRational]) -> Option<Quintic> {
     let Some(order) = chosen else {
         return Some(Quintic { group, radical: None });
     };
-    // Lagrange resolvents.
-    let sqrt5 = ((BigInt::from(5)) << (2 * BITS)).sqrt();
-    let cos = Fx::real((&sqrt5 - one()) >> 2);
-    let sin_sq: BigInt = (BigInt::from(10) << BITS) + (&sqrt5 << 1);
-    let sin = Fx::real(Roots::sqrt(&(sin_sq << BITS)) >> 2);
-    let zeta = Fx { re: cos.re, im: sin.re };
-    let mut zeta_powers = vec![Fx::integer(&BigInt::one())];
-    for _ in 1..5 {
-        let last = zeta_powers.last()?.clone();
-        zeta_powers.push(last.mul(&zeta));
+    let ts = lagrange(&order)?;
+    // Real by construction.
+    if ts.iter().any(|t| t.im.abs() > BigInt::one() << (BITS - 200)) {
+        return Some(Quintic { group, radical: None });
     }
-    let mut resolvents = Vec::new();
-    for j in 1..5_usize {
-        let mut t = Fx::zero();
-        for (k, x) in order.iter().enumerate() {
-            t = t.add(&zeta_powers.get((j * k) % 5)?.mul(x));
-        }
-        // Real by construction.
-        if t.im.abs() > BigInt::one() << (BITS - 200) {
-            return Some(Quintic { group, radical: None });
-        }
-        resolvents.push(pow5(&t));
-    }
-    // Φ(w) = Π (w - R_j): elementary symmetric functions.
-    let mut phi = vec![Fx::integer(&BigInt::one())];
-    for r5 in &resolvents {
-        let mut next = vec![Fx::zero(); phi.len() + 1];
-        for (i, a) in phi.iter().enumerate() {
-            next[i + 1] = next[i + 1].add(a);
-            next[i] = next[i].sub(&a.mul(r5));
-        }
-        phi = next;
-    }
-    // phi is ascending: [c0, c1, c2, c3, 1].
-    let mut pairs = Vec::new();
-    for coefficient in phi.iter().take(4) {
-        pairs.push(identify(coefficient, &sqrt5)?);
-    }
-    Some(Quintic { group, radical: Some(Radical { shift, scale, phi: pairs }) })
+    let pairs = phi_pairs(&ts)?;
+    Some(Quintic { group, radical: Some(Radical { shift, scale, phi: pairs, trigonometric: None }) })
 }
 
 #[cfg(test)]
@@ -529,6 +587,7 @@ mod tests {
         assert_eq!(analyse_quintic(&quintic(&[2, -4, 0, 0, 0, 1])).map(|q| q.group), Some(QuinticGroup::S5));
         // The cyclic quintic with three... x^5 + x^4 - 4x^3 - 3x^2 + 3x + 1 (C5, five real roots).
         let c = analyse_quintic(&quintic(&[1, 3, -3, -4, 1, 1]));
-        assert_eq!(c.map(|q| q.group), Some(QuinticGroup::C5OrD5));
+        assert_eq!(c.as_ref().map(|q| q.group), Some(QuinticGroup::C5OrD5));
+        assert!(c.is_some_and(|q| q.radical.is_some_and(|r| r.trigonometric.is_some())));
     }
 }

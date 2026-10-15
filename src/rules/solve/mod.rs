@@ -36,15 +36,32 @@
 //!   are not. A solvable quintic with one real root is written in radicals
 //!   through Lagrange resolvents (the real root is `shift + (1/5λ) Σ R^(1/5)`
 //!   over the roots of a quartic with coefficients in `Q(sqrt 5)`; so
-//!   `x^5 - 5 x + 12` and `x^5 + 15 x + 12` come out in radicals).
+//!   `x^5 - 5 x + 12` and `x^5 + 15 x + 12` come out in radicals); one with
+//!   five real roots (the cyclic `x^5 + x^4 - 4 x^3 - 3 x^2 + 3 x + 1`, say)
+//!   in cosine form: the resolvents are complex conjugate pairs
+//!   `R = a ± i b`, the real quadratic factors of the quartic, and the roots
+//!   are `(2/5λ) Σ_j |R_j|^(1/5) cos((arg R_j + 2π (m_j - j k))/5)`.
 //!   de Moivre quintics `x^5 + 5 a x^3 + 5 a^2 x + b` with parameters are
 //!   solved by `x = u - a/u` (real fifth roots, or the cosine form for five
-//!   real roots). Every other real root of an irreducible factor of degree
-//!   five or more (unsolvable quintics, solvable ones with five real roots,
-//!   higher degrees) is an exact `root_of(k, c0, ..., cn)` object, the
-//!   `k`-th real root of the polynomial, canonical across factorisations,
-//!   with rigorous numeric evaluation; `solve` therefore always returns
-//!   every real root. In numeric runs the values are returned instead.
+//!   real roots).
+//! * **Degree six and more.** An irreducible factor that is a functional
+//!   composition `g(h(x))` (Kozen–Landau decomposition) is solved through
+//!   the real roots of `g` and then `h(x) = u` for each; a self-reciprocal
+//!   one of degree `2k` through `u = x + 1/x` (a polynomial of degree `k` in
+//!   `u`). Every other real root of an irreducible factor of degree five or
+//!   more (unsolvable quintics, higher degrees without such structure) is an
+//!   exact `root_of(k, c0, ..., cn)` object: the `k`-th root of the
+//!   polynomial, the real roots first (ascending), then the complex ones by
+//!   real and imaginary part, canonical across factorisations, with
+//!   rigorous numeric evaluation (real and complex); `solve` therefore
+//!   always returns every real root. In numeric runs the values are
+//!   returned instead. `solve_complex(eq, x)` gives *all* complex roots of a
+//!   polynomial equation exactly (rationals, quadratic radicals with `I`,
+//!   `root_of` objects). Not done: a Galois-group analysis for degree seven
+//!   and up (Gauss periods and general solvable groups of composite
+//!   degree), so irreducible polynomials of degree six or more that are
+//!   neither decomposable nor reciprocal stay `root_of` objects even when
+//!   they are solvable.
 //!
 //! Beyond that, the sub-solvers interlock:
 //!
@@ -168,6 +185,8 @@ use super::poly::repr::Poly;
 use super::poly::univariate;
 
 mod certified;
+mod complex_roots;
+mod decompose;
 pub(crate) mod elim;
 mod heuristics;
 mod inequality;
@@ -225,6 +244,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let nsolve_op = i.op(OpDescriptor::new("nsolve", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
     let certified_op = i.op(OpDescriptor::new("nsolve_certified", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
     let box_op = i.op(OpDescriptor::new("solve_box", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
+    let complex_op = i.op(OpDescriptor::new("solve_complex", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("solve/complex", Tier::Reduce, complex_roots::SolveComplex { op: complex_op });
     i.kernel("solve/nsolve-certified", Tier::Reduce, certified::NsolveCertified { op: certified_op });
     i.kernel("solve/box", Tier::Reduce, certified::SolveBox { op: box_op });
     i.kernel("solve/symbolic", Tier::Reduce, Symbolic { solve: solve_op, general: general_op });
@@ -1292,6 +1313,32 @@ mod tests {
             let residual: f64 = poly.iter().rev().fold(0.0, |acc, c| acc * x + c);
             assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(5)), "{src}: {x} gives {residual}");
         }
+        // Five real roots (cyclic group): cosines, all five roots.
+        let (text, reduced) = reduce_with(&rules, "solve(x^5 + x^4 - 4*x^3 - 3*x^2 + 3*x + 1, x)", &[]);
+        assert!(reduced && !text.contains("root_of") && text.contains("cos("), "{text}");
+        let items = list_items(&text);
+        assert_eq!(items.len(), 5, "{text}");
+        let mut values: Vec<f64> = items.iter().map(|i| eval(&rules, i, &[])).collect();
+        values.sort_by(f64::total_cmp);
+        for (v, want) in values.iter().zip([-1.918_985_947_228_994_7_f64, -1.309_721_467_890_570_2, -0.284_629_676_546_570_3, 0.830_830_026_003_772_9, 1.682_507_065_662_362_4]) {
+            assert!((v - want).abs() < 1e-8, "{values:?}");
+        }
+        // Decomposable and self-reciprocal polynomials of higher degree.
+        for (src, poly) in [
+            ("solve(x^6 + 3*x^5 + 6*x^4 + 7*x^3 + 6*x^2 + 3*x - 1, x)", vec![-1.0, 3.0, 6.0, 7.0, 6.0, 3.0, 1.0]),
+            ("solve(x^6 - 2*x^3 - 1, x)", vec![-1.0, 0.0, 0.0, -2.0, 0.0, 0.0, 1.0]),
+            ("solve(x^6 - x^4 - x^3 - x^2 + 1, x)", vec![1.0, 0.0, -1.0, -1.0, -1.0, 0.0, 1.0]),
+        ] {
+            let (text, reduced) = reduce_with(&rules, src, &[]);
+            assert!(reduced, "{src}: {text}");
+            let items = list_items(&text);
+            assert!(!items.is_empty() && !text.contains("root_of"), "{src}: {text}");
+            for item in &items {
+                let x = eval(&rules, item, &[]);
+                let residual: f64 = poly.iter().rev().fold(0.0, |acc, c| acc * x + c);
+                assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(6)), "{src}: {item} -> {x} gives {residual}");
+            }
+        }
         // Unsolvable: exact root objects, canonical and numerically evaluable.
         let (text, reduced) = reduce_with(&rules, "solve(x^5 - x - 1, x)", &[]);
         assert!(reduced && text == "list(root_of(0, -1, -1, 0, 0, 0, 1))", "{text}");
@@ -1620,6 +1667,11 @@ mod tests {
             let (x, y) = (pair[0], pair[1]);
             assert!((x * x + y * y - 4.0).abs() < 1e-8 && (x.exp() + y - 1.0).abs() < 1e-8, "{pair:?}");
         }
+        // Roots of even multiplicity: no sign change, found through f'.
+        let text = numeric_text("solve(cosh(x) = 1 + x^2/2 + x^4/24, x)");
+        let roots = numbers(&text);
+        assert_eq!(roots.len(), 1, "{text}");
+        assert!(roots[0].abs() < 5e-2, "{roots:?}");
         // Newton from a guess.
         let root = numbers(&numeric_text("nsolve(list(x^2 + y^2 = 4, x*y = 1), list(x, y), list(2, 0.5))"));
         assert_eq!(root.len(), 2);

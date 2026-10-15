@@ -58,13 +58,36 @@
 //! unknowns (`list(x(t)^2 + y(t)^2 - C1 = 0, …)`).
 //!
 //! Linear second-order equations with polynomial coefficients that no
-//! other method solves: Gauss and Kummer equations are recognised and
-//! answered with `hyper2f1(a, b, c, x)` / `hyper1f1(a, b, x)` (both
-//! solutions, non-integer `c`, `b`); otherwise the Frobenius method at
-//! `x = 0` or at a regular singular rational root of the leading
-//! coefficient gives both exponents, with the logarithmic solution when
-//! they differ by an integer, as truncated series (eight terms, the order
-//! written `big_o(t^n)`).
+//! other method solves, in order:
+//!
+//! * **Kovacic's algorithm** for rational coefficients (Liouvillian
+//!   solutions), cases 1 and 2: in the normal form `u'' = r u` a solution
+//!   `P exp(∫ω)` with `P` a polynomial and `ω` rational (case 1), or the
+//!   pair `exp(∫(φ ± sqrt(4r - φ² - 2φ'))/2)` with `φ = θ + P'/P` rational
+//!   (case 2), found from the poles of `r` with exact linear algebra
+//!   (rational poles and rational square roots required); the second
+//!   solution of case 1 is a reduction-of-order quadrature (an inert
+//!   `integral` unless it integrates). Case 3 (octahedral, icosahedral and
+//!   tetrahedral monodromy) is not implemented.
+//! * **Hypergeometric matching**: Gauss's equation (`c`, `a + b + 1` and
+//!   `a b` the coefficients of `x(1 - x) y'' + (c - (a + b + 1) x) y' - a b y = 0`)
+//!   as `hyper2f1`, Kummer as `hyper1f1`, and Whittaker
+//!   `y'' + (-s²/4 + κ s/x + (1/4 - μ²)/x²) y = 0` as
+//!   `exp(-z/2) z^(μ+1/2) hyper1f1(μ - κ + 1/2, 1 + 2μ, z)`, `z = s x`, with
+//!   both solutions for non-integer `c`, `b`, `2μ`; for integer values the
+//!   solution that exists and a reduction-of-order second solution.
+//! * **Frobenius and formal series** at `x = 0`, a rational root of the
+//!   leading coefficient, or `x = ∞` (`ode_frobenius(…, oo, n)`): regular
+//!   singular points give the two exponents (rational, or irrational and
+//!   complex ones in a quadratic field: `t^(σ ± τ√D)` series, real
+//!   `cos`/`sin(τ√m ln t)` pairs when `D = -m < 0`), with the logarithmic
+//!   solution when they differ by an integer; irregular singular points of
+//!   rank one with rational exponents `λ` give the formal solutions
+//!   `exp(λ/t) t^ρ Σ a_k t^k` (`exp(λ x)` at infinity). Results are
+//!   truncated series (eight terms in `dsolve`, order written
+//!   `big_o(t^n)`). Not done: irregular points of higher rank or with
+//!   ramified (fractional-power) solutions, irrational `λ`, non-rational
+//!   singular points.
 //!
 //! | operator | value |
 //! |---|---|
@@ -116,6 +139,7 @@ use super::solve::solve_linear;
 
 mod classes;
 mod frobenius;
+mod kovacic;
 mod lie;
 mod nonlinear;
 #[cfg(test)]
@@ -1610,8 +1634,15 @@ fn dispatch(
             return Some(found);
         }
     }
-    // No closed form: Frobenius series (truncated, so not spot-checked).
-    if problem.order() == 2 {
+    if problem.order() == 2
+        && let Some(found) = attempt(cx, problem, frobenius::hypergeometric_degenerate)
+    {
+        return Some(found);
+    }
+    // No closed form: Frobenius series (truncated, so not spot-checked, and
+    // only for the request itself, not for the auxiliary equations that
+    // other methods solve).
+    if problem.order() == 2 && depth == 0 {
         let saved = problem.constants;
         if let Some(found) = frobenius::series_solution(cx, problem) {
             return Some(found);
@@ -2359,6 +2390,38 @@ mod tests {
     }
 
     #[test]
+    fn kovacic_case_two() {
+        let rules = crate::rules::standard();
+        // y'' = (1/x - 3/(16 x^2)) y: solutions x^(1/4) exp(+-2 sqrt x).
+        let answer = simplify(&rules, "dsolve(16*x^2*diff(diff(y(x), x), x) - (16*x - 3)*y(x), y(x))");
+        check_second_order(&rules, &answer, |x| (16.0 * x * x, 0.0, -(16.0 * x - 3.0)), &[0.5, 1.3, 2.2], 1e-3);
+    }
+
+    #[test]
+    fn kovacic_hyperexponential_solutions() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        // x y'' = (x - 2) y: u = x exp(-x) (pole of order one, constant at infinity).
+        let coulomb = run("dsolve(x*diff(diff(y(x), x), x) - (x - 2)*y(x), y(x))");
+        // y'' = (x^2 + 3) y: x exp(x^2/2).
+        let hermite = run("dsolve(diff(diff(y(x), x), x) - (x^2 + 3)*y(x), y(x))");
+        for (answer, a) in [(coulomb, 0), (hermite, 1)] {
+            let full = answer.strip_prefix("y(x) = ").unwrap_or(&answer).to_string();
+            // The second solution carries an inert quadrature: keep the C1 term.
+            let rhs = full.rsplit(" + ").find(|t| t.contains("C1")).unwrap_or(&full).to_string();
+            // The basis solution multiplying C1 satisfies the equation.
+            for x in [0.7_f64, 1.3, 2.1] {
+                let h = 1e-3;
+                let f = |t: f64| solution_value(&rules, &rhs, t, (1.0, 0.0));
+                let (y, up, down) = (f(x), f(x + h), f(x - h));
+                let d2 = (up - 2.0 * y + down) / (h * h);
+                let residual = if a == 0 { x * d2 - (x - 2.0) * y } else { d2 - (x * x + 3.0) * y };
+                assert!(residual.abs() < 1e-3 * (1.0 + y.abs() * 10.0), "{answer} at {x}: {residual}");
+            }
+        }
+    }
+
+    #[test]
     fn hypergeometric_and_frobenius_solutions() {
         let rules = crate::rules::standard();
         let run = |src: &str| simplify(&rules, src);
@@ -2370,6 +2433,21 @@ mod tests {
         let gauss = run("dsolve(x*(1 - x)*diff(diff(y(x), x), x) + (1/3 - 2*x)*diff(y(x), x) - 1/4*y(x), y(x))");
         assert!(gauss.contains("hyper2f1"), "{gauss}");
         check_second_order(&rules, &gauss, |x| (x * (1.0 - x), 1.0 / 3.0 - 2.0 * x, -0.25), &[0.2, 0.45], 2e-5);
+        // Whittaker: 36 x^2 y'' + (-9 x^2 + 54 x + 5) y = 0 (kappa = 3/2, mu = 1/3, s = 1).
+        let whittaker = run("dsolve(36*x^2*diff(diff(y(x), x), x) + (-9*x^2 + 54*x + 5)*y(x), y(x))");
+        assert!(whittaker.contains("hyper1f1"), "{whittaker}");
+        check_second_order(&rules, &whittaker, |x| (36.0 * x * x, 0.0, -9.0 * x * x + 54.0 * x + 5.0), &[0.6, 1.1], 5e-4);
+        // Kummer with integer b = 2: the regular solution and a quadrature for the second.
+        let integer = run("dsolve(x*diff(diff(y(x), x), x) + (2 - x)*diff(y(x), x) - 1/2*y(x), y(x))");
+        assert!(integer.contains("hyper1f1(1/2, 2, x)"), "{integer}");
+        let rhs = integer.rsplit(" + ").find(|t| t.contains("C1")).unwrap_or(&integer).to_string();
+        for x in [0.4_f64, 1.2] {
+            let h = 1e-3;
+            let f = |t: f64| solution_value(&rules, &rhs, t, (1.0, 0.0));
+            let (y, up, down) = (f(x), f(x + h), f(x - h));
+            let residual = x * (up - 2.0 * y + down) / (h * h) + (2.0 - x) * (up - down) / (2.0 * h) - 0.5 * y;
+            assert!(residual.abs() < 1e-3, "{integer} at {x}: {residual}");
+        }
         // An ordinary point without closed form: a truncated series.
         let airy3 = run("dsolve(diff(diff(y(x), x), x) - (x^3 + 1)*y(x), y(x))");
         assert!(airy3.contains("big_o"), "{airy3}");
@@ -2392,6 +2470,44 @@ mod tests {
             let gamma = 0.577_215_664_901_532_9_f64;
             let expected = std::f64::consts::FRAC_PI_2 * y0 - (gamma - 2.0_f64.ln()) * j0;
             assert!((second - expected).abs() < 1e-8, "Y0({x}): {second} vs {expected}");
+        }
+        // Irrational exponents (x^2 y'' + (x^2 - 2 ... ) y): indicial roots (1 +- sqrt 5)/2.
+        let irrational = run("ode_frobenius(x^2*diff(diff(y(x), x), x) - x*diff(y(x), x) - (1 + x)*y(x), y(x), 0, 12)");
+        let rhs = irrational.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string();
+        for x in [0.05_f64, 0.1] {
+            for basis in [(1.0, 0.0), (0.0, 1.0)] {
+                let h = 1e-4;
+                let f = |t: f64| solution_value(&rules, &rhs, t, basis);
+                let (y, up, down) = (f(x), f(x + h), f(x - h));
+                let residual = x * x * (up - 2.0 * y + down) / (h * h) - x * (up - down) / (2.0 * h) - (1.0 + x) * y;
+                assert!(residual.abs() < 1e-3 * (1.0 + y.abs()), "{irrational} at {x}: {residual}");
+            }
+        }
+        // Complex exponents: x^2 y'' + x y' + (x + 1) y: r^2 + 1 = 0, real solutions cos/sin(ln x) times series.
+        let complex = run("ode_frobenius(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + (1 + x)*y(x), y(x), 0, 12)");
+        let rhs = complex.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string();
+        assert!(rhs.contains("cos(ln(x))") || rhs.contains("cos("), "{complex}");
+        for x in [0.05_f64, 0.1] {
+            for basis in [(1.0, 0.0), (0.0, 1.0)] {
+                let h = 1e-4;
+                let f = |t: f64| solution_value(&rules, &rhs, t, basis);
+                let (y, up, down) = (f(x), f(x + h), f(x - h));
+                let residual = x * x * (up - 2.0 * y + down) / (h * h) + x * (up - down) / (2.0 * h) + (1.0 + x) * y;
+                assert!(residual.abs() < 1e-3 * (1.0 + y.abs()), "{complex} at {x}: {residual}");
+            }
+        }
+        // Irregular singular point at 0: exp(+-1/x).
+        let irregular = run("ode_frobenius(x^4*diff(diff(y(x), x), x) + 2*x^3*diff(y(x), x) - y(x), y(x), 0, 5)");
+        assert!(irregular.contains("exp(1/x)") && irregular.contains("exp(-1/x)"), "{irregular}");
+        // Irregular singular point at infinity: modified Bessel of order 1/2 gives exp(+-x) / sqrt(x).
+        let infinite = run("ode_frobenius(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - (x^2 + 1/4)*y(x), y(x), oo, 4)");
+        let rhs = infinite.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string();
+        for x in [3.0_f64, 7.5] {
+            let first = solution_value(&rules, &rhs, x, (1.0, 0.0));
+            let second = solution_value(&rules, &rhs, x, (0.0, 1.0));
+            let (plus, minus) = (x.exp() / x.sqrt(), (-x).exp() / x.sqrt());
+            let matches = |v: f64, w: f64| (v - w).abs() < 1e-9 * w.abs();
+            assert!((matches(first, plus) && matches(second, minus)) || (matches(first, minus) && matches(second, plus)), "{infinite}: {first} {second}");
         }
         // Exponents 1/2 and -1 differ by a non-integer: two pure series. The
         // recurrence is returned.
