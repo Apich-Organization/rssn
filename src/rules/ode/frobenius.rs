@@ -164,6 +164,24 @@ pub(super) fn hypergeometric(
     problem: &mut Problem,
     _depth: u32,
 ) -> Option<NodeId> {
+    hypergeometric_with(cx, problem, false)
+}
+
+/// The degenerate (integer-parameter) cases, tried after the other
+/// methods because the second solution is a quadrature.
+pub(super) fn hypergeometric_degenerate(
+    cx: &mut Cx<'_>,
+    problem: &mut Problem,
+    _depth: u32,
+) -> Option<NodeId> {
+    hypergeometric_with(cx, problem, true)
+}
+
+fn hypergeometric_with(
+    cx: &mut Cx<'_>,
+    problem: &mut Problem,
+    degenerate: bool,
+) -> Option<NodeId> {
     let (a, forcing) = linear_second_order(cx, problem)?;
     if !cx.is_zero(forcing) {
         return None;
@@ -201,6 +219,9 @@ pub(super) fn hypergeometric(
             Some(mul(cx.graph, &[envelope, power, h]))
         };
         let two_mu = q(2) * &mu;
+        if is_integer(&two_mu) != degenerate {
+            return None;
+        }
         if is_integer(&two_mu) {
             (m_function(cx, &mu)?, None)
         } else {
@@ -215,6 +236,9 @@ pub(super) fn hypergeometric(
         if p2.len() == 3 && coefficient(&p2, 2) == -alpha.clone() {
             // Gauss.
             let c = &beta / &alpha;
+            if is_integer(&c) != degenerate {
+                return None;
+            }
             let s = -&gamma / &alpha - q(1);
             let disc = rational_sqrt(&(&s * &s + q(4) * &delta / &alpha))?;
             let (pa, pb) = ((&s + &disc) / q(2), (&s - &disc) / q(2));
@@ -240,6 +264,9 @@ pub(super) fn hypergeometric(
             // Kummer in z = s x.
             let s = -&gamma / &alpha;
             let b = &beta / &alpha;
+            if is_integer(&b) != degenerate {
+                return None;
+            }
             let pa = &delta / &gamma;
             let f = cx.graph.ops().lookup("hyper1f1")?;
             let sn = node_of(cx.graph, &s);

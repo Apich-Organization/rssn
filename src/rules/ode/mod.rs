@@ -1634,8 +1634,15 @@ fn dispatch(
             return Some(found);
         }
     }
-    // No closed form: Frobenius series (truncated, so not spot-checked).
-    if problem.order() == 2 {
+    if problem.order() == 2
+        && let Some(found) = attempt(cx, problem, frobenius::hypergeometric_degenerate)
+    {
+        return Some(found);
+    }
+    // No closed form: Frobenius series (truncated, so not spot-checked, and
+    // only for the request itself, not for the auxiliary equations that
+    // other methods solve).
+    if problem.order() == 2 && depth == 0 {
         let saved = problem.constants;
         if let Some(found) = frobenius::series_solution(cx, problem) {
             return Some(found);
