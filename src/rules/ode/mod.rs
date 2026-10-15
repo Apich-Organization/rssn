@@ -2418,6 +2418,19 @@ mod tests {
             let expected = std::f64::consts::FRAC_PI_2 * y0 - (gamma - 2.0_f64.ln()) * j0;
             assert!((second - expected).abs() < 1e-8, "Y0({x}): {second} vs {expected}");
         }
+        // Irregular singular point at 0: exp(+-1/x).
+        let irregular = run("ode_frobenius(x^4*diff(diff(y(x), x), x) + 2*x^3*diff(y(x), x) - y(x), y(x), 0, 5)");
+        assert!(irregular.contains("exp(1/x)") && irregular.contains("exp(-1/x)"), "{irregular}");
+        // Irregular singular point at infinity: modified Bessel of order 1/2 gives exp(+-x) / sqrt(x).
+        let infinite = run("ode_frobenius(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - (x^2 + 1/4)*y(x), y(x), oo, 4)");
+        let rhs = infinite.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string();
+        for x in [3.0_f64, 7.5] {
+            let first = solution_value(&rules, &rhs, x, (1.0, 0.0));
+            let second = solution_value(&rules, &rhs, x, (0.0, 1.0));
+            let (plus, minus) = (x.exp() / x.sqrt(), (-x).exp() / x.sqrt());
+            let matches = |v: f64, w: f64| (v - w).abs() < 1e-9 * w.abs();
+            assert!((matches(first, plus) && matches(second, minus)) || (matches(first, minus) && matches(second, plus)), "{infinite}: {first} {second}");
+        }
         // Exponents 1/2 and -1 differ by a non-integer: two pure series. The
         // recurrence is returned.
         let two = run("ode_frobenius(2*x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) - (1 + x)*y(x), y(x), 0, 10)");

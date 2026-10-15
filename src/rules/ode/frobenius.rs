@@ -388,31 +388,207 @@ pub(super) fn frobenius_at_zero(
     Some(Frobenius { roots: (r1, r2), first, log_coefficient, second, recurrence })
 }
 
-/// The point to expand about and the shifted polynomials.
-fn expansion(
-    p: &[Vec<Q>; 3],
-    n: usize,
-    preferred: Option<&Q>,
-) -> Option<(Q, Frobenius)> {
-    let mut points: Vec<Q> = Vec::new();
-    if let Some(x0) = preferred {
-        points.push(x0.clone());
-    } else {
-        points.push(Q::zero());
-        let leading: Vec<Q> = p[2].clone();
-        for r in univariate::rational_roots(&leading) {
-            if !points.contains(&r) {
-                points.push(r);
+/// Where to expand.
+#[derive(Clone)]
+enum Point {
+    /// A finite point; `None` lets the search try `0` and the rational roots
+    /// of the leading coefficient.
+    Finite(Option<Q>),
+    /// `x = ∞`, through `t = 1/x`.
+    Infinity,
+}
+
+/// A formal solution `exp(λ/t) t^ρ Σ a_k t^k` at an irregular singular
+/// point of rank one.
+pub(super) struct Formal {
+    lambda: Q,
+    rho: Q,
+    coefficients: Vec<Q>,
+    /// `c_d(k)` of `Σ_d c_d(k) a(k - d) = 0`, ascending in `k`.
+    recurrence: Vec<Vec<Q>>,
+}
+
+/// What is known at the chosen point.
+pub(super) enum Local {
+    /// Ordinary or regular singular: Frobenius.
+    Regular { centre: Option<Q>, data: Frobenius },
+    /// Irregular singular: two formal solutions with exponential factors.
+    Formal { centre: Option<Q>, items: Vec<Formal> },
+}
+
+/// The equation in `t = 1/x`: `P2 (t^4 Y'' + 2 t^3 Y') - P1 t^2 Y' + P0 Y`
+/// with `P_k(t) = t^D p_k(1/t)`.
+fn at_infinity(p: &[Vec<Q>; 3]) -> [Vec<Q>; 3] {
+    let degree = p.iter().map(|v| v.len()).max().unwrap_or(1).saturating_sub(1);
+    let reversed = |v: &[Q]| -> Vec<Q> {
+        let mut out = vec![Q::zero(); degree + 1];
+        for (i, c) in v.iter().enumerate() {
+            if let Some(slot) = out.get_mut(degree - i) {
+                *slot = c.clone();
             }
         }
-    }
-    for x0 in points {
-        let shifted = [shift(&p[0], &x0), shift(&p[1], &x0), shift(&p[2], &x0)];
-        if let Some(found) = frobenius_at_zero(&shifted, n) {
-            return Some((x0, found));
+        out
+    };
+    let times = |v: &[Q], k: usize| -> Vec<Q> { std::iter::repeat_n(Q::zero(), k).chain(v.iter().cloned()).collect() };
+    let (r0, r1, r2) = (reversed(&p[0]), reversed(&p[1]), reversed(&p[2]));
+    let b2 = times(&r2, 4);
+    let b1 = univariate::sub(&univariate::mul(&[q(2)], &times(&r2, 3)), &times(&r1, 2));
+    let b0 = r0;
+    [univariate::sub(&b0, &[]), b1, b2]
+}
+
+/// Formal power-series solutions `t^ρ Σ a_k t^k` of `B2 w'' + B1 w' + B0 w = 0`
+/// for each admissible rational `ρ`: the lowest power of `t` in
+/// `Σ_d B_d D^d t^σ` fixes `ρ` as a root of the leading polynomial `Q(σ)`,
+/// and `a_k Q(k + ρ) = -Σ_{j >= 1} Q_j(k + ρ - j) a_{k-j}`.
+fn formal_series(
+    b: &[Vec<Q>; 3],
+    n: usize,
+) -> Vec<(Q, Vec<Q>, Vec<Vec<Q>>)> {
+    let coefficient = |d: usize, j: i64| -> Q { usize::try_from(j).ok().and_then(|j| b[d].get(j as usize).cloned()).unwrap_or_else(Q::zero) };
+    // Q_e(σ) = B0[e] + B1[e + 1] σ + B2[e + 2] (σ² - σ), ascending in σ.
+    let q_e = |e: i64| -> Vec<Q> {
+        let (c0, c1, c2) = (coefficient(0, e), coefficient(1, e + 1), coefficient(2, e + 2));
+        trim_poly(vec![c0, &c1 - &c2, c2])
+    };
+    let top = b.iter().enumerate().map(|(d, v)| v.len() as i64 - 1 - d as i64).max().unwrap_or(0);
+    let Some(e_min) = (-2..=top).find(|&e| !q_e(e).is_empty()) else { return Vec::new() };
+    let leading = q_e(e_min);
+    // Rational roots of the leading polynomial.
+    let roots: Vec<Q> = match leading.as_slice() {
+        | [c0, c1] => vec![-c0 / c1],
+        | [c0, c1, c2] => match rational_sqrt(&(c1 * c1 - q(4) * c0 * c2)) {
+            | Some(s) => {
+                let (r1, r2) = ((-c1 + &s) / (q(2) * c2), (-c1 - &s) / (q(2) * c2));
+                if r1 == r2 { vec![r1] } else { vec![r1, r2] }
+            },
+            | None => Vec::new(),
+        },
+        | _ => Vec::new(),
+    };
+    let depth = usize::try_from(top - e_min).unwrap_or(0);
+    let mut out = Vec::new();
+    for rho in roots {
+        let mut a = vec![Q::one()];
+        let mut ok = true;
+        for k in 1..=n {
+            let sigma = &rho + Q::from_integer(BigInt::from(k));
+            let diagonal = univariate::eval(&leading, &sigma);
+            if diagonal.is_zero() {
+                ok = false;
+                break;
+            }
+            let mut sum = Q::zero();
+            for j in 1..=depth.min(k) {
+                let e = e_min + i64::try_from(j).unwrap_or(0);
+                let shifted = &sigma - Q::from_integer(BigInt::from(j));
+                if let Some(ak) = a.get(k - j) {
+                    sum += univariate::eval(&q_e(e), &shifted) * ak;
+                }
+            }
+            a.push(-sum / diagonal);
         }
+        if !ok {
+            continue;
+        }
+        // Recurrence: coefficient of a(k - j) is Q_{e_min + j}(k + ρ - j), as a polynomial in k.
+        let mut recurrence = Vec::new();
+        for j in 0..=depth {
+            let e = e_min + i64::try_from(j).unwrap_or(0);
+            let offset = &rho - Q::from_integer(BigInt::from(j));
+            recurrence.push(trim_poly(shift(&q_e(e), &offset)));
+        }
+        out.push((rho, a, recurrence));
     }
-    None
+    out
+}
+
+fn trim_poly(mut p: Vec<Q>) -> Vec<Q> {
+    trim(&mut p);
+    p
+}
+
+/// Irregular singular point of rank one at `t = 0`: for each root `λ` of
+/// `s0 λ² - p1[m-2] λ + p0[m-4]` the transformed equation for
+/// `y = exp(λ/t) w` has a formal series solution.
+fn formal_solutions(
+    p: &[Vec<Q>; 3],
+    n: usize,
+) -> Option<Vec<Formal>> {
+    let [p0, p1, p2] = p;
+    let m = p2.iter().position(|c| !c.is_zero())?;
+    let s0 = p2.get(m)?.clone();
+    let at = |v: &[Q], index: i64| -> Q { usize::try_from(index).ok().and_then(|i| v.get(i).cloned()).unwrap_or_else(Q::zero) };
+    let m_i = i64::try_from(m).ok()?;
+    // Rank one: ord p1 >= m - 2 and ord p0 >= m - 4.
+    if p1.iter().position(|c| !c.is_zero()).is_some_and(|o| (o as i64) < m_i - 2)
+        || p0.iter().position(|c| !c.is_zero()).is_some_and(|o| (o as i64) < m_i - 4)
+    {
+        return None;
+    }
+    let (b1c, b0c) = (at(p1, m_i - 2), at(p0, m_i - 4));
+    let disc = rational_sqrt(&(&b1c * &b1c - q(4) * &s0 * &b0c))?;
+    let (l1, l2) = ((&b1c + &disc) / (q(2) * &s0), (&b1c - &disc) / (q(2) * &s0));
+    if l1 == l2 {
+        return None;
+    }
+    let times = |v: &[Q], k: usize| -> Vec<Q> { std::iter::repeat_n(Q::zero(), k).chain(v.iter().cloned()).collect() };
+    let scaled = |v: &[Q], c: &Q| -> Vec<Q> { v.iter().map(|x| x * c).collect() };
+    let mut out = Vec::new();
+    for lambda in [l1, l2] {
+        // B2 = t^4 p2; B1 = t^4 p1 - 2 λ t^2 p2; B0 = t^4 p0 - λ t^2 p1 + (2 λ t + λ²) p2.
+        let b2 = times(p2, 4);
+        let b1 = univariate::sub(&times(p1, 4), &scaled(&times(p2, 2), &(q(2) * &lambda)));
+        let b0 = univariate::add(
+            &univariate::sub(&times(p0, 4), &scaled(&times(p1, 2), &lambda)),
+            &univariate::add(&scaled(&times(p2, 1), &(q(2) * &lambda)), &scaled(p2, &(&lambda * &lambda))),
+        );
+        let (rho, coefficients, recurrence) = formal_series(&[b0, b1, b2], n).into_iter().next()?;
+        out.push(Formal { lambda, rho, coefficients, recurrence });
+    }
+    Some(out)
+}
+
+/// Frobenius data, or failing that the formal solutions, at the chosen point.
+fn local(
+    p: &[Vec<Q>; 3],
+    n: usize,
+    point: &Point,
+) -> Option<Local> {
+    match point {
+        | Point::Infinity => {
+            let transformed = at_infinity(p);
+            if let Some(data) = frobenius_at_zero(&transformed, n) {
+                return Some(Local::Regular { centre: None, data });
+            }
+            formal_solutions(&transformed, n).map(|items| Local::Formal { centre: None, items })
+        },
+        | Point::Finite(preferred) => {
+            let mut points: Vec<Q> = Vec::new();
+            if let Some(x0) = preferred {
+                points.push(x0.clone());
+            } else {
+                points.push(Q::zero());
+                for r in univariate::rational_roots(&p[2]) {
+                    if !points.contains(&r) {
+                        points.push(r);
+                    }
+                }
+            }
+            let shifted_at = |x0: &Q| [shift(&p[0], x0), shift(&p[1], x0), shift(&p[2], x0)];
+            for x0 in &points {
+                if let Some(data) = frobenius_at_zero(&shifted_at(x0), n) {
+                    return Some(Local::Regular { centre: Some(x0.clone()), data });
+                }
+            }
+            for x0 in &points {
+                if let Some(items) = formal_solutions(&shifted_at(x0), n) {
+                    return Some(Local::Formal { centre: Some(x0.clone()), items });
+                }
+            }
+            None
+        },
+    }
 }
 
 fn series_node(
@@ -449,33 +625,70 @@ fn series_node(
     Some(mul(cx.graph, &[power, polynomial]))
 }
 
-/// The two solutions as terms in `t = x - x0`.
+/// The local variable `t` as a term.
+fn local_variable(
+    cx: &mut Cx<'_>,
+    x: NodeId,
+    centre: Option<&Q>,
+) -> NodeId {
+    match centre {
+        | None => {
+            let minus_one = cx.graph.int(-1);
+            cx.graph.node(core::POW, &[x, minus_one])
+        },
+        | Some(x0) if x0.is_zero() => x,
+        | Some(x0) => {
+            let h = node_of(cx.graph, &-x0.clone());
+            cx.graph.node(core::ADD, &[x, h])
+        },
+    }
+}
+
+/// The two solutions as terms.
 fn solutions(
     cx: &mut Cx<'_>,
     x: NodeId,
-    x0: &Q,
-    data: &Frobenius,
+    local: &Local,
     n: usize,
 ) -> Option<(NodeId, NodeId)> {
-    let t = if x0.is_zero() {
-        x
-    } else {
-        let h = node_of(cx.graph, &-x0.clone());
-        cx.graph.node(core::ADD, &[x, h])
-    };
-    let y1 = series_node(cx, t, &data.first, &data.roots.0, n)?;
-    let mut y2 = series_node(cx, t, &data.second, &data.roots.1, n)?;
-    if !data.log_coefficient.is_zero() {
-        let ln = cx.graph.ops().lookup("ln")?;
-        let log = cx.graph.node(ln, &[t]);
-        let c = node_of(cx.graph, &data.log_coefficient);
-        let logged = mul(cx.graph, &[c, y1, log]);
-        y2 = add(cx.graph, &[logged, y2]);
+    match local {
+        | Local::Regular { centre, data } => {
+            let t = local_variable(cx, x, centre.as_ref());
+            let y1 = series_node(cx, t, &data.first, &data.roots.0, n)?;
+            let mut y2 = series_node(cx, t, &data.second, &data.roots.1, n)?;
+            if !data.log_coefficient.is_zero() {
+                let ln = cx.graph.ops().lookup("ln")?;
+                let log = cx.graph.node(ln, &[t]);
+                let c = node_of(cx.graph, &data.log_coefficient);
+                let logged = mul(cx.graph, &[c, y1, log]);
+                y2 = add(cx.graph, &[logged, y2]);
+            }
+            Some((y1, y2))
+        },
+        | Local::Formal { centre, items } => {
+            let t = local_variable(cx, x, centre.as_ref());
+            let exp = cx.graph.ops().lookup("exp")?;
+            let mut nodes = Vec::new();
+            for item in items {
+                let series = series_node(cx, t, &item.coefficients, &item.rho, n)?;
+                if item.lambda.is_zero() {
+                    nodes.push(series);
+                    continue;
+                }
+                let minus_one = cx.graph.int(-1);
+                let inverse = cx.graph.node(core::POW, &[t, minus_one]);
+                let lambda = node_of(cx.graph, &item.lambda);
+                let exponent = mul(cx.graph, &[lambda, inverse]);
+                let factor = cx.graph.node(exp, &[exponent]);
+                nodes.push(mul(cx.graph, &[factor, series]));
+            }
+            let (&first, &second) = (nodes.first()?, nodes.get(1)?);
+            Some((first, second))
+        },
     }
-    Some((y1, y2))
 }
 
-/// `dsolve` fallback: the truncated Frobenius series (eight terms).
+/// `dsolve` fallback: the truncated Frobenius or formal series (eight terms).
 pub(super) fn series_solution(
     cx: &mut Cx<'_>,
     problem: &mut Problem,
@@ -487,48 +700,25 @@ pub(super) fn series_solution(
     }
     let x = problem.x;
     let p = polynomials(cx, &a, x)?;
-    let (x0, data) = expansion(&p, TERMS, None)?;
-    let (y1, y2) = solutions(cx, x, &x0, &data, TERMS)?;
+    let found = local(&p, TERMS, &Point::Finite(None))?;
+    let (y1, y2) = solutions(cx, x, &found, TERMS)?;
     let (c1, c2) = (problem.constant(cx.graph), problem.constant(cx.graph));
     let terms = [mul(cx.graph, &[c1, y1]), mul(cx.graph, &[c2, y2])];
     let solution = add(cx.graph, &terms);
     Some(explicit(cx, problem, solution))
 }
 
-/// `ode_frobenius(equation, y(x), x0, n)`.
-pub(super) fn report(
+/// The recurrence `Σ_d c_d(k) a(k - d) = 0` as an equation.
+fn recurrence_node(
     cx: &mut Cx<'_>,
-    equation: NodeId,
-    unknown: NodeId,
-    x0: NodeId,
-    n: NodeId,
+    recurrence: &[Vec<Q>],
 ) -> Option<NodeId> {
-    let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?).ok().filter(|&n| n <= 60)?;
-    let center = cx.graph.number_of(x0)?.to_rational()?;
-    let mut problem = super::parse(cx.graph, equation, unknown)?;
-    let (a, forcing) = linear_second_order(cx, &problem)?;
-    if !cx.is_zero(forcing) {
-        return None;
-    }
-    let x = problem.x;
-    let p = polynomials(cx, &a, x)?;
-    let (x0, data) = expansion(&p, n, Some(&center))?;
-    let (y1, y2) = solutions(cx, x, &x0, &data, n)?;
-    let (c1, c2) = (problem.constant(cx.graph), problem.constant(cx.graph));
-    let terms = [mul(cx.graph, &[c1, y1]), mul(cx.graph, &[c2, y2])];
-    let solution = add(cx.graph, &terms);
-    let answer = explicit(cx, &problem, solution);
-    let roots = {
-        let (r1, r2) = (node_of(cx.graph, &data.roots.0), node_of(cx.graph, &data.roots.1));
-        cx.graph.node(core::LIST, &[r1, r2])
-    };
-    // Σ_d c_d(k) a(k - d) = 0.
     let k_symbol = cx.graph.interner_mut().fresh_symbol("k");
     let k = cx.graph.symbol_node(k_symbol);
     let a_symbol = cx.graph.interner_mut().fresh_symbol("a");
     let a_fn = cx.graph.symbol_node(a_symbol);
     let mut parts = Vec::new();
-    for (d, coefficients) in data.recurrence.iter().enumerate() {
+    for (d, coefficients) in recurrence.iter().enumerate() {
         let mut terms = Vec::new();
         for (i, c) in coefficients.iter().enumerate() {
             if c.is_zero() {
@@ -538,6 +728,9 @@ pub(super) fn report(
             let e = cx.graph.int(i64::try_from(i).ok()?);
             let power = cx.graph.node(core::POW, &[k, e]);
             terms.push(mul(cx.graph, &[cn, power]));
+        }
+        if terms.is_empty() {
+            continue;
         }
         let weight = add(cx.graph, &terms);
         let index = if d == 0 {
@@ -549,11 +742,52 @@ pub(super) fn report(
         let term = cx.graph.node(core::APPLY, &[a_fn, index]);
         parts.push(mul(cx.graph, &[weight, term]));
     }
-    let recurrence_lhs = add(cx.graph, &parts);
+    let lhs = add(cx.graph, &parts);
     let zero = cx.graph.int(0);
-    let recurrence = cx.graph.node(core::EQ, &[recurrence_lhs, zero]);
+    Some(cx.graph.node(core::EQ, &[lhs, zero]))
+}
+
+/// `ode_frobenius(equation, y(x), x0, n)`; `x0` may be `oo`.
+pub(super) fn report(
+    cx: &mut Cx<'_>,
+    equation: NodeId,
+    unknown: NodeId,
+    x0: NodeId,
+    n: NodeId,
+) -> Option<NodeId> {
+    let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?).ok().filter(|&n| n <= 60)?;
+    let infinity = cx.graph.ops().lookup("oo").is_some_and(|op| cx.graph.op(x0) == op);
+    let point = if infinity { Point::Infinity } else { Point::Finite(Some(cx.graph.number_of(x0)?.to_rational()?)) };
+    let mut problem = super::parse(cx.graph, equation, unknown)?;
+    let (a, forcing) = linear_second_order(cx, &problem)?;
+    if !cx.is_zero(forcing) {
+        return None;
+    }
+    let x = problem.x;
+    let p = polynomials(cx, &a, x)?;
+    let found = local(&p, n, &point)?;
+    let (y1, y2) = solutions(cx, x, &found, n)?;
+    let (c1, c2) = (problem.constant(cx.graph), problem.constant(cx.graph));
+    let terms = [mul(cx.graph, &[c1, y1]), mul(cx.graph, &[c2, y2])];
+    let solution = add(cx.graph, &terms);
+    let answer = explicit(cx, &problem, solution);
+    let (exponents, recurrence) = match &found {
+        | Local::Regular { data, .. } => {
+            let (r1, r2) = (node_of(cx.graph, &data.roots.0), node_of(cx.graph, &data.roots.1));
+            (cx.graph.node(core::LIST, &[r1, r2]), recurrence_node(cx, &data.recurrence)?)
+        },
+        | Local::Formal { items, .. } => {
+            let mut pairs = Vec::new();
+            for item in items {
+                let (l, r) = (node_of(cx.graph, &item.lambda), node_of(cx.graph, &item.rho));
+                pairs.push(cx.graph.node(core::LIST, &[l, r]));
+            }
+            let first = items.first()?;
+            (cx.graph.node(core::LIST, &pairs), recurrence_node(cx, &first.recurrence)?)
+        },
+    };
     let _ = (neg, fresh_function);
-    Some(cx.graph.node(core::LIST, &[answer, roots, recurrence]))
+    Some(cx.graph.node(core::LIST, &[answer, exponents, recurrence]))
 }
 
 // ---------------------------------------------------------------------------
