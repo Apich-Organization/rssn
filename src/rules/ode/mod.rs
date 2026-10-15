@@ -2360,6 +2360,14 @@ mod tests {
     }
 
     #[test]
+    fn kovacic_case_two() {
+        let rules = crate::rules::standard();
+        // y'' = (1/x - 3/(16 x^2)) y: solutions x^(1/4) exp(+-2 sqrt x).
+        let answer = simplify(&rules, "dsolve(16*x^2*diff(diff(y(x), x), x) - (16*x - 3)*y(x), y(x))");
+        check_second_order(&rules, &answer, |x| (16.0 * x * x, 0.0, -(16.0 * x - 3.0)), &[0.5, 1.3, 2.2], 1e-3);
+    }
+
+    #[test]
     fn kovacic_hyperexponential_solutions() {
         let rules = crate::rules::standard();
         let run = |src: &str| simplify(&rules, src);
