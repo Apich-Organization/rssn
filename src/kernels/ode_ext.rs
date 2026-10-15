@@ -107,6 +107,8 @@ pub fn etdrk4<N: Fn(f64, &[f64], &mut [f64])>(
     Ok(out)
 }
 
+/// ETDRK4 for a diagonal linear part with Cauchy-integral `phi` functions.
+///
 /// ETDRK4 for a diagonal linear part `u_i' = lambda_i u_i + N_i(t, u)`,
 /// with the `phi` functions evaluated by Cauchy contour integrals
 /// (Kassam and Trefethen), which avoids the cancellation of the closed

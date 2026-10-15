@@ -45,6 +45,8 @@ fn compositions(total: usize, parts: usize, cur: &mut Vec<usize>, out: &mut Vec<
     }
 }
 
+/// Grundmann-Moeller quadrature on the `n`-simplex.
+///
 /// Grundmann–Möller quadrature on the `n`-simplex, exact for polynomials of
 /// degree `2s + 1`. Returns barycentric points (`n + 1` coordinates) and
 /// weights that sum to one (multiply by the simplex measure).

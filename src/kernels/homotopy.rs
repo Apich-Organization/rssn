@@ -440,6 +440,8 @@ fn classify(pb: &Problem, mut ended: Ended, opts: &HomotopyOptions, retries: usi
     }
 }
 
+/// Solves a square polynomial system by total-degree homotopy continuation.
+///
 /// Solves the square polynomial system `system[i] = 0` (terms of equation
 /// `i`, exponent vectors with one entry per variable) by total-degree
 /// homotopy continuation in projective coordinates with a Cauchy endgame

@@ -243,12 +243,34 @@ impl KerrNewman {
     }
 }
 
+/// Initial data of a geodesic: position, conserved `E`, `L`, polar momentum, radial direction and `mu^2`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GeodesicInit {
+    /// Boyer-Lindquist radius.
+    pub r: f64,
+    /// Polar angle.
+    pub theta: f64,
+    /// Azimuth.
+    pub phi: f64,
+    /// Conserved energy.
+    pub energy: f64,
+    /// Conserved axial angular momentum.
+    pub lz: f64,
+    /// Polar momentum.
+    pub ptheta: f64,
+    /// Sign (`+-1`) of the radial momentum.
+    pub radial_sign: f64,
+    /// Mass-shell value `mu^2` (1 for massive, 0 for null).
+    pub mu2: f64,
+}
+
 impl Geodesic {
     /// Starts a geodesic at `(r, theta, phi)` with conserved `E`, `L`, polar momentum and radial direction
     /// (`radial_sign = +-1`), solving the mass-shell constraint for `p_r`.
     ///
     /// # Errors
     /// Fails when the constraint has no real solution (forbidden region).
+    #[allow(clippy::too_many_arguments)] // kept for API compatibility; prefer `from_init`
     pub fn new(
         metric: KerrNewman,
         r: f64,
@@ -260,6 +282,18 @@ impl Geodesic {
         radial_sign: f64,
         mu2: f64,
     ) -> Result<Self, String> {
+        Self::from_init(metric, &GeodesicInit { r, theta, phi, energy, lz, ptheta, radial_sign, mu2 })
+    }
+
+    /// As [`Geodesic::new`] with the initial data bundled in a [`GeodesicInit`].
+    ///
+    /// # Errors
+    /// Fails when the constraint has no real solution (forbidden region).
+    pub fn from_init(
+        metric: KerrNewman,
+        init: &GeodesicInit,
+    ) -> Result<Self, String> {
+        let GeodesicInit { r, theta, phi, energy, lz, ptheta, radial_sign, mu2 } = *init;
         let mut g = Self { metric, t: 0.0, r, theta, phi, pr: 0.0, ptheta, energy, lz, lambda: 0.0, mu2 };
         let h0 = metric.hamiltonian(r, theta, 0.0, ptheta, energy, lz);
         let kcoef = metric.hamiltonian(r, theta, 1.0, ptheta, energy, lz) - h0;

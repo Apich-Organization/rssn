@@ -287,6 +287,8 @@ pub fn logm(a: &Mat) -> Result<Mat, DenseError> {
     Ok(lin(&r, 2f64.powi(k), &r, 0.0))
 }
 
+/// The `phi_k(A)` functions, `k = 0..=p`, from one augmented matrix exponential.
+///
 /// The functions `phi_0(A), ..., phi_p(A)` where
 /// `phi_0(z) = e^z` and `phi_k(z) = (phi_{k-1}(z) - 1/(k-1)!) / z`
 /// (so `phi_1(z) = (e^z - 1)/z`), from one matrix exponential of the
@@ -335,6 +337,8 @@ pub fn csr_norm1(a: &Csr) -> f64 {
     cols.into_iter().fold(0.0, f64::max)
 }
 
+/// Action `exp(t A) v` for a sparse matrix by a stepped Taylor series.
+///
 /// The action `exp(t A) v` for a sparse matrix, by splitting `[0, t]` into
 /// `s` steps with `|t A|_1 / s <= 1` and summing the Taylor series of each
 /// step until the terms are below `1e-16` of the partial sum.
@@ -373,6 +377,8 @@ pub fn expm_multiply(a: &Csr, v: &[f64], t: f64) -> Vec<f64> {
     w
 }
 
+/// Action `exp(t A) v` for a matrix-free operator by Krylov projection.
+///
 /// The action `exp(t A) v` for a matrix-free operator by Krylov projection:
 /// `exp(t A) v ~ |v| V_m exp(t H_m) e_1` with an Arnoldi basis of dimension
 /// `m`, advancing in sub-steps whose error estimate

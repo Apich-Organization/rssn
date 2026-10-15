@@ -428,14 +428,15 @@ impl<const D: usize> Sph<D> {
                 let (dwi, dwj) = (self.kernel.dw(D, r, hi), self.kernel.dw(D, r, hj));
                 let gw = f64::midpoint(dwi, dwj);
                 let vr: f64 = (0..D).map(|a| vij[a] * rij[a]).sum();
-                let mut pi = 0.0;
-                if vr < 0.0 {
+                let pi = if vr < 0.0 {
                     let hb = f64::midpoint(hi, hj);
                     let mu = hb * vr / (r2 + 0.01 * hb * hb);
                     let cb = f64::midpoint(c[i], c[j]);
                     let rb = f64::midpoint(self.rho[i], self.rho[j]);
-                    pi = (-self.alpha * cb * mu + self.beta * mu * mu) / rb;
-                }
+                    (-self.alpha * cb * mu + self.beta * mu * mu) / rb
+                } else {
+                    0.0
+                };
                 if self.grad_h {
                     let ti = p[i] / (omega[i] * self.rho[i] * self.rho[i]);
                     let tj = p[j] / (omega[j] * self.rho[j] * self.rho[j]);

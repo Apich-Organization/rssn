@@ -131,8 +131,7 @@ impl SplitStep {
         self.kinetic_energy(psi) + pot
     }
 
-    fn strang(&self, psi: &mut [Complex<f64>], vv: &[f64], g: f64, t: f64, dt: f64, imaginary: bool, kin: &[Complex<f64>]) {
-        let _ = t;
+    fn strang(&self, psi: &mut [Complex<f64>], vv: &[f64], g: f64, dt: f64, imaginary: bool, kin: &[Complex<f64>]) {
         let half = |psi: &mut [Complex<f64>]| {
             for (p, c) in psi.iter_mut().enumerate() {
                 let phase = f64::midpoint(vv[p], g * c.norm_sqr()) * dt;
@@ -159,6 +158,7 @@ impl SplitStep {
     }
 
     /// Real-time evolution for `steps` steps of size `dt` from time `t0`.
+    #[allow(clippy::too_many_arguments)] // public evolution signature (psi0, v, g, t0, dt, steps, order) kept for API compatibility
     pub fn evolve(
         &self,
         psi0: &[Complex<f64>],
@@ -182,7 +182,7 @@ impl SplitStep {
             let mut tt = t;
             for (w, kin) in weights.iter().zip(&kins) {
                 let vv: Vec<f64> = (0..psi.len()).map(|p| v(tt + 0.5 * w * dt, self.x(p))).collect();
-                self.strang(&mut psi, &vv, g, tt, w * dt, false, kin);
+                self.strang(&mut psi, &vv, g, w * dt, false, kin);
                 tt += w * dt;
             }
             t += dt;
@@ -217,7 +217,7 @@ impl SplitStep {
         let mut steps = 0;
         let mut converged = false;
         while steps < max_steps {
-            self.strang(&mut psi, &vv, g, 0.0, dt, true, &kin);
+            self.strang(&mut psi, &vv, g, dt, true, &kin);
             renorm(&mut psi);
             steps += 1;
             if steps % 10 == 0 {

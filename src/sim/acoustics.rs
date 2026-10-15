@@ -65,10 +65,8 @@ impl AcousticsConfig {
             pml_cells: 10,
             pml_order: 3.0,
         };
-        for a in 0..dim {
-            cfg.n[a] = n[a];
-            cfg.h[a] = h[a];
-        }
+        cfg.n[..dim].copy_from_slice(&n[..dim]);
+        cfg.h[..dim].copy_from_slice(&h[..dim]);
         Ok(cfg)
     }
 }

@@ -76,10 +76,8 @@ impl SpectralGrid {
             return Err("spectral grid needs 1-3 power-of-two axes with at least 4 points".into());
         }
         let mut g = Self { dim, n: [1; 3], len: [1.0; 3] };
-        for a in 0..dim {
-            g.n[a] = n[a];
-            g.len[a] = len[a];
-        }
+        g.n[..dim].copy_from_slice(&n[..dim]);
+        g.len[..dim].copy_from_slice(&len[..dim]);
         Ok(g)
     }
 
@@ -215,6 +213,11 @@ impl SpectralGrid {
     }
 }
 
+/// Nonlinear term `N(t, uh)` of a spectral PDE, returning its spectral transform.
+pub type NonlinearTerm = dyn Fn(f64, &[Complex<f64>]) -> Vec<Complex<f64>>;
+
+/// Fourth-order ETDRK4 time stepping of `u_t = L u + N(u, t)` in the spectral domain.
+///
 /// Integrates `u_t = L u + N(u, t)` in the spectral domain with the
 /// fourth-order exponential time differencing Runge–Kutta scheme of
 /// Cox and Matthews (contour-integral coefficients of Kassam and Trefethen).
@@ -224,7 +227,7 @@ impl SpectralGrid {
 pub fn etdrk4(
     mut uh: Vec<Complex<f64>>,
     lin: &[Complex<f64>],
-    nonlinear: &dyn Fn(f64, &[Complex<f64>]) -> Vec<Complex<f64>>,
+    nonlinear: &NonlinearTerm,
     t_end: f64,
     steps: usize,
 ) -> Vec<Complex<f64>> {
@@ -326,11 +329,9 @@ impl ChebGrid {
             return Err("invalid Chebyshev grid".into());
         }
         let mut g = Self { dim, deg: [0; 3], lo: [0.0; 3], hi: [1.0; 3] };
-        for a in 0..dim {
-            g.deg[a] = deg[a];
-            g.lo[a] = lo[a];
-            g.hi[a] = hi[a];
-        }
+        g.deg[..dim].copy_from_slice(&deg[..dim]);
+        g.lo[..dim].copy_from_slice(&lo[..dim]);
+        g.hi[..dim].copy_from_slice(&hi[..dim]);
         Ok(g)
     }
 
@@ -496,6 +497,7 @@ impl ChebGrid {
     ///
     /// # Errors
     /// For unsupported boundary types or a singular system.
+    #[allow(clippy::too_many_arguments)] // public solver signature (bcs, alpha, init, source, t_end, steps, theta) kept for API compatibility
     pub fn heat(
         &self,
         bcs: &FaceBcs,

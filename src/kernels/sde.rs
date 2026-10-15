@@ -178,6 +178,8 @@ where
     Ok(out)
 }
 
+/// Platen's derivative-free stochastic Runge-Kutta scheme.
+///
 /// Derivative-free stochastic Runge-Kutta scheme of Platen (strong order 1,
 /// commutative noise): the Milstein term is replaced by the difference of
 /// the diffusion at the supporting values `x + a h + g_j sqrt(h)`.
@@ -338,6 +340,19 @@ impl BrownianStack {
     }
 }
 
+/// Tolerances and limits of [`sde_adaptive_with`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SdeAdaptiveOptions {
+    /// Relative tolerance of the local error.
+    pub rtol: f64,
+    /// Absolute tolerance of the local error.
+    pub atol: f64,
+    /// Seed of the Brownian path.
+    pub seed: u64,
+    /// Maximal number of steps.
+    pub max_steps: usize,
+}
+
 /// Adaptive-step integration of an Ito SDE with commutative noise on
 /// `[t0, t1]`.
 ///
@@ -355,22 +370,20 @@ impl BrownianStack {
 ///
 /// # Errors
 /// [`SdeError::Invalid`], [`SdeError::NonFinite`] or [`SdeError::StepLimit`].
-pub fn sde_adaptive<A, G>(
+pub fn sde_adaptive_with<A, G>(
     drift: A,
     diff: G,
     m: usize,
     t0: f64,
     t1: f64,
     y0: &[f64],
-    rtol: f64,
-    atol: f64,
-    seed: u64,
-    max_steps: usize,
+    opts: &SdeAdaptiveOptions,
 ) -> Result<SdePath, SdeError>
 where
     A: Fn(f64, &[f64], &mut [f64]),
     G: Fn(f64, &[f64], &mut [f64]),
 {
+    let SdeAdaptiveOptions { rtol, atol, seed, max_steps } = *opts;
     if y0.is_empty() || m == 0 || t1 <= t0 || rtol <= 0.0 || atol < 0.0 {
         return Err(SdeError::Invalid);
     }
@@ -433,4 +446,28 @@ where
         }
     }
     Ok(path)
+}
+
+/// [`sde_adaptive_with`] with the options passed as separate arguments.
+///
+/// # Errors
+/// See [`sde_adaptive_with`].
+#[allow(clippy::too_many_arguments)] // kept for API compatibility; prefer `sde_adaptive_with`
+pub fn sde_adaptive<A, G>(
+    drift: A,
+    diff: G,
+    m: usize,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    rtol: f64,
+    atol: f64,
+    seed: u64,
+    max_steps: usize,
+) -> Result<SdePath, SdeError>
+where
+    A: Fn(f64, &[f64], &mut [f64]),
+    G: Fn(f64, &[f64], &mut [f64]),
+{
+    sde_adaptive_with(drift, diff, m, t0, t1, y0, &SdeAdaptiveOptions { rtol, atol, seed, max_steps })
 }

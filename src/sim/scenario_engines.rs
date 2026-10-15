@@ -164,7 +164,10 @@ impl Default for HeatReq {
     }
 }
 
-fn mode_fn(bc: &str, dim: usize) -> (Box<dyn Fn([f64; 3]) -> f64>, f64) {
+/// Boxed scalar field on `[0, 1]^3`.
+type ScalarField = Box<dyn Fn([f64; 3]) -> f64>;
+
+fn mode_fn(bc: &str, dim: usize) -> (ScalarField, f64) {
     match bc {
         "neumann" => (Box::new(move |x| (0..dim).map(|a| (PI * x[a]).cos()).product()), dim as f64 * PI * PI),
         "periodic" => (Box::new(move |x| (0..dim).map(|a| (2.0 * PI * x[a]).sin()).product()), 4.0 * dim as f64 * PI * PI),

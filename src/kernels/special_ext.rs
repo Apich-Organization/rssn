@@ -744,6 +744,8 @@ pub fn bessel_in_scaled(n: i32, x: f64) -> f64 {
     sign * v
 }
 
+/// Modified Bessel function of the first kind `I_n(x)` for integer order.
+///
 /// Modified Bessel function of the first kind `I_n(x)` for integer
 /// order, by the same strategy as [`bessel_jn`] (series, Hankel
 /// expansion, Miller recurrence). Overflows to infinity beyond

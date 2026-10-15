@@ -506,6 +506,8 @@ pub fn levenberg_marquardt<F: Fn(&[f64]) -> Vec<f64>>(
     Err(RootError::NoConvergence)
 }
 
+/// Homotopy continuation for the roots of a real-coefficient polynomial.
+///
 /// Homotopy continuation for a polynomial with real coefficients: tracks
 /// the roots of `H(z, t) = (1-t) * gamma * (z^n - 1) + t * p(z)` from the
 /// roots of unity at `t = 0` to those of `p` at `t = 1` with predictor
@@ -764,6 +766,8 @@ fn jt_fixed(p: &[Cx], h: &mut Vec<Cx>, s: Cx, l2: usize) -> Option<Cx> {
     jt_variable(p, h, s + t)
 }
 
+/// All complex roots of a complex polynomial by Jenkins-Traub.
+///
 /// All complex roots of a polynomial with complex coefficients
 /// (`(re, im)` pairs, ascending order) by the three-stage Jenkins-Traub
 /// algorithm (no-shift, fixed-shift and variable-shift stages with

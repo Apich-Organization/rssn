@@ -688,6 +688,7 @@ pub fn solve_dg(
 ///
 /// # Errors
 /// See [`solve_dg`].
+#[allow(clippy::too_many_arguments)] // full solver entry point; `solve_dg` is the shorter wrapper
 pub fn solve_dg_limited(
     mesh: &DgMesh,
     law: &dyn DgLaw,

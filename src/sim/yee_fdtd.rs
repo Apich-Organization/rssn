@@ -148,10 +148,8 @@ impl YeeConfig {
             pml_order: 3.0,
             eps_r: None,
         };
-        for a in 0..dim {
-            c.n[a] = n[a];
-            c.h[a] = h[a];
-        }
+        c.n[..dim].copy_from_slice(&n[..dim]);
+        c.h[..dim].copy_from_slice(&h[..dim]);
         Ok(c)
     }
 }
@@ -193,6 +191,14 @@ const fn comp_index(c: Comp) -> usize {
         Comp::Hy => 4,
         Comp::Hz => 5,
     }
+}
+
+/// One term of a curl difference: field component `f`, differentiated along `axis`, with PML memory slot `psi`.
+#[derive(Clone, Copy)]
+struct CurlTerm {
+    f: usize,
+    axis: usize,
+    psi: usize,
 }
 
 impl Yee {
@@ -474,7 +480,9 @@ impl Yee {
     }
 
     /// Curl-difference `∂_a1 F1 - ∂_a2 F2` for the H update (forward differences) with PML memory.
-    fn curl_h(&mut self, fc: usize, p: usize, ijk: [usize; 3], f1: usize, a1: usize, m1: usize, f2: usize, a2: usize, m2: usize) -> f64 {
+    fn curl_h(&mut self, fc: usize, p: usize, ijk: [usize; 3], t1: CurlTerm, t2: CurlTerm) -> f64 {
+        let CurlTerm { f: f1, axis: a1, psi: m1 } = t1;
+        let CurlTerm { f: f2, axis: a2, psi: m2 } = t2;
         let mut d1 = self.dfw(&self.f[f1], ijk, a1) + self.tf_corr(fc, f1, ijk, a1, true);
         let mut d2 = self.dfw(&self.f[f2], ijk, a2) + self.tf_corr(fc, f2, ijk, a2, true);
         if self.use_pml {
@@ -488,7 +496,9 @@ impl Yee {
         d1 - d2
     }
 
-    fn curl_e(&mut self, fc: usize, p: usize, ijk: [usize; 3], f1: usize, a1: usize, m1: usize, f2: usize, a2: usize, m2: usize) -> f64 {
+    fn curl_e(&mut self, fc: usize, p: usize, ijk: [usize; 3], t1: CurlTerm, t2: CurlTerm) -> f64 {
+        let CurlTerm { f: f1, axis: a1, psi: m1 } = t1;
+        let CurlTerm { f: f2, axis: a2, psi: m2 } = t2;
         let mut d1 = self.dbw(&self.f[f1], ijk, a1) + self.tf_corr(fc, f1, ijk, a1, false);
         let mut d2 = self.dbw(&self.f[f2], ijk, a2) + self.tf_corr(fc, f2, ijk, a2, false);
         if self.use_pml {
@@ -511,9 +521,9 @@ impl Yee {
                     let ijk = [i, j, k];
                     let p = self.idx(i, j, k);
                     // Hx: dy Ez - dz Ey ; Hy: dz Ex - dx Ez ; Hz: dx Ey - dy Ex
-                    let cx = self.curl_h(3, p, ijk, 2, 1, 0, 1, 2, 1);
-                    let cy = self.curl_h(4, p, ijk, 0, 2, 2, 2, 0, 3);
-                    let cz = self.curl_h(5, p, ijk, 1, 0, 4, 0, 1, 5);
+                    let cx = self.curl_h(3, p, ijk, CurlTerm { f: 2, axis: 1, psi: 0 }, CurlTerm { f: 1, axis: 2, psi: 1 });
+                    let cy = self.curl_h(4, p, ijk, CurlTerm { f: 0, axis: 2, psi: 2 }, CurlTerm { f: 2, axis: 0, psi: 3 });
+                    let cz = self.curl_h(5, p, ijk, CurlTerm { f: 1, axis: 0, psi: 4 }, CurlTerm { f: 0, axis: 1, psi: 5 });
                     self.f[3][p] -= dt_h * cx;
                     self.f[4][p] -= dt_h * cy;
                     self.f[5][p] -= dt_h * cz;
@@ -531,9 +541,9 @@ impl Yee {
                     let ijk = [i, j, k];
                     let p = self.idx(i, j, k);
                     // Ex: dy Hz - dz Hy ; Ey: dz Hx - dx Hz ; Ez: dx Hy - dy Hx
-                    let cx = self.curl_e(0, p, ijk, 5, 1, 6, 4, 2, 7);
-                    let cy = self.curl_e(1, p, ijk, 3, 2, 8, 5, 0, 9);
-                    let cz = self.curl_e(2, p, ijk, 4, 0, 10, 3, 1, 11);
+                    let cx = self.curl_e(0, p, ijk, CurlTerm { f: 5, axis: 1, psi: 6 }, CurlTerm { f: 4, axis: 2, psi: 7 });
+                    let cy = self.curl_e(1, p, ijk, CurlTerm { f: 3, axis: 2, psi: 8 }, CurlTerm { f: 5, axis: 0, psi: 9 });
+                    let cz = self.curl_e(2, p, ijk, CurlTerm { f: 4, axis: 0, psi: 10 }, CurlTerm { f: 3, axis: 1, psi: 11 });
                     let ei = self.eps_inv[p];
                     self.f[0][p] += dt * ei * cx;
                     self.f[1][p] += dt * ei * cy;

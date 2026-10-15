@@ -120,11 +120,9 @@ impl FvGrid {
             return Err("invalid finite-volume grid".into());
         }
         let mut g = Self { dim, n: [1; 3], lo: [0.0; 3], hi: [1.0; 3] };
-        for a in 0..dim {
-            g.n[a] = n[a];
-            g.lo[a] = lo[a];
-            g.hi[a] = hi[a];
-        }
+        g.n[..dim].copy_from_slice(&n[..dim]);
+        g.lo[..dim].copy_from_slice(&lo[..dim]);
+        g.hi[..dim].copy_from_slice(&hi[..dim]);
         Ok(g)
     }
 

@@ -99,10 +99,8 @@ impl NsConfig {
             rotational: true,
             solver: LinearSolver::Auto,
         };
-        for a in 0..dim {
-            c.n[a] = n[a];
-            c.len[a] = len[a];
-        }
+        c.n[..dim].copy_from_slice(&n[..dim]);
+        c.len[..dim].copy_from_slice(&len[..dim]);
         Ok(c)
     }
 }
@@ -846,10 +844,10 @@ impl NsSolver {
             if c >= cfg_dim {
                 return Vec::new();
             }
-            match &self.conv_prev {
-                Some(prev) => conv[c].iter().zip(&prev[c]).map(|(a, b)| 1.5 * a - 0.5 * b).collect(),
-                None => conv[c].clone(),
-            }
+            self.conv_prev.as_ref().map_or_else(
+                || conv[c].clone(),
+                |prev| conv[c].iter().zip(&prev[c]).map(|(a, b)| 1.5 * a - 0.5 * b).collect(),
+            )
         });
         self.update_boundary_values(t_new);
         let mut ustar: [Vec<f64>; 3] = std::array::from_fn(|c| self.u[c].clone());

@@ -644,6 +644,8 @@ pub fn yoshida4<A: Fn(&[f64]) -> Vec<f64>>(
     (q, p)
 }
 
+/// Finite-difference BVP solver for `y'' = f(x, y, y')` with Dirichlet ends.
+///
 /// Second-order finite-difference solution of the BVP
 /// `y'' = f(x, y, y')`, `y(a) = ya`, `y(b) = yb` on `n` interior points,
 /// by Newton iteration on the discrete system. Returns `(x, y)` including
@@ -758,6 +760,8 @@ where
     Ok(out)
 }
 
+/// Constant-delay DDE integrator (method of steps with RK4).
+///
 /// Constant-delay DDE `y'(t) = f(t, y(t), y(t - tau))` with history
 /// `hist(t)` for `t <= t0`, integrated by classical RK4 (method of steps)
 /// with cubic Hermite interpolation of the stored solution. Requires

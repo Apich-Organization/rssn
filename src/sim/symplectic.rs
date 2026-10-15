@@ -88,6 +88,8 @@ impl Scheme {
     }
 }
 
+/// Step-size multipliers of a symmetric composition of even `order`.
+///
 /// Step-size multipliers `c_i` (summing to 1) of the symmetric composition
 /// `S(c_1 h) S(c_2 h) ...` that lifts a symmetric second-order step `S` to the even `order`
 /// (Yoshida sequences for 6 and 8, Suzuki triple jumps beyond).
@@ -131,6 +133,8 @@ pub fn composition_weights(order: usize) -> Result<Vec<f64>, String> {
     })
 }
 
+/// Time-transformed leapfrog composed to an even `order`.
+///
 /// Time-transformed leapfrog composed to the even `order` (4, 6, 8, ...): the TTL step is a
 /// symmetric second-order integrator of the extended Hamiltonian `ln(T + B) - ln(-V)`, so
 /// composition with [`composition_weights`] removes the `O(h^2)` energy error of the plain scheme.
@@ -406,6 +410,8 @@ fn ks_rhs<P: Fn(&[f64; 3], &[f64; 3], f64) -> [f64; 3]>(
     d
 }
 
+/// Propagates a (perturbed) Kepler problem in KS variables with RK4.
+///
 /// Propagates a (perturbed) Kepler problem with gravitational parameter 1 in KS
 /// variables with RK4 in the fictitious time `s`, for `n` steps of size `ds`.
 /// `pert(x, v, t)` is the perturbing acceleration. Without perturbation the

@@ -118,6 +118,8 @@ fn random_unit(n: usize, seed: u64) -> Vec<f64> {
     v
 }
 
+/// Arnoldi factorisation of length `m`.
+///
 /// Arnoldi factorisation of length `m` started at `v0` (normalised
 /// internally): returns `(V, H, beta)` with `V` holding `m + 1` basis
 /// vectors (the last one is the normalised residual direction, zero after a

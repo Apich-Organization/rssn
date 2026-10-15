@@ -828,7 +828,7 @@ impl<const D: usize> NeighbourList<D> {
         let rl = self.rcut + self.skin;
         let rl2 = rl * rl;
         self.pairs.clear();
-        self.ref_pos = sys.pos.clone();
+        self.ref_pos.clone_from(&sys.pos);
         self.ref_cell = sys.bx.matrix();
         let close = |i: usize, j: usize| -> bool {
             let mut d = [0.0; D];
@@ -1160,9 +1160,7 @@ fn bonded_forces<const D: usize>(
         }
         let to_d = |v: [f64; 3]| {
             let mut o = [0.0; D];
-            for a in 0..3 {
-                o[a] = v[a];
-            }
+            o[..3].copy_from_slice(&v);
             o
         };
         add_virial(out, &ri, &to_d(fi));

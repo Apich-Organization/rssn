@@ -57,6 +57,8 @@ fn gbs<F: FnMut(usize) -> Vec<f64>>(
     (best, err)
 }
 
+/// One Gragg-Bulirsch-Stoer extrapolated step of the time-transformed leapfrog.
+///
 /// One Gragg-Bulirsch-Stoer extrapolated step of the time-transformed leapfrog
 /// ([`ttl_step`]) of size `ds` in the fictitious time, using `kmax` columns.
 /// Returns the relative error estimate. The scheme has order `2 kmax` in `ds`.

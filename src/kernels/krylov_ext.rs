@@ -387,6 +387,8 @@ where
     IterResult { x, residual: res, iterations: mv, converged: res <= 10.0 * tol.max(1e-15) }
 }
 
+/// Flexible GMRES(`restart`) with a variable right preconditioner.
+///
 /// Flexible GMRES(`restart`): right-preconditioned GMRES whose
 /// preconditioner `precond` may vary between applications (for instance
 /// an inner Krylov solve or a nonlinear smoother). The preconditioned
