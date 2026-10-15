@@ -668,12 +668,10 @@ fn case_two(
     }
     let (dn, dd) = (r.num.len().checked_sub(1)?, r.den.len().checked_sub(1)?);
     let order_inf = i64::try_from(dd).ok()? - i64::try_from(dn).ok()?;
-    let infinity_set: Vec<i64> = if order_inf > 2 {
-        vec![0, 2, 4]
-    } else if order_inf == 2 {
-        order_two_set(&(r.num.last()?.clone() / r.den.last()?))
-    } else {
-        vec![order_inf]
+    let infinity_set: Vec<i64> = match order_inf.cmp(&2) {
+        | std::cmp::Ordering::Greater => vec![0, 2, 4],
+        | std::cmp::Ordering::Equal => order_two_set(&(r.num.last()?.clone() / r.den.last()?)),
+        | std::cmp::Ordering::Less => vec![order_inf],
     };
     let total: usize = sets.iter().map(|(_, s)| s.len()).product::<usize>() * infinity_set.len();
     if total > 4096 {

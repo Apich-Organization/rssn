@@ -36,15 +36,32 @@
 //!   are not. A solvable quintic with one real root is written in radicals
 //!   through Lagrange resolvents (the real root is `shift + (1/5λ) Σ R^(1/5)`
 //!   over the roots of a quartic with coefficients in `Q(sqrt 5)`; so
-//!   `x^5 - 5 x + 12` and `x^5 + 15 x + 12` come out in radicals).
+//!   `x^5 - 5 x + 12` and `x^5 + 15 x + 12` come out in radicals); one with
+//!   five real roots (the cyclic `x^5 + x^4 - 4 x^3 - 3 x^2 + 3 x + 1`, say)
+//!   in cosine form: the resolvents are complex conjugate pairs
+//!   `R = a ± i b`, the real quadratic factors of the quartic, and the roots
+//!   are `(2/5λ) Σ_j |R_j|^(1/5) cos((arg R_j + 2π (m_j - j k))/5)`.
 //!   de Moivre quintics `x^5 + 5 a x^3 + 5 a^2 x + b` with parameters are
 //!   solved by `x = u - a/u` (real fifth roots, or the cosine form for five
-//!   real roots). Every other real root of an irreducible factor of degree
-//!   five or more (unsolvable quintics, solvable ones with five real roots,
-//!   higher degrees) is an exact `root_of(k, c0, ..., cn)` object, the
-//!   `k`-th real root of the polynomial, canonical across factorisations,
-//!   with rigorous numeric evaluation; `solve` therefore always returns
-//!   every real root. In numeric runs the values are returned instead.
+//!   real roots).
+//! * **Degree six and more.** An irreducible factor that is a functional
+//!   composition `g(h(x))` (Kozen–Landau decomposition) is solved through
+//!   the real roots of `g` and then `h(x) = u` for each; a self-reciprocal
+//!   one of degree `2k` through `u = x + 1/x` (a polynomial of degree `k` in
+//!   `u`). Every other real root of an irreducible factor of degree five or
+//!   more (unsolvable quintics, higher degrees without such structure) is an
+//!   exact `root_of(k, c0, ..., cn)` object: the `k`-th root of the
+//!   polynomial, the real roots first (ascending), then the complex ones by
+//!   real and imaginary part, canonical across factorisations, with
+//!   rigorous numeric evaluation (real and complex); `solve` therefore
+//!   always returns every real root. In numeric runs the values are
+//!   returned instead. `solve_complex(eq, x)` gives *all* complex roots of a
+//!   polynomial equation exactly (rationals, quadratic radicals with `I`,
+//!   `root_of` objects). Not done: a Galois-group analysis for degree seven
+//!   and up (Gauss periods and general solvable groups of composite
+//!   degree), so irreducible polynomials of degree six or more that are
+//!   neither decomposable nor reciprocal stay `root_of` objects even when
+//!   they are solvable.
 //!
 //! Beyond that, the sub-solvers interlock:
 //!

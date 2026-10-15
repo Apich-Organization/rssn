@@ -58,13 +58,36 @@
 //! unknowns (`list(x(t)^2 + y(t)^2 - C1 = 0, …)`).
 //!
 //! Linear second-order equations with polynomial coefficients that no
-//! other method solves: Gauss and Kummer equations are recognised and
-//! answered with `hyper2f1(a, b, c, x)` / `hyper1f1(a, b, x)` (both
-//! solutions, non-integer `c`, `b`); otherwise the Frobenius method at
-//! `x = 0` or at a regular singular rational root of the leading
-//! coefficient gives both exponents, with the logarithmic solution when
-//! they differ by an integer, as truncated series (eight terms, the order
-//! written `big_o(t^n)`).
+//! other method solves, in order:
+//!
+//! * **Kovacic's algorithm** for rational coefficients (Liouvillian
+//!   solutions), cases 1 and 2: in the normal form `u'' = r u` a solution
+//!   `P exp(∫ω)` with `P` a polynomial and `ω` rational (case 1), or the
+//!   pair `exp(∫(φ ± sqrt(4r - φ² - 2φ'))/2)` with `φ = θ + P'/P` rational
+//!   (case 2), found from the poles of `r` with exact linear algebra
+//!   (rational poles and rational square roots required); the second
+//!   solution of case 1 is a reduction-of-order quadrature (an inert
+//!   `integral` unless it integrates). Case 3 (octahedral, icosahedral and
+//!   tetrahedral monodromy) is not implemented.
+//! * **Hypergeometric matching**: Gauss's equation (`c`, `a + b + 1` and
+//!   `a b` the coefficients of `x(1 - x) y'' + (c - (a + b + 1) x) y' - a b y = 0`)
+//!   as `hyper2f1`, Kummer as `hyper1f1`, and Whittaker
+//!   `y'' + (-s²/4 + κ s/x + (1/4 - μ²)/x²) y = 0` as
+//!   `exp(-z/2) z^(μ+1/2) hyper1f1(μ - κ + 1/2, 1 + 2μ, z)`, `z = s x`, with
+//!   both solutions for non-integer `c`, `b`, `2μ`; for integer values the
+//!   solution that exists and a reduction-of-order second solution.
+//! * **Frobenius and formal series** at `x = 0`, a rational root of the
+//!   leading coefficient, or `x = ∞` (`ode_frobenius(…, oo, n)`): regular
+//!   singular points give the two exponents (rational, or irrational and
+//!   complex ones in a quadratic field: `t^(σ ± τ√D)` series, real
+//!   `cos`/`sin(τ√m ln t)` pairs when `D = -m < 0`), with the logarithmic
+//!   solution when they differ by an integer; irregular singular points of
+//!   rank one with rational exponents `λ` give the formal solutions
+//!   `exp(λ/t) t^ρ Σ a_k t^k` (`exp(λ x)` at infinity). Results are
+//!   truncated series (eight terms in `dsolve`, order written
+//!   `big_o(t^n)`). Not done: irregular points of higher rank or with
+//!   ramified (fractional-power) solutions, irrational `λ`, non-rational
+//!   singular points.
 //!
 //! | operator | value |
 //! |---|---|
