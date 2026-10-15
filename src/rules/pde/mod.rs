@@ -72,35 +72,56 @@
 //! | | disk, ball: Robin conditions with `h + ν < 0` | 2, 3 | extra mode `I_ν(κ r)` (`bessel_neg_root`), `r^ν` for `h + ν = 0`; Robin intervals with two negative modes (`sl_neg_root_n`) |
 //! | | odd powers in Fourier–Bessel moments | 2 | closed by Struve functions `struve_h` (`struve_l` is provided for completeness) |
 //!
+//! Further coverage added with the completion layer:
+//!
+//! | equation | domain | dimensions | method |
+//! |---|---|---|---|
+//! | `κ (a u_xx + b u_x) + c u` with `a` of degree ≤ 2, `b` of degree ≤ 1 | line, half-line, interval between the roots of `a` (Hermite, Laguerre, Jacobi type; no boundary conditions, regularity) | 1 | monic eigenpolynomials from the downward recurrence (`λ_n = a₂n(n-1) + b₁n`, degree ≤ 10), weight `p/a`, polynomial data |
+//! | annulus, Robin ends of the wrong sign | disk annulus, shell | 2, 3 | extra modes `C_K I_ν(κr) - C_I K_ν(κr)` (`annulus_neg_root`, counted by sign changes) |
+//! | wave equation, Neumann / Robin condition | half-line, outside a ball (radial) | 1, 3 | `w = v_x + ρ v` solves the Dirichlet problem (odd d'Alembert), `v = -∫_x^∞ e^{ρ(s-x)} w ds` (data vanishing at infinity) |
+//! | any constant-coefficient evolution `a₂ u_tt + a₁ u_t + Σ c_α ∂^α u = 0` | whole space, homogeneous | 1, 2, 3 | Fourier transform, `û = û₀ e^{-Pt/a₁}` or `e^{-at}[û₀(cosh βt + (a/β) sinh βt) + û₁ sinh(βt)/β]`, answer as the inverse-transform integral (tested in 1D: beam, linearised `KdV`) |
+//! | Laplace's equation | inside / outside a ball, arbitrary Dirichlet data `g(θ, φ)` | 3 | spherical-harmonic coefficients by Gauss–Legendre × trapezoid quadrature at solve time (degree 20), numeric coefficients, closed `P_l^m(cos θ) cos/sin mφ` |
+//! | `pde_greens_function(eq, u(...)[, conditions])` | boxes with D/N/R conditions (elliptic, first-order and undamped second-order evolution); free space and orthants for `c Δ` | 1, 2, 3 | eigenfunction expansion with zero modes written out; fundamental solutions with images |
+//!
 //! Limitations (what is still not covered):
 //!
-//! * Constant coefficients are required except for the polar, cylindrical
-//!   and spherical Laplacians, Euler–Cauchy and Legendre operators and the
-//!   one-variable regular Sturm–Liouville form above (smooth coefficients;
-//!   singular endpoints other than the Legendre and Bessel cases are not
-//!   treated; the coefficients must be free of other symbols; closed-form
-//!   Liouville normal forms are not attempted, the numeric operators are
-//!   used instead).
-//! * The Bessel problems of annuli assume a positive spectrum (no `I`/`K`
-//!   modes there); disks and balls handle one non-positive radial mode.
-//!   Robin intervals have at most two negative modes (the general maximum).
-//! * Azimuthal data of a ball must be a trigonometric polynomial (no
-//!   Fourier series in `φ`); exterior heat problems in the plane are radial
-//!   with homogeneous conditions; exterior wave problems have Dirichlet
-//!   conditions and are radial balls only.
+//! * Variable coefficients: the polar, cylindrical and spherical Laplacians,
+//!   Euler–Cauchy, Legendre, the classical polynomial families above and the
+//!   one-variable regular Sturm–Liouville form (smooth `a, b, c` free of
+//!   other symbols, numeric operators `sl_eigen`, `sl_mode`, `sl_weight`).
+//!   Singular endpoints are covered only through the polynomial families
+//!   (for them the endpoint is limit-circle exactly when the weight
+//!   exponent exceeds `-1`, limit-point at infinity, and the bounded
+//!   solutions are the polynomials); other singular problems, and
+//!   several space variables with variable coefficients, are not.
+//! * Polynomial families: data must be a polynomial of degree at most ten.
+//! * Annuli: modes with a negative eigenvalue are found by a numeric scan
+//!   (at most four); a zero eigenvalue other than the Neumann constant is
+//!   not treated; a symbolic angular order with a possible negative mode
+//!   is refused. Disks and balls handle one non-positive radial mode.
+//! * Balls: exact separation needs data that is a trigonometric
+//!   polynomial in `φ` (and polynomial in `cos θ`); arbitrary Dirichlet
+//!   data is handled only for Laplace's equation, by a degree-20
+//!   truncation with numeric coefficients (no evolution problems on balls
+//!   with such data).
+//! * Exterior domains: heat problems in the plane are radial with
+//!   homogeneous conditions (no angular dependence); wave problems outside
+//!   a ball are radial with homogeneous Dirichlet, Neumann or Robin
+//!   conditions and data vanishing at infinity (none in the plane).
 //! * Projections of non-polynomial radial data stay as `defint`s of numeric
-//!   integrands (evaluated by quadrature, there is no separate numeric
-//!   coefficient operator for arbitrary expressions); `struve_h` is
-//!   evaluated by series for `x < 8` and, beyond, by its integral
-//!   representation for `2ν` an integer.
-//! * Jordan systems: first order only (second-order Jordan systems are not
-//!   solved), bounded domains only with derivative-free couplings and zero
+//!   integrands, evaluated by quadrature; `struve_h` is evaluated by series
+//!   for `x < 8` and, beyond, by its integral representation for `2ν` an
+//!   integer.
+//! * Jordan systems: first order only; second-order Jordan systems are not
+//!   solved; bounded domains need derivative-free couplings and zero
 //!   boundary values.
-//! * Green's functions are available in free space, half-spaces and, via
-//!   the eigenfunction expansion of the engines, for the bounded domains
-//!   above; a generic Green's-function constructor and a general
-//!   Fourier/Laplace/Hankel/Mellin transform fallback on unbounded domains
-//!   are not implemented beyond the Weber and Fourier solutions listed.
+//! * Transform methods: the Fourier-symbol fallback is homogeneous (no
+//!   sources) and gives the integral representation without a table
+//!   inversion; Laplace, Hankel and Mellin transforms are used only through
+//!   the Weber transform of the exterior disk, not as a general fallback.
+//! * Green's functions: no damped second-order or whole-space evolution
+//!   kernels beyond the heat, wave and Poisson formulas of the solvers;
+//!   periodic axes and boundary data are not covered.
 //!
 //! | operator | value |
 //! |---|---|
@@ -130,6 +151,8 @@
 //! | `bessel_neg_root(ν, h)` | the `κ > 0` with `z I_ν'(z) + h I_ν(z) = 0` (NaN unless `h < -ν`) |
 //! | `struve_h(ν, x)`, `struve_l(ν, x)` | Struve functions |
 //! | `sl_eigen(m, a, b, α₀, β₀, α₁, β₁, N, p…, q…, w…)`, `sl_mode(m, x, …)`, `sl_weight(x, …)` | the `m`-th eigenvalue, normalised eigenfunction and weight of `-(p y')' + q y = μ w y` (coefficients as values at the `N + 1` Chebyshev points of `[a, b]`) |
+//! | `annulus_neg_root(ν, pₐ, qₐ, a, p_b, q_b, b, m)` | the `m`-th `κ > 0` of the annulus with `I_ν`/`K_ν` modes (eigenvalue `-κ²`) |
+//! | `pde_greens_function(eq, u(...)[, conditions])` | the Green's function `G(x…; s_x…)` of the operator part of the equation |
 //! | `annulus_root(ν, pₐ, qₐ, a, p_b, q_b, b, m)` | the `m`-th `k > 0` for which `A J_ν(kr) - B Y_ν(kr)` meets `p F + q F' = 0` at `r = a` (by construction) and at `r = b` (zeros of the cross-product `J_ν(ka) Y_ν(kb) - J_ν(kb) Y_ν(ka)` for Dirichlet data) |
 //!
 //! # The expansion engine

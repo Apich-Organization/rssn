@@ -511,10 +511,10 @@ fn greens_functions() {
     // Free space in the plane and the Dirichlet half-plane by images.
     let lap = "diff(diff(u(x, y), x), x) + diff(diff(u(x, y), y), y) = 0";
     let s = any(&format!("pde_greens_function({lap}, u(x, y))"));
-    let r = ((0.3_f64 - 1.0).powi(2) + (0.5_f64 - 0.2).powi(2)).sqrt();
+    let r = (0.3_f64 - 1.0).hypot(0.5_f64 - 0.2);
     close(value(&rhs(&s), &[("x", 0.3), ("y", 0.5), ("s_x", 1.0), ("s_y", 0.2)]), r.ln() / (2.0 * PI), 1e-12, &s);
     let s = any(&format!("pde_greens_function({lap}, u(x, y), list(u(x, 0) = 0))"));
-    let image = ((0.3_f64 - 1.0).powi(2) + (0.5_f64 + 0.2).powi(2)).sqrt();
+    let image = (0.3_f64 - 1.0).hypot(0.5_f64 + 0.2);
     close(value(&rhs(&s), &[("x", 0.3), ("y", 0.5), ("s_x", 1.0), ("s_y", 0.2)]), (r.ln() - image.ln()) / (2.0 * PI), 1e-12, &s);
 }
 
