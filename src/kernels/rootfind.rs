@@ -14,40 +14,6 @@
 //!   path-jumping protection is [`crate::kernels::homotopy`]);
 //! * polynomial roots by the three-stage Jenkins-Traub algorithm
 //!   ([`polynomial_roots_jenkins_traub`]).
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
 
 use crate::kernels::dense::{self, Mat};
 
@@ -112,7 +78,7 @@ pub fn brent<F: Fn(f64) -> f64>(
             || (mflag && (b - c).abs() < tol)
             || (!mflag && (c - d).abs() < tol);
         if cond {
-            s = 0.5 * (a + b);
+            s = f64::midpoint(a, b);
             mflag = true;
         } else {
             mflag = false;
@@ -194,7 +160,7 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
     if flo > 0.0 {
         std::mem::swap(&mut lo, &mut hi);
     }
-    let mut x = 0.5 * (lo + hi);
+    let mut x = f64::midpoint(lo, hi);
     for _ in 0..max_iter {
         let fx = f(x);
         if fx == 0.0 {
@@ -209,7 +175,7 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
         let mut nx = if d == 0.0 { f64::NAN } else { x - fx / d };
         let (mn, mx) = if lo < hi { (lo, hi) } else { (hi, lo) };
         if !nx.is_finite() || nx <= mn || nx >= mx {
-            nx = 0.5 * (lo + hi);
+            nx = f64::midpoint(lo, hi);
         }
         if (nx - x).abs() <= tol * (1.0 + x.abs()) {
             return Ok(nx);
@@ -678,7 +644,7 @@ fn jt_lower_bound(p: &[Cx]) -> f64 {
     };
     let (mut lo, mut hi) = (0.0, hi0.max(1e-300));
     for _ in 0..200 {
-        let mid = 0.5 * (lo + hi);
+        let mid = f64::midpoint(lo, hi);
         if g(mid) > 0.0 {
             hi = mid;
         } else {

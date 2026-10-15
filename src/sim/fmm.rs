@@ -20,44 +20,6 @@
 //! the exact Coulomb kernel; the neglected relative error is `O(eps^2/r^2)` at
 //! the well-separated distances where expansions are used).
 
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::assigning_clones,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::chunks_exact_to_as_chunks,
-    clippy::cognitive_complexity,
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::excessive_precision,
-    clippy::float_cmp,
-    clippy::if_not_else,
-    clippy::imprecise_flops,
-    clippy::indexing_slicing,
-    clippy::int_plus_one,
-    clippy::items_after_statements,
-    clippy::manual_let_else,
-    clippy::manual_memcpy,
-    clippy::manual_midpoint,
-    clippy::many_single_char_names,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions,
-    clippy::needless_pass_by_value,
-    clippy::needless_range_loop,
-    clippy::option_if_let_else,
-    clippy::similar_names,
-    clippy::single_call_fn,
-    clippy::single_match_else,
-    clippy::suboptimal_flops,
-    clippy::suspicious_operation_groupings,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::useless_let_if_seq,
-    clippy::while_float
-)]
 
 /// Parameters of an FMM evaluation.
 #[derive(Clone, Copy, Debug)]
@@ -112,7 +74,7 @@ fn build_tree<const D: usize>(
     let mut center = [0.0; D];
     let mut half = 0.0_f64;
     for a in 0..D {
-        center[a] = 0.5 * (lo[a] + hi[a]);
+        center[a] = f64::midpoint(lo[a], hi[a]);
         half = half.max(0.5 * (hi[a] - lo[a]));
     }
     half = half * 1.000_001 + 1e-12;

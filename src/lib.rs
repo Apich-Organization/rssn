@@ -100,7 +100,16 @@
     clippy::many_single_char_names,
     clippy::similar_names,
     // Fires on `[a, b]` built from separately computed bindings.
-    clippy::tuple_array_conversions
+    clippy::tuple_array_conversions,
+    // Numerical kernels index several arrays in step (stencils, tableaux,
+    // matrices); index loops read closest to the formulas they implement.
+    clippy::needless_range_loop,
+    // Quadrature nodes, Butcher tableaux and series coefficients are copied
+    // digit for digit from their references so they can be checked.
+    clippy::unreadable_literal,
+    clippy::excessive_precision,
+    // Time-stepping loops advance a floating-point clock to a final time.
+    clippy::while_float
 )]
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/Apich-Organization/rssn/refs/heads/dev/doc/logo.png"

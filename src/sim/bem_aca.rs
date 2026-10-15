@@ -28,23 +28,6 @@
 //! Limitations: compression helps from a few thousand elements upwards; the
 //! P1 solver is dense and not compressed; no cluster-tree rebalancing for
 //! strongly anisotropic meshes; exterior problems assume a closed surface.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::type_complexity,
-    clippy::many_single_char_names,
-    clippy::similar_names,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::manual_midpoint,
-    clippy::items_after_statements,
-    clippy::single_match_else
-)]
 
 use crate::kernels::krylov::gmres;
 use crate::sim::physics_bem::{
@@ -117,7 +100,7 @@ enum Block {
 }
 
 impl Block {
-    fn stored(&self) -> usize {
+    const fn stored(&self) -> usize {
         match self {
             Self::Dense { data, .. } => data.len(),
             Self::LowRank { u, v, .. } => u.len() + v.len(),
@@ -605,7 +588,7 @@ fn p1_regular(x: V3, tri: [V3; 3], nu: V3, single: bool, depth: usize, out: &mut
     let diam = nrm3(sub3(tri[0], tri[1])).max(nrm3(sub3(tri[1], tri[2]))).max(nrm3(sub3(tri[2], tri[0])));
     let d = nrm3(sub3(centre, x));
     if d < 1.5 * diam && depth < 5 {
-        let m = |a: V3, b: V3| [(a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0, (a[2] + b[2]) / 2.0];
+        let m = |a: V3, b: V3| [f64::midpoint(a[0], b[0]), f64::midpoint(a[1], b[1]), f64::midpoint(a[2], b[2])];
         let (m01, m12, m20) = (m(tri[0], tri[1]), m(tri[1], tri[2]), m(tri[2], tri[0]));
         // sub-triangle integrals carry the parent's shape functions: evaluate via barycentric lifting
         for (sub, lift) in [
@@ -718,16 +701,13 @@ pub fn solve_laplace_bem_3d_p1(mesh: &SurfaceMesh3D, bcs: &[VertexBc], exterior:
             for (t, tri) in tris.iter().enumerate() {
                 let own = idx[t].iter().position(|&v| v == i);
                 let mut gl = [0.0; 3];
-                match own {
-                    Some(k) => p1_singular(*tri, k, &mut gl),
-                    None => {
-                        p1_regular(x, *tri, normals[t], true, 0, &mut gl);
-                        let mut hl = [0.0; 3];
-                        p1_regular(x, *tri, normals[t], false, 0, &mut hl);
-                        for j in 0..3 {
-                            h[idx[t][j]] -= hl[j] / (4.0 * PI);
-                        }
-                    },
+                if let Some(k) = own { p1_singular(*tri, k, &mut gl) } else {
+                    p1_regular(x, *tri, normals[t], true, 0, &mut gl);
+                    let mut hl = [0.0; 3];
+                    p1_regular(x, *tri, normals[t], false, 0, &mut hl);
+                    for j in 0..3 {
+                        h[idx[t][j]] -= hl[j] / (4.0 * PI);
+                    }
                 }
                 for j in 0..3 {
                     g[idx[t][j]] += gl[j] / (4.0 * PI);

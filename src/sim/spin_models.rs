@@ -32,44 +32,6 @@
 //! couples to component 0 and is incompatible with cluster updates; the heat bath is
 //! implemented for O(N) with `N <= 3`; Wang-Landau for continuous spins is restricted to a
 //! user-supplied energy window (moves leaving it are rejected) and uses single-spin moves.
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::assigning_clones,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::chunks_exact_to_as_chunks,
-    clippy::cognitive_complexity,
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::excessive_precision,
-    clippy::float_cmp,
-    clippy::if_not_else,
-    clippy::imprecise_flops,
-    clippy::indexing_slicing,
-    clippy::int_plus_one,
-    clippy::items_after_statements,
-    clippy::manual_let_else,
-    clippy::manual_memcpy,
-    clippy::manual_midpoint,
-    clippy::many_single_char_names,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions,
-    clippy::needless_pass_by_value,
-    clippy::needless_range_loop,
-    clippy::option_if_let_else,
-    clippy::similar_names,
-    clippy::single_call_fn,
-    clippy::single_match_else,
-    clippy::suboptimal_flops,
-    clippy::suspicious_operation_groupings,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::useless_let_if_seq,
-    clippy::while_float
-)]
 
 use crate::kernels::random::Rng;
 
@@ -136,7 +98,7 @@ impl<const D: usize> Lattice<D> {
 
     /// Number of sites.
     #[must_use]
-    pub fn sites(&self) -> usize {
+    pub const fn sites(&self) -> usize {
         self.n
     }
 
@@ -557,14 +519,11 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
         let mut clusters = 0;
         for i in 0..n {
             let root = uf.find(i);
-            let f = match flip[root] {
-                Some(f) => f,
-                None => {
-                    let f = self.rng.uniform() < 0.5;
-                    flip[root] = Some(f);
-                    clusters += 1;
-                    f
-                },
+            let f = if let Some(f) = flip[root] { f } else {
+                let f = self.rng.uniform() < 0.5;
+                flip[root] = Some(f);
+                clusters += 1;
+                f
             };
             if f {
                 for k in 0..N {
@@ -685,7 +644,7 @@ impl<const D: usize> Potts<D> {
                 acc += 1;
             }
         }
-        acc as f64 / n as f64
+        f64::from(acc) / n as f64
     }
 
     /// Heat-bath sweep.
@@ -1071,7 +1030,7 @@ pub fn wang_landau_ising<const D: usize>(
     let mut ln_g = vec![0.0f64; levels];
     let mut visited = vec![false; levels];
     let mut ln_f = 1.0;
-    let idx = |e: i64| ((e + nb) / 2) as usize;
+    let idx = |e: i64| i64::midpoint(e, nb) as usize;
     while ln_f > ln_f_final {
         let mut hist = vec![0usize; levels];
         let mut checks = 0usize;
@@ -1168,7 +1127,7 @@ pub fn mean_and_error(x: &[f64]) -> (f64, f64) {
         let mu = cur.iter().sum::<f64>() / m;
         let var = cur.iter().map(|v| (v - mu).powi(2)).sum::<f64>() / (m - 1.0);
         best = best.max((var / m).sqrt());
-        cur = cur.chunks_exact(2).map(|c| 0.5 * (c[0] + c[1])).collect();
+        cur = cur.as_chunks::<2>().0.iter().map(|c| f64::midpoint(c[0], c[1])).collect();
     }
     (mean, best)
 }
@@ -1261,13 +1220,13 @@ pub fn collapse_variable(
 /// Critical temperature of the 2-D square-lattice Ising model (`k_B = 1`).
 #[must_use]
 pub fn onsager_tc(j: f64) -> f64 {
-    2.0 * j / (1.0 + std::f64::consts::SQRT_2).ln()
+    2.0 * j / std::f64::consts::SQRT_2.ln_1p()
 }
 
 fn ellip_k(k: f64) -> f64 {
     let (mut a, mut b) = (1.0, (1.0 - k * k).sqrt());
     for _ in 0..40 {
-        let (an, bn) = (0.5 * (a + b), (a * b).sqrt());
+        let (an, bn) = (f64::midpoint(a, b), (a * b).sqrt());
         a = an;
         b = bn;
     }

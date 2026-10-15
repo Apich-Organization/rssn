@@ -19,49 +19,6 @@
 //!   `2 s - 2` (`s >= 2` Gauss-Lobatto nodes) for mechanical Lagrangians
 //!   `L = q'^T M q' / 2 - V(q)`; they preserve the symplectic form and
 //!   momentum maps exactly.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::too_long_first_doc_paragraph,
-    clippy::doc_markdown,
-    clippy::option_if_let_else,
-    clippy::map_unwrap_or,
-    clippy::struct_excessive_bools,
-    clippy::items_after_statements,
-    clippy::assigning_clones,
-    clippy::unnecessary_map_or,
-    clippy::redundant_closure,
-    clippy::single_match,
-    clippy::manual_let_else,
-    clippy::unnecessary_operation,
-    clippy::cast_lossless,
-    clippy::missing_errors_doc,
-    clippy::needless_for_each,
-    clippy::unnecessary_min_or_max,
-    clippy::implicit_saturating_sub,
-    clippy::manual_range_contains,
-    clippy::neg_cmp_op_on_partial_ord,
-    clippy::unnecessary_wraps,
-    clippy::needless_pass_by_value,
-    clippy::cast_possible_wrap,
-    clippy::missing_const_for_fn,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::too_many_arguments,
-    clippy::many_single_char_names,
-    clippy::needless_range_loop,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::similar_names,
-    clippy::float_cmp,
-    clippy::suboptimal_flops,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::while_float
-)]
 
 use num_complex::Complex64;
 
@@ -419,7 +376,7 @@ fn imex_tableau(s: ImexScheme) -> ImexTableau {
                 ],
                 be: vec![0.0, b1, b2, g],
                 bi: vec![0.0, b1, b2, g],
-                c: vec![0.0, g, 0.5 * (1.0 + g), 1.0],
+                c: vec![0.0, g, f64::midpoint(1.0, g), 1.0],
             }
         }
     }

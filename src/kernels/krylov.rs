@@ -12,40 +12,6 @@
 //! [`Csr::min_degree_ordering`]), approximate minimum degree
 //! ([`Csr::amd_ordering`]) or nested dissection
 //! ([`Csr::nested_dissection_ordering`]), see [`crate::kernels::ordering`].
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
 
 /// Compressed sparse row matrix.
 #[derive(Debug, Clone, PartialEq)]
@@ -68,7 +34,7 @@ impl Csr {
     pub fn from_triplets(rows: usize, cols: usize, trip: &[(usize, usize, f64)]) -> Self {
         let mut t: Vec<(usize, usize, f64)> =
             trip.iter().copied().filter(|&(r, c, _)| r < rows && c < cols).collect();
-        t.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+        t.sort_by_key(|a| (a.0, a.1));
         let mut indptr = vec![0; rows + 1];
         let mut indices: Vec<usize> = Vec::new();
         let mut values: Vec<f64> = Vec::new();
@@ -211,7 +177,7 @@ fn nrm(a: &[f64]) -> f64 {
 }
 
 /// Identity preconditioner helper.
-pub fn identity_precond(r: &[f64], z: &mut [f64]) {
+pub const fn identity_precond(r: &[f64], z: &mut [f64]) {
     z.copy_from_slice(r);
 }
 
@@ -838,13 +804,13 @@ pub struct SparseLu {
 impl SparseLu {
     /// Number of stored entries in `L` and `U` (a measure of fill-in).
     #[must_use]
-    pub fn nnz(&self) -> usize {
+    pub const fn nnz(&self) -> usize {
         self.lx.len() + self.ux.len()
     }
 
     /// Dimension of the factored matrix.
     #[must_use]
-    pub fn dim(&self) -> usize {
+    pub const fn dim(&self) -> usize {
         self.n
     }
 

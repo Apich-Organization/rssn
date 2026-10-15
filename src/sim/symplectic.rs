@@ -18,44 +18,6 @@
 //! asymmetric top is not integrated with Jacobi elliptic functions (the splittings are
 //! used instead); non-separable or perturbed problems with velocity-dependent forces are not
 //! covered by the time-transformed schemes.
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::assigning_clones,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::chunks_exact_to_as_chunks,
-    clippy::cognitive_complexity,
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::excessive_precision,
-    clippy::float_cmp,
-    clippy::if_not_else,
-    clippy::imprecise_flops,
-    clippy::indexing_slicing,
-    clippy::int_plus_one,
-    clippy::items_after_statements,
-    clippy::manual_let_else,
-    clippy::manual_memcpy,
-    clippy::manual_midpoint,
-    clippy::many_single_char_names,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions,
-    clippy::needless_pass_by_value,
-    clippy::needless_range_loop,
-    clippy::option_if_let_else,
-    clippy::similar_names,
-    clippy::single_call_fn,
-    clippy::single_match_else,
-    clippy::suboptimal_flops,
-    clippy::suspicious_operation_groupings,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::useless_let_if_seq,
-    clippy::while_float
-)]
 
 /// A symplectic composition scheme for separable Hamiltonians.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -70,7 +32,7 @@ pub enum Scheme {
     Yoshida6,
     /// Yoshida solution A (order 8, 15 stages).
     Yoshida8,
-    /// Blanes-Moan SRKNb6 (order 4, 6 force evaluations, small error constant).
+    /// Blanes-Moan `SRKNb6` (order 4, 6 force evaluations, small error constant).
     BlanesMoan4,
 }
 
@@ -353,7 +315,7 @@ pub fn ks_from_cartesian(
     let r = (x[0] * x[0] + x[1] * x[1] + x[2] * x[2]).sqrt();
     let mut u = [0.0; 4];
     if x[0] >= 0.0 {
-        u[0] = (0.5 * (r + x[0])).sqrt();
+        u[0] = f64::midpoint(r, x[0]).sqrt();
         u[3] = 0.0;
         u[1] = (x[1] * u[0] + x[2] * u[3]) / (r + x[0]);
         u[2] = (x[2] * u[0] - x[1] * u[3]) / (r + x[0]);
@@ -587,7 +549,7 @@ impl RigidBody {
     ) {
         let inv = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
         let (a, b) = ((ax + 1) % 3, (ax + 2) % 3);
-        let inv_perp = 0.5 * (inv[a] + inv[b]);
+        let inv_perp = f64::midpoint(inv[a], inv[b]);
         let ls = self.l_space();
         let lmag = (ls[0] * ls[0] + ls[1] * ls[1] + ls[2] * ls[2]).sqrt();
         if lmag > 0.0 {
@@ -634,7 +596,7 @@ impl RigidBody {
         let ax = self.symmetry_axis();
         let inv = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
         let (a, b) = ((ax + 1) % 3, (ax + 2) % 3);
-        let inv_perp = 0.5 * (inv[a] + inv[b]);
+        let inv_perp = f64::midpoint(inv[a], inv[b]);
         for k in [a, b] {
             let z = 0.5 * h * (inv[k] - inv_perp) * self.l_body[k];
             self.rotate_by(k, z);
@@ -683,7 +645,7 @@ impl RigidBody {
         }
     }
 
-    /// One symmetric (NO_SQUISH / DLM) step of the free rotor, second order.
+    /// One symmetric (`NO_SQUISH` / DLM) step of the free rotor, second order.
     pub fn free_step(
         &mut self,
         h: f64,

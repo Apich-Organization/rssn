@@ -17,19 +17,6 @@
 //! | Equation of state | `p = ρ k_B T + α a ρ²`; measured `α ≈ 0.092` at `a = 25`, `ρ = 3` (3D, `r_c = 1`, independent of `Δt`), against `0.101` quoted by Groot and Warren |
 //!
 //! Limitations: single species, no bonds (polymers) and no walls.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::many_single_char_names,
-    clippy::similar_names,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else
-)]
 
 use crate::kernels::random::Rng;
 use std::collections::HashMap;
@@ -104,13 +91,13 @@ impl Dpd {
 
     /// Number of particles.
     #[must_use]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.pos.len()
     }
 
     /// Whether there are no particles.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.pos.is_empty()
     }
 

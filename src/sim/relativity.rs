@@ -19,44 +19,6 @@
 //! Limitations: Boyer-Lindquist coordinates are singular at the horizon, so
 //! integration stops at a user radius slightly outside it; the poles
 //! `theta = 0, pi` are excluded.
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::assigning_clones,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::chunks_exact_to_as_chunks,
-    clippy::cognitive_complexity,
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::excessive_precision,
-    clippy::float_cmp,
-    clippy::if_not_else,
-    clippy::imprecise_flops,
-    clippy::indexing_slicing,
-    clippy::int_plus_one,
-    clippy::items_after_statements,
-    clippy::manual_let_else,
-    clippy::manual_memcpy,
-    clippy::manual_midpoint,
-    clippy::many_single_char_names,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions,
-    clippy::needless_pass_by_value,
-    clippy::needless_range_loop,
-    clippy::option_if_let_else,
-    clippy::similar_names,
-    clippy::single_call_fn,
-    clippy::single_match_else,
-    clippy::suboptimal_flops,
-    clippy::suspicious_operation_groupings,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::useless_let_if_seq,
-    clippy::while_float
-)]
 
 /// Kerr-Newman spacetime with mass `m`, spin parameter `a` (`J / M`) and charge `q` (geometric units `G = c = 1`).
 #[derive(Clone, Copy, Debug)]
@@ -244,14 +206,14 @@ impl KerrNewman {
             return None;
         }
         for _ in 0..200 {
-            let mid = 0.5 * (lo + hi);
+            let mid = f64::midpoint(lo, hi);
             if f(mid) > 0.0 {
                 lo = mid;
             } else {
                 hi = mid;
             }
         }
-        Some(0.5 * (lo + hi))
+        Some(f64::midpoint(lo, hi))
     }
 
     /// Innermost stable circular orbit: the minimum of `E(r)` over timelike circular orbits.
@@ -275,7 +237,7 @@ impl KerrNewman {
                 lo = c;
             }
         }
-        Some(0.5 * (lo + hi))
+        Some(f64::midpoint(lo, hi))
     }
 }
 
@@ -346,7 +308,7 @@ impl Geodesic {
         let m = &self.metric;
         let (e, l) = (self.energy, self.lz);
         let resid = |y1: &[f64; 4]| -> [f64; 4] {
-            let mid = [0.5 * (y0[0] + y1[0]), 0.5 * (y0[1] + y1[1]), 0.5 * (y0[2] + y1[2]), 0.5 * (y0[3] + y1[3])];
+            let mid = [f64::midpoint(y0[0], y1[0]), f64::midpoint(y0[1], y1[1]), f64::midpoint(y0[2], y1[2]), f64::midpoint(y0[3], y1[3])];
             let (f, _) = m.rhs(&mid, e, l);
             [y1[0] - y0[0] - h * f[0], y1[1] - y0[1] - h * f[1], y1[2] - y0[2] - h * f[2], y1[3] - y0[3] - h * f[3]]
         };
@@ -359,7 +321,7 @@ impl Geodesic {
             let res = f.iter().map(|v| v.abs()).fold(0.0, f64::max) / scale;
             // the finite-difference gradient limits the attainable residual to ~1e-11
             if res < 1e-10 || (it >= 2 && res < 1e-7 && res >= 0.5 * prev) {
-                let mid = [0.5 * (y0[0] + y1[0]), 0.5 * (y0[1] + y1[1]), 0.5 * (y0[2] + y1[2]), 0.5 * (y0[3] + y1[3])];
+                let mid = [f64::midpoint(y0[0], y1[0]), f64::midpoint(y0[1], y1[1]), f64::midpoint(y0[2], y1[2]), f64::midpoint(y0[3], y1[3])];
                 let (_, tp) = m.rhs(&mid, e, l);
                 return Ok((y1, tp));
             }
@@ -425,7 +387,7 @@ impl Geodesic {
                 let (mut lo, mut hi) = (0.0, h);
                 let mut best = *self;
                 for _ in 0..50 {
-                    let mid = 0.5 * (lo + hi);
+                    let mid = f64::midpoint(lo, hi);
                     let mut trial = before;
                     trial.step(mid, project)?;
                     if trial.r <= r_stop {

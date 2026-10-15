@@ -22,44 +22,6 @@
 //! lives in [`crate::sim::dpd`].
 //!
 //! Limitations: no Balsara switch, no self-gravity.
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::assigning_clones,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::chunks_exact_to_as_chunks,
-    clippy::cognitive_complexity,
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::excessive_precision,
-    clippy::float_cmp,
-    clippy::if_not_else,
-    clippy::imprecise_flops,
-    clippy::indexing_slicing,
-    clippy::int_plus_one,
-    clippy::items_after_statements,
-    clippy::manual_let_else,
-    clippy::manual_memcpy,
-    clippy::manual_midpoint,
-    clippy::many_single_char_names,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions,
-    clippy::needless_pass_by_value,
-    clippy::needless_range_loop,
-    clippy::option_if_let_else,
-    clippy::similar_names,
-    clippy::single_call_fn,
-    clippy::single_match_else,
-    clippy::suboptimal_flops,
-    clippy::suspicious_operation_groupings,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::useless_let_if_seq,
-    clippy::while_float
-)]
 
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -157,7 +119,7 @@ impl KernelKind {
 }
 
 /// Boundary treatment of one axis.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SphBoundary {
     /// No boundary.
     Open,
@@ -315,23 +277,17 @@ impl<const D: usize> Sph<D> {
                 let x = g.pos[a];
                 if x - self.lo[a] < reach {
                     let mut n = *g;
-                    match self.bc[a] {
-                        SphBoundary::Periodic => n.pos[a] = x + len,
-                        _ => {
-                            n.pos[a] = 2.0 * self.lo[a] - x;
-                            n.flip[a] = -g.flip[a];
-                        },
+                    if self.bc[a] == SphBoundary::Periodic { n.pos[a] = x + len } else {
+                        n.pos[a] = 2.0 * self.lo[a] - x;
+                        n.flip[a] = -g.flip[a];
                     }
                     extra.push(n);
                 }
                 if self.hi[a] - x < reach {
                     let mut n = *g;
-                    match self.bc[a] {
-                        SphBoundary::Periodic => n.pos[a] = x - len,
-                        _ => {
-                            n.pos[a] = 2.0 * self.hi[a] - x;
-                            n.flip[a] = -g.flip[a];
-                        },
+                    if self.bc[a] == SphBoundary::Periodic { n.pos[a] = x - len } else {
+                        n.pos[a] = 2.0 * self.hi[a] - x;
+                        n.flip[a] = -g.flip[a];
                     }
                     extra.push(n);
                 }
@@ -470,14 +426,14 @@ impl<const D: usize> Sph<D> {
                     return;
                 }
                 let (dwi, dwj) = (self.kernel.dw(D, r, hi), self.kernel.dw(D, r, hj));
-                let gw = 0.5 * (dwi + dwj);
+                let gw = f64::midpoint(dwi, dwj);
                 let vr: f64 = (0..D).map(|a| vij[a] * rij[a]).sum();
                 let mut pi = 0.0;
                 if vr < 0.0 {
-                    let hb = 0.5 * (hi + hj);
+                    let hb = f64::midpoint(hi, hj);
                     let mu = hb * vr / (r2 + 0.01 * hb * hb);
-                    let cb = 0.5 * (c[i] + c[j]);
-                    let rb = 0.5 * (self.rho[i] + self.rho[j]);
+                    let cb = f64::midpoint(c[i], c[j]);
+                    let rb = f64::midpoint(self.rho[i], self.rho[j]);
                     pi = (-self.alpha * cb * mu + self.beta * mu * mu) / rb;
                 }
                 if self.grad_h {

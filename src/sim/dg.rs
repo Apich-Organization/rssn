@@ -19,22 +19,6 @@
 //! quadrilaterals (intervals in 1D); no hanging nodes, no p-adaptivity.
 //! Smooth problems converge with order `p + 1`; shocks need the filter and
 //! are first-order accurate locally.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::type_complexity,
-    clippy::many_single_char_names,
-    clippy::manual_midpoint,
-    clippy::while_float
-)]
 
 use std::sync::Arc;
 
@@ -59,7 +43,7 @@ pub trait DgLaw: Send + Sync {
         self.flux(qr, dir, &mut fr);
         let s = self.max_speed(ql, dir).max(self.max_speed(qr, dir));
         for c in 0..n {
-            out[c] = 0.5 * (fl[c] + fr[c]) - 0.5 * s * (qr[c] - ql[c]);
+            out[c] = f64::midpoint(fl[c], fr[c]) - 0.5 * s * (qr[c] - ql[c]);
         }
     }
 }
@@ -142,7 +126,7 @@ pub struct Euler2d {
 
 impl Euler2d {
     fn pressure(self, q: &[f64]) -> f64 {
-        (self.gamma - 1.0) * (q[3] - 0.5 * (q[1] * q[1] + q[2] * q[2]) / q[0])
+        (self.gamma - 1.0) * (q[3] - f64::midpoint(q[1] * q[1], q[2] * q[2]) / q[0])
     }
 }
 
@@ -197,13 +181,13 @@ pub struct DgMesh {
 impl DgMesh {
     /// One-dimensional mesh of `ne` elements on `[lo, hi]`.
     #[must_use]
-    pub fn line(ne: usize, lo: f64, hi: f64, p: usize) -> Self {
+    pub const fn line(ne: usize, lo: f64, hi: f64, p: usize) -> Self {
         Self { dim: 1, ne: [ne, 1], lo: [lo, 0.0], hi: [hi, 1.0], p }
     }
 
     /// Two-dimensional mesh.
     #[must_use]
-    pub fn rect(ne: [usize; 2], lo: [f64; 2], hi: [f64; 2], p: usize) -> Self {
+    pub const fn rect(ne: [usize; 2], lo: [f64; 2], hi: [f64; 2], p: usize) -> Self {
         Self { dim: 2, ne, lo, hi, p }
     }
 
@@ -213,13 +197,13 @@ impl DgMesh {
 
     /// Nodes per element.
     #[must_use]
-    pub fn nodes_per_element(&self) -> usize {
+    pub const fn nodes_per_element(&self) -> usize {
         (self.p + 1).pow(self.dim as u32)
     }
 
     /// Number of elements.
     #[must_use]
-    pub fn elements(&self) -> usize {
+    pub const fn elements(&self) -> usize {
         self.ne[0] * if self.dim == 2 { self.ne[1] } else { 1 }
     }
 }
@@ -338,7 +322,7 @@ pub struct DgSolution {
 }
 
 impl DgSolution {
-    fn node_ij(&self, node: usize) -> [usize; 2] {
+    const fn node_ij(&self, node: usize) -> [usize; 2] {
         let n1 = self.mesh.p + 1;
         [node % n1, node / n1]
     }
@@ -351,7 +335,7 @@ impl DgSolution {
         let ex = [e % m.ne[0], e / m.ne[0]];
         let mut x = [0.0; 2];
         for a in 0..m.dim {
-            x[a] = m.lo[a] + (ex[a] as f64 + 0.5 * (1.0 + self.xi[ij[a]])) * m.h(a);
+            x[a] = m.lo[a] + (ex[a] as f64 + f64::midpoint(1.0, self.xi[ij[a]])) * m.h(a);
         }
         x
     }
@@ -407,7 +391,7 @@ struct Ctx<'a> {
 }
 
 impl Ctx<'_> {
-    fn node(&self, i: usize, j: usize) -> usize {
+    const fn node(&self, i: usize, j: usize) -> usize {
         i + self.n1 * j
     }
 
@@ -481,7 +465,7 @@ impl Ctx<'_> {
                                         let ex = [e % m.ne[0], e / m.ne[0]];
                                         let mut x = [0.0; 2];
                                         for b in 0..m.dim {
-                                            x[b] = m.lo[b] + (ex[b] as f64 + 0.5 * (1.0 + xi[ij[b]])) * m.h(b);
+                                            x[b] = m.lo[b] + (ex[b] as f64 + f64::midpoint(1.0, xi[ij[b]])) * m.h(b);
                                         }
                                         x
                                     };
@@ -540,7 +524,7 @@ fn minmod3(a: f64, b: f64, c: f64) -> f64 {
 }
 
 impl Ctx<'_> {
-    fn neighbour(&self, e: usize, axis: usize, max: bool) -> Option<usize> {
+    const fn neighbour(&self, e: usize, axis: usize, max: bool) -> Option<usize> {
         let m = &self.mesh;
         let mut c = [e % m.ne[0], e / m.ne[0]];
         let periodic = matches!(self.bcs[2 * axis], DgBc::Periodic);
@@ -607,9 +591,9 @@ impl Ctx<'_> {
                         let scale = 1e-9 * (mean.abs() + up.abs() + um.abs() + 1e-300);
                         if (sp - up).abs() > scale || (sm - um).abs() > scale {
                             troubled = true;
-                            slopes[a] = 0.5 * (sp + sm);
+                            slopes[a] = f64::midpoint(sp, sm);
                         } else {
-                            slopes[a] = 0.5 * (up + um);
+                            slopes[a] = f64::midpoint(up, um);
                         }
                     }
                     if troubled {
@@ -657,7 +641,7 @@ impl Ctx<'_> {
                     if !ok(1.0) {
                         let (mut lo, mut hi) = (0.0, 1.0);
                         for _ in 0..40 {
-                            let mid = 0.5 * (lo + hi);
+                            let mid = f64::midpoint(lo, hi);
                             if ok(mid) {
                                 lo = mid;
                             } else {
@@ -714,7 +698,7 @@ pub fn solve_dg_limited(
     filter: Option<ModalFilter>,
     limiter: Option<DgLimiter>,
 ) -> Result<DgSolution, String> {
-    if !(1..=2).contains(&mesh.dim) || mesh.p == 0 || mesh.ne.iter().any(|&n| n == 0) {
+    if !(1..=2).contains(&mesh.dim) || mesh.p == 0 || mesh.ne.contains(&0) {
         return Err("invalid DG mesh".into());
     }
     for a in 0..mesh.dim {

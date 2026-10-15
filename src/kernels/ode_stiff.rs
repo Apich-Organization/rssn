@@ -18,49 +18,6 @@
 //! Limitations: the stage systems are solved with one dense `s n x s n` LU
 //! (no sparse or banded Jacobians); DAEs are limited to index 1; the error
 //! estimate of the DAE case does not exclude algebraic components.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::too_long_first_doc_paragraph,
-    clippy::doc_markdown,
-    clippy::map_unwrap_or,
-    clippy::struct_excessive_bools,
-    clippy::items_after_statements,
-    clippy::assigning_clones,
-    clippy::unnecessary_map_or,
-    clippy::redundant_closure,
-    clippy::single_match,
-    clippy::manual_let_else,
-    clippy::unnecessary_operation,
-    clippy::cast_lossless,
-    clippy::missing_errors_doc,
-    clippy::needless_for_each,
-    clippy::unnecessary_min_or_max,
-    clippy::implicit_saturating_sub,
-    clippy::manual_range_contains,
-    clippy::neg_cmp_op_on_partial_ord,
-    clippy::unnecessary_wraps,
-    clippy::cast_possible_wrap,
-    clippy::missing_const_for_fn,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::too_many_arguments,
-    clippy::many_single_char_names,
-    clippy::needless_range_loop,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::suboptimal_flops,
-    clippy::float_cmp,
-    clippy::similar_names,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::while_float,
-    clippy::needless_pass_by_value,
-    clippy::option_if_let_else
-)]
 
 use crate::kernels::dense::{self, Lu, Mat};
 use crate::kernels::ode_adaptive::{
@@ -148,11 +105,11 @@ impl RadauTab {
             let xb = -1.0 + 2.0 * (1.0 - 1e-7) * i as f64 / grid as f64;
             let gb = g(xb);
             if ga == 0.0 {
-                c.push((xa + 1.0) / 2.0);
+                c.push(f64::midpoint(xa, 1.0));
             } else if ga * gb < 0.0 {
                 let (mut lo, mut hi, mut glo) = (xa, xb, ga);
                 for _ in 0..200 {
-                    let mid = 0.5 * (lo + hi);
+                    let mid = f64::midpoint(lo, hi);
                     let gm = g(mid);
                     if gm * glo <= 0.0 {
                         hi = mid;
@@ -161,7 +118,7 @@ impl RadauTab {
                         glo = gm;
                     }
                 }
-                c.push(((0.5 * (lo + hi)) + 1.0) / 2.0);
+                c.push(f64::midpoint(f64::midpoint(lo, hi), 1.0));
             }
             xa = xb;
             ga = gb;

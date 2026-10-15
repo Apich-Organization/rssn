@@ -19,21 +19,6 @@
 //!
 //! Limitations: periodic boundaries only (use a large box or an absorbing
 //! potential for scattering), no rotating frame, no dipolar interactions.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::many_single_char_names,
-    clippy::manual_midpoint,
-    clippy::while_float
-)]
 
 use crate::sim::spectral::SpectralGrid;
 use num_complex::Complex;
@@ -150,7 +135,7 @@ impl SplitStep {
         let _ = t;
         let half = |psi: &mut [Complex<f64>]| {
             for (p, c) in psi.iter_mut().enumerate() {
-                let phase = (vv[p] + g * c.norm_sqr()) * 0.5 * dt;
+                let phase = f64::midpoint(vv[p], g * c.norm_sqr()) * dt;
                 *c *= if imaginary { Complex::new((-phase).exp(), 0.0) } else { Complex::new(0.0, -phase).exp() };
             }
         };

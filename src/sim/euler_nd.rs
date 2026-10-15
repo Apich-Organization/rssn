@@ -24,22 +24,6 @@
 //!
 //! Limitations: no source terms (bathymetry, gravity), no dry-bed treatment
 //! beyond a small depth floor, uniform grids only, no adaptive mesh.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::type_complexity,
-    clippy::many_single_char_names,
-    clippy::manual_midpoint,
-    clippy::while_float
-)]
 
 /// Conserved or primitive state with up to five components.
 pub type State = [f64; 5];
@@ -170,13 +154,13 @@ impl FvGrid {
 
     /// Flat index of cell `(i, j, k)`.
     #[must_use]
-    pub fn index(&self, i: [usize; 3]) -> usize {
+    pub const fn index(&self, i: [usize; 3]) -> usize {
         i[0] + self.n[0] * (i[1] + self.n[1] * i[2])
     }
 
     /// Cell multi-index.
     #[must_use]
-    pub fn ijk(&self, p: usize) -> [usize; 3] {
+    pub const fn ijk(&self, p: usize) -> [usize; 3] {
         let r = p / self.n[0];
         [p % self.n[0], r % self.n[1], r / self.n[1]]
     }
@@ -211,7 +195,7 @@ pub struct FvConfig {
 impl FvConfig {
     /// Euler solver with all faces transmissive, HLLC + WENO5, CFL 0.4.
     #[must_use]
-    pub fn euler(gamma: f64) -> Self {
+    pub const fn euler(gamma: f64) -> Self {
         Self {
             law: Law::Euler { gamma },
             recon: Reconstruction::Weno5,
@@ -223,7 +207,7 @@ impl FvConfig {
 
     /// Shallow-water solver with all faces transmissive, HLLC + MUSCL(minmod).
     #[must_use]
-    pub fn shallow_water(g: f64) -> Self {
+    pub const fn shallow_water(g: f64) -> Self {
         Self {
             law: Law::ShallowWater { g },
             recon: Reconstruction::Muscl(SlopeLimiter::Minmod),
@@ -235,7 +219,7 @@ impl FvConfig {
 
     /// Sets both faces of an axis.
     #[must_use]
-    pub fn with_axis(mut self, axis: usize, bc: GasBc) -> Self {
+    pub const fn with_axis(mut self, axis: usize, bc: GasBc) -> Self {
         self.bcs[2 * axis] = bc;
         self.bcs[2 * axis + 1] = bc;
         self
@@ -243,7 +227,7 @@ impl FvConfig {
 
     /// Sets one face (`2 * axis + is_max`).
     #[must_use]
-    pub fn with_face(mut self, face: usize, bc: GasBc) -> Self {
+    pub const fn with_face(mut self, face: usize, bc: GasBc) -> Self {
         self.bcs[face] = bc;
         self
     }
@@ -343,7 +327,7 @@ fn flux_x(law: Law, w: &State) -> State {
     }
 }
 
-fn swap_dir(s: &mut State, d: usize) {
+const fn swap_dir(s: &mut State, d: usize) {
     if d > 0 {
         s.swap(1, 1 + d);
     }
@@ -379,7 +363,7 @@ fn riemann_flux(law: Law, solver: RiemannSolver, l: &State, r: &State) -> State 
             let s = (l[1].abs() + cl).max(r[1].abs() + cr);
             let mut f = [0.0; 5];
             for c in 0..nv {
-                f[c] = 0.5 * (fl[c] + fr[c]) - 0.5 * s * (qr[c] - ql[c]);
+                f[c] = f64::midpoint(fl[c], fr[c]) - 0.5 * s * (qr[c] - ql[c]);
             }
             f
         },
@@ -421,7 +405,7 @@ fn riemann_flux(law: Law, solver: RiemannSolver, l: &State, r: &State) -> State 
             let mut diss = [0.0; 5];
             let fix = |lam: f64, delta: f64| {
                 let a = lam.abs();
-                if a < delta { 0.5 * (lam * lam / delta + delta) } else { a }
+                if a < delta { f64::midpoint(lam * lam / delta, delta) } else { a }
             };
             match law {
                 Law::Euler { gamma } => {
@@ -454,7 +438,7 @@ fn riemann_flux(law: Law, solver: RiemannSolver, l: &State, r: &State) -> State 
                 },
                 Law::ShallowWater { .. } => {
                     let vt = (sl_ * l[2] + sr_ * r[2]) / (sl_ + sr_);
-                    let ht = 0.5 * (l[0] + r[0]);
+                    let ht = f64::midpoint(l[0], r[0]);
                     let c = ct;
                     let (dh, dm) = (r[0] - l[0], r[0] * r[1] - l[0] * l[1]);
                     let a1 = ((ut + c) * dh - dm) / (2.0 * c);
@@ -472,7 +456,7 @@ fn riemann_flux(law: Law, solver: RiemannSolver, l: &State, r: &State) -> State 
             }
             let mut f = [0.0; 5];
             for c in 0..nv {
-                f[c] = 0.5 * (fl[c] + fr[c]) - 0.5 * diss[c];
+                f[c] = f64::midpoint(fl[c], fr[c]) - 0.5 * diss[c];
             }
             f
         },
@@ -488,7 +472,7 @@ fn limit(lim: SlopeLimiter, a: f64, b: f64) -> f64 {
         SlopeLimiter::Minmod => if a.abs() < b.abs() { a } else { b },
         SlopeLimiter::VanLeer => 2.0 * a * b / (a + b),
         SlopeLimiter::Mc => {
-            let c = 0.5 * (a + b);
+            let c = f64::midpoint(a, b);
             let m = (2.0 * a.abs()).min(2.0 * b.abs()).min(c.abs());
             m.copysign(a)
         },
@@ -548,7 +532,7 @@ fn nrbc_ghost(law: Law, q: State, w_inf: &State, axis: usize, max: bool) -> Stat
     let rc = w_inf[0] * c;
     let sgn = if max { 1.0 } else { -1.0 };
     let (un_i, un_inf) = (sgn * wi[1 + axis], sgn * w_inf[1 + axis]);
-    let rp = 0.5 * ((wi[4] - w_inf[4]) + rc * (un_i - un_inf));
+    let rp = f64::midpoint(wi[4] - w_inf[4], rc * (un_i - un_inf));
     let p_g = (w_inf[4] + rp).max(1e-8);
     let un_g = un_inf + rp / rc;
     let mut wg = if un_inf >= 0.0 { wi } else { *w_inf };
@@ -576,7 +560,7 @@ impl Padded {
         Self { np, g }
     }
 
-    fn idx(&self, i: [usize; 3]) -> usize {
+    const fn idx(&self, i: [usize; 3]) -> usize {
         i[0] + self.np[0] * (i[1] + self.np[1] * i[2])
     }
 

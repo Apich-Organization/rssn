@@ -18,48 +18,6 @@
 //! `sqrtm` and `logm` require that `A` has no eigenvalues on the closed
 //! negative real axis (for `logm` also that `A` is nonsingular); they return
 //! an error otherwise.
-#![allow(
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::manual_midpoint,
-    clippy::too_long_first_doc_paragraph,
-    clippy::while_float,
-    clippy::doc_markdown,
-    clippy::option_if_let_else,
-    clippy::map_unwrap_or,
-    clippy::struct_excessive_bools,
-    clippy::items_after_statements,
-    clippy::assigning_clones,
-    clippy::unnecessary_map_or,
-    clippy::redundant_closure,
-    clippy::single_match,
-    clippy::manual_let_else,
-    clippy::unnecessary_operation,
-    clippy::cast_lossless,
-    clippy::missing_errors_doc,
-    clippy::needless_for_each,
-    clippy::unnecessary_min_or_max,
-    clippy::implicit_saturating_sub,
-    clippy::manual_range_contains,
-    clippy::neg_cmp_op_on_partial_ord,
-    clippy::unnecessary_wraps,
-    clippy::needless_pass_by_value,
-    clippy::cast_possible_wrap,
-    clippy::missing_const_for_fn,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::too_many_arguments,
-    clippy::many_single_char_names,
-    clippy::needless_range_loop,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::similar_names,
-    clippy::float_cmp,
-    clippy::suboptimal_flops
-)]
 
 use crate::kernels::dense::{self, DenseError, Mat};
 use crate::kernels::krylov::Csr;
@@ -396,7 +354,7 @@ pub fn expm_multiply(a: &Csr, v: &[f64], t: f64) -> Vec<f64> {
         for j in 1..200 {
             a.matvec(&term, &mut tmp);
             for i in 0..n {
-                term[i] = tmp[i] * h / j as f64;
+                term[i] = tmp[i] * h / f64::from(j);
                 sum[i] += term[i];
             }
             let tn = term.iter().fold(0.0_f64, |m, x| m.max(x.abs()));

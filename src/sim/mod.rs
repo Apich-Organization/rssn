@@ -23,7 +23,6 @@
 //! | `classical`, `physics_md`, `physics_rkm`, `integrators` | fixed or runtime | see module docs | legacy / ODE tools |
 
 // The grid kernels index raw buffers inside parallel loops.
-#![allow(unsafe_code)]
 
 /// Common boundary-condition description shared by the continuum solvers.
 pub mod boundary;

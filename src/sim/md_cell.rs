@@ -147,13 +147,13 @@ pub fn mat_exp_phi1<const D: usize>(a: &Mat<D>) -> (Mat<D>, Mat<D>) {
         term = mat_mul(&term, &x);
         for r in &mut term {
             for c in r.iter_mut() {
-                *c /= k as f64;
+                *c /= f64::from(k);
             }
         }
         for i in 0..D {
             for j in 0..D {
                 e[i][j] += term[i][j];
-                phi[i][j] += term[i][j] / (k + 1) as f64;
+                phi[i][j] += term[i][j] / f64::from(k + 1);
             }
         }
     }
@@ -231,7 +231,7 @@ impl FlexibleBarostat {
 
     /// Number of independent cell degrees of freedom.
     #[must_use]
-    pub fn cell_dof(&self) -> usize {
+    pub const fn cell_dof(&self) -> usize {
         match self.mode {
             CellMode::Full => self.d * (self.d + 1) / 2,
             CellMode::Orthorhombic => self.d,
@@ -276,7 +276,7 @@ impl FlexibleBarostat {
 }
 
 impl<const D: usize> MdSimulation<D> {
-    fn constrained_dof(&self) -> f64 {
+    const fn constrained_dof(&self) -> f64 {
         (D * self.sys.n()).saturating_sub(self.constraints.len()) as f64
     }
 
@@ -318,7 +318,7 @@ impl<const D: usize> MdSimulation<D> {
             CellMode::Full => {
                 for a in 0..D {
                     for c in a + 1..D {
-                        let m = 0.5 * (g[a][c] + g[c][a]);
+                        let m = f64::midpoint(g[a][c], g[c][a]);
                         g[a][c] = m;
                         g[c][a] = m;
                     }

@@ -16,26 +16,6 @@
 //! (exact for P1, centroid value for P2) and von Mises stress are provided.
 //!
 //! Limitations: isotropic, homogeneous material; small strain; static only.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::collapsible_if,
-    clippy::bool_to_int_with_if,
-    clippy::needless_late_init,
-    clippy::option_if_let_else,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::type_complexity,
-    clippy::many_single_char_names,
-    clippy::similar_names,
-    clippy::cognitive_complexity
-)]
 
 use crate::kernels::krylov::Csr;
 use crate::sim::boundary::{ElasticBoundary, MarkerBcs};

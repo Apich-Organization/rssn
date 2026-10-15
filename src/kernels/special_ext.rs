@@ -7,40 +7,6 @@
 //! period reduction.
 //!
 //! Elliptic integrals use the *parameter* `m = k^2`.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
 
 use std::f64::consts::PI;
 
@@ -120,7 +86,7 @@ pub fn elliptic_k(m: f64) -> f64 {
     // AGM: K = pi / (2 agm(1, sqrt(1-m)))
     let (mut a, mut b) = (1.0, (1.0 - m).sqrt());
     for _ in 0..64 {
-        let an = 0.5 * (a + b);
+        let an = f64::midpoint(a, b);
         b = (a * b).sqrt();
         a = an;
         if (a - b).abs() <= 1e-16 * a {
@@ -209,7 +175,7 @@ fn jacobi_landen(u: f64, m: f64) -> (f64, f64) {
     c[0] = m.sqrt();
     let mut n = 0;
     while n < 39 && c[n].abs() > 1e-16 {
-        a[n + 1] = 0.5 * (a[n] + b);
+        a[n + 1] = f64::midpoint(a[n], b);
         c[n + 1] = 0.5 * (a[n] - b);
         b = (a[n] * b).sqrt();
         n += 1;
@@ -218,7 +184,7 @@ fn jacobi_landen(u: f64, m: f64) -> (f64, f64) {
     let mut i = n;
     while i > 0 {
         let arg = (c[i] * phi.sin() / a[i]).clamp(-1.0, 1.0);
-        phi = 0.5 * (phi + arg.asin());
+        phi = f64::midpoint(phi, arg.asin());
         i -= 1;
     }
     phi.sin_cos()
@@ -602,7 +568,7 @@ fn bessel_series(n: usize, x: f64, sign: f64) -> f64 {
     let mut sum = term;
     let q = sign * h * h;
     for k in 1..2000 {
-        let kf = k as f64;
+        let kf = f64::from(k);
         term *= q / (kf * (kf + n as f64));
         sum += term;
         if term.abs() < 1e-18 * sum.abs() {

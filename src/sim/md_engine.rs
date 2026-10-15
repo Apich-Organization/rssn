@@ -30,44 +30,6 @@
 //! flexible barostat is the SHAKE impulse (first-order lag in the time step); the
 //! neighbour list of a triclinic cell is rebuilt when the affine deformation plus particle
 //! displacement exceed the skin.
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::assigning_clones,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::chunks_exact_to_as_chunks,
-    clippy::cognitive_complexity,
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::excessive_precision,
-    clippy::float_cmp,
-    clippy::if_not_else,
-    clippy::imprecise_flops,
-    clippy::indexing_slicing,
-    clippy::int_plus_one,
-    clippy::items_after_statements,
-    clippy::manual_let_else,
-    clippy::manual_memcpy,
-    clippy::manual_midpoint,
-    clippy::many_single_char_names,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions,
-    clippy::needless_pass_by_value,
-    clippy::needless_range_loop,
-    clippy::option_if_let_else,
-    clippy::similar_names,
-    clippy::single_call_fn,
-    clippy::single_match_else,
-    clippy::suboptimal_flops,
-    clippy::suspicious_operation_groupings,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::useless_let_if_seq,
-    clippy::while_float
-)]
 
 use std::collections::HashSet;
 
@@ -113,7 +75,7 @@ pub struct SimBox<const D: usize> {
 impl<const D: usize> SimBox<D> {
     /// Fully periodic box.
     #[must_use]
-    pub fn periodic(len: [f64; D]) -> Self {
+    pub const fn periodic(len: [f64; D]) -> Self {
         Self { len, bc: [Boundary::Periodic; D], shear_rate: 0.0, offset: 0.0, cell: None, cell_inv: [[0.0; D]; D] }
     }
 
@@ -210,7 +172,7 @@ impl<const D: usize> SimBox<D> {
 
     /// Box with explicit per-axis boundaries.
     #[must_use]
-    pub fn new(
+    pub const fn new(
         len: [f64; D],
         bc: [Boundary; D],
     ) -> Self {
@@ -309,7 +271,7 @@ impl<const D: usize> MdSystem<D> {
 
     /// Number of particles.
     #[must_use]
-    pub fn n(&self) -> usize {
+    pub const fn n(&self) -> usize {
         self.pos.len()
     }
 
@@ -787,7 +749,7 @@ pub struct NeighbourList<const D: usize> {
 impl<const D: usize> NeighbourList<D> {
     /// Creates an empty list.
     #[must_use]
-    pub fn new(
+    pub const fn new(
         rcut: f64,
         skin: f64,
     ) -> Self {
@@ -1402,7 +1364,7 @@ impl<const D: usize> MdSimulation<D> {
 
     /// Degrees of freedom (`D N - D - n_constraints`).
     #[must_use]
-    pub fn dof(&self) -> f64 {
+    pub const fn dof(&self) -> f64 {
         (D * self.sys.n()).saturating_sub(D + self.constraints.len()) as f64
     }
 
@@ -1834,7 +1796,7 @@ impl<const D: usize> Rdf<D> {
             .map(|k| {
                 let (r1, r2) = (k as f64 * dr, (k + 1) as f64 * dr);
                 let shell = vb * (r2.powi(D as i32) - r1.powi(D as i32));
-                (0.5 * (r1 + r2), self.hist[k] / (self.frames as f64 * self.n as f64 * rho * shell))
+                (f64::midpoint(r1, r2), self.hist[k] / (self.frames as f64 * self.n as f64 * rho * shell))
             })
             .collect()
     }

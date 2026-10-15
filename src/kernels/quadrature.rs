@@ -12,40 +12,6 @@
 //!   error-driven subdivision) on hyperrectangles.
 //!
 //! Everything is deterministic: random sampling uses a seeded generator.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
 
 use std::cell::RefCell;
 use std::f64::consts::PI;
@@ -150,7 +116,7 @@ pub fn gk_panel<F: Fn(f64) -> f64>(
         GkRule::G10K21 => (&XGK21, &WGK21),
     };
     let n = xgk.len();
-    let c = 0.5 * (a + b);
+    let c = f64::midpoint(a, b);
     let h = 0.5 * (b - a);
     let fc = f(c);
     let mut resk = wgk[n - 1] * fc;
@@ -228,7 +194,7 @@ pub fn integrate_gk<F: Fn(f64) -> f64>(
             }
         }
         let (pa, pb, _, _) = panels[wi];
-        let mid = 0.5 * (pa + pb);
+        let mid = f64::midpoint(pa, pb);
         if mid <= pa.min(pb) || mid >= pa.max(pb) {
             break;
         }
@@ -417,7 +383,7 @@ pub fn clenshaw_curtis_rule(n: usize) -> (Vec<f64>, Vec<f64>) {
 pub fn clenshaw_curtis<F: Fn(f64) -> f64>(f: F, a: f64, b: f64, n: usize) -> f64 {
     let (x, w) = clenshaw_curtis_rule(n);
     let h = 0.5 * (b - a);
-    let m = 0.5 * (a + b);
+    let m = f64::midpoint(a, b);
     h * x.iter().zip(&w).map(|(&xi, &wi)| wi * f(m + h * xi)).sum::<f64>()
 }
 
@@ -810,7 +776,7 @@ fn gm_apply<F: Fn(&[f64]) -> f64>(f: &F, center: Vec<f64>, half: Vec<f64>) -> Gm
 }
 
 /// Number of integrand evaluations per Genz-Malik rule application.
-fn gm_cost(n: usize) -> usize {
+const fn gm_cost(n: usize) -> usize {
     1 + 4 * n + 2 * n * (n - 1) + (1usize << n)
 }
 

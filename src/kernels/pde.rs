@@ -36,28 +36,6 @@
 //! [`crate::sim::spectral`]): 3D, Robin and periodic faces for heat/wave/Poisson,
 //! time-dependent boundary data, absorbing boundaries, adaptive time stepping,
 //! Newton–Krylov nonlinear diffusion, multigrid and spectral solves.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::too_many_lines,
-    clippy::cast_precision_loss,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::needless_range_loop,
-    clippy::too_many_arguments,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::suboptimal_flops,
-    clippy::float_cmp,
-    clippy::similar_names,
-    clippy::while_float,
-    clippy::needless_pass_by_value,
-    clippy::neg_cmp_op_on_partial_ord,
-    clippy::too_long_first_doc_paragraph
-)]
 
 use crate::kernels::krylov::{Csr, SparseOrdering, cg};
 use crate::kernels::ode_adaptive::{OdeError, OdeOptions};
@@ -109,7 +87,7 @@ impl Boundary {
         Self::neumann(move |_, _| v)
     }
 
-    fn is_dirichlet(&self) -> bool {
+    const fn is_dirichlet(&self) -> bool {
         matches!(self, Self::Dirichlet(_))
     }
 
@@ -220,7 +198,7 @@ pub struct Grid2D {
 impl Grid2D {
     /// Unit square with `n x n` nodes.
     #[must_use]
-    pub fn unit_square(n: usize) -> Self {
+    pub const fn unit_square(n: usize) -> Self {
         Self { x0: 0.0, x1: 1.0, y0: 0.0, y1: 1.0, nx: n, ny: n }
     }
 

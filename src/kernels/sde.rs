@@ -24,48 +24,6 @@
 //! Limitation: the order-1 schemes need commutative noise (otherwise the
 //! Levy areas would be required); for non-commutative noise use
 //! [`euler_maruyama`].
-#![allow(
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::manual_midpoint,
-    clippy::too_long_first_doc_paragraph,
-    clippy::while_float,
-    clippy::doc_markdown,
-    clippy::option_if_let_else,
-    clippy::map_unwrap_or,
-    clippy::struct_excessive_bools,
-    clippy::items_after_statements,
-    clippy::assigning_clones,
-    clippy::unnecessary_map_or,
-    clippy::redundant_closure,
-    clippy::single_match,
-    clippy::manual_let_else,
-    clippy::unnecessary_operation,
-    clippy::cast_lossless,
-    clippy::missing_errors_doc,
-    clippy::needless_for_each,
-    clippy::unnecessary_min_or_max,
-    clippy::implicit_saturating_sub,
-    clippy::manual_range_contains,
-    clippy::neg_cmp_op_on_partial_ord,
-    clippy::unnecessary_wraps,
-    clippy::needless_pass_by_value,
-    clippy::cast_possible_wrap,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::missing_const_for_fn,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::many_single_char_names,
-    clippy::needless_range_loop,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::similar_names,
-    clippy::float_cmp,
-    clippy::suboptimal_flops,
-    clippy::type_complexity
-)]
 
 use crate::kernels::random::Rng;
 
@@ -308,9 +266,9 @@ where
         drift(t + h, &pred, &mut a2);
         diff(t + h, &pred, &mut g2);
         for i in 0..n {
-            let mut s = 0.5 * (a[i] + a2[i]) * h;
+            let mut s = f64::midpoint(a[i], a2[i]) * h;
             for j in 0..m {
-                s += 0.5 * (g[i * m + j] + g2[i * m + j]) * dw[j];
+                s += f64::midpoint(g[i * m + j], g2[i * m + j]) * dw[j];
             }
             y[i] += s;
         }

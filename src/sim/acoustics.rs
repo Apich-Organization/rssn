@@ -20,23 +20,6 @@
 //!
 //! Limitations: homogeneous medium, no dispersive attenuation, Dirichlet data
 //! must be zero (`p = 0`).
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::collapsible_if,
-    clippy::bool_to_int_with_if,
-    clippy::option_if_let_else,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::many_single_char_names,
-    clippy::similar_names,
-    clippy::cognitive_complexity
-)]
 
 use crate::sim::boundary::{BoundaryCondition, Face, FaceBcs};
 
@@ -187,13 +170,13 @@ impl Acoustics {
 
     /// Cells per axis.
     #[must_use]
-    pub fn n(&self) -> [usize; 3] {
+    pub const fn n(&self) -> [usize; 3] {
         self.cfg.n
     }
 
     /// Flat cell index.
     #[must_use]
-    pub fn idx(&self, i: usize, j: usize, k: usize) -> usize {
+    pub const fn idx(&self, i: usize, j: usize, k: usize) -> usize {
         i + self.cfg.n[0] * (j + self.cfg.n[1] * k)
     }
 
@@ -233,7 +216,7 @@ impl Acoustics {
         0.5 * s * dv
     }
 
-    fn face_dims(&self, a: usize) -> [usize; 3] {
+    const fn face_dims(&self, a: usize) -> [usize; 3] {
         let mut e = self.cfg.n;
         e[a] += 1;
         e

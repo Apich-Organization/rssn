@@ -10,40 +10,6 @@
 //!   and roots (colleague matrix);
 //! * AAA rational approximation (real data, barycentric form) and Pade
 //!   approximants from Taylor coefficients.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
 
 use std::f64::consts::PI;
 
@@ -346,7 +312,7 @@ pub fn bspline_interpolate(
 /// `cos(pi k / n)` mapped to `[a, b]`, `k = 0..=n`.
 #[must_use]
 pub fn chebyshev_points(n: usize, a: f64, b: f64) -> Vec<f64> {
-    (0..=n).map(|k| 0.5 * (a + b) + 0.5 * (b - a) * (PI * k as f64 / n as f64).cos()).collect()
+    (0..=n).map(|k| f64::midpoint(a, b) + 0.5 * (b - a) * (PI * k as f64 / n as f64).cos()).collect()
 }
 
 /// A function on `[a, b]` represented by Chebyshev coefficients.
@@ -413,7 +379,7 @@ impl ChebSeries {
 
     /// Degree of the series.
     #[must_use]
-    pub fn degree(&self) -> usize {
+    pub const fn degree(&self) -> usize {
         self.coeffs.len().saturating_sub(1)
     }
 
@@ -497,7 +463,7 @@ impl ChebSeries {
         let mut out: Vec<f64> = ev
             .iter()
             .filter(|&&(re, im)| im.abs() < 1e-8 && re.abs() <= 1.0 + 1e-10)
-            .map(|&(re, _)| 0.5 * (self.a + self.b) + 0.5 * (self.b - self.a) * re)
+            .map(|&(re, _)| f64::midpoint(self.a, self.b) + 0.5 * (self.b - self.a) * re)
             .collect();
         out.sort_by(f64::total_cmp);
         Ok(out)
@@ -536,7 +502,7 @@ impl Aaa {
 
     /// Degree (`numerator = denominator = m - 1`).
     #[must_use]
-    pub fn degree(&self) -> usize {
+    pub const fn degree(&self) -> usize {
         self.z.len().saturating_sub(1)
     }
 }

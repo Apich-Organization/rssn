@@ -6,40 +6,6 @@
 //! pseudo-inverse, rank, 2-norm condition number) and the eigenvalues of a
 //! general real matrix by Hessenberg reduction and the shifted QR
 //! algorithm.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
 
 use std::fmt;
 
@@ -680,9 +646,7 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
                 h[m][j] = t;
             }
             for j in 1..=n {
-                let t = h[j][i];
-                h[j][i] = h[j][m];
-                h[j][m] = t;
+                h[j].swap(i, m);
             }
         }
         if x != 0.0 {
@@ -810,7 +774,7 @@ pub fn eigenvalues(a: &Mat) -> Result<Vec<(f64, f64)>, DenseError> {
                 if k != m {
                     p = h[k][k - 1];
                     q = h[k + 1][k - 1];
-                    r = if k != nn - 1 { h[k + 2][k - 1] } else { 0.0 };
+                    r = if k == nn - 1 { 0.0 } else { h[k + 2][k - 1] };
                     x = p.abs() + q.abs() + r.abs();
                     if x != 0.0 {
                         p /= x;

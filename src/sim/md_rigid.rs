@@ -12,44 +12,6 @@
 //! particles are supported (zero principal moments are treated as non-rotating axes).
 //! Pressure uses the molecular virial.
 
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::assigning_clones,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::chunks_exact_to_as_chunks,
-    clippy::cognitive_complexity,
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::excessive_precision,
-    clippy::float_cmp,
-    clippy::if_not_else,
-    clippy::imprecise_flops,
-    clippy::indexing_slicing,
-    clippy::int_plus_one,
-    clippy::items_after_statements,
-    clippy::manual_let_else,
-    clippy::manual_memcpy,
-    clippy::manual_midpoint,
-    clippy::many_single_char_names,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions,
-    clippy::needless_pass_by_value,
-    clippy::needless_range_loop,
-    clippy::option_if_let_else,
-    clippy::similar_names,
-    clippy::single_call_fn,
-    clippy::single_match_else,
-    clippy::suboptimal_flops,
-    clippy::suspicious_operation_groupings,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::useless_let_if_seq,
-    clippy::while_float
-)]
 
 use crate::kernels::random::Rng;
 use crate::sim::md_engine::{compute_forces, ForceField, Forces, MdSystem, NeighbourList};
@@ -91,7 +53,7 @@ pub struct RigidMdSimulation {
     pub dt: f64,
     /// Even composition order of the rotational flow (2 = Strang).
     pub order: usize,
-    /// Use exact symmetric-top flows (true) or NO_SQUISH axis rotations (false).
+    /// Use exact symmetric-top flows (true) or `NO_SQUISH` axis rotations (false).
     pub top_split: bool,
     rng: Rng,
 }

@@ -7,40 +7,6 @@
 //!   constraints;
 //! * linear programming: two-phase tableau simplex with Dantzig or
 //!   steepest-edge pricing and Bland's rule as an anti-cycling fallback.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
 
 use crate::kernels::dense::{self, Mat};
 use crate::kernels::random::Rng;
@@ -191,7 +157,7 @@ fn line_search<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
                 return best;
             }
         }
-        t = if hi.is_finite() { 0.5 * (lo + hi) } else { 2.0 * lo.max(t) };
+        t = if hi.is_finite() { f64::midpoint(lo, hi) } else { 2.0 * lo.max(t) };
     }
     best
 }
@@ -374,7 +340,7 @@ where
                 }
                 for i in 0..n {
                     for j in 0..i {
-                        let v = 0.5 * (hm.at(i, j) + hm.at(j, i));
+                        let v = f64::midpoint(hm.at(i, j), hm.at(j, i));
                         hm.set(i, j, v);
                         hm.set(j, i, v);
                     }
@@ -760,7 +726,7 @@ fn simplex_core(
             } else if pricing == Pricing::Dantzig {
                 let mut best: Option<(usize, f64)> = None;
                 for j in 0..limit {
-                    if rc[j] < -eps && best.map_or(true, |(_, v)| rc[j] < v) {
+                    if rc[j] < -eps && best.is_none_or(|(_, v)| rc[j] < v) {
                         best = Some((j, rc[j]));
                     }
                 }
@@ -771,7 +737,7 @@ fn simplex_core(
                     if rc[j] < -eps {
                         let gamma = 1.0 + (0..m).map(|i| t[i][j] * t[i][j]).sum::<f64>();
                         let score = rc[j] * rc[j] / gamma;
-                        if best.map_or(true, |(_, v)| score > v) {
+                        if best.is_none_or(|(_, v)| score > v) {
                             best = Some((j, score));
                         }
                     }

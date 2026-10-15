@@ -26,29 +26,6 @@
 //! | `spin_model` | [`spin_models`](crate::sim::spin_models) | Ising/XY/Heisenberg lattice |
 //! | `nbody_gravity` | [`nbody`](crate::sim::nbody) | Barnes–Hut accelerations |
 //! | `kerr_geodesic` | [`relativity`](crate::sim::relativity) | circular orbit in Kerr–Newman |
-#![allow(
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::many_single_char_names,
-    clippy::similar_names,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::single_match_else,
-    clippy::manual_midpoint,
-    clippy::needless_pass_by_value,
-    clippy::unnecessary_wraps,
-    clippy::items_after_statements,
-    clippy::struct_excessive_bools,
-    clippy::cast_lossless,
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::doc_markdown,
-    clippy::type_complexity,
-    clippy::while_float
-)]
 
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -870,13 +847,13 @@ struct NbodyReq {
     theta: f64,
 }
 
-fn one() -> f64 {
+const fn one() -> f64 {
     1.0
 }
-fn small() -> f64 {
+const fn small() -> f64 {
     1e-3
 }
-fn theta_default() -> f64 {
+const fn theta_default() -> f64 {
     0.5
 }
 

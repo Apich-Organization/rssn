@@ -32,23 +32,6 @@
 //!
 //! Limitations: no dispersive or anisotropic media, no conductivity,
 //! axis-aligned TF/SF boxes only, PMC boundaries not available.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::type_complexity,
-    clippy::many_single_char_names,
-    clippy::manual_midpoint,
-    clippy::struct_excessive_bools,
-    clippy::similar_names
-)]
 
 use crate::sim::boundary::{BoundaryCondition, Face, FaceBcs};
 
@@ -201,7 +184,7 @@ struct PlaneWaveState {
     h: Vec<f64>,
 }
 
-fn comp_index(c: Comp) -> usize {
+const fn comp_index(c: Comp) -> usize {
     match c {
         Comp::Ex => 0,
         Comp::Ey => 1,
@@ -412,7 +395,7 @@ impl Yee {
 
     /// Flat index of cell `(i, j, k)`.
     #[must_use]
-    pub fn idx(&self, i: usize, j: usize, k: usize) -> usize {
+    pub const fn idx(&self, i: usize, j: usize, k: usize) -> usize {
         i + self.cfg.n[0] * (j + self.cfg.n[1] * k)
     }
 
@@ -429,13 +412,13 @@ impl Yee {
 
     /// Cell size along an axis.
     #[must_use]
-    pub fn h(&self, a: usize) -> f64 {
+    pub const fn h(&self, a: usize) -> f64 {
         self.cfg.h[a]
     }
 
     /// Cells per axis.
     #[must_use]
-    pub fn n(&self) -> [usize; 3] {
+    pub const fn n(&self) -> [usize; 3] {
         self.cfg.n
     }
 

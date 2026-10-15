@@ -14,48 +14,6 @@
 //!
 //! `apply(x, y)` writes `A x` into `y`; the preconditioner closures write an
 //! approximation of `M^{-1} r` into their second argument.
-#![allow(
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::manual_midpoint,
-    clippy::too_long_first_doc_paragraph,
-    clippy::while_float,
-    clippy::doc_markdown,
-    clippy::option_if_let_else,
-    clippy::map_unwrap_or,
-    clippy::struct_excessive_bools,
-    clippy::items_after_statements,
-    clippy::assigning_clones,
-    clippy::unnecessary_map_or,
-    clippy::redundant_closure,
-    clippy::single_match,
-    clippy::manual_let_else,
-    clippy::unnecessary_operation,
-    clippy::cast_lossless,
-    clippy::missing_errors_doc,
-    clippy::needless_for_each,
-    clippy::unnecessary_min_or_max,
-    clippy::implicit_saturating_sub,
-    clippy::manual_range_contains,
-    clippy::neg_cmp_op_on_partial_ord,
-    clippy::unnecessary_wraps,
-    clippy::cast_possible_wrap,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::missing_const_for_fn,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::too_many_arguments,
-    clippy::many_single_char_names,
-    clippy::needless_range_loop,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::similar_names,
-    clippy::float_cmp,
-    clippy::suboptimal_flops,
-    clippy::needless_pass_by_value
-)]
 
 use crate::kernels::krylov::IterResult;
 use crate::kernels::random::Rng;
@@ -158,11 +116,11 @@ where
     IterResult { x, residual: res, iterations: itn, converged: res <= 10.0 * tol.max(1e-15) }
 }
 
-/// BiCGSTAB(`l`) with right preconditioning (`l >= 1`).
+/// `BiCGSTAB`(`l`) with right preconditioning (`l >= 1`).
 ///
-/// `l = 1` is classical BiCGSTAB; `l = 2` or more smooths the residual
+/// `l = 1` is classical `BiCGSTAB`; `l = 2` or more smooths the residual
 /// polynomial with a degree-`l` minimal-residual step, which avoids the
-/// breakdown of BiCGSTAB on matrices with strongly complex spectra. The
+/// breakdown of `BiCGSTAB` on matrices with strongly complex spectra. The
 /// iteration count is the number of outer cycles; each costs `2 l`
 /// matrix-vector products.
 pub fn bicgstab_l<A, M>(
