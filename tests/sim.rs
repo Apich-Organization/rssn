@@ -4,6 +4,8 @@
 // the formulas they check.
 #![allow(clippy::needless_range_loop)]
 
+#[path = "sim/chain.rs"]
+mod chain;
 #[path = "sim/classical.rs"]
 mod classical;
 #[path = "sim/models_fdtd_electrodynamics.rs"]
@@ -86,6 +88,8 @@ mod relativity;
 mod ewald;
 #[path = "sim/md_engine.rs"]
 mod md_engine;
+#[path = "sim/md_rigid.rs"]
+mod md_rigid;
 #[path = "sim/nbody.rs"]
 mod nbody;
 #[path = "sim/sph.rs"]

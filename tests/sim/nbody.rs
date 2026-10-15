@@ -139,3 +139,92 @@ fn barnes_hut_gravity_with_a_sixth_order_integrator_keeps_a_kepler_orbit() {
     assert!((rr - r).abs() < 1e-6, "radius {rr}");
     assert!((q[3] - q[0] - r).abs() < 1e-4, "returns after one period: {}", q[3] - q[0]);
 }
+
+fn clustered_points(
+    n: usize,
+    seed: u64,
+) -> Vec<[f64; 3]> {
+    // three tight Gaussian clumps of very different size plus a diffuse background
+    let mut rng = Rng::new(seed);
+    (0..n)
+        .map(|i| {
+            let (c, s) = match i % 4 {
+                0 => ([0.0, 0.0, 0.0], 0.02),
+                1 => ([3.0, 1.0, -2.0], 0.2),
+                2 => ([-4.0, 2.0, 1.0], 0.005),
+                _ => ([0.0, 0.0, 0.0], 3.0),
+            };
+            [c[0] + s * rng.normal(), c[1] + s * rng.normal(), c[2] + s * rng.normal()]
+        })
+        .collect()
+}
+
+#[test]
+fn fmm_3d_error_decreases_geometrically_with_order_on_uniform_and_clustered_sets() {
+    for clustered in [false, true] {
+        let n = 1200;
+        let pos = if clustered { clustered_points(n, 21) } else { random_points::<3>(n, 22) };
+        let mut rng = Rng::new(8);
+        let src: Vec<f64> = (0..n).map(|_| rng.normal()).collect();
+        let exact = direct_field(&pos, &src, 0.0);
+        let mut prev = f64::INFINITY;
+        let mut errs = Vec::new();
+        for p in [2usize, 4, 6, 8, 10] {
+            let f = fmm3d_field(&pos, &src, p, 16).unwrap();
+            let e = rel_error(&f, &exact);
+            errs.push(e);
+            assert!(e < prev, "clustered={clustered} p={p}: {e} vs {prev}");
+            prev = e;
+        }
+        assert!(errs[4] < 1e-4 && errs[4] < errs[0] * 1e-2, "clustered={clustered}: {errs:?}");
+    }
+}
+
+#[test]
+fn fmm_3d_potential_and_field_match_direct_sums_and_tightening_theta_helps() {
+    use rssn::sim::fmm::{fmm3d, FmmOptions};
+    let n = 500;
+    let pos = random_points::<3>(n, 31);
+    let mut rng = Rng::new(32);
+    let src: Vec<f64> = (0..n).map(|_| 0.5 + rng.uniform()).collect();
+    let exact = direct_field(&pos, &src, 0.0);
+    let mut pot = vec![0.0; n];
+    for i in 0..n {
+        for j in 0..n {
+            if i != j {
+                let r2: f64 = (0..3).map(|k| (pos[i][k] - pos[j][k]).powi(2)).sum();
+                pot[i] += src[j] / r2.sqrt();
+            }
+        }
+    }
+    let mut last = f64::INFINITY;
+    for theta in [0.7, 0.5, 0.3] {
+        let r = fmm3d(&pos, &src, &FmmOptions { order: 8, leaf_size: 12, theta, eps: 0.0 }).unwrap();
+        let ef = rel_error(&r.field, &exact);
+        let ep = (r.potential.iter().zip(&pot).map(|(a, b)| (a - b).powi(2)).sum::<f64>() / pot.iter().map(|b| b * b).sum::<f64>()).sqrt();
+        assert!(ef < last && ep < 1e-2, "theta={theta}: field {ef} potential {ep}");
+        last = ef;
+    }
+    assert!(last < 1e-6, "theta = 0.3 order 8: {last}");
+    // a single leaf (huge leaf size) is exact direct summation
+    let r = fmm3d(&pos, &src, &FmmOptions { order: 3, leaf_size: 10_000, theta: 0.5, eps: 0.0 }).unwrap();
+    assert!(rel_error(&r.field, &exact) < 1e-13);
+    assert!(fmm3d(&[], &[], &FmmOptions::default()).is_err());
+    assert!(fmm3d(&pos, &src, &FmmOptions { theta: 1.5, ..FmmOptions::default() }).is_err());
+}
+
+#[test]
+fn fmm_2d_is_adaptive_on_strongly_clustered_points() {
+    let n = 1500;
+    let mut rng = Rng::new(41);
+    let pos: Vec<[f64; 2]> = (0..n)
+        .map(|i| {
+            let s = if i % 3 == 0 { 0.001 } else { 1.0 };
+            [s * rng.normal(), s * rng.normal()]
+        })
+        .collect();
+    let src: Vec<f64> = (0..n).map(|_| rng.normal()).collect();
+    let exact = direct_field(&pos, &src, 0.0);
+    let f = fmm2d_field(&pos, &src, 20, 16).unwrap();
+    assert!(rel_error(&f, &exact) < 1e-7);
+}

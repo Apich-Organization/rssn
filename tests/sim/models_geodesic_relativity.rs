@@ -118,3 +118,49 @@ fn black_hole_scenario_writes_one_csv_per_orbit() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+
+#[test]
+fn schwarzschild_engine_path_agrees_with_the_adaptive_rk45_reference() {
+    let p = params(1.0, [12.0, 0.0, 0.0, 0.03], 150.0);
+    let a = run_geodesic_simulation(&p);
+    let b = run_geodesic_simulation_rk45(&p);
+    let (xa, ya) = a[a.len() - 1];
+    let (xb, yb) = b[b.len() - 1];
+    assert!(((xa - xb).powi(2) + (ya - yb).powi(2)).sqrt() < 0.2, "({xa},{ya}) vs ({xb},{yb})");
+}
+
+#[test]
+fn kerr_frame_dragging_twists_a_zero_angular_velocity_infall() {
+    let p = params(1.0, [15.0, 0.0, 0.0, 0.0], 60.0);
+    let kerr = run_kerr_newman_geodesic(&p, 0.9, 0.0).unwrap();
+    let schw = run_kerr_newman_geodesic(&p, 0.0, 0.0).unwrap();
+    let rn = run_kerr_newman_geodesic(&p, 0.0, 0.6).unwrap();
+    assert!(schw.iter().all(|&(_, y)| y.abs() < 1e-12));
+    assert!(rn.iter().all(|&(_, y)| y.abs() < 1e-12));
+    // frame dragging: the azimuth grows in the sense of the spin although the initial L is not zero
+    let (xk, yk) = kerr[kerr.len() - 1];
+    assert!(yk.abs() > 1e-4 && xk.hypot(yk) < 15.0, "({xk},{yk})");
+    // charge changes the radial motion
+    let (xs, _) = schw[schw.len() - 1];
+    let (xr, _) = rn[rn.len() - 1];
+    assert!((xs - xr).abs() > 1e-3, "{xs} vs {xr}");
+}
+
+#[test]
+fn kerr_circular_orbit_keeps_its_radius() {
+    use rssn::sim::relativity::KerrNewman;
+    let (m, a, r) = (1.0, 0.9, 8.0);
+    let k = KerrNewman { m, a, q: 0.0 };
+    let (_, _, omega) = k.circular_orbit(r, true).unwrap();
+    let w = 2.0 * m / r;
+    let (gtt, gtp, gpp) = (-(1.0 - w), -a * w, r * r + a * a + a * a * w);
+    let ut = 1.0 / (-(gtt + 2.0 * gtp * omega + gpp * omega * omega)).sqrt();
+    let path = run_kerr_newman_geodesic(&params(m, [r, 0.0, 0.0, omega * ut], 200.0), a, 0.0).unwrap();
+    for (x, y) in &path {
+        assert!((x.hypot(*y) - r).abs() < 1e-3, "r = {}", x.hypot(*y));
+    }
+    assert!(path.iter().any(|&(_, y)| y < -r * 0.9));
+    // a naked-singularity-style initial radius inside the horizon is rejected by the engine
+    assert!(run_kerr_newman_geodesic(&params(1.0, [1.5, 0.0, 0.0, 0.01], 1.0), 0.0, 0.0).is_err());
+}

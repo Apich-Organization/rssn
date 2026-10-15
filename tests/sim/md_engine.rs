@@ -448,9 +448,6 @@ fn shake_rattle_keep_rigid_dimers_rigid_and_conserve_energy() {
     }
     assert!(worst_len < 1e-9, "bond length drift {worst_len}");
     assert!(worst_e < 0.05 * sim.sys.kinetic_energy(), "energy drift {worst_e}");
-    // Langevin + constraints is rejected
-    sim.thermostat = Thermostat::Langevin { t0: 1.0, gamma: 1.0 };
-    assert!(sim.step().is_err());
 }
 
 #[test]
@@ -611,4 +608,242 @@ fn vacf_and_energy_drift_helpers() {
     let t: Vec<f64> = (0..50).map(f64::from).collect();
     let e: Vec<f64> = t.iter().map(|x| 3.0 + 0.25 * x).collect();
     assert!((energy_drift_slope(&t, &e) - 0.25).abs() < 1e-12);
+}
+
+/// LJ fluid in a skewed (triclinic) cell with the volume of the cubic fcc box.
+fn lj_triclinic(
+    cells: usize,
+    rho: f64,
+    t: f64,
+    dt: f64,
+    seed: u64,
+) -> MdSimulation<3> {
+    let n = 4 * cells * cells * cells;
+    let l = (n as f64 / rho).cbrt();
+    let a = l / cells as f64;
+    let h = [[l, 0.0, 0.0], [0.15 * l, l, 0.0], [0.1 * l, 0.12 * l, l]];
+    let bx = SimBox::triclinic(h).unwrap();
+    let pos: Vec<[f64; 3]> = lattice_fcc(cells, a)
+        .iter()
+        .map(|p| {
+            let s = [p[0] / l, p[1] / l, p[2] / l];
+            bx.from_fractional(&s)
+        })
+        .collect();
+    let mut sys = MdSystem::new(pos, bx);
+    let mut rng = Rng::new(seed);
+    sys.maxwell_boltzmann(t, &mut rng);
+    let mut ff = ForceField::new(lj(), 2.5);
+    ff.shift_force = true;
+    MdSimulation::new(sys, ff, 0.3, dt, seed + 1).unwrap()
+}
+
+#[test]
+fn triclinic_cell_energy_matches_an_explicit_image_sum() {
+    let sim = lj_triclinic(3, 0.7, 1.0, 0.004, 5);
+    let h = sim.sys.bx.matrix();
+    assert!((sim.sys.bx.volume() - 108.0 / 0.7).abs() < 1e-9);
+    let rc = 2.5;
+    let term = PairTerm::LennardJones { eps: 1.0, sigma: 1.0 };
+    // shifted-force reference: u(r) - u(rc) + F(rc) (r - rc)
+    let (ec, fcr) = term.eval(rc * rc, 0.0);
+    let fcut = fcr * rc; // -dU/dr at rc
+    let n = sim.sys.n();
+    let mut e = 0.0;
+    for i in 0..n {
+        for j in 0..n {
+            for a in -2i32..=2 {
+                for b in -2i32..=2 {
+                    for c in -2i32..=2 {
+                        if i == j && a == 0 && b == 0 && c == 0 {
+                            continue;
+                        }
+                        let mut d = [0.0; 3];
+                        for k in 0..3 {
+                            d[k] = sim.sys.pos[i][k] - sim.sys.pos[j][k] + a as f64 * h[0][k] + b as f64 * h[1][k] + c as f64 * h[2][k];
+                        }
+                        let r = d.iter().map(|x| x * x).sum::<f64>().sqrt();
+                        if r < rc {
+                            e += 0.5 * (term.eval(r * r, 0.0).0 - ec + fcut * (r - rc));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert!((sim.forces.epot - e).abs() < 1e-8 * e.abs().max(1.0), "{} vs {e}", sim.forces.epot);
+    let net: f64 = (0..3).map(|k| sim.forces.f.iter().map(|f| f[k]).sum::<f64>().abs()).sum();
+    assert!(net < 1e-9, "net force {net}");
+    for p in &sim.sys.pos {
+        let s = sim.sys.bx.to_fractional(p);
+        assert!(s.iter().all(|x| (-1e-12..1.0 + 1e-12).contains(x)));
+    }
+}
+
+#[test]
+fn flexible_cell_nph_conserves_its_extended_enthalpy_with_second_order_error() {
+    let err = |dt: f64| {
+        let mut sim = lj_triclinic(3, 0.75, 1.2, dt, 81);
+        sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 40.0, CellMode::Full));
+        sim.run((0.4 / dt) as usize).unwrap();
+        let h0 = sim.conserved_energy();
+        let mut worst = 0.0_f64;
+        for _ in 0..(0.8 / dt) as usize {
+            sim.step().unwrap();
+            worst = worst.max((sim.conserved_energy() - h0).abs());
+        }
+        let h = sim.sys.bx.matrix();
+        (worst, h)
+    };
+    let (e1, h) = err(0.008);
+    let (e2, _) = err(0.004);
+    assert!(e1 < 0.5, "enthalpy error {e1}");
+    assert!(e1 / e2 > 2.0, "ratio {}", e1 / e2);
+    let l = (108.0_f64 / 0.75).cbrt();
+    assert!((h[0][0] - l).abs() + (h[1][0] - 0.15 * l).abs() > 1e-4);
+}
+
+#[test]
+fn flexible_cell_npt_with_nose_hoover_chains_reaches_the_target_stress_and_temperature() {
+    let (t0, p0) = (1.2, 1.0);
+    let mut sim = lj_fluid_3d(3, 0.7, t0, 0.005, 91);
+    let dof = sim.dof();
+    sim.thermostat = Thermostat::NoseHooverChain(NoseHooverChain::new(t0, 0.5, 3, dof));
+    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, p0, 20.0, CellMode::Full).with_chain(t0, 1.0, 3));
+    sim.run(3000).unwrap();
+    let (mut tm, mut pt) = (0.0, [[0.0; 3]; 3]);
+    let ns = 6000;
+    let c0 = sim.conserved_energy();
+    let mut cw = 0.0_f64;
+    for _ in 0..ns {
+        sim.step().unwrap();
+        tm += sim.temperature();
+        let p = sim.pressure_tensor();
+        for a in 0..3 {
+            for b in 0..3 {
+                pt[a][b] += p[a][b];
+            }
+        }
+        cw = cw.max((sim.conserved_energy() - c0).abs());
+    }
+    let nsf = ns as f64;
+    assert!((tm / nsf - t0).abs() < 0.05, "T = {}", tm / nsf);
+    for a in 0..3 {
+        assert!((pt[a][a] / nsf - p0).abs() < 0.12, "P[{a}][{a}] = {}", pt[a][a] / nsf);
+        for b in 0..3 {
+            if a != b {
+                assert!((pt[a][b] / nsf).abs() < 0.08, "P[{a}][{b}] = {}", pt[a][b] / nsf);
+            }
+        }
+    }
+    assert!(cw < 0.5, "extended energy wandered by {cw}");
+}
+
+#[test]
+fn orthorhombic_mode_follows_an_anisotropic_target_pressure() {
+    let t0 = 1.0;
+    let mut sim = lj_fluid_3d(3, 0.6, t0, 0.005, 95);
+    let dof = sim.dof();
+    sim.thermostat = Thermostat::NoseHooverChain(NoseHooverChain::new(t0, 0.5, 3, dof));
+    let pext = vec![0.8, 0.0, 0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.2];
+    sim.barostat = Barostat::Flexible(FlexibleBarostat::with_tensor(3, pext, 20.0, CellMode::Orthorhombic).with_chain(t0, 1.0, 3));
+    sim.run(4000).unwrap();
+    let mut p = [0.0; 3];
+    let ns = 6000;
+    for _ in 0..ns {
+        sim.step().unwrap();
+        let pt = sim.pressure_tensor();
+        for a in 0..3 {
+            p[a] += pt[a][a] / ns as f64;
+        }
+    }
+    for (a, target) in [0.8, 0.4, 0.2].iter().enumerate() {
+        assert!((p[a] - target).abs() < 0.1, "P[{a}] = {} vs {target}", p[a]);
+    }
+    assert!(sim.sys.bx.cell.is_none());
+}
+
+fn dimer_system(
+    nmol: usize,
+    l: f64,
+    d: f64,
+    seed: u64,
+) -> MdSimulation<3> {
+    let bx = SimBox::periodic([l; 3]);
+    let mut rng = Rng::new(seed);
+    let centres = random_positions(nmol, &bx, 1.6, &mut rng).unwrap();
+    let mut pos = Vec::new();
+    for c in &centres {
+        let mut u = [rng.normal(), rng.normal(), rng.normal()];
+        let nrm = (u[0] * u[0] + u[1] * u[1] + u[2] * u[2]).sqrt();
+        for x in &mut u {
+            *x /= nrm;
+        }
+        pos.push([c[0] + 0.5 * d * u[0], c[1] + 0.5 * d * u[1], c[2] + 0.5 * d * u[2]]);
+        pos.push([c[0] - 0.5 * d * u[0], c[1] - 0.5 * d * u[1], c[2] - 0.5 * d * u[2]]);
+    }
+    let mut sys = MdSystem::new(pos, bx);
+    sys.maxwell_boltzmann(1.0, &mut rng);
+    let mut ff = ForceField::<3>::new(lj(), 2.5);
+    ff.shift = true;
+    ff.bonds = (0..nmol).map(|m| Bond { i: 2 * m, j: 2 * m + 1, k: 0.0, r0: d }).collect();
+    let mut sim = MdSimulation::new(sys, ff, 0.3, 0.004, seed + 1).unwrap();
+    sim.constraints = (0..nmol).map(|m| Constraint { i: 2 * m, j: 2 * m + 1, d }).collect();
+    sim
+}
+
+fn max_bond_error(sim: &MdSimulation<3>) -> f64 {
+    let mut worst = 0.0_f64;
+    for c in &sim.constraints {
+        let mut dv = [0.0; 3];
+        for a in 0..3 {
+            dv[a] = sim.sys.pos[c.i][a] - sim.sys.pos[c.j][a];
+        }
+        sim.sys.bx.min_image(&mut dv);
+        worst = worst.max((dv.iter().map(|x| x * x).sum::<f64>().sqrt() - c.d).abs());
+    }
+    worst
+}
+
+#[test]
+fn flexible_cell_with_constraints_keeps_dimers_rigid_and_conserves_the_extended_energy() {
+    let d = 0.7;
+    let mut sim = dimer_system(32, 7.0, d, 101);
+    for _ in 0..3 {
+        sim.step().unwrap();
+    }
+    let dof = sim.dof();
+    sim.thermostat = Thermostat::NoseHooverChain(NoseHooverChain::new(1.0, 0.5, 3, dof));
+    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 0.5, 30.0, CellMode::Full).with_chain(1.0, 1.0, 3));
+    sim.run(200).unwrap();
+    let c0 = sim.conserved_energy();
+    let (mut worst_len, mut worst_e) = (0.0_f64, 0.0_f64);
+    for _ in 0..1500 {
+        sim.step().unwrap();
+        worst_len = worst_len.max(max_bond_error(&sim));
+        worst_e = worst_e.max((sim.conserved_energy() - c0).abs());
+    }
+    assert!(worst_len < 1e-9, "bond length drift {worst_len}");
+    assert!(worst_e < 0.02 * sim.sys.kinetic_energy(), "extended energy drift {worst_e}");
+    let tr: f64 = (0..3).map(|a| sim.constraint_virial[a][a]).sum();
+    assert!(tr.is_finite() && tr != 0.0);
+}
+
+#[test]
+fn constrained_langevin_keeps_bonds_rigid_and_samples_the_target_temperature() {
+    let d = 0.7;
+    let mut sim = dimer_system(32, 7.0, d, 111);
+    sim.thermostat = Thermostat::Langevin { t0: 1.5, gamma: 2.0 };
+    sim.run(1000).unwrap();
+    let (mut tm, mut worst) = (0.0, 0.0_f64);
+    let ns = 6000;
+    for _ in 0..ns {
+        sim.step().unwrap();
+        tm += sim.temperature();
+        worst = worst.max(max_bond_error(&sim));
+    }
+    assert!(worst < 1e-9, "bond drift {worst}");
+    assert!((tm / ns as f64 - 1.5).abs() < 0.06, "T = {}", tm / ns as f64);
+    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 30.0, CellMode::Isotropic));
+    assert!(sim.step().is_err());
 }

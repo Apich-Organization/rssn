@@ -11,11 +11,13 @@
 //!
 //! | Module | Dimensions | Boundaries | Highlights |
 //! |---|---|---|---|
-//! | [`md_engine`] | any (const generic) | open, periodic, reflecting, thermal, Lees-Edwards | cell+Verlet lists, LJ/Morse/Coulomb, bonded, NHC/Langevin/Berendsen, Berendsen/MTK barostat, SHAKE/RATTLE, RDF/MSD/VACF |
+//! | [`md_engine`] | any (const generic) | open, periodic, reflecting, thermal, Lees-Edwards | cell+Verlet lists, LJ/Morse/Coulomb, bonded, NHC/Langevin/Berendsen, Berendsen/MTK and flexible-cell Parrinello-Rahman/MTTK barostats on triclinic cells, SHAKE/RATTLE (also with barostat and Langevin), RDF/MSD/VACF |
+//! | [`md_rigid`] | 3 | periodic | rigid molecules: COM + quaternion, symmetric-top / NO_SQUISH rotor splitting, molecular virial |
 //! | [`ewald`] | 3 | periodic | Ewald, smooth PME |
-//! | [`nbody`] | 1-3 (FMM: 2) | open | Barnes-Hut, 2-D FMM |
-//! | [`symplectic`] | any | - | order 2-8 schemes, TTL, KS, rigid body |
-//! | [`spin_models`] | any | periodic / open | Ising, Potts, O(N); Metropolis, heat bath, Wolff, SW, PT, WL |
+//! | [`nbody`], [`fmm`] | 1-3 (FMM: 2, 3) | open | Barnes-Hut, adaptive 2-D/3-D FMM |
+//! | [`symplectic`] | any | - | order 2-8 schemes, TTL (composed to order 8), KS, rigid body (exact symmetric-top flows) |
+//! | [`chain`] | 3 | open | Mikkola-Aarseth chain regularisation, algorithmic regularisation + GBS extrapolation |
+//! | [`spin_models`] | any | periodic / open | Ising, Potts, O(N); Metropolis, heat bath (also XY/Heisenberg), Wolff, SW, PT (O(N) and Potts), WL (Ising and continuous spins) |
 //! | [`relativity`] | 3+1 | horizon / escape events | Kerr-Newman geodesics |
 //! | [`sph`] | any | open, periodic, reflecting, fixed particles | cubic / Wendland kernels |
 //! | `classical`, `physics_md`, `physics_rkm`, `integrators` | fixed or runtime | see module docs | legacy / ODE tools |
@@ -83,8 +85,14 @@ pub mod scenario_engines;
 pub mod ewald;
 /// Dimension-generic molecular dynamics engine.
 pub mod md_engine;
+/// Rigid-molecule molecular dynamics.
+pub mod md_rigid;
 /// Barnes-Hut and fast multipole N-body solvers.
 pub mod nbody;
+/// Adaptive 2-D and 3-D fast multipole methods.
+pub mod fmm;
+/// Chain and algorithmic regularisation for few-body gravity.
+pub mod chain;
 /// Kerr-Newman geodesics.
 pub mod relativity;
 /// Smoothed-particle hydrodynamics in 1-3 dimensions.

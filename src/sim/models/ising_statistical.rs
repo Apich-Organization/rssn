@@ -22,10 +22,11 @@
 //!
 //! | Capability | Support |
 //! |---|---|
-//! | Dimension | 2-D only in this module (periodic square lattice); 1-D/2-D/3-D in [`crate::sim::spin_models`] |
-//! | Algorithms | Metropolis (checkerboard), Wolff (`run_wolff_simulation`); heat bath, Swendsen-Wang, Potts/XY/Heisenberg, tempering, Wang-Landau, reweighting in [`crate::sim::spin_models`] |
-//! | Boundaries | periodic |
-//! | Initial conditions | random |
+//! | Dimension | `run_ising_simulation*`: 2-D parallel checkerboard Metropolis; [`run_lattice_simulation`] and `run_wolff_simulation` delegate to the dimension-generic engine of [`crate::sim::spin_models`] (any `D`) |
+//! | Models | Ising, q-state Potts, XY, Heisenberg ([`SpinModel`]) through [`run_lattice_simulation`] |
+//! | Algorithms | Metropolis (checkerboard, 2-D Ising), Metropolis / heat bath / Wolff / Swendsen-Wang for every model through [`SpinAlgorithm`]; tempering, Wang-Landau, reweighting in [`crate::sim::spin_models`] |
+//! | Boundaries | periodic (checkerboard), periodic or open (`run_lattice_simulation`) |
+//! | Initial conditions | random (checkerboard), hot or cold (`run_lattice_simulation`) |
 //! | Exact references | Onsager `Tc`, energy and magnetisation in [`crate::sim::spin_models`] |
 
 use std::fmt::Write as OtherWrite;
@@ -41,6 +42,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::io::write_npy_file;
+use crate::sim::spin_models::{binder_cumulant, specific_heat, susceptibility, OnModel, Potts, Update};
 
 /// Parameters for the Ising model simulation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -271,23 +273,6 @@ pub struct IsingObservables {
     pub mean_cluster: f64,
 }
 
-fn ising_energy(
-    grid: &[i8],
-    width: usize,
-    height: usize,
-) -> f64 {
-    let mut e = 0_i64;
-    for i in 0..height {
-        for j in 0..width {
-            let s = i64::from(grid[i * width + j]);
-            let right = i64::from(grid[i * width + (j + 1) % width]);
-            let down = i64::from(grid[((i + 1) % height) * width + j]);
-            e -= s * (right + down);
-        }
-    }
-    e as f64
-}
-
 /// The Wolff single-cluster algorithm:
 ///
 /// a cluster grown from a random seed spin, each aligned neighbour added
@@ -295,6 +280,10 @@ fn ising_energy(
 /// and free of critical slowing down, so it samples near `T_c` far better
 /// than local Metropolis updates. `sweeps` cluster updates are measured
 /// after `thermalisation` discarded ones.
+///
+/// Runs on the dimension-generic engine [`crate::sim::spin_models::OnModel`] (cold start,
+/// periodic `width x height` lattice); the observables are `NaN` for lattices the engine
+/// rejects (periodic sides below 3).
 #[must_use]
 pub fn run_wolff_simulation(
     width: usize,
@@ -304,61 +293,178 @@ pub fn run_wolff_simulation(
     sweeps: usize,
     seed: u64,
 ) -> IsingObservables {
-    let n = width * height;
-    let mut rng = StdRng::seed_from_u64(seed);
-    let mut grid = vec![1_i8; n];
-    let add_probability = 1.0 - (-2.0 / temperature).exp();
-    let mut stack = Vec::with_capacity(n);
-    let mut in_cluster = vec![false; n];
-    let (mut e_sum, mut e2_sum, mut m_sum, mut m2_sum, mut m4_sum, mut cluster_sum) = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    for step in 0..thermalisation + sweeps {
-        let start = rng.random_range(0..n);
-        let spin = grid[start];
-        stack.clear();
-        stack.push(start);
-        in_cluster[start] = true;
-        let mut members = Vec::new();
-        while let Some(site) = stack.pop() {
-            members.push(site);
-            let (i, j) = (site / width, site % width);
-            let neighbours = [
-                ((i + height - 1) % height) * width + j,
-                ((i + 1) % height) * width + j,
-                i * width + (j + width - 1) % width,
-                i * width + (j + 1) % width,
-            ];
-            for nb in neighbours {
-                if !in_cluster[nb] && grid[nb] == spin && rng.random::<f64>() < add_probability {
-                    in_cluster[nb] = true;
-                    stack.push(nb);
-                }
-            }
-        }
-        for &site in &members {
-            grid[site] = -grid[site];
-            in_cluster[site] = false;
-        }
-        if step >= thermalisation {
-            let e = ising_energy(&grid, width, height);
-            let m = grid.iter().map(|&s| f64::from(s)).sum::<f64>().abs();
-            e_sum += e;
-            e2_sum += e * e;
-            m_sum += m;
-            m2_sum += m * m;
-            m4_sum += m.powi(4);
-            cluster_sum += members.len() as f64;
+    let nan = IsingObservables {
+        energy: f64::NAN,
+        magnetization: f64::NAN,
+        specific_heat: f64::NAN,
+        susceptibility: f64::NAN,
+        binder: f64::NAN,
+        mean_cluster: f64::NAN,
+    };
+    let Ok(mut model) = OnModel::<2, 1>::new([width, height], true, 1.0 / temperature, seed) else { return nan };
+    model.cold_start();
+    let nf = (width * height) as f64;
+    for _ in 0..thermalisation {
+        if model.wolff_step().is_err() {
+            return nan;
         }
     }
+    let (mut e, mut m, mut cl) = (Vec::new(), Vec::new(), 0.0);
+    for _ in 0..sweeps {
+        match model.wolff_step() {
+            Ok(size) => cl += size as f64,
+            Err(_) => return nan,
+        }
+        e.push(model.energy());
+        m.push(model.magnetisation()[0].abs());
+    }
     let samples = sweeps.max(1) as f64;
-    let nf = n as f64;
-    let (e, e2, m, m2, m4) = (e_sum / samples, e2_sum / samples, m_sum / samples, m2_sum / samples, m4_sum / samples);
+    let mean = |v: &[f64]| v.iter().sum::<f64>() / samples;
+    let mps: Vec<f64> = m.iter().map(|x| x / nf).collect();
+    let m1 = mean(&m);
+    let m2 = m.iter().map(|x| x * x).sum::<f64>() / samples;
     IsingObservables {
-        energy: e / nf,
-        magnetization: m / nf,
-        specific_heat: (e2 - e * e) / (nf * temperature * temperature),
-        susceptibility: (m2 - m * m) / (nf * temperature),
-        binder: 1.0 - m4 / (3.0 * m2 * m2),
-        mean_cluster: cluster_sum / samples / nf,
+        energy: mean(&e) / nf,
+        magnetization: m1 / nf,
+        specific_heat: specific_heat(&e, 1.0 / temperature, width * height) ,
+        susceptibility: (m2 - m1 * m1) / (nf * temperature),
+        binder: binder_cumulant(&mps),
+        mean_cluster: cl / samples / nf,
+    }
+}
+
+/// Spin-model family of [`run_lattice_simulation`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SpinModel {
+    /// Ising (`N = 1`).
+    Ising,
+    /// q-state Potts.
+    Potts(usize),
+    /// Planar rotor (O(2)).
+    Xy,
+    /// Classical Heisenberg (O(3)).
+    Heisenberg,
+}
+
+/// Monte Carlo update of [`run_lattice_simulation`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SpinAlgorithm {
+    /// Single-spin Metropolis with the given proposal width (ignored for Ising / Potts).
+    Metropolis(f64),
+    /// Heat bath (exact conditional sampling; all four models).
+    HeatBath,
+    /// Wolff single cluster.
+    Wolff,
+    /// Swendsen-Wang.
+    SwendsenWang,
+}
+
+/// Per-site thermodynamic averages returned by [`run_lattice_simulation`] (`J = k_B = 1`).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LatticeObservables {
+    /// `<E> / N`.
+    pub energy: f64,
+    /// `<|m|>` (magnetisation per site; Potts order parameter).
+    pub magnetization: f64,
+    /// Specific heat per site.
+    pub specific_heat: f64,
+    /// Susceptibility per site.
+    pub susceptibility: f64,
+    /// Binder cumulant.
+    pub binder: f64,
+}
+
+fn average_series(
+    e: &[f64],
+    m: &[f64],
+    beta: f64,
+    sites: usize,
+) -> LatticeObservables {
+    let n = e.len().max(1) as f64;
+    LatticeObservables {
+        energy: e.iter().sum::<f64>() / n / sites as f64,
+        magnetization: m.iter().map(|x| x.abs()).sum::<f64>() / n,
+        specific_heat: specific_heat(e, beta, sites),
+        susceptibility: susceptibility(m, beta, sites),
+        binder: binder_cumulant(m),
+    }
+}
+
+fn run_on<const D: usize, const N: usize>(
+    dims: [usize; D],
+    periodic: bool,
+    algo: SpinAlgorithm,
+    temperature: f64,
+    (thermalisation, sweeps): (usize, usize),
+    seed: u64,
+) -> Result<LatticeObservables, String> {
+    let beta = 1.0 / temperature;
+    let mut model = OnModel::<D, N>::new(dims, periodic, beta, seed)?;
+    let update = match algo {
+        SpinAlgorithm::Metropolis(d) => Update::Metropolis(d),
+        SpinAlgorithm::HeatBath => Update::HeatBath,
+        SpinAlgorithm::Wolff => Update::Wolff,
+        SpinAlgorithm::SwendsenWang => Update::SwendsenWang,
+    };
+    for _ in 0..thermalisation {
+        model.update(update)?;
+    }
+    let sites = model.lattice.sites();
+    let (mut e, mut m) = (Vec::new(), Vec::new());
+    for _ in 0..sweeps {
+        model.update(update)?;
+        e.push(model.energy());
+        m.push(model.abs_magnetisation_per_site());
+    }
+    Ok(average_series(&e, &m, beta, sites))
+}
+
+/// Monte Carlo of a spin model on a hypercubic lattice of any dimension.
+///
+/// Ising, Potts, XY or Heisenberg on a lattice of **any**
+/// dimension `D` (periodic or open), delegating to [`crate::sim::spin_models`]. Returns the
+/// per-site averages over `sweeps` measurements after `thermalisation` updates.
+///
+/// # Errors
+/// Fails for invalid lattices, `temperature <= 0` or unsupported model/algorithm combinations
+/// (for example cluster updates with a field).
+pub fn run_lattice_simulation<const D: usize>(
+    dims: [usize; D],
+    periodic: bool,
+    model: SpinModel,
+    algo: SpinAlgorithm,
+    temperature: f64,
+    steps: (usize, usize),
+    seed: u64,
+) -> Result<LatticeObservables, String> {
+    if temperature <= 0.0 {
+        return Err("temperature must be positive".into());
+    }
+    match model {
+        SpinModel::Ising => run_on::<D, 1>(dims, periodic, algo, temperature, steps, seed),
+        SpinModel::Xy => run_on::<D, 2>(dims, periodic, algo, temperature, steps, seed),
+        SpinModel::Heisenberg => run_on::<D, 3>(dims, periodic, algo, temperature, steps, seed),
+        SpinModel::Potts(q) => {
+            let beta = 1.0 / temperature;
+            let mut p = Potts::<D>::new(dims, periodic, q, beta, seed)?;
+            let update = match algo {
+                SpinAlgorithm::Metropolis(d) => Update::Metropolis(d),
+                SpinAlgorithm::HeatBath => Update::HeatBath,
+                SpinAlgorithm::Wolff => Update::Wolff,
+                SpinAlgorithm::SwendsenWang => Update::SwendsenWang,
+            };
+            for _ in 0..steps.0 {
+                p.update(update);
+            }
+            let sites = p.spins.len();
+            let (mut e, mut m) = (Vec::new(), Vec::new());
+            for _ in 0..steps.1 {
+                p.update(update);
+                e.push(p.energy());
+                m.push(p.order_parameter());
+            }
+            Ok(average_series(&e, &m, beta, sites))
+        },
     }
 }
 
