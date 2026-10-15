@@ -154,7 +154,8 @@ impl KerrNewman {
         let gtp = -a * w;
         let gpp = r * r + a * a + a * a * w;
         let (gttp, gtpp, gppp) = (wp, -a * wp, 2.0 * r + a * a * wp);
-        let disc = gtpp * gtpp - gttp * gppp;
+        let (b2, ac) = (gtpp * gtpp, gttp * gppp);
+        let disc = b2 - ac;
         if disc < 0.0 {
             return None;
         }
@@ -181,7 +182,8 @@ impl KerrNewman {
             let wp = -2.0 * m / (r * r) + 2.0 * q * q / (r * r * r);
             let (gtt, gtp, gpp) = (-(1.0 - w), -a * w, r * r + a * a + a * a * w);
             let (gttp, gtpp, gppp) = (wp, -a * wp, 2.0 * r + a * a * wp);
-            let disc = gtpp * gtpp - gttp * gppp;
+            let (b2, ac) = (gtpp * gtpp, gttp * gppp);
+            let disc = b2 - ac;
             let sgn = if prograde { 1.0 } else { -1.0 };
             let om = (-gtpp + sgn * disc.max(0.0).sqrt()) / gppp;
             gtt + 2.0 * gtp * om + gpp * om * om

@@ -79,7 +79,9 @@ pub fn ewald_reciprocal(
                     ss += q[i] * s;
                     cs.push((c, s));
                 }
-                let ek = pref * a * (sc * sc + ss * ss);
+                // |S(k)|^2 of the structure factor
+                let (sc2, ss2) = (sc * sc, ss * ss);
+                let ek = pref * a * (sc2 + ss2);
                 energy += ek;
                 let w = -2.0 * (1.0 / k2 + 1.0 / (4.0 * alpha * alpha));
                 for x in 0..3 {
@@ -209,6 +211,13 @@ fn b2(
     1.0 / (re * re + im * im).max(1e-300)
 }
 
+/// B-spline weights and derivatives of one particle.
+struct Spl {
+    base: [i64; 3],
+    w: [Vec<f64>; 3],
+    dw: [Vec<f64>; 3],
+}
+
 /// Smooth PME reciprocal energy, forces and virial (plus self/background terms).
 ///
 /// `grid` are the mesh sizes (any size, powers of two are fastest), `order` the (even) B-spline order.
@@ -228,11 +237,6 @@ pub fn pme_reciprocal(
     let idx = |i: usize, j: usize, k: usize| (i * grid[1] + j) * grid[2] + k;
     // spread charges
     let mut qg = vec![(0.0, 0.0); total];
-    struct Spl {
-        base: [i64; 3],
-        w: [Vec<f64>; 3],
-        dw: [Vec<f64>; 3],
-    }
     let mut spl = Vec::with_capacity(n);
     for i in 0..n {
         let mut base = [0i64; 3];

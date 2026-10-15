@@ -109,79 +109,66 @@ pub fn run_ising_simulation_seeded(
     let b = 1.0 / params.temperature;
 
     for step in 0..params.mc_steps {
-        // Checkerboard update for parallelism
-        let grid_ptr = grid.as_mut_ptr() as usize;
+        // Checkerboard update for parallelism: red points, then black points.
+        checkerboard_sweep(&mut grid, params.width, params.height, b, seed, step, 0);
 
-        let width = params.width;
-
-        let height = params.height;
-
-        // Red points
-        (0..height).into_par_iter().for_each(|i| {
-            let mut local_rng = row_rng(seed, step, 0, i);
-
-            for j in 0..width {
-                if (i + j) % 2 == 0 {
-                    let idx = i * width + j;
-
-                    unsafe {
-                        let g = grid_ptr as *mut i8;
-
-                        let top = *g.add(((i + height - 1) % height) * width + j);
-
-                        let bottom = *g.add(((i + 1) % height) * width + j);
-
-                        let left = *g.add(i * width + (j + width - 1) % width);
-
-                        let right = *g.add(i * width + (j + 1) % width);
-
-                        let sum_neighbors = f64::from(top + bottom + left + right);
-
-                        let delta_e = 2.0 * f64::from(*g.add(idx)) * sum_neighbors;
-
-                        if delta_e < 0.0 || local_rng.random::<f64>() < (-delta_e * b).exp() {
-                            *g.add(idx) *= -1;
-                        }
-                    }
-                }
-            }
-        });
-
-        // Black points
-        (0..height).into_par_iter().for_each(|i| {
-            let mut local_rng = row_rng(seed, step, 1, i);
-
-            for j in 0..width {
-                if (i + j) % 2 != 0 {
-                    let idx = i * width + j;
-
-                    unsafe {
-                        let g = grid_ptr as *mut i8;
-
-                        let top = *g.add(((i + height - 1) % height) * width + j);
-
-                        let bottom = *g.add(((i + 1) % height) * width + j);
-
-                        let left = *g.add(i * width + (j + width - 1) % width);
-
-                        let right = *g.add(i * width + (j + 1) % width);
-
-                        let sum_neighbors = f64::from(top + bottom + left + right);
-
-                        let delta_e = 2.0 * f64::from(*g.add(idx)) * sum_neighbors;
-
-                        if delta_e < 0.0 || local_rng.random::<f64>() < (-delta_e * b).exp() {
-                            *g.add(idx) *= -1;
-                        }
-                    }
-                }
-            }
-        });
+        checkerboard_sweep(&mut grid, params.width, params.height, b, seed, step, 1);
     }
 
     let magnetization: f64 = grid.par_iter().map(|&s| f64::from(s)).sum::<f64>() / n_spins;
 
     (grid, magnetization.abs())
+}
+
+/// One checkerboard half-sweep. Sites of one colour only read the opposite colour, so all flip
+/// decisions are computed from a shared view (one RNG stream per row) and applied afterwards.
+fn checkerboard_sweep(
+    grid: &mut [i8],
+    width: usize,
+    height: usize,
+    b: f64,
+    seed: u64,
+    step: usize,
+    parity: u64,
+) {
+    let view: &[i8] = grid;
+
+    let flips: Vec<Vec<usize>> = (0..height)
+        .into_par_iter()
+        .map(|i| {
+            let mut local_rng = row_rng(seed, step, parity, i);
+
+            let mut out = Vec::new();
+
+            for j in 0..width {
+                if ((i + j) % 2) as u64 == parity {
+                    let idx = i * width + j;
+
+                    let top = view[((i + height - 1) % height) * width + j];
+
+                    let bottom = view[((i + 1) % height) * width + j];
+
+                    let left = view[i * width + (j + width - 1) % width];
+
+                    let right = view[i * width + (j + 1) % width];
+
+                    let sum_neighbors = f64::from(top + bottom + left + right);
+
+                    let delta_e = 2.0 * f64::from(view[idx]) * sum_neighbors;
+
+                    if delta_e < 0.0 || local_rng.random::<f64>() < (-delta_e * b).exp() {
+                        out.push(idx);
+                    }
+                }
+            }
+
+            out
+        })
+        .collect();
+
+    for idx in flips.into_iter().flatten() {
+        grid[idx] *= -1;
+    }
 }
 
 /// An example scenario that simulates the Ising model across a range of temperatures

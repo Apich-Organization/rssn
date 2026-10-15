@@ -263,43 +263,41 @@ pub(crate) fn smooth_2d(
     let h_sq = grid.h * grid.h;
 
     for _ in 0..num_sweeps {
-        // Red points
-        let u_ptr = grid.u.as_ptr() as usize;
+        // Red points, then black points.
+        smooth_colour_2d(grid, n, h_sq, 0);
 
-        (1..n - 1).into_par_iter().for_each(|i| {
-            for j in 1..n - 1 {
-                if (i + j) % 2 == 0 {
-                    unsafe {
-                        let u = u_ptr as *mut f64;
+        smooth_colour_2d(grid, n, h_sq, 1);
+    }
+}
 
-                        let u_neighbors = *u.add((i - 1) * n + j)
-                            + *u.add((i + 1) * n + j)
-                            + *u.add(i * n + (j - 1))
-                            + *u.add(i * n + (j + 1));
+/// Updates all interior points of one colour; they only read the opposite colour, so the
+/// updates are computed from a shared view and applied afterwards.
+fn smooth_colour_2d(
+    grid: &mut Grid2D,
+    n: usize,
+    h_sq: f64,
+    parity: usize,
+) {
+    let u_view = &grid.u;
 
-                        *u.add(i * n + j) = 0.25 * h_sq.mul_add(grid.f[i * n + j], u_neighbors);
-                    }
-                }
-            }
-        });
+    let f_view = &grid.f;
 
-        // Black points
-        (1..n - 1).into_par_iter().for_each(|i| {
-            for j in 1..n - 1 {
-                if (i + j) % 2 != 0 {
-                    unsafe {
-                        let u = u_ptr as *mut f64;
+    let updates: Vec<(usize, f64)> = (1..n - 1)
+        .into_par_iter()
+        .flat_map_iter(|i| {
+            (1..n - 1).filter(move |j| (i + j) % 2 == parity).map(move |j| {
+                let u_neighbors = u_view[(i - 1) * n + j]
+                    + u_view[(i + 1) * n + j]
+                    + u_view[i * n + (j - 1)]
+                    + u_view[i * n + (j + 1)];
 
-                        let u_neighbors = *u.add((i - 1) * n + j)
-                            + *u.add((i + 1) * n + j)
-                            + *u.add(i * n + (j - 1))
-                            + *u.add(i * n + (j + 1));
+                (i * n + j, 0.25 * h_sq.mul_add(f_view[i * n + j], u_neighbors))
+            })
+        })
+        .collect();
 
-                        *u.add(i * n + j) = 0.25 * h_sq.mul_add(grid.f[i * n + j], u_neighbors);
-                    }
-                }
-            }
-        });
+    for (k, v) in updates {
+        grid.u[k] = v;
     }
 }
 

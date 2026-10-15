@@ -39,120 +39,93 @@ pub struct FdtdParameters {
 ///
 /// # Returns
 /// A `Vec` containing snapshots of the Ez field at specified intervals.
+///
+/// # Panics
+/// Panics if `source_pos` lies outside the grid.
 #[must_use]
 pub fn run_fdtd_simulation(params: &FdtdParameters) -> Vec<Array2<f64>> {
     let (nx, ny) = (params.width, params.height);
 
-    let mut ez = Array2::<f64>::zeros((nx, ny));
+    assert!(
+        params.source_pos.0 < nx && params.source_pos.1 < ny,
+        "FDTD source position lies outside the grid"
+    );
 
-    let mut hx = Array2::<f64>::zeros((nx, ny));
+    // Row-major flat buffers: row `i` is the chunk `[i * ny, (i + 1) * ny)`.
+    let mut ez = vec![0.0_f64; nx * ny];
 
-    let mut hy = Array2::<f64>::zeros((nx, ny));
+    let mut hx = vec![0.0_f64; nx * ny];
+
+    let mut hy = vec![0.0_f64; nx * ny];
 
     let pml_thickness = 10;
 
     let mut snapshots = Vec::new();
 
+    let row_len = ny.max(1);
+
     for t in 0..params.time_steps {
-        // Update Hx and Hy (Magnetic field)
-        let ez_ptr = ez.as_ptr() as usize;
-
-        let hx_ptr = hx.as_mut_ptr() as usize;
-
-        let hy_ptr = hy.as_mut_ptr() as usize;
-
-        // Parallel update for Hx
-        (0..nx).into_par_iter().for_each(|i| {
-            if i < nx - 1 {
+        // Update Hx and Hy (Magnetic field): row `i` only reads Ez and writes its own H row.
+        hx.par_chunks_mut(row_len).zip(ez.par_chunks(row_len)).take(nx.saturating_sub(1)).for_each(
+            |(hx_row, ez_row)| {
                 for j in 0..ny - 1 {
-                    unsafe {
-                        let ez = ez_ptr as *const f64;
-
-                        let hx = hx_ptr as *mut f64;
-
-                        let val_j1 = *ez.add(i * ny + (j + 1));
-
-                        let val_j = *ez.add(i * ny + j);
-
-                        *hx.add(i * ny + j) -= 0.5 * (val_j1 - val_j);
-                    }
+                    hx_row[j] -= 0.5 * (ez_row[j + 1] - ez_row[j]);
                 }
-            }
-        });
+            },
+        );
 
-        // Parallel update for Hy
-        (0..nx).into_par_iter().for_each(|i| {
-            if i < nx - 1 {
+        let ez_next_rows = ez.par_chunks(row_len).skip(1);
+
+        hy.par_chunks_mut(row_len)
+            .zip(ez.par_chunks(row_len))
+            .zip(ez_next_rows)
+            .for_each(|((hy_row, ez_row), ez_next)| {
                 for j in 0..ny - 1 {
-                    unsafe {
-                        let ez = ez_ptr as *const f64;
-
-                        let hy = hy_ptr as *mut f64;
-
-                        let val_i1 = *ez.add((i + 1) * ny + j);
-
-                        let val_j = *ez.add(i * ny + j);
-
-                        *hy.add(i * ny + j) += 0.5 * (val_i1 - val_j);
-                    }
+                    hy_row[j] += 0.5 * (ez_next[j] - ez_row[j]);
                 }
-            }
-        });
+            });
 
-        // Update Ez (Electric field)
-        let ez_mut_ptr = ez.as_mut_ptr() as usize;
+        // Update Ez (Electric field) from the freshly updated H rows (interior only).
+        ez.par_chunks_mut(row_len)
+            .enumerate()
+            .skip(1)
+            .take(nx.saturating_sub(2))
+            .for_each(|(i, ez_row)| {
+                let hy_row = &hy[i * ny..(i + 1) * ny];
 
-        let hx_const_ptr = hx.as_ptr() as usize;
+                let hy_prev_row = &hy[(i - 1) * ny..i * ny];
 
-        let hy_const_ptr = hy.as_ptr() as usize;
+                let hx_row = &hx[i * ny..(i + 1) * ny];
 
-        (1..nx - 1).into_par_iter().for_each(|i| {
-            for j in 1..ny - 1 {
-                unsafe {
-                    let ez = ez_mut_ptr as *mut f64;
-
-                    let hx = hx_const_ptr as *const f64;
-
-                    let hy = hy_const_ptr as *const f64;
-
-                    let hy_val = *hy.add(i * ny + j);
-
-                    let hy_prev = *hy.add((i - 1) * ny + j);
-
-                    let hx_val = *hx.add(i * ny + j);
-
-                    let hx_prev = *hx.add(i * ny + (j - 1));
-
-                    *ez.add(i * ny + j) += 0.5 * (hy_val - hy_prev - (hx_val - hx_prev));
+                for j in 1..ny - 1 {
+                    ez_row[j] += 0.5 * (hy_row[j] - hy_prev_row[j] - (hx_row[j] - hx_row[j - 1]));
                 }
-            }
-        });
+            });
 
         // Add soft source
         let pulse = (-((t as f64 - 30.0).powi(2)) / 100.0).exp()
             * (2.0 * std::f64::consts::PI * params.source_freq * (t as f64)).sin();
 
-        ez[[params.source_pos.0, params.source_pos.1]] += pulse;
+        ez[params.source_pos.0 * ny + params.source_pos.1] += pulse;
 
         // Apply PML/Boundary Damping in parallel
-        (0..nx).into_par_iter().for_each(|i| {
-            for j in 0..ny {
+        ez.par_chunks_mut(row_len).enumerate().for_each(|(i, ez_row)| {
+            for (j, v) in ez_row.iter_mut().enumerate() {
                 if i < pml_thickness
                     || i >= nx - pml_thickness
                     || j < pml_thickness
                     || j >= ny - pml_thickness
                 {
-                    unsafe {
-                        let ez = ez_mut_ptr as *mut f64;
-
-                        *ez.add(i * ny + j) *= 0.95;
-                    }
+                    *v *= 0.95;
                 }
             }
         });
 
         if t % 5 == 0 {
-            snapshots.push(ez.clone());
+            snapshots.push(
+                Array2::from_shape_vec((nx, ny), ez.clone())
+                    .unwrap_or_else(|_| Array2::zeros((nx, ny))),
+            );
         }
     }
 

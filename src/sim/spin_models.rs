@@ -1088,7 +1088,9 @@ pub fn canonical_from_dos(
         e2 += w * e * e;
     }
     let me = e1 / z;
-    (m + z.ln(), me, beta * beta * (e2 / z - me * me))
+    let (mean_e2, me_sq, beta_sq) = (e2 / z, me * me, beta * beta);
+    let var = mean_e2 - me_sq;
+    (m + z.ln(), me, beta_sq * var)
 }
 
 /// Single-histogram reweighting: weighted mean of `observable` at `beta1` from samples drawn at `beta0`

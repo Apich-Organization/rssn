@@ -243,28 +243,29 @@ impl SPHSystem {
 
         let rest_density = self.rest_density;
 
-        // Use a raw pointer to provide an immutable view of all particles to each thread
-        // to avoid conflicts with the mutable iterator.
-        let particles_ptr = self.particles.as_ptr() as usize;
+        // Densities depend only on positions and masses, so compute them from a shared view
+        // and write them back afterwards.
+        let results: Vec<(f64, f64)> = self
+            .particles
+            .par_iter()
+            .map(|p_i| {
+                let mut density = 0.0;
 
-        let n = self.particles.len();
+                for p_j in &self.particles {
+                    let r_vec = p_i.pos - p_j.pos;
 
-        self.particles.par_iter_mut().for_each(|p_i| {
-            let particles_ref =
-                unsafe { std::slice::from_raw_parts(particles_ptr as *const Particle, n) };
+                    density += p_j.mass * poly6.value(r_vec.norm_sq());
+                }
 
-            let mut density = 0.0;
+                (density, gas_const * (density - rest_density).max(0.0))
+            })
+            .collect();
 
-            for p_j in particles_ref {
-                let r_vec = p_i.pos - p_j.pos;
+        for (p, (density, pressure)) in self.particles.iter_mut().zip(results) {
+            p.density = density;
 
-                density += p_j.mass * poly6.value(r_vec.norm_sq());
-            }
-
-            p_i.density = density;
-
-            p_i.pressure = gas_const * (density - rest_density).max(0.0);
-        });
+            p.pressure = pressure;
+        }
     }
 
     /// Computes the forces acting on each particle.
@@ -277,20 +278,14 @@ impl SPHSystem {
 
         let gravity = self.gravity;
 
-        let particles_ptr = self.particles.as_ptr() as usize;
-
-        let n = self.particles.len();
-
-        self.particles
-            .par_iter_mut()
+        let forces: Vec<Vector2D> = self
+            .particles
+            .par_iter()
             .enumerate()
-            .for_each(|(i, p_i)| {
-                let particles_ref =
-                    unsafe { std::slice::from_raw_parts(particles_ptr as *const Particle, n) };
-
+            .map(|(i, p_i)| {
                 let mut force = Vector2D::default();
 
-                for (j, p_j) in particles_ref.iter().enumerate() {
+                for (j, p_j) in self.particles.iter().enumerate() {
                     if i == j {
                         continue;
                     }
@@ -311,8 +306,13 @@ impl SPHSystem {
                     }
                 }
 
-                p_i.force = force + gravity * p_i.density;
-            });
+                force + gravity * p_i.density
+            })
+            .collect();
+
+        for (p, force) in self.particles.iter_mut().zip(forces) {
+            p.force = force;
+        }
     }
 
     /// Integrates the equations of motion for each particle.

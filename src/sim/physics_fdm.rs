@@ -607,13 +607,15 @@ pub fn solve_poisson_2d(
         let mut max_diff: f64 = 0.0;
 
         for pass in 0..2 {
-            let u_ptr = u.as_mut_slice().as_mut_ptr() as usize;
+            // Red-black SOR: neighbours read here belong to the opposite colour, which is
+            // untouched in this pass, so computing all updates from a shared view and then
+            // applying them is exactly the in-place sweep.
+            let u_view = u.as_slice();
 
-            let diffs: Vec<f64> = u
-                .as_mut_slice()
-                .par_iter_mut()
+            let updates: Vec<(usize, f64, f64)> = u_view
+                .par_iter()
                 .enumerate()
-                .filter_map(|(i, val)| {
+                .filter_map(|(i, &old_val)| {
                     let x = i % width;
 
                     let y = i / width;
@@ -626,15 +628,7 @@ pub fn solve_poisson_2d(
                         return None;
                     }
 
-                    // Safety: In Red-Black SOR, the neighbors we read are always from the
-                    // opposite color set, which is not being modified in this pass.
-                    let get_u = |nx: usize, ny: usize| unsafe {
-                        let ptr = u_ptr as *const f64;
-
-                        *ptr.add(ny * width + nx)
-                    };
-
-                    let old_val: f64 = *val;
+                    let get_u = |nx: usize, ny: usize| u_view[ny * width + nx];
 
                     let target = factor
                         * dx2.mul_add(
@@ -645,15 +639,19 @@ pub fn solve_poisson_2d(
                             ),
                         );
 
-                    *val = omega.mul_add(target - old_val, old_val);
+                    let new_val = omega.mul_add(target - old_val, old_val);
 
-                    let diff: f64 = (*val - old_val).abs();
-
-                    Some(diff)
+                    Some((i, new_val, (new_val - old_val).abs()))
                 })
                 .collect();
 
-            if let Some(d) = diffs.into_iter().max_by(|a, b| a.partial_cmp(b).unwrap())
+            let u_mut = u.as_mut_slice();
+
+            for &(i, new_val, _) in &updates {
+                u_mut[i] = new_val;
+            }
+
+            if let Some(d) = updates.iter().map(|&(_, _, d)| d).max_by(|a, b| a.partial_cmp(b).unwrap())
                 && d > max_diff {
                     max_diff = d;
                 }
