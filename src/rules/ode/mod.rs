@@ -2395,6 +2395,21 @@ mod tests {
         let gauss = run("dsolve(x*(1 - x)*diff(diff(y(x), x), x) + (1/3 - 2*x)*diff(y(x), x) - 1/4*y(x), y(x))");
         assert!(gauss.contains("hyper2f1"), "{gauss}");
         check_second_order(&rules, &gauss, |x| (x * (1.0 - x), 1.0 / 3.0 - 2.0 * x, -0.25), &[0.2, 0.45], 2e-5);
+        // Whittaker: 36 x^2 y'' + (-9 x^2 + 54 x + 5) y = 0 (kappa = 3/2, mu = 1/3, s = 1).
+        let whittaker = run("dsolve(36*x^2*diff(diff(y(x), x), x) + (-9*x^2 + 54*x + 5)*y(x), y(x))");
+        assert!(whittaker.contains("hyper1f1"), "{whittaker}");
+        check_second_order(&rules, &whittaker, |x| (36.0 * x * x, 0.0, -9.0 * x * x + 54.0 * x + 5.0), &[0.6, 1.1], 5e-4);
+        // Kummer with integer b = 2: the regular solution and a quadrature for the second.
+        let integer = run("dsolve(x*diff(diff(y(x), x), x) + (2 - x)*diff(y(x), x) - 1/2*y(x), y(x))");
+        assert!(integer.contains("hyper1f1(1/2, 2, x)"), "{integer}");
+        let rhs = integer.rsplit(" + ").find(|t| t.contains("C1")).unwrap_or(&integer).to_string();
+        for x in [0.4_f64, 1.2] {
+            let h = 1e-3;
+            let f = |t: f64| solution_value(&rules, &rhs, t, (1.0, 0.0));
+            let (y, up, down) = (f(x), f(x + h), f(x - h));
+            let residual = x * (up - 2.0 * y + down) / (h * h) + (2.0 - x) * (up - down) / (2.0 * h) - 0.5 * y;
+            assert!(residual.abs() < 1e-3, "{integer} at {x}: {residual}");
+        }
         // An ordinary point without closed form: a truncated series.
         let airy3 = run("dsolve(diff(diff(y(x), x), x) - (x^3 + 1)*y(x), y(x))");
         assert!(airy3.contains("big_o"), "{airy3}");

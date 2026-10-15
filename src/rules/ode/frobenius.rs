@@ -152,7 +152,13 @@ fn is_integer(value: &Q) -> bool {
 // ---------------------------------------------------------------------------
 // Hypergeometric matching
 
-/// Gauss and Kummer equations with polynomial coefficients.
+/// Gauss, Kummer and Whittaker equations with polynomial coefficients.
+///
+/// When the parameter `c` (or `b`, or `2μ`) is an integer the two power
+/// solutions coincide or one is undefined: the solution that exists is
+/// returned together with a second one by reduction of order
+/// (`y1 ∫ exp(-∫ a1/a2) / y1²`), which is the degenerate case of the
+/// formulas (a logarithm in the hypergeometric form).
 pub(super) fn hypergeometric(
     cx: &mut Cx<'_>,
     problem: &mut Problem,
@@ -165,52 +171,104 @@ pub(super) fn hypergeometric(
     let x = problem.x;
     let [p0, p1, p2] = polynomials(cx, &a, x)?;
     let coefficient = |p: &[Q], i: usize| p.get(i).cloned().unwrap_or_else(Q::zero);
-    if p0.len() > 1 || p1.len() > 2 || p2.len() < 2 || !coefficient(&p2, 0).is_zero() {
-        return None;
-    }
-    let alpha = coefficient(&p2, 1);
-    let (beta, gamma, delta) = (coefficient(&p1, 0), coefficient(&p1, 1), coefficient(&p0, 0));
-    let (c1, c2) = (problem.constant(cx.graph), problem.constant(cx.graph));
-    let (first, second) = if p2.len() == 3 && coefficient(&p2, 2) == -alpha.clone() {
-        // Gauss.
-        let c = &beta / &alpha;
-        if is_integer(&c) {
+    let power_of = |cx: &mut Cx<'_>, e: &Q| {
+        let exponent = node_of(cx.graph, e);
+        cx.graph.node(core::POW, &[x, exponent])
+    };
+    let (first, second): (NodeId, Option<NodeId>) = if p2.len() == 3 && coefficient(&p2, 0).is_zero() && coefficient(&p2, 1).is_zero() && p1.is_empty() && p0.len() <= 3 {
+        // Whittaker: y'' + (-s²/4 + κ s/x + (1/4 - μ²)/x²) y = 0, z = s x.
+        let alpha = coefficient(&p2, 2);
+        let (big_a, big_b, big_c) = (coefficient(&p0, 2) / &alpha, coefficient(&p0, 1) / &alpha, coefficient(&p0, 0) / &alpha);
+        if !big_a.is_negative() || big_a.is_zero() {
             return None;
         }
-        let s = -&gamma / &alpha - q(1);
-        let disc = rational_sqrt(&(&s * &s + q(4) * &delta / &alpha))?;
-        let (pa, pb) = ((&s + &disc) / q(2), (&s - &disc) / q(2));
-        let f = cx.graph.ops().lookup("hyper2f1")?;
-        let (na, nb, nc) = (node_of(cx.graph, &pa), node_of(cx.graph, &pb), node_of(cx.graph, &c));
-        let y1 = cx.graph.node(f, &[na, nb, nc, x]);
-        let (a2, b2, c2n) = (&pa - &c + q(1), &pb - &c + q(1), q(2) - &c);
-        let (na2, nb2, nc2) = (node_of(cx.graph, &a2), node_of(cx.graph, &b2), node_of(cx.graph, &c2n));
-        let h = cx.graph.node(f, &[na2, nb2, nc2, x]);
-        let exponent = node_of(cx.graph, &(q(1) - &c));
-        let power = cx.graph.node(core::POW, &[x, exponent]);
-        (y1, mul(cx.graph, &[power, h]))
-    } else if p2.len() == 2 && !gamma.is_zero() {
-        // Kummer in z = s x.
-        let s = -&gamma / &alpha;
-        let b = &beta / &alpha;
-        if is_integer(&b) {
-            return None;
-        }
-        let pa = &delta / &gamma;
+        let s = q(2) * rational_sqrt(&-big_a)?;
+        let kappa = &big_b / &s;
+        let mu = rational_sqrt(&(Q::new(BigInt::one(), BigInt::from(4)) - big_c))?;
         let f = cx.graph.ops().lookup("hyper1f1")?;
+        let exp = cx.graph.ops().lookup("exp")?;
         let sn = node_of(cx.graph, &s);
         let z = mul(cx.graph, &[sn, x]);
-        let (na, nb) = (node_of(cx.graph, &pa), node_of(cx.graph, &b));
-        let y1 = cx.graph.node(f, &[na, nb, z]);
-        let (a2, b2) = (&pa - &b + q(1), q(2) - &b);
-        let (na2, nb2) = (node_of(cx.graph, &a2), node_of(cx.graph, &b2));
-        let h = cx.graph.node(f, &[na2, nb2, z]);
-        let exponent = node_of(cx.graph, &(q(1) - &b));
-        let power = cx.graph.node(core::POW, &[x, exponent]);
-        (y1, mul(cx.graph, &[power, h]))
+        let m_function = |cx: &mut Cx<'_>, mu: &Q| -> Option<NodeId> {
+            // exp(-z/2) z^(μ+1/2) 1F1(μ - κ + 1/2; 1 + 2μ; z).
+            let minus_half = cx.graph.num(Number::fraction(-1, 2)?);
+            let exponent = mul(cx.graph, &[minus_half, z]);
+            let envelope = cx.graph.node(exp, &[exponent]);
+            let e = node_of(cx.graph, &(mu + Q::new(BigInt::one(), BigInt::from(2))));
+            let power = cx.graph.node(core::POW, &[z, e]);
+            let (na, nb) = (node_of(cx.graph, &(mu - &kappa + Q::new(BigInt::one(), BigInt::from(2)))), node_of(cx.graph, &(q(1) + q(2) * mu)));
+            let h = cx.graph.node(f, &[na, nb, z]);
+            Some(mul(cx.graph, &[envelope, power, h]))
+        };
+        let two_mu = q(2) * &mu;
+        if is_integer(&two_mu) {
+            (m_function(cx, &mu)?, None)
+        } else {
+            (m_function(cx, &mu)?, Some(m_function(cx, &-mu.clone())?))
+        }
     } else {
-        return None;
+        if p0.len() > 1 || p1.len() > 2 || p2.len() < 2 || !coefficient(&p2, 0).is_zero() {
+            return None;
+        }
+        let alpha = coefficient(&p2, 1);
+        let (beta, gamma, delta) = (coefficient(&p1, 0), coefficient(&p1, 1), coefficient(&p0, 0));
+        if p2.len() == 3 && coefficient(&p2, 2) == -alpha.clone() {
+            // Gauss.
+            let c = &beta / &alpha;
+            let s = -&gamma / &alpha - q(1);
+            let disc = rational_sqrt(&(&s * &s + q(4) * &delta / &alpha))?;
+            let (pa, pb) = ((&s + &disc) / q(2), (&s - &disc) / q(2));
+            let f = cx.graph.ops().lookup("hyper2f1")?;
+            let regular = |cx: &mut Cx<'_>| {
+                let (na, nb, nc) = (node_of(cx.graph, &pa), node_of(cx.graph, &pb), node_of(cx.graph, &c));
+                cx.graph.node(f, &[na, nb, nc, x])
+            };
+            let singular = |cx: &mut Cx<'_>| {
+                let (a2, b2, c2n) = (&pa - &c + q(1), &pb - &c + q(1), q(2) - &c);
+                let (na2, nb2, nc2) = (node_of(cx.graph, &a2), node_of(cx.graph, &b2), node_of(cx.graph, &c2n));
+                let h = cx.graph.node(f, &[na2, nb2, nc2, x]);
+                let power = power_of(cx, &(q(1) - &c));
+                mul(cx.graph, &[power, h])
+            };
+            if is_integer(&c) {
+                // 2F1(a, b; c; x) exists for c >= 1, the other form for c <= 0.
+                (if c >= q(1) { regular(cx) } else { singular(cx) }, None)
+            } else {
+                (regular(cx), Some(singular(cx)))
+            }
+        } else if p2.len() == 2 && !gamma.is_zero() {
+            // Kummer in z = s x.
+            let s = -&gamma / &alpha;
+            let b = &beta / &alpha;
+            let pa = &delta / &gamma;
+            let f = cx.graph.ops().lookup("hyper1f1")?;
+            let sn = node_of(cx.graph, &s);
+            let z = mul(cx.graph, &[sn, x]);
+            let regular = |cx: &mut Cx<'_>| {
+                let (na, nb) = (node_of(cx.graph, &pa), node_of(cx.graph, &b));
+                cx.graph.node(f, &[na, nb, z])
+            };
+            let singular = |cx: &mut Cx<'_>| {
+                let (a2, b2) = (&pa - &b + q(1), q(2) - &b);
+                let (na2, nb2) = (node_of(cx.graph, &a2), node_of(cx.graph, &b2));
+                let h = cx.graph.node(f, &[na2, nb2, z]);
+                let power = power_of(cx, &(q(1) - &b));
+                mul(cx.graph, &[power, h])
+            };
+            if is_integer(&b) {
+                (if b >= q(1) { regular(cx) } else { singular(cx) }, None)
+            } else {
+                (regular(cx), Some(singular(cx)))
+            }
+        } else {
+            return None;
+        }
     };
+    let second = match second {
+        | Some(y) => y,
+        | None => super::reduce::reduction_of_order(cx, &a, first, x)?,
+    };
+    let (c1, c2) = (problem.constant(cx.graph), problem.constant(cx.graph));
     let terms = [mul(cx.graph, &[c1, first]), mul(cx.graph, &[c2, second])];
     let solution = add(cx.graph, &terms);
     Some(explicit(cx, problem, solution))

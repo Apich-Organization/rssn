@@ -555,7 +555,7 @@ pub(super) fn variable_coefficients(
 }
 
 /// `y₂ = y₁ ∫ exp(-∫ a₁/a₂) / y₁²`.
-fn reduction_of_order(
+pub(super) fn reduction_of_order(
     cx: &mut Cx<'_>,
     a: &[NodeId; 3],
     y1: NodeId,
