@@ -2433,6 +2433,31 @@ mod tests {
             let expected = std::f64::consts::FRAC_PI_2 * y0 - (gamma - 2.0_f64.ln()) * j0;
             assert!((second - expected).abs() < 1e-8, "Y0({x}): {second} vs {expected}");
         }
+        // Irrational exponents (x^2 y'' + (x^2 - 2 ... ) y): indicial roots (1 +- sqrt 5)/2.
+        let irrational = run("ode_frobenius(x^2*diff(diff(y(x), x), x) - x*diff(y(x), x) - (1 + x)*y(x), y(x), 0, 12)");
+        let rhs = irrational.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string();
+        for x in [0.05_f64, 0.1] {
+            for basis in [(1.0, 0.0), (0.0, 1.0)] {
+                let h = 1e-4;
+                let f = |t: f64| solution_value(&rules, &rhs, t, basis);
+                let (y, up, down) = (f(x), f(x + h), f(x - h));
+                let residual = x * x * (up - 2.0 * y + down) / (h * h) - x * (up - down) / (2.0 * h) - (1.0 + x) * y;
+                assert!(residual.abs() < 1e-3 * (1.0 + y.abs()), "{irrational} at {x}: {residual}");
+            }
+        }
+        // Complex exponents: x^2 y'' + x y' + (x + 1) y: r^2 + 1 = 0, real solutions cos/sin(ln x) times series.
+        let complex = run("ode_frobenius(x^2*diff(diff(y(x), x), x) + x*diff(y(x), x) + (1 + x)*y(x), y(x), 0, 12)");
+        let rhs = complex.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string();
+        assert!(rhs.contains("cos(ln(x))") || rhs.contains("cos("), "{complex}");
+        for x in [0.05_f64, 0.1] {
+            for basis in [(1.0, 0.0), (0.0, 1.0)] {
+                let h = 1e-4;
+                let f = |t: f64| solution_value(&rules, &rhs, t, basis);
+                let (y, up, down) = (f(x), f(x + h), f(x - h));
+                let residual = x * x * (up - 2.0 * y + down) / (h * h) + x * (up - down) / (2.0 * h) + (1.0 + x) * y;
+                assert!(residual.abs() < 1e-3 * (1.0 + y.abs()), "{complex} at {x}: {residual}");
+            }
+        }
         // Irregular singular point at 0: exp(+-1/x).
         let irregular = run("ode_frobenius(x^4*diff(diff(y(x), x), x) + 2*x^3*diff(y(x), x) - y(x), y(x), 0, 5)");
         assert!(irregular.contains("exp(1/x)") && irregular.contains("exp(-1/x)"), "{irregular}");

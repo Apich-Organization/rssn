@@ -313,12 +313,13 @@ fn series_quotient(
     Some(out)
 }
 
-/// Frobenius data at `t = 0` of `p2 y'' + p1 y' + p0 y = 0` (polynomials in
-/// `t`), with `n + 1` terms.
-pub(super) fn frobenius_at_zero(
+/// The power series `P`, `Q` (`n + 2` terms) of the normal form
+/// `t² y'' + t P y' + Q y = 0` at `t = 0`; `None` unless the point is
+/// ordinary or regular singular.
+fn normal_form_series(
     p: &[Vec<Q>; 3],
     n: usize,
-) -> Option<Frobenius> {
+) -> Option<(Vec<Q>, Vec<Q>)> {
     let [p0, p1, p2] = p;
     let order = |v: &[Q]| v.iter().position(|c| !c.is_zero());
     let m = order(p2)?;
@@ -329,7 +330,6 @@ pub(super) fn frobenius_at_zero(
     let s: Vec<Q> = p2.iter().skip(m).cloned().collect();
     // P = t p1 / (t^m s), Q = t^2 p0 / (t^m s): shift exponents by 1 - m, 2 - m.
     let shifted = |v: &[Q], by: i64| -> Vec<Q> {
-        // coefficients of t^(by) * v
         let by = usize::try_from(by).ok();
         match by {
             | Some(b) => std::iter::repeat_n(Q::zero(), b).chain(v.iter().cloned()).collect(),
@@ -341,8 +341,94 @@ pub(super) fn frobenius_at_zero(
     let p_num = if m_i >= 1 { drop_low(p1, usize::try_from(m_i - 1).ok()?) } else { shifted(p1, 1 - m_i) };
     let q_num = if m_i >= 2 { drop_low(p0, usize::try_from(m_i - 2).ok()?) } else { shifted(p0, 2 - m_i) };
     let terms = n + 2;
-    let pp = series_quotient(&p_num, &s, terms)?;
-    let qq = series_quotient(&q_num, &s, terms)?;
+    Some((series_quotient(&p_num, &s, terms)?, series_quotient(&q_num, &s, terms)?))
+}
+
+/// An element `a + b √D` of a quadratic field (the field's `D` is kept by
+/// the caller).
+#[derive(Clone)]
+struct Quad {
+    a: Q,
+    b: Q,
+}
+
+impl Quad {
+    fn rational(a: Q) -> Self {
+        Self { a, b: Q::zero() }
+    }
+
+    fn add(&self, o: &Self) -> Self {
+        Self { a: &self.a + &o.a, b: &self.b + &o.b }
+    }
+
+    fn mul(&self, o: &Self, d: &Q) -> Self {
+        Self { a: &self.a * &o.a + &self.b * &o.b * d, b: &self.a * &o.b + &self.b * &o.a }
+    }
+
+    fn neg(&self) -> Self {
+        Self { a: -self.a.clone(), b: -self.b.clone() }
+    }
+
+    fn div(&self, o: &Self, d: &Q) -> Option<Self> {
+        let norm = &o.a * &o.a - &o.b * &o.b * d;
+        if norm.is_zero() {
+            return None;
+        }
+        let conjugate = Self { a: o.a.clone(), b: -o.b.clone() };
+        let numerator = self.mul(&conjugate, d);
+        Some(Self { a: numerator.a / &norm, b: numerator.b / &norm })
+    }
+}
+
+/// A regular singular point whose indicial roots `σ ± τ √D` are irrational
+/// (or complex, `D < 0`): the two solutions are conjugate, and the series of
+/// the first has coefficients `u_k + v_k √D`.
+pub(super) struct QuadraticData {
+    d: Q,
+    sigma: Q,
+    tau: Q,
+    series: Vec<(Q, Q)>,
+}
+
+fn frobenius_quadratic(
+    p: &[Vec<Q>; 3],
+    n: usize,
+) -> Option<QuadraticData> {
+    let (pp, qq) = normal_form_series(p, n)?;
+    let (p_0, q_0) = (pp.first()?.clone(), qq.first()?.clone());
+    let b = &p_0 - q(1);
+    let disc = &b * &b - q(4) * &q_0;
+    if disc.is_zero() || rational_sqrt(&disc).is_some() {
+        return None;
+    }
+    let (sigma, tau) = (-&b / q(2), Q::new(BigInt::one(), BigInt::from(2)));
+    let root = Quad { a: sigma.clone(), b: tau.clone() };
+    let f = |r: &Quad| -> Quad {
+        r.mul(r, &disc).add(&r.mul(&Quad::rational(b.clone()), &disc)).add(&Quad::rational(q_0.clone()))
+    };
+    let mut series: Vec<Quad> = vec![Quad::rational(q(1))];
+    for k in 1..=n {
+        let mut sum = Quad::rational(Q::zero());
+        for j in 1..=k {
+            let shift_by = Quad { a: &sigma + Q::from_integer(BigInt::from(k - j)), b: tau.clone() };
+            let weight = shift_by.mul(&Quad::rational(pp.get(j)?.clone()), &disc).add(&Quad::rational(qq.get(j)?.clone()));
+            sum = sum.add(&weight.mul(series.get(k - j)?, &disc));
+        }
+        let at = Quad { a: &root.a + Q::from_integer(BigInt::from(k)), b: root.b.clone() };
+        series.push(sum.neg().div(&f(&at), &disc)?);
+    }
+    Some(QuadraticData { d: disc, sigma, tau, series: series.into_iter().map(|c| (c.a, c.b)).collect() })
+}
+
+/// Frobenius data at `t = 0` of `p2 y'' + p1 y' + p0 y = 0` (polynomials in
+/// `t`), with `n + 1` terms.
+pub(super) fn frobenius_at_zero(
+    p: &[Vec<Q>; 3],
+    n: usize,
+) -> Option<Frobenius> {
+    let [p0, p1, p2] = p;
+    let order = |v: &[Q]| v.iter().position(|c| !c.is_zero());
+    let (pp, qq) = normal_form_series(p, n)?;
     let (p_0, q_0) = (pp.first()?.clone(), qq.first()?.clone());
     // F(r) = r^2 + (P0 - 1) r + Q0.
     let b = &p_0 - q(1);
@@ -470,6 +556,8 @@ pub(super) struct Formal {
 pub(super) enum Local {
     /// Ordinary or regular singular: Frobenius.
     Regular { centre: Option<Q>, data: Frobenius },
+    /// Regular singular with irrational or complex exponents.
+    Quadratic { centre: Option<Q>, data: QuadraticData },
     /// Irregular singular: two formal solutions with exponential factors.
     Formal { centre: Option<Q>, items: Vec<Formal> },
 }
@@ -619,6 +707,9 @@ fn local(
             if let Some(data) = frobenius_at_zero(&transformed, n) {
                 return Some(Local::Regular { centre: None, data });
             }
+            if let Some(data) = frobenius_quadratic(&transformed, n) {
+                return Some(Local::Quadratic { centre: None, data });
+            }
             formal_solutions(&transformed, n).map(|items| Local::Formal { centre: None, items })
         },
         | Point::Finite(preferred) => {
@@ -637,6 +728,11 @@ fn local(
             for x0 in &points {
                 if let Some(data) = frobenius_at_zero(&shifted_at(x0), n) {
                     return Some(Local::Regular { centre: Some(x0.clone()), data });
+                }
+            }
+            for x0 in &points {
+                if let Some(data) = frobenius_quadratic(&shifted_at(x0), n) {
+                    return Some(Local::Quadratic { centre: Some(x0.clone()), data });
                 }
             }
             for x0 in &points {
@@ -722,6 +818,87 @@ fn solutions(
                 y2 = add(cx.graph, &[logged, y2]);
             }
             Some((y1, y2))
+        },
+        | Local::Quadratic { centre, data } => {
+            let t = local_variable(cx, x, centre.as_ref());
+            let negative = data.d.is_negative();
+            let magnitude = if negative { -data.d.clone() } else { data.d.clone() };
+            let half = cx.graph.num(Number::fraction(1, 2)?);
+            let magnitude_node = node_of(cx.graph, &magnitude);
+            let root = cx.graph.node(core::POW, &[magnitude_node, half]);
+            let order_symbol = cx.graph.ops().lookup("big_o")?;
+            let sigma_node = node_of(cx.graph, &data.sigma);
+            let tau_node = node_of(cx.graph, &data.tau);
+            let terms_of = |cx: &mut Cx<'_>, coefficients: Vec<NodeId>| -> Option<NodeId> {
+                let mut terms = Vec::new();
+                for (k, c) in coefficients.into_iter().enumerate() {
+                    let power = if k == 0 {
+                        cx.graph.int(1)
+                    } else {
+                        let e = cx.graph.int(i64::try_from(k).ok()?);
+                        cx.graph.node(core::POW, &[t, e])
+                    };
+                    terms.push(mul(cx.graph, &[c, power]));
+                }
+                let e = cx.graph.int(i64::try_from(n + 1).ok()?);
+                let tail = cx.graph.node(core::POW, &[t, e]);
+                terms.push(cx.graph.node(order_symbol, &[tail]));
+                Some(add(cx.graph, &terms))
+            };
+            if negative {
+                // r = σ + i τ √m; y = t^σ e^{iθ} (A + i B), θ = τ √m ln t.
+                let ln = cx.graph.ops().lookup("ln")?;
+                let (sin, cos) = (cx.graph.ops().lookup("sin")?, cx.graph.ops().lookup("cos")?);
+                let a_coefficients: Vec<NodeId> = data.series.iter().map(|(u, _)| node_of(cx.graph, u)).collect();
+                let b_coefficients: Vec<NodeId> = data
+                    .series
+                    .iter()
+                    .map(|(_, v)| {
+                        let vn = node_of(cx.graph, v);
+                        mul(cx.graph, &[vn, root])
+                    })
+                    .collect();
+                let (big_a, big_b) = (terms_of(cx, a_coefficients)?, terms_of(cx, b_coefficients)?);
+                let log = cx.graph.node(ln, &[t]);
+                let theta = mul(cx.graph, &[tau_node, root, log]);
+                let (s_node, c_node) = (cx.graph.node(sin, &[theta]), cx.graph.node(cos, &[theta]));
+                let sigma_power = cx.graph.node(core::POW, &[t, sigma_node]);
+                let neg_b = neg(cx.graph, big_b);
+                let neg_a = neg(cx.graph, big_a);
+                let _ = neg_a;
+                let real_inner = {
+                    let first = mul(cx.graph, &[c_node, big_a]);
+                    let second = mul(cx.graph, &[s_node, neg_b]);
+                    add(cx.graph, &[first, second])
+                };
+                let imaginary_inner = {
+                    let first = mul(cx.graph, &[s_node, big_a]);
+                    let second = mul(cx.graph, &[c_node, big_b]);
+                    add(cx.graph, &[first, second])
+                };
+                return Some((mul(cx.graph, &[sigma_power, real_inner]), mul(cx.graph, &[sigma_power, imaginary_inner])));
+            }
+            // Real irrational exponents σ ± τ √D.
+            let mut pair = Vec::new();
+            for sign in [1_i64, -1] {
+                let sg = cx.graph.int(sign);
+                let offset = mul(cx.graph, &[sg, tau_node, root]);
+                let exponent = add(cx.graph, &[sigma_node, offset]);
+                let coefficients: Vec<NodeId> = data
+                    .series
+                    .iter()
+                    .map(|(u, v)| {
+                        let (un, vn) = (node_of(cx.graph, u), node_of(cx.graph, v));
+                        let signed = mul(cx.graph, &[sg, vn, root]);
+                        add(cx.graph, &[un, signed])
+                    })
+                    .collect();
+                let polynomial = terms_of(cx, coefficients)?;
+                let power = cx.graph.node(core::POW, &[t, exponent]);
+                pair.push(mul(cx.graph, &[power, polynomial]));
+            }
+            let (&first, &second) = (pair.first()?, pair.get(1)?);
+            Some((first, second))
         },
         | Local::Formal { centre, items } => {
             let t = local_variable(cx, x, centre.as_ref());
@@ -833,6 +1010,22 @@ pub(super) fn report(
         | Local::Regular { data, .. } => {
             let (r1, r2) = (node_of(cx.graph, &data.roots.0), node_of(cx.graph, &data.roots.1));
             (cx.graph.node(core::LIST, &[r1, r2]), recurrence_node(cx, &data.recurrence)?)
+        },
+        | Local::Quadratic { data, .. } => {
+            let half = cx.graph.num(Number::fraction(1, 2)?);
+            let negative = data.d.is_negative();
+            let magnitude = if negative { -data.d.clone() } else { data.d.clone() };
+            let magnitude_node = node_of(cx.graph, &magnitude);
+            let root = cx.graph.node(core::POW, &[magnitude_node, half]);
+            let mut factors = vec![node_of(cx.graph, &data.tau), root];
+            if negative {
+                factors.push(cx.graph.node(cx.graph.ops().lookup("I")?, &[]));
+            }
+            let offset = mul(cx.graph, &factors);
+            let sigma = node_of(cx.graph, &data.sigma);
+            let minus_offset = neg(cx.graph, offset);
+            let (r1, r2) = (add(cx.graph, &[sigma, offset]), add(cx.graph, &[sigma, minus_offset]));
+            (cx.graph.node(core::LIST, &[r1, r2]), cx.graph.node(core::LIST, &[]))
         },
         | Local::Formal { items, .. } => {
             let mut pairs = Vec::new();
