@@ -25,6 +25,7 @@ use num_complex::Complex64;
 use crate::kernels::dense::{self, Mat};
 use crate::kernels::matfun::{expm, phi_matrices};
 use crate::kernels::ode_adaptive::{OdeError, OdeOptions, OdeSolution, err_norm};
+use crate::kernels::ode_stiff::JacobianFn;
 
 // --------------------------------------------------------------- ETDRK4
 
@@ -191,14 +192,14 @@ pub fn etdrk4_diag<N: Fn(f64, &[f64], &mut [f64])>(
 /// or [`OdeError::SolveFailed`].
 pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
     f: F,
-    jac: Option<&dyn Fn(f64, &[f64]) -> Mat>,
+    jac: Option<&JacobianFn<'_>>,
     t0: f64,
     t1: f64,
     y0: &[f64],
     opts: &OdeOptions,
 ) -> Result<OdeSolution, OdeError> {
     let n = y0.len();
-    if n == 0 || t0 == t1 {
+    if n == 0 || crate::kernels::exact_eq(t0, t1) {
         return Err(OdeError::Invalid);
     }
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
@@ -216,7 +217,7 @@ pub fn exprb32<F: Fn(f64, &[f64], &mut [f64])>(
     let mut nfev = 1usize;
     let mut h = opts
         .h0
-        .unwrap_or_else(|| crate::kernels::ode_adaptive::initial_step(&f, t0, y0, &f0, dir, 3.0, opts.rtol, opts.atol))
+        .unwrap_or_else(|| crate::kernels::ode_adaptive::initial_step(&f, t0, y0, &f0, dir, 3.0, crate::kernels::ode_adaptive::Tol { rtol: opts.rtol, atol: opts.atol }))
         .abs()
         .min(opts.hmax)
         * dir;
@@ -394,10 +395,11 @@ fn imex_tableau(s: ImexScheme) -> ImexTableau {
 /// # Errors
 /// [`OdeError::Invalid`], [`OdeError::SolveFailed`] or
 /// [`OdeError::NonFinite`].
+#[allow(clippy::too_many_arguments)] // public IVP-solver signature (t0, t1, y0, steps, scheme) is kept for API compatibility
 pub fn imex_rk<E, I>(
     f_ex: E,
     f_im: I,
-    jac_im: Option<&dyn Fn(f64, &[f64]) -> Mat>,
+    jac_im: Option<&JacobianFn<'_>>,
     t0: f64,
     t1: f64,
     y0: &[f64],
@@ -419,25 +421,26 @@ where
     let mut out = vec![y.clone()];
     for st in 0..steps {
         let t = t0 + st as f64 * h;
-        let jm = if let Some(jf) = jac_im {
-            jf(t, &y)
-        } else {
-            let mut f0 = vec![0.0; n];
-            f_im(t, &y, &mut f0);
-            let mut jm = Mat::zeros(n, n);
-            let mut yp = y.clone();
-            let mut fp = vec![0.0; n];
-            for j in 0..n {
-                let d = 1.5e-8 * y[j].abs().max(1e-3);
-                yp[j] = y[j] + d;
-                f_im(t, &yp, &mut fp);
-                yp[j] = y[j];
-                for i in 0..n {
-                    jm.set(i, j, (fp[i] - f0[i]) / d);
+        let jm = jac_im.map_or_else(
+            || {
+                let mut f0 = vec![0.0; n];
+                f_im(t, &y, &mut f0);
+                let mut jm = Mat::zeros(n, n);
+                let mut yp = y.clone();
+                let mut fp = vec![0.0; n];
+                for j in 0..n {
+                    let d = 1.5e-8 * y[j].abs().max(1e-3);
+                    yp[j] = y[j] + d;
+                    f_im(t, &yp, &mut fp);
+                    yp[j] = y[j];
+                    for i in 0..n {
+                        jm.set(i, j, (fp[i] - f0[i]) / d);
+                    }
                 }
-            }
-            jm
-        };
+                jm
+            },
+            |jf| jf(t, &y),
+        );
         // factor I - h gamma J for the (common) diagonal coefficient
         let gamma = tab.ai.iter().enumerate().map(|(i, r)| r[i]).fold(0.0, f64::max);
         let mut w = Mat::identity(n);
@@ -675,6 +678,7 @@ fn lobatto_nodes(s: usize) -> (Vec<f64>, Vec<f64>) {
 /// # Errors
 /// [`OdeError::Invalid`] for bad dimensions or `stages < 2`;
 /// [`OdeError::SolveFailed`] if Newton's iteration does not converge.
+#[allow(clippy::too_many_arguments)] // public integrator signature (mass, grad_v, q0, p0, t0, t1, steps, stages) is kept for API compatibility
 pub fn variational_lobatto<G: Fn(&[f64]) -> Vec<f64>>(
     mass: &Mat,
     grad_v: G,
@@ -800,13 +804,16 @@ pub fn variational_lobatto<G: Fn(&[f64]) -> Vec<f64>>(
             qn.push(x[(j - 1) * d..j * d].to_vec());
         }
         let g = gradient(&qn);
-        p = g[s - 1].clone();
-        q = qn[s - 1].clone();
+        p.clone_from(&g[s - 1]);
+        q.clone_from(&qn[s - 1]);
     }
     Ok((q, p))
 }
 
 /// Matrix exponential helper re-exported for the exponential integrators.
+///
+/// # Errors
+/// [`OdeError::SolveFailed`] if the matrix exponential cannot be computed.
 pub fn exp_matrix(a: &Mat) -> Result<Mat, OdeError> {
     expm(a).map_err(|_| OdeError::SolveFailed)
 }

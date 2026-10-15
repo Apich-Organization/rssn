@@ -238,7 +238,7 @@ pub fn bspline_basis(knots: &[f64], degree: usize, i: usize, x: f64) -> f64 {
     if degree == 0 {
         let last = knots.len() - 1;
         let inside = knots[i] <= x && x < knots[i + 1];
-        let at_end = x == knots[last] && knots[i] < knots[i + 1] && knots[i + 1] == knots[last];
+        let at_end = crate::kernels::exact_eq(x, knots[last]) && knots[i] < knots[i + 1] && crate::kernels::exact_eq(knots[i + 1], knots[last]);
         return if inside || at_end { 1.0 } else { 0.0 };
     }
     let mut v = 0.0;

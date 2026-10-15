@@ -60,6 +60,7 @@ impl Default for HomotopyOptions {
 
 /// A classified path endpoint.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::struct_excessive_bools)] // independent public status flags (at_infinity, singular, converged, suspect)
 pub struct PathEnd {
     /// Affine coordinates `(re, im)` (NaN for points at infinity).
     pub x: Vec<(f64, f64)>,
@@ -310,9 +311,8 @@ struct Ended {
 fn run_path(pb: &Problem, start: &[Cx], opts: &HomotopyOptions, max_step: f64) -> Ended {
     let failed = |x: &[Cx]| Ended { x: x.to_vec(), winding: 1, converged: false, cond_ok: false };
     let s0 = opts.endgame_start.clamp(1e-3, 0.5);
-    let mut x = match pb.track(start, Cx::new(0.0, 0.0), Cx::new(1.0 - s0, 0.0), max_step) {
-        Some(v) => v,
-        None => return failed(start),
+    let Some(mut x) = pb.track(start, Cx::new(0.0, 0.0), Cx::new(1.0 - s0, 0.0), max_step) else {
+        return failed(start);
     };
     let lambda = 0.5;
     let ver = 24usize;

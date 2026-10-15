@@ -63,7 +63,7 @@ pub fn brent<F: Fn(f64) -> f64>(
         if fb == 0.0 || (b - a).abs() < tol {
             return Ok(b);
         }
-        let mut s = if fa != fc && fb != fc {
+        let mut s = if !crate::kernels::exact_eq(fa, fc) && !crate::kernels::exact_eq(fb, fc) {
             a * fb * fc / ((fa - fb) * (fa - fc))
                 + b * fa * fc / ((fb - fa) * (fb - fc))
                 + c * fa * fb / ((fc - fa) * (fc - fb))
@@ -341,7 +341,7 @@ pub fn numerical_jacobian<F: Fn(&[f64]) -> Vec<f64>>(f: &F, x: &[f64], fx: &[f64
 /// [`RootError::NoConvergence`] when the iteration limit is hit.
 pub fn newton_system<F, J>(
     f: F,
-    jac: Option<J>,
+    jac: Option<&J>,
     x0: &[f64],
     tol: f64,
     max_iter: usize,
@@ -357,7 +357,7 @@ where
         if r <= tol {
             return Ok(SystemSolution { x, residual: r, iterations: it });
         }
-        let j = jac.as_ref().map_or_else(|| numerical_jacobian(&f, &x, &fx), |g| g(&x));
+        let j = jac.map_or_else(|| numerical_jacobian(&f, &x, &fx), |g| g(&x));
         let lu = dense::lu_factor(&j).map_err(|_| RootError::Singular)?;
         let neg: Vec<f64> = fx.iter().map(|v| -v).collect();
         let step = lu.solve(&neg);

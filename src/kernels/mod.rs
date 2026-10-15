@@ -92,3 +92,15 @@ pub mod ode_ext;
 pub mod sde;
 /// Homotopy continuation in projective coordinates with Cauchy endgame and path-jumping protection.
 pub mod homotopy;
+
+/// Exact IEEE-754 equality (`-0.0 == 0.0`, NaN never equal).
+///
+/// For the few places where bit-exact equality is the intended predicate
+/// (sentinels, "no change after rounding" tests such as `|h| + s == s`).
+#[must_use]
+pub(crate) fn exact_eq(
+    a: f64,
+    b: f64,
+) -> bool {
+    a.partial_cmp(&b) == Some(std::cmp::Ordering::Equal)
+}

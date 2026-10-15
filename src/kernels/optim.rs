@@ -166,12 +166,12 @@ fn line_search<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
 /// `None` a central-difference gradient is used.
 pub fn bfgs<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
     f: F,
-    grad: Option<G>,
+    grad: Option<&G>,
     x0: &[f64],
     tol: f64,
     max_iter: usize,
 ) -> OptResult {
-    let gfun = |x: &[f64]| grad.as_ref().map_or_else(|| numerical_gradient(&f, x), |g| g(x));
+    let gfun = |x: &[f64]| grad.map_or_else(|| numerical_gradient(&f, x), |g| g(x));
     let n = x0.len();
     let mut x = x0.to_vec();
     let mut fx = f(&x);
@@ -236,13 +236,13 @@ pub fn bfgs<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
 /// Limited-memory BFGS with history `m` (two-loop recursion).
 pub fn lbfgs<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
     f: F,
-    grad: Option<G>,
+    grad: Option<&G>,
     x0: &[f64],
     m: usize,
     tol: f64,
     max_iter: usize,
 ) -> OptResult {
-    let gfun = |x: &[f64]| grad.as_ref().map_or_else(|| numerical_gradient(&f, x), |g| g(x));
+    let gfun = |x: &[f64]| grad.map_or_else(|| numerical_gradient(&f, x), |g| g(x));
     let mut x = x0.to_vec();
     let mut fx = f(&x);
     let mut gx = gfun(&x);
@@ -312,7 +312,7 @@ pub fn lbfgs<F: Fn(&[f64]) -> f64, G: Fn(&[f64]) -> Vec<f64>>(
 pub fn trust_region<F, G, H>(
     f: F,
     grad: G,
-    hess: Option<H>,
+    hess: Option<&H>,
     x0: &[f64],
     tol: f64,
     max_iter: usize,
@@ -324,7 +324,7 @@ where
 {
     let n = x0.len();
     let hfun = |x: &[f64]| -> Mat {
-        hess.as_ref().map_or_else(
+        hess.map_or_else(
             || {
                 let g0 = grad(x);
                 let mut hm = Mat::zeros(n, n);
@@ -541,7 +541,7 @@ where
             }
             v
         };
-        let r = bfgs(phi, None::<fn(&[f64]) -> Vec<f64>>, &x, 1e-9, 500);
+        let r = bfgs(phi, None::<&fn(&[f64]) -> Vec<f64>>, &x, 1e-9, 500);
         evals += r.evaluations;
         x = r.x;
         let h = eq(&x);

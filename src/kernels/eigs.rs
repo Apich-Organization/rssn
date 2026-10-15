@@ -484,7 +484,7 @@ pub fn eigs<A: Fn(&[f64], &mut [f64])>(
                         xi[e] *= sgn;
                     }
                     if ritz[order[q]].1 == 0.0 {
-                        xi.iter_mut().for_each(|e| *e = 0.0);
+                        xi.fill(0.0);
                     }
                 }
                 out.values.push(ritz[order[q]]);

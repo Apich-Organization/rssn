@@ -77,7 +77,7 @@ pub fn carlson_rd(x: f64, y: f64, z: f64) -> f64 {
 /// Complete elliptic integral of the first kind `K(m)`, `m < 1`.
 #[must_use]
 pub fn elliptic_k(m: f64) -> f64 {
-    if m == 1.0 {
+    if crate::kernels::exact_eq(m, 1.0) {
         return f64::INFINITY;
     }
     if m > 1.0 || m.is_nan() {
@@ -99,7 +99,7 @@ pub fn elliptic_k(m: f64) -> f64 {
 /// Complete elliptic integral of the second kind `E(m)`, `m <= 1`.
 #[must_use]
 pub fn elliptic_e(m: f64) -> f64 {
-    if m == 1.0 {
+    if crate::kernels::exact_eq(m, 1.0) {
         return 1.0;
     }
     if m > 1.0 || m.is_nan() {
@@ -391,7 +391,7 @@ pub fn hyp2f1(a: f64, b: f64, c: f64, z: f64) -> f64 {
         }
         return f64::NAN;
     }
-    if z == 1.0 {
+    if crate::kernels::exact_eq(z, 1.0) {
         if s > 0.0 {
             return gamma_ratio(&[c, s], &[c - a, c - b]);
         }
@@ -526,7 +526,7 @@ pub fn hyp2f1_complex(a: f64, b: f64, c: f64, z: Complex64) -> Complex64 {
     if is_nonpos_int(c) {
         return nan;
     }
-    if z.im == 0.0 && z.re == 1.0 {
+    if crate::kernels::exact_eq(z.im, 0.0) && crate::kernels::exact_eq(z.re, 1.0) {
         return Complex64::new(hyp2f1(a, b, c, 1.0), 0.0);
     }
     hyp2f1_ode(a, b, c, z)

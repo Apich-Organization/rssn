@@ -475,7 +475,7 @@ pub fn heat_1d(
     steps: usize,
 ) -> Result<Field1D, PdeError> {
     grid.validate(3)?;
-    if (alpha.is_nan() || alpha <= 0.0) {
+    if alpha.is_nan() || alpha <= 0.0 {
         return Err(PdeError::InvalidInput("diffusivity must be positive"));
     }
     let dt = check_steps(t_end, steps)?;
@@ -498,7 +498,7 @@ pub fn heat_2d(
     steps: usize,
 ) -> Result<Field2D, PdeError> {
     grid.validate()?;
-    if (alpha.is_nan() || alpha <= 0.0) {
+    if alpha.is_nan() || alpha <= 0.0 {
         return Err(PdeError::InvalidInput("diffusivity must be positive"));
     }
     let dt = check_steps(t_end, steps)?;
@@ -558,7 +558,7 @@ pub fn wave_1d(
     steps: usize,
 ) -> Result<Field1D, PdeError> {
     grid.validate(3)?;
-    if (c.is_nan() || c <= 0.0) {
+    if c.is_nan() || c <= 0.0 {
         return Err(PdeError::InvalidInput("wave speed must be positive"));
     }
     let dt = check_steps(t_end, steps)?;
@@ -585,7 +585,7 @@ pub fn wave_2d(
     steps: usize,
 ) -> Result<Field2D, PdeError> {
     grid.validate()?;
-    if (c.is_nan() || c <= 0.0) {
+    if c.is_nan() || c <= 0.0 {
         return Err(PdeError::InvalidInput("wave speed must be positive"));
     }
     let dt = check_steps(t_end, steps)?;

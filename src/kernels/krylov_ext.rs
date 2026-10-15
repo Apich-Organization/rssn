@@ -262,6 +262,7 @@ where
 /// and `s + 4` vectors of storage, and approaches the speed of full GMRES
 /// for moderate `s` on nonsymmetric systems. `iterations` counts
 /// matrix-vector products.
+#[allow(clippy::too_many_arguments)] // public solver signature (apply, precond, s, b, x0, tol, max_iter, seed) is kept for API compatibility
 pub fn idr_s<A, M>(
     apply: A,
     precond: M,

@@ -176,7 +176,7 @@ pub fn integrate_gk<F: Fn(f64) -> f64>(
     rel_tol: f64,
     max_panels: usize,
 ) -> Integral {
-    if a == b {
+    if crate::kernels::exact_eq(a, b) {
         return Integral { value: 0.0, error: 0.0, evaluations: 0, converged: true };
     }
     let (r0, e0, n0) = gk_panel(&f, a, b, rule);

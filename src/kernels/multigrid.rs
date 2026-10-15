@@ -723,7 +723,7 @@ impl Amg {
     /// Preconditioner action `z = M^{-1} r` (one cycle from zero), symmetric
     /// positive definite for symmetric `A`.
     pub fn precondition(&self, r: &[f64], z: &mut [f64]) {
-        z.iter_mut().for_each(|v| *v = 0.0);
+        z.fill(0.0);
         self.cycle(0, z, r);
     }
 

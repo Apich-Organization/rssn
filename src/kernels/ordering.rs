@@ -277,6 +277,12 @@ pub fn amd_order(adj: &[Vec<usize>]) -> Vec<usize> {
     perm
 }
 
+/// Work item of the iterative nested dissection: a piece still to split, or a separator to emit.
+enum Task {
+    Part(Vec<usize>),
+    Emit(Vec<usize>),
+}
+
 /// Nested dissection ordering by recursive level-structure bisection.
 ///
 /// Pieces of at most 300 vertices are ordered by [`amd_order`]; larger
@@ -290,11 +296,6 @@ pub fn nested_dissection_order(adj: &[Vec<usize>]) -> Vec<usize> {
     let mut perm = Vec::with_capacity(n);
     let mut local = vec![NIL; n];
     let mut seen = vec![false; n];
-    // iterative: (vertex set, emit-after separator)
-    enum Task {
-        Part(Vec<usize>),
-        Emit(Vec<usize>),
-    }
     let mut tasks: Vec<Task> = Vec::new();
     // components of the whole graph
     let mut comps: Vec<Vec<usize>> = Vec::new();

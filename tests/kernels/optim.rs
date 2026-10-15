@@ -39,10 +39,10 @@ fn nelder_mead_rosenbrock() {
 
 #[test]
 fn bfgs_with_and_without_gradient() {
-    let r = bfgs(rosen, Some(rosen_grad), &[-1.2, 1.0], 1e-8, 200);
+    let r = bfgs(rosen, Some(&rosen_grad), &[-1.2, 1.0], 1e-8, 200);
     assert!(r.converged, "{r:?}");
     assert!((r.x[0] - 1.0).abs() < 1e-6 && (r.x[1] - 1.0).abs() < 1e-6);
-    let r = bfgs(rosen, None::<fn(&[f64]) -> Vec<f64>>, &[-1.2, 1.0], 1e-5, 300);
+    let r = bfgs(rosen, None::<&fn(&[f64]) -> Vec<f64>>, &[-1.2, 1.0], 1e-5, 300);
     assert!((r.x[0] - 1.0).abs() < 1e-3, "{r:?}");
 }
 
@@ -51,19 +51,19 @@ fn lbfgs_high_dimension() {
     let n = 50;
     let f = |x: &[f64]| x.iter().enumerate().map(|(i, v)| (i as f64 + 1.0) * (v - 1.0).powi(2)).sum::<f64>();
     let g = |x: &[f64]| x.iter().enumerate().map(|(i, v)| 2.0 * (i as f64 + 1.0) * (v - 1.0)).collect();
-    let r = lbfgs(f, Some(g), &vec![0.0; n], 8, 1e-8, 500);
+    let r = lbfgs(f, Some(&g), &vec![0.0; n], 8, 1e-8, 500);
     assert!(r.converged, "{r:?}");
     assert!(r.x.iter().all(|v| (v - 1.0).abs() < 1e-6));
-    let r2 = lbfgs(rosen, Some(rosen_grad), &[-1.2, 1.0], 10, 1e-8, 500);
+    let r2 = lbfgs(rosen, Some(&rosen_grad), &[-1.2, 1.0], 10, 1e-8, 500);
     assert!((r2.x[0] - 1.0).abs() < 1e-5);
 }
 
 #[test]
 fn trust_region_dogleg() {
-    let r = trust_region(rosen, rosen_grad, Some(rosen_hess), &[-1.2, 1.0], 1e-8, 200);
+    let r = trust_region(rosen, rosen_grad, Some(&rosen_hess), &[-1.2, 1.0], 1e-8, 200);
     assert!(r.converged, "{r:?}");
     assert!((r.x[0] - 1.0).abs() < 1e-6);
-    let r = trust_region(rosen, rosen_grad, None::<fn(&[f64]) -> Mat>, &[-1.2, 1.0], 1e-6, 500);
+    let r = trust_region(rosen, rosen_grad, None::<&fn(&[f64]) -> Mat>, &[-1.2, 1.0], 1e-6, 500);
     assert!((r.x[0] - 1.0).abs() < 1e-4, "{r:?}");
 }
 

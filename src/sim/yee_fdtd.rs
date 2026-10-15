@@ -377,12 +377,12 @@ impl Yee {
         let mf = self.in_box(self.pos_of(fc, cur));
         let (pc, pn) = (self.pos_of(g, cur), self.pos_of(g, nb));
         let (mc, mn) = (self.in_box(pc), self.in_box(pn));
-        if mf == mc && mf == mn {
+        if crate::kernels::exact_eq(mf, mc) && crate::kernels::exact_eq(mf, mn) {
             return 0.0;
         }
         let tg = if g < 3 { self.t } else { self.t + 0.5 * self.dt };
-        let dcur = if mf == mc { 0.0 } else { (mf - mc) * self.incident(g, pc, tg) };
-        let dnb = if mf == mn { 0.0 } else { (mf - mn) * self.incident(g, pn, tg) };
+        let dcur = if crate::kernels::exact_eq(mf, mc) { 0.0 } else { (mf - mc) * self.incident(g, pc, tg) };
+        let dnb = if crate::kernels::exact_eq(mf, mn) { 0.0 } else { (mf - mn) * self.incident(g, pn, tg) };
         let h = self.cfg.h[a];
         if forward { (dnb - dcur) / h } else { (dcur - dnb) / h }
     }

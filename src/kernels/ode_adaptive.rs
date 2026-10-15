@@ -195,6 +195,22 @@ pub(crate) fn dense_eval(s: &DenseStep, t: f64) -> Vec<f64> {
     }
 }
 
+/// The accepted step `[t_old, tn]` (integration direction `dir`) ending at `ynew`.
+#[derive(Clone, Copy)]
+pub(crate) struct StepWindow<'a> {
+    pub(crate) t_old: f64,
+    pub(crate) tn: f64,
+    pub(crate) ynew: &'a [f64],
+    pub(crate) dir: f64,
+}
+
+/// Relative and absolute tolerance pair.
+#[derive(Clone, Copy)]
+pub(crate) struct Tol {
+    pub(crate) rtol: f64,
+    pub(crate) atol: f64,
+}
+
 /// Locates the events crossed during an accepted step and updates the
 /// solution. Returns `true` when a terminal event ended the integration
 /// (the step and the event point are then already recorded).
@@ -203,11 +219,9 @@ pub(crate) fn process_events(
     gprev: &mut [f64],
     sol: &mut OdeSolution,
     step: DenseStep,
-    t_old: f64,
-    tn: f64,
-    ynew: &[f64],
-    dir: f64,
+    window: &StepWindow<'_>,
 ) -> bool {
+    let StepWindow { t_old, tn, ynew, dir } = *window;
     let mut hits: Vec<EventHit> = Vec::new();
     let mut stop = false;
     for (ei, ev) in events.iter().enumerate() {
@@ -298,9 +312,9 @@ pub(crate) fn initial_step<F: Fn(f64, &[f64], &mut [f64])>(
     f0: &[f64],
     dir: f64,
     order: f64,
-    rtol: f64,
-    atol: f64,
+    tol: Tol,
 ) -> f64 {
+    let Tol { rtol, atol } = tol;
     let n = y0.len();
     let sc: Vec<f64> = y0.iter().map(|v| atol + rtol * v.abs()).collect();
     let d0 = (y0.iter().zip(&sc).map(|(a, s)| (a / s) * (a / s)).sum::<f64>() / n as f64).sqrt();
@@ -339,7 +353,7 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
     events: &[Event<'_>],
 ) -> Result<OdeSolution, OdeError> {
     let n = y0.len();
-    if n == 0 || t0 == t1 {
+    if n == 0 || crate::kernels::exact_eq(t0, t1) {
         return Err(OdeError::Invalid);
     }
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
@@ -350,7 +364,7 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
     let mut nfev = 1;
     let mut h = opts
         .h0
-        .unwrap_or_else(|| initial_step(&f, t0, y0, &k[0], dir, 5.0, opts.rtol, opts.atol))
+        .unwrap_or_else(|| initial_step(&f, t0, y0, &k[0], dir, 5.0, Tol { rtol: opts.rtol, atol: opts.atol }))
         .abs()
         .min(opts.hmax)
         * dir;
@@ -416,7 +430,7 @@ pub fn dopri5<F: Fn(f64, &[f64], &mut [f64])>(
             });
             let step = DenseStep { t0: t, h, y0: y.clone(), kind: DenseKind::Poly(d.to_vec()) };
             let tn = t + h;
-            if process_events(events, &mut gprev, &mut sol, step, t, tn, &ynew, dir) {
+            if process_events(events, &mut gprev, &mut sol, step, &StepWindow { t_old: t, tn, ynew: &ynew, dir }) {
                 sol.nfev = nfev;
                 return Ok(sol);
             }
@@ -460,7 +474,7 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
     opts: &OdeOptions,
 ) -> Result<OdeSolution, OdeError> {
     let n = y0.len();
-    if n == 0 || t0 == t1 {
+    if n == 0 || crate::kernels::exact_eq(t0, t1) {
         return Err(OdeError::Invalid);
     }
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
@@ -473,7 +487,7 @@ pub fn rosenbrock23<F: Fn(f64, &[f64], &mut [f64])>(
     let mut nfev = 1;
     let mut h = opts
         .h0
-        .unwrap_or_else(|| initial_step(&f, t0, y0, &f0, dir, 2.0, opts.rtol, opts.atol))
+        .unwrap_or_else(|| initial_step(&f, t0, y0, &f0, dir, 2.0, Tol { rtol: opts.rtol, atol: opts.atol }))
         .abs()
         .min(opts.hmax)
         * dir;
@@ -663,7 +677,7 @@ pub fn bvp_fd<F: Fn(f64, f64, f64) -> f64, G: Fn(f64) -> f64>(
             .collect()
     };
     let u0: Vec<f64> = (1..=n).map(|i| guess(x[i])).collect();
-    let sol = rootfind::newton_system(resid, None::<fn(&[f64]) -> Mat>, &u0, 1e-11, 100)
+    let sol = rootfind::newton_system(resid, None::<&fn(&[f64]) -> Mat>, &u0, 1e-11, 100)
         .map_err(|_| OdeError::SolveFailed)?;
     let mut y = vec![ya];
     y.extend(sol.x);
@@ -699,7 +713,7 @@ where
             Err(_) => vec![f64::NAN; p.len()],
         }
     };
-    rootfind::newton_system(shoot, None::<fn(&[f64]) -> Mat>, p0, 1e-9, 60)
+    rootfind::newton_system(shoot, None::<&fn(&[f64]) -> Mat>, p0, 1e-9, 60)
         .map(|s| s.x)
         .map_err(|_| OdeError::SolveFailed)
 }
@@ -736,7 +750,7 @@ where
             r.extend(g(tn, y, z));
             r
         };
-        let sol = rootfind::newton_system(sys, None::<fn(&[f64]) -> Mat>, &prev, 1e-12, 50)
+        let sol = rootfind::newton_system(sys, None::<&fn(&[f64]) -> Mat>, &prev, 1e-12, 50)
             .map_err(|_| OdeError::SolveFailed)?;
         cur = sol.x;
         out.push(cur.clone());
