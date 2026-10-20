@@ -25,7 +25,7 @@
 //! | Dimension | `run_ising_simulation*`: 2-D parallel checkerboard Metropolis; [`run_lattice_simulation`] and `run_wolff_simulation` delegate to the dimension-generic engine of [`crate::sim::spin_models`] (any `D`) |
 //! | Models | Ising, q-state Potts, XY, Heisenberg ([`SpinModel`]) through [`run_lattice_simulation`] |
 //! | Algorithms | Metropolis (checkerboard, 2-D Ising), Metropolis / heat bath / Wolff / Swendsen-Wang for every model through [`SpinAlgorithm`]; tempering, Wang-Landau, reweighting in [`crate::sim::spin_models`] |
-//! | Boundaries | periodic (checkerboard), periodic or open (`run_lattice_simulation`) |
+//! | Boundaries | periodic (checkerboard; odd sides are handled by sequential updates of the extra row / column), periodic or open (`run_lattice_simulation`) |
 //! | Initial conditions | random (checkerboard), hot or cold (`run_lattice_simulation`) |
 //! | Exact references | Onsager `Tc`, energy and magnetisation in [`crate::sim::spin_models`] |
 
@@ -92,6 +92,10 @@ pub fn run_ising_simulation_seeded(
     params: &IsingParameters,
     seed: u64,
 ) -> (Vec<i8>, f64) {
+    if params.width == 0 || params.height == 0 || params.temperature.is_nan() || params.temperature < 0.0 {
+        return (Vec::new(), f64::NAN);
+    }
+
     let mut local_rng = StdRng::seed_from_u64(seed);
 
     let mut grid: Vec<i8> = (0..params.width * params.height)
@@ -113,6 +117,12 @@ pub fn run_ising_simulation_seeded(
         checkerboard_sweep(&mut grid, params.width, params.height, b, seed, step, 0);
 
         checkerboard_sweep(&mut grid, params.width, params.height, b, seed, step, 1);
+
+        // odd periodic sides cannot be two-coloured: the extra row / column is updated site by
+        // site (each single-site Metropolis update is a valid move on its own)
+        if params.width % 2 == 1 || params.height % 2 == 1 {
+            sequential_edge_sweep(&mut grid, params.width, params.height, b, seed, step);
+        }
     }
 
     let magnetization: f64 = grid.par_iter().map(|&s| f64::from(s)).sum::<f64>() / n_spins;
@@ -132,15 +142,17 @@ fn checkerboard_sweep(
     parity: u64,
 ) {
     let view: &[i8] = grid;
+    // the interior has even sides, so its wrap-around neighbours have the opposite colour
+    let (h_in, w_in) = (height - height % 2, width - width % 2);
 
-    let flips: Vec<Vec<usize>> = (0..height)
+    let flips: Vec<Vec<usize>> = (0..h_in)
         .into_par_iter()
         .map(|i| {
             let mut local_rng = row_rng(seed, step, parity, i);
 
             let mut out = Vec::new();
 
-            for j in 0..width {
+            for j in 0..w_in {
                 if ((i + j) % 2) as u64 == parity {
                     let idx = i * width + j;
 
@@ -168,6 +180,35 @@ fn checkerboard_sweep(
 
     for idx in flips.into_iter().flatten() {
         grid[idx] *= -1;
+    }
+}
+
+/// Sequential Metropolis update of the extra row / column of a lattice with an odd side.
+fn sequential_edge_sweep(
+    grid: &mut [i8],
+    width: usize,
+    height: usize,
+    b: f64,
+    seed: u64,
+    step: usize,
+) {
+    let mut rng = row_rng(seed, step, 2, 0);
+    let (h_in, w_in) = (height - height % 2, width - width % 2);
+    for i in 0..height {
+        for j in 0..width {
+            if i < h_in && j < w_in {
+                continue;
+            }
+            let idx = i * width + j;
+            let sum = grid[((i + height - 1) % height) * width + j]
+                + grid[((i + 1) % height) * width + j]
+                + grid[i * width + (j + width - 1) % width]
+                + grid[i * width + (j + 1) % width];
+            let delta_e = 2.0 * f64::from(grid[idx]) * f64::from(sum);
+            if delta_e < 0.0 || rng.random::<f64>() < (-delta_e * b).exp() {
+                grid[idx] *= -1;
+            }
+        }
     }
 }
 
