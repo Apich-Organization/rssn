@@ -82,6 +82,8 @@ pub mod ordering;
 pub mod jacobian;
 /// Krylov-Schur, block Lanczos and Jacobi-Davidson eigensolvers, generalised problems.
 pub mod eigs_ext;
+/// Complex-parameter pFq, 2F1, 1F1 and Tricomi U by Taylor continuation of the defining ODE.
+pub mod hypergeometric;
 /// MINRES, BiCGSTAB(l), IDR(s) and flexible GMRES.
 pub mod krylov_ext;
 /// Lanczos and Arnoldi eigensolvers with restarts and shift-invert.
