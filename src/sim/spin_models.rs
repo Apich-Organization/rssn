@@ -1326,3 +1326,286 @@ pub fn ising1d_energy_per_site(
     let dz = nn * c.powf(nn - 1.0) * s + nn * s.powf(nn - 1.0) * c;
     -j * dz / z / nn
 }
+
+// ---------------------------------------------------------------------------
+// Replica-exchange Wang-Landau with multiple walkers per window
+// ---------------------------------------------------------------------------
+
+/// Parameters of [`replica_exchange_wang_landau`].
+#[derive(Clone, Copy, Debug)]
+pub struct RewlOptions {
+    /// Energy window `(e_min, e_max)` covered by all energy windows together.
+    pub range: (f64, f64),
+    /// Number of energy bins over `range`.
+    pub nbins: usize,
+    /// Number of overlapping energy windows.
+    pub windows: usize,
+    /// Fraction of a window shared with its neighbour, in `[0, 1)`.
+    pub overlap: f64,
+    /// Walkers per window; all walkers of a window share one `ln g` and histogram.
+    pub walkers: usize,
+    /// Single-spin proposal width for continuous spins (ignored for Ising).
+    pub delta: f64,
+    /// Final modification factor `ln f`.
+    pub ln_f_final: f64,
+    /// Flatness criterion `min H > flatness mean H` per window.
+    pub flatness: f64,
+    /// Sweeps of every walker between two exchange attempts and flatness checks.
+    pub sweeps_per_exchange: usize,
+    /// Random seed.
+    pub seed: u64,
+}
+
+/// One walker of the replica-exchange Wang-Landau simulation.
+struct WlWalker<const D: usize, const N: usize> {
+    model: OnModel<D, N>,
+    energy: f64,
+    bin: usize,
+}
+
+/// Greedy steering of a configuration into the energy interval `[lo, hi)`.
+fn steer_into_window<const D: usize, const N: usize>(
+    m: &mut OnModel<D, N>,
+    lo: f64,
+    hi: f64,
+    delta: f64,
+) -> Result<f64, String> {
+    let n = m.lattice.sites();
+    let target = 0.5 * (lo + hi);
+    let mut e = m.energy();
+    for _ in 0..4000 * n.max(16) {
+        if e >= lo && e < hi {
+            return Ok(e);
+        }
+        let i = m.rng.below(n as u64) as usize;
+        let f = m.local_field_public(i);
+        let old = m.spins[i];
+        let mut new = old;
+        if N == 1 {
+            new[0] = -old[0];
+        } else {
+            for k in 0..N {
+                new[k] = old[k] + delta * m.rng.normal();
+            }
+            let nn = dot(&new, &new).sqrt();
+            for c in &mut new {
+                *c /= nn;
+            }
+        }
+        let mut de = 0.0;
+        for k in 0..N {
+            de -= (new[k] - old[k]) * f[k];
+        }
+        if (e + de - target).abs() <= (e - target).abs() || m.rng.uniform() < 0.01 {
+            m.spins[i] = new;
+            e += de;
+        }
+    }
+    let e = m.energy();
+    if e >= lo && e < hi {
+        Ok(e)
+    } else {
+        Err("could not steer a walker into its energy window".into())
+    }
+}
+
+/// Replica-exchange Wang-Landau (Vogel, Li, Wuest, Landau 2013) with several walkers per
+/// energy window: the energy range is split into overlapping windows, each window runs its own
+/// Wang-Landau iteration with `walkers` walkers sharing `ln g`, neighbouring windows exchange
+/// configurations with probability `min(1, g_i(E_a) g_j(E_b) / (g_i(E_b) g_j(E_a)))`, and the
+/// per-window densities of states are joined at the overlap bin where their logarithmic
+/// derivatives agree best. Works for the Ising model (`N = 1`) and continuous O(N) spins.
+///
+/// Returns `(bin centre, ln g)` for the visited bins, normalised to `sum g = 1`.
+///
+/// # Errors
+/// Fails for invalid options, lattice errors, or if a walker cannot be placed in its window.
+pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
+    dims: [usize; D],
+    periodic: bool,
+    opt: &RewlOptions,
+) -> Result<Vec<(f64, f64)>, String> {
+    let (e_min, e_max) = opt.range;
+    let nbins = opt.nbins;
+    let nwin = opt.windows.max(1);
+    if nbins < 2 || e_max <= e_min || !(0.0..1.0).contains(&opt.overlap) || opt.walkers == 0 {
+        return Err("invalid replica-exchange Wang-Landau options".into());
+    }
+    let width = (e_max - e_min) / nbins as f64;
+    // window layout in bins: [lo_w, hi_w)
+    let span = 1.0 + (nwin - 1) as f64 * (1.0 - opt.overlap);
+    let nw = ((nbins as f64 / span).ceil() as usize).clamp(2, nbins);
+    let stride = if nwin > 1 { (((nbins - nw) as f64) / (nwin - 1) as f64).ceil().max(1.0) as usize } else { 0 };
+    let ranges: Vec<(usize, usize)> = (0..nwin)
+        .map(|w| {
+            let lo = (w * stride).min(nbins - nw);
+            let hi = if w + 1 == nwin { nbins } else { (lo + nw).min(nbins) };
+            (lo, hi)
+        })
+        .collect();
+    for w in 1..nwin {
+        if ranges[w].0 >= ranges[w - 1].1 {
+            return Err("energy windows do not overlap; increase `overlap` or `nbins`".into());
+        }
+    }
+    let bin_of = |e: f64| -> Option<usize> {
+        if e < e_min || e >= e_max {
+            None
+        } else {
+            Some((((e - e_min) / width) as usize).min(nbins - 1))
+        }
+    };
+    let mut walkers: Vec<Vec<WlWalker<D, N>>> = Vec::new();
+    for (w, &(lo, hi)) in ranges.iter().enumerate() {
+        let mut ws = Vec::new();
+        for k in 0..opt.walkers {
+            let seed = opt.seed.wrapping_add(7919 * (w * opt.walkers + k) as u64 + 1);
+            let mut model = OnModel::<D, N>::new(dims, periodic, 1.0, seed)?;
+            let elo = e_min + lo as f64 * width;
+            let ehi = e_min + hi as f64 * width;
+            let energy = steer_into_window(&mut model, elo, ehi, opt.delta)?;
+            let bin = bin_of(energy).ok_or("walker left the energy range")?;
+            ws.push(WlWalker { model, energy, bin });
+        }
+        walkers.push(ws);
+    }
+    let n = walkers[0][0].model.lattice.sites();
+    let mut ln_g = vec![vec![0.0f64; nbins]; nwin];
+    let mut visited = vec![vec![false; nbins]; nwin];
+    let mut hist = vec![vec![0usize; nbins]; nwin];
+    let mut ln_f = 1.0;
+    let mut xrng = Rng::new(opt.seed ^ 0x9E37_79B9);
+    let steps = opt.sweeps_per_exchange.max(1) * n;
+    let mut round = 0usize;
+    let mut guard = 0usize;
+    while ln_f > opt.ln_f_final {
+        for h in &mut hist {
+            h.fill(0);
+        }
+        loop {
+            for (w, &(lo, hi)) in ranges.iter().enumerate() {
+                for wk in &mut walkers[w] {
+                    for _ in 0..steps {
+                        let i = wk.model.rng.below(n as u64) as usize;
+                        let f = wk.model.local_field_public(i);
+                        let old = wk.model.spins[i];
+                        let mut new = old;
+                        if N == 1 {
+                            new[0] = -old[0];
+                        } else {
+                            for k in 0..N {
+                                new[k] = old[k] + opt.delta * wk.model.rng.normal();
+                            }
+                            let nn = dot(&new, &new).sqrt();
+                            for c in &mut new {
+                                *c /= nn;
+                            }
+                        }
+                        let mut de = 0.0;
+                        for k in 0..N {
+                            de -= (new[k] - old[k]) * f[k];
+                        }
+                        if let Some(nb) = bin_of(wk.energy + de) {
+                            if nb >= lo && nb < hi {
+                                let d = ln_g[w][wk.bin] - ln_g[w][nb];
+                                if d >= 0.0 || wk.model.rng.uniform() < d.exp() {
+                                    wk.model.spins[i] = new;
+                                    wk.energy += de;
+                                    wk.bin = nb;
+                                }
+                            }
+                        }
+                        ln_g[w][wk.bin] += ln_f;
+                        hist[w][wk.bin] += 1;
+                        visited[w][wk.bin] = true;
+                    }
+                    wk.energy = wk.model.energy();
+                    wk.bin = bin_of(wk.energy).unwrap_or(wk.bin).clamp(lo, hi - 1);
+                }
+            }
+            // replica exchange between neighbouring windows (alternating parity)
+            let mut w = round % 2;
+            while w + 1 < nwin {
+                let a = xrng.below(opt.walkers as u64) as usize;
+                let b = xrng.below(opt.walkers as u64) as usize;
+                let (ba, bb) = (walkers[w][a].bin, walkers[w + 1][b].bin);
+                let (lo1, hi1) = ranges[w + 1];
+                let (lo0, hi0) = ranges[w];
+                if ba >= lo1 && ba < hi1 && bb >= lo0 && bb < hi0 {
+                    let d = ln_g[w][ba] - ln_g[w][bb] + ln_g[w + 1][bb] - ln_g[w + 1][ba];
+                    if d >= 0.0 || xrng.uniform() < d.exp() {
+                        let (left, right) = walkers.split_at_mut(w + 1);
+                        std::mem::swap(&mut left[w][a].model.spins, &mut right[0][b].model.spins);
+                        std::mem::swap(&mut left[w][a].energy, &mut right[0][b].energy);
+                        std::mem::swap(&mut left[w][a].bin, &mut right[0][b].bin);
+                    }
+                }
+                w += 2;
+            }
+            round += 1;
+            guard += 1;
+            let flat = ranges.iter().enumerate().all(|(w, &(lo, hi))| {
+                let vals: Vec<usize> = (lo..hi).filter(|&k| visited[w][k]).map(|k| hist[w][k]).collect();
+                if vals.is_empty() {
+                    return false;
+                }
+                let mean = vals.iter().sum::<usize>() as f64 / vals.len() as f64;
+                let mn = vals.iter().copied().min().unwrap_or(0) as f64;
+                mn > opt.flatness * mean
+            });
+            if flat || guard > 200_000 {
+                break;
+            }
+        }
+        ln_f /= 2.0;
+    }
+    // join the windows at the overlap bin with the best matching logarithmic derivative
+    let mut merged = vec![f64::NAN; nbins];
+    let mut known = vec![false; nbins];
+    let (lo0, hi0) = ranges[0];
+    for k in lo0..hi0 {
+        if visited[0][k] {
+            merged[k] = ln_g[0][k];
+            known[k] = true;
+        }
+    }
+    for w in 1..nwin {
+        let (lo, hi) = ranges[w];
+        let slope = |g: &[f64], vis: &[bool], k: usize| -> Option<f64> {
+            if k > 0 && k + 1 < nbins && vis[k - 1] && vis[k + 1] {
+                Some((g[k + 1] - g[k - 1]) / (2.0 * width))
+            } else {
+                None
+            }
+        };
+        let mut best: Option<(f64, usize)> = None;
+        for k in lo..ranges[w - 1].1 {
+            if !(visited[w][k] && known[k]) {
+                continue;
+            }
+            // slope of the merged left part and of window w
+            let sl = slope(&merged, &known, k);
+            let sr = slope(&ln_g[w], &visited[w], k);
+            let score = match (sl, sr) {
+                (Some(a), Some(b)) => (a - b).abs(),
+                _ => f64::MAX / 2.0,
+            };
+            if best.is_none_or(|(s, _)| score < s) {
+                best = Some((score, k));
+            }
+        }
+        let (_, j) = best.ok_or("adjacent windows share no visited bin")?;
+        let shift = merged[j] - ln_g[w][j];
+        for k in j..hi {
+            if visited[w][k] {
+                merged[k] = ln_g[w][k] + shift;
+                known[k] = true;
+            }
+        }
+        let _ = lo;
+    }
+    let mx = (0..nbins).filter(|&k| known[k]).map(|k| merged[k]).fold(f64::NEG_INFINITY, f64::max);
+    let total: f64 = (0..nbins).filter(|&k| known[k]).map(|k| (merged[k] - mx).exp()).sum();
+    let shift = -(mx + total.ln());
+    Ok((0..nbins).filter(|&k| known[k]).map(|k| (e_min + (k as f64 + 0.5) * width, merged[k] + shift)).collect())
+}

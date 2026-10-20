@@ -500,3 +500,59 @@ fn wang_landau_for_continuous_spins_reproduces_open_chain_thermodynamics() {
     }
     assert!(wang_landau_on::<1, 3>([6], false, (1.0, 0.0, 10), 1.0, 1e-3, 0.7, 1).is_err());
 }
+
+#[test]
+fn replica_exchange_wang_landau_reproduces_the_exact_ising_density_of_states() {
+    // 4x4 periodic Ising: levels -32 + 4k; bins of width 4 centred on the levels
+    let exact = enumerate_ising_dos::<2>([4, 4], true).unwrap();
+    let total: f64 = exact.iter().map(|&(_, c)| c).sum();
+    let opt = RewlOptions {
+        range: (-34.0, 34.0),
+        nbins: 17,
+        windows: 3,
+        overlap: 0.5,
+        walkers: 2,
+        delta: 1.0,
+        ln_f_final: 1e-5,
+        flatness: 0.7,
+        sweeps_per_exchange: 50,
+        seed: 11,
+    };
+    let dos = replica_exchange_wang_landau::<2, 1>([4, 4], true, &opt).unwrap();
+    assert_eq!(dos.len(), exact.len());
+    for ((e, lg), (ee, c)) in dos.iter().zip(&exact) {
+        assert!((e - *ee as f64).abs() < 1e-9, "level {e} vs {ee}");
+        let ln_exact = (c / total).ln();
+        assert!((lg - ln_exact).abs() < 0.15, "E={e}: ln g {lg} vs {ln_exact}");
+    }
+    // thermodynamics from the joined density of states
+    let (_, e_wl, _) = canonical_from_dos(&dos, 0.4);
+    let (_, e_ex, _) = canonical_from_dos(&exact.iter().map(|&(e, c)| (e as f64, (c / total).ln())).collect::<Vec<_>>(), 0.4);
+    assert!((e_wl - e_ex).abs() < 0.05 * e_ex.abs());
+}
+
+#[test]
+fn replica_exchange_wang_landau_for_continuous_spins_matches_open_chain() {
+    let nb = 5.0;
+    let opt = RewlOptions {
+        range: (-nb - 1e-9, nb + 1e-9),
+        nbins: 60,
+        windows: 3,
+        overlap: 0.6,
+        walkers: 2,
+        delta: 1.0,
+        ln_f_final: 1e-4,
+        flatness: 0.7,
+        sweeps_per_exchange: 100,
+        seed: 5,
+    };
+    let dos = replica_exchange_wang_landau::<1, 3>([6], false, &opt).unwrap();
+    for beta in [0.3, 0.8, 1.4] {
+        let (_, e_h, _) = canonical_from_dos(&dos, beta);
+        let exact_h = -nb * (1.0 / beta.tanh() - 1.0 / beta);
+        assert!((e_h - exact_h).abs() < 0.06 * exact_h.abs(), "beta {beta}: {e_h} vs {exact_h}");
+    }
+    let mut bad = opt;
+    bad.walkers = 0;
+    assert!(replica_exchange_wang_landau::<1, 3>([6], false, &bad).is_err());
+}
