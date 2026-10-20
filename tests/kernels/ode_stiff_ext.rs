@@ -2,7 +2,7 @@
 
 use rssn::kernels::dense::Mat;
 use rssn::kernels::ode_adaptive::{Event, OdeOptions, rosenbrock23};
-use rssn::kernels::ode_stiff::{RadauConfig, bdf_ex, radau, radau_fixed};
+use rssn::kernels::ode_stiff::{BdfOptions, RadauOptions, bdf_with, radau_fixed, radau_with};
 
 fn decay(_t: f64, y: &[f64], dy: &mut [f64]) {
     dy[0] = -y[0];
@@ -31,7 +31,7 @@ fn radau_stage_orders() {
 #[test]
 fn radau_dense_output_and_variable_order() {
     let opts = OdeOptions { rtol: 1e-10, atol: 1e-12, ..OdeOptions::default() };
-    let sol = radau(decay, None, 0.0, 5.0, &[1.0], &opts, &[], &RadauConfig::default()).unwrap();
+    let sol = radau_with(decay, 0.0, 5.0, &[1.0], &opts, &RadauOptions::default()).unwrap();
     for k in 0..=100 {
         let t = 5.0 * f64::from(k) / 100.0;
         let v = sol.eval(t).unwrap()[0];
@@ -39,13 +39,13 @@ fn radau_dense_output_and_variable_order() {
     }
     assert!(sol.eval(5.1).is_none());
     assert!(sol.orders.iter().any(|&o| o >= 9), "orders {:?}", sol.orders);
-    let fixed = RadauConfig { min_stages: 3, max_stages: 3, ..RadauConfig::default() };
-    let s5 = radau(decay, None, 0.0, 5.0, &[1.0], &opts, &[], &fixed).unwrap();
+    let fixed = RadauOptions { min_stages: 3, max_stages: 3, ..RadauOptions::default() };
+    let s5 = radau_with(decay, 0.0, 5.0, &[1.0], &opts, &fixed).unwrap();
     assert!(s5.orders.iter().all(|&o| o == 5));
     assert!(sol.t.len() < s5.t.len(), "{} vs {}", sol.t.len(), s5.t.len());
     // backward integration
     let back =
-        radau(decay, None, 1.0, 0.0, &[(-1.0f64).exp()], &opts, &[], &RadauConfig::default()).unwrap();
+        radau_with(decay, 1.0, 0.0, &[(-1.0f64).exp()], &opts, &RadauOptions::default()).unwrap();
     assert!((back.eval(0.3).unwrap()[0] - (-0.3f64).exp()).abs() < 1e-8);
 }
 
@@ -54,19 +54,19 @@ fn radau_events() {
     let opts = OdeOptions { rtol: 1e-10, atol: 1e-12, ..OdeOptions::default() };
     let g = |_t: f64, y: &[f64]| y[0] - 0.5;
     let ev = [Event { g: &g, terminal: true, direction: -1 }];
-    let sol = radau(decay, None, 0.0, 5.0, &[1.0], &opts, &ev, &RadauConfig::default()).unwrap();
+    let sol = radau_with(decay, 0.0, 5.0, &[1.0], &opts, &RadauOptions { events: &ev, ..RadauOptions::default() }).unwrap();
     assert_eq!(sol.events.len(), 1);
     assert!((sol.events[0].t - 2.0_f64.ln()).abs() < 1e-8);
     assert!((sol.t.last().unwrap() - 2.0_f64.ln()).abs() < 1e-8);
     // wrong direction: no event, run completes
     let ev = [Event { g: &g, terminal: true, direction: 1 }];
-    let sol = radau(decay, None, 0.0, 5.0, &[1.0], &opts, &ev, &RadauConfig::default()).unwrap();
+    let sol = radau_with(decay, 0.0, 5.0, &[1.0], &opts, &RadauOptions { events: &ev, ..RadauOptions::default() }).unwrap();
     assert!(sol.events.is_empty());
     assert!((sol.t.last().unwrap() - 5.0).abs() < 1e-12);
     // oscillator zeros of cos: pi/2 (falling), 3pi/2 (rising), 5pi/2 (falling)
     let g0 = |_t: f64, y: &[f64]| y[0];
     let ev = [Event { g: &g0, terminal: false, direction: 0 }];
-    let sol = radau(osc, None, 0.0, 10.0, &[1.0, 0.0], &opts, &ev, &RadauConfig::default()).unwrap();
+    let sol = radau_with(osc, 0.0, 10.0, &[1.0, 0.0], &opts, &RadauOptions { events: &ev, ..RadauOptions::default() }).unwrap();
     assert_eq!(sol.events.len(), 3);
     for (k, e) in sol.events.iter().enumerate() {
         let want = std::f64::consts::FRAC_PI_2 + std::f64::consts::PI * k as f64;
@@ -74,14 +74,14 @@ fn radau_events() {
     }
     let rising = [Event { g: &g0, terminal: true, direction: 1 }];
     let sol =
-        radau(osc, None, 0.0, 10.0, &[1.0, 0.0], &opts, &rising, &RadauConfig::default()).unwrap();
+        radau_with(osc, 0.0, 10.0, &[1.0, 0.0], &opts, &RadauOptions { events: &rising, ..RadauOptions::default() }).unwrap();
     assert!((sol.events[0].t - 1.5 * std::f64::consts::PI).abs() < 1e-6);
 }
 
 #[test]
 fn bdf_dense_and_events() {
     let opts = OdeOptions { rtol: 1e-9, atol: 1e-11, ..OdeOptions::default() };
-    let sol = bdf_ex(decay, None, 0.0, 5.0, &[1.0], &opts, 5, &[]).unwrap();
+    let sol = bdf_with(decay, 0.0, 5.0, &[1.0], &opts, &BdfOptions::default()).unwrap();
     for k in 0..=50 {
         let t = 5.0 * f64::from(k) / 50.0;
         let v = sol.eval(t).unwrap()[0];
@@ -89,13 +89,13 @@ fn bdf_dense_and_events() {
     }
     let g = |_t: f64, y: &[f64]| y[0] - 0.25;
     let ev = [Event { g: &g, terminal: true, direction: -1 }];
-    let sol = bdf_ex(decay, None, 0.0, 5.0, &[1.0], &opts, 5, &ev).unwrap();
+    let sol = bdf_with(decay, 0.0, 5.0, &[1.0], &opts, &BdfOptions { events: &ev, ..BdfOptions::default() }).unwrap();
     assert_eq!(sol.events.len(), 1);
     assert!((sol.events[0].t - 4.0_f64.ln()).abs() < 1e-5, "{}", sol.events[0].t);
     assert!((sol.t.last().unwrap() - 4.0_f64.ln()).abs() < 1e-5);
     let g0 = |_t: f64, y: &[f64]| y[0];
     let ev = [Event { g: &g0, terminal: false, direction: 1 }];
-    let sol = bdf_ex(osc, None, 0.0, 8.0, &[1.0, 0.0], &opts, 5, &ev).unwrap();
+    let sol = bdf_with(osc, 0.0, 8.0, &[1.0, 0.0], &opts, &BdfOptions { events: &ev, ..BdfOptions::default() }).unwrap();
     assert_eq!(sol.events.len(), 1);
     assert!((sol.events[0].t - 1.5 * std::f64::consts::PI).abs() < 1e-4);
 }
@@ -109,16 +109,16 @@ fn radau_dae_mass_matrix() {
     };
     let m = Mat::from_rows(&[vec![1.0, 0.0], vec![0.0, 0.0]]).unwrap();
     let opts = OdeOptions { rtol: 1e-9, atol: 1e-11, ..OdeOptions::default() };
-    let cfg = RadauConfig { mass: Some(&m), ..RadauConfig::default() };
-    let sol = radau(f, None, 0.0, 4.0, &[0.5, 0.25], &opts, &[], &cfg).unwrap();
+    let cfg = RadauOptions { mass: Some(&m), ..RadauOptions::default() };
+    let sol = radau_with(f, 0.0, 4.0, &[0.5, 0.25], &opts, &cfg).unwrap();
     let last = sol.y.last().unwrap();
     let exact = 1.0 / (1.0 + 4.0_f64.exp());
     assert!((last[0] - exact).abs() < 1e-7, "{} vs {exact}", last[0]);
     assert!((last[1] - exact * exact).abs() < 1e-7);
     // mass matrix of the wrong size
     let bad = Mat::identity(3);
-    let cfg = RadauConfig { mass: Some(&bad), ..RadauConfig::default() };
-    assert!(radau(f, None, 0.0, 1.0, &[0.5, 0.25], &opts, &[], &cfg).is_err());
+    let cfg = RadauOptions { mass: Some(&bad), ..RadauOptions::default() };
+    assert!(radau_with(f, 0.0, 1.0, &[0.5, 0.25], &opts, &cfg).is_err());
 }
 
 #[test]
@@ -131,8 +131,8 @@ fn radau_robertson_dae() {
     };
     let m = Mat::from_rows(&[vec![1.0, 0.0, 0.0], vec![0.0, 1.0, 0.0], vec![0.0, 0.0, 0.0]]).unwrap();
     let opts = OdeOptions { rtol: 1e-8, atol: 1e-12, ..OdeOptions::default() };
-    let cfg = RadauConfig { mass: Some(&m), ..RadauConfig::default() };
-    let sol = radau(f, None, 0.0, 40.0, &[1.0, 0.0, 0.0], &opts, &[], &cfg).unwrap();
+    let cfg = RadauOptions { mass: Some(&m), ..RadauOptions::default() };
+    let sol = radau_with(f, 0.0, 40.0, &[1.0, 0.0, 0.0], &opts, &cfg).unwrap();
     let y = sol.y.last().unwrap();
     let want = [0.7158270687, 9.185534764e-6, 0.2841637457];
     for i in 0..3 {

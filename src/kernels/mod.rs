@@ -78,6 +78,8 @@ pub mod rootfind;
 pub mod special_ext;
 /// Fill-reducing orderings: approximate minimum degree and nested dissection.
 pub mod ordering;
+/// Structured (banded, sparse) Jacobians, colouring finite differences and banded LU.
+pub mod jacobian;
 /// MINRES, BiCGSTAB(l), IDR(s) and flexible GMRES.
 pub mod krylov_ext;
 /// Lanczos and Arnoldi eigensolvers with restarts and shift-invert.

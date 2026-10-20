@@ -4,22 +4,54 @@
 //!   collocation method with simplified Newton iteration (one LU
 //!   factorisation of the stage matrix reused across Newton iterations and
 //!   steps), an embedded error estimator and adaptive step control;
-//! * [`radau`]: the general driver with 3, 5 and 7 stages (orders 5, 9, 13)
-//!   selected adaptively from the Newton convergence rate, dense output (the
-//!   collocation polynomial), direction-aware/terminal event detection and
-//!   mass matrices `M y' = f` (index-1 DAEs, singular `M` allowed);
-//!   [`radau_fixed`] / [`radau5_fixed`] are constant-step variants used to
-//!   verify the convergence orders;
-//! * [`bdf`] / [`bdf_jac`] / [`bdf_ex`]: variable-order (1 to 5) backward
+//! * [`radau_with`] (options in [`RadauOptions`]): the general driver with 3,
+//!   5 and 7 stages (orders 5, 9, 13) selected adaptively from the Newton
+//!   convergence rate, dense output (the collocation polynomial),
+//!   direction-aware/terminal event detection, and mass matrices
+//!   `M y' = f` (dense or sparse) for differential-algebraic systems of
+//!   index 1, 2 and 3 (see below); [`radau_fixed`] / [`radau5_fixed`] are
+//!   constant-step variants used to verify the convergence orders;
+//! * [`bdf`] / [`bdf_jac`] / [`bdf_with`]: variable-order (1 to 5) backward
 //!   differentiation formulas (fixed-leading-coefficient form, NDF
-//!   modification, adaptive order/step, Jacobian/LU reuse); [`bdf_ex`] adds
-//!   dense output (backward-difference interpolant) and event detection.
+//!   modification, adaptive order/step, Jacobian/LU reuse); [`bdf_with`]
+//!   (options in [`BdfOptions`]) adds dense output (backward-difference
+//!   interpolant), event detection and structured Jacobians.
 //!
-//! Limitations: the stage systems are solved with one dense `s n x s n` LU
-//! (no sparse or banded Jacobians); DAEs are limited to index 1; the error
-//! estimate of the DAE case does not exclude algebraic components.
+//! ## Structured Jacobians
+//!
+//! [`JacStructure`] declares the Jacobian as dense, banded (`kl`, `ku`) or
+//! sparse (a pattern). Banded and sparse Jacobians are obtained either from a
+//! user callback ([`RadauOptions::sparse_jac`], [`BdfOptions::sparse_jac`])
+//! or by finite differences with one right-hand-side evaluation per colour of
+//! the column-intersection graph ([`crate::kernels::jacobian`]); the stage
+//! system `I (x) M - h A (x) J` is factored by a banded LU (stages
+//! interleaved per variable so the band stays `s (kl + 1) + ...` wide) or by
+//! the sparse LU of [`crate::kernels::krylov`] (AMD ordering), so the cost no
+//! longer scales as `(s n)^3`.
+//!
+//! ## Differential-algebraic systems
+//!
+//! With a (possibly singular) mass matrix [`radau_with`] solves
+//! `M y' = f(t, y)`. For index-2 and index-3 problems in Hessenberg form the
+//! variables must be ordered by index (index-1 and differential variables
+//! first, then the index-2 block, then the index-3 block) and the block sizes
+//! given in [`RadauOptions::index`]; exactly as in RADAU5 the error and Newton
+//! norms of the index-2 components are weighted with `h` and those of the
+//! index-3 components with `h^2`, which removes the `O(h^-1)`/`O(h^-2)`
+//! amplification of the error estimator and restores step-size control.
+//! Initial values must be consistent.
+//!
+//! Limitations: BDF has no mass-matrix/DAE support (use Radau); Radau's
+//! algebraic-variable error estimate is the plain collocation estimate for
+//! index 1 (no extra scaling needed there).
 
-use crate::kernels::dense::{self, Lu, Mat};
+use crate::kernels::dense::{self, Mat};
+use crate::kernels::jacobian::{
+    Factor, Jac, JacStructure, JacobianProvider, Mass, SolverKind, SparseJacobianFn,
+    fd_jacobian_dense,
+    block_triplets,
+};
+use crate::kernels::krylov::Csr;
 use crate::kernels::ode_adaptive::{
     DenseKind, DenseStep, Event, OdeError, OdeOptions, OdeSolution, StepWindow, Tol, initial_step,
     process_events,
@@ -40,8 +72,8 @@ struct IvpSpan<'a> {
 #[derive(Clone, Copy)]
 struct NewtonCtx<'a> {
     tab: &'a RadauTab,
-    mass: Option<&'a Mat>,
-    lu: &'a Lu,
+    mass: Option<Mass<'a>>,
+    lu: &'a Factor,
     scale: &'a [f64],
     tol: f64,
     maxit: usize,
@@ -51,41 +83,6 @@ fn rms(v: &[f64], scale: &[f64]) -> f64 {
     let n = scale.len().max(1);
     let s: f64 = v.iter().enumerate().map(|(i, x)| (x / scale[i % n]).powi(2)).sum();
     (s / v.len().max(1) as f64).sqrt()
-}
-
-fn fd_jacobian<F: Fn(f64, &[f64], &mut [f64])>(f: &F, t: f64, y: &[f64], f0: &[f64]) -> Mat {
-    let n = y.len();
-    let mut jac = Mat::zeros(n, n);
-    let mut yp = y.to_vec();
-    let mut fp = vec![0.0; n];
-    for j in 0..n {
-        let dj = f64::EPSILON.sqrt() * y[j].abs().max(1e-5);
-        yp[j] = y[j] + dj;
-        f(t, &yp, &mut fp);
-        yp[j] = y[j];
-        for i in 0..n {
-            jac.set(i, j, (fp[i] - f0[i]) / dj);
-        }
-    }
-    jac
-}
-
-/// Jacobian from the user callback or, without one, by finite differences.
-fn jacobian_of<F: Fn(f64, &[f64], &mut [f64])>(
-    f: &F,
-    jac_fn: Option<&JacobianFn<'_>>,
-    t: f64,
-    y: &[f64],
-    f0: &[f64],
-    nfev: &mut usize,
-) -> Mat {
-    jac_fn.map_or_else(
-        || {
-            *nfev += y.len();
-            fd_jacobian(f, t, y, f0)
-        },
-        |j| j(t, y),
-    )
 }
 
 // ------------------------------------------------------------ Radau IIA
@@ -200,26 +197,33 @@ impl RadauTab {
     }
 }
 
-/// Builds `I (x) M - h (A (x) J)` (the `s n x s n` simplified-Newton matrix);
-/// `mass = None` stands for the identity.
-fn radau_matrix(tab: &RadauTab, mass: Option<&Mat>, jac: &Mat, h: f64) -> Mat {
-    let n = jac.rows;
+/// Linear-algebra set-up of the stage systems (dimension, back end, band).
+#[derive(Clone, Copy)]
+struct SolverSetup {
+    n: usize,
+    kind: SolverKind,
+    band: (usize, usize),
+}
+
+/// Factors the full `s n x s n` stage matrix `I (x) M - h (A (x) J)` and the
+/// `n x n` matrix `M - h gamma0 J` of the error estimator; `mass = None`
+/// stands for the identity.
+fn radau_factors(
+    tab: &RadauTab,
+    mass: Option<Mass<'_>>,
+    jac: &Jac,
+    h: f64,
+    setup: SolverSetup,
+) -> Option<(Factor, Factor)> {
+    let n = setup.n;
     let s = tab.s;
-    let mut m = Mat::zeros(s * n, s * n);
-    for bi in 0..s {
-        for bj in 0..s {
-            for p in 0..n {
-                for q in 0..n {
-                    let mut v = -h * tab.a[bi][bj] * jac.at(p, q);
-                    if bi == bj {
-                        v += mass.map_or_else(|| f64::from(u8::from(p == q)), |mm| mm.at(p, q));
-                    }
-                    m.set(bi * n + p, bj * n + q, v);
-                }
-            }
-        }
-    }
-    m
+    let diag = |bi: usize, bj: usize| if bi == bj { 1.0 } else { 0.0 };
+    let full = block_triplets(n, s, &diag, &|bi, bj| -h * tab.a[bi][bj], mass, jac);
+    let real = block_triplets(n, 1, &|_, _| 1.0, &|_, _| -h * tab.gamma0, mass, jac);
+    let band = setup.band;
+    let l1 = Factor::from_triplets(n, s, &full, setup.kind, band)?;
+    let l2 = Factor::from_triplets(n, 1, &real, setup.kind, band)?;
+    Some((l1, l2))
 }
 
 /// Simplified Newton iteration for the stage increments `Z`
@@ -281,8 +285,9 @@ fn radau_newton<F: Fn(f64, &[f64], &mut [f64])>(
     None
 }
 
-/// Configuration of [`radau`]: number of stages (3, 5 or 7, i.e. method
-/// orders 5, 9 and 13) and an optional mass matrix.
+/// Configuration of the deprecated [`radau`]: number of stages (3, 5 or 7,
+/// i.e. method orders 5, 9 and 13) and an optional mass matrix. Prefer
+/// [`RadauOptions`].
 #[derive(Debug, Clone, Copy)]
 pub struct RadauConfig<'a> {
     /// Mass matrix `M` of `M y' = f(t, y)` (`None` is the identity).
@@ -301,6 +306,60 @@ impl Default for RadauConfig<'_> {
     }
 }
 
+/// Block sizes of the higher-index variables of a Hessenberg DAE
+/// `M y' = f(t, y)`. The variables are ordered by index: first the index-1
+/// (differential and index-1 algebraic) variables, then `n2` index-2 variables
+/// and finally `n3` index-3 variables (the last `n3` components of `y`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct DaeIndex {
+    /// Number of index-2 variables (error weighted with `h`).
+    pub n2: usize,
+    /// Number of index-3 variables (error weighted with `h^2`).
+    pub n3: usize,
+}
+
+/// Options of [`radau_with`]: Jacobian source and structure, mass matrix,
+/// DAE index blocks, stage range and events.
+#[derive(Clone, Copy)]
+pub struct RadauOptions<'a> {
+    /// Dense Jacobian callback `df/dy` (`None`: finite differences exploiting
+    /// [`RadauOptions::structure`]).
+    pub jac: Option<&'a JacobianFn<'a>>,
+    /// Sparse Jacobian callback; takes precedence over `jac` and implies a
+    /// sparse LU when `structure` is [`JacStructure::Dense`].
+    pub sparse_jac: Option<&'a SparseJacobianFn<'a>>,
+    /// Declared Jacobian structure (dense, banded or sparse pattern).
+    pub structure: JacStructure<'a>,
+    /// Dense mass matrix `M` of `M y' = f(t, y)` (`None` is the identity).
+    pub mass: Option<&'a Mat>,
+    /// Sparse mass matrix (used when `mass` is `None`).
+    pub sparse_mass: Option<&'a Csr>,
+    /// Sizes of the index-2 and index-3 variable blocks.
+    pub index: DaeIndex,
+    /// Lowest number of stages used (3, 5 or 7).
+    pub min_stages: usize,
+    /// Highest number of stages used (3, 5 or 7).
+    pub max_stages: usize,
+    /// Event functions.
+    pub events: &'a [Event<'a>],
+}
+
+impl Default for RadauOptions<'_> {
+    fn default() -> Self {
+        Self {
+            jac: None,
+            sparse_jac: None,
+            structure: JacStructure::Dense,
+            mass: None,
+            sparse_mass: None,
+            index: DaeIndex::default(),
+            min_stages: 3,
+            max_stages: 7,
+            events: &[],
+        }
+    }
+}
+
 /// Radau IIA(5) integration of `y' = f(t, y)` with a finite-difference
 /// Jacobian; see [`radau5_jac`].
 ///
@@ -314,8 +373,8 @@ pub fn radau5<F: Fn(f64, &[f64], &mut [f64])>(
     y0: &[f64],
     opts: &OdeOptions,
 ) -> Result<OdeSolution, OdeError> {
-    let cfg = RadauConfig { mass: None, min_stages: 3, max_stages: 3 };
-    radau_core(&f, None, IvpSpan { t0, t1, y0 }, opts, &[], &cfg)
+    let ro = RadauOptions { min_stages: 3, max_stages: 3, ..RadauOptions::default() };
+    radau_core(&f, IvpSpan { t0, t1, y0 }, opts, &ro)
 }
 
 /// Radau IIA(5) integration with a user-supplied Jacobian `jac(t, y)`.
@@ -342,31 +401,52 @@ where
     F: Fn(f64, &[f64], &mut [f64]),
     J: Fn(f64, &[f64]) -> Mat,
 {
-    let cfg = RadauConfig { mass: None, min_stages: 3, max_stages: 3 };
-    radau_core(&f, Some(&jac), IvpSpan { t0, t1, y0 }, opts, &[], &cfg)
+    let ro = RadauOptions {
+        jac: Some(&jac),
+        min_stages: 3,
+        max_stages: 3,
+        ..RadauOptions::default()
+    };
+    radau_core(&f, IvpSpan { t0, t1, y0 }, opts, &ro)
 }
 
 /// Variable-order Radau IIA integration (orders 5, 9 and 13) of
-/// `M y' = f(t, y)` with dense output (the collocation polynomial) and
-/// event detection.
+/// `M y' = f(t, y)` with dense output (the collocation polynomial), event
+/// detection, structured Jacobians and index-1, 2 and 3 DAEs.
 ///
 /// The number of stages is raised while the simplified Newton iteration
 /// converges very fast (smooth, tightly toleranced problems profit from
 /// the high orders) and lowered when it converges slowly; the accepted
-/// orders are reported in [`OdeSolution::orders`]. `jac` is the optional
-/// Jacobian `df/dy`. Events are handled exactly as in
-/// [`crate::kernels::ode_adaptive::dopri5`]: direction-aware, located on the
-/// collocation polynomial, terminal events end the run.
+/// orders are reported in [`OdeSolution::orders`]. Events are handled exactly
+/// as in [`crate::kernels::ode_adaptive::dopri5`]: direction-aware, located
+/// on the collocation polynomial, terminal events end the run.
 ///
-/// With a singular mass matrix the system is an index-1 DAE; the initial
-/// values must then be consistent, and unless `opts.h0` is given the first
-/// step is `1e-5 |t1 - t0|`.
+/// With a singular mass matrix the system is a DAE; the initial values must
+/// be consistent, and unless `opts.h0` is given the first step is
+/// `1e-5 |t1 - t0|`. For index 2 or 3 give the variable blocks in
+/// [`RadauOptions::index`] (see the module documentation).
 ///
 /// # Errors
 /// [`OdeError::StepLimit`], [`OdeError::NonFinite`], [`OdeError::SolveFailed`]
-/// or [`OdeError::Invalid`] (also for unsupported stage counts or a mass
-/// matrix of the wrong size).
-#[allow(clippy::too_many_arguments)] // public IVP-solver signature (f, jac, t0, t1, y0, opts, events, cfg) is kept for API compatibility
+/// or [`OdeError::Invalid`] (also for unsupported stage counts, mismatched
+/// mass/pattern/index sizes).
+pub fn radau_with<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &OdeOptions,
+    ro: &RadauOptions<'_>,
+) -> Result<OdeSolution, OdeError> {
+    radau_core(&f, IvpSpan { t0, t1, y0 }, opts, ro)
+}
+
+/// Variable-order Radau IIA integration; superseded by [`radau_with`].
+///
+/// # Errors
+/// As [`radau_with`].
+#[deprecated(note = "use `radau_with` with `RadauOptions`")]
+#[allow(clippy::too_many_arguments)] // legacy signature kept as a thin wrapper
 pub fn radau<F: Fn(f64, &[f64], &mut [f64])>(
     f: F,
     jac: Option<&JacobianFn<'_>>,
@@ -377,16 +457,22 @@ pub fn radau<F: Fn(f64, &[f64], &mut [f64])>(
     events: &[Event<'_>],
     cfg: &RadauConfig<'_>,
 ) -> Result<OdeSolution, OdeError> {
-    radau_core(&f, jac, IvpSpan { t0, t1, y0 }, opts, events, cfg)
+    let ro = RadauOptions {
+        jac,
+        mass: cfg.mass,
+        min_stages: cfg.min_stages,
+        max_stages: cfg.max_stages,
+        events,
+        ..RadauOptions::default()
+    };
+    radau_core(&f, IvpSpan { t0, t1, y0 }, opts, &ro)
 }
 
 fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
     f: &F,
-    jac_fn: Option<&JacobianFn<'_>>,
     span: IvpSpan<'_>,
     opts: &OdeOptions,
-    events: &[Event<'_>],
-    cfg: &RadauConfig<'_>,
+    ro: &RadauOptions<'_>,
 ) -> Result<OdeSolution, OdeError> {
     let IvpSpan { t0, t1, y0 } = span;
     let n = y0.len();
@@ -394,15 +480,27 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
         return Err(OdeError::Invalid);
     }
     let valid = |s: usize| matches!(s, 3 | 5 | 7);
-    if !valid(cfg.min_stages) || !valid(cfg.max_stages) || cfg.min_stages > cfg.max_stages {
+    if !valid(ro.min_stages) || !valid(ro.max_stages) || ro.min_stages > ro.max_stages {
         return Err(OdeError::Invalid);
     }
-    if let Some(m) = cfg.mass
-        && (m.rows != n || m.cols != n)
+    if ro.index.n2 + ro.index.n3 > n {
+        return Err(OdeError::Invalid);
+    }
+    let mass: Option<Mass<'_>> = ro.mass.map(Mass::Dense).or_else(|| ro.sparse_mass.map(Mass::Sparse));
+    if let Some(m) = mass
+        && (m.rows() != n || m.cols() != n)
     {
         return Err(OdeError::Invalid);
     }
-    let mass = cfg.mass;
+    let provider = JacobianProvider::new(n, ro.structure, ro.jac, ro.sparse_jac)
+        .ok_or(OdeError::Invalid)?;
+    let mut band = provider.band;
+    if let Some(m) = mass {
+        let (ml, mu) = m.band();
+        band = (band.0.max(ml), band.1.max(mu));
+    }
+    let setup = SolverSetup { n, kind: provider.kind, band };
+    let events = ro.events;
     let mut tabs: Vec<RadauTab> = Vec::new();
     for s in [3usize, 5, 7] {
         tabs.push(RadauTab::new(s).ok_or(OdeError::SolveFailed)?);
@@ -417,7 +515,7 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
     let rtol = opts.rtol.max(100.0 * f64::EPSILON);
     let atol = opts.atol;
     let newton_tol = (10.0 * f64::EPSILON / rtol).max(0.03_f64.min(rtol.sqrt()));
-    let mut stages = cfg.min_stages;
+    let mut stages = ro.min_stages;
     let mut t = t0;
     let mut y = y0.to_vec();
     let mut f0 = vec![0.0; n];
@@ -429,15 +527,26 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
         (None, Some(_)) => 1e-5 * (t1 - t0).abs(),
     }
     .min(opts.hmax);
-    let mut jac = jacobian_of(f, jac_fn, t, &y, &f0, &mut nfev);
+    let mut jac = provider.eval(f, t, &y, &f0, &mut nfev);
     let mut current_jac = true;
-    let mut lus: Option<(Lu, Lu)> = None;
+    let mut lus: Option<(Factor, Factor)> = None;
     let mut sol = OdeSolution::start(t0, y0);
     let mut gprev: Vec<f64> = events.iter().map(|e| (e.g)(t0, y0)).collect();
     let mut prev_dense: Option<crate::kernels::ode_adaptive::DenseStep> = None;
     let mut since_change = 0usize;
     let mut steps = 0;
     let mut rejected_last = false;
+    let (n2, n3) = (ro.index.n2, ro.index.n3);
+    // weight of component q in the error/Newton norms: 1, h or h^2 by index
+    let index_weight = |q: usize, hh: f64| -> f64 {
+        if q + n3 >= n {
+            hh * hh
+        } else if q + n3 + n2 >= n {
+            hh
+        } else {
+            1.0
+        }
+    };
     while (t1 - t) * dir > 0.0 {
         if steps >= opts.max_steps {
             return Err(OdeError::StepLimit);
@@ -461,16 +570,8 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
                 lus = None;
             }
             if lus.is_none() {
-                let full = dense::lu_factor(&radau_matrix(tab, mass, &jac, h));
-                let mut real = Mat::zeros(n, n);
-                for p in 0..n {
-                    for q in 0..n {
-                        let m = mass.map_or_else(|| f64::from(u8::from(p == q)), |mm| mm.at(p, q));
-                        real.set(p, q, m - h * tab.gamma0 * jac.at(p, q));
-                    }
-                }
-                if let (Ok(l1), Ok(l2)) = (full, dense::lu_factor(&real)) {
-                    lus = Some((l1, l2));
+                if let Some(pair) = radau_factors(tab, mass, &jac, h, setup) {
+                    lus = Some(pair);
                 } else {
                     h_abs *= 0.5;
                     sol.rejected += 1;
@@ -480,7 +581,9 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
             let Some((lu_full, lu_real)) = lus.as_ref() else {
                 return Err(OdeError::SolveFailed);
             };
-            let scale0: Vec<f64> = y.iter().map(|v| atol + rtol * v.abs()).collect();
+            let scale0: Vec<f64> = (0..n)
+                .map(|q| (atol + rtol * y[q].abs()) / index_weight(q, h_abs))
+                .collect();
             let default_guess = || -> Vec<f64> {
                 let mut z = vec![0.0; s * n];
                 if mass.is_none() {
@@ -513,7 +616,7 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
                 if current_jac {
                     h_abs *= 0.5;
                 } else {
-                    jac = jacobian_of(f, jac_fn, t, &y, &f0, &mut nfev);
+                    jac = provider.eval(f, t, &y, &f0, &mut nfev);
                     current_jac = true;
                 }
                 lus = None;
@@ -535,8 +638,9 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
             let mwz = mass.map_or_else(|| wz.clone(), |mm| mm.matvec(&wz));
             let rhs: Vec<f64> = (0..n).map(|q| h * tab.gamma0 * f0[q] + mwz[q]).collect();
             let mut err = lu_real.solve(&rhs);
-            let scale: Vec<f64> =
-                (0..n).map(|q| atol + rtol * y[q].abs().max(y_new[q].abs())).collect();
+            let scale: Vec<f64> = (0..n)
+                .map(|q| (atol + rtol * y[q].abs().max(y_new[q].abs())) / index_weight(q, h_abs))
+                .collect();
             let mut en = rms(&err, &scale);
             if en > 1.0 && mass.is_none() && (rejected_last || sol.t.len() == 1) {
                 let yp: Vec<f64> = (0..n).map(|q| y[q] + err[q]).collect();
@@ -600,11 +704,11 @@ fn radau_core<F: Fn(f64, &[f64], &mut [f64])>(
             }
             // order selection by the Newton convergence rate
             if since_change >= 5 {
-                if theta < 2e-3 && stages < cfg.max_stages {
+                if theta < 2e-3 && stages < ro.max_stages {
                     stages += 2;
                     since_change = 0;
                     lus = None;
-                } else if theta > 0.2 && stages > cfg.min_stages {
+                } else if theta > 0.2 && stages > ro.min_stages {
                     stages -= 2;
                     since_change = 0;
                     lus = None;
@@ -660,9 +764,9 @@ pub fn radau_fixed<F: Fn(f64, &[f64], &mut [f64])>(
     for s in 0..n_steps {
         let t = t0 + s as f64 * h;
         f(t, &y, &mut f0);
-        let jac = fd_jacobian(&f, t, &y, &f0);
-        let lu = dense::lu_factor(&radau_matrix(&tab, None, &jac, h))
-            .map_err(|_| OdeError::SolveFailed)?;
+        let jac = Jac::Dense(fd_jacobian_dense(&f, t, &y, &f0));
+        let setup = SolverSetup { n, kind: SolverKind::Dense, band: (0, 0) };
+        let (lu, _) = radau_factors(&tab, None, &jac, h, setup).ok_or(OdeError::SolveFailed)?;
         let mut z0 = vec![0.0; stages * n];
         for i in 0..stages {
             for k in 0..n {
@@ -765,7 +869,8 @@ pub fn bdf<F: Fn(f64, &[f64], &mut [f64])>(
     opts: &OdeOptions,
     max_order: usize,
 ) -> Result<OdeSolution, OdeError> {
-    bdf_core(&f, None, IvpSpan { t0, t1, y0 }, opts, max_order, &[])
+    let bo = BdfOptions { max_order, ..BdfOptions::default() };
+    bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, &bo)
 }
 
 /// Variable-order BDF with a user-supplied Jacobian `jac(t, y)`.
@@ -793,20 +898,69 @@ where
     F: Fn(f64, &[f64], &mut [f64]),
     J: Fn(f64, &[f64]) -> Mat,
 {
-    bdf_core(&f, Some(&jac), IvpSpan { t0, t1, y0 }, opts, max_order, &[])
+    let bo = BdfOptions { jac: Some(&jac), max_order, ..BdfOptions::default() };
+    bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, &bo)
 }
 
-/// Variable-order BDF with dense output and event detection.
+/// Options of [`bdf_with`]: Jacobian source and structure, maximal order and
+/// events.
+#[derive(Clone, Copy)]
+pub struct BdfOptions<'a> {
+    /// Dense Jacobian callback (`None`: finite differences exploiting
+    /// [`BdfOptions::structure`]).
+    pub jac: Option<&'a JacobianFn<'a>>,
+    /// Sparse Jacobian callback; takes precedence over `jac`.
+    pub sparse_jac: Option<&'a SparseJacobianFn<'a>>,
+    /// Declared Jacobian structure (dense, banded or sparse pattern).
+    pub structure: JacStructure<'a>,
+    /// Highest order used (`1..=5`).
+    pub max_order: usize,
+    /// Event functions.
+    pub events: &'a [Event<'a>],
+}
+
+impl Default for BdfOptions<'_> {
+    fn default() -> Self {
+        Self {
+            jac: None,
+            sparse_jac: None,
+            structure: JacStructure::Dense,
+            max_order: BDF_MAX_ORDER,
+            events: &[],
+        }
+    }
+}
+
+/// Variable-order BDF with dense output, event detection and structured
+/// Jacobians.
 ///
 /// Identical to [`bdf_jac`] (the Jacobian is optional) but additionally
-/// locates `events` on the backward-difference interpolating polynomial of
-/// the last step (direction-aware; a terminal event ends the run), and
+/// locates `bo.events` on the backward-difference interpolating polynomial of
+/// the last step (direction-aware; a terminal event ends the run), uses a
+/// banded or sparse LU when [`BdfOptions::structure`] says so, and
 /// [`OdeSolution::eval`] interpolates anywhere in the integrated range.
 ///
 /// # Errors
 /// [`OdeError::StepLimit`], [`OdeError::NonFinite`], [`OdeError::SolveFailed`]
 /// or [`OdeError::Invalid`].
-#[allow(clippy::too_many_arguments)] // public IVP-solver signature (f, jac, t0, t1, y0, opts, max_order, events) is kept for API compatibility
+pub fn bdf_with<F: Fn(f64, &[f64], &mut [f64])>(
+    f: F,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    opts: &OdeOptions,
+    bo: &BdfOptions<'_>,
+) -> Result<OdeSolution, OdeError> {
+    bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, bo)
+}
+
+/// Variable-order BDF with dense output and event detection; superseded by
+/// [`bdf_with`].
+///
+/// # Errors
+/// As [`bdf_with`].
+#[deprecated(note = "use `bdf_with` with `BdfOptions`")]
+#[allow(clippy::too_many_arguments)] // legacy signature kept as a thin wrapper
 pub fn bdf_ex<F: Fn(f64, &[f64], &mut [f64])>(
     f: F,
     jac: Option<&JacobianFn<'_>>,
@@ -817,23 +971,26 @@ pub fn bdf_ex<F: Fn(f64, &[f64], &mut [f64])>(
     max_order: usize,
     events: &[Event<'_>],
 ) -> Result<OdeSolution, OdeError> {
-    bdf_core(&f, jac, IvpSpan { t0, t1, y0 }, opts, max_order, events)
+    let bo = BdfOptions { jac, max_order, events, ..BdfOptions::default() };
+    bdf_core(&f, IvpSpan { t0, t1, y0 }, opts, &bo)
 }
 
 fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     f: &F,
-    jac_fn: Option<&JacobianFn<'_>>,
     span: IvpSpan<'_>,
     opts: &OdeOptions,
-    max_order: usize,
-    events: &[Event<'_>],
+    bo: &BdfOptions<'_>,
 ) -> Result<OdeSolution, OdeError> {
     let IvpSpan { t0, t1, y0 } = span;
+    let max_order = bo.max_order;
+    let events = bo.events;
     let n = y0.len();
     if n == 0 || crate::kernels::exact_eq(t0, t1) || max_order == 0 {
         return Err(OdeError::Invalid);
     }
     let max_order = max_order.min(BDF_MAX_ORDER);
+    let provider = JacobianProvider::new(n, bo.structure, bo.jac, bo.sparse_jac)
+        .ok_or(OdeError::Invalid)?;
     let dir = if t1 > t0 { 1.0 } else { -1.0 };
     let (gamma, alpha, errc) = bdf_consts();
     let rtol = opts.rtol.max(100.0 * f64::EPSILON);
@@ -854,10 +1011,10 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     for q in 0..n {
         d[1][q] = f0[q] * h_abs * dir;
     }
-    let mut jac = jacobian_of(f, jac_fn, t, &y, &f0, &mut nfev);
+    let mut jac = provider.eval(f, t, &y, &f0, &mut nfev);
     let mut order = 1usize;
     let mut n_equal = 0usize;
-    let mut lu: Option<Lu> = None;
+    let mut lu: Option<Factor> = None;
     let mut sol = OdeSolution::start(t0, y0);
     let mut gprev: Vec<f64> = events.iter().map(|e| (e.g)(t0, y0)).collect();
     let mut steps = 0;
@@ -908,16 +1065,10 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
             let mut n_iter = 0;
             while !converged {
                 if lu.is_none() {
-                    let mut m = Mat::identity(n);
-                    for p in 0..n {
-                        for q in 0..n {
-                            let v = m.at(p, q) - cc * jac.at(p, q);
-                            m.set(p, q, v);
-                        }
-                    }
-                    match dense::lu_factor(&m) {
-                        Ok(l) => lu = Some(l),
-                        Err(_) => break,
+                    let trip = block_triplets(n, 1, &|_, _| 1.0, &|_, _| -cc, None, &jac);
+                    match Factor::from_triplets(n, 1, &trip, provider.kind, provider.band) {
+                        Some(l) => lu = Some(l),
+                        None => break,
                     }
                 }
                 let Some(l) = lu.as_ref() else { break };
@@ -959,15 +1110,10 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
                     if current_jac || lu.is_none() {
                         break;
                     }
-                    jac = jac_fn.map_or_else(
-                        || {
-                            let mut fp = vec![0.0; n];
-                            f(t_new, &y_pred, &mut fp);
-                            nfev += n + 1;
-                            fd_jacobian(f, t_new, &y_pred, &fp)
-                        },
-                        |j| j(t_new, &y_pred),
-                    );
+                    let mut fp = vec![0.0; n];
+                    f(t_new, &y_pred, &mut fp);
+                    nfev += 1;
+                    jac = provider.eval(f, t_new, &y_pred, &fp, &mut nfev);
                     lu = None;
                     current_jac = true;
                 }
@@ -1060,3 +1206,4 @@ fn bdf_core<F: Fn(f64, &[f64], &mut [f64])>(
     sol.nfev = nfev;
     Ok(sol)
 }
+
