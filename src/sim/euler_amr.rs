@@ -584,11 +584,11 @@ impl Amr {
                     }
                 }
             }
-            // proper nesting: only keep cells whose +-2 neighbourhood is covered by level l
-            let mut allowed = buffered.clone();
+            // proper nesting: only cells whose +-2 neighbourhood is covered by level l may be refined
+            let mut nested = vec![false; nd[0] * nd[1]];
             for j in 0..nd[1] {
                 for i in 0..nd[0] {
-                    if !buffered[i + nd[0] * j] {
+                    if !covered[i + nd[0] * j] {
                         continue;
                     }
                     let mut ok = true;
@@ -600,10 +600,11 @@ impl Amr {
                             }
                         }
                     }
-                    allowed[i + nd[0] * j] = ok;
+                    nested[i + nd[0] * j] = ok;
                 }
             }
-            let boxes = cluster(&allowed, nd, self.cfg.efficiency);
+            let allowed: Vec<bool> = buffered.iter().zip(&nested).map(|(a, b)| *a && *b).collect();
+            let boxes = cluster(&allowed, &nested, nd, self.cfg.efficiency);
             let mut patches = Vec::new();
             for (clo, cn) in boxes {
                 let flo = [clo[0] * 2, if dim == 2 { clo[1] * 2 } else { 0 }];
@@ -627,7 +628,7 @@ impl Amr {
 }
 
 /// Recursive bisection of the tagged cells into boxes `(lo, n)`.
-fn cluster(tags: &[bool], nd: [usize; 2], eff: f64) -> Vec<([usize; 2], [usize; 2])> {
+fn cluster(tags: &[bool], valid: &[bool], nd: [usize; 2], eff: f64) -> Vec<([usize; 2], [usize; 2])> {
     let mut out = Vec::new();
     let tagged = |i: usize, j: usize| tags[i + nd[0] * j];
     // bounding box of a region
@@ -652,8 +653,12 @@ fn cluster(tags: &[bool], nd: [usize; 2], eff: f64) -> Vec<([usize; 2], [usize; 
         let size = [bh[0] - bl[0], bh[1] - bl[1]];
         let fraction = cnt as f64 / (size[0] * size[1]) as f64;
         let axis = usize::from(size[1] > size[0]);
-        if fraction >= eff || size[axis] < 4 {
+        let all_valid = (bl[1]..bh[1]).all(|j| (bl[0]..bh[0]).all(|i| valid[i + nd[0] * j]));
+        if all_valid && (fraction >= eff || size[axis] < 4) {
             out.push((bl, size));
+            continue;
+        }
+        if size[axis] < 2 {
             continue;
         }
         // signature along the long axis: split at the emptiest slice in the middle half
@@ -740,6 +745,35 @@ impl AmrSolution {
             }
         }
         s
+    }
+
+    /// `L1` norm of `component(prim) - exact(x)` over the composite grid (every cell counted at its finest level).
+    pub fn composite_l1_error(&self, component: usize, exact: impl Fn([f64; 3]) -> f64) -> f64 {
+        let dim = self.grid.dim;
+        let mut sum = 0.0;
+        for lv in &self.levels {
+            let f = (1u64 << lv.level) as f64;
+            let h = [self.grid.h(0) / f, if dim == 2 { self.grid.h(1) / f } else { 1.0 }];
+            let vol = h[0] * if dim == 2 { h[1] } else { 1.0 };
+            for (lo, n, q) in &lv.patches {
+                for j in 0..n[1] {
+                    for i in 0..n[0] {
+                        let idx = [2 * (lo[0] + i), 2 * (lo[1] + j)];
+                        if self.covered(lv.level + 1, idx) {
+                            continue;
+                        }
+                        let x = [
+                            self.grid.lo[0] + ((lo[0] + i) as f64 + 0.5) * h[0],
+                            if dim == 2 { self.grid.lo[1] + ((lo[1] + j) as f64 + 0.5) * h[1] } else { 0.0 },
+                            0.0,
+                        ];
+                        let w = to_prim(self.law, q[i + n[0] * j]);
+                        sum += (w[component] - exact(x)).abs() * vol;
+                    }
+                }
+            }
+        }
+        sum
     }
 
     /// Primitive variables on the uniform grid of level `level` (coarser data are injected piecewise constantly).

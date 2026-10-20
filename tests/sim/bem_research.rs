@@ -13,8 +13,12 @@ fn sph_j(nmax: usize, x: f64) -> Vec<f64> {
     for n in (0..start).rev() {
         j[n] = (2.0 * n as f64 + 3.0) / x * j[n + 1] - j[n + 2];
     }
-    let scale = (x.sin() / x) / j[0];
-    j.iter().take(nmax + 1).map(|v| v * scale).collect()
+    // normalisation by the sum rule  sum (2n + 1) j_n^2 = 1  (also valid where sin(x) = 0)
+    let norm2: f64 = j.iter().take(start).enumerate().map(|(n, v)| (2.0 * n as f64 + 1.0) * v * v).sum();
+    let scale = 1.0 / norm2.sqrt();
+    let (r0, r1) = (x.sin() / x, x.sin() / (x * x) - x.cos() / x);
+    let sign = if (if r0.abs() > r1.abs() { r0 * j[0] } else { r1 * j[1] }) < 0.0 { -1.0 } else { 1.0 };
+    j.iter().take(nmax + 1).map(|v| v * scale * sign).collect()
 }
 
 /// Spherical Neumann functions `y_0..=y_n`.
@@ -89,16 +93,45 @@ fn burton_miller_scattering_by_a_sphere_matches_the_mie_series() {
     }
 }
 
+/// Relative L2 error of the sound-soft surface flux `q = ∂p/∂n` against the Mie series.
+fn soft_flux_error(sub: usize, k: f64, coupling: Option<Complex64>) -> f64 {
+    let mesh = SurfaceMesh3D::icosphere(1.0, [0.0; 3], sub);
+    let sol = solve_helmholtz_exterior(&mesh, k, Scatterer::SoundSoft, PlaneWave { direction: [0.0, 0.0, 1.0] }, coupling).unwrap();
+    let nmax = 24;
+    let (ja, ya) = (sph_j(nmax + 1, k), sph_y(nmax + 1, k));
+    let (mut num, mut den) = (0.0, 0.0);
+    for t in 0..mesh.triangles.len() {
+        let c = mesh.centroid(t).unwrap();
+        let cos_t = c[2] / (c[0] * c[0] + c[1] * c[1] + c[2] * c[2]).sqrt();
+        let pl = legendre(nmax, cos_t);
+        let mut dp = Complex64::new(0.0, k * cos_t) * Complex64::new(0.0, k * cos_t).exp();
+        for n in 0..=nmax {
+            let h = Complex64::new(ja[n], ya[n]);
+            let dh = if n == 0 { -Complex64::new(ja[1], ya[1]) } else { Complex64::new(ja[n - 1], ya[n - 1]) - h * ((n as f64 + 1.0) / k) };
+            let i_n = Complex64::new(0.0, 1.0).powi(n as i32);
+            dp -= i_n * (2.0 * n as f64 + 1.0) * (Complex64::new(ja[n], 0.0) / h) * dh * k * pl[n];
+        }
+        num += (sol.density[t] - dp).norm_sqr();
+        den += dp.norm_sqr();
+    }
+    (num / den).sqrt()
+}
+
 #[test]
 fn burton_miller_stays_accurate_at_an_irregular_frequency() {
-    // ka = pi is an eigenfrequency of the interior Dirichlet problem of the unit sphere:
-    // the conventional equation for a sound-soft body is (almost) singular there
-    let k = std::f64::consts::PI;
-    let bm = scattering_error(3, k, Scatterer::SoundSoft, None);
-    let conv = scattering_error(3, k, Scatterer::SoundSoft, Some(Complex64::new(0.0, 0.0)));
-    println!("irregular frequency: BM {bm:.4}, conventional {conv:.4}");
-    assert!(bm < 0.08, "Burton-Miller error {bm}");
-    assert!(conv > 3.0 * bm, "conventional {conv} should be much worse than {bm}");
+    // ka = pi is an eigenfrequency of the interior Dirichlet problem of the unit sphere: the conventional
+    // equation for a sound-soft body is singular there (the surface density is then not unique, although the
+    // radiated field is). The facetted mesh shifts the discrete eigenvalue slightly, so scan a band around pi.
+    let mut worst_bm: f64 = 0.0;
+    let mut worst_conv: f64 = 0.0;
+    for i in 0..9 {
+        let k = std::f64::consts::PI * (0.96 + 0.01 * i as f64);
+        worst_bm = worst_bm.max(soft_flux_error(2, k, None));
+        worst_conv = worst_conv.max(soft_flux_error(2, k, Some(Complex64::new(0.0, 0.0))));
+    }
+    println!("irregular band: BM {worst_bm:.4}, conventional {worst_conv:.4}");
+    assert!(worst_bm < 0.15, "Burton-Miller flux error {worst_bm}");
+    assert!(worst_conv > 3.0 * worst_bm, "conventional {worst_conv} should be much worse than {worst_bm}");
 }
 
 fn aca_opts() -> AcaOptions {
