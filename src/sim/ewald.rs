@@ -46,9 +46,14 @@ fn charge_terms(
     -kc * alpha / PI.sqrt() * q2 - kc * PI * qt * qt / (2.0 * vol * alpha * alpha)
 }
 
+/// Result used when a cell-based evaluation fails (all entries NaN).
+fn failed_recip(n: usize) -> Recip {
+    Recip { energy: f64::NAN, forces: vec![[f64::NAN; 3]; n], virial: [[f64::NAN; 3]; 3] }
+}
+
 /// Diagonal cell matrix of an orthorhombic box.
 #[must_use]
-pub fn diag_cell(len: [f64; 3]) -> [[f64; 3]; 3] {
+pub const fn diag_cell(len: [f64; 3]) -> [[f64; 3]; 3] {
     [[len[0], 0.0, 0.0], [0.0, len[1], 0.0], [0.0, 0.0, len[2]]]
 }
 
@@ -105,15 +110,12 @@ pub fn ewald_reciprocal(
     kmax: i32,
     kc: f64,
 ) -> Recip {
-    ewald_reciprocal_cell(pos, q, &diag_cell(len), alpha, kmax, kc).unwrap_or(Recip {
-        energy: f64::NAN,
-        forces: vec![[f64::NAN; 3]; pos.len()],
-        virial: [[f64::NAN; 3]; 3],
-    })
+    ewald_reciprocal_cell(pos, q, &diag_cell(len), alpha, kmax, kc).unwrap_or_else(|_| failed_recip(pos.len()))
 }
 
-/// Direct reciprocal-space Ewald sum for a **general triclinic cell** `h` (rows are the lattice
-/// vectors): wave vectors `k = n_1 b_1 + n_2 b_2 + n_3 b_3` with `|n_i| <= kmax`, energy, forces,
+/// Direct reciprocal-space Ewald sum for a general triclinic cell.
+///
+/// The cell `h` has the lattice vectors as rows: wave vectors `k = n_1 b_1 + n_2 b_2 + n_3 b_3` with `|n_i| <= kmax`, energy, forces,
 /// the reciprocal virial `-dE/d(strain)` and the self and neutralising-background terms.
 ///
 /// # Errors
@@ -156,7 +158,8 @@ pub fn ewald_reciprocal_cell(
                     ss += q[i] * s;
                     cs.push((c, s));
                 }
-                let ek = pref * a * (sc * sc + ss * ss);
+                let s2 = sc * sc + ss * ss;
+                let ek = pref * a * s2;
                 energy += ek;
                 let w = -2.0 * (1.0 / k2 + 1.0 / (4.0 * alpha * alpha));
                 for x in 0..3 {
@@ -178,7 +181,9 @@ pub fn ewald_reciprocal_cell(
     Ok(Recip { energy, forces, virial })
 }
 
-/// Complete Ewald energy and forces for a **triclinic cell**: the real-space sum runs over all
+/// Complete Ewald energy and forces for a triclinic cell.
+///
+/// The real-space sum runs over all
 /// periodic images within `rcut` (no minimum-image restriction, self-images included), the
 /// reciprocal part is [`ewald_reciprocal_cell`].
 ///
@@ -365,15 +370,12 @@ pub fn pme_reciprocal(
     order: usize,
     kc: f64,
 ) -> Recip {
-    pme_reciprocal_cell(pos, q, &diag_cell(len), alpha, grid, order, kc).unwrap_or(Recip {
-        energy: f64::NAN,
-        forces: vec![[f64::NAN; 3]; pos.len()],
-        virial: [[f64::NAN; 3]; 3],
-    })
+    pme_reciprocal_cell(pos, q, &diag_cell(len), alpha, grid, order, kc).unwrap_or_else(|_| failed_recip(pos.len()))
 }
 
-/// Smooth particle-mesh Ewald for a **general triclinic cell** `h` (rows are the lattice
-/// vectors): charges are spread with cardinal B-splines on a mesh in the fractional coordinates
+/// Smooth particle-mesh Ewald for a general triclinic cell.
+///
+/// The cell `h` has the lattice vectors as rows. Charges are spread with cardinal B-splines on a mesh in the fractional coordinates
 /// `s = r h^-1`, the convolution is done by FFT, and the forces use the analytic spline
 /// derivatives (chain rule through `h^-1`). The structure-factor correction and the
 /// reciprocal-space influence function are those of the sheared lattice (`k = m_1 b_1 + m_2 b_2 +
@@ -390,7 +392,7 @@ pub fn pme_reciprocal_cell(
     order: usize,
     kc: f64,
 ) -> Result<Recip, String> {
-    if order < 2 || order % 2 != 0 || grid.iter().any(|&g| g < order) {
+    if order < 2 || !order.is_multiple_of(2) || grid.iter().any(|&g| g < order) {
         return Err("PME needs an even spline order >= 2 and meshes at least as large".into());
     }
     let vol = det3(h).abs();
@@ -500,11 +502,7 @@ pub fn ewald_extra(
 ) -> ExtraForce<3> {
     Box::new(move |sys, out| {
         let h = sys.bx.cell.unwrap_or_else(|| diag_cell(sys.bx.len));
-        let r = ewald_reciprocal_cell(&sys.pos, &sys.charge, &h, alpha, kmax, kc).unwrap_or(Recip {
-            energy: f64::NAN,
-            forces: vec![[f64::NAN; 3]; sys.pos.len()],
-            virial: [[f64::NAN; 3]; 3],
-        });
+        let r = ewald_reciprocal_cell(&sys.pos, &sys.charge, &h, alpha, kmax, kc).unwrap_or_else(|_| failed_recip(sys.pos.len()));
         out.epot += r.energy;
         for (f, g) in out.f.iter_mut().zip(&r.forces) {
             for a in 0..3 {
@@ -529,11 +527,7 @@ pub fn pme_extra(
 ) -> ExtraForce<3> {
     Box::new(move |sys, out| {
         let h = sys.bx.cell.unwrap_or_else(|| diag_cell(sys.bx.len));
-        let r = pme_reciprocal_cell(&sys.pos, &sys.charge, &h, alpha, grid, order, kc).unwrap_or(Recip {
-            energy: f64::NAN,
-            forces: vec![[f64::NAN; 3]; sys.pos.len()],
-            virial: [[f64::NAN; 3]; 3],
-        });
+        let r = pme_reciprocal_cell(&sys.pos, &sys.charge, &h, alpha, grid, order, kc).unwrap_or_else(|_| failed_recip(sys.pos.len()));
         out.epot += r.energy;
         for (f, g) in out.f.iter_mut().zip(&r.forces) {
             for a in 0..3 {

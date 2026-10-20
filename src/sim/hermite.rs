@@ -21,6 +21,9 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 
 type V3 = [f64; 3];
 
+/// Acceleration, jerk, snap, Newtonian acceleration and Newtonian jerk of one particle.
+type ForceSet = (V3, V3, V3, V3, V3);
+
 /// Order of the Hermite scheme.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HermiteOrder {
@@ -176,7 +179,7 @@ impl Scalar for f64 {
     }
 
     fn sqrt(self) -> Self {
-        f64::sqrt(self)
+        self.sqrt()
     }
 }
 
@@ -599,7 +602,7 @@ impl HermiteSystem {
         pred: &[Predicted],
         active: &[usize],
         t: f64,
-    ) -> Result<Vec<(V3, V3, V3, V3, V3)>, String> {
+    ) -> Result<Vec<ForceSet>, String> {
         let eps2 = self.eps * self.eps;
         let sources = self.sources(pred, t)?;
         let mut is_cm = vec![None; pred.len()];
@@ -756,7 +759,7 @@ impl HermiteSystem {
         if a == b || a >= n || b >= n || self.order != HermiteOrder::Fourth || self.pn_c.is_some() {
             return Err("binaries need two distinct particles, the 4th-order scheme and no PN".into());
         }
-        if self.t_last[a] != self.t_last[b] {
+        if (self.t_last[a] - self.t_last[b]).abs() > 1e-12 * (1.0 + self.t_last[a].abs()) {
             return Err("binary components must be synchronised".into());
         }
         let (m1, m2) = (self.mass[a], self.mass[b]);
@@ -867,7 +870,7 @@ impl HermiteSystem {
     pub fn step(&mut self) -> Result<(), String> {
         let n = self.mass.len();
         let t_new = self.next_time();
-        let active: Vec<usize> = (0..n).filter(|&i| !self.is_dead(i) && self.t_last[i] + self.dt[i] == t_new).collect();
+        let active: Vec<usize> = (0..n).filter(|&i| !self.is_dead(i) && (self.t_last[i] + self.dt[i] - t_new).abs() <= 1e-12 * self.dt[i]).collect();
         let mut pred: Vec<Predicted> = (0..n).map(|i| if self.is_dead(i) { self.predict_dead(i) } else { self.predict(i, t_new) }).collect();
         let base: Vec<Predicted> = pred.clone();
         let sixth = self.order == HermiteOrder::Sixth;
@@ -949,8 +952,11 @@ impl HermiteSystem {
             StepPolicy::Shared(h) => h,
             StepPolicy::Block { eta, dt_max, dt_min } => {
                 let (a, j, s, c) = (norm(self.acc[i]), norm(self.jerk[i]), norm(self.snap[i]), norm(self.crackle[i]));
-                let denom = j * c + s * s;
-                let proposed = if denom > 0.0 { (eta * (a * s + j * j) / denom).sqrt() } else { dt_max };
+                let ss = s * s;
+                let denom = j * c + ss;
+                let jj = j * j;
+                let aj = a * s + jj;
+                let proposed = if denom > 0.0 { (eta * aj / denom).sqrt() } else { dt_max };
                 let old = self.dt[i];
                 let mut dt = old;
                 if proposed < old {

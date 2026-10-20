@@ -206,8 +206,9 @@ impl UnionFind {
     }
 }
 
-/// Draws a unit vector from `P(s) ~ exp(beta s . f)` on the sphere `S^(N-1)` (`N = 1, 2, 3`):
-/// the heat-bath conditional distribution of an O(N) spin in the local field `f`
+/// Draws a heat-bath direction for an O(N) spin.
+///
+/// The unit vector has density `P(s) ~ exp(beta s . f)` on the sphere `S^(N-1)`: the heat-bath conditional distribution of an O(N) spin in the local field `f`
 /// (von Mises-Fisher distribution; `N = 1` logistic, `N = 2` Best-Fisher, `N = 3` exact inverse
 /// CDF, `N >= 4` Wood's rejection algorithm).
 ///
@@ -1371,7 +1372,7 @@ fn steer_into_window<const D: usize, const N: usize>(
     delta: f64,
 ) -> Result<f64, String> {
     let n = m.lattice.sites();
-    let target = 0.5 * (lo + hi);
+    let target = f64::midpoint(lo, hi);
     let mut e = m.energy();
     for _ in 0..4000 * n.max(16) {
         if e >= lo && e < hi {
@@ -1409,8 +1410,9 @@ fn steer_into_window<const D: usize, const N: usize>(
     }
 }
 
-/// Replica-exchange Wang-Landau (Vogel, Li, Wuest, Landau 2013) with several walkers per
-/// energy window: the energy range is split into overlapping windows, each window runs its own
+/// Replica-exchange Wang-Landau with several walkers per energy window.
+///
+/// After Vogel, Li, Wuest and Landau (2013): the energy range is split into overlapping windows, each window runs its own
 /// Wang-Landau iteration with `walkers` walkers sharing `ln g`, neighbouring windows exchange
 /// configurations with probability `min(1, g_i(E_a) g_j(E_b) / (g_i(E_b) g_j(E_a)))`, and the
 /// per-window densities of states are joined at the overlap bin where their logarithmic
@@ -1505,14 +1507,15 @@ pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
                         for k in 0..N {
                             de -= (new[k] - old[k]) * f[k];
                         }
-                        if let Some(nb) = bin_of(wk.energy + de) {
-                            if nb >= lo && nb < hi {
-                                let d = ln_g[w][wk.bin] - ln_g[w][nb];
-                                if d >= 0.0 || wk.model.rng.uniform() < d.exp() {
-                                    wk.model.spins[i] = new;
-                                    wk.energy += de;
-                                    wk.bin = nb;
-                                }
+                        if let Some(nb) = bin_of(wk.energy + de)
+                            && nb >= lo
+                            && nb < hi
+                        {
+                            let d = ln_g[w][wk.bin] - ln_g[w][nb];
+                            if d >= 0.0 || wk.model.rng.uniform() < d.exp() {
+                                wk.model.spins[i] = new;
+                                wk.energy += de;
+                                wk.bin = nb;
                             }
                         }
                         ln_g[w][wk.bin] += ln_f;

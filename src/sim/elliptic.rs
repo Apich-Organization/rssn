@@ -20,7 +20,7 @@
 
 use std::f64::consts::PI;
 
-use crate::kernels::special_ext::{carlson_rf, elliptic_e_inc, elliptic_f, elliptic_k};
+use crate::kernels::special_ext::{carlson_rf, elliptic_e_inc, elliptic_f};
 
 /// Carlson's degenerate integral `R_C(x, y)` (`x >= 0`, `y != 0`; `y < 0` gives the Cauchy
 /// principal value).
@@ -111,7 +111,8 @@ pub fn elliptic_pi_complete(
     carlson_rf(0.0, 1.0 - m, 1.0) + n / 3.0 * carlson_rj(0.0, 1.0 - m, 1.0, 1.0 - n)
 }
 
-/// Incomplete elliptic integral of the third kind
+/// Incomplete elliptic integral of the third kind.
+///
 /// `Pi(n; phi, m) = int_0^phi dt / ((1 - n sin^2 t) sqrt(1 - m sin^2 t))` for any real `phi`
 /// (`Pi(phi + j pi) = Pi(phi) + 2 j Pi(n, m)`); the integrand must not be singular, i.e.
 /// `n < 1` (any `phi`) or `n sin^2 t < 1` on the path.

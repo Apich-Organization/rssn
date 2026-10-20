@@ -1093,8 +1093,9 @@ fn solve3(
     Some(x)
 }
 
-/// Advances a perturbed two-body problem with gravitational parameter `mu` for the physical
-/// time `dt > 0` in KS variables (RK4 in the fictitious time, step `ds = eta / omega` with the
+/// Advances a perturbed two-body problem in KS variables for a given physical time.
+///
+/// The gravitational parameter is `mu`, the physical time `dt > 0` (RK4 in the fictitious time, step `ds = eta / omega` with the
 /// harmonic frequency `omega` of the regularised oscillator; the last steps are solved for so
 /// that the physical time lands exactly on `dt`). `pert(x, v, tau)` is the perturbing relative
 /// acceleration at elapsed time `tau`. Returns the relative position and velocity.

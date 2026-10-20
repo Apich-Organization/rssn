@@ -854,9 +854,11 @@ fn far_lattice_tensor(
     Ok(tensor)
 }
 
-/// Periodic 3-D FMM for the potential `sum s_j / r` and field `sum s_j (x_j - x_i)/r^3` of
-/// charges in a triclinic cell `h` (rows are the lattice vectors) with tinfoil boundary
-/// conditions and a neutralising background.
+/// Periodic 3-D FMM in a triclinic cell.
+///
+/// Evaluates the potential `sum s_j / r` and field `sum s_j (x_j - x_i)/r^3` of charges in the
+/// cell `h` (rows are the lattice vectors) with tinfoil boundary conditions and a
+/// neutralising background.
 ///
 /// The central cell and its `(2w+1)^3 - 1` nearest images are summed by the adaptive tree code
 /// ([`fmm3d`], Plummer softening `opts.fmm.eps` included); the rest of the lattice enters through

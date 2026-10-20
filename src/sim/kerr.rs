@@ -435,13 +435,16 @@ impl KerrOrbit {
         let lam_r = self.radial_period();
         let (tr, pr) = self.radial_parts(lam_r);
         let (gam_r, phi_r) = (tr / lam_r, pr / lam_r);
-        let (gam_th, phi_th, ups_th) = if let Some(lam_th) = self.polar_period() {
-            let (tt, pt) = self.polar_parts(lam_th);
-            (tt / lam_th, pt / lam_th, 2.0 * PI / lam_th)
-        } else {
-            let (tt, pt) = self.polar_parts(1.0);
-            (tt, pt, 0.0)
-        };
+        let (gam_th, phi_th, ups_th) = self.polar_period().map_or_else(
+            || {
+                let (tt, pt) = self.polar_parts(1.0);
+                (tt, pt, 0.0)
+            },
+            |lam_th| {
+                let (tt, pt) = self.polar_parts(lam_th);
+                (tt / lam_th, pt / lam_th, 2.0 * PI / lam_th)
+            },
+        );
         let ups_r = 2.0 * PI / lam_r;
         let gamma = gam_r + gam_th;
         let ups_phi = phi_r + phi_th;
@@ -492,12 +495,15 @@ fn photon_orbit_constants(
     a: f64,
     r: f64,
 ) -> (f64, f64) {
-    let xi = (r * r * (3.0 * m - r) - a * a * (r + m)) / (a * (r - m));
+    let aa = a * a;
+    let xi = (r * r * (3.0 * m - r) - aa * (r + m)) / (a * (r - m));
     let eta = r.powi(3) * (4.0 * a * a * m - r * (r - 3.0 * m).powi(2)) / (a * a * (r - m).powi(2));
     (xi, eta)
 }
 
-/// Bardeen's critical curve: the boundary of the shadow of a Kerr black hole on the observer's
+/// Bardeen's critical curve of the Kerr shadow.
+///
+/// The boundary of the shadow of a Kerr black hole on the observer's
 /// image plane (celestial coordinates `(alpha, beta)` of an observer at infinity and inclination
 /// `theta_o`), as `2 n` points (upper half then lower half). For `a = 0` it is the circle of
 /// radius `3 sqrt(3) M`.
@@ -530,7 +536,7 @@ pub fn shadow_boundary_analytic(
     // beta^2 >= 0 between the two zeros inside [r_pro, r_retro]
     let (r_lo, r_hi) = (kerr_photon_orbit_radius(m, a.abs(), true), kerr_photon_orbit_radius(m, a.abs(), false));
     let samples = 20_000;
-    let rs: Vec<f64> = (0..=samples).map(|k| r_lo + (r_hi - r_lo) * k as f64 / f64::from(samples)).collect();
+    let rs: Vec<f64> = (0..=samples).map(|k| r_lo + (r_hi - r_lo) * f64::from(k) / f64::from(samples)).collect();
     let first = rs.iter().position(|&r| beta2(r) >= 0.0).ok_or("no photon-orbit window for this observer")?;
     let last = rs.iter().rposition(|&r| beta2(r) >= 0.0).ok_or("no photon-orbit window for this observer")?;
     let refine = |mut lo: f64, mut hi: f64| {
@@ -575,7 +581,9 @@ pub enum RayOutcome {
     },
 }
 
-/// Traces a null geodesic with impact parameters `xi = L/E`, `eta = Q/E^2` from the observer at
+/// Traces a null geodesic backwards from the observer.
+///
+/// The impact parameters are `xi = L/E`, `eta = Q/E^2` from the observer at
 /// `(r_o, theta_o)` inwards (initial direction: decreasing `r`, polar motion toward larger
 /// `theta` if `polar_down`) by integrating the Mino-time equations with RK4.
 ///
@@ -591,7 +599,10 @@ pub fn trace_ray(
     polar_down: bool,
 ) -> Result<RayOutcome, String> {
     let rh = m + (m * m - a * a).sqrt();
-    let rpot = |r: f64| (r * r + a * a - a * xi).powi(2) - (r * r - 2.0 * m * r + a * a) * ((xi - a).powi(2) + eta);
+    let rpot = |r: f64| {
+        let rr = r * r + a * a;
+        (rr - a * xi).powi(2) - (rr - 2.0 * m * r) * ((xi - a).powi(2) + eta)
+    };
     let z0 = theta_o.cos();
     let zp2 = eta - (eta + xi * xi - a * a) * z0 * z0 - a * a * z0.powi(4);
     if rpot(r_o) < 0.0 || zp2 < -1e-12 {
@@ -600,10 +611,11 @@ pub fn trace_ray(
     let rhs = |y: &[f64; 5]| -> [f64; 5] {
         let (r, z) = (y[0], y[2]);
         let k = (xi - a).powi(2) + eta;
-        let rpp = 0.5 * (4.0 * r * (r * r + a * a - a * xi) - (2.0 * r - 2.0 * m) * k);
+        let rr = r * r + a * a;
+        let rpp = 0.5 * (4.0 * r * (rr - a * xi) - (2.0 * r - 2.0 * m) * k);
         let zpp = -(eta + xi * xi - a * a) * z - 2.0 * a * a * z.powi(3);
         let delta = r * r - 2.0 * m * r + a * a;
-        let p = r * r + a * a - a * xi;
+        let p = rr - a * xi;
         let phid = a * p / delta - a + xi / (1.0 - z * z).max(1e-12);
         [y[1], rpp, y[3], zpp, phid]
     };
@@ -645,7 +657,9 @@ pub fn trace_ray(
     Err("ray tracing step budget exhausted".into())
 }
 
-/// Shadow boundary found by ray tracing: for each of `n` directions in the image plane the
+/// Shadow boundary found by ray tracing.
+///
+/// For each of `n` directions in the image plane the
 /// critical impact radius separating captured from escaping rays is located by bisection.
 /// Returns `(alpha, beta)` points of the observer's image plane (observer at inclination
 /// `theta_o`, far away at `r_o`).

@@ -313,10 +313,7 @@ impl FlexibleBarostat {
         let mut g = [[0.0; D]; D];
         for i in 0..D {
             for j in 0..D {
-                g[i][j] = match &self.prescribed {
-                    Some(p) => p[i * D + j],
-                    None => self.pg[i * D + j] / self.w,
-                };
+                g[i][j] = self.prescribed.as_ref().map_or_else(|| self.pg[i * D + j] / self.w, |p| p[i * D + j]);
             }
         }
         g
