@@ -167,3 +167,106 @@ fn bspline_partition_of_unity() {
         assert!((s - 1.0).abs() < 1e-13);
     }
 }
+
+fn triclinic_cell() -> [[f64; 3]; 3] {
+    [[5.0, 0.0, 0.0], [1.3, 4.6, 0.0], [-0.8, 1.1, 5.2]]
+}
+
+fn neutral_charges(h: &[[f64; 3]; 3]) -> (Vec<[f64; 3]>, Vec<f64>) {
+    let mut rng = rssn::kernels::random::Rng::new(77);
+    let n = 8;
+    let mut pos = Vec::new();
+    let mut q = Vec::new();
+    for i in 0..n {
+        let s = [rng.uniform(), rng.uniform(), rng.uniform()];
+        let mut p = [0.0; 3];
+        for c in 0..3 {
+            p[c] = s[0] * h[0][c] + s[1] * h[1][c] + s[2] * h[2][c];
+        }
+        pos.push(p);
+        q.push(if i % 2 == 0 { 1.0 } else { -1.0 });
+    }
+    (pos, q)
+}
+
+#[test]
+fn triclinic_ewald_gives_the_madelung_constant_from_the_fcc_primitive_cell() {
+    // rock salt: primitive fcc cell (rhombohedral, 60 degrees), nearest-neighbour distance 1
+    let h = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]];
+    let pos = vec![[0.0; 3], [1.0, 0.0, 0.0]];
+    let q = vec![1.0, -1.0];
+    let (e, f) = ewald_energy_forces_cell(&pos, &q, &h, 2.4, 14, 3.9, 1.0).unwrap();
+    assert!((e + MADELUNG_NACL).abs() < 1e-8, "{e} vs {}", -MADELUNG_NACL);
+    for fi in &f {
+        assert!(fi.iter().all(|c| c.abs() < 1e-8));
+    }
+    let r = pme_reciprocal_cell(&pos, &q, &h, 2.4, [32, 32, 32], 6, 1.0).unwrap();
+    let d = ewald_reciprocal_cell(&pos, &q, &h, 2.4, 14, 1.0).unwrap();
+    assert!((r.energy - d.energy).abs() < 1e-6, "{} vs {}", r.energy, d.energy);
+}
+
+#[test]
+fn triclinic_ewald_is_independent_of_alpha_and_forces_are_gradients() {
+    let h = triclinic_cell();
+    let (pos, q) = neutral_charges(&h);
+    let (e1, f1) = ewald_energy_forces_cell(&pos, &q, &h, 1.0, 12, 8.5, 1.0).unwrap();
+    let (e2, f2) = ewald_energy_forces_cell(&pos, &q, &h, 1.4, 16, 6.5, 1.0).unwrap();
+    assert!((e1 - e2).abs() < 1e-6 * e1.abs().max(1.0), "{e1} vs {e2}");
+    for i in 0..pos.len() {
+        for a in 0..3 {
+            assert!((f1[i][a] - f2[i][a]).abs() < 1e-5, "force {i},{a}: {} vs {}", f1[i][a], f2[i][a]);
+        }
+    }
+    let alpha = 1.2;
+    let (_, f) = ewald_energy_forces_cell(&pos, &q, &h, alpha, 14, 7.5, 1.0).unwrap();
+    for (i, a) in [(0usize, 0usize), (3, 1), (5, 2)] {
+        let eps = 1e-5;
+        let mut p = pos.clone();
+        p[i][a] += eps;
+        let (ep, _) = ewald_energy_forces_cell(&p, &q, &h, alpha, 14, 7.5, 1.0).unwrap();
+        p[i][a] -= 2.0 * eps;
+        let (em, _) = ewald_energy_forces_cell(&p, &q, &h, alpha, 14, 7.5, 1.0).unwrap();
+        let fd = -(ep - em) / (2.0 * eps);
+        assert!((fd - f[i][a]).abs() < 1e-6, "{fd} vs {}", f[i][a]);
+    }
+}
+
+#[test]
+fn triclinic_pme_matches_the_direct_sum_and_the_virial_is_the_strain_derivative() {
+    let h = triclinic_cell();
+    let (pos, q) = neutral_charges(&h);
+    let alpha = 0.9;
+    let direct = ewald_reciprocal_cell(&pos, &q, &h, alpha, 12, 1.0).unwrap();
+    let mesh = pme_reciprocal_cell(&pos, &q, &h, alpha, [40, 40, 40], 6, 1.0).unwrap();
+    assert!((direct.energy - mesh.energy).abs() < 2e-5 * direct.energy.abs().max(1.0), "{} vs {}", direct.energy, mesh.energy);
+    for i in 0..pos.len() {
+        for a in 0..3 {
+            assert!((direct.forces[i][a] - mesh.forces[i][a]).abs() < 2e-4, "{} vs {}", direct.forces[i][a], mesh.forces[i][a]);
+        }
+    }
+    // virial = -dE/d(strain) for symmetric strains (affine deformation of cell and positions)
+    let strained = |eps: [[f64; 3]; 3]| {
+        let tf = |v: &[f64; 3]| -> [f64; 3] { std::array::from_fn(|c| v[c] + (0..3).map(|d| v[d] * eps[d][c]).sum::<f64>()) };
+        let h2 = [tf(&h[0]), tf(&h[1]), tf(&h[2])];
+        let p2: Vec<[f64; 3]> = pos.iter().map(tf).collect();
+        ewald_reciprocal_cell(&p2, &q, &h2, alpha, 12, 1.0).unwrap().energy
+    };
+    for (x, y) in [(0usize, 0usize), (1, 1), (0, 1), (2, 0)] {
+        let d = 1e-6;
+        let mut e = [[0.0; 3]; 3];
+        e[x][y] = d;
+        e[y][x] = d;
+        let ep = strained(e);
+        let mut e = [[0.0; 3]; 3];
+        e[x][y] = -d;
+        e[y][x] = -d;
+        let em = strained(e);
+        let mut fd = -(ep - em) / (2.0 * d);
+        if x != y {
+            fd /= 2.0;
+        }
+        assert!((fd - direct.virial[x][y]).abs() < 1e-5 * (1.0 + fd.abs()), "virial {x}{y}: {fd} vs {}", direct.virial[x][y]);
+    }
+    assert!(pme_reciprocal_cell(&pos, &q, &h, alpha, [4, 4, 4], 6, 1.0).is_err());
+    assert!(ewald_reciprocal_cell(&pos, &q, &[[1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 1.0]], alpha, 4, 1.0).is_err());
+}
