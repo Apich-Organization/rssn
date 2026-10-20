@@ -142,6 +142,7 @@ mod formal;
 mod frobenius;
 mod kovacic;
 mod lie;
+mod linear;
 mod nonlinear;
 #[cfg(test)]
 mod battery;
@@ -170,6 +171,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.op(OpDescriptor::new("big_o", Arity::Fixed(1)).eval(|_| 0.0))?;
     i.op(OpDescriptor::new("hyper1f1", Arity::Fixed(3)).eval(frobenius::hyper1f1))?;
     i.op(OpDescriptor::new("hyper2f1", Arity::Fixed(4)).eval(frobenius::hyper2f1))?;
+    i.op(OpDescriptor::new("hyperpfq", Arity::Variadic).eval(linear::hyper_pfq))?;
     i.kernel("ode/odeint", Tier::Reduce, Odeint { odeint });
     Ok(())
 }
@@ -1625,6 +1627,7 @@ fn dispatch(
         reduce::special_function_equation,
         frobenius::hypergeometric,
         reduce::variable_coefficients,
+        linear::high_order,
         reduce::missing_dependent,
         reduce::autonomous,
         reduce::scale_invariant,
@@ -2454,6 +2457,28 @@ mod tests {
                 assert!(residual.abs() < 2e-3 * y.abs(), "{rank_two} at {x}: {residual} vs {y}");
             }
         }
+    }
+
+    #[test]
+    fn third_order_equations_reduce() {
+        let rules = crate::rules::standard();
+        // (D^2 - x)(D - 1) y = D^3 - D^2 - x D + x: e^x and, through
+        // (D - 1) y = Ai, Bi, quadratures of Airy functions.
+        let answer = simplify(
+            &rules,
+            "dsolve(diff(diff(diff(y(x), x), x), x) - diff(diff(y(x), x), x) - x*diff(y(x), x) + x*y(x), y(x))",
+        );
+        assert!(answer.contains("exp(x)") && answer.contains("airy"), "{answer}");
+        // The first solution is e^x.
+        let rhs = answer.strip_prefix("y(x) = ").unwrap_or(&answer);
+        let first = solution_value(&rules, rhs.split(" + ").find(|t| t.contains("C1")).unwrap_or(rhs), 0.7, (1.0, 0.0));
+        assert!((first - 0.7_f64.exp()).abs() < 1e-9, "{answer}");
+        // A hypergeometric operator of order three: 3F2.
+        let hyper = simplify(
+            &rules,
+            "dsolve(x^3*(1 - x)*diff(diff(diff(y(x), x), x), x) + (13/6*x^2 - 9*x^3)*diff(diff(y(x), x), x) + (1/3*x - 18*x^2)*diff(y(x), x) - 6*x*y(x), y(x))",
+        );
+        assert!(hyper.contains("hyperpfq"), "{hyper}");
     }
 
     #[test]

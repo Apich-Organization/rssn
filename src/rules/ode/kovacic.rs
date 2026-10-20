@@ -42,9 +42,9 @@ type Q = BigRational;
 
 /// A rational function `num / den` over `Q`.
 #[derive(Clone)]
-struct Rat {
-    num: Vec<Q>,
-    den: Vec<Q>,
+pub(super) struct Rat {
+    pub(super) num: Vec<Q>,
+    pub(super) den: Vec<Q>,
 }
 
 fn q(n: i64) -> Q {
@@ -59,7 +59,7 @@ fn trim(mut p: Vec<Q>) -> Vec<Q> {
 }
 
 impl Rat {
-    fn new(
+    pub(super) fn new(
         num: &[Q],
         den: &[Q],
     ) -> Option<Self> {
@@ -77,21 +77,21 @@ impl Rat {
         Some(Self { num: num.iter().map(|c| c / &lead).collect(), den: den.iter().map(|c| c / &lead).collect() })
     }
 
-    fn mul(
+    pub(super) fn mul(
         &self,
         o: &Self,
     ) -> Option<Self> {
         Self::new(&univariate::mul(&self.num, &o.num), &univariate::mul(&self.den, &o.den))
     }
 
-    fn div(
+    pub(super) fn div(
         &self,
         o: &Self,
     ) -> Option<Self> {
         Self::new(&univariate::mul(&self.num, &o.den), &univariate::mul(&self.den, &o.num))
     }
 
-    fn add(
+    pub(super) fn add(
         &self,
         o: &Self,
     ) -> Option<Self> {
@@ -99,14 +99,14 @@ impl Rat {
         Self::new(&n, &univariate::mul(&self.den, &o.den))
     }
 
-    fn scale(
+    pub(super) fn scale(
         &self,
         c: &Q,
     ) -> Option<Self> {
         Self::new(&self.num.iter().map(|x| x * c).collect::<Vec<_>>(), &self.den)
     }
 
-    fn derivative(&self) -> Option<Self> {
+    pub(super) fn derivative(&self) -> Option<Self> {
         let n = univariate::sub(
             &univariate::mul(&univariate::derivative(&self.num), &self.den),
             &univariate::mul(&self.num, &univariate::derivative(&self.den)),
@@ -114,7 +114,7 @@ impl Rat {
         Self::new(&n, &univariate::mul(&self.den, &self.den))
     }
 
-    fn eval(
+    pub(super) fn eval(
         &self,
         x: &Q,
     ) -> Option<Q> {
@@ -277,7 +277,7 @@ fn algebraic_pole_options(
     }
 }
 
-fn polynomial_node(
+pub(super) fn polynomial_node(
     cx: &mut Cx<'_>,
     x: NodeId,
     v: &[Q],

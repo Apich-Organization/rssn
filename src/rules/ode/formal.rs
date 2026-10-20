@@ -623,7 +623,20 @@ fn expand(
     exponent: &[(i64, Elt)],
     selection: &Selection,
 ) {
-    let hull = lower_hull(&op.support());
+    let support = op.support();
+    // The regular part: the row of lowest `j`, whose polynomial in `θ` is the
+    // indicial polynomial. Roots at 0 coming from `θ^{i0}` count only when no
+    // support point lies to the left of the row (else they belong to the
+    // part of the polygon with negative slopes: solutions analytic there).
+    if selection.accepts(&Q::zero())
+        && let Some(j_min) = support.iter().map(|&(_, j)| j).min()
+        && let Some(row) = op.terms.get(&j_min)
+    {
+        let i_row = row.iter().position(|c| !c.is_empty()).unwrap_or(0);
+        let has_left = support.iter().any(|&(i, _)| i < i64::try_from(i_row).unwrap_or(0));
+        regular(search, field, op, j_min, if has_left { i_row } else { 0 }, ramification, exponent);
+    }
+    let hull = lower_hull(&support);
     for segment in hull {
         let slope = segment.slope();
         if !selection.accepts(&slope) {
@@ -633,7 +646,6 @@ fn expand(
             continue;
         }
         if slope.is_zero() {
-            regular(search, field, op, &segment, ramification, exponent);
             continue;
         }
         let r = slope.denom().to_i64().unwrap_or(1);
@@ -728,14 +740,13 @@ fn regular(
     search: &mut Search<'_>,
     field: &Field,
     op: &Euler,
-    segment: &Segment,
+    j0: i64,
+    skip: usize,
     ramification: usize,
     exponent: &[(i64, Elt)],
 ) {
-    let j0 = segment.j0;
     let Some(indicial) = op.terms.get(&j0) else { return };
-    let i0 = usize::try_from(segment.i0).unwrap_or(0);
-    let reduced: Vec<Elt> = indicial.iter().skip(i0).cloned().collect();
+    let reduced: Vec<Elt> = indicial.iter().skip(skip).cloned().collect();
     let width = reduced.len().saturating_sub(1);
     if width == 0 {
         return;
