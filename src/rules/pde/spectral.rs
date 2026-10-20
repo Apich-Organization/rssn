@@ -887,7 +887,8 @@ fn vanishes_on_integers(
     let Some(n_symbol) = cx.graph.symbol_of(n) else {
         return false;
     };
-    for k in 0..2_u32 {
+    // Other integer-valued indices take several residues (both parities).
+    for k in 0..5_u32 {
         for m in from..from + 14 {
             let mut env = sample_env(cx.graph, h, k);
             #[allow(clippy::cast_precision_loss)]
