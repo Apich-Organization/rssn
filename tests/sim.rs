@@ -78,6 +78,8 @@ mod scenario_engines;
 mod structured;
 #[path = "sim/physics_sm.rs"]
 mod physics_sm;
+#[path = "sim/fmm.rs"]
+mod fmm;
 #[path = "sim/hermite.rs"]
 mod hermite;
 #[path = "sim/elliptic.rs"]
