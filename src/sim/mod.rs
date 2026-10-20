@@ -98,6 +98,8 @@ pub mod fmm;
 pub mod chain;
 /// Kerr-Newman geodesics.
 pub mod relativity;
+/// Exact bound Kerr geodesics in Mino time and black-hole shadows.
+pub mod kerr;
 /// Smoothed-particle hydrodynamics in 1-3 dimensions.
 pub mod sph;
 /// Lattice spin models (Ising, Potts, XY, Heisenberg) with cluster updates.

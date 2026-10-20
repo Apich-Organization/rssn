@@ -86,6 +86,8 @@ mod elliptic;
 mod symplectic;
 #[path = "sim/spin_models.rs"]
 mod spin_models;
+#[path = "sim/kerr.rs"]
+mod kerr;
 #[path = "sim/relativity.rs"]
 mod relativity;
 #[path = "sim/ewald.rs"]
