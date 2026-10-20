@@ -80,6 +80,8 @@ pub mod special_ext;
 pub mod ordering;
 /// Structured (banded, sparse) Jacobians, colouring finite differences and banded LU.
 pub mod jacobian;
+/// Krylov-Schur, block Lanczos and Jacobi-Davidson eigensolvers, generalised problems.
+pub mod eigs_ext;
 /// MINRES, BiCGSTAB(l), IDR(s) and flexible GMRES.
 pub mod krylov_ext;
 /// Lanczos and Arnoldi eigensolvers with restarts and shift-invert.

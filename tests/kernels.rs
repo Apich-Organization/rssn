@@ -92,6 +92,8 @@ mod ode_stiff;
 mod ode_stiff_ext;
 #[path = "kernels/ode_stiff_struct.rs"]
 mod ode_stiff_struct;
+#[path = "kernels/eigs_ext.rs"]
+mod eigs_ext;
 #[path = "kernels/special_hyp.rs"]
 mod special_hyp;
 #[path = "kernels/ordering.rs"]
