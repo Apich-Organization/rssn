@@ -231,7 +231,8 @@ fn inverse_mod(
         t1 = t2;
     }
     // r0 is a constant (f irreducible and a not divisible by f).
-    let [constant] = trim(r0).as_slice() else { return None };
+    let constant_poly = trim(r0);
+    let [constant] = constant_poly.as_slice() else { return None };
     let scaled: Vec<Q> = t0.iter().map(|c| c / constant).collect();
     Some(univariate::divrem(&scaled, f)?.1)
 }
@@ -499,7 +500,10 @@ pub(super) fn solutions(
     if let Some(y) = case_one(cx, x, &p, &r) {
         return vec![y];
     }
-    case_two(cx, x, &p, &r).unwrap_or_default()
+    if let Some(found) = case_two(cx, x, &p, &r) {
+        return found;
+    }
+    case_three(cx, x, &p, &r).unwrap_or_default()
 }
 
 /// `p = a1/a2` and `r = p²/4 + p'/2 - a0/a2`.
@@ -1002,4 +1006,324 @@ fn build_case_two(
     }
     let _ = neg;
     Some(out)
+}
+
+// ---------------------------------------------------------------------
+// Case 3: finite primitive monodromy (tetrahedral n = 4, octahedral n = 6,
+// icosahedral n = 12).
+
+/// The minimal polynomial of `ω = u'/u` in Kovacic's case 3.
+struct CaseThree {
+    /// The degree `n` of `ω` over `Q(x)`.
+    n: usize,
+    /// `coefficients[k]` is the polynomial coefficient of `ω^k`.
+    coefficients: Vec<Vec<Q>>,
+}
+
+/// The integers `6 + 12 k s / n` for `k = -n/2 ..= n/2` (`s = sqrt(1 + 4b)`
+/// when rational, else only `6`).
+fn case_three_exponents(
+    b: &Q,
+    n: usize,
+) -> Vec<i64> {
+    let mut out = vec![6_i64];
+    if let Some(s) = rational_sqrt(&(Q::one() + q(4) * b)) {
+        let half = i64::try_from(n / 2).unwrap_or(0);
+        for k in -half..=half {
+            let value = q(6) + Q::new(BigInt::from(12 * k), BigInt::from(n)) * &s;
+            if value.denom().is_one()
+                && let Some(v) = value.to_integer().to_i64()
+                && !out.contains(&v)
+            {
+                out.push(v);
+            }
+        }
+    }
+    out.sort_unstable();
+    out
+}
+
+/// Kovacic's recursion for `n`, `S`, `Sθ`, `S² r`: the polynomial `P`
+/// (monic, degree `d`) for which `p_{-1} = 0`, and the coefficients of the
+/// minimal polynomial of `ω`.
+///
+/// With `p_n = -P` and, for `k = n, …, 0`,
+/// `p_{k-1} = (n - k) S' p_k - Sθ p_k - S p_k' - (k + 1)(n - k) S² r p_{k+1}`,
+/// the condition is `p_{-1} = 0`, and `ω` is a root of
+/// `Σ_k S^k p_k ω^k / (n - k)!` (after clearing powers of `S`).
+fn case_three_recursion(
+    s: &[Q],
+    s_theta: &[Q],
+    s2r: &[Q],
+    n: usize,
+    d: usize,
+) -> Option<(Vec<Q>, Vec<Vec<Q>>)> {
+    let s_prime = univariate::derivative(s);
+    let chain = |p: &[Q]| -> Option<Vec<Vec<Q>>> {
+        // p_k for k = -1 ..= n, stored at index k + 1.
+        let mut values: Vec<Vec<Q>> = vec![Vec::new(); n + 3];
+        *values.get_mut(n + 1)? = p.iter().map(|c| -c).collect();
+        for k in (0..=n).rev() {
+            let current = values.get(k + 1)?.clone();
+            let above = values.get(k + 2)?.clone();
+            let scaled: Vec<Q> = s_prime.iter().map(|c| c * Q::from_integer(BigInt::from(n - k))).collect();
+            let factor = univariate::sub(&scaled, s_theta);
+            let mut next = univariate::sub(&univariate::mul(&factor, &current), &univariate::mul(s, &univariate::derivative(&current)));
+            let weight = Q::from_integer(BigInt::from((k + 1) * (n - k)));
+            let tail: Vec<Q> = univariate::mul(s2r, &above).iter().map(|c| c * &weight).collect();
+            next = univariate::sub(&next, &tail);
+            *values.get_mut(k)? = trim(next);
+        }
+        Some(values)
+    };
+    // Linear in P: the columns for the monomials x^0 .. x^d.
+    let mut columns: Vec<Vec<Q>> = Vec::new();
+    for j in 0..=d {
+        let mut monomial = vec![Q::zero(); j];
+        monomial.push(Q::one());
+        columns.push(chain(&monomial)?.first()?.clone());
+    }
+    let height = columns.iter().map(Vec::len).max().unwrap_or(0);
+    let entry = |row: usize, col: usize| columns.get(col).and_then(|c| c.get(row)).cloned().unwrap_or_else(Q::zero);
+    let rows: Vec<Vec<Q>> = (0..height).map(|i| (0..d).map(|j| entry(i, j)).collect()).collect();
+    let rhs: Vec<Q> = (0..height).map(|i| -entry(i, d)).collect();
+    let mut p = if d == 0 {
+        if rhs.iter().any(|v| !v.is_zero()) {
+            return None;
+        }
+        Vec::new()
+    } else {
+        solve_linear(rows, rhs, d)?
+    };
+    p.push(Q::one());
+    let values = chain(&p)?;
+    // Coefficient of ω^k: S^k p_k / (n - k)!, with p_k at index k + 1.
+    let mut coefficients = Vec::new();
+    for k in 0..=n {
+        let mut power = vec![Q::one()];
+        for _ in 0..k {
+            power = univariate::mul(&power, s);
+        }
+        let factorial = (1..=(n - k)).fold(BigInt::one(), |acc, i| acc * BigInt::from(i));
+        let c = univariate::mul(&power, values.get(k + 1)?);
+        coefficients.push(c.iter().map(|v| v / Q::from_integer(factorial.clone())).collect::<Vec<_>>());
+    }
+    Some((p, coefficients))
+}
+
+fn case_three_data(r: &Rat) -> Option<CaseThree> {
+    let (_, factors) = univariate::factor(&r.den);
+    let mut locs: Vec<(Loc, usize)> = Vec::new();
+    for (factor, multiplicity) in factors {
+        let order = usize::try_from(multiplicity).ok()?;
+        if order > 2 {
+            return None;
+        }
+        locs.push((Loc::from_integer_factor(&factor)?, order));
+    }
+    let (dn, dd) = (r.num.len().checked_sub(1)?, r.den.len().checked_sub(1)?);
+    let order_inf = i64::try_from(dd).ok()? - i64::try_from(dn).ok()?;
+    if order_inf < 2 {
+        return None;
+    }
+    // S, S² r.
+    let mut s = vec![Q::one()];
+    let mut s2r = r.num.clone();
+    for (loc, order) in &locs {
+        s = univariate::mul(&s, &loc.f);
+        if *order == 1 {
+            s2r = univariate::mul(&s2r, &loc.f);
+        }
+    }
+    for n in [4_usize, 6, 12] {
+        let mut sets: Vec<Vec<i64>> = Vec::new();
+        for (loc, order) in &locs {
+            sets.push(if *order == 1 { vec![12] } else { case_three_exponents(&double_pole_coefficient(r, loc)?, n) });
+        }
+        let infinity: Vec<i64> = if order_inf > 2 {
+            vec![0, 6, 12]
+        } else {
+            case_three_exponents(&(r.num.last()?.clone() / r.den.last()?), n)
+        };
+        let total: usize = sets.iter().map(Vec::len).product::<usize>() * infinity.len();
+        if total > 20_000 {
+            continue;
+        }
+        let mut chosen = vec![0_usize; sets.len()];
+        for &e_inf in &infinity {
+            chosen.fill(0);
+            loop {
+                let weighted: i64 = locs
+                    .iter()
+                    .zip(&sets)
+                    .zip(&chosen)
+                    .map(|(((loc, _), set), &i)| set.get(i).copied().unwrap_or(0) * i64::try_from(loc.degree()).unwrap_or(0))
+                    .sum();
+                let numerator = i64::try_from(n).ok()? * (e_inf - weighted);
+                if numerator >= 0 && numerator % 12 == 0 && numerator / 12 <= 40 {
+                    let d = usize::try_from(numerator / 12).ok()?;
+                    // Sθ = (n/12) Σ e_f f' S / f.
+                    let mut s_theta: Vec<Q> = Vec::new();
+                    for (((loc, _), set), &i) in locs.iter().zip(&sets).zip(&chosen) {
+                        let e = set.get(i).copied().unwrap_or(0);
+                        let (cofactor, _) = univariate::divrem(&s, &loc.f)?;
+                        let term = univariate::mul(&univariate::derivative(&loc.f), &cofactor);
+                        let scale = Q::new(BigInt::from(e) * BigInt::from(n), BigInt::from(12));
+                        s_theta = univariate::add(&s_theta, &term.iter().map(|c| c * &scale).collect::<Vec<_>>());
+                    }
+                    if let Some((_, coefficients)) = case_three_recursion(&s, &s_theta, &s2r, n, d) {
+                        return Some(CaseThree { n, coefficients });
+                    }
+                }
+                let mut position = 0;
+                loop {
+                    if position == sets.len() {
+                        break;
+                    }
+                    let count = sets.get(position)?.len();
+                    let slot = chosen.get_mut(position)?;
+                    *slot += 1;
+                    if *slot < count {
+                        break;
+                    }
+                    *slot = 0;
+                    position += 1;
+                }
+                if position == sets.len() {
+                    break;
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Case 3 solutions: `u = exp(∫ω)` with `ω = root_of(j, c_0(x), …, c_n(x))`
+/// a root of the minimal polynomial. The index `j` counts the roots in
+/// the order of `root_of` (real ones ascending, then complex ones), so a
+/// solution is a branch of the algebraic function on a region where that
+/// ordering does not change.
+fn case_three(
+    cx: &mut Cx<'_>,
+    x: NodeId,
+    p: &Rat,
+    r: &Rat,
+) -> Option<Vec<NodeId>> {
+    let data = case_three_data(r)?;
+    let (root_of, integral) = (cx.graph.ops().lookup("root_of")?, cx.graph.ops().lookup("integral")?);
+    let p_node = {
+        let (n, d) = (polynomial_node(cx, x, &p.num), polynomial_node(cx, x, &p.den));
+        super::div(cx.graph, n, d)
+    };
+    let abel_integral = integrate(cx, p_node, x)?;
+    let minus_half = cx.graph.num(Number::fraction(-1, 2)?);
+    let abel_exponent = mul(cx.graph, &[minus_half, abel_integral]);
+    let coefficient_nodes: Vec<NodeId> = data.coefficients.iter().map(|c| polynomial_node(cx, x, c)).collect();
+    let mut out = Vec::new();
+    for j in 0..2_i64.min(i64::try_from(data.n).unwrap_or(2)) {
+        let mut arguments = vec![cx.graph.int(j)];
+        arguments.extend(&coefficient_nodes);
+        let omega = cx.graph.node(root_of, &arguments);
+        let inner = cx.graph.node(integral, &[omega, x]);
+        let exponent = add(cx.graph, &[abel_exponent, inner]);
+        out.push(super::exp_of(cx, exponent)?);
+    }
+    Some(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn frac(
+        a: i64,
+        b: i64,
+    ) -> Q {
+        Q::new(BigInt::from(a), BigInt::from(b))
+    }
+
+    /// The normal form `u'' = r u` of the hypergeometric equation with
+    /// exponent differences `λ, μ, ν` at `0, 1, ∞`.
+    fn schwarz(
+        l: &Q,
+        m: &Q,
+        v: &Q,
+    ) -> Rat {
+        let x = vec![Q::zero(), Q::one()];
+        let x1 = vec![-Q::one(), Q::one()];
+        let x_sq = univariate::mul(&x, &x);
+        let x1_sq = univariate::mul(&x1, &x1);
+        let scale = |p: &[Q], c: Q| -> Vec<Q> { p.iter().map(|v| v * &c).collect() };
+        let one = Q::one();
+        let a = scale(&x1_sq, -(&one - l * l) / q(4));
+        let b = scale(&x_sq, -(&one - m * m) / q(4));
+        let c = scale(&univariate::mul(&x, &x1), -(l * l + m * m - v * v - &one) / q(4));
+        let numerator = univariate::add(&univariate::add(&a, &b), &c);
+        Rat::new(&numerator, &univariate::mul(&x_sq, &x1_sq)).unwrap_or_else(|| panic!("rational"))
+    }
+
+    /// Whether `D(ω) = Σ_k (a_k' + (k+1) r a_{k+1} - (k-1) a_{k-1}) ω^k` is
+    /// divisible by `M(ω) = Σ a_k ω^k` over `Q(x)`.
+    fn riccati_closed(
+        data: &CaseThree,
+        r: &Rat,
+    ) -> bool {
+        let n = data.n;
+        let one = vec![Q::one()];
+        let Some(a): Option<Vec<Rat>> = data.coefficients.iter().map(|c| Rat::new(c, &one)).collect() else { return false };
+        let get = |k: i64| -> Rat {
+            usize::try_from(k).ok().and_then(|k| a.get(k).cloned()).unwrap_or_else(|| Rat::new(&[], &one).unwrap_or_else(|| panic!("zero")))
+        };
+        let mut remainder: Vec<Rat> = Vec::new();
+        for k in 0..=(n + 1) {
+            let k = i64::try_from(k).unwrap_or(0);
+            let term = get(k)
+                .derivative()
+                .and_then(|d| d.add(&get(k + 1).mul(r)?.scale(&q(k + 1))?))
+                .and_then(|d| d.add(&get(k - 1).scale(&q(-(k - 1)))?));
+            let Some(term) = term else { return false };
+            remainder.push(term);
+        }
+        let Some(lead) = a.get(n).cloned() else { return false };
+        for degree in (n..=(n + 1)).rev() {
+            let Some(top) = remainder.get(degree).cloned() else { return false };
+            let Some(factor) = top.div(&lead) else { return true };
+            let shift = degree - n;
+            for (k, m) in a.iter().enumerate() {
+                let Some(product) = factor.mul(m) else { return false };
+                let Some(slot) = remainder.get_mut(k + shift) else { return false };
+                let Some(updated) = slot.add(&product.scale(&q(-1)).unwrap_or_else(|| product.clone())) else { return false };
+                *slot = updated;
+            }
+        }
+        remainder.iter().take(n).all(|c| c.num.is_empty())
+    }
+
+    #[test]
+    fn finite_primitive_groups_case_three() {
+        // (λ, μ, ν): tetrahedral, octahedral and icosahedral Schwarz triples.
+        for (triple, degree) in [
+            ((frac(1, 2), frac(1, 3), frac(1, 3)), 4),
+            ((frac(1, 2), frac(1, 3), frac(1, 4)), 6),
+            ((frac(1, 2), frac(1, 3), frac(1, 5)), 12),
+        ] {
+            let r = schwarz(&triple.0, &triple.1, &triple.2);
+            let data = case_three_data(&r).unwrap_or_else(|| panic!("case 3 for {triple:?}"));
+            assert_eq!(data.n, degree, "{triple:?}");
+            // Every root of the minimal polynomial solves ω' + ω² = r: the
+            // derivative relation D(ω) = Σ (a_k' + (k+1) r a_{k+1} - (k-1) a_{k-1}) ω^k
+            // is divisible by the minimal polynomial.
+            assert!(riccati_closed(&data, &r), "{triple:?}");
+        }
+        // Not finite: exponent differences (1/2, 1/3, 1/7) (hyperbolic triangle group).
+        assert!(case_three_data(&schwarz(&frac(1, 2), &frac(1, 3), &frac(1, 7))).is_none());
+    }
+
+    #[test]
+    fn double_pole_coefficient_at_algebraic_poles() {
+        // r = 3 / (x^2 + 1)^2 has b = 3 / (2x)^2 at x^2 = -1, i.e. -3/4 for both conjugates.
+        let r = Rat::new(&[q(3)], &[q(1), q(0), q(2), q(0), q(1)]).unwrap_or_else(|| panic!("rational"));
+        let loc = Loc { f: vec![q(1), q(0), q(1)] };
+        assert_eq!(double_pole_coefficient(&r, &loc), Some(frac(-3, 4)));
+    }
 }

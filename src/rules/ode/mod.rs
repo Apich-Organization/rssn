@@ -138,6 +138,7 @@ use super::solve::solve_for;
 use super::solve::solve_linear;
 
 mod classes;
+mod formal;
 mod frobenius;
 mod kovacic;
 mod lie;
@@ -2419,6 +2420,52 @@ mod tests {
                 assert!(residual.abs() < 1e-3 * (1.0 + y.abs() * 10.0), "{answer} at {x}: {residual}");
             }
         }
+    }
+
+    #[test]
+    fn newton_polygon_expansions() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        let rhs_of = |report: &str| -> String {
+            report.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string()
+        };
+        // Airy at infinity: ramified, exp(+-(2/3) x^(3/2)).
+        let airy = run("ode_frobenius(diff(diff(y(x), x), x) - x*y(x), y(x), oo, 24)");
+        assert!(airy.contains("^(1/2)") || airy.contains("^(-1/2)"), "{airy}");
+        let rhs = rhs_of(&airy);
+        for x in [6.0_f64, 8.0] {
+            for basis in [(1.0, 0.0), (0.0, 1.0)] {
+                let h = 1e-3;
+                let f = |t: f64| solution_value(&rules, &rhs, t, basis);
+                let (y, up, down) = (f(x), f(x + h), f(x - h));
+                let residual = (up - 2.0 * y + down) / (h * h) - x * y;
+                assert!(residual.abs() < 1e-4 * (x * y).abs(), "{airy} at {x}: {residual} vs {y}");
+            }
+        }
+        // Poincare rank two at 0: x^6 y'' = y, exp(+-1/(2 x^2)) x^(3/2) (1 + ...).
+        let rank_two = run("ode_frobenius(x^6*diff(diff(y(x), x), x) - y(x), y(x), 0, 14)");
+        let rhs = rhs_of(&rank_two);
+        for x in [0.12_f64, 0.16] {
+            for basis in [(1.0, 0.0), (0.0, 1.0)] {
+                let h = 1e-4;
+                let f = |t: f64| solution_value(&rules, &rhs, t, basis);
+                let (y, up, down) = (f(x), f(x + h), f(x - h));
+                let residual = x.powi(6) * (up - 2.0 * y + down) / (h * h) - y;
+                assert!(residual.abs() < 2e-3 * y.abs(), "{rank_two} at {x}: {residual} vs {y}");
+            }
+        }
+    }
+
+    #[test]
+    fn kovacic_case_three_tetrahedral() {
+        let rules = crate::rules::standard();
+        // Exponent differences (1/2, 1/3, 1/3) at 0, 1, oo: tetrahedral
+        // monodromy. u'' = r u with r = -(3/16 (x-1)^2 + 2/9 x^2 - 3/16 x (x-1)) / (x^2 (x-1)^2).
+        let answer = simplify(
+            &rules,
+            "dsolve(x^2*(x - 1)^2*diff(diff(y(x), x), x) + (3/16*(x - 1)^2 + 2/9*x^2 - 3/16*x*(x - 1))*y(x), y(x))",
+        );
+        assert!(answer.contains("root_of") && answer.contains("exp(") && answer.contains("integral("), "{answer}");
     }
 
     #[test]
