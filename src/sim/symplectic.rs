@@ -1092,3 +1092,72 @@ fn solve3(
     }
     Some(x)
 }
+
+/// Advances a perturbed two-body problem with gravitational parameter `mu` for the physical
+/// time `dt > 0` in KS variables (RK4 in the fictitious time, step `ds = eta / omega` with the
+/// harmonic frequency `omega` of the regularised oscillator; the last steps are solved for so
+/// that the physical time lands exactly on `dt`). `pert(x, v, tau)` is the perturbing relative
+/// acceleration at elapsed time `tau`. Returns the relative position and velocity.
+///
+/// # Errors
+/// Fails for a non-positive `dt`, `mu` or `eta`, or a collision (`r = 0`).
+pub fn ks_advance<P: Fn(&[f64; 3], &[f64; 3], f64) -> [f64; 3]>(
+    x0: &[f64; 3],
+    v0: &[f64; 3],
+    mu: f64,
+    pert: &P,
+    dt: f64,
+    eta: f64,
+) -> Result<([f64; 3], [f64; 3]), String> {
+    if dt <= 0.0 || mu <= 0.0 || eta <= 0.0 {
+        return Err("ks_advance needs positive dt, mu and eta".into());
+    }
+    let r0 = (x0[0] * x0[0] + x0[1] * x0[1] + x0[2] * x0[2]).sqrt();
+    if r0 == 0.0 {
+        return Err("ks_advance: zero separation".into());
+    }
+    let (u, up) = ks_from_cartesian(x0, v0);
+    let e0 = 0.5 * (v0[0] * v0[0] + v0[1] * v0[1] + v0[2] * v0[2]) - mu / r0;
+    let mut y = [u[0], u[1], u[2], u[3], up[0], up[1], up[2], up[3], e0, 0.0];
+    let rk4 = |y: &[f64; 10], ds: f64| {
+        let k1 = ks_rhs(y, pert);
+        let mut t = *y;
+        for i in 0..10 {
+            t[i] = y[i] + 0.5 * ds * k1[i];
+        }
+        let k2 = ks_rhs(&t, pert);
+        for i in 0..10 {
+            t[i] = y[i] + 0.5 * ds * k2[i];
+        }
+        let k3 = ks_rhs(&t, pert);
+        for i in 0..10 {
+            t[i] = y[i] + ds * k3[i];
+        }
+        let k4 = ks_rhs(&t, pert);
+        let mut out = *y;
+        for i in 0..10 {
+            out[i] += ds / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
+        }
+        out
+    };
+    for _ in 0..10_000_000 {
+        let remaining = dt - y[9];
+        if !remaining.is_finite() {
+            return Err("ks_advance: non-finite state".into());
+        }
+        if remaining.abs() <= 1e-14 * dt {
+            break;
+        }
+        let r = y[0] * y[0] + y[1] * y[1] + y[2] * y[2] + y[3] * y[3];
+        if r <= 0.0 {
+            return Err("ks_advance: collision".into());
+        }
+        let e = y[8];
+        let omega = if e < -1e-12 * mu / r { (-0.5 * e).sqrt() } else { (0.25 * mu / r).sqrt() };
+        let ds_nominal = eta / omega;
+        let ds = if remaining.abs() < r * ds_nominal * 1.05 { remaining / r } else { ds_nominal };
+        y = rk4(&y, ds);
+    }
+    let (x, v) = ks_to_cartesian(&[y[0], y[1], y[2], y[3]], &[y[4], y[5], y[6], y[7]]);
+    Ok((x, v))
+}

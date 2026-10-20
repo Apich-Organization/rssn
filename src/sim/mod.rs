@@ -84,6 +84,8 @@ pub mod scenario_engines;
 pub mod ewald;
 /// Elliptic integrals of the third kind and Jacobi-function integrals.
 pub mod elliptic;
+/// Hermite N-body integrators with block time steps, PN terms and KS binaries.
+pub mod hermite;
 /// Dimension-generic molecular dynamics engine.
 pub mod md_engine;
 /// Rigid-molecule molecular dynamics.
