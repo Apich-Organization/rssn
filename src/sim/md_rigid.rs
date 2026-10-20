@@ -55,6 +55,9 @@ pub struct RigidMdSimulation {
     pub order: usize,
     /// Use exact symmetric-top flows (true) or `NO_SQUISH` axis rotations (false).
     pub top_split: bool,
+    /// Use the closed-form Jacobi-elliptic free flow of the asymmetric top
+    /// ([`RigidBody::free_flow_exact`]) instead of a splitting (overrides `top_split`).
+    pub exact_rotor: bool,
     rng: Rng,
 }
 
@@ -243,7 +246,7 @@ impl RigidMdSimulation {
         ff.rebuild_exclusions();
         let mut nl = NeighbourList::new(ff.rcut, skin);
         let forces = compute_forces(&sys, &ff, &mut nl)?;
-        let mut s = Self { sys, ff, nl, forces, mols, dt, order: 2, top_split: true, rng: Rng::new(1) };
+        let mut s = Self { sys, ff, nl, forces, mols, dt, order: 2, top_split: true, exact_rotor: false, rng: Rng::new(1) };
         s.sync_sites();
         s.forces = compute_forces(&s.sys, &s.ff, &mut s.nl)?;
         Ok(s)
@@ -340,7 +343,13 @@ impl RigidMdSimulation {
             for a in 0..3 {
                 m.com[a] += h * m.vcom[a];
             }
-            m.rb.free_step_composed(h, self.top_split, self.order)?;
+            if self.exact_rotor {
+                for c in crate::sim::symplectic::composition_weights(self.order)? {
+                    m.rb.free_flow_exact(c * h);
+                }
+            } else {
+                m.rb.free_step_composed(h, self.top_split, self.order)?;
+            }
         }
         self.sync_sites();
         self.forces = compute_forces(&self.sys, &self.ff, &mut self.nl)?;

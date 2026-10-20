@@ -198,3 +198,29 @@ fn rigid_driver_validates_its_input_and_supports_both_rotor_splittings() {
     }
     assert!((energies[0] - energies[1]).abs() < 0.05 && (energies[0] - energies[2]).abs() < 0.05);
 }
+
+#[test]
+fn exact_rotor_flow_keeps_geometry_and_has_smaller_energy_drift_than_splitting() {
+    let (shape, masses) = water_like();
+    let run = |exact: bool, dt: f64| {
+        let (sys, mols) = molecular_fluid(&shape, &masses, 27, 7.0, 1.0, 5);
+        let mut sim = RigidMdSimulation::new(sys, lj_ff(), 0.3, dt, &mols).unwrap();
+        sim.exact_rotor = exact;
+        sim.run((0.5 / dt) as usize).unwrap();
+        let e0 = sim.total_energy();
+        let mut worst = 0.0_f64;
+        for _ in 0..(1.0 / dt) as usize {
+            sim.step().unwrap();
+            worst = worst.max((sim.total_energy() - e0).abs());
+        }
+        assert!(sim.max_geometry_error() < 1e-10);
+        worst
+    };
+    let split = run(false, 0.008);
+    let exact = run(true, 0.008);
+    assert!(exact < 0.3, "exact-rotor energy error {exact}");
+    assert!(exact <= split * 1.2, "exact {exact} vs splitting {split}");
+    // second order in dt
+    let e2 = run(true, 0.004);
+    assert!(exact / e2 > 2.0, "ratio {}", exact / e2);
+}
