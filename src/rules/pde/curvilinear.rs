@@ -264,9 +264,10 @@ fn hankel_whole_space(
     if layout.theta.is_some() || layout.phi.is_some() || layout.z.is_some() || !cx.is_zero(a0) || !p.homogeneous(cx.graph) {
         return None;
     }
-    let far_ok = |cx: &Cx<'_>, c: &Condition| c.on == layout.r && is_infinity(cx, c.point) && cx.is_zero(c.value);
-    if conditions.0.iter().any(|c| c.on != t_index && !far_ok(cx, c)) {
-        return None;
+    for c in &conditions.0 {
+        if c.on != t_index && !(c.on == layout.r && is_infinity(cx, c.point) && cx.is_zero(c.value)) {
+            return None;
+        }
     }
     let n = p.dimension();
     let c_second = p.coefficient(cx.graph, &p.unit(t_index, 2));

@@ -83,45 +83,61 @@
 //! | Laplace's equation | inside / outside a ball, arbitrary Dirichlet data `g(θ, φ)` | 3 | spherical-harmonic coefficients by Gauss–Legendre × trapezoid quadrature at solve time (degree 20), numeric coefficients, closed `P_l^m(cos θ) cos/sin mφ` |
 //! | `pde_greens_function(eq, u(...)[, conditions])` | boxes with D/N/R conditions (elliptic, first-order and undamped second-order evolution); free space and orthants for `c Δ` | 1, 2, 3 | eigenfunction expansion with zero modes written out; fundamental solutions with images |
 //!
+//! Nonlinear and transform additions:
+//!
+//! | equation | domain | dimensions | method |
+//! |---|---|---|---|
+//! | viscous Burgers `A u_t + A (a u + b) u_x = A ν u_xx` | whole line | 1 | Hopf–Cole: `U = a u + b = -2ν φ_x/φ`, `φ_t = ν φ_xx`; `U = ∫ ((x-s)/t) e^{-G/2ν} ds / ∫ e^{-G/2ν} ds` (answer with `defint`s; checked against the stationary shock) |
+//! | scalar conservation law `u_t + f'(u) u_x = 0`, step data `u_l + (u_r - u_l) H(x - x₀)` | line | 1 | Rankine–Hugoniot speed `(f(u_r) - f(u_l))/(u_r - u_l)` when the Oleinik condition holds (convex `f`: `u_l > u_r`; concave: `u_l < u_r`), rarefaction fan `f'(u) = (x - x₀)/t` otherwise; convex or concave flux only |
+//! | `pde_kdv_soliton(list(κ…), list(x₀…))` | line | 1 | reflectionless N-soliton (inverse scattering, `N ≤ 4`) of `u_t - 6 u u_x + u_xxx = 0`, `u = -2 ∂²_x ln det(I + A)` |
+//! | `pde_sine_gordon_soliton(list(a…), list(c…))` | light-cone coordinates | 1 | N-kink solutions (`N ≤ 3`) of `u_xt = sin u` from the Bäcklund transformation and Bianchi permutability |
+//! | radial heat / wave `u_t = D Δ u`, `u_tt = D Δ u` | whole plane, whole space | 2, 3 | Hankel transform `∫ k J_0(kr) M(k) ∫ ρ f J_0(kρ) dρ dk` (space: spherical Bessel `sin z / z`) with `e^{-D k² t}`, `cos`, `sin(ck t)/(ck)` multipliers |
+//! | any homogeneous or sourced constant-coefficient evolution | whole space | 1, 2 | Fourier transform; data and sources go through the table of `src/rules/transforms.rs` (`fourier`, `inverse_fourier`), nested `defint`s otherwise; Duhamel in `τ` for sources |
+//! | annulus with a zero eigenvalue (`A r^ν + B r^{-ν}`, `A + B ln r`) | annulus, shell | 2, 3 | extra mode written out first, then negative modes, then the positive roots |
+//! | `pde_greens_function` | periodic axes (`u(a) = u(b)`), damped second order `a₂ u_tt + a₁ u_t + L u`, heat kernels on whole space and orthants | 1, 2, 3 | cos/sin families, `e^{-αt} sinh(βt)/(a₂β)`, Gaussians with images |
+//!
 //! Limitations (what is still not covered):
 //!
-//! * Variable coefficients: the polar, cylindrical and spherical Laplacians,
-//!   Euler–Cauchy, Legendre, the classical polynomial families above and the
-//!   one-variable regular Sturm–Liouville form (smooth `a, b, c` free of
-//!   other symbols, numeric operators `sl_eigen`, `sl_mode`, `sl_weight`).
-//!   Singular endpoints are covered only through the polynomial families
-//!   (for them the endpoint is limit-circle exactly when the weight
-//!   exponent exceeds `-1`, limit-point at infinity, and the bounded
-//!   solutions are the polynomials); other singular problems, and
-//!   several space variables with variable coefficients, are not.
-//! * Polynomial families: data must be a polynomial of degree at most ten.
-//! * Annuli: modes with a negative eigenvalue are found by a numeric scan
-//!   (at most four); a zero eigenvalue other than the Neumann constant is
-//!   not treated; a symbolic angular order with a possible negative mode
-//!   is refused. Disks and balls handle one non-positive radial mode.
-//! * Balls: exact separation needs data that is a trigonometric
-//!   polynomial in `φ` (and polynomial in `cos θ`); arbitrary Dirichlet
-//!   data is handled only for Laplace's equation, by a degree-20
-//!   truncation with numeric coefficients (no evolution problems on balls
-//!   with such data).
-//! * Exterior domains: heat problems in the plane are radial with
-//!   homogeneous conditions (no angular dependence); wave problems outside
-//!   a ball are radial with homogeneous Dirichlet, Neumann or Robin
-//!   conditions and data vanishing at infinity (none in the plane).
-//! * Projections of non-polynomial radial data stay as `defint`s of numeric
-//!   integrands, evaluated by quadrature; `struve_h` is evaluated by series
-//!   for `x < 8` and, beyond, by its integral representation for `2ν` an
-//!   integer.
-//! * Jordan systems: first order only; second-order Jordan systems are not
-//!   solved; bounded domains need derivative-free couplings and zero
-//!   boundary values.
-//! * Transform methods: the Fourier-symbol fallback is homogeneous (no
-//!   sources) and gives the integral representation without a table
-//!   inversion; Laplace, Hankel and Mellin transforms are used only through
-//!   the Weber transform of the exterior disk, not as a general fallback.
-//! * Green's functions: no damped second-order or whole-space evolution
-//!   kernels beyond the heat, wave and Poisson formulas of the solvers;
-//!   periodic axes and boundary data are not covered.
+//! * Systems: second-order Jordan systems; bounded domains with derivative
+//!   couplings or non-homogeneous boundary values for Jordan blocks (only
+//!   derivative-free couplings and zero boundary values are solved).
+//! * Exterior domains: angular dependence (heat by Weber/Hankel transforms
+//!   per angular mode, waves by outgoing-mode expansions) and exterior waves
+//!   in the plane. Radial exterior heat in the plane, radial exterior waves
+//!   outside a ball (Dirichlet, Neumann, Robin) and Laplace/Helmholtz with
+//!   angular dependence are covered.
+//! * Balls, disks, cylinders: general (non-polynomial) angular data is
+//!   handled numerically only for Laplace's equation on balls (degree 20,
+//!   numeric coefficients); heat and wave problems need data that is a
+//!   trigonometric polynomial in the angles (a polynomial in `cos θ`), and
+//!   non-polynomial radial data stays as `defint`s of numeric integrands
+//!   evaluated by quadrature (no separate numeric coefficient series).
+//! * Sturm–Liouville: smooth regular coefficients in one variable (numeric
+//!   operators), the polynomial families (Hermite, Laguerre, Jacobi),
+//!   Legendre, Euler–Cauchy and Bessel by structure. Not covered: other
+//!   singular endpoints (Coulomb/Whittaker), Mathieu and spheroidal
+//!   problems (Hill determinants), continuous spectra and Weyl–Titchmarsh
+//!   measures on half-lines, separable variable coefficients in several
+//!   space variables.
+//! * Transform methods: Fourier (with sources) is general; Hankel only for
+//!   radial (order 0) whole-space evolution and the exterior disk (Weber);
+//!   there is no Laplace-in-time or Mellin fallback. Table inversion of the
+//!   Fourier solution succeeds only when `inverse_fourier` closes the
+//!   product; tested in one and two dimensions.
+//! * Green's functions: no boundary data (Poisson kernels), no whole-space
+//!   wave kernels, no exterior or curvilinear domains.
+//! * Nonlinear equations: Hopf–Cole only for constant-coefficient Burgers on
+//!   the line; Riemann problems only for a single step and a convex or
+//!   concave flux (no convex-hull construction, shock interactions or
+//!   hodograph); the soliton operators cover KdV (`N ≤ 4`) and sine-Gordon
+//!   (`N ≤ 3`) as closed families, there is no tanh/sech ansatz solver, no
+//!   NLS, no Darboux transformation and no inverse scattering from general
+//!   initial data; Lie point symmetries and similarity reductions are those
+//!   of `pde_symmetries` / `pde_similarity`.
+//! * Annuli: the Neumann constant is treated separately; modes with a
+//!   negative eigenvalue are found by a numeric scan (at most four); a
+//!   symbolic angular order that could hide a zero or negative mode is
+//!   refused.
 //!
 //! | operator | value |
 //! |---|---|
@@ -151,6 +167,7 @@
 //! | `bessel_neg_root(ν, h)` | the `κ > 0` with `z I_ν'(z) + h I_ν(z) = 0` (NaN unless `h < -ν`) |
 //! | `struve_h(ν, x)`, `struve_l(ν, x)` | Struve functions |
 //! | `sl_eigen(m, a, b, α₀, β₀, α₁, β₁, N, p…, q…, w…)`, `sl_mode(m, x, …)`, `sl_weight(x, …)` | the `m`-th eigenvalue, normalised eigenfunction and weight of `-(p y')' + q y = μ w y` (coefficients as values at the `N + 1` Chebyshev points of `[a, b]`) |
+//! | `pde_kdv_soliton(list(κ…), list(x₀…))`, `pde_sine_gordon_soliton(list(a…), list(c…))` | the soliton solutions above |
 //! | `annulus_neg_root(ν, pₐ, qₐ, a, p_b, q_b, b, m)` | the `m`-th `κ > 0` of the annulus with `I_ν`/`K_ν` modes (eigenvalue `-κ²`) |
 //! | `pde_greens_function(eq, u(...)[, conditions])` | the Green's function `G(x…; s_x…)` of the operator part of the equation |
 //! | `annulus_root(ν, pₐ, qₐ, a, p_b, q_b, b, m)` | the `m`-th `k > 0` for which `A J_ν(kr) - B Y_ν(kr)` meets `p F + q F' = 0` at `r = a` (by construction) and at `r = b` (zeros of the cross-product `J_ν(ka) Y_ν(kb) - J_ν(kb) Y_ν(ka)` for Dirichlet data) |
