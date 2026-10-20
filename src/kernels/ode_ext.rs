@@ -385,6 +385,17 @@ fn imex_tableau(s: ImexScheme) -> ImexTableau {
     }
 }
 
+/// Options of [`imex_rk_with`].
+#[derive(Clone, Copy)]
+pub struct ImexOptions<'a> {
+    /// Jacobian `d f_im / d y` (`None`: finite differences).
+    pub jac_im: Option<&'a JacobianFn<'a>>,
+    /// Number of equal steps.
+    pub steps: usize,
+    /// The IMEX scheme.
+    pub scheme: ImexScheme,
+}
+
 /// Additive IMEX Runge-Kutta integration of
 /// `y' = f_ex(t, y) + f_im(t, y)` with `steps` equal steps.
 ///
@@ -397,21 +408,19 @@ fn imex_tableau(s: ImexScheme) -> ImexTableau {
 /// # Errors
 /// [`OdeError::Invalid`], [`OdeError::SolveFailed`] or
 /// [`OdeError::NonFinite`].
-#[allow(clippy::too_many_arguments)] // public IVP-solver signature (t0, t1, y0, steps, scheme) is kept for API compatibility
-pub fn imex_rk<E, I>(
+pub fn imex_rk_with<E, I>(
     f_ex: E,
     f_im: I,
-    jac_im: Option<&JacobianFn<'_>>,
     t0: f64,
     t1: f64,
     y0: &[f64],
-    steps: usize,
-    scheme: ImexScheme,
+    opts: &ImexOptions<'_>,
 ) -> Result<Vec<Vec<f64>>, OdeError>
 where
     E: Fn(f64, &[f64], &mut [f64]),
     I: Fn(f64, &[f64], &mut [f64]),
 {
+    let ImexOptions { jac_im, steps, scheme } = *opts;
     let n = y0.len();
     if n == 0 || steps == 0 {
         return Err(OdeError::Invalid);
@@ -508,6 +517,29 @@ where
         out.push(y.clone());
     }
     Ok(out)
+}
+
+/// [`imex_rk_with`] with the options passed as separate arguments.
+///
+/// # Errors
+/// See [`imex_rk_with`].
+#[deprecated(note = "use `imex_rk_with` with `ImexOptions`")]
+#[allow(clippy::too_many_arguments)] // legacy signature kept as a thin wrapper
+pub fn imex_rk<E, I>(
+    f_ex: E,
+    f_im: I,
+    jac_im: Option<&JacobianFn<'_>>,
+    t0: f64,
+    t1: f64,
+    y0: &[f64],
+    steps: usize,
+    scheme: ImexScheme,
+) -> Result<Vec<Vec<f64>>, OdeError>
+where
+    E: Fn(f64, &[f64], &mut [f64]),
+    I: Fn(f64, &[f64], &mut [f64]),
+{
+    imex_rk_with(f_ex, f_im, t0, t1, y0, &ImexOptions { jac_im, steps, scheme })
 }
 
 // ------------------------------------------------------------ Symplectic
@@ -666,6 +698,15 @@ fn lobatto_nodes(s: usize) -> (Vec<f64>, Vec<f64>) {
     (x.iter().map(|z| 0.5 * (z + 1.0)).collect(), w.iter().map(|v| 0.5 * v).collect())
 }
 
+/// Step count and Gauss-Lobatto node count of [`variational_lobatto_with`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VariationalOptions {
+    /// Number of equal steps.
+    pub steps: usize,
+    /// Number of Gauss-Lobatto nodes (`>= 2`); the order is `2 stages - 2`.
+    pub stages: usize,
+}
+
 /// Galerkin variational integrator with `stages >= 2` Gauss-Lobatto nodes
 /// for `L(q, q') = q'^T M q' / 2 - V(q)`.
 ///
@@ -680,17 +721,16 @@ fn lobatto_nodes(s: usize) -> (Vec<f64>, Vec<f64>) {
 /// # Errors
 /// [`OdeError::Invalid`] for bad dimensions or `stages < 2`;
 /// [`OdeError::SolveFailed`] if Newton's iteration does not converge.
-#[allow(clippy::too_many_arguments)] // public integrator signature (mass, grad_v, q0, p0, t0, t1, steps, stages) is kept for API compatibility
-pub fn variational_lobatto<G: Fn(&[f64]) -> Vec<f64>>(
+pub fn variational_lobatto_with<G: Fn(&[f64]) -> Vec<f64>>(
     mass: &Mat,
     grad_v: G,
     q0: &[f64],
     p0: &[f64],
     t0: f64,
     t1: f64,
-    steps: usize,
-    stages: usize,
+    opts: &VariationalOptions,
 ) -> Result<(Vec<f64>, Vec<f64>), OdeError> {
+    let VariationalOptions { steps, stages } = *opts;
     let d = q0.len();
     if d == 0 || p0.len() != d || mass.rows != d || mass.cols != d || steps == 0 || stages < 2 {
         return Err(OdeError::Invalid);
@@ -810,6 +850,25 @@ pub fn variational_lobatto<G: Fn(&[f64]) -> Vec<f64>>(
         q.clone_from(&qn[s - 1]);
     }
     Ok((q, p))
+}
+
+/// [`variational_lobatto_with`] with the options passed as separate arguments.
+///
+/// # Errors
+/// See [`variational_lobatto_with`].
+#[deprecated(note = "use `variational_lobatto_with` with `VariationalOptions`")]
+#[allow(clippy::too_many_arguments)] // legacy signature kept as a thin wrapper
+pub fn variational_lobatto<G: Fn(&[f64]) -> Vec<f64>>(
+    mass: &Mat,
+    grad_v: G,
+    q0: &[f64],
+    p0: &[f64],
+    t0: f64,
+    t1: f64,
+    steps: usize,
+    stages: usize,
+) -> Result<(Vec<f64>, Vec<f64>), OdeError> {
+    variational_lobatto_with(mass, grad_v, q0, p0, t0, t1, &VariationalOptions { steps, stages })
 }
 
 /// Matrix exponential helper re-exported for the exponential integrators.

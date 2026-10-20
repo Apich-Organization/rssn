@@ -452,7 +452,8 @@ where
 ///
 /// # Errors
 /// See [`sde_adaptive_with`].
-#[allow(clippy::too_many_arguments)] // kept for API compatibility; prefer `sde_adaptive_with`
+#[deprecated(note = "use `sde_adaptive_with` with `SdeAdaptiveOptions`")]
+#[allow(clippy::too_many_arguments)] // legacy signature kept as a thin wrapper
 pub fn sde_adaptive<A, G>(
     drift: A,
     diff: G,
