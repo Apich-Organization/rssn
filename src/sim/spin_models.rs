@@ -1559,7 +1559,9 @@ pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
         }
         ln_f /= 2.0;
     }
-    // join the windows at the overlap bin with the best matching logarithmic derivative
+    // join the windows: shift each window onto the merged left part by the mean offset over the
+    // interior overlap bins (window edge bins carry the Wang-Landau boundary artefact), and
+    // switch from the left to the right window in the middle of the overlap
     let mut merged = vec![f64::NAN; nbins];
     let mut known = vec![false; nbins];
     let (lo0, hi0) = ranges[0];
@@ -1571,38 +1573,24 @@ pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
     }
     for w in 1..nwin {
         let (lo, hi) = ranges[w];
-        let slope = |g: &[f64], vis: &[bool], k: usize| -> Option<f64> {
-            if k > 0 && k + 1 < nbins && vis[k - 1] && vis[k + 1] {
-                Some((g[k + 1] - g[k - 1]) / (2.0 * width))
-            } else {
-                None
-            }
-        };
-        let mut best: Option<(f64, usize)> = None;
-        for k in lo..ranges[w - 1].1 {
-            if !(visited[w][k] && known[k]) {
-                continue;
-            }
-            // slope of the merged left part and of window w
-            let sl = slope(&merged, &known, k);
-            let sr = slope(&ln_g[w], &visited[w], k);
-            let score = match (sl, sr) {
-                (Some(a), Some(b)) => (a - b).abs(),
-                _ => f64::MAX / 2.0,
-            };
-            if best.is_none_or(|(s, _)| score < s) {
-                best = Some((score, k));
-            }
+        let prev_hi = ranges[w - 1].1;
+        let mut common: Vec<usize> = (lo..prev_hi).filter(|&k| visited[w][k] && known[k]).collect();
+        if common.is_empty() {
+            return Err("adjacent windows share no visited bin".into());
         }
-        let (_, j) = best.ok_or("adjacent windows share no visited bin")?;
-        let shift = merged[j] - ln_g[w][j];
-        for k in j..hi {
+        let all = common.clone();
+        if common.len() >= 4 {
+            common.remove(0);
+            common.pop();
+        }
+        let shift = common.iter().map(|&k| merged[k] - ln_g[w][k]).sum::<f64>() / common.len() as f64;
+        let mid = all[all.len() / 2];
+        for k in mid..hi {
             if visited[w][k] {
                 merged[k] = ln_g[w][k] + shift;
                 known[k] = true;
             }
         }
-        let _ = lo;
     }
     let mx = (0..nbins).filter(|&k| known[k]).map(|k| merged[k]).fold(f64::NEG_INFINITY, f64::max);
     let total: f64 = (0..nbins).filter(|&k| known[k]).map(|k| (merged[k] - mx).exp()).sum();
