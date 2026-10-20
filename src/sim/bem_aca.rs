@@ -757,3 +757,152 @@ pub fn solve_laplace_bem_3d_p1(mesh: &SurfaceMesh3D, bcs: &[VertexBc], exterior:
     }
     Ok(BemP1Solution { u, q })
 }
+
+/// Solves the Laplace problem with **linear (P1) elements** like
+/// [`solve_laplace_bem_3d_p1`], but with hierarchical-matrix compression:
+/// the vertex collocation matrices `G` and `H` are assembled lazily from the
+/// element integrals (adaptive subdivision away from the collocation point,
+/// Duffy transformation on elements containing it), far blocks of the vertex
+/// cluster tree are compressed by adaptive cross approximation, the rigid-body
+/// diagonal of `H` follows from one compressed matrix-vector product with the
+/// vector of ones, and the system is solved by Jacobi-preconditioned GMRES.
+///
+/// # Errors
+/// For an invalid mesh, wrong data length, non-finite data, a pure Neumann
+/// interior problem (singular) or GMRES failure.
+pub fn solve_laplace_bem_3d_p1_aca(
+    mesh: &SurfaceMesh3D,
+    bcs: &[VertexBc],
+    exterior: bool,
+    opts: &AcaOptions,
+) -> Result<(BemP1Solution, AcaStats), String> {
+    mesh.validate()?;
+    let nv = mesh.vertices.len();
+    if bcs.len() != nv {
+        return Err(format!("expected {nv} vertex conditions, got {}", bcs.len()));
+    }
+    if bcs.iter().any(|bc| matches!(bc, BoundaryCondition::Potential(v) | BoundaryCondition::Flux(v) if !v.is_finite())) {
+        return Err("boundary data must be finite".into());
+    }
+    if !exterior && bcs.iter().all(|bc| matches!(bc, BoundaryCondition::Flux(_))) {
+        return Err("a pure Neumann interior problem is singular".into());
+    }
+    let tris: Vec<[V3; 3]> = (0..mesh.triangles.len())
+        .filter_map(|t| {
+            let c = mesh.corners(t)?;
+            Some(if exterior { [c[0], c[2], c[1]] } else { c })
+        })
+        .collect();
+    let idx: Vec<[usize; 3]> = mesh.triangles.iter().map(|&[a, b, c]| if exterior { [a, c, b] } else { [a, b, c] }).collect();
+    let normals: Vec<V3> = tris
+        .iter()
+        .map(|t| {
+            let (e1, e2) = (sub3(t[1], t[0]), sub3(t[2], t[0]));
+            let c = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+            let l = nrm3(c);
+            [c[0] / l, c[1] / l, c[2] / l]
+        })
+        .collect();
+    let mut around: Vec<Vec<(usize, usize)>> = vec![Vec::new(); nv];
+    for (t, tri_idx) in idx.iter().enumerate() {
+        for (k, &v) in tri_idx.iter().enumerate() {
+            around[v].push((t, k));
+        }
+    }
+    let verts = &mesh.vertices;
+    let entry = |i: usize, j: usize, single: bool| -> f64 {
+        let x = verts[i];
+        let mut s = 0.0;
+        for &(t, kj) in &around[j] {
+            let own = idx[t].iter().position(|&v| v == i);
+            if single {
+                let mut gl = [0.0; 3];
+                match own {
+                    Some(ki) => p1_singular(tris[t], ki, &mut gl),
+                    None => p1_regular(x, tris[t], normals[t], true, 0, &mut gl),
+                }
+                s += gl[kj] / (4.0 * PI);
+            } else if own.is_none() {
+                let mut hl = [0.0; 3];
+                p1_regular(x, tris[t], normals[t], false, 0, &mut hl);
+                s -= hl[kj] / (4.0 * PI);
+            }
+        }
+        s
+    };
+    let g_entry = |i: usize, j: usize| entry(i, j, true);
+    let h_entry = |i: usize, j: usize| if i == j { 0.0 } else { entry(i, j, false) };
+    let mut perm: Vec<usize> = (0..nv).collect();
+    let mut tree = Vec::new();
+    build_tree(verts, &mut perm, 0, nv, opts.leaf_size.max(2), &mut tree);
+    let (mut near, mut far) = (Vec::new(), Vec::new());
+    partition(&tree, 0, 0, opts.eta, &mut near, &mut far);
+    let gm = build_hmatrix(&tree, &near, &far, opts.aca_tol, &g_entry, &perm);
+    let hm = build_hmatrix(&tree, &near, &far, opts.aca_tol, &h_entry, &perm);
+    let mut inv_perm = vec![0; nv];
+    for (new, &old) in perm.iter().enumerate() {
+        inv_perm[old] = new;
+    }
+    // rigid-body diagonal of H
+    let off = hm.matvec(&vec![1.0; nv]);
+    let hdiag: Vec<f64> = off.iter().map(|o| if exterior { 1.0 - o } else { -o }).collect();
+    let sign = if exterior { -1.0 } else { 1.0 };
+    let is_pot: Vec<bool> = perm.iter().map(|&o| matches!(bcs[o], BoundaryCondition::Potential(_))).collect();
+    let u_known: Vec<f64> = perm.iter().map(|&o| if let BoundaryCondition::Potential(v) = bcs[o] { v } else { 0.0 }).collect();
+    let q_known: Vec<f64> = perm.iter().map(|&o| if let BoundaryCondition::Flux(v) = bcs[o] { sign * v } else { 0.0 }).collect();
+    let hfull = |x: &[f64]| -> Vec<f64> {
+        let mut y = hm.matvec(x);
+        for i in 0..nv {
+            y[i] += hdiag[i] * x[i];
+        }
+        y
+    };
+    let hu = hfull(&u_known);
+    let gq = gm.matvec(&q_known);
+    let rhs: Vec<f64> = (0..nv).map(|i| gq[i] - hu[i]).collect();
+    let apply = |x: &[f64], y: &mut [f64]| {
+        let xp: Vec<f64> = (0..nv).map(|i| if is_pot[i] { x[i] } else { 0.0 }).collect();
+        let xf: Vec<f64> = (0..nv).map(|i| if is_pot[i] { 0.0 } else { x[i] }).collect();
+        let gx = gm.matvec(&xp);
+        let hx = hfull(&xf);
+        for i in 0..nv {
+            y[i] = hx[i] - gx[i];
+        }
+    };
+    let diag: Vec<f64> = (0..nv).map(|i| if is_pot[i] { -g_entry(perm[i], perm[i]) } else { hdiag[i] }).collect();
+    let precond = |r: &[f64], z: &mut [f64]| {
+        for i in 0..nv {
+            z[i] = r[i] / if diag[i].abs() > 1e-300 { diag[i] } else { 1.0 };
+        }
+    };
+    let res = gmres(apply, precond, &rhs, None, opts.restart, opts.gmres_tol, opts.max_iter);
+    if !res.converged {
+        return Err(format!("GMRES did not converge (residual {})", res.residual));
+    }
+    let mut u = vec![0.0; nv];
+    let mut q = vec![0.0; nv];
+    for o in 0..nv {
+        let p = inv_perm[o];
+        match bcs[o] {
+            BoundaryCondition::Potential(v) => {
+                u[o] = v;
+                q[o] = sign * res.x[p];
+            },
+            BoundaryCondition::Flux(v) => {
+                q[o] = v;
+                u[o] = res.x[p];
+            },
+        }
+    }
+    let stored: usize = gm.blocks.iter().chain(&hm.blocks).map(Block::stored).sum();
+    let lowrank = gm.blocks.iter().chain(&hm.blocks).filter(|b| matches!(b, Block::LowRank { .. })).count();
+    let stats = AcaStats {
+        dense_blocks: gm.blocks.len() + hm.blocks.len() - lowrank,
+        lowrank_blocks: lowrank,
+        stored_entries: stored,
+        dense_entries: 2 * nv * nv,
+        iterations: res.iterations,
+        residual: res.residual,
+    };
+    Ok((BemP1Solution { u, q }, stats))
+}

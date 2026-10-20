@@ -272,7 +272,7 @@ impl FvSolution {
     }
 }
 
-fn to_cons(law: Law, w: State) -> State {
+pub(crate) fn to_cons(law: Law, w: State) -> State {
     match law {
         Law::Euler { gamma } => {
             let ke = 0.5 * w[0] * (w[1] * w[1] + w[2] * w[2] + w[3] * w[3]);
@@ -282,7 +282,7 @@ fn to_cons(law: Law, w: State) -> State {
     }
 }
 
-fn to_prim(law: Law, q: State) -> State {
+pub(crate) fn to_prim(law: Law, q: State) -> State {
     match law {
         Law::Euler { gamma } => {
             let r = q[0];
@@ -296,14 +296,14 @@ fn to_prim(law: Law, q: State) -> State {
     }
 }
 
-fn admissible(law: Law, w: &State) -> bool {
+pub(crate) fn admissible(law: Law, w: &State) -> bool {
     match law {
         Law::Euler { .. } => w[0] > 0.0 && w[4] > 0.0,
         Law::ShallowWater { .. } => w[0] > 0.0,
     }
 }
 
-fn sound_speed(law: Law, w: &State) -> f64 {
+pub(crate) fn sound_speed(law: Law, w: &State) -> f64 {
     match law {
         Law::Euler { gamma } => (gamma * w[4] / w[0]).max(0.0).sqrt(),
         Law::ShallowWater { g } => (g * w[0]).max(0.0).sqrt(),
@@ -325,14 +325,14 @@ fn flux_x(law: Law, w: &State) -> State {
     }
 }
 
-const fn swap_dir(s: &mut State, d: usize) {
+pub(crate) const fn swap_dir(s: &mut State, d: usize) {
     if d > 0 {
         s.swap(1, 1 + d);
     }
 }
 
 /// Numerical flux across a face with normal along `x` (states already rotated).
-fn riemann_flux(law: Law, solver: RiemannSolver, l: &State, r: &State) -> State {
+pub(crate) fn riemann_flux(law: Law, solver: RiemannSolver, l: &State, r: &State) -> State {
     let fl = flux_x(law, l);
     let fr = flux_x(law, r);
     let (cl, cr) = (sound_speed(law, l), sound_speed(law, r));
@@ -499,7 +499,7 @@ fn weno5(v0: f64, v1: f64, v2: f64, v3: f64, v4: f64) -> f64 {
 }
 
 /// Left and right states at the face between line cells `k - 1` and `k`.
-fn face_states(recon: Reconstruction, line: &[State], k: usize, nv: usize) -> (State, State) {
+pub(crate) fn face_states(recon: Reconstruction, line: &[State], k: usize, nv: usize) -> (State, State) {
     let mut l = line[k - 1];
     let mut r = line[k];
     match recon {
