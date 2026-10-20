@@ -8,13 +8,13 @@
 //! | Algorithm | Ising (O(1)) | XY / Heisenberg (O(N), N>=2) | Potts |
 //! |---|---|---|---|
 //! | Metropolis | yes | yes (random-walk proposal) | yes |
-//! | Heat bath | yes | yes (exact: von Mises for XY, inverse-CDF `exp(a cos theta)` for Heisenberg; field included) | yes |
+//! | Heat bath | yes | yes (exact: von Mises for XY, inverse-CDF `exp(a cos theta)` for Heisenberg, Wood's von Mises-Fisher algorithm for `N >= 4`; field included) | yes |
 //! | Wolff cluster (embedded Ising for O(N)), `h = 0`, `J > 0` | yes | yes | yes |
 //! | Swendsen-Wang (embedded) | yes | yes | yes |
 //! | Over-relaxation (micro-canonical) | - | yes | - |
 //!
 //! Further tools: [`ParallelTempering`] (replica exchange for O(N) models),
-//! [`PottsTempering`] (replica exchange for Potts), [`wang_landau_ising`] (density of
+//! [`PottsTempering`] (replica exchange for Potts), [`replica_exchange_wang_landau`] (multi-window, multi-walker REWL for Ising and O(N)), [`wang_landau_ising`] (density of
 //! states of the Ising model) and [`wang_landau_on`] (density of states of continuous O(N)
 //! spins on a binned energy axis), single-histogram reweighting ([`reweight`],
 //! [`canonical_from_dos`]), finite-size-scaling helpers

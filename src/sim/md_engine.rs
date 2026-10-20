@@ -5,15 +5,15 @@
 //!
 //! | Feature | Support |
 //! |---|---|
-//! | Boundaries per axis ([`Boundary`]) | open, periodic (minimum image), reflecting (specular) walls, thermalising walls (flux-Maxwellian re-emission); Lees-Edwards shear (flow axis 0, gradient axis 1, `D >= 2`) |
+//! | Boundaries per axis ([`Boundary`]) | open, periodic (minimum image), reflecting (specular) walls, thermalising walls (flux-Maxwellian re-emission); Lees-Edwards shear (flow axis 0, gradient axis 1, `D >= 2`), and SLLOD shear flow on a deforming triclinic cell ([`FlexibleBarostat::shear_flow`]) |
 //! | Initial conditions | simple-cubic / fcc (3-D) / triangular (2-D) lattices, random sequential (hard-core) placement, Maxwell-Boltzmann velocities with zero total momentum and exact temperature, user data by direct assignment |
 //! | Pair potentials ([`PairTerm`]) | Lennard-Jones, Morse, Coulomb (bare or `erfc`-screened for Ewald real space), optional energy shift |
 //! | Neighbour search ([`NeighbourList`]) | cell list + Verlet skin in any `D` (brute force under Lees-Edwards) |
 //! | Bonded forces | harmonic bonds, harmonic angles (any `D`), periodic dihedrals (`D = 3`) |
-//! | Thermostats ([`Thermostat`]) | Berendsen, Langevin (BAOAB), Nose-Hoover chains (Suzuki-Yoshida) |
+//! | Thermostats ([`Thermostat`]) | Berendsen, Langevin (BAOAB; also with the flexible cell, where a Langevin piston thermostats the cell momentum, [`FlexibleBarostat::with_langevin_cell`]), Nose-Hoover chains (Suzuki-Yoshida) |
 //! | Barostats ([`Barostat`]) | Berendsen, isotropic MTK (Martyna-Tobias-Klein), and the flexible-cell Parrinello-Rahman / MTK barostat [`FlexibleBarostat`] (full triclinic cell matrix, orthorhombic or isotropic modes, target pressure tensor, cell Nose-Hoover chain = MTTK) |
 //! | Cells | orthorhombic, and general triclinic cells ([`SimBox::triclinic`], cell lists in fractional coordinates, 3^D image refinement of the minimum image) |
-//! | Constraints | SHAKE (positions) and RATTLE (velocities) for distance constraints; composable with Nose-Hoover chains, Langevin (constrained BAOAB) and the flexible barostat (bond flow `r.(v + v_g r) = 0`, constraint virial in the pressure) |
+//! | Constraints | SHAKE (positions) and RATTLE (velocities) for distance constraints; composable with Nose-Hoover chains, Langevin (constrained BAOAB) and the flexible barostat (bond flow `r.(v + v_g r) = 0`); the constraint virial is the **exact instantaneous** virial of the constraint forces (acceleration-level condition, no time-step lag, [`MdSimulation::refresh_constraint_virial`]) |
 //! | Rigid molecules | [`crate::sim::md_rigid`]: centre-of-mass + quaternion integration (NO_SQUISH or exact symmetric-top flows, any even order), molecular virial |
 //! | Observables | kinetic/potential energy, temperature, pressure tensor, [`Rdf`], [`msd`], [`vacf`], [`energy_drift_slope`] |
 //!
@@ -24,12 +24,16 @@
 //!
 //! Limitations: the legacy isotropic [`Barostat::Mtk`] is NPH-type and excludes thermostats
 //! and constraints (use [`FlexibleBarostat`] with [`CellMode::Isotropic`] for those
-//! combinations); the flexible cell needs a fully periodic box without Lees-Edwards shear and
-//! does not compose with Langevin or Berendsen barostat coupling; Ewald/PME
-//! ([`crate::sim::ewald`]) assumes an orthorhombic box; the constraint virial of the
-//! flexible barostat is the SHAKE impulse (first-order lag in the time step); the
-//! neighbour list of a triclinic cell is rebuilt when the affine deformation plus particle
-//! displacement exceed the skin.
+//! combinations); the flexible cell needs a fully periodic box and does not combine with the
+//! sliding-brick Lees-Edwards boundary (use the SLLOD deforming cell instead) or with Berendsen
+//! barostat coupling; the Langevin piston is available for the particle thermostat
+//! [`Thermostat::Langevin`] only (Nose-Hoover chains thermostat the cell through
+//! [`FlexibleBarostat::with_chain`]); the deforming SLLOD cell supports a constant velocity
+//! gradient with lower-triangular lattice reduction (flow along axis 0, gradient along axis 1);
+//! Ewald/PME ([`crate::sim::ewald`]) handle orthorhombic and triclinic cells (the force-field
+//! callbacks read the box cell); the neighbour list of a triclinic cell is rebuilt when the
+//! affine deformation plus particle displacement exceed the skin (and after every lattice
+//! reduction).
 
 use std::collections::HashSet;
 
@@ -1609,6 +1613,7 @@ impl<const D: usize> MdSimulation<D> {
             self.half_kick(h);
             if constrained {
                 self.rattle_velocities(None);
+                self.refresh_constraint_virial();
             }
             self.sys.time += h;
             return Ok(());
@@ -1630,6 +1635,7 @@ impl<const D: usize> MdSimulation<D> {
         self.half_kick(h);
         if !self.constraints.is_empty() {
             self.rattle_velocities(None);
+            self.refresh_constraint_virial();
         }
         if let Thermostat::NoseHooverChain(_) = &self.thermostat {
             let ke2 = 2.0 * self.sys.kinetic_energy();

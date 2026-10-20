@@ -224,3 +224,26 @@ fn exact_rotor_flow_keeps_geometry_and_has_smaller_energy_drift_than_splitting()
     let e2 = run(true, 0.004);
     assert!(exact / e2 > 2.0, "ratio {}", exact / e2);
 }
+
+#[test]
+fn exact_constraint_virial_reproduces_the_molecular_pressure_without_a_time_step_lag() {
+    // rigid dimers: the atomistic pressure with the exact instantaneous constraint forces has the
+    // same trace as the molecular (centre-of-mass) pressure of the rigid-body driver
+    let d = 0.7;
+    let shape = [[-0.5 * d, 0.0, 0.0], [0.5 * d, 0.0, 0.0]];
+    let (sys, mols) = molecular_fluid(&shape, &[1.0, 1.0], 20, 6.5, 1.0, 9);
+    let mut rigid = RigidMdSimulation::new(sys, lj_ff(), 0.3, 0.004, &mols).unwrap();
+    rigid.run(60).unwrap();
+    let mut ff = lj_ff();
+    ff.bonds = mols.iter().map(|m| Bond { i: m[0], j: m[1], k: 0.0, r0: d }).collect();
+    let mut sim = MdSimulation::new(rigid.sys.clone(), ff, 0.3, 0.004, 3).unwrap();
+    sim.constraints = mols.iter().map(|m| Constraint { i: m[0], j: m[1], d }).collect();
+    sim.refresh_constraint_virial();
+    let p_atom = sim.pressure_tensor();
+    let p_mol = rigid.pressure_tensor();
+    let tr = |p: &[[f64; 3]; 3]| p[0][0] + p[1][1] + p[2][2];
+    assert!((tr(&p_atom) - tr(&p_mol)).abs() < 1e-9 * (1.0 + tr(&p_mol).abs()), "{} vs {}", tr(&p_atom), tr(&p_mol));
+    // the constraint force is a genuine contribution
+    let tc = sim.constraint_virial[0][0] + sim.constraint_virial[1][1] + sim.constraint_virial[2][2];
+    assert!(tc.abs() > 1e-3);
+}
