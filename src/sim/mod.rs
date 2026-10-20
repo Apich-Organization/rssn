@@ -82,6 +82,8 @@ pub mod scenario;
 pub mod scenario_engines;
 /// Ewald summation and particle-mesh Ewald.
 pub mod ewald;
+/// Elliptic integrals of the third kind and Jacobi-function integrals.
+pub mod elliptic;
 /// Dimension-generic molecular dynamics engine.
 pub mod md_engine;
 /// Rigid-molecule molecular dynamics.
