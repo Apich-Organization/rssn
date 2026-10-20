@@ -693,3 +693,21 @@ fn annulus_with_a_zero_mode() {
     let text = expand_integrals(&expand_sums(&rhs(&s), 40), 160);
     close(value(&text, &[("r", r), ("t", t)]), reference, 3e-4, &s);
 }
+
+#[test]
+fn hankel_transform_for_radial_evolution_on_whole_space() {
+    let bounds = |text: &str| text.replace(", rho, 0, oo)", ", rho, 0, 7)").replace(", k, 0, oo)", ", k, 0, 8)");
+    // Plane: u_t = Δu with u(r, 0) = e^{-r²}: u = e^{-r²/(1+4t)}/(1+4t).
+    let s = any("pdsolve(diff(u(r, t), t) = diff(diff(u(r, t), r), r) + diff(u(r, t), r)/r, u(r, t), list(u(r, 0) = exp(-r^2)))");
+    assert!(s.contains("besselj(0,"), "{s}");
+    let (r, t) = (0.7_f64, 0.5_f64);
+    let text = expand_integrals(&bounds(&rhs(&s)), 100);
+    close(value(&text, &[("r", r), ("t", t)]), (-r * r / (1.0 + 4.0 * t)).exp() / (1.0 + 4.0 * t), 5e-4, &s);
+    // Space: u_tt = Δu with u(r, 0) = e^{-r²}, u_t = 0: u = [(r + t) e^{-(r+t)²} + (r - t) e^{-(r-t)²}]/(2 r).
+    let s = any("pdsolve(diff(diff(u(r, t), t), t) = diff(diff(u(r, t), r), r) + 2*diff(u(r, t), r)/r, u(r, t), list(u(r, 0) = exp(-r^2), at(diff(u(r, t), t), t, 0) = 0))");
+    assert!(s.contains("sin("), "{s}");
+    let (r, t) = (1.1_f64, 0.6_f64);
+    let text = expand_integrals(&bounds(&rhs(&s)), 100);
+    let exact = ((r + t) * (-(r + t) * (r + t)).exp() + (r - t) * (-(r - t) * (r - t)).exp()) / (2.0 * r);
+    close(value(&text, &[("r", r), ("t", t)]), exact, 1e-3, &s);
+}

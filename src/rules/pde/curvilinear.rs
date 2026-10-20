@@ -236,8 +236,115 @@ pub(super) fn solve(
         if let Some(solution) = numeric_sphere(cx, p, conditions, layout, time_index, a0) {
             return Some(solution);
         }
+        if let Some(solution) = hankel_whole_space(cx, p, conditions, layout, time_index, (b, a0)) {
+            return Some(solution);
+        }
     }
     None
+}
+
+/// Radial evolution on the whole plane or space by the Hankel transform:
+///
+/// * plane: `u = ∫_0^∞ k J_0(k r) M(k) [∫_0^∞ ρ f(ρ) J_0(k ρ) dρ] dk`;
+/// * space: `u = (2/π) ∫_0^∞ k² j_0(k r) M(k) [∫_0^∞ ρ² f(ρ) j_0(k ρ) dρ] dk`
+///   with `j_0(z) = sin z / z`,
+///
+/// where the multiplier `M` is `e^{-D k² t}` (first order in time) or
+/// `cos(c k t)` and `sin(c k t)/(c k)` for displacement and velocity data
+/// (second order, `c² = D`).
+fn hankel_whole_space(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+    layout: Layout,
+    time_index: Option<usize>,
+    (b, a0): (NodeId, NodeId),
+) -> Option<NodeId> {
+    let t_index = time_index?;
+    if layout.theta.is_some() || layout.phi.is_some() || layout.z.is_some() || !cx.is_zero(a0) || !p.homogeneous(cx.graph) {
+        return None;
+    }
+    let far_ok = |cx: &Cx<'_>, c: &Condition| c.on == layout.r && is_infinity(cx, c.point) && cx.is_zero(c.value);
+    if conditions.0.iter().any(|c| c.on != t_index && !far_ok(cx, c)) {
+        return None;
+    }
+    let n = p.dimension();
+    let c_second = p.coefficient(cx.graph, &p.unit(t_index, 2));
+    let order = if is_zero_number(cx.graph, c_second) { 1 } else { 2 };
+    let c_time = p.coefficient(cx.graph, &p.unit(t_index, order));
+    let diffusivity = {
+        let q = div(cx, b, c_time);
+        let q = neg(cx.graph, q);
+        cx.simplify(q)
+    };
+    let (r, t) = (p.vars[layout.r], p.vars[t_index]);
+    let zero_index = vec![0; n];
+    let displacement = conditions.find(cx.graph, t_index, &zero_index, None)?;
+    let velocity = if order == 2 { conditions.find(cx.graph, t_index, &p.unit(t_index, 1), None) } else { None };
+    let expected = 1 + usize::from(velocity.is_some());
+    if conditions.0.iter().filter(|c| c.on == t_index).count() != expected {
+        return None;
+    }
+    let (k, _) = super::dummy(cx, p, "k");
+    let (rho, _) = super::dummy(cx, p, "rho");
+    let zero = cx.graph.int(0);
+    let oo = super::util::infinity(cx)?;
+    let pi = super::util::pi(cx)?;
+    // The kernel of the transform at a point z = k x.
+    let kernel = |cx: &mut Cx<'_>, x: NodeId| -> Option<NodeId> {
+        let z = mul(cx.graph, &[k, x]);
+        if layout.sphere {
+            let s = call(cx, "sin", &[z])?;
+            Some(div(cx, s, z))
+        } else {
+            call(cx, "besselj", &[zero, z])
+        }
+    };
+    let sqrt_d = super::util::sqrt(cx, diffusivity)?;
+    let ckt = {
+        let ck = mul(cx.graph, &[sqrt_d, k]);
+        mul(cx.graph, &[ck, t])
+    };
+    let mut integrands = Vec::new();
+    let mut pairs = vec![(displacement.value, true)];
+    if let Some(v) = velocity {
+        pairs.push((v.value, false));
+    }
+    for (value, is_displacement) in pairs {
+        if cx.is_zero(value) {
+            continue;
+        }
+        let multiplier = if order == 1 {
+            let k2 = powi(cx.graph, k, 2);
+            let e = mul(cx.graph, &[diffusivity, k2, t]);
+            let e = neg(cx.graph, e);
+            call(cx, "exp", &[e])?
+        } else if is_displacement {
+            call(cx, "cos", &[ckt])?
+        } else {
+            let sn = call(cx, "sin", &[ckt])?;
+            let ck = mul(cx.graph, &[sqrt_d, k]);
+            div(cx, sn, ck)
+        };
+        let f_rho = cx.graph.substitute(value, r, rho);
+        let weight = powi(cx.graph, rho, if layout.sphere { 2 } else { 1 });
+        let k_rho = kernel(cx, rho)?;
+        let inner_body = mul(cx.graph, &[weight, f_rho, k_rho]);
+        let inner = defint(cx, inner_body, rho, zero, oo)?;
+        let k_r = kernel(cx, r)?;
+        let measure = powi(cx.graph, k, if layout.sphere { 2 } else { 1 });
+        let outer_body = mul(cx.graph, &[measure, k_r, multiplier, inner]);
+        integrands.push(defint(cx, outer_body, k, zero, oo)?);
+    }
+    let total = add(cx.graph, &integrands);
+    let u = if layout.sphere {
+        let two = cx.graph.int(2);
+        let factor = div(cx, two, pi);
+        mul(cx.graph, &[factor, total])
+    } else {
+        total
+    };
+    Some(cx.simplify(u))
 }
 
 /// The Gauss–Legendre nodes and weights on `[-1, 1]`.

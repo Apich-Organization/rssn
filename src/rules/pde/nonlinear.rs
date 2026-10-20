@@ -242,7 +242,7 @@ fn riemann(
     // Convexity of the flux between the states.
     let curvature = derivative(cx.graph, speed_w, w)?;
     let w_symbol = cx.graph.symbol_of(w)?;
-    let mut sign = 0.0_f64;
+    let mut convex: Option<bool> = None;
     for k in 0..=8_u32 {
         let value = vl + (vr - vl) * f64::from(k) / 8.0;
         let mut env = crate::graph::Env::numeric(0.0);
@@ -251,13 +251,13 @@ fn riemann(
         if c.abs() < 1e-12 {
             return None;
         }
-        if sign == 0.0 {
-            sign = c.signum();
-        } else if c.signum() != sign {
-            return None;
+        match convex {
+            | None => convex = Some(c > 0.0),
+            | Some(known) if known != (c > 0.0) => return None,
+            | Some(_) => {},
         }
     }
-    let shock = (sign > 0.0) == (vl > vr);
+    let shock = convex? == (vl > vr);
     let shifted = sub(cx.graph, x, x0);
     if shock {
         // s = (f(u_r) - f(u_l))/(u_r - u_l) with f' = speed.
