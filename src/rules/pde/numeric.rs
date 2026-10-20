@@ -450,6 +450,31 @@ pub(super) fn annulus_neg_count(v: [f64; 7]) -> u32 {
     count as u32
 }
 
+/// Whether the annulus problem has the eigenvalue zero (a mode
+/// `A r^ν + B r^{-ν}`, or `A + B ln r` for `ν = 0`), decided by the
+/// determinant of the two boundary conditions on that basis.
+#[allow(clippy::float_cmp)]
+pub(super) fn annulus_has_zero(v: [f64; 7]) -> bool {
+    let [nu, pa, qa, a, pb, qb, b] = v;
+    if a <= 0.0 || b <= a || nu < 0.0 {
+        return false;
+    }
+    // The basis functions and their derivatives at r.
+    let basis = |r: f64| -> [(f64, f64); 2] {
+        if nu == 0.0 {
+            [(1.0, 0.0), (r.ln(), 1.0 / r)]
+        } else {
+            [(r.powf(nu), nu * r.powf(nu - 1.0)), (r.powf(-nu), -nu * r.powf(-nu - 1.0))]
+        }
+    };
+    let (fa, fb) = (basis(a), basis(b));
+    let condition = |p: f64, q: f64, f: (f64, f64)| p * f.0 + q * f.1;
+    let m = [[condition(pa, qa, fa[0]), condition(pa, qa, fa[1])], [condition(pb, qb, fb[0]), condition(pb, qb, fb[1])]];
+    let determinant = m[0][0] * m[1][1] - m[0][1] * m[1][0];
+    let scale = (m[0][0] * m[1][1]).abs() + (m[0][1] * m[1][0]).abs();
+    scale > 0.0 && determinant.abs() <= 1e-9 * scale
+}
+
 /// `annulus_neg_root(nu, pa, qa, a, pb, qb, b, m)`.
 pub(super) fn annulus_neg_root(args: &[f64]) -> f64 {
     let (Some(&nu), Some(&pa), Some(&qa), Some(&a), Some(&pb), Some(&qb), Some(&b), Some(m)) =

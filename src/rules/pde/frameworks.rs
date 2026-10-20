@@ -305,7 +305,7 @@ pub(super) fn fourier_evolution(
     p: &Problem,
     conditions: &Conditions,
 ) -> Option<NodeId> {
-    if p.nonlinear || !p.homogeneous(cx.graph) {
+    if p.nonlinear {
         return None;
     }
     let n = p.dimension();
@@ -326,8 +326,8 @@ pub(super) fn fourier_evolution(
         return None;
     };
     let i_unit = cx.graph.ops().lookup("I").map(|op| cx.graph.node(op, &[]))?;
-    let first_k = dummy(cx, p, "k").0;
-    let ks: Vec<NodeId> = (0..space.len()).map(|i| if i == 0 { first_k } else { fresh(cx, "k") }).collect();
+    let k_stems = ["k", "kk", "kkk"];
+    let ks: Vec<NodeId> = (0..space.len()).map(|i| dummy(cx, p, k_stems.get(i).copied().unwrap_or("k")).0).collect();
     let mut symbol_terms = Vec::new();
     for (index, c) in p.linear.clone() {
         if cx.is_zero(c) || index == p.unit(time, 1) || index == p.unit(time, 2) {
@@ -363,7 +363,8 @@ pub(super) fn fourier_evolution(
     let t = p.vars[time];
     let exp = |cx: &mut Cx<'_>, e: NodeId| -> Option<NodeId> { super::util::call(cx, "exp", &[e]) };
     // The multipliers of û₀ and û₁.
-    let (m0, m1) = if order == 1 {
+    let multipliers = |cx: &mut Cx<'_>, t: NodeId| -> Option<(NodeId, Option<NodeId>)> {
+        Some(if order == 1 {
         let ratio = {
             let q = super::util::div(cx, symbol, a1);
             neg(cx.graph, q)
@@ -404,19 +405,38 @@ pub(super) fn fourier_evolution(
             mul(cx.graph, &[damp, q])
         };
         (cx.simplify(m0), Some(cx.simplify(m1)))
+        })
     };
+    let (m0, m1) = multipliers(cx, t)?;
     let (defint, infinity, pi) = (cx.graph.ops().lookup("defint")?, cx.graph.ops().lookup("oo")?, cx.graph.ops().lookup("pi")?);
     let oo = cx.graph.node(infinity, &[]);
     let minus_oo = neg(cx.graph, oo);
-    let ss: Vec<NodeId> = space.iter().map(|_| dummy(cx, p, "s").0).collect();
-    // Distinct dummies for several axes.
-    let ss: Vec<NodeId> = ss.iter().enumerate().map(|(i, &s)| if i == 0 { s } else { fresh(cx, "s") }).collect();
+    let s_stems = ["s", "ss", "sss"];
+    let ss: Vec<NodeId> = (0..space.len()).map(|i| dummy(cx, p, s_stems.get(i).copied().unwrap_or("s")).0).collect();
     let mut parts = Vec::new();
+    // The transform of a datum in closed form, by the table of the
+    // transform module (`None` when it stays inert).
+    let transform = |cx: &mut Cx<'_>, value: NodeId| -> Option<NodeId> {
+        let mut f = value;
+        for (pos, &j) in space.iter().enumerate() {
+            let node = super::util::call(cx, "fourier", &[f, p.vars[j], ks[pos]])?;
+            f = cx.simplify(node);
+            if super::util::contains_op(cx.graph, f, "fourier") {
+                return None;
+            }
+        }
+        Some(f)
+    };
+    let mut spectrum = Vec::new();
     for (data, multiplier) in [(Some(displacement.value), Some(m0)), (velocity.map(|v| v.value), m1)] {
         let (Some(value), Some(multiplier)) = (data, multiplier) else {
             continue;
         };
         if cx.is_zero(value) {
+            continue;
+        }
+        if let Some(transformed) = transform(cx, value) {
+            spectrum.push(mul(cx.graph, &[transformed, multiplier]));
             continue;
         }
         let mut g = value;
@@ -441,10 +461,67 @@ pub(super) fn fourier_evolution(
         }
         parts.push(body);
     }
-    let total = add(cx.graph, &parts);
-    let pi = cx.graph.node(pi, &[]);
-    let two = cx.graph.int(2);
-    let scale = mul(cx.graph, &[two, pi]);
-    let inverse = powi(cx.graph, scale, -i64::try_from(space.len()).ok()?);
-    Some(mul(cx.graph, &[inverse, total]))
+    // Duhamel: ∫_0^t G(t - τ) f̂(k, τ) dτ for the source `f = -source`.
+    if !p.homogeneous(cx.graph) {
+        let forcing = neg(cx.graph, p.source);
+        let forcing = cx.simplify(forcing);
+        if !cx.is_zero(forcing) {
+            let (tau, _) = dummy(cx, p, "tau");
+            let f_tau = cx.graph.substitute(forcing, t, tau);
+            let transformed = transform(cx, f_tau)?;
+            let elapsed = sub(cx.graph, t, tau);
+            let (g0, g1) = multipliers(cx, elapsed)?;
+            let green = if order == 1 { super::util::div(cx, g0, a1) } else { super::util::div(cx, g1?, a2) };
+            let body = mul(cx.graph, &[green, transformed]);
+            let zero = cx.graph.int(0);
+            let integral = cx.graph.node(defint, &[body, tau, zero, t]);
+            spectrum.push(cx.simplify(integral));
+        }
+    }
+    let mut closed = Vec::new();
+    if !spectrum.is_empty() {
+        let total_spectrum = add(cx.graph, &spectrum);
+        let total_spectrum = cx.simplify(total_spectrum);
+        // Inversion by the table.
+        let mut inverted = total_spectrum;
+        let mut by_table = true;
+        for (pos, &j) in space.iter().enumerate() {
+            let node = super::util::call(cx, "inverse_fourier", &[inverted, ks[pos], p.vars[j]])?;
+            inverted = cx.simplify(node);
+            if super::util::contains_op(cx.graph, inverted, "inverse_fourier") {
+                by_table = false;
+                break;
+            }
+        }
+        if by_table {
+            closed.push(inverted);
+        } else {
+            let mut phases = Vec::new();
+            for (pos, &j) in space.iter().enumerate() {
+                phases.push(mul(cx.graph, &[i_unit, ks[pos], p.vars[j]]));
+            }
+            let phase = add(cx.graph, &phases);
+            let kernel = exp(cx, phase)?;
+            let mut body = mul(cx.graph, &[total_spectrum, kernel]);
+            for &k_var in ks.iter().rev() {
+                body = cx.graph.node(defint, &[body, k_var, minus_oo, oo]);
+            }
+            parts.push(body);
+        }
+    }
+    let mut pieces = Vec::new();
+    if !parts.is_empty() {
+        let total = add(cx.graph, &parts);
+        let pi = cx.graph.node(pi, &[]);
+        let two = cx.graph.int(2);
+        let scale = mul(cx.graph, &[two, pi]);
+        let inverse = powi(cx.graph, scale, -i64::try_from(space.len()).ok()?);
+        pieces.push(mul(cx.graph, &[inverse, total]));
+    }
+    pieces.extend(closed);
+    if pieces.is_empty() {
+        return None;
+    }
+    let answer = add(cx.graph, &pieces);
+    Some(answer)
 }

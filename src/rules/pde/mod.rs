@@ -178,6 +178,7 @@ mod elliptic;
 mod frameworks;
 mod green;
 mod modes;
+mod nonlinear;
 mod numeric;
 mod sl;
 mod spectral;
@@ -269,6 +270,8 @@ enum Request {
     Order,
     At,
     Green,
+    KdvSoliton,
+    SineGordonSoliton,
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -318,6 +321,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("pde/pde_classify", Tier::Reduce, Pde { op, request: Request::Classify });
     let op = i.op(heavy("pde_order", Arity::Fixed(2)))?;
     i.kernel("pde/pde_order", Tier::Reduce, Pde { op, request: Request::Order });
+    let op = i.op(heavy("pde_kdv_soliton", Arity::Fixed(2)))?;
+    i.kernel("pde/pde_kdv_soliton", Tier::Reduce, Pde { op, request: Request::KdvSoliton });
+    let op = i.op(heavy("pde_sine_gordon_soliton", Arity::Fixed(2)))?;
+    i.kernel("pde/pde_sine_gordon_soliton", Tier::Reduce, Pde { op, request: Request::SineGordonSoliton });
     let op = i.op(heavy("pde_greens_function", Arity::Variadic))?;
     i.kernel("pde/pde_greens_function", Tier::Reduce, Pde { op, request: Request::Green });
     Ok(())
@@ -346,6 +353,20 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 };
                 Outcome::Equal(cx.graph.int(i64::from(problem.order())))
+            },
+            | Request::KdvSoliton | Request::SineGordonSoliton => {
+                let &[first, second] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                let (Some(a), Some(b)) = (best(cx.graph, first), best(cx.graph, second)) else {
+                    return Outcome::Pass;
+                };
+                if cx.graph.op(a) != core::LIST || cx.graph.op(b) != core::LIST {
+                    return Outcome::Pass;
+                }
+                let (a, b) = (cx.graph.children(a).to_vec(), cx.graph.children(b).to_vec());
+                let found = if self.request == Request::KdvSoliton { nonlinear::kdv_soliton(cx, &a, &b) } else { nonlinear::sine_gordon_soliton(cx, &a, &b) };
+                found.map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::Green => {
                 let (equation, unknown, conditions) = match *args.as_slice() {
@@ -1232,11 +1253,15 @@ fn solve_classical(
     use Method::{Any, Characteristics, Burgers, Separation, SecondOrder, Dalembert, Wave3, Heat1, Fourier, Heat3, Schrodinger, KleinGordon, Laplace2, Laplace3, Green, Poisson2, Poisson3, Helmholtz};
     let kind = kind(cx, p);
     let try_method = |m: Method| method == Any || method == m;
-    let mut solution = if p.order() == 1 && (try_method(Characteristics) || try_method(Burgers)) {
-        characteristics(cx, p, conditions)
+    let mut solution = if p.nonlinear && (try_method(Characteristics) || try_method(Burgers)) {
+        // Hopf–Cole for the viscous Burgers equation, Riemann problems.
+        nonlinear::solve(cx, p, conditions)
     } else {
         None
     };
+    if solution.is_none() && p.order() == 1 && (try_method(Characteristics) || try_method(Burgers)) {
+        solution = characteristics(cx, p, conditions);
+    }
     if solution.is_none() && kind == "wave" {
         if solution.is_none() && p.dimension() == 2 && (try_method(Dalembert) || try_method(SecondOrder)) {
             solution = dalembert(cx, p, conditions);

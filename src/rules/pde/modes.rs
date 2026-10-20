@@ -408,37 +408,104 @@ fn bessel_slope(
     Some(add(cx.graph, &[a, b]))
 }
 
-/// How many modes of the annulus have a negative eigenvalue (Robin
-/// conditions of the wrong sign). Symbolic radii are not decided; a
-/// symbolic angular order is refused (`None`) when some integer order has
-/// such a mode.
-fn annulus_negative_count(
+/// Whether the annulus has a zero mode and how many modes have a negative
+/// eigenvalue (Robin conditions of the wrong sign). Symbolic radii are not
+/// decided; a symbolic angular order is refused (`None`) when some integer
+/// order has such a mode.
+fn annulus_special_modes(
     cx: &Cx<'_>,
     nu: NodeId,
     ends: [NodeId; 6],
     robin: bool,
     sphere: bool,
-) -> Option<u32> {
+) -> Option<(bool, u32)> {
     if !robin {
-        return Some(0);
+        return Some((false, 0));
     }
     let values: Option<Vec<f64>> = ends.iter().map(|&e| exact_value(cx, e)).collect();
     let Some(v) = values else {
-        return Some(0);
+        return Some((false, 0));
     };
     let [pa, qa, a, pb, qb, b] = <[f64; 6]>::try_from(v).ok()?;
+    let probe = |order: f64| {
+        let all = [order, pa, qa, a, pb, qb, b];
+        (super::numeric::annulus_has_zero(all), super::numeric::annulus_neg_count(all))
+    };
     match exact_value(cx, nu) {
-        | Some(order) => Some(super::numeric::annulus_neg_count([order, pa, qa, a, pb, qb, b])),
+        | Some(order) => Some(probe(order)),
         | None => {
             let shell = if sphere { 0.5 } else { 0.0 };
             for k in 0..=12_u32 {
-                if super::numeric::annulus_neg_count([f64::from(k) + shell, pa, qa, a, pb, qb, b]) > 0 {
+                let (zero, negatives) = probe(f64::from(k) + shell);
+                if zero || negatives > 0 {
                     return None;
                 }
             }
-            Some(0)
+            Some((false, 0))
         },
     }
+}
+
+/// The zero mode `A r^ν + B r^{-ν}` (`A + B ln r` for `ν = 0`, times
+/// `r^{-1/2}` for a shell) meeting the inner condition by construction.
+fn annulus_zero_mode(
+    cx: &mut Cx<'_>,
+    r: NodeId,
+    nu: NodeId,
+    ends: [NodeId; 6],
+    sphere: bool,
+) -> Option<Family> {
+    let [pa, qa, a, _pb, _qb, b] = ends;
+    let zero = cx.graph.int(0);
+    let profile = if cx.graph.number_of(nu).is_some_and(Number::is_zero) {
+        // A = -(p ln a + q/a), B = p.
+        let ln_a = call(cx, "ln", &[a])?;
+        let ln_r = call(cx, "ln", &[r])?;
+        let t1 = mul(cx.graph, &[pa, ln_a]);
+        let t2 = div(cx, qa, a);
+        let sum = add(cx.graph, &[t1, t2]);
+        let coefficient_a = neg(cx.graph, sum);
+        let b_term = mul(cx.graph, &[pa, ln_r]);
+        add(cx.graph, &[coefficient_a, b_term])
+    } else {
+        // A = -(p a^{-ν} - q ν a^{-ν-1}), B = p a^ν + q ν a^{ν-1}.
+        let minus_nu = neg(cx.graph, nu);
+        let a_minus = pow(cx.graph, a, minus_nu);
+        let a_plus = pow(cx.graph, a, nu);
+        let one = cx.graph.int(1);
+        let neg_one = neg(cx.graph, one);
+        let e_minus = add(cx.graph, &[minus_nu, neg_one]);
+        let e_plus = sub(cx.graph, nu, one);
+        let (a_m1, a_p1) = (pow(cx.graph, a, e_minus), pow(cx.graph, a, e_plus));
+        let coefficient_a = {
+            let first = mul(cx.graph, &[pa, a_minus]);
+            let second = mul(cx.graph, &[qa, nu, a_m1]);
+            let diff = sub(cx.graph, first, second);
+            neg(cx.graph, diff)
+        };
+        let coefficient_b = {
+            let first = mul(cx.graph, &[pa, a_plus]);
+            let second = mul(cx.graph, &[qa, nu, a_p1]);
+            add(cx.graph, &[first, second])
+        };
+        let (r_plus, r_minus) = (pow(cx.graph, r, nu), pow(cx.graph, r, minus_nu));
+        let t1 = mul(cx.graph, &[coefficient_a, r_plus]);
+        let t2 = mul(cx.graph, &[coefficient_b, r_minus]);
+        add(cx.graph, &[t1, t2])
+    };
+    let mode = if sphere {
+        let minus_half = fraction(cx, -1, 2)?;
+        let root = pow(cx.graph, r, minus_half);
+        mul(cx.graph, &[root, profile])
+    } else {
+        profile
+    };
+    // ∫ r F² dr over the annulus (the shell factor r^{-1} r² cancels).
+    let square = powi(cx.graph, profile, 2);
+    let body = mul(cx.graph, &[r, square]);
+    let integral = super::util::defint(cx, body, r, a, b)?;
+    let norm = cx.simplify(integral);
+    Some(Family::new(cx.simplify(mode), zero, 0, 1, Some(norm)))
 }
 
 /// The `m`-th mode `F = C_K I_ν(κ r) - C_I K_ν(κ r)` (times `r^{-1/2}` for a
@@ -578,15 +645,19 @@ pub(super) fn annulus_families(
     let (pa, pb) = (shifted_p(cx, end_a, a, sphere), shifted_p(cx, end_b, b, sphere));
     let ends = [pa, end_a.q, a, pb, end_b.q, b];
     let robin = end_a.kind == Kind::Robin || end_b.kind == Kind::Robin;
-    let negatives = annulus_negative_count(cx, nu, ends, robin, sphere)?;
+    let (zero_mode, negatives) = annulus_special_modes(cx, nu, ends, robin, sphere)?;
+    let specials = i64::from(negatives) + i64::from(zero_mode);
     let literal = if numeric { cx.graph.number_of(n).and_then(Number::to_i64) } else { None };
-    if let Some(m) = literal.filter(|&m| m < i64::from(negatives)) {
-        return annulus_negative_mode(cx, r, nu, ends, sphere, m + 1).map(|f| vec![f]);
+    if let Some(m) = literal.filter(|&m| m < specials) {
+        if zero_mode && m == 0 {
+            return annulus_zero_mode(cx, r, nu, ends, sphere).map(|f| vec![f]);
+        }
+        return annulus_negative_mode(cx, r, nu, ends, sphere, m + 1 - i64::from(zero_mode)).map(|f| vec![f]);
     }
-    // Positive roots are numbered from 1; the indices below `negatives` are
-    // the modes with a negative eigenvalue.
-    let root_index = if negatives > 1 {
-        let shift = cx.graph.int(1 - i64::from(negatives));
+    // Positive roots are numbered from 1; the indices below `specials` are
+    // the modes with a zero or negative eigenvalue.
+    let root_index = if specials > 1 {
+        let shift = cx.graph.int(1 - specials);
         let shifted = add(cx.graph, &[n, shift]);
         cx.simplify(shifted)
     } else {
@@ -652,8 +723,8 @@ pub(super) fn annulus_families(
     let (at_b, at_a) = (at(cx, b)?, at(cx, a)?);
     let gap = sub(cx.graph, at_b, at_a);
     let norm = mul(cx.graph, &[half, gap]);
-    let first = i64::from(!constant_mode && negatives == 0);
-    let forced = if negatives > 0 { i64::from(negatives) } else { i64::from(constant_mode) };
+    let first = i64::from(!constant_mode && specials == 0);
+    let forced = if specials > 0 { specials } else { i64::from(constant_mode) };
     let cylinder = Cylinder { nu, kappa: k, power2, parts: vec![(coef_a, false), (minus_b, true)] };
     Some(vec![Family { mode, eigen, first, forced, norm: Some(norm), cylinder: Some(cylinder) }])
 }

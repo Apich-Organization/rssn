@@ -536,3 +536,160 @@ fn laplace_in_a_ball_with_general_boundary_data() {
     let (r, th, ph) = (1.8_f64, 2.0_f64, 4.0_f64);
     close(value(&rhs(&s), &[("r", r), ("th", th), ("ph", ph)]), 1.0 / distance(point(r, th, ph), inside), 1e-6, &s);
 }
+
+#[test]
+fn burgers_hopf_cole_and_riemann_problems() {
+    // Viscous Burgers u_t + u u_x = u_xx / 2: the stationary shock u = -tanh x.
+    let s = any("pdsolve(diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = 1/2*diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = -tanh(x)))");
+    assert!(s.contains("defint"), "{s}");
+    let text = expand_integrals(&rhs(&s).replace("-oo", "-14").replace(", oo)", ", 14)"), 700);
+    let (x, t) = (0.7_f64, 0.8_f64);
+    close(value(&text, &[("x", x), ("t", t)]), -x.tanh(), 2e-4, &s);
+    // A moving frame and a scaling: v = 2u + 1 obeys the same law, so u_t + (2u + 1) u_x = u_xx/2 is the
+    // stationary shock in the frame x - t: u = -(1 + tanh(x - t))/2 ... checked through the data u = -(tanh x + 1)/2.
+    let s = any("pdsolve(diff(u(x, t), t) + (2*u(x, t) + 1)*diff(u(x, t), x) = 1/2*diff(diff(u(x, t), x), x), u(x, t), list(u(x, 0) = -(tanh(x) + 1)/2))");
+    let text = expand_integrals(&rhs(&s).replace("-oo", "-14").replace(", oo)", ", 14)"), 700);
+    let u_exact = |x: f64| -(x.tanh() + 1.0) / 2.0;
+    // U = 2u + 1 = -tanh(x) is stationary, so u is too.
+    close(value(&text, &[("x", x), ("t", t)]), u_exact(x), 2e-4, &s);
+    // Riemann problems of Burgers' equation: shock s = (u_l + u_r)/2, fan u = x/t.
+    let burgers = "diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = 0";
+    let s = any(&format!("pdsolve({burgers}, u(x, t), list(u(x, 0) = 1 - heaviside(x)))"));
+    close(value(&rhs(&s), &[("x", 0.4), ("t", 2.0)]), 1.0, 1e-12, &s);
+    close(value(&rhs(&s), &[("x", 1.4), ("t", 2.0)]), 0.0, 1e-12, &s);
+    let s = any(&format!("pdsolve({burgers}, u(x, t), list(u(x, 0) = heaviside(x)))"));
+    close(value(&rhs(&s), &[("x", 0.5), ("t", 2.0)]), 0.25, 1e-12, &s);
+    close(value(&rhs(&s), &[("x", -0.5), ("t", 2.0)]), 0.0, 1e-12, &s);
+    close(value(&rhs(&s), &[("x", 2.5), ("t", 2.0)]), 1.0, 1e-12, &s);
+    // Shock speed with a shifted jump and other states: u_l = 3, u_r = 1 at x₀ = 2 moves with speed 2.
+    let s = any(&format!("pdsolve({burgers}, u(x, t), list(u(x, 0) = 1 + 2*(1 - heaviside(x - 2))))"));
+    close(value(&rhs(&s), &[("x", 5.5), ("t", 2.0)]), 3.0, 1e-12, &s);
+    close(value(&rhs(&s), &[("x", 6.5), ("t", 2.0)]), 1.0, 1e-12, &s);
+    // Concave flux f = u (1 - u) (traffic): a jump up is a stationary shock, a jump down a fan u = (1 - ξ)/2.
+    let traffic = "diff(u(x, t), t) + (1 - 2*u(x, t))*diff(u(x, t), x) = 0";
+    let s = any(&format!("pdsolve({traffic}, u(x, t), list(u(x, 0) = heaviside(x)))"));
+    close(value(&rhs(&s), &[("x", -0.3), ("t", 1.0)]), 0.0, 1e-12, &s);
+    close(value(&rhs(&s), &[("x", 0.3), ("t", 1.0)]), 1.0, 1e-12, &s);
+    let s = any(&format!("pdsolve({traffic}, u(x, t), list(u(x, 0) = 1 - heaviside(x)))"));
+    close(value(&rhs(&s), &[("x", 0.5), ("t", 1.0)]), 0.25, 1e-12, &s);
+    close(value(&rhs(&s), &[("x", -1.5), ("t", 1.0)]), 1.0, 1e-12, &s);
+    close(value(&rhs(&s), &[("x", 1.5), ("t", 1.0)]), 0.0, 1e-12, &s);
+}
+
+#[test]
+fn kdv_and_sine_gordon_solitons() {
+    let v = |text: &str, x: f64, t: f64| value(text, &[("x", x), ("t", t)]);
+    // One soliton: u = -2 κ² sech²(κ (x - 4 κ² t - x₀)).
+    let s = run("pde_kdv_soliton(list(1/2), list(1/3))");
+    let (x, t) = (0.9_f64, 0.4_f64);
+    let kappa = 0.5_f64;
+    let xi = kappa * (x - 4.0 * kappa * kappa * t - 1.0 / 3.0);
+    close(v(&s, x, t), -2.0 * kappa * kappa / xi.cosh().powi(2), 1e-10, &s);
+    // Two and three solitons solve u_t - 6 u u_x + u_xxx = 0 (finite differences).
+    for (kappas, shifts) in [("list(1, 3/2)", "list(0, 1/2)"), ("list(1/2, 1, 3/2)", "list(0, -1, 1/2)")] {
+        let s = run(&format!("pde_kdv_soliton({kappas}, {shifts})"));
+        let u = |x: f64, t: f64| v(&s, x, t);
+        let (x, t, h) = (0.35_f64, 0.05_f64, 2e-3_f64);
+        let u_t = (u(x, t + h) - u(x, t - h)) / (2.0 * h);
+        let u_x = (u(x + h, t) - u(x - h, t)) / (2.0 * h);
+        let u_xxx = (u(x + 2.0 * h, t) - 2.0 * u(x + h, t) + 2.0 * u(x - h, t) - u(x - 2.0 * h, t)) / (2.0 * h.powi(3));
+        close(u_t - 6.0 * u(x, t) * u_x + u_xxx, 0.0, 5e-3 * (1.0 + u_xxx.abs()), &s);
+    }
+    // Sine-Gordon kinks in light-cone coordinates: u_xt = sin u.
+    for (a, c) in [("list(13/10)", "list(1/10)"), ("list(13/10, 7/10)", "list(1/10, -2/5)"), ("list(13/10, 7/10, 21/10)", "list(1/10, -2/5, 3/10)")] {
+        let s = run(&format!("pde_sine_gordon_soliton({a}, {c})"));
+        let u = |x: f64, t: f64| v(&s, x, t);
+        let (x, t, h) = (0.2_f64, -0.3_f64, 1e-3_f64);
+        let mixed = (u(x + h, t + h) - u(x + h, t - h) - u(x - h, t + h) + u(x - h, t - h)) / (4.0 * h * h);
+        close(mixed, u(x, t).sin(), 2e-4, &s);
+    }
+}
+
+#[test]
+fn fourier_fallback_with_table_sources_and_two_dimensions() {
+    use super::extension_tests::complex_value;
+    let (x, y, t) = (0.8_f64, -0.4_f64, 0.3_f64);
+    let bounds = |text: &str| text.replace("-oo", "-9").replace(", oo)", ", 9)");
+    let g_hat = |k: f64| PI.sqrt() * (-k * k / 4.0).exp();
+    let airy = |x: f64| simpson(&|k| g_hat(k) * (k * x + k * k * k * t).cos(), -12.0, 12.0) / (2.0 * PI);
+    // Two dimensions: u_t + u_xxx + u_yyy = 0 with a Gaussian is the product of two one-dimensional solutions.
+    let s = any("pdsolve(diff(u(x, y, t), t) + diff(diff(diff(u(x, y, t), x), x), x) + diff(diff(diff(u(x, y, t), y), y), y) = 0, u(x, y, t), list(u(x, y, 0) = exp(-x^2 - y^2)))");
+    assert!(s.contains("defint") && !s.contains("fourier"), "{s}");
+    let text = expand_integrals(&bounds(&rhs(&s)), 70);
+    let got = complex_value(&text, &[("x", x), ("y", y), ("t", t)]);
+    close(got.re, airy(x) * airy(y), 5e-4, &s);
+    // A source: u_t + u_xxx = e^{-x²}, zero data: û = ĝ (e^{i k³ t} - 1)/(i k³).
+    let s = any("pdsolve(diff(u(x, t), t) + diff(diff(diff(u(x, t), x), x), x) = exp(-x^2), u(x, t), list(u(x, 0) = 0))");
+    let reference = simpson(
+        &|k| {
+            let k3 = k * k * k;
+            let kernel = if k3.abs() < 1e-9 { t * (k * x).cos() } else { ((k3 * t).sin() * (k * x).cos() + ((k3 * t).cos() - 1.0) * (k * x).sin()) / k3 };
+            g_hat(k) * kernel
+        },
+        -12.0,
+        12.0,
+    ) / (2.0 * PI);
+    let text = expand_integrals(&bounds(&rhs(&s)), 220);
+    let got = complex_value(&text, &[("x", x), ("t", t)]);
+    close(got.re, reference, 5e-4, &s);
+}
+
+#[test]
+fn greens_functions_periodic_damped_and_heat_kernels() {
+    use super::extension_tests::complex_value;
+    let (x, s0, t) = (0.9_f64, 2.1_f64, 0.3_f64);
+    let kernel = |y: f64| (-y * y / (4.0 * t)).exp() / (4.0 * PI * t).sqrt();
+    // The periodic heat kernel on [0, 2π] by images.
+    let s = any("pde_greens_function(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(0, t) = u(2*pi, t)))");
+    let images: f64 = (-6..=6).map(|m| kernel(x - s0 + 2.0 * PI * f64::from(m))).sum();
+    let text = expand_sums(&rhs(&s), 40);
+    close(value(&text, &[("x", x), ("s_x", s0), ("t", t)]), images, 1e-9, &s);
+    // Damped waves: u_tt + u_t = u_xx on [0, π] with Dirichlet ends: modes e^{-t/2} sin(ω t)/ω, ω² = n² - 1/4.
+    let s = any("pde_greens_function(diff(diff(u(x, t), t), t) + diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(0, t) = 0, u(pi, t) = 0))");
+    let reference: f64 = (1..=40)
+        .map(|n| {
+            let nf = f64::from(n);
+            let omega = (nf * nf - 0.25).sqrt();
+            2.0 / PI * (nf * x).sin() * (nf * s0).sin() * (-t / 2.0).exp() * (omega * t).sin() / omega
+        })
+        .sum();
+    let text = expand_sums(&rhs(&s), 40);
+    close(complex_value(&text, &[("x", x), ("s_x", s0), ("t", t)]).re, reference, 1e-9, &s);
+    // The heat kernel of the whole line and of the half-line with a Dirichlet end.
+    let s = any("pde_greens_function(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t))");
+    close(value(&rhs(&s), &[("x", x), ("s_x", s0), ("t", t)]), kernel(x - s0), 1e-12, &s);
+    let s = any("pde_greens_function(diff(u(x, t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(0, t) = 0))");
+    close(value(&rhs(&s), &[("x", x), ("s_x", s0), ("t", t)]), kernel(x - s0) - kernel(x + s0), 1e-12, &s);
+}
+
+#[test]
+fn annulus_with_a_zero_mode() {
+    let heat = "diff(u(r, t), t) = diff(diff(u(r, t), r), r) + diff(u(r, t), r)/r";
+    // Inner u_r - u = 0 at r = 1 and u_r - u/(2 (1 + ln 2)) = 0 at r = 2: F = ln r + 1 has eigenvalue 0.
+    let s = any(&format!("pdsolve({heat}, u(r, t), list(at(diff(u(r, t), r), r, 1) - u(1, t) = 0, at(diff(u(r, t), r), r, 2) - u(2, t)/(2*(1 + ln(2))) = 0, u(r, 0) = 1))"));
+    let (r, t) = (1.4_f64, 0.02_f64);
+    let (pa, pb) = (-1.0_f64, -1.0 / (2.0 * (1.0 + 2.0_f64.ln())));
+    let cond_jy = |second: bool, p: f64, k: f64, radius: f64| {
+        let z = k * radius;
+        if second { p * crate::kernels::special::bessel_y0(z) - k * crate::kernels::special::bessel_y1(z) } else { p * crate::kernels::special::bessel_j0(z) - k * crate::kernels::special::bessel_j1(z) }
+    };
+    let cond_ik = |second: bool, p: f64, k: f64, radius: f64| {
+        let z = k * radius;
+        if second { p * crate::kernels::special::bessel_k0(z) - k * crate::kernels::special::bessel_k1(z) } else { p * crate::kernels::special::bessel_i0(z) + k * crate::kernels::special::bessel_i1(z) }
+    };
+    let coefficient = |mode: &dyn Fn(f64) -> f64| simpson(&|q| q * mode(q), 1.0, 2.0) / simpson(&|q| q * mode(q) * mode(q), 1.0, 2.0);
+    let zero_mode = |q: f64| q.ln() + 1.0;
+    let mut reference = coefficient(&zero_mode) * zero_mode(r);
+    let g_neg = |k: f64| cond_ik(true, pa, k, 1.0) * cond_ik(false, pb, k, 2.0) - cond_ik(false, pa, k, 1.0) * cond_ik(true, pb, k, 2.0);
+    for kappa in roots(&g_neg, 12.0, 4) {
+        let mode = move |q: f64| cond_ik(true, pa, kappa, 1.0) * crate::kernels::special::bessel_i0(kappa * q) - cond_ik(false, pa, kappa, 1.0) * crate::kernels::special::bessel_k0(kappa * q);
+        reference += coefficient(&mode) * (kappa * kappa * t).exp() * mode(r);
+    }
+    let g_pos = |k: f64| cond_jy(true, pa, k, 1.0) * cond_jy(false, pb, k, 2.0) - cond_jy(false, pa, k, 1.0) * cond_jy(true, pb, k, 2.0);
+    for k in roots(&g_pos, 130.0, 40) {
+        let mode = move |q: f64| cond_jy(true, pa, k, 1.0) * crate::kernels::special::bessel_j0(k * q) - cond_jy(false, pa, k, 1.0) * crate::kernels::special::bessel_y0(k * q);
+        reference += coefficient(&mode) * (-k * k * t).exp() * mode(r);
+    }
+    let text = expand_integrals(&expand_sums(&rhs(&s), 40), 160);
+    close(value(&text, &[("r", r), ("t", t)]), reference, 3e-4, &s);
+}

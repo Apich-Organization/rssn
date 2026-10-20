@@ -109,13 +109,85 @@ pub(super) fn greens_function(
         }
     }
     let on_axis = |j: usize| conditions.0.iter().filter(|c| c.on == j).count();
-    if space.iter().all(|&j| on_axis(j) == 2) {
+    // A periodic axis carries the single condition `u(a) = u(b)`.
+    let periodic = |cx: &Cx<'_>, j: usize| {
+        conditions.0.iter().any(|c| c.on == j && cx.graph.op(c.value) == crate::graph::op::core::APPLY && cx.graph.children(c.value).first() == Some(&p.function))
+    };
+    if space.iter().all(|&j| on_axis(j) == 2 || (on_axis(j) == 1 && periodic(cx, j))) {
         return box_expansion(cx, p, conditions, &space, &cjj, c0, time.map(|t| (t, a1, a2)));
     }
     if time.is_none() && space.iter().all(|&j| on_axis(j) <= 1) && cx.is_zero(c0) {
         return fundamental(cx, p, conditions, &space, &cjj);
     }
+    if let Some(t) = time
+        && cx.is_zero(a2)
+        && space.iter().all(|&j| on_axis(j) <= 1)
+    {
+        return heat_kernel(cx, p, conditions, &space, &cjj, c0, (t, a1));
+    }
     None
+}
+
+/// The heat kernel of `a₁ u_t + Σ c_j u_jj + c₀ u` on whole space and
+/// orthants (images for a Dirichlet or Neumann condition per axis):
+/// `e^{-c₀ t/a₁} Π_j [K_j(x_j - s_j) + σ_j K_j(x_j - (2 a_j - s_j))]`,
+/// `K_j` the Gaussian of diffusivity `D_j = -c_j/a₁`.
+fn heat_kernel(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+    space: &[usize],
+    cjj: &[NodeId],
+    c0: NodeId,
+    (time, a1): (usize, NodeId),
+) -> Option<NodeId> {
+    let t = p.vars[time];
+    let mut factors = Vec::new();
+    for (&j, &c) in space.iter().zip(cjj) {
+        let d = {
+            let q = div(cx, c, a1);
+            let q = neg(cx.graph, q);
+            cx.simplify(q)
+        };
+        if super::util::sample(cx.graph, d, 0)? <= 0.0 {
+            return None;
+        }
+        let x = p.vars[j];
+        let s = source_variable(cx, x)?;
+        let direct = sub(cx.graph, x, s);
+        let mut axis = super::classical::kernel(cx, d, direct, t)?;
+        if let Some(cond) = conditions.0.iter().find(|q| q.on == j) {
+            if cond.robin.is_some() || !cx.is_zero(cond.value) {
+                return None;
+            }
+            let sign = if cond.derivative == vec![0; p.dimension()] {
+                -1
+            } else if cond.derivative == p.unit(j, 1) {
+                1
+            } else {
+                return None;
+            };
+            let two = cx.graph.int(2);
+            let two_a = mul(cx.graph, &[two, cond.point]);
+            let reflected = sub(cx.graph, two_a, s);
+            let gap = sub(cx.graph, x, reflected);
+            let image = super::classical::kernel(cx, d, gap, t)?;
+            let signed = {
+                let sign_node = cx.graph.int(sign);
+                mul(cx.graph, &[sign_node, image])
+            };
+            axis = add(cx.graph, &[axis, signed]);
+        }
+        factors.push(axis);
+    }
+    if !cx.is_zero(c0) {
+        let ratio = div(cx, c0, a1);
+        let e = mul(cx.graph, &[ratio, t]);
+        let e = neg(cx.graph, e);
+        factors.push(call(cx, "exp", &[e])?);
+    }
+    let g = mul(cx.graph, &factors);
+    Some(cx.simplify(g))
 }
 
 /// The eigenfunction expansion on a box.
@@ -133,7 +205,7 @@ fn box_expansion(
     let mut axes: Vec<Vec<Choice>> = Vec::new();
     for (position, &j) in space.iter().enumerate() {
         let iv = interval(cx, p, conditions, j)?;
-        if iv.periodic || !cx.is_zero(iv.left.value) || !cx.is_zero(iv.right.value) {
+        if !cx.is_zero(iv.left.value) || !cx.is_zero(iv.right.value) {
             return None;
         }
         let x = p.vars[j];
@@ -142,28 +214,27 @@ fn box_expansion(
         let (n_node, n_symbol) = super::dummy(cx, p, stems.get(position).copied().unwrap_or("q"));
         cx.graph.assume(n_symbol, Facts::INTEGER | Facts::NONNEGATIVE);
         let general = interval_families(cx, &iv, n_node, false)?;
-        let [family] = general.as_slice() else {
-            return None;
-        };
         let mut choices = Vec::new();
-        // Literal low modes (zero or negative eigenvalues).
-        for m in family.first..family.first + family.forced {
-            let literal = cx.graph.int(m);
-            let fam = interval_families(cx, &iv, literal, true)?.into_iter().next()?;
-            let norm = match fam.norm {
-                | Some(norm) => norm,
-                | None => {
-                    let square = powi(cx.graph, fam.mode, 2);
-                    let integral = defint(cx, square, x, iv.start, iv.stop)?;
-                    cx.simplify(integral)
-                },
-            };
-            let mode_s = cx.graph.substitute(fam.mode, x, s);
-            choices.push(Choice { mode_x: fam.mode, mode_s, norm, eigen: fam.eigen, series: None });
+        for (family_index, family) in general.iter().enumerate() {
+            // Literal low modes (zero or negative eigenvalues).
+            for m in family.first..family.first + family.forced {
+                let literal = cx.graph.int(m);
+                let fam = interval_families(cx, &iv, literal, true)?.into_iter().nth(family_index)?;
+                let norm = match fam.norm {
+                    | Some(norm) => norm,
+                    | None => {
+                        let square = powi(cx.graph, fam.mode, 2);
+                        let integral = defint(cx, square, x, iv.start, iv.stop)?;
+                        cx.simplify(integral)
+                    },
+                };
+                let mode_s = cx.graph.substitute(fam.mode, x, s);
+                choices.push(Choice { mode_x: fam.mode, mode_s, norm, eigen: fam.eigen, series: None });
+            }
+            let norm = family.norm?;
+            let mode_s = cx.graph.substitute(family.mode, x, s);
+            choices.push(Choice { mode_x: family.mode, mode_s, norm, eigen: family.eigen, series: Some((n_node, family.first + family.forced)) });
         }
-        let norm = family.norm?;
-        let mode_s = cx.graph.substitute(family.mode, x, s);
-        choices.push(Choice { mode_x: family.mode, mode_s, norm, eigen: family.eigen, series: Some((n_node, family.first + family.forced)) });
         axes.push(choices);
     }
     // The product of the choices of all axes.
@@ -220,7 +291,30 @@ fn box_expansion(
                     let s = call(cx, "sin", &[arg])?;
                     div(cx, s, omega)
                 } else {
-                    return None;
+                    // a₂ T'' + a₁ T' + σ T = 0, T(0) = 0, T'(0) = 1:
+                    // e^{-α t} sinh(β t)/(a₂ β), α = a₁/(2 a₂), β² = α² - σ/a₂.
+                    let half = fraction(cx, 1, 2)?;
+                    let ratio = div(cx, a1, a2);
+                    let alpha = mul(cx.graph, &[half, ratio]);
+                    let alpha = cx.simplify(alpha);
+                    let beta2 = {
+                        let a_sq = powi(cx.graph, alpha, 2);
+                        let q = div(cx, sigma, a2);
+                        let nq = neg(cx.graph, q);
+                        add(cx.graph, &[a_sq, nq])
+                    };
+                    let beta2 = cx.simplify(beta2);
+                    let beta = sqrt(cx, beta2)?;
+                    let bt = mul(cx.graph, &[beta, tv]);
+                    let sinh = call(cx, "sinh", &[bt])?;
+                    let damp = {
+                        let m = mul(cx.graph, &[alpha, tv]);
+                        let nm = neg(cx.graph, m);
+                        call(cx, "exp", &[nm])?
+                    };
+                    let denominator = mul(cx.graph, &[a2, beta]);
+                    let q = div(cx, sinh, denominator);
+                    mul(cx.graph, &[damp, q])
                 }
             },
         };
