@@ -64,6 +64,11 @@ pub(super) fn roots(
             }
         }
     }
+    if (7..=8).contains(&factor.len())
+        && let Some(found) = super::tower::roots(graph, factor, &objects)
+    {
+        return Some(found);
+    }
     Some(objects)
 }
 

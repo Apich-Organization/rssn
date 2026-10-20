@@ -192,6 +192,7 @@ mod heuristics;
 mod inequality;
 mod numeric;
 mod quintic;
+mod tower;
 mod normalize;
 mod symbolic;
 mod system;

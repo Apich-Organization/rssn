@@ -34,7 +34,7 @@ use num_traits::ToPrimitive;
 use num_traits::Zero;
 
 /// Precision of the fixed-point arithmetic, in bits.
-const BITS: usize = 640;
+pub(crate) const BITS: usize = 640;
 
 /// The Galois group of an irreducible rational quintic.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -92,46 +92,49 @@ pub struct Quintic {
     pub radical: Option<Radical>,
 }
 
+/// Complex fixed-point number with `BITS` fractional bits.
 #[derive(Clone, Debug)]
-struct Fx {
-    re: BigInt,
-    im: BigInt,
+pub(crate) struct Fx {
+    /// Real part.
+    pub(crate) re: BigInt,
+    /// Imaginary part.
+    pub(crate) im: BigInt,
 }
 
-fn one() -> BigInt {
+pub(crate) fn one() -> BigInt {
     BigInt::one() << BITS
 }
 
 impl Fx {
-    fn zero() -> Self {
+    pub(crate) fn zero() -> Self {
         Self { re: BigInt::zero(), im: BigInt::zero() }
     }
 
-    fn real(re: BigInt) -> Self {
+    pub(crate) fn real(re: BigInt) -> Self {
         Self { re, im: BigInt::zero() }
     }
 
-    fn integer(n: &BigInt) -> Self {
+    pub(crate) fn integer(n: &BigInt) -> Self {
         Self::real(n << BITS)
     }
 
-    fn add(&self, o: &Self) -> Self {
+    pub(crate) fn add(&self, o: &Self) -> Self {
         Self { re: &self.re + &o.re, im: &self.im + &o.im }
     }
 
-    fn sub(&self, o: &Self) -> Self {
+    pub(crate) fn sub(&self, o: &Self) -> Self {
         Self { re: &self.re - &o.re, im: &self.im - &o.im }
     }
 
-    fn mul(&self, o: &Self) -> Self {
+    pub(crate) fn mul(&self, o: &Self) -> Self {
         Self { re: (&self.re * &o.re - &self.im * &o.im) >> BITS, im: (&self.re * &o.im + &self.im * &o.re) >> BITS }
     }
 
-    fn conj(&self) -> Self {
+    pub(crate) fn conj(&self) -> Self {
         Self { re: self.re.clone(), im: -self.im.clone() }
     }
 
-    fn div(&self, o: &Self) -> Option<Self> {
+    pub(crate) fn div(&self, o: &Self) -> Option<Self> {
         let d = &o.re * &o.re + &o.im * &o.im;
         if d.is_zero() {
             return None;
@@ -141,12 +144,12 @@ impl Fx {
         Some(Self { re: re / &d, im: im / &d })
     }
 
-    fn close(&self, o: &Self, exponent: usize) -> bool {
+    pub(crate) fn close(&self, o: &Self, exponent: usize) -> bool {
         let bound = BigInt::one() << (BITS - exponent);
         (&self.re - &o.re).abs() < bound && (&self.im - &o.im).abs() < bound
     }
 
-    fn from_f64(re: f64, im: f64) -> Option<Self> {
+    pub(crate) fn from_f64(re: f64, im: f64) -> Option<Self> {
         let scale = BigRational::from_integer(one());
         let to = |v: f64| BigRational::from_float(v).map(|r| (r * &scale).to_integer());
         Some(Self { re: to(re)?, im: to(im)? })
@@ -159,16 +162,16 @@ fn pow5(z: &Fx) -> Fx {
 }
 
 /// Value of the integer polynomial `g` (ascending) at `z`.
-fn horner(g: &[BigInt], z: &Fx) -> Fx {
+pub(crate) fn horner(g: &[BigInt], z: &Fx) -> Fx {
     g.iter().rev().fold(Fx::zero(), |acc, c| acc.mul(z).add(&Fx::integer(c)))
 }
 
-fn derivative_of(g: &[BigInt]) -> Vec<BigInt> {
+pub(crate) fn derivative_of(g: &[BigInt]) -> Vec<BigInt> {
     g.iter().enumerate().skip(1).map(|(i, c)| c * BigInt::from(i)).collect()
 }
 
 /// `p(y + h)` for ascending coefficients.
-fn taylor_shift(
+pub(crate) fn taylor_shift(
     p: &[BigRational],
     h: &BigRational,
 ) -> Vec<BigRational> {
@@ -245,7 +248,7 @@ pub(crate) fn durand_kerner(raw: &[f64]) -> Option<Vec<(f64, f64)>> {
 }
 
 /// Roots refined to `BITS` bits.
-fn refined_roots(g: &[BigInt]) -> Option<Vec<Fx>> {
+pub(crate) fn refined_roots(g: &[BigInt]) -> Option<Vec<Fx>> {
     let derivative = derivative_of(g);
     let mut out = Vec::new();
     for (re, im) in approximate_roots(g)? {
@@ -287,7 +290,7 @@ fn theta(x: &[Fx]) -> Option<Fx> {
     Some(q.mul(&q))
 }
 
-fn is_square(n: &BigInt) -> bool {
+pub(crate) fn is_square(n: &BigInt) -> bool {
     !n.is_negative() && {
         let r = n.sqrt();
         &r * &r == *n
@@ -295,7 +298,7 @@ fn is_square(n: &BigInt) -> bool {
 }
 
 /// Integer value of the real fixed-point `v` when it is within `2^-90` of one.
-fn round_integer(v: &Fx) -> Option<BigInt> {
+pub(crate) fn round_integer(v: &Fx) -> Option<BigInt> {
     let half = one() >> 1;
     let n = (&v.re + half) >> BITS;
     let near = Fx::integer(&n);
@@ -323,7 +326,7 @@ fn identify(
 }
 
 /// LLL reduction (δ = 3/4) of integer row vectors.
-fn lll(mut b: Vec<Vec<BigInt>>) -> Option<Vec<Vec<BigInt>>> {
+pub(crate) fn lll(mut b: Vec<Vec<BigInt>>) -> Option<Vec<Vec<BigInt>>> {
     let n = b.len();
     let dot = |x: &[BigRational], y: &[BigRational]| -> BigRational { x.iter().zip(y).map(|(p, q)| p * q).sum() };
     let to_q = |v: &[BigInt]| -> Vec<BigRational> { v.iter().cloned().map(BigRational::from_integer).collect() };

@@ -11,10 +11,12 @@
 pub mod algebra;
 pub mod apart;
 pub mod galois;
+pub mod galois_high;
 pub mod groebner;
 pub mod multifactor;
 pub mod repr;
 pub mod rootof;
+pub mod transitive;
 pub mod univariate;
 
 use num_bigint::BigInt;
