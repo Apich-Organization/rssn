@@ -12,7 +12,8 @@
 //! | PEC walls, periodic faces | yes | yes | yes |
 //! | convolutional PML (graded, `κ = 1`, `α = 0`) per face | yes | yes | yes |
 //! | soft current source (any component) | yes | yes | yes |
-//! | TF/SF plane wave along `+x` with arbitrary `(y, z)` polarisation | yes | yes | yes |
+//! | TF/SF plane wave along `+x` with arbitrary `(y, z)` polarisation (1D auxiliary grid) | yes | yes | yes |
+//! | TF/SF plane wave on an **arbitrary box with oblique incidence** ([`ObliquePlaneWave`]) | yes | yes | yes |
 //!
 //! Boundary faces use [`BoundaryCondition`]: `Dirichlet` is a PEC wall,
 //! `Periodic` wraps, `Absorbing` is a PML of `pml_cells` cells terminated by
@@ -24,25 +25,13 @@
 //! one-dimensional auxiliary Yee grid with the same dispersion, so the
 //! scattered-field region is quiet to round-off in vacuum.
 //!
-//! Limitations: no dispersive or anisotropic media, no conductivity, no
-//! non-axis-aligned TF/SF boxes, PMC boundaries not available.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::type_complexity,
-    clippy::many_single_char_names,
-    clippy::manual_midpoint,
-    clippy::struct_excessive_bools,
-    clippy::similar_names
-)]
+//! The oblique TF/SF source evaluates the incident field analytically, so its
+//! leakage is set by the grid dispersion (a few per cent at ten points per
+//! wavelength; use the auxiliary-grid source for normal incidence when exact
+//! cancellation is needed).
+//!
+//! Limitations: no dispersive or anisotropic media, no conductivity,
+//! axis-aligned TF/SF boxes only, PMC boundaries not available.
 
 use crate::sim::boundary::{BoundaryCondition, Face, FaceBcs};
 
@@ -85,6 +74,40 @@ pub struct PlaneWave {
     pub waveform: Box<dyn Fn(f64) -> f64 + Send + Sync>,
 }
 
+/// Plane wave with arbitrary direction on an arbitrary axis-aligned TF/SF box.
+///
+/// The incident field is evaluated analytically at the field positions
+/// (`E = ê f(t - n̂·(x - x0))`, `H = (n̂ × ê) f(...)`, unit impedance), so
+/// the box can have any position and size in 1D, 2D or 3D and the wave any
+/// angle of incidence. Because the incident field is not propagated on the
+/// grid, its numerical dispersion differs slightly from that of the host
+/// lattice and a leakage of order `(k h)² · distance` remains in the
+/// scattered-field region.
+pub struct ObliquePlaneWave {
+    /// Lower corner of the total-field box (physical coordinates).
+    pub lo: [f64; 3],
+    /// Upper corner of the total-field box.
+    pub hi: [f64; 3],
+    /// Propagation direction (normalised internally).
+    pub direction: [f64; 3],
+    /// Electric polarisation (projected orthogonal to `direction`).
+    pub polarization: [f64; 3],
+    /// Point where the waveform argument equals the time.
+    pub origin: [f64; 3],
+    /// Waveform `f(τ)`.
+    pub waveform: Box<dyn Fn(f64) -> f64 + Send + Sync>,
+}
+
+struct ObliqueState {
+    lo: [f64; 3],
+    hi: [f64; 3],
+    n: [f64; 3],
+    e: [f64; 3],
+    h: [f64; 3],
+    origin: [f64; 3],
+    waveform: Box<dyn Fn(f64) -> f64 + Send + Sync>,
+}
+
 /// Solver configuration.
 pub struct YeeConfig {
     /// Cells per axis (inactive axes: 1).
@@ -125,10 +148,8 @@ impl YeeConfig {
             pml_order: 3.0,
             eps_r: None,
         };
-        for a in 0..dim {
-            c.n[a] = n[a];
-            c.h[a] = h[a];
-        }
+        c.n[..dim].copy_from_slice(&n[..dim]);
+        c.h[..dim].copy_from_slice(&h[..dim]);
         Ok(c)
     }
 }
@@ -152,6 +173,7 @@ pub struct Yee {
     use_pml: bool,
     sources: Vec<CurrentSource>,
     pw: Option<PlaneWaveState>,
+    obl: Option<ObliqueState>,
 }
 
 struct PlaneWaveState {
@@ -160,7 +182,7 @@ struct PlaneWaveState {
     h: Vec<f64>,
 }
 
-fn comp_index(c: Comp) -> usize {
+const fn comp_index(c: Comp) -> usize {
     match c {
         Comp::Ex => 0,
         Comp::Ey => 1,
@@ -169,6 +191,14 @@ fn comp_index(c: Comp) -> usize {
         Comp::Hy => 4,
         Comp::Hz => 5,
     }
+}
+
+/// One term of a curl difference: field component `f`, differentiated along `axis`, with PML memory slot `psi`.
+#[derive(Clone, Copy)]
+struct CurlTerm {
+    f: usize,
+    axis: usize,
+    psi: usize,
 }
 
 impl Yee {
@@ -248,6 +278,7 @@ impl Yee {
             use_pml,
             sources: Vec::new(),
             pw: None,
+            obl: None,
         })
     }
 
@@ -270,6 +301,98 @@ impl Yee {
         Ok(())
     }
 
+    /// Installs an oblique plane wave on an arbitrary TF/SF box.
+    ///
+    /// # Errors
+    /// For a zero direction or polarisation, a polarisation parallel to the
+    /// direction, or components along inactive axes.
+    pub fn set_oblique_plane_wave(&mut self, w: ObliquePlaneWave) -> Result<(), String> {
+        let norm = |v: [f64; 3]| (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+        let nn = norm(w.direction);
+        if nn == 0.0 {
+            return Err("direction must be non-zero".into());
+        }
+        let n = [w.direction[0] / nn, w.direction[1] / nn, w.direction[2] / nn];
+        let dotp = n[0] * w.polarization[0] + n[1] * w.polarization[1] + n[2] * w.polarization[2];
+        let mut e = [w.polarization[0] - dotp * n[0], w.polarization[1] - dotp * n[1], w.polarization[2] - dotp * n[2]];
+        let en = norm(e);
+        if en < 1e-12 {
+            return Err("polarisation must not be parallel to the direction".into());
+        }
+        for c in &mut e {
+            *c /= en;
+        }
+        for a in self.cfg.dim..3 {
+            if n[a].abs() > 1e-12 {
+                return Err("direction has a component along an inactive axis".into());
+            }
+        }
+        let h = [n[1] * e[2] - n[2] * e[1], n[2] * e[0] - n[0] * e[2], n[0] * e[1] - n[1] * e[0]];
+        self.obl = Some(ObliqueState { lo: w.lo, hi: w.hi, n, e, h, origin: w.origin, waveform: w.waveform });
+        Ok(())
+    }
+
+    /// Physical position of a field component at (possibly out-of-range) cell indices.
+    fn pos_of(&self, comp: usize, ijk: [isize; 3]) -> [f64; 3] {
+        let mut x = [0.0; 3];
+        for a in 0..self.cfg.dim {
+            let off = if comp < 3 { f64::from(u8::from(a == comp)) } else { f64::from(u8::from(a != comp - 3)) };
+            x[a] = (ijk[a] as f64 + 0.5 * off) * self.cfg.h[a];
+        }
+        x
+    }
+
+    fn in_box(&self, pos: [f64; 3]) -> f64 {
+        let Some(o) = &self.obl else { return 0.0 };
+        for a in 0..self.cfg.dim {
+            let tol = 1e-9 * self.cfg.h[a];
+            if pos[a] < o.lo[a] - tol || pos[a] > o.hi[a] + tol {
+                return 0.0;
+            }
+        }
+        1.0
+    }
+
+    fn incident(&self, comp: usize, pos: [f64; 3], t: f64) -> f64 {
+        let Some(o) = &self.obl else { return 0.0 };
+        let s: f64 = (0..3).map(|a| o.n[a] * (pos[a] - o.origin[a])).sum();
+        let f = (o.waveform)(t - s);
+        if comp < 3 { o.e[comp] * f } else { o.h[comp - 3] * f }
+    }
+
+    /// Correction of the difference quotient `∂_a G` used to update component
+    /// `fc` so that total and scattered fields are mixed consistently.
+    fn tf_corr(&self, fc: usize, g: usize, ijk: [usize; 3], a: usize, forward: bool) -> f64 {
+        if self.obl.is_none() || self.cfg.n[a] == 1 {
+            return 0.0;
+        }
+        let n = self.cfg.n[a];
+        let cur = [ijk[0] as isize, ijk[1] as isize, ijk[2] as isize];
+        let mut nb = cur;
+        if forward {
+            if ijk[a] + 1 >= n && !self.periodic[a] {
+                return 0.0;
+            }
+            nb[a] += 1;
+        } else {
+            if ijk[a] == 0 && !self.periodic[a] {
+                return 0.0;
+            }
+            nb[a] -= 1;
+        }
+        let mf = self.in_box(self.pos_of(fc, cur));
+        let (pc, pn) = (self.pos_of(g, cur), self.pos_of(g, nb));
+        let (mc, mn) = (self.in_box(pc), self.in_box(pn));
+        if crate::kernels::exact_eq(mf, mc) && crate::kernels::exact_eq(mf, mn) {
+            return 0.0;
+        }
+        let tg = if g < 3 { self.t } else { self.t + 0.5 * self.dt };
+        let dcur = if crate::kernels::exact_eq(mf, mc) { 0.0 } else { (mf - mc) * self.incident(g, pc, tg) };
+        let dnb = if crate::kernels::exact_eq(mf, mn) { 0.0 } else { (mf - mn) * self.incident(g, pn, tg) };
+        let h = self.cfg.h[a];
+        if forward { (dnb - dcur) / h } else { (dcur - dnb) / h }
+    }
+
     /// Number of cells.
     #[must_use]
     pub fn size(&self) -> usize {
@@ -278,7 +401,7 @@ impl Yee {
 
     /// Flat index of cell `(i, j, k)`.
     #[must_use]
-    pub fn idx(&self, i: usize, j: usize, k: usize) -> usize {
+    pub const fn idx(&self, i: usize, j: usize, k: usize) -> usize {
         i + self.cfg.n[0] * (j + self.cfg.n[1] * k)
     }
 
@@ -295,13 +418,13 @@ impl Yee {
 
     /// Cell size along an axis.
     #[must_use]
-    pub fn h(&self, a: usize) -> f64 {
+    pub const fn h(&self, a: usize) -> f64 {
         self.cfg.h[a]
     }
 
     /// Cells per axis.
     #[must_use]
-    pub fn n(&self) -> [usize; 3] {
+    pub const fn n(&self) -> [usize; 3] {
         self.cfg.n
     }
 
@@ -357,9 +480,11 @@ impl Yee {
     }
 
     /// Curl-difference `∂_a1 F1 - ∂_a2 F2` for the H update (forward differences) with PML memory.
-    fn curl_h(&mut self, p: usize, ijk: [usize; 3], f1: usize, a1: usize, m1: usize, f2: usize, a2: usize, m2: usize) -> f64 {
-        let mut d1 = self.dfw(&self.f[f1], ijk, a1);
-        let mut d2 = self.dfw(&self.f[f2], ijk, a2);
+    fn curl_h(&mut self, fc: usize, p: usize, ijk: [usize; 3], t1: CurlTerm, t2: CurlTerm) -> f64 {
+        let CurlTerm { f: f1, axis: a1, psi: m1 } = t1;
+        let CurlTerm { f: f2, axis: a2, psi: m2 } = t2;
+        let mut d1 = self.dfw(&self.f[f1], ijk, a1) + self.tf_corr(fc, f1, ijk, a1, true);
+        let mut d2 = self.dfw(&self.f[f2], ijk, a2) + self.tf_corr(fc, f2, ijk, a2, true);
         if self.use_pml {
             let (b, a) = self.pml_half[a1][ijk[a1]];
             self.psi[m1][p] = b * self.psi[m1][p] + a * d1;
@@ -371,9 +496,11 @@ impl Yee {
         d1 - d2
     }
 
-    fn curl_e(&mut self, p: usize, ijk: [usize; 3], f1: usize, a1: usize, m1: usize, f2: usize, a2: usize, m2: usize) -> f64 {
-        let mut d1 = self.dbw(&self.f[f1], ijk, a1);
-        let mut d2 = self.dbw(&self.f[f2], ijk, a2);
+    fn curl_e(&mut self, fc: usize, p: usize, ijk: [usize; 3], t1: CurlTerm, t2: CurlTerm) -> f64 {
+        let CurlTerm { f: f1, axis: a1, psi: m1 } = t1;
+        let CurlTerm { f: f2, axis: a2, psi: m2 } = t2;
+        let mut d1 = self.dbw(&self.f[f1], ijk, a1) + self.tf_corr(fc, f1, ijk, a1, false);
+        let mut d2 = self.dbw(&self.f[f2], ijk, a2) + self.tf_corr(fc, f2, ijk, a2, false);
         if self.use_pml {
             let (b, a) = self.pml_int[a1][ijk[a1]];
             self.psi[m1][p] = b * self.psi[m1][p] + a * d1;
@@ -394,9 +521,9 @@ impl Yee {
                     let ijk = [i, j, k];
                     let p = self.idx(i, j, k);
                     // Hx: dy Ez - dz Ey ; Hy: dz Ex - dx Ez ; Hz: dx Ey - dy Ex
-                    let cx = self.curl_h(p, ijk, 2, 1, 0, 1, 2, 1);
-                    let cy = self.curl_h(p, ijk, 0, 2, 2, 2, 0, 3);
-                    let cz = self.curl_h(p, ijk, 1, 0, 4, 0, 1, 5);
+                    let cx = self.curl_h(3, p, ijk, CurlTerm { f: 2, axis: 1, psi: 0 }, CurlTerm { f: 1, axis: 2, psi: 1 });
+                    let cy = self.curl_h(4, p, ijk, CurlTerm { f: 0, axis: 2, psi: 2 }, CurlTerm { f: 2, axis: 0, psi: 3 });
+                    let cz = self.curl_h(5, p, ijk, CurlTerm { f: 1, axis: 0, psi: 4 }, CurlTerm { f: 0, axis: 1, psi: 5 });
                     self.f[3][p] -= dt_h * cx;
                     self.f[4][p] -= dt_h * cy;
                     self.f[5][p] -= dt_h * cz;
@@ -414,9 +541,9 @@ impl Yee {
                     let ijk = [i, j, k];
                     let p = self.idx(i, j, k);
                     // Ex: dy Hz - dz Hy ; Ey: dz Hx - dx Hz ; Ez: dx Hy - dy Hx
-                    let cx = self.curl_e(p, ijk, 5, 1, 6, 4, 2, 7);
-                    let cy = self.curl_e(p, ijk, 3, 2, 8, 5, 0, 9);
-                    let cz = self.curl_e(p, ijk, 4, 0, 10, 3, 1, 11);
+                    let cx = self.curl_e(0, p, ijk, CurlTerm { f: 5, axis: 1, psi: 6 }, CurlTerm { f: 4, axis: 2, psi: 7 });
+                    let cy = self.curl_e(1, p, ijk, CurlTerm { f: 3, axis: 2, psi: 8 }, CurlTerm { f: 5, axis: 0, psi: 9 });
+                    let cz = self.curl_e(2, p, ijk, CurlTerm { f: 4, axis: 0, psi: 10 }, CurlTerm { f: 3, axis: 1, psi: 11 });
                     let ei = self.eps_inv[p];
                     self.f[0][p] += dt * ei * cx;
                     self.f[1][p] += dt * ei * cy;

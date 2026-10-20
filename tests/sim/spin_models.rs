@@ -178,7 +178,7 @@ fn heisenberg_wolff_matches_metropolis_in_3d_and_1d_exact() {
 
 #[test]
 fn unsupported_combinations_are_errors() {
-    let mut m = OnModel::<2, 2>::new([4, 4], true, 1.0, 1).unwrap();
+    let mut m = OnModel::<2, 4>::new([4, 4], true, 1.0, 1).unwrap();
     assert!(m.heat_bath_sweep().is_err());
     let mut h = OnModel::<2, 1>::new([4, 4], true, 1.0, 1).unwrap();
     h.field = 0.3;
@@ -313,4 +313,126 @@ fn scaling_helpers() {
     let t = [1.0, 2.0, 3.0];
     assert!((binder_crossing(&t, &[0.0, 1.0, 2.0], &[2.0, 1.5, 1.0]).unwrap() - 2.0 - 1.0 / 3.0).abs() < 1e-12);
     assert!(binder_crossing(&t, &[0.0, 0.0, 0.0], &[1.0, 1.0, 1.0]).is_none());
+}
+
+fn bessel_i(
+    nu: usize,
+    x: f64,
+) -> f64 {
+    // power series of the modified Bessel function of integer order
+    let mut term = (x / 2.0).powi(nu as i32) / (1..=nu).map(|k| k as f64).product::<f64>();
+    let mut sum = term;
+    for k in 1..60 {
+        term *= (x / 2.0) * (x / 2.0) / (k as f64 * (k + nu) as f64);
+        sum += term;
+    }
+    sum
+}
+
+#[test]
+fn heat_bath_direction_has_the_exact_conditional_mean() {
+    use rssn::kernels::random::Rng;
+    let mut rng = Rng::new(7);
+    let n = 200_000;
+    for a in [0.05_f64, 0.7, 2.5, 9.0] {
+        // XY: <cos theta> = I1(a)/I0(a)
+        let f: [f64; 2] = [0.3 * a / 0.5, 0.4 * a / 0.5];
+        let beta = 0.5;
+        let fm = (f[0] * f[0] + f[1] * f[1]).sqrt();
+        let kappa = beta * fm;
+        let mut acc = 0.0;
+        for _ in 0..n {
+            let s = heat_bath_direction::<2>(&mut rng, &f, beta).unwrap();
+            acc += (s[0] * f[0] + s[1] * f[1]) / fm;
+        }
+        let exact = bessel_i(1, kappa) / bessel_i(0, kappa);
+        assert!((acc / n as f64 - exact).abs() < 5e-3, "XY kappa {kappa}: {} vs {exact}", acc / n as f64);
+        // Heisenberg: <cos theta> = coth(a) - 1/a, and the perpendicular components are isotropic
+        let f3 = [f[0], f[1], 0.2 * a];
+        let f3m = (f3[0] * f3[0] + f3[1] * f3[1] + f3[2] * f3[2]).sqrt();
+        let k3 = beta * f3m;
+        let (mut c, mut norm_err) = (0.0, 0.0_f64);
+        for _ in 0..n {
+            let s = heat_bath_direction::<3>(&mut rng, &f3, beta).unwrap();
+            c += (s[0] * f3[0] + s[1] * f3[1] + s[2] * f3[2]) / f3m;
+            norm_err = norm_err.max((s[0] * s[0] + s[1] * s[1] + s[2] * s[2] - 1.0).abs());
+        }
+        let exact3 = 1.0 / k3.tanh() - 1.0 / k3;
+        assert!((c / n as f64 - exact3).abs() < 5e-3, "Heisenberg a {k3}: {} vs {exact3}", c / n as f64);
+        assert!(norm_err < 1e-12);
+    }
+    assert!(heat_bath_direction::<4>(&mut rng, &[1.0; 4], 1.0).is_err());
+}
+
+#[test]
+fn xy_and_heisenberg_heat_bath_agree_with_metropolis_and_exact_chains() {
+    // XY 2-D
+    let mut a = OnModel::<2, 2>::new([8, 8], true, 1.0, 201).unwrap();
+    let mut b = OnModel::<2, 2>::new([8, 8], true, 1.0, 202).unwrap();
+    let (ea, ma) = series_on(&mut a, Update::HeatBath, 1000, 20000);
+    let (eb, mb) = series_on(&mut b, Update::Metropolis(1.0), 1000, 40000);
+    agree(&ea, &eb, 5.0, 0.004);
+    agree(&ma, &mb, 5.0, 0.01);
+    // Heisenberg 1-D ring: e = -(coth K - 1/K) per bond in the thermodynamic limit
+    let beta = 1.5;
+    let mut h = OnModel::<1, 3>::new([200], true, beta, 203).unwrap();
+    let (e, _) = series_on(&mut h, Update::HeatBath, 500, 6000);
+    let (mean, err) = mean_and_error(&e);
+    let exact = -(1.0 / beta.tanh() - 1.0 / beta);
+    assert!((mean - exact).abs() < 5.0 * err + 0.01, "{mean} vs {exact}");
+    // XY 1-D ring: e = -I1(K)/I0(K) per bond
+    let mut x = OnModel::<1, 2>::new([200], true, beta, 204).unwrap();
+    let (e, _) = series_on(&mut x, Update::HeatBath, 500, 6000);
+    let (mean, err) = mean_and_error(&e);
+    let exact = -bessel_i(1, beta) / bessel_i(0, beta);
+    assert!((mean - exact).abs() < 5.0 * err + 0.01, "{mean} vs {exact}");
+    // heat bath with a field is allowed (it is just part of the local field)
+    let mut f = OnModel::<2, 3>::new([6, 6], true, 1.0, 205).unwrap();
+    f.field = 0.5;
+    for _ in 0..200 {
+        f.heat_bath_sweep().unwrap();
+    }
+    assert!(f.magnetisation()[0] > 0.0);
+}
+
+#[test]
+fn potts_parallel_tempering_matches_independent_runs() {
+    let betas = [0.6, 0.75, 0.9, 1.05];
+    let mut pt = PottsTempering::<2>::new([8, 8], true, 3, &betas, 301).unwrap();
+    let mut slot1 = Vec::new();
+    pt.run(5000, Update::Metropolis(0.0), |round, reps| {
+        if round > 500 {
+            slot1.push(reps[1].energy() / 64.0);
+        }
+    });
+    for (att, acc) in &pt.swap_stats {
+        assert!(*att > 0 && (*acc as f64) / (*att as f64) > 0.1, "swap {acc}/{att}");
+    }
+    let mut w = Potts::<2>::new([8, 8], true, 3, 0.75, 302).unwrap();
+    let mut e = Vec::new();
+    for k in 0..30000 {
+        w.update(Update::SwendsenWang);
+        if k > 500 {
+            e.push(w.energy() / 64.0);
+        }
+    }
+    agree(&slot1, &e, 5.0, 0.01);
+    assert!(PottsTempering::<2>::new([4, 4], true, 3, &[1.0], 1).is_err());
+}
+
+#[test]
+fn wang_landau_for_continuous_spins_reproduces_open_chain_thermodynamics() {
+    // open chain of 6 spins: Z ~ (4 pi sinh K / K)^(N-1) (Heisenberg), (2 pi)^N I0(K)^(N-1) (XY)
+    let nb = 5.0;
+    let dos_h = wang_landau_on::<1, 3>([6], false, (-nb - 1e-9, nb + 1e-9, 100), 1.0, 1e-4, 0.7, 401).unwrap();
+    let dos_x = wang_landau_on::<1, 2>([6], false, (-nb - 1e-9, nb + 1e-9, 100), 1.0, 1e-4, 0.7, 402).unwrap();
+    for beta in [0.3, 0.8, 1.4] {
+        let (_, e_h, _) = canonical_from_dos(&dos_h, beta);
+        let exact_h = -nb * (1.0 / beta.tanh() - 1.0 / beta);
+        assert!((e_h - exact_h).abs() < 0.05 * exact_h.abs(), "Heisenberg beta {beta}: {e_h} vs {exact_h}");
+        let (_, e_x, _) = canonical_from_dos(&dos_x, beta);
+        let exact_x = -nb * bessel_i(1, beta) / bessel_i(0, beta);
+        assert!((e_x - exact_x).abs() < 0.05 * exact_x.abs(), "XY beta {beta}: {e_x} vs {exact_x}");
+    }
+    assert!(wang_landau_on::<1, 3>([6], false, (1.0, 0.0, 10), 1.0, 1e-3, 0.7, 1).is_err());
 }

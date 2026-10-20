@@ -9,50 +9,13 @@
 //! |---|---|---|
 //! | [`BhTree`] Barnes-Hut (monopole + dipole about the `|s|`-weighted centre, so signed Coulomb charges work) | 1, 2, 3 | `O(theta^2)` |
 //! | [`direct_field`] | any | exact reference, `O(N^2)` |
-//! | [`fmm2d_field`] fast multipole method (uniform quadtree, M2M/M2L/L2L, order `p`) | 2 | geometric in `p` (about `1e-10` for `p = 24`) |
+//! | [`fmm2d_field`] adaptive fast multipole method (quadtree, dual-tree traversal, M2M/M2L/L2L, order `p`) | 2 | geometric in `p` (about `1e-10` for `p = 24`) |
+//! | [`fmm3d_field`] / [`crate::sim::fmm::fmm3d`] adaptive octree FMM (Cartesian Taylor expansions, M2M/M2L/L2L, potential and field) | 3 | geometric in `p` and the acceptance `theta` |
 //!
 //! Helpers [`gravity_accelerations`] and [`coulomb_forces`] wrap the fields
 //! for use with the integrators of [`crate::sim::symplectic`].
-//! Limitations: the FMM is two-dimensional (log potential) and non-adaptive;
-//! the 3-D FMM is not implemented (use Barnes-Hut).
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::assigning_clones,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::chunks_exact_to_as_chunks,
-    clippy::cognitive_complexity,
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::excessive_precision,
-    clippy::float_cmp,
-    clippy::if_not_else,
-    clippy::imprecise_flops,
-    clippy::indexing_slicing,
-    clippy::int_plus_one,
-    clippy::items_after_statements,
-    clippy::manual_let_else,
-    clippy::manual_memcpy,
-    clippy::manual_midpoint,
-    clippy::many_single_char_names,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions,
-    clippy::needless_pass_by_value,
-    clippy::needless_range_loop,
-    clippy::option_if_let_else,
-    clippy::similar_names,
-    clippy::single_call_fn,
-    clippy::single_match_else,
-    clippy::suboptimal_flops,
-    clippy::suspicious_operation_groupings,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::useless_let_if_seq,
-    clippy::while_float
-)]
+//! The FMM algorithms live in [`crate::sim::fmm`]. Limitations: the FMM far field is the unsoftened
+//! kernel (softening acts on the near field only); there is no periodic FMM (use Ewald/PME).
 
 const NONE: u32 = u32::MAX;
 const MAX_DEPTH: usize = 48;
@@ -122,7 +85,7 @@ impl<const D: usize> BhTree<D> {
         let mut center = [0.0; D];
         let mut half = 0.0_f64;
         for a in 0..D {
-            center[a] = 0.5 * (lo[a] + hi[a]);
+            center[a] = f64::midpoint(lo[a], hi[a]);
             half = half.max(0.5 * (hi[a] - lo[a]));
         }
         half = half * 1.000_001 + 1e-12;
@@ -393,70 +356,13 @@ pub fn coulomb_forces<const D: usize>(
         .collect())
 }
 
+
 // ---------------------------------------------------------------------------
-// 2-D fast multipole method
+// FMM front ends (the algorithms live in `crate::sim::fmm`)
 // ---------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, Default)]
-struct Cx {
-    re: f64,
-    im: f64,
-}
-
-impl Cx {
-    const fn new(re: f64, im: f64) -> Self {
-        Self { re, im }
-    }
-
-    fn add(
-        self,
-        o: Self,
-    ) -> Self {
-        Self::new(self.re + o.re, self.im + o.im)
-    }
-
-    fn sub(
-        self,
-        o: Self,
-    ) -> Self {
-        Self::new(self.re - o.re, self.im - o.im)
-    }
-
-    fn mul(
-        self,
-        o: Self,
-    ) -> Self {
-        Self::new(self.re * o.re - self.im * o.im, self.re * o.im + self.im * o.re)
-    }
-
-    fn scale(
-        self,
-        s: f64,
-    ) -> Self {
-        Self::new(self.re * s, self.im * s)
-    }
-
-    fn inv(self) -> Self {
-        let n = self.re * self.re + self.im * self.im;
-        Self::new(self.re / n, -self.im / n)
-    }
-}
-
-fn binom_table(p: usize) -> Vec<Vec<f64>> {
-    let n = 2 * p + 2;
-    let mut c = vec![vec![0.0; n + 1]; n + 1];
-    for i in 0..=n {
-        c[i][0] = 1.0;
-        for j in 1..=i {
-            c[i][j] = c[i - 1][j - 1] + if j <= i - 1 { c[i - 1][j] } else { 0.0 };
-        }
-    }
-    c
-}
-
-/// Field `sum_j s_j (x_j - x_i) / |x_j - x_i|^2` at every point (self excluded) by a 2-D FMM of order `p`.
-///
-/// Uses a uniform quadtree with about `ppb` points per finest box.
+/// Field `sum_j s_j (x_j - x_i) / |x_j - x_i|^2` at every point (self excluded) by an
+/// adaptive 2-D FMM of order `p` with about `ppb` points per leaf box.
 ///
 /// # Errors
 /// Fails for empty input or length mismatch.
@@ -466,174 +372,20 @@ pub fn fmm2d_field(
     p: usize,
     ppb: usize,
 ) -> Result<Vec<[f64; 2]>, String> {
-    let n = pos.len();
-    if n == 0 || src.len() != n {
-        return Err("positions and sources must be non-empty and of equal length".into());
-    }
-    let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
-    for q in pos {
-        for a in 0..2 {
-            lo[a] = lo[a].min(q[a]);
-            hi[a] = hi[a].max(q[a]);
-        }
-    }
-    let size = (hi[0] - lo[0]).max(hi[1] - lo[1]) * 1.000_001 + 1e-12;
-    let mut levels = 2usize;
-    while (n as f64) / (4.0_f64.powi(levels as i32)) > ppb as f64 && levels < 9 {
-        levels += 1;
-    }
-    let nb = 1usize << levels;
-    let bsize = size / nb as f64;
-    let binom = binom_table(p);
-    let centre = |lvl: usize, ix: usize, iy: usize| -> Cx {
-        let bs = size / (1usize << lvl) as f64;
-        Cx::new(lo[0] + (ix as f64 + 0.5) * bs, lo[1] + (iy as f64 + 0.5) * bs)
-    };
-    // assign points to leaf boxes
-    let mut leaf: Vec<Vec<usize>> = vec![Vec::new(); nb * nb];
-    for (i, q) in pos.iter().enumerate() {
-        let ix = (((q[0] - lo[0]) / bsize) as usize).min(nb - 1);
-        let iy = (((q[1] - lo[1]) / bsize) as usize).min(nb - 1);
-        leaf[iy * nb + ix].push(i);
-    }
-    // multipoles per level: mp[lvl][box][k]
-    let mut mp: Vec<Vec<Vec<Cx>>> = Vec::new();
-    for lvl in 0..=levels {
-        let m = 1usize << lvl;
-        mp.push(vec![vec![Cx::default(); p + 1]; m * m]);
-    }
-    for iy in 0..nb {
-        for ix in 0..nb {
-            let c = centre(levels, ix, iy);
-            let b = &mut mp[levels][iy * nb + ix];
-            for &i in &leaf[iy * nb + ix] {
-                let dz = Cx::new(pos[i][0], pos[i][1]).sub(c);
-                let mut pw = Cx::new(1.0, 0.0);
-                for k in 0..=p {
-                    b[k] = b[k].add(pw.scale(src[i]));
-                    pw = pw.mul(dz);
-                }
-            }
-        }
-    }
-    // upward pass (M2M)
-    for lvl in (0..levels).rev() {
-        let m = 1usize << lvl;
-        for iy in 0..m {
-            for ix in 0..m {
-                let cp = centre(lvl, ix, iy);
-                let mut acc = vec![Cx::default(); p + 1];
-                for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
-                    let (cx_, cy_) = (2 * ix + dx, 2 * iy + dy);
-                    let t = centre(lvl + 1, cx_, cy_).sub(cp);
-                    let child = &mp[lvl + 1][cy_ * (2 * m) + cx_];
-                    let mut tp = vec![Cx::new(1.0, 0.0); p + 1];
-                    for k in 1..=p {
-                        tp[k] = tp[k - 1].mul(t);
-                    }
-                    for k in 0..=p {
-                        for l in 0..=k {
-                            acc[k] = acc[k].add(tp[k - l].mul(child[l]).scale(binom[k][l]));
-                        }
-                    }
-                }
-                mp[lvl][iy * m + ix] = acc;
-            }
-        }
-    }
-    // downward pass: locals
-    let mut local: Vec<Vec<Vec<Cx>>> = Vec::new();
-    for lvl in 0..=levels {
-        let m = 1usize << lvl;
-        local.push(vec![vec![Cx::default(); p + 1]; m * m]);
-    }
-    for lvl in 2..=levels {
-        let m = 1usize << lvl;
-        for iy in 0..m {
-            for ix in 0..m {
-                let ct = centre(lvl, ix, iy);
-                let mut d = vec![Cx::default(); p + 1];
-                // L2L from parent
-                {
-                    let (px, py) = (ix / 2, iy / 2);
-                    let cp = centre(lvl - 1, px, py);
-                    let t = ct.sub(cp);
-                    let par = &local[lvl - 1][py * (m / 2) + px];
-                    let mut tp = vec![Cx::new(1.0, 0.0); p + 1];
-                    for k in 1..=p {
-                        tp[k] = tp[k - 1].mul(t);
-                    }
-                    for mm in 0..=p {
-                        for l in mm..=p {
-                            d[mm] = d[mm].add(par[l].mul(tp[l - mm]).scale(binom[l][mm]));
-                        }
-                    }
-                }
-                // M2L from the interaction list
-                let (px, py) = ((ix / 2) as i64, (iy / 2) as i64);
-                let mh = (m / 2) as i64;
-                for ny in (py - 1)..=(py + 1) {
-                    for nx in (px - 1)..=(px + 1) {
-                        if nx < 0 || ny < 0 || nx >= mh || ny >= mh {
-                            continue;
-                        }
-                        for (cdx, cdy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
-                            let (sx, sy) = (2 * nx + cdx, 2 * ny + cdy);
-                            if (sx - ix as i64).abs() <= 1 && (sy - iy as i64).abs() <= 1 {
-                                continue;
-                            }
-                            let cs = centre(lvl, sx as usize, sy as usize);
-                            let u = ct.sub(cs);
-                            let ui = u.inv();
-                            let src_mp = &mp[lvl][sy as usize * m + sx as usize];
-                            // d_l = sum_k b_k (-1)^l C(k+l, l) / u^(k+l+1)
-                            let mut upow = vec![Cx::new(1.0, 0.0); 2 * p + 2];
-                            for k in 1..2 * p + 2 {
-                                upow[k] = upow[k - 1].mul(ui);
-                            }
-                            for l in 0..=p {
-                                let sign = if l % 2 == 0 { 1.0 } else { -1.0 };
-                                for k in 0..=p {
-                                    d[l] = d[l].add(src_mp[k].mul(upow[k + l + 1]).scale(sign * binom[k + l][l]));
-                                }
-                            }
-                        }
-                    }
-                }
-                local[lvl][iy * m + ix] = d;
-            }
-        }
-    }
-    // evaluation
-    let mut out = vec![[0.0; 2]; n];
-    for iy in 0..nb {
-        for ix in 0..nb {
-            let ct = centre(levels, ix, iy);
-            let d = &local[levels][iy * nb + ix];
-            for &i in &leaf[iy * nb + ix] {
-                let z = Cx::new(pos[i][0], pos[i][1]);
-                let w = z.sub(ct);
-                // Horner for the local expansion
-                let mut acc = Cx::default();
-                for l in (0..=p).rev() {
-                    acc = acc.mul(w).add(d[l]);
-                }
-                // direct near field
-                for ny in iy.saturating_sub(1)..=(iy + 1).min(nb - 1) {
-                    for nx in ix.saturating_sub(1)..=(ix + 1).min(nb - 1) {
-                        for &j in &leaf[ny * nb + nx] {
-                            if j == i {
-                                continue;
-                            }
-                            let dz = z.sub(Cx::new(pos[j][0], pos[j][1]));
-                            acc = acc.add(dz.inv().scale(src[j]));
-                        }
-                    }
-                }
-                // field f = -conj(W)
-                out[i] = [-acc.re, acc.im];
-            }
-        }
-    }
-    Ok(out)
+    crate::sim::fmm::fmm2d(pos, src, &crate::sim::fmm::FmmOptions { order: p, leaf_size: ppb, theta: 0.4, eps: 0.0 })
+}
+
+/// Field `sum_j s_j (x_j - x_i) / |x_j - x_i|^3` at every point (self excluded) by the
+/// adaptive 3-D FMM of order `p` with about `ppb` points per leaf box.
+///
+/// # Errors
+/// Fails for empty input or length mismatch.
+pub fn fmm3d_field(
+    pos: &[[f64; 3]],
+    src: &[f64],
+    p: usize,
+    ppb: usize,
+) -> Result<Vec<[f64; 3]>, String> {
+    let r = crate::sim::fmm::fmm3d(pos, src, &crate::sim::fmm::FmmOptions { order: p, leaf_size: ppb, theta: 0.5, eps: 0.0 })?;
+    Ok(r.field)
 }

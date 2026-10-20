@@ -278,3 +278,103 @@ fn rigid_body_step_is_time_reversible_under_torque() {
         assert!((b.l_body[k] - start.l_body[k]).abs() < 1e-10);
     }
 }
+
+/// High-accuracy RK4 reference of the free rigid body (quaternion + Euler equations).
+fn rigid_reference(
+    inertia: [f64; 3],
+    q0: [f64; 4],
+    l0: [f64; 3],
+    t: f64,
+) -> ([f64; 4], [f64; 3]) {
+    let rhs = |q: &[f64; 4], l: &[f64; 3]| -> ([f64; 4], [f64; 3]) {
+        let w = [l[0] / inertia[0], l[1] / inertia[1], l[2] / inertia[2]];
+        let dq = quat_mul(q, &[0.0, w[0], w[1], w[2]]);
+        let dl = [l[1] * w[2] - l[2] * w[1], l[2] * w[0] - l[0] * w[2], l[0] * w[1] - l[1] * w[0]];
+        ([0.5 * dq[0], 0.5 * dq[1], 0.5 * dq[2], 0.5 * dq[3]], dl)
+    };
+    let n = 40_000;
+    let h = t / n as f64;
+    let (mut q, mut l) = (q0, l0);
+    for _ in 0..n {
+        let (k1q, k1l) = rhs(&q, &l);
+        let adv = |c: f64, kq: &[f64; 4], kl: &[f64; 3]| -> ([f64; 4], [f64; 3]) {
+            ([q[0] + c * kq[0], q[1] + c * kq[1], q[2] + c * kq[2], q[3] + c * kq[3]], [l[0] + c * kl[0], l[1] + c * kl[1], l[2] + c * kl[2]])
+        };
+        let (q2, l2) = adv(0.5 * h, &k1q, &k1l);
+        let (k2q, k2l) = rhs(&q2, &l2);
+        let (q3, l3) = adv(0.5 * h, &k2q, &k2l);
+        let (k3q, k3l) = rhs(&q3, &l3);
+        let (q4, l4) = adv(h, &k3q, &k3l);
+        let (k4q, k4l) = rhs(&q4, &l4);
+        for i in 0..4 {
+            q[i] += h / 6.0 * (k1q[i] + 2.0 * k2q[i] + 2.0 * k3q[i] + k4q[i]);
+        }
+        for i in 0..3 {
+            l[i] += h / 6.0 * (k1l[i] + 2.0 * k2l[i] + 2.0 * k3l[i] + k4l[i]);
+        }
+    }
+    (q, l)
+}
+
+fn rigid_error(
+    inertia: [f64; 3],
+    top: bool,
+    order: usize,
+    h: f64,
+) -> f64 {
+    let q0 = [0.5, 0.5, 0.5, 0.5];
+    let l0 = [0.7, 0.4, 1.1];
+    let t = 2.0;
+    let mut b = RigidBody { inertia, q: q0, l_body: l0 };
+    for _ in 0..(t / h).round() as usize {
+        b.free_step_composed(h, top, order).unwrap();
+    }
+    let (qr, lr) = rigid_reference(inertia, q0, l0, t);
+    let dq: f64 = (0..4).map(|i| (b.q[i] - qr[i]).powi(2)).sum::<f64>().sqrt();
+    let dl: f64 = (0..3).map(|i| (b.l_body[i] - lr[i]).powi(2)).sum::<f64>().sqrt();
+    dq + dl
+}
+
+#[test]
+fn symmetric_top_flow_is_exact_for_a_symmetric_body_for_any_step() {
+    let inertia = [2.0, 2.0, 1.0];
+    for axis_perm in [[2.0, 2.0, 1.0], [1.0, 2.0, 2.0], [2.0, 1.0, 2.0]] {
+        let e = rigid_error(axis_perm, true, 2, 2.0); // a single step of length 2
+        assert!(e < 1e-9, "{axis_perm:?}: {e}");
+    }
+    let _ = inertia;
+    // the DLM splitting is not exact for the same single step
+    assert!(rigid_error([2.0, 2.0, 1.0], false, 2, 2.0) > 1e-3);
+}
+
+#[test]
+fn symmetric_top_splitting_is_second_order_and_composes_to_higher_order() {
+    let inertia = [1.0, 1.15, 3.0];
+    let e1 = rigid_error(inertia, true, 2, 0.1);
+    let e2 = rigid_error(inertia, true, 2, 0.05);
+    assert!(e1 / e2 > 3.5 && e1 / e2 < 4.5, "second order: {}", e1 / e2);
+    let f1 = rigid_error(inertia, true, 4, 0.2);
+    let f2 = rigid_error(inertia, true, 4, 0.1);
+    assert!(f1 / f2 > 12.0, "fourth order: {}", f1 / f2);
+    // for a nearly symmetric body it beats the three-axis splitting at the same step
+    assert!(e1 < 0.2 * rigid_error(inertia, false, 2, 0.1));
+    let mut b = RigidBody { inertia, q: [1.0, 0.0, 0.0, 0.0], l_body: [0.4, 0.5, 0.6] };
+    let (l0, k0) = (b.l_space(), b.kinetic_energy());
+    for _ in 0..200 {
+        b.free_step_top(0.1);
+    }
+    let l = b.l_space();
+    assert!((0..3).all(|i| (l[i] - l0[i]).abs() < 1e-12));
+    assert!((b.kinetic_energy() - k0).abs() < 1e-3 * k0);
+    assert!((b.q.iter().map(|x| x * x).sum::<f64>() - 1.0).abs() < 1e-14);
+    assert!(b.free_step_composed(0.1, true, 3).is_err());
+}
+
+#[test]
+fn space_torque_kick_matches_the_body_frame_torque() {
+    let mut b = RigidBody { inertia: [1.0, 2.0, 3.0], q: [0.5, 0.5, 0.5, 0.5], l_body: [0.0; 3] };
+    b.kick_space(0.5, &[1.0, 0.0, 0.0]);
+    // a unit-torque kick along space x: L_space = (0.5, 0, 0)
+    let l = b.l_space();
+    assert!((l[0] - 0.5).abs() < 1e-14 && l[1].abs() < 1e-14 && l[2].abs() < 1e-14);
+}

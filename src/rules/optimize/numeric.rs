@@ -163,7 +163,7 @@ impl Minimize {
             }
             items.into_iter().map(|e| value(cx, e)).collect::<Option<Vec<f64>>>()?
         };
-        let result = optim::bfgs(objective, Some(gradient), &x0, TOLERANCE, MAX_ITERATIONS);
+        let result = optim::bfgs(objective, Some(&gradient), &x0, TOLERANCE, MAX_ITERATIONS);
         let fx = sign * result.fx;
         if !fx.is_finite() || result.x.iter().any(|v| !v.is_finite()) {
             return None;

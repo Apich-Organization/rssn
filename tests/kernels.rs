@@ -88,3 +88,21 @@ mod special_ext;
 mod robust;
 #[path = "kernels/ode_stiff.rs"]
 mod ode_stiff;
+#[path = "kernels/ode_stiff_ext.rs"]
+mod ode_stiff_ext;
+#[path = "kernels/special_hyp.rs"]
+mod special_hyp;
+#[path = "kernels/ordering.rs"]
+mod ordering;
+#[path = "kernels/krylov_ext.rs"]
+mod krylov_ext;
+#[path = "kernels/matfun.rs"]
+mod matfun;
+#[path = "kernels/multigrid.rs"]
+mod multigrid;
+#[path = "kernels/ode_ext.rs"]
+mod ode_ext;
+#[path = "kernels/sde.rs"]
+mod sde;
+#[path = "kernels/homotopy.rs"]
+mod homotopy;

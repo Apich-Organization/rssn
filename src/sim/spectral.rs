@@ -13,21 +13,6 @@
 //! Gauss–Lobatto points, dense differentiation matrices and the sparse LU of
 //! [`crate::kernels::krylov`] for the (dense-block) collocation systems, so
 //! they are meant for modest sizes (up to a few thousand unknowns).
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::type_complexity,
-    clippy::many_single_char_names,
-    clippy::manual_midpoint
-)]
 
 use crate::kernels::krylov::{Csr, SparseOrdering};
 use crate::kernels::transforms::{fft_slice, ifft_slice};
@@ -91,10 +76,8 @@ impl SpectralGrid {
             return Err("spectral grid needs 1-3 power-of-two axes with at least 4 points".into());
         }
         let mut g = Self { dim, n: [1; 3], len: [1.0; 3] };
-        for a in 0..dim {
-            g.n[a] = n[a];
-            g.len[a] = len[a];
-        }
+        g.n[..dim].copy_from_slice(&n[..dim]);
+        g.len[..dim].copy_from_slice(&len[..dim]);
         Ok(g)
     }
 
@@ -230,6 +213,11 @@ impl SpectralGrid {
     }
 }
 
+/// Nonlinear term `N(t, uh)` of a spectral PDE, returning its spectral transform.
+pub type NonlinearTerm = dyn Fn(f64, &[Complex<f64>]) -> Vec<Complex<f64>>;
+
+/// Fourth-order ETDRK4 time stepping of `u_t = L u + N(u, t)` in the spectral domain.
+///
 /// Integrates `u_t = L u + N(u, t)` in the spectral domain with the
 /// fourth-order exponential time differencing Runge–Kutta scheme of
 /// Cox and Matthews (contour-integral coefficients of Kassam and Trefethen).
@@ -239,7 +227,7 @@ impl SpectralGrid {
 pub fn etdrk4(
     mut uh: Vec<Complex<f64>>,
     lin: &[Complex<f64>],
-    nonlinear: &dyn Fn(f64, &[Complex<f64>]) -> Vec<Complex<f64>>,
+    nonlinear: &NonlinearTerm,
     t_end: f64,
     steps: usize,
 ) -> Vec<Complex<f64>> {
@@ -249,10 +237,10 @@ pub fn etdrk4(
     let mean = |f: &dyn Fn(Complex<f64>) -> Complex<f64>, hl: Complex<f64>| -> Complex<f64> {
         let mut s = Complex::new(0.0, 0.0);
         for j in 0..m {
-            let r = Complex::new(0.0, PI * (j as f64 + 0.5) / m as f64).exp();
+            let r = Complex::new(0.0, PI * (f64::from(j) + 0.5) / f64::from(m)).exp();
             s += f(hl + r);
         }
-        s / m as f64
+        s / f64::from(m)
     };
     let mut e = vec![Complex::new(0.0, 0.0); n];
     let mut e2 = e.clone();
@@ -341,11 +329,9 @@ impl ChebGrid {
             return Err("invalid Chebyshev grid".into());
         }
         let mut g = Self { dim, deg: [0; 3], lo: [0.0; 3], hi: [1.0; 3] };
-        for a in 0..dim {
-            g.deg[a] = deg[a];
-            g.lo[a] = lo[a];
-            g.hi[a] = hi[a];
-        }
+        g.deg[..dim].copy_from_slice(&deg[..dim]);
+        g.lo[..dim].copy_from_slice(&lo[..dim]);
+        g.hi[..dim].copy_from_slice(&hi[..dim]);
         Ok(g)
     }
 
@@ -355,16 +341,16 @@ impl ChebGrid {
         (0..3).map(|a| if a < self.dim { self.deg[a] + 1 } else { 1 }).product()
     }
 
-    fn ext(&self, a: usize) -> usize {
+    const fn ext(&self, a: usize) -> usize {
         if a < self.dim { self.deg[a] + 1 } else { 1 }
     }
 
-    fn ijk(&self, p: usize) -> [usize; 3] {
+    const fn ijk(&self, p: usize) -> [usize; 3] {
         let (n0, n1) = (self.ext(0), self.ext(1));
         [p % n0, (p / n0) % n1, p / (n0 * n1)]
     }
 
-    fn index(&self, i: [usize; 3]) -> usize {
+    const fn index(&self, i: [usize; 3]) -> usize {
         i[0] + self.ext(0) * (i[1] + self.ext(1) * i[2])
     }
 
@@ -511,6 +497,7 @@ impl ChebGrid {
     ///
     /// # Errors
     /// For unsupported boundary types or a singular system.
+    #[allow(clippy::too_many_arguments)] // public solver signature (bcs, alpha, init, source, t_end, steps, theta) kept for API compatibility
     pub fn heat(
         &self,
         bcs: &FaceBcs,
@@ -532,14 +519,11 @@ impl ChebGrid {
             let t = k as f64 * dt;
             op.lap.matvec(&u, &mut lu_u);
             let b: Vec<f64> = (0..nn)
-                .map(|p| match &op.boundary[p] {
-                    Some((g, x)) => g.eval(t + dt, *x),
-                    None => {
-                        let x = self.coord(p);
-                        let s0 = source.map_or(0.0, |s| s(t, x));
-                        let s1 = source.map_or(0.0, |s| s(t + dt, x));
-                        u[p] + dt * (1.0 - theta) * (alpha * lu_u[p] + s0) + dt * theta * s1
-                    },
+                .map(|p| if let Some((g, x)) = &op.boundary[p] { g.eval(t + dt, *x) } else {
+                    let x = self.coord(p);
+                    let s0 = source.map_or(0.0, |s| s(t, x));
+                    let s1 = source.map_or(0.0, |s| s(t + dt, x));
+                    u[p] + dt * (1.0 - theta) * (alpha * lu_u[p] + s0) + dt * theta * s1
                 })
                 .collect();
             u = lu.solve(&b);

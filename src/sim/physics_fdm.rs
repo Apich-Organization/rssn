@@ -607,13 +607,15 @@ pub fn solve_poisson_2d(
         let mut max_diff: f64 = 0.0;
 
         for pass in 0..2 {
-            let u_ptr = u.as_mut_slice().as_mut_ptr() as usize;
+            // Red-black SOR: neighbours read here belong to the opposite colour, which is
+            // untouched in this pass, so computing all updates from a shared view and then
+            // applying them is exactly the in-place sweep.
+            let u_view = u.as_slice();
 
-            let diffs: Vec<f64> = u
-                .as_mut_slice()
-                .par_iter_mut()
+            let updates: Vec<(usize, f64, f64)> = u_view
+                .par_iter()
                 .enumerate()
-                .filter_map(|(i, val)| {
+                .filter_map(|(i, &old_val)| {
                     let x = i % width;
 
                     let y = i / width;
@@ -626,15 +628,7 @@ pub fn solve_poisson_2d(
                         return None;
                     }
 
-                    // Safety: In Red-Black SOR, the neighbors we read are always from the
-                    // opposite color set, which is not being modified in this pass.
-                    let get_u = |nx: usize, ny: usize| unsafe {
-                        let ptr = u_ptr as *const f64;
-
-                        *ptr.add(ny * width + nx)
-                    };
-
-                    let old_val: f64 = *val;
+                    let get_u = |nx: usize, ny: usize| u_view[ny * width + nx];
 
                     let target = factor
                         * dx2.mul_add(
@@ -645,15 +639,19 @@ pub fn solve_poisson_2d(
                             ),
                         );
 
-                    *val = omega.mul_add(target - old_val, old_val);
+                    let new_val = omega.mul_add(target - old_val, old_val);
 
-                    let diff: f64 = (*val - old_val).abs();
-
-                    Some(diff)
+                    Some((i, new_val, (new_val - old_val).abs()))
                 })
                 .collect();
 
-            if let Some(d) = diffs.into_iter().max_by(|a, b| a.partial_cmp(b).unwrap())
+            let u_mut = u.as_mut_slice();
+
+            for &(i, new_val, _) in &updates {
+                u_mut[i] = new_val;
+            }
+
+            if let Some(d) = updates.iter().map(|&(_, _, d)| d).max_by(|a, b| a.partial_cmp(b).unwrap())
                 && d > max_diff {
                     max_diff = d;
                 }
@@ -816,4 +814,97 @@ pub fn simulate_2d_wave_propagation_scenario() -> FdmGrid<f64> {
 
         (-dist2 / 50.0).exp() // Gaussian pulse
     })
+}
+
+fn dims_of(d: &Dimensions) -> Vec<usize> {
+    match *d {
+        | Dimensions::D1(x) => vec![x],
+        | Dimensions::D2(x, y) => vec![x, y],
+        | Dimensions::D3(x, y, z) => vec![x, y, z],
+    }
+}
+
+fn structured_grid(
+    dims: &[usize],
+    spacing: &[f64],
+    bcs: &crate::sim::boundary::FaceBcs,
+) -> Result<crate::sim::structured::Grid, String> {
+    if dims.len() != spacing.len() {
+        return Err("one spacing per axis is required".into());
+    }
+    let hi: Vec<f64> = (0..dims.len())
+        .map(|a| spacing[a] * if bcs.axis_periodic(a).unwrap_or(false) { dims[a] } else { dims[a] - 1 } as f64)
+        .collect();
+    crate::sim::structured::Grid::new(dims, &vec![0.0; dims.len()], &hi, bcs)
+}
+
+fn node_value(grid: &crate::sim::structured::Grid, data: &[f64], spacing: &[f64], x: [f64; 3]) -> f64 {
+    let mut idx = [0usize; 3];
+    for a in 0..grid.dim {
+        idx[a] = ((x[a] / spacing[a]).round() as usize).min(grid.n[a] - 1);
+    }
+    data[grid.index(idx)]
+}
+
+/// Heat equation `u_t = α Δu` on the grid of `initial` (1D, 2D or 3D).
+///
+/// Face conditions `bcs` may be Dirichlet, Neumann, Robin, periodic or time
+/// dependent; the Crank–Nicolson method of [`crate::sim::structured`] is used.
+///
+/// # Errors
+/// For inconsistent sizes or boundary descriptions.
+pub fn solve_heat_equation_bc(
+    initial: &FdmGrid<f64>,
+    spacing: &[f64],
+    alpha: f64,
+    dt: f64,
+    steps: usize,
+    bcs: &crate::sim::boundary::FaceBcs,
+) -> Result<FdmGrid<f64>, String> {
+    use crate::sim::structured::{HeatProblem, LinearSolver, heat_fixed};
+    let dims = dims_of(initial.dimensions());
+    let grid = structured_grid(&dims, spacing, bcs)?;
+    let init = |x: [f64; 3]| node_value(&grid, initial.as_slice(), spacing, x);
+    let prob = HeatProblem { grid: &grid, bcs, alpha, init: &init, source: None, solver: LinearSolver::Auto };
+    let u = heat_fixed(&prob, dt * steps as f64, steps, 0.5)?;
+    Ok(FdmGrid::from_data(u, initial.dimensions().clone()))
+}
+
+/// Wave equation `u_tt = c² Δu` on a 1D, 2D or 3D grid with face conditions
+/// `bcs` (including first-order absorbing faces) by leapfrog.
+///
+/// # Errors
+/// If the CFL condition is violated or the description is inconsistent.
+pub fn solve_wave_equation_bc(
+    u0: &FdmGrid<f64>,
+    v0: &FdmGrid<f64>,
+    spacing: &[f64],
+    c: f64,
+    dt: f64,
+    steps: usize,
+    bcs: &crate::sim::boundary::FaceBcs,
+) -> Result<FdmGrid<f64>, String> {
+    use crate::sim::structured::{WaveProblem, wave_leapfrog};
+    let dims = dims_of(u0.dimensions());
+    let grid = structured_grid(&dims, spacing, bcs)?;
+    let (f0, f1) = (|x: [f64; 3]| node_value(&grid, u0.as_slice(), spacing, x), |x: [f64; 3]| node_value(&grid, v0.as_slice(), spacing, x));
+    let prob = WaveProblem { grid: &grid, bcs, c, u0: &f0, v0: &f1, source: None };
+    let u = wave_leapfrog(&prob, dt * steps as f64, steps)?;
+    Ok(FdmGrid::from_data(u, u0.dimensions().clone()))
+}
+
+/// Poisson/Helmholtz equation `-Δu + σ u = f` on a 1D, 2D or 3D grid with
+/// face conditions `bcs`, solved by geometric multigrid.
+///
+/// # Errors
+/// For inconsistent sizes or boundary descriptions.
+pub fn solve_poisson_bc(
+    source: &FdmGrid<f64>,
+    spacing: &[f64],
+    sigma: f64,
+    bcs: &crate::sim::boundary::FaceBcs,
+) -> Result<FdmGrid<f64>, String> {
+    let dims = dims_of(source.dimensions());
+    let r = crate::sim::physics_mtm::solve_poisson_multigrid_nd(&dims, spacing, source.as_slice(), sigma, bcs, crate::sim::multigrid::MgOptions::default())?;
+    Ok(FdmGrid::from_data(r.u, source.dimensions().clone()))
 }

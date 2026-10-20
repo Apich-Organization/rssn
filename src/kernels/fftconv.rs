@@ -3,40 +3,6 @@
 //! Complex FFT for arbitrary lengths (radix-2 for powers of two,
 //! Bluestein's chirp-z algorithm otherwise), real convolution and
 //! correlation through the FFT, and exact-ish polynomial multiplication.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
 
 use std::f64::consts::PI;
 

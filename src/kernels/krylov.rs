@@ -9,41 +9,9 @@
 //! left-looking Gilbert-Peierls LU factorisation with threshold pivoting
 //! after a fill-reducing symmetric ordering (reverse Cuthill-McKee via
 //! [`Csr::rcm_ordering`] or minimum degree via
-//! [`Csr::min_degree_ordering`]).
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
+//! [`Csr::min_degree_ordering`]), approximate minimum degree
+//! ([`Csr::amd_ordering`]) or nested dissection
+//! ([`Csr::nested_dissection_ordering`]), see [`crate::kernels::ordering`].
 
 /// Compressed sparse row matrix.
 #[derive(Debug, Clone, PartialEq)]
@@ -66,7 +34,7 @@ impl Csr {
     pub fn from_triplets(rows: usize, cols: usize, trip: &[(usize, usize, f64)]) -> Self {
         let mut t: Vec<(usize, usize, f64)> =
             trip.iter().copied().filter(|&(r, c, _)| r < rows && c < cols).collect();
-        t.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+        t.sort_by_key(|a| (a.0, a.1));
         let mut indptr = vec![0; rows + 1];
         let mut indices: Vec<usize> = Vec::new();
         let mut values: Vec<f64> = Vec::new();
@@ -209,7 +177,7 @@ fn nrm(a: &[f64]) -> f64 {
 }
 
 /// Identity preconditioner helper.
-pub fn identity_precond(r: &[f64], z: &mut [f64]) {
+pub const fn identity_precond(r: &[f64], z: &mut [f64]) {
     z.copy_from_slice(r);
 }
 
@@ -432,6 +400,12 @@ pub enum SparseOrdering {
     Rcm,
     /// Minimum degree on the elimination graph (fill reduction).
     MinDegree,
+    /// Approximate minimum degree on the quotient graph
+    /// ([`crate::kernels::ordering::amd_order`]); scales to millions of vertices.
+    Amd,
+    /// Nested dissection by graph bisection
+    /// ([`crate::kernels::ordering::nested_dissection_order`]).
+    NestedDissection,
 }
 
 /// Errors of the sparse direct solver.
@@ -623,6 +597,21 @@ impl Csr {
         order
     }
 
+    /// Approximate minimum degree ordering (quotient graph with element
+    /// absorption, supervariables and mass elimination); see
+    /// [`crate::kernels::ordering::amd_order`]. Returns `perm[new] = old`.
+    #[must_use]
+    pub fn amd_ordering(&self) -> Vec<usize> {
+        crate::kernels::ordering::amd_order(&self.symmetric_adjacency())
+    }
+
+    /// Nested dissection ordering; see
+    /// [`crate::kernels::ordering::nested_dissection_order`].
+    #[must_use]
+    pub fn nested_dissection_ordering(&self) -> Vec<usize> {
+        crate::kernels::ordering::nested_dissection_order(&self.symmetric_adjacency())
+    }
+
     /// Sparse LU factorisation with a fill-reducing symmetric ordering
     /// and threshold partial pivoting (left-looking Gilbert-Peierls with
     /// a depth-first symbolic reach); see [`SparseLu`].
@@ -653,6 +642,8 @@ impl Csr {
             SparseOrdering::Natural => (0..n).collect(),
             SparseOrdering::Rcm => self.rcm_ordering(),
             SparseOrdering::MinDegree => self.min_degree_ordering(),
+            SparseOrdering::Amd => self.amd_ordering(),
+            SparseOrdering::NestedDissection => self.nested_dissection_ordering(),
         };
         let b = self.permute_symmetric(&perm);
         // CSC of B
@@ -813,13 +804,13 @@ pub struct SparseLu {
 impl SparseLu {
     /// Number of stored entries in `L` and `U` (a measure of fill-in).
     #[must_use]
-    pub fn nnz(&self) -> usize {
+    pub const fn nnz(&self) -> usize {
         self.lx.len() + self.ux.len()
     }
 
     /// Dimension of the factored matrix.
     #[must_use]
-    pub fn dim(&self) -> usize {
+    pub const fn dim(&self) -> usize {
         self.n
     }
 

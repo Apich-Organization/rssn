@@ -25,27 +25,6 @@
 //!
 //! Limitations: constant `k` and `c`; no curved boundaries or higher-order
 //! geometry; no adaptive refinement in 3D.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::collapsible_if,
-    clippy::bool_to_int_with_if,
-    clippy::needless_late_init,
-    clippy::option_if_let_else,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::type_complexity,
-    clippy::many_single_char_names,
-    clippy::manual_midpoint,
-    clippy::similar_names,
-    clippy::cognitive_complexity
-)]
 
 use crate::kernels::krylov::Csr;
 use crate::sim::boundary::{BoundaryCondition, MarkerBcs};
@@ -66,6 +45,8 @@ fn compositions(total: usize, parts: usize, cur: &mut Vec<usize>, out: &mut Vec<
     }
 }
 
+/// Grundmann-Moeller quadrature on the `n`-simplex.
+///
 /// Grundmann–Möller quadrature on the `n`-simplex, exact for polynomials of
 /// degree `2s + 1`. Returns barycentric points (`n + 1` coordinates) and
 /// weights that sum to one (multiply by the simplex measure).
@@ -346,7 +327,7 @@ impl FemSpace {
                         let id = *emap.entry(key).or_insert_with(|| {
                             let a = mesh.nodes[key.0];
                             let b = mesh.nodes[key.1];
-                            dofs.push([0.5 * (a[0] + b[0]), 0.5 * (a[1] + b[1]), 0.5 * (a[2] + b[2])]);
+                            dofs.push([f64::midpoint(a[0], b[0]), f64::midpoint(a[1], b[1]), f64::midpoint(a[2], b[2])]);
                             dofs.len() - 1
                         });
                         cell_dofs[ci].push(id);
@@ -359,7 +340,7 @@ impl FemSpace {
 
     /// Number of degrees of freedom.
     #[must_use]
-    pub fn size(&self) -> usize {
+    pub const fn size(&self) -> usize {
         self.dofs.len()
     }
 

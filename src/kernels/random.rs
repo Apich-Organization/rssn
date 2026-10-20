@@ -3,40 +3,6 @@
 //! A small, fully deterministic xoshiro256++ generator (seeded through
 //! SplitMix64) and samplers for the common distributions. The same seed
 //! always yields the same stream on every platform.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
 
 use std::f64::consts::PI;
 
@@ -47,7 +13,7 @@ pub struct Rng {
     spare_normal: Option<f64>,
 }
 
-fn splitmix(state: &mut u64) -> u64 {
+const fn splitmix(state: &mut u64) -> u64 {
     *state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
     let mut z = *state;
     z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
@@ -58,14 +24,14 @@ fn splitmix(state: &mut u64) -> u64 {
 impl Rng {
     /// Creates a generator from a 64-bit seed.
     #[must_use]
-    pub fn new(seed: u64) -> Self {
+    pub const fn new(seed: u64) -> Self {
         let mut st = seed;
         let s = [splitmix(&mut st), splitmix(&mut st), splitmix(&mut st), splitmix(&mut st)];
         Self { s, spare_normal: None }
     }
 
     /// Next raw 64-bit output.
-    pub fn next_u64(&mut self) -> u64 {
+    pub const fn next_u64(&mut self) -> u64 {
         let r = self.s[0].wrapping_add(self.s[3]).rotate_left(23).wrapping_add(self.s[0]);
         let t = self.s[1] << 17;
         self.s[2] ^= self.s[0];
@@ -88,7 +54,7 @@ impl Rng {
     }
 
     /// Uniform integer in `0..n` (`n > 0`), without modulo bias.
-    pub fn below(&mut self, n: u64) -> u64 {
+    pub const fn below(&mut self, n: u64) -> u64 {
         if n <= 1 {
             return 0;
         }

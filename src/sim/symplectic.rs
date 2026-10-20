@@ -6,52 +6,18 @@
 //! | Capability | Dimensions | Notes |
 //! |---|---|---|
 //! | Composition schemes [`Scheme`]: Verlet (2), Forest-Ruth (4), Yoshida (4, 6, 8), Blanes-Moan (4), triple jump of any even order | any | stage tables, tested by convergence order |
-//! | Time-transformed leapfrog [`ttl_step`] (Sundman-type, extended phase space, exactly reversible) | any | attractive potentials `V < 0` |
+//! | Time-transformed leapfrog [`ttl_step`] (Sundman-type, extended phase space, exactly reversible) and its composition to any even order [`ttl_step_composed`] / [`composition_weights`] | any | attractive potentials `V < 0`; order 4, 6, 8 remove the `O(h^2)` energy error (tested) |
+//! | Chain regularisation (Mikkola-Aarseth chain), algorithmic regularisation with Gragg-Bulirsch-Stoer extrapolation | 3 | [`crate::sim::chain`] (`N` bodies, adaptive `ds`) |
 //! | Kustaanheimo-Stiefel regularisation [`ks_propagate`] | 3 (via a 4-D oscillator) | perturbed Kepler problem, regular through collision |
-//! | Rigid body (quaternion, NO_SQUISH / Dullweber-Leimkuhler-McLachlan splitting) [`RigidBody`] | 3 | symplectic, reversible, exact `|q| = 1` and `|L|` conservation in free rotation |
+//! | Rigid body (quaternion, NO_SQUISH / Dullweber-Leimkuhler-McLachlan splitting) [`RigidBody`], exact symmetric-top flows ([`RigidBody::free_step_top`], exact for symmetric bodies), composition to any even order ([`RigidBody::free_step_composed`]), space-torque kicks | 3 | symplectic, reversible, exact `|q| = 1` and `|L|` conservation in free rotation; rigid molecules in MD: [`crate::sim::md_rigid`] |
 //!
-//! Limitations: the TTL scheme uses a fixed binding energy `B` (the energy
-//! error is `O(h^2)`, not zero); chain regularisation is not implemented
-//! (KS is); the rigid-body torque kick is a second-order reversible
-//! splitting rather than an implicit RATTLE solve.
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::assigning_clones,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::chunks_exact_to_as_chunks,
-    clippy::cognitive_complexity,
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::excessive_precision,
-    clippy::float_cmp,
-    clippy::if_not_else,
-    clippy::imprecise_flops,
-    clippy::indexing_slicing,
-    clippy::int_plus_one,
-    clippy::items_after_statements,
-    clippy::manual_let_else,
-    clippy::manual_memcpy,
-    clippy::manual_midpoint,
-    clippy::many_single_char_names,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions,
-    clippy::needless_pass_by_value,
-    clippy::needless_range_loop,
-    clippy::option_if_let_else,
-    clippy::similar_names,
-    clippy::single_call_fn,
-    clippy::single_match_else,
-    clippy::suboptimal_flops,
-    clippy::suspicious_operation_groupings,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::useless_let_if_seq,
-    clippy::while_float
-)]
+//! Limitations: the TTL scheme uses a fixed binding energy `B` (the energy of the exact flow
+//! is preserved, but the plain scheme has `O(h^2)` energy error; use the composed or GBS
+//! versions); the torque kick is the Strang splitting of symplectic exact flows (reversible,
+//! second order, composable to higher order) rather than an implicit RATTLE solve; the free
+//! asymmetric top is not integrated with Jacobi elliptic functions (the splittings are
+//! used instead); non-separable or perturbed problems with velocity-dependent forces are not
+//! covered by the time-transformed schemes.
 
 /// A symplectic composition scheme for separable Hamiltonians.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,7 +32,7 @@ pub enum Scheme {
     Yoshida6,
     /// Yoshida solution A (order 8, 15 stages).
     Yoshida8,
-    /// Blanes-Moan SRKNb6 (order 4, 6 force evaluations, small error constant).
+    /// Blanes-Moan `SRKNb6` (order 4, 6 force evaluations, small error constant).
     BlanesMoan4,
 }
 
@@ -120,6 +86,76 @@ impl Scheme {
             },
         }
     }
+}
+
+/// Step-size multipliers of a symmetric composition of even `order`.
+///
+/// Step-size multipliers `c_i` (summing to 1) of the symmetric composition
+/// `S(c_1 h) S(c_2 h) ...` that lifts a symmetric second-order step `S` to the even `order`
+/// (Yoshida sequences for 6 and 8, Suzuki triple jumps beyond).
+///
+/// # Errors
+/// Fails for odd or zero `order`.
+pub fn composition_weights(order: usize) -> Result<Vec<f64>, String> {
+    if order == 0 || !order.is_multiple_of(2) {
+        return Err("composition order must be even and positive".into());
+    }
+    let seq = |w: &[f64]| -> Vec<f64> {
+        let w0 = 1.0 - 2.0 * w.iter().sum::<f64>();
+        let mut s: Vec<f64> = w.iter().rev().copied().collect();
+        s.push(w0);
+        s.extend(w.iter().copied());
+        s
+    };
+    let triple = |base: &[f64], p: usize| -> Vec<f64> {
+        let g = 1.0 / (2.0 - 2.0_f64.powf(1.0 / (p as f64 + 1.0)));
+        let mid = 1.0 - 2.0 * g;
+        let mut out = Vec::new();
+        for c in [g, mid, g] {
+            out.extend(base.iter().map(|w| w * c));
+        }
+        out
+    };
+    Ok(match order {
+        2 => vec![1.0],
+        4 => triple(&[1.0], 2),
+        6 => seq(&[-1.17767998417887, 0.235573213359357, 0.784513610477560]),
+        8 => seq(&[-1.61582374150097, -2.44699182370524, -0.00716989419708120, 2.44002732616735, 0.157739928123617, 1.82020630970714, 1.04242620869991]),
+        _ => {
+            let mut w = composition_weights(8)?;
+            let mut p = 8;
+            while p < order {
+                w = triple(&w, p);
+                p += 2;
+            }
+            w
+        },
+    })
+}
+
+/// Time-transformed leapfrog composed to an even `order`.
+///
+/// Time-transformed leapfrog composed to the even `order` (4, 6, 8, ...): the TTL step is a
+/// symmetric second-order integrator of the extended Hamiltonian `ln(T + B) - ln(-V)`, so
+/// composition with [`composition_weights`] removes the `O(h^2)` energy error of the plain scheme.
+///
+/// # Errors
+/// Fails for an invalid `order`.
+pub fn ttl_step_composed<F>(
+    s: &mut TtlState,
+    mass: &[f64],
+    b: f64,
+    h: f64,
+    order: usize,
+    potential_grad: &mut F,
+) -> Result<(), String>
+where
+    F: FnMut(&[f64], &mut [f64]) -> f64,
+{
+    for c in composition_weights(order)? {
+        ttl_step(s, mass, b, c * h, potential_grad);
+    }
+    Ok(())
 }
 
 /// Symmetric composition `S(w_k h) ... S(w_1 h) S(w_0 h) S(w_1 h) ... S(w_k h)` of Verlet.
@@ -283,7 +319,7 @@ pub fn ks_from_cartesian(
     let r = (x[0] * x[0] + x[1] * x[1] + x[2] * x[2]).sqrt();
     let mut u = [0.0; 4];
     if x[0] >= 0.0 {
-        u[0] = (0.5 * (r + x[0])).sqrt();
+        u[0] = f64::midpoint(r, x[0]).sqrt();
         u[3] = 0.0;
         u[1] = (x[1] * u[0] + x[2] * u[3]) / (r + x[0]);
         u[2] = (x[2] * u[0] - x[1] * u[3]) / (r + x[0]);
@@ -374,6 +410,8 @@ fn ks_rhs<P: Fn(&[f64; 3], &[f64; 3], f64) -> [f64; 3]>(
     d
 }
 
+/// Propagates a (perturbed) Kepler problem in KS variables with RK4.
+///
 /// Propagates a (perturbed) Kepler problem with gravitational parameter 1 in KS
 /// variables with RK4 in the fictitious time `s`, for `n` steps of size `ds`.
 /// `pert(x, v, t)` is the perturbing acceleration. Without perturbation the
@@ -473,13 +511,13 @@ impl RigidBody {
         l
     }
 
-    /// Rotation about body axis `k` by `h * L_k / I_k` (exact flow of the split Hamiltonian).
-    fn rotate_axis(
+    /// Rotation about body axis `k` by the angle `zeta` (exact flow of `H = c L_k^2 / 2`
+    /// with `zeta = h c L_k`).
+    fn rotate_by(
         &mut self,
         k: usize,
-        h: f64,
+        zeta: f64,
     ) {
-        let zeta = h * self.l_body[k] / self.inertia[k];
         let (s, c) = (0.5 * zeta).sin_cos();
         let mut e = [c, 0.0, 0.0, 0.0];
         e[k + 1] = s;
@@ -495,7 +533,125 @@ impl RigidBody {
         self.l_body[j] = -sz * li + cz * lj;
     }
 
-    /// One symmetric (NO_SQUISH / DLM) step of the free rotor, second order.
+    /// Rotation about body axis `k` by `h * L_k / I_k` (exact flow of the split Hamiltonian).
+    /// An infinite moment of inertia marks a degenerate axis of a linear body (no rotation).
+    fn rotate_axis(
+        &mut self,
+        k: usize,
+        h: f64,
+    ) {
+        let zeta = h * self.l_body[k] / self.inertia[k];
+        self.rotate_by(k, zeta);
+    }
+
+    /// Exact flow for time `h` of the **symmetric top** obtained by replacing the two inverse
+    /// moments about the axes other than `ax` with their mean: `L` is constant in space, so
+    /// `q(h) = q_L(h) * q(0) * q_ax(h)` with `q_L` a rotation about `L` by `|L| h / I_perp` and
+    /// `q_ax` a rotation about the symmetry axis by `h L_ax (1/I_ax - 1/I_perp)`.
+    pub fn symmetric_top_flow(
+        &mut self,
+        ax: usize,
+        h: f64,
+    ) {
+        let inv = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        let (a, b) = ((ax + 1) % 3, (ax + 2) % 3);
+        let inv_perp = f64::midpoint(inv[a], inv[b]);
+        let ls = self.l_space();
+        let lmag = (ls[0] * ls[0] + ls[1] * ls[1] + ls[2] * ls[2]).sqrt();
+        if lmag > 0.0 {
+            let th = 0.5 * lmag * h * inv_perp;
+            let (sn, cs) = th.sin_cos();
+            let ql = [cs, sn * ls[0] / lmag, sn * ls[1] / lmag, sn * ls[2] / lmag];
+            self.q = quat_mul(&ql, &self.q);
+        }
+        let ang = 0.5 * h * self.l_body[ax] * (inv[ax] - inv_perp);
+        let (sn, cs) = ang.sin_cos();
+        let mut e = [cs, 0.0, 0.0, 0.0];
+        e[ax + 1] = sn;
+        self.q = quat_mul(&self.q, &e);
+        let n = self.q.iter().map(|v| v * v).sum::<f64>().sqrt();
+        for v in &mut self.q {
+            *v /= n;
+        }
+        let r = quat_to_matrix(&self.q);
+        for k in 0..3 {
+            self.l_body[k] = (0..3).map(|i| r[i][k] * ls[i]).sum();
+        }
+    }
+
+    /// Axis whose two partners have the closest inverse moments (best symmetric-top approximation).
+    fn symmetry_axis(&self) -> usize {
+        let inv = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        (0..3)
+            .min_by(|&x, &y| {
+                let dx = (inv[(x + 1) % 3] - inv[(x + 2) % 3]).abs();
+                let dy = (inv[(y + 1) % 3] - inv[(y + 2) % 3]).abs();
+                dx.total_cmp(&dy)
+            })
+            .unwrap_or(0)
+    }
+
+    /// Second-order symmetric step of the free rotor built on exact **symmetric-top flows**:
+    /// `exp(h/2 R_a) exp(h/2 R_b) exp(h S) exp(h/2 R_b) exp(h/2 R_a)` where `S` is the symmetric
+    /// top and `R_a`, `R_b` the single-axis remainders. Exact when the body is itself a symmetric
+    /// top and much more accurate than [`free_step`](Self::free_step) for nearly symmetric bodies.
+    pub fn free_step_top(
+        &mut self,
+        h: f64,
+    ) {
+        let ax = self.symmetry_axis();
+        let inv = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        let (a, b) = ((ax + 1) % 3, (ax + 2) % 3);
+        let inv_perp = f64::midpoint(inv[a], inv[b]);
+        for k in [a, b] {
+            let z = 0.5 * h * (inv[k] - inv_perp) * self.l_body[k];
+            self.rotate_by(k, z);
+        }
+        self.symmetric_top_flow(ax, h);
+        for k in [b, a] {
+            let z = 0.5 * h * (inv[k] - inv_perp) * self.l_body[k];
+            self.rotate_by(k, z);
+        }
+    }
+
+    /// Free rotation for time `h` with the chosen splitting composed to the even `order`
+    /// (2, 4, 6, 8, ...) by [`composition_weights`].
+    ///
+    /// # Errors
+    /// Fails for an invalid `order`.
+    pub fn free_step_composed(
+        &mut self,
+        h: f64,
+        top: bool,
+        order: usize,
+    ) -> Result<(), String> {
+        for c in composition_weights(order)? {
+            if top {
+                self.free_step_top(c * h);
+            } else {
+                self.free_step(c * h);
+            }
+        }
+        Ok(())
+    }
+
+    /// Adds `h * torque` (space-frame torque) to the angular momentum.
+    pub fn kick_space(
+        &mut self,
+        h: f64,
+        torque: &[f64; 3],
+    ) {
+        let r = quat_to_matrix(&self.q);
+        for k in 0..3 {
+            let mut tb = 0.0;
+            for i in 0..3 {
+                tb += r[i][k] * torque[i];
+            }
+            self.l_body[k] += h * tb;
+        }
+    }
+
+    /// One symmetric (`NO_SQUISH` / DLM) step of the free rotor, second order.
     pub fn free_step(
         &mut self,
         h: f64,

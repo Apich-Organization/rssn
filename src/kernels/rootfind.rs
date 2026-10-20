@@ -9,43 +9,11 @@
 //!   systems of one complex variable per equation (total-degree start
 //!   system) via [`homotopy_univariate`], and square multivariate
 //!   polynomial systems via [`homotopy_system`] (total-degree start
-//!   system, gamma trick, RK4 predictor / Newton corrector tracking);
+//!   system, gamma trick, RK4 predictor / Newton corrector tracking; the
+//!   projective, endgame-equipped solver with solutions at infinity and
+//!   path-jumping protection is [`crate::kernels::homotopy`]);
 //! * polynomial roots by the three-stage Jenkins-Traub algorithm
 //!   ([`polynomial_roots_jenkins_traub`]).
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
 
 use crate::kernels::dense::{self, Mat};
 
@@ -95,7 +63,7 @@ pub fn brent<F: Fn(f64) -> f64>(
         if fb == 0.0 || (b - a).abs() < tol {
             return Ok(b);
         }
-        let mut s = if fa != fc && fb != fc {
+        let mut s = if !crate::kernels::exact_eq(fa, fc) && !crate::kernels::exact_eq(fb, fc) {
             a * fb * fc / ((fa - fb) * (fa - fc))
                 + b * fa * fc / ((fb - fa) * (fb - fc))
                 + c * fa * fb / ((fc - fa) * (fc - fb))
@@ -110,7 +78,7 @@ pub fn brent<F: Fn(f64) -> f64>(
             || (mflag && (b - c).abs() < tol)
             || (!mflag && (c - d).abs() < tol);
         if cond {
-            s = 0.5 * (a + b);
+            s = f64::midpoint(a, b);
             mflag = true;
         } else {
             mflag = false;
@@ -192,7 +160,7 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
     if flo > 0.0 {
         std::mem::swap(&mut lo, &mut hi);
     }
-    let mut x = 0.5 * (lo + hi);
+    let mut x = f64::midpoint(lo, hi);
     for _ in 0..max_iter {
         let fx = f(x);
         if fx == 0.0 {
@@ -207,7 +175,7 @@ pub fn newton_bracketed<F: Fn(f64) -> f64, D: Fn(f64) -> f64>(
         let mut nx = if d == 0.0 { f64::NAN } else { x - fx / d };
         let (mn, mx) = if lo < hi { (lo, hi) } else { (hi, lo) };
         if !nx.is_finite() || nx <= mn || nx >= mx {
-            nx = 0.5 * (lo + hi);
+            nx = f64::midpoint(lo, hi);
         }
         if (nx - x).abs() <= tol * (1.0 + x.abs()) {
             return Ok(nx);
@@ -373,7 +341,7 @@ pub fn numerical_jacobian<F: Fn(&[f64]) -> Vec<f64>>(f: &F, x: &[f64], fx: &[f64
 /// [`RootError::NoConvergence`] when the iteration limit is hit.
 pub fn newton_system<F, J>(
     f: F,
-    jac: Option<J>,
+    jac: Option<&J>,
     x0: &[f64],
     tol: f64,
     max_iter: usize,
@@ -389,7 +357,7 @@ where
         if r <= tol {
             return Ok(SystemSolution { x, residual: r, iterations: it });
         }
-        let j = jac.as_ref().map_or_else(|| numerical_jacobian(&f, &x, &fx), |g| g(&x));
+        let j = jac.map_or_else(|| numerical_jacobian(&f, &x, &fx), |g| g(&x));
         let lu = dense::lu_factor(&j).map_err(|_| RootError::Singular)?;
         let neg: Vec<f64> = fx.iter().map(|v| -v).collect();
         let step = lu.solve(&neg);
@@ -538,6 +506,8 @@ pub fn levenberg_marquardt<F: Fn(&[f64]) -> Vec<f64>>(
     Err(RootError::NoConvergence)
 }
 
+/// Homotopy continuation for the roots of a real-coefficient polynomial.
+///
 /// Homotopy continuation for a polynomial with real coefficients: tracks
 /// the roots of `H(z, t) = (1-t) * gamma * (z^n - 1) + t * p(z)` from the
 /// roots of unity at `t = 0` to those of `p` at `t = 1` with predictor
@@ -676,7 +646,7 @@ fn jt_lower_bound(p: &[Cx]) -> f64 {
     };
     let (mut lo, mut hi) = (0.0, hi0.max(1e-300));
     for _ in 0..200 {
-        let mid = 0.5 * (lo + hi);
+        let mid = f64::midpoint(lo, hi);
         if g(mid) > 0.0 {
             hi = mid;
         } else {
@@ -796,6 +766,8 @@ fn jt_fixed(p: &[Cx], h: &mut Vec<Cx>, s: Cx, l2: usize) -> Option<Cx> {
     jt_variable(p, h, s + t)
 }
 
+/// All complex roots of a complex polynomial by Jenkins-Traub.
+///
 /// All complex roots of a polynomial with complex coefficients
 /// (`(re, im)` pairs, ascending order) by the three-stage Jenkins-Traub
 /// algorithm (no-shift, fixed-shift and variable-shift stages with

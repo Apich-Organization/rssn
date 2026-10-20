@@ -14,44 +14,6 @@
 //! Dimensions: 3-D only (the Ewald kernel `1/r` is the 3-D Coulomb law).
 //! Conventions: Gaussian-like units with coupling constant `k_c`; the
 //! neutralising background correction is included for charged cells.
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::assigning_clones,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::chunks_exact_to_as_chunks,
-    clippy::cognitive_complexity,
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::excessive_precision,
-    clippy::float_cmp,
-    clippy::if_not_else,
-    clippy::imprecise_flops,
-    clippy::indexing_slicing,
-    clippy::int_plus_one,
-    clippy::items_after_statements,
-    clippy::manual_let_else,
-    clippy::manual_memcpy,
-    clippy::manual_midpoint,
-    clippy::many_single_char_names,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions,
-    clippy::needless_pass_by_value,
-    clippy::needless_range_loop,
-    clippy::option_if_let_else,
-    clippy::similar_names,
-    clippy::single_call_fn,
-    clippy::single_match_else,
-    clippy::suboptimal_flops,
-    clippy::suspicious_operation_groupings,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_arguments,
-    clippy::too_many_lines,
-    clippy::type_complexity,
-    clippy::unreadable_literal,
-    clippy::useless_let_if_seq,
-    clippy::while_float
-)]
 
 use std::f64::consts::PI;
 
@@ -117,7 +79,9 @@ pub fn ewald_reciprocal(
                     ss += q[i] * s;
                     cs.push((c, s));
                 }
-                let ek = pref * a * (sc * sc + ss * ss);
+                // |S(k)|^2 of the structure factor
+                let (sc2, ss2) = (sc * sc, ss * ss);
+                let ek = pref * a * (sc2 + ss2);
                 energy += ek;
                 let w = -2.0 * (1.0 / k2 + 1.0 / (4.0 * alpha * alpha));
                 for x in 0..3 {
@@ -247,6 +211,13 @@ fn b2(
     1.0 / (re * re + im * im).max(1e-300)
 }
 
+/// B-spline weights and derivatives of one particle.
+struct Spl {
+    base: [i64; 3],
+    w: [Vec<f64>; 3],
+    dw: [Vec<f64>; 3],
+}
+
 /// Smooth PME reciprocal energy, forces and virial (plus self/background terms).
 ///
 /// `grid` are the mesh sizes (any size, powers of two are fastest), `order` the (even) B-spline order.
@@ -266,11 +237,6 @@ pub fn pme_reciprocal(
     let idx = |i: usize, j: usize, k: usize| (i * grid[1] + j) * grid[2] + k;
     // spread charges
     let mut qg = vec![(0.0, 0.0); total];
-    struct Spl {
-        base: [i64; 3],
-        w: [Vec<f64>; 3],
-        dw: [Vec<f64>; 3],
-    }
     let mut spl = Vec::with_capacity(n);
     for i in 0..n {
         let mut base = [0i64; 3];

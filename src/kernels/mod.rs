@@ -60,7 +60,7 @@ pub mod dense;
 pub mod fftconv;
 /// Sparse CSR matrices and Krylov solvers with preconditioners.
 pub mod krylov;
-/// Radau IIA(5) and variable-order BDF stiff integrators.
+/// Radau IIA(5/9/13) and variable-order BDF stiff integrators with dense output, events and DAEs.
 pub mod ode_stiff;
 /// Adaptive, stiff, symplectic, BVP, DAE and DDE integrators.
 pub mod ode_adaptive;
@@ -74,5 +74,33 @@ pub mod random;
 pub mod robust;
 /// Scalar and system root finding, polynomial roots, homotopy continuation.
 pub mod rootfind;
-/// Elliptic integrals, hypergeometric functions and integer-order Bessel functions.
+/// Elliptic integrals, hypergeometric functions (real and complex argument) and integer-order Bessel functions.
 pub mod special_ext;
+/// Fill-reducing orderings: approximate minimum degree and nested dissection.
+pub mod ordering;
+/// MINRES, BiCGSTAB(l), IDR(s) and flexible GMRES.
+pub mod krylov_ext;
+/// Lanczos and Arnoldi eigensolvers with restarts and shift-invert.
+pub mod eigs;
+/// Matrix functions: expm, sqrtm, logm, phi functions and exp(tA)v.
+pub mod matfun;
+/// Geometric multigrid (V/W/FMG) and smoothed-aggregation algebraic multigrid.
+pub mod multigrid;
+/// Exponential (ETDRK4, exp-Rosenbrock), IMEX, symplectic and variational integrators.
+pub mod ode_ext;
+/// Stochastic differential equations: Euler-Maruyama, Milstein, SRK, Heun and adaptive steps.
+pub mod sde;
+/// Homotopy continuation in projective coordinates with Cauchy endgame and path-jumping protection.
+pub mod homotopy;
+
+/// Exact IEEE-754 equality (`-0.0 == 0.0`, NaN never equal).
+///
+/// For the few places where bit-exact equality is the intended predicate
+/// (sentinels, "no change after rounding" tests such as `|h| + s == s`).
+#[must_use]
+pub(crate) fn exact_eq(
+    a: f64,
+    b: f64,
+) -> bool {
+    a.partial_cmp(&b) == Some(std::cmp::Ordering::Equal)
+}

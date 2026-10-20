@@ -482,3 +482,31 @@ pub fn simulate_3d_advection_diffusion_scenario() -> Vec<f64> {
 
     solve_advection_diffusion_3d(&initial_condition, &config)
 }
+
+/// Exact-in-time Fourier solution of `u_t + c·∇u = D Δu` on a periodic box of
+/// 1D, 2D or 3D (power-of-two points per axis, data with `x` fastest):
+/// every mode is multiplied by `exp((-i c·k - D |k|²) t)`.
+///
+/// # Errors
+/// For sizes that are not powers of two or inconsistent data.
+pub fn advection_diffusion_exact_nd(
+    dims: &[usize],
+    lengths: &[f64],
+    initial: &[f64],
+    velocity: &[f64],
+    diffusivity: f64,
+    t: f64,
+) -> Result<Vec<f64>, String> {
+    let grid = crate::sim::spectral::SpectralGrid::new(dims, lengths)?;
+    let expected = grid.size();
+    if initial.len() != expected || velocity.len() != dims.len() {
+        return Err("inconsistent data".into());
+    }
+    let mut uh = grid.to_spec(initial);
+    for (p, v) in uh.iter_mut().enumerate() {
+        let k = grid.kvec(p);
+        let ck: f64 = (0..dims.len()).map(|a| velocity[a] * k[a]).sum();
+        *v *= Complex::new(-diffusivity * grid.k2(p) * t, -ck * t).exp();
+    }
+    Ok(grid.to_phys(&uh))
+}

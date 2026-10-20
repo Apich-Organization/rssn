@@ -19,21 +19,6 @@
 //!
 //! Limitations: periodic boundaries only (use a large box or an absorbing
 //! potential for scattering), no rotating frame, no dipolar interactions.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::many_single_char_names,
-    clippy::manual_midpoint,
-    clippy::while_float
-)]
 
 use crate::sim::spectral::SpectralGrid;
 use num_complex::Complex;
@@ -146,11 +131,10 @@ impl SplitStep {
         self.kinetic_energy(psi) + pot
     }
 
-    fn strang(&self, psi: &mut [Complex<f64>], vv: &[f64], g: f64, t: f64, dt: f64, imaginary: bool, kin: &[Complex<f64>]) {
-        let _ = t;
+    fn strang(&self, psi: &mut [Complex<f64>], vv: &[f64], g: f64, dt: f64, imaginary: bool, kin: &[Complex<f64>]) {
         let half = |psi: &mut [Complex<f64>]| {
             for (p, c) in psi.iter_mut().enumerate() {
-                let phase = (vv[p] + g * c.norm_sqr()) * 0.5 * dt;
+                let phase = f64::midpoint(vv[p], g * c.norm_sqr()) * dt;
                 *c *= if imaginary { Complex::new((-phase).exp(), 0.0) } else { Complex::new(0.0, -phase).exp() };
             }
         };
@@ -174,6 +158,7 @@ impl SplitStep {
     }
 
     /// Real-time evolution for `steps` steps of size `dt` from time `t0`.
+    #[allow(clippy::too_many_arguments)] // public evolution signature (psi0, v, g, t0, dt, steps, order) kept for API compatibility
     pub fn evolve(
         &self,
         psi0: &[Complex<f64>],
@@ -197,7 +182,7 @@ impl SplitStep {
             let mut tt = t;
             for (w, kin) in weights.iter().zip(&kins) {
                 let vv: Vec<f64> = (0..psi.len()).map(|p| v(tt + 0.5 * w * dt, self.x(p))).collect();
-                self.strang(&mut psi, &vv, g, tt, w * dt, false, kin);
+                self.strang(&mut psi, &vv, g, w * dt, false, kin);
                 tt += w * dt;
             }
             t += dt;
@@ -232,7 +217,7 @@ impl SplitStep {
         let mut steps = 0;
         let mut converged = false;
         while steps < max_steps {
-            self.strang(&mut psi, &vv, g, 0.0, dt, true, &kin);
+            self.strang(&mut psi, &vv, g, dt, true, &kin);
             renorm(&mut psi);
             steps += 1;
             if steps % 10 == 0 {

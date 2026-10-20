@@ -7,42 +7,10 @@
 //! period reduction.
 //!
 //! Elliptic integrals use the *parameter* `m = k^2`.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::or_fun_call,
-    clippy::manual_swap,
-    clippy::if_not_else,
-    clippy::unnecessary_sort_by,
-    clippy::while_float,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::needless_pass_by_value,
-    clippy::manual_map,
-    clippy::unnecessary_map_or,
-    clippy::suboptimal_flops,
-    clippy::similar_names,
-    clippy::unreadable_literal,
-    clippy::excessive_precision,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::too_many_lines,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::cast_lossless
-)]
 
 use std::f64::consts::PI;
+
+use num_complex::Complex64;
 
 use crate::kernels::special::{digamma_numerical, gamma_numerical, ln_gamma_numerical};
 
@@ -109,7 +77,7 @@ pub fn carlson_rd(x: f64, y: f64, z: f64) -> f64 {
 /// Complete elliptic integral of the first kind `K(m)`, `m < 1`.
 #[must_use]
 pub fn elliptic_k(m: f64) -> f64 {
-    if m == 1.0 {
+    if crate::kernels::exact_eq(m, 1.0) {
         return f64::INFINITY;
     }
     if m > 1.0 || m.is_nan() {
@@ -118,7 +86,7 @@ pub fn elliptic_k(m: f64) -> f64 {
     // AGM: K = pi / (2 agm(1, sqrt(1-m)))
     let (mut a, mut b) = (1.0, (1.0 - m).sqrt());
     for _ in 0..64 {
-        let an = 0.5 * (a + b);
+        let an = f64::midpoint(a, b);
         b = (a * b).sqrt();
         a = an;
         if (a - b).abs() <= 1e-16 * a {
@@ -131,7 +99,7 @@ pub fn elliptic_k(m: f64) -> f64 {
 /// Complete elliptic integral of the second kind `E(m)`, `m <= 1`.
 #[must_use]
 pub fn elliptic_e(m: f64) -> f64 {
-    if m == 1.0 {
+    if crate::kernels::exact_eq(m, 1.0) {
         return 1.0;
     }
     if m > 1.0 || m.is_nan() {
@@ -207,7 +175,7 @@ fn jacobi_landen(u: f64, m: f64) -> (f64, f64) {
     c[0] = m.sqrt();
     let mut n = 0;
     while n < 39 && c[n].abs() > 1e-16 {
-        a[n + 1] = 0.5 * (a[n] + b);
+        a[n + 1] = f64::midpoint(a[n], b);
         c[n + 1] = 0.5 * (a[n] - b);
         b = (a[n] * b).sqrt();
         n += 1;
@@ -216,7 +184,7 @@ fn jacobi_landen(u: f64, m: f64) -> (f64, f64) {
     let mut i = n;
     while i > 0 {
         let arg = (c[i] * phi.sin() / a[i]).clamp(-1.0, 1.0);
-        phi = 0.5 * (phi + arg.asin());
+        phi = f64::midpoint(phi, arg.asin());
         i -= 1;
     }
     phi.sin_cos()
@@ -353,7 +321,16 @@ fn hyp2f1_unit(a: f64, b: f64, c: f64, x: f64) -> f64 {
     if is_nonpos_int(c - a) || is_nonpos_int(c - b) {
         return y.powf(s) * hyp2f1_series(c - a, c - b, c, x);
     }
-    if (s - s.round()).abs() < 1e-9 {
+    let eps = (s - s.round()).abs();
+    if eps > 0.0 && eps < 1e-4 {
+        // The connection formula cancels catastrophically here; continue the
+        // ODE solution analytically instead.
+        let v = hyp2f1_ode(a, b, c, Complex64::new(x, 0.0));
+        if v.re.is_finite() {
+            return v.re;
+        }
+    }
+    if eps == 0.0 {
         let mi = s.round();
         if mi < 0.0 {
             // Euler: 2F1(a,b;c;x) = (1-x)^(c-a-b) 2F1(c-a,c-b;c;x)
@@ -385,9 +362,11 @@ fn hyp2f1_unit(a: f64, b: f64, c: f64, x: f64) -> f64 {
 ///   integer with integer `c - a - b`).
 ///
 /// Accuracy is about `1e-13` generically; when `c - a - b` is within
-/// `1e-9` of, but not equal to, an integer the connection formula loses
-/// digits to cancellation (roughly `1e-16 / |c - a - b - n|` relative).
+/// `1e-4` of, but not equal to, an integer the evaluation switches to the
+/// analytic continuation of the differential equation, which has no
+/// cancellation (exact integers use the logarithmic limit formulas).
 /// A non-positive integer `c` (other than a terminating series) gives NaN.
+/// For `z > 1` use [`hyp2f1_complex`].
 #[must_use]
 pub fn hyp2f1(a: f64, b: f64, c: f64, z: f64) -> f64 {
     if a.is_nan() || b.is_nan() || c.is_nan() || z.is_nan() {
@@ -412,7 +391,7 @@ pub fn hyp2f1(a: f64, b: f64, c: f64, z: f64) -> f64 {
         }
         return f64::NAN;
     }
-    if z == 1.0 {
+    if crate::kernels::exact_eq(z, 1.0) {
         if s > 0.0 {
             return gamma_ratio(&[c, s], &[c - a, c - b]);
         }
@@ -424,6 +403,133 @@ pub fn hyp2f1(a: f64, b: f64, c: f64, z: f64) -> f64 {
         return (1.0 - z).powf(-a) * hyp2f1_unit(a, c - b, c, w);
     }
     hyp2f1_unit(a, b, c, z)
+}
+
+/// Power series of `2F1` in a complex argument (`|z| < 1`).
+fn hyp2f1_series_c(a: f64, b: f64, c: f64, z: Complex64) -> Complex64 {
+    let mut term = Complex64::new(1.0, 0.0);
+    let mut sum = term;
+    for n in 0..2_000_000 {
+        let nf = f64::from(n);
+        let ratio = (a + nf) * (b + nf) / ((c + nf) * (nf + 1.0));
+        term *= z * ratio;
+        sum += term;
+        if term.norm() == 0.0 || (z.norm() < 1.0 && term.norm() < 1e-17 * sum.norm() && ratio.abs() * z.norm() < 1.0) {
+            break;
+        }
+    }
+    sum
+}
+
+/// Analytic continuation of `2F1(a, b; c; z)` by Taylor stepping of the
+/// hypergeometric differential equation
+/// `z (1 - z) w'' + [c - (a + b + 1) z] w' - a b w = 0` from `z = 1/2`
+/// along a path in the plane cut along `[1, inf)` (for real `z > 1` the
+/// path stays in the upper half plane, i.e. the value is the limit from
+/// `Im z -> 0+`). Every step has a radius of at most 0.4 times the distance
+/// to the nearest singular point (0 or 1), so the method is uniformly
+/// accurate for `|z|` large, `z` near 1 and `c - a - b` close to an integer.
+fn hyp2f1_ode(a: f64, b: f64, c: f64, z: Complex64) -> Complex64 {
+    if z.norm() <= 0.5 {
+        return hyp2f1_series_c(a, b, c, z);
+    }
+    let half = Complex64::new(0.5, 0.0);
+    let f0 = hyp2f1_series_c(a, b, c, half);
+    let d0 = hyp2f1_series_c(a + 1.0, b + 1.0, c + 1.0, half) * (a * b / c);
+    let mut p = half;
+    let (mut fv, mut dv) = (f0, d0);
+    let side = if z.im < 0.0 { -1.0 } else { 1.0 };
+    let waypoints = [Complex64::new(0.5, 0.5 * side), z];
+    let ab = a * b;
+    let apb1 = a + b + 1.0;
+    for &target in &waypoints {
+        let mut guard = 0;
+        while (target - p).norm() > 0.0 && guard < 100_000 {
+            guard += 1;
+            let rho = p.norm().min((Complex64::new(1.0, 0.0) - p).norm());
+            let rem = target - p;
+            let len = rem.norm().min(0.4 * rho);
+            let dir = rem / rem.norm();
+            let xi = len / rho;
+            // scaled Taylor coefficients v_k = u_k rho^k
+            let p0 = p * (Complex64::new(1.0, 0.0) - p);
+            let p1 = Complex64::new(1.0, 0.0) - p * 2.0;
+            let q0 = Complex64::new(c, 0.0) - p * apb1;
+            let mut v = vec![fv, dv * rho];
+            let kmax = 80;
+            let mut sum_f = Complex64::new(0.0, 0.0);
+            let mut sum_d = Complex64::new(0.0, 0.0);
+            let w = dir * xi; // x / rho = w t; use powers of w
+            for k in 0..kmax {
+                let kf = k as f64;
+                let num = (p1 * kf + q0) * ((kf + 1.0) * rho) * v[k + 1]
+                    - Complex64::new(kf * (kf - 1.0) + apb1 * kf + ab, 0.0) * (rho * rho) * v[k];
+                v.push(-num / (p0 * ((kf + 2.0) * (kf + 1.0))));
+            }
+            let mut wp = Complex64::new(1.0, 0.0);
+            for k in 0..v.len() {
+                sum_f += v[k] * wp;
+                if k + 1 < v.len() {
+                    sum_d += v[k + 1] * wp * (k as f64 + 1.0);
+                }
+                wp *= w;
+            }
+            fv = sum_f;
+            dv = sum_d / rho;
+            p += dir * len;
+            if (target - p).norm() < 1e-15 * (1.0 + target.norm()) {
+                p = target;
+                break;
+            }
+        }
+    }
+    fv
+}
+
+/// Gauss hypergeometric function `2F1(a, b; c; z)` for a complex argument
+/// and real parameters, on the principal branch (cut along `[1, inf)`;
+/// real `z > 1` gives the limit from the upper half plane).
+///
+/// Uses the series for `|z| <= 1/2` and analytic continuation of the
+/// differential equation elsewhere, which covers `|z| > 1`, points near
+/// `z = 1` and `c - a - b` near an integer without cancellation. Terminating
+/// series are summed exactly. `z = 1` follows Gauss's theorem for real
+/// parameters (infinite when divergent); a non-positive integer `c` without
+/// termination gives NaN.
+#[must_use]
+pub fn hyp2f1_complex(a: f64, b: f64, c: f64, z: Complex64) -> Complex64 {
+    let nan = Complex64::new(f64::NAN, f64::NAN);
+    if a.is_nan() || b.is_nan() || c.is_nan() || z.re.is_nan() || z.im.is_nan() {
+        return nan;
+    }
+    if z.norm() == 0.0 {
+        return Complex64::new(1.0, 0.0);
+    }
+    if is_nonpos_int(a) || is_nonpos_int(b) {
+        let ok = |p: f64| is_nonpos_int(p) && (!is_nonpos_int(c) || p.round() > c.round());
+        if !(ok(a) || ok(b)) {
+            return nan;
+        }
+        // polynomial
+        let mut term = Complex64::new(1.0, 0.0);
+        let mut sum = term;
+        for n in 0..100_000 {
+            let nf = f64::from(n);
+            term *= z * ((a + nf) * (b + nf) / ((c + nf) * (nf + 1.0)));
+            if term.norm() == 0.0 {
+                break;
+            }
+            sum += term;
+        }
+        return sum;
+    }
+    if is_nonpos_int(c) {
+        return nan;
+    }
+    if crate::kernels::exact_eq(z.im, 0.0) && crate::kernels::exact_eq(z.re, 1.0) {
+        return Complex64::new(hyp2f1(a, b, c, 1.0), 0.0);
+    }
+    hyp2f1_ode(a, b, c, z)
 }
 
 /// Kummer confluent hypergeometric function `1F1(a; b; x)`.
@@ -462,7 +568,7 @@ fn bessel_series(n: usize, x: f64, sign: f64) -> f64 {
     let mut sum = term;
     let q = sign * h * h;
     for k in 1..2000 {
-        let kf = k as f64;
+        let kf = f64::from(k);
         term *= q / (kf * (kf + n as f64));
         sum += term;
         if term.abs() < 1e-18 * sum.abs() {
@@ -638,6 +744,8 @@ pub fn bessel_in_scaled(n: i32, x: f64) -> f64 {
     sign * v
 }
 
+/// Modified Bessel function of the first kind `I_n(x)` for integer order.
+///
 /// Modified Bessel function of the first kind `I_n(x)` for integer
 /// order, by the same strategy as [`bessel_jn`] (series, Hankel
 /// expansion, Miller recurrence). Overflows to infinity beyond

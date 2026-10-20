@@ -17,18 +17,6 @@
 //!
 //! `σ <= 0` Helmholtz problems are solvable while the coarse-grid problems
 //! stay nonsingular (σ below the first eigenvalue of the coarsest level).
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp
-)]
 
 use crate::kernels::krylov::{Csr, SparseLu, SparseOrdering};
 use crate::sim::boundary::FaceBcs;
@@ -223,7 +211,7 @@ impl MultigridSolver {
 
     /// Number of levels.
     #[must_use]
-    pub fn num_levels(&self) -> usize {
+    pub const fn num_levels(&self) -> usize {
         self.levels.len()
     }
 

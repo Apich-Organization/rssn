@@ -15,7 +15,6 @@
 //!
 //! `∂/∂n` is always the derivative along the **outward** unit normal.
 
-#![allow(clippy::missing_const_for_fn)]
 
 use std::collections::HashMap;
 use std::fmt;
@@ -223,7 +222,7 @@ impl FaceBcs {
 
     /// Condition on a face.
     #[must_use]
-    pub fn get(&self, face: Face) -> &BoundaryCondition {
+    pub const fn get(&self, face: Face) -> &BoundaryCondition {
         &self.faces[face.index()]
     }
 
@@ -348,7 +347,7 @@ impl FluidFaceBcs {
 
     /// Condition of a face.
     #[must_use]
-    pub fn get(&self, face: Face) -> &FluidBoundary {
+    pub const fn get(&self, face: Face) -> &FluidBoundary {
         &self.faces[face.index()]
     }
 }

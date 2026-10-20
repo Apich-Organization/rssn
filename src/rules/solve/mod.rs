@@ -17,10 +17,51 @@
 //! sub-solvers of the heuristics module transform it (absolute values,
 //! the Weierstrass substitution, Lambert W, `x^x`, sums of logarithms
 //! combined into one, logarithmic substitutions, square roots isolated and
-//! squared one at a time) and hand the result back to the solver; polynomials of
-//! degree three and four get Cardano's and Ferrari's formulas, higher ones
-//! numeric roots; non-polynomial systems are solved by elimination. Every
-//! candidate is checked against the original equation.
+//! squared one at a time) and hand the result back to the solver;
+//! polynomials of degree three and four get Cardano's and Ferrari's
+//! formulas (also with symbolic coefficients); non-polynomial systems are
+//! solved by elimination. Every candidate is checked against the original
+//! equation.
+//!
+//! * **Quartics with parameters** by Ferrari/Descartes through the resolvent
+//!   cubic `8 m^3 + 8 p m^2 + (2 p^2 - 8 r) m - q^2`, whose largest real
+//!   root is positive (so `sqrt(2 m)` is defined); both its Cardano and
+//!   its trigonometric expression are offered, plus the biquadratic case
+//!   `q = 0`. As for cubics, a formula is real only on part of the
+//!   parameter space; formulas that are right wherever they are defined are
+//!   kept.
+//! * **Quintics and higher degrees.** An irreducible rational quintic is
+//!   classified by Dummit's sextic resolvent (exact integer arithmetic on
+//!   roots computed to 190 digits): `F20`, `C5`/`D5` are solvable, `A5`/`S5`
+//!   are not. A solvable quintic with one real root is written in radicals
+//!   through Lagrange resolvents (the real root is `shift + (1/5λ) Σ R^(1/5)`
+//!   over the roots of a quartic with coefficients in `Q(sqrt 5)`; so
+//!   `x^5 - 5 x + 12` and `x^5 + 15 x + 12` come out in radicals); one with
+//!   five real roots (the cyclic `x^5 + x^4 - 4 x^3 - 3 x^2 + 3 x + 1`, say)
+//!   in cosine form: the resolvents are complex conjugate pairs
+//!   `R = a ± i b`, the real quadratic factors of the quartic, and the roots
+//!   are `(2/5λ) Σ_j |R_j|^(1/5) cos((arg R_j + 2π (m_j - j k))/5)`.
+//!   de Moivre quintics `x^5 + 5 a x^3 + 5 a^2 x + b` with parameters are
+//!   solved by `x = u - a/u` (real fifth roots, or the cosine form for five
+//!   real roots).
+//! * **Degree six and more.** An irreducible factor that is a functional
+//!   composition `g(h(x))` (Kozen–Landau decomposition) is solved through
+//!   the real roots of `g` and then `h(x) = u` for each; a self-reciprocal
+//!   one of degree `2k` through `u = x + 1/x` (a polynomial of degree `k` in
+//!   `u`). Every other real root of an irreducible factor of degree five or
+//!   more (unsolvable quintics, higher degrees without such structure) is an
+//!   exact `root_of(k, c0, ..., cn)` object: the `k`-th root of the
+//!   polynomial, the real roots first (ascending), then the complex ones by
+//!   real and imaginary part, canonical across factorisations, with
+//!   rigorous numeric evaluation (real and complex); `solve` therefore
+//!   always returns every real root. In numeric runs the values are
+//!   returned instead. `solve_complex(eq, x)` gives *all* complex roots of a
+//!   polynomial equation exactly (rationals, quadratic radicals with `I`,
+//!   `root_of` objects). Not done: a Galois-group analysis for degree seven
+//!   and up (Gauss periods and general solvable groups of composite
+//!   degree), so irreducible polynomials of degree six or more that are
+//!   neither decomposable nor reciprocal stay `root_of` objects even when
+//!   they are solvable.
 //!
 //! Beyond that, the sub-solvers interlock:
 //!
@@ -43,7 +84,8 @@
 //!   inverse circular functions through their tangent, and `A^B = C^D` by
 //!   logarithms of both sides.
 //! * **Trigonometric equations** whose arguments are `k (x + s)` are
-//!   expanded into polynomials in `sin θ`, `cos θ` and solved with the
+//!   (any rational multipliers up to a multiple-angle index of 96, mixed shifts
+//!   by the addition formulas) expanded into polynomials in `sin θ`, `cos θ` and solved with the
 //!   polynomial in `sin θ` or `cos θ` alone or the Weierstrass substitution
 //!   (covering `a sin x + b cos x = c`, multiple angles and sum-to-product
 //!   forms); solutions that are rational multiples of `π` are written as
@@ -51,7 +93,10 @@
 //!   an integer parameter `n` (`n1`, … if taken): `solve_general(sin(x) =
 //!   1/2, x)` is `list(2 n π + π/6, 2 n π + 5π/6)`. Families that agree
 //!   modulo a fraction of the period are merged, and a family valid only
-//!   for some residues of `n` is restricted to them. Other periodic
+//!   for some residues of `n` is restricted to them. Membership is checked
+//!   for all integers `n`: the residual is proved periodic in `n` (every
+//!   circular argument is affine in `n` with a rational multiple of `π` as
+//!   slope), and one period of residues is tested. Other periodic
 //!   functions of an inner expression (`sin(x^2) = c`) get their families
 //!   through the inverse functions.
 //!
@@ -77,8 +122,22 @@
 //! In numeric mode, when no closed form exists, the residual is scanned for
 //! sign changes (one equation) or damped Newton runs from a spread of
 //! starting points find roots of a system; `nsolve(list(eqs), list(vars),
-//! list(guess))` is Newton from the guess. These are not certified, unlike
-//! the Sturm sequences used for polynomials.
+//! list(guess))` is Newton from the guess. These searches are not
+//! exhaustive; the certified operators below are. Polynomials use Sturm
+//! sequences.
+//!
+//! Certified roots (interval Newton / Krawczyk on the interval arithmetic
+//! of the tape backend, with the symbolic Jacobian): a scalar `nsolve`
+//! returns a ball whose radius is a *proved* bound when a Krawczyk
+//! enclosure exists; `nsolve_certified(eq(s), var(s), guess)` returns the
+//! enclosing interval(s) `list(lo, hi)` of the unique root in them;
+//! `solve_box(eq(s), var(s), list(list(lo, hi), ...))` is an exhaustive
+//! bisection with exclusion tests and Krawczyk certification over a box,
+//! returning `list(verified boxes, unresolved boxes)`: every root in the
+//! region lies in a verified box (each containing exactly one root) unless
+//! the second list is non-empty (roots of even multiplicity, singular
+//! Jacobians, regions where the functions are undefined, an exhausted
+//! budget), so an empty second list is a proof of completeness.
 //!
 //! Inverse functions are taken on their principal branch by `solve`, so
 //! periodic equations yield one representative per branch; `solve_general`
@@ -125,10 +184,14 @@ use super::poly::repr::Limits;
 use super::poly::repr::Poly;
 use super::poly::univariate;
 
-mod elim;
+mod certified;
+mod complex_roots;
+mod decompose;
+pub(crate) mod elim;
 mod heuristics;
 mod inequality;
 mod numeric;
+mod quintic;
 mod normalize;
 mod symbolic;
 mod system;
@@ -144,7 +207,7 @@ pub struct Inverse(pub Vec<Pat>);
 /// The equation-solving rule set.
 #[must_use]
 pub fn solve() -> RuleSet {
-    RuleSet::new("solve", install).needs(poly()).needs(elementary())
+    RuleSet::new("solve", install).needs(poly()).needs(elementary()).needs(super::calculus::calculus())
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -179,6 +242,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let solve_op = i.op(OpDescriptor::new("solve", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
     let general_op = i.op(OpDescriptor::new("solve_general", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
     let nsolve_op = i.op(OpDescriptor::new("nsolve", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
+    let certified_op = i.op(OpDescriptor::new("nsolve_certified", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
+    let box_op = i.op(OpDescriptor::new("solve_box", Arity::Fixed(3)).flags(OpFlags::HEAVY).cost(100))?;
+    let complex_op = i.op(OpDescriptor::new("solve_complex", Arity::Fixed(2)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("solve/complex", Tier::Reduce, complex_roots::SolveComplex { op: complex_op });
+    i.kernel("solve/nsolve-certified", Tier::Reduce, certified::NsolveCertified { op: certified_op });
+    i.kernel("solve/box", Tier::Reduce, certified::SolveBox { op: box_op });
     i.kernel("solve/symbolic", Tier::Reduce, Symbolic { solve: solve_op, general: general_op });
     i.kernel("solve/polynomial-numeric", Tier::Reduce, PolynomialNumeric { solve: solve_op });
     i.kernel("solve/nsolve", Tier::Reduce, RootNear { nsolve: nsolve_op });
@@ -236,6 +305,31 @@ const MAX_DEPTH: usize = 8;
 
 thread_local! {
     static GENERAL: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+thread_local! {
+    static NUMERIC_RUN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Whether the engine run asks for numbers: exact `root_of` objects are
+/// then replaced by their values.
+pub(crate) fn numeric_run() -> bool {
+    NUMERIC_RUN.with(std::cell::Cell::get)
+}
+
+/// Sets [`numeric_run`] for the lifetime of the guard.
+struct NumericGuard(bool);
+
+impl NumericGuard {
+    fn set(value: bool) -> Self {
+        Self(NUMERIC_RUN.with(|n| n.replace(value)))
+    }
+}
+
+impl Drop for NumericGuard {
+    fn drop(&mut self) {
+        NUMERIC_RUN.with(|n| n.set(self.0));
+    }
 }
 
 /// Whether solutions of periodic equations are being collected as families
@@ -668,7 +762,13 @@ fn rational_polynomial_roots(
                 let n = higher.len() - 1;
                 let (c0, cn) = (higher.first()?, higher.last()?);
                 if higher.get(1..n)?.iter().any(|c| !c.is_zero()) {
-                    // Cubic and quartic formulas, or numeric roots.
+                    if n >= 5 {
+                        // Radicals for solvable quintics, `root_of` objects
+                        // for the rest.
+                        roots.extend(quintic::roots(graph, higher)?);
+                        continue;
+                    }
+                    // Cubic and quartic formulas.
                     let rational: Vec<BigRational> = higher.iter().cloned().map(BigRational::from_integer).collect();
                     roots.extend(heuristics::higher_degree(graph, &rational)?);
                     continue;
@@ -894,6 +994,8 @@ impl Kernel for Symbolic {
         cx: &mut Cx<'_>,
         node: NodeId,
     ) -> Outcome {
+        let numeric_run = cx.env.numeric;
+        let _numeric = NumericGuard::set(numeric_run);
         let graph = &mut *cx.graph;
         let general = graph.op(node) == self.general;
         let &[equation, unknown] = graph.children(node) else {
@@ -1039,7 +1141,14 @@ impl Kernel for RootNear {
         };
         let tolerance = cx.env.tolerance.max(1e-14);
         match solve_root(f, start, tolerance, 200) {
-            | Ok(root) => Outcome::Approx(Ball { mid: root, rad: tolerance }),
+            | Ok(root) => {
+                // A verified enclosure (interval Krawczyk) replaces the
+                // error estimate when one exists.
+                let bindings = cx.env.bindings().to_vec();
+                let ball = certified::certified_ball(graph, equation, x, &bindings, root)
+                    .unwrap_or(Ball { mid: root, rad: tolerance });
+                Outcome::Approx(ball)
+            },
             | Err(_) => Outcome::Pass,
         }
     }
@@ -1105,6 +1214,159 @@ mod tests {
             let value = eval(&[solve()], &residual, &[]);
             assert!(value.abs() < 1e-9, "{item} does not solve {equation}: residual {value}");
         }
+    }
+
+    /// Splits `list(a, b, ...)` at top-level commas.
+    fn list_items(text: &str) -> Vec<String> {
+        let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
+        let (mut depth, mut current, mut parts) = (0_i32, String::new(), Vec::new());
+        for ch in inner.chars() {
+            match ch {
+                | '(' => depth += 1,
+                | ')' => depth -= 1,
+                | ',' if depth == 0 => {
+                    parts.push(std::mem::take(&mut current));
+                    continue;
+                },
+                | _ => {},
+            }
+            current.push(ch);
+        }
+        if !current.trim().is_empty() {
+            parts.push(current);
+        }
+        parts
+    }
+
+    #[test]
+    fn symbolic_quartic_by_ferrari() {
+        let rules = crate::rules::standard();
+        let (text, reduced) = reduce_with(&rules, "solve(x^4 + a*x^3 + b*x + c, x)", &[]);
+        assert!(reduced, "{text}");
+        let items = list_items(&text);
+        assert!(items.len() >= 4, "{text}");
+        // At each parameter point every defined formula must be a root.
+        let mut found = Vec::new();
+        for (a, b, c) in [(-2.0, 2.0, -5.0), (1.0, -1.5, -2.0), (0.5, 3.0, -4.0)] {
+            let mut defined = 0;
+            for item in &items {
+                let at = eval(&rules, item, &[("a", a), ("b", b), ("c", c)]);
+                if !at.is_finite() {
+                    continue;
+                }
+                defined += 1;
+                let residual = at.powi(4) + a * at.powi(3) + b * at + c;
+                assert!(residual.abs() < 1e-7 * (1.0 + at.abs().powi(4)), "{item} at ({a},{b},{c}) gives {residual}");
+                found.push(at);
+            }
+            assert!(defined >= 2, "too few defined roots at ({a},{b},{c}): {text}");
+        }
+        assert!(found.len() >= 6);
+    }
+
+    /// Every member of every family (`n` in -20..=20) must satisfy `f`.
+    fn check_families(
+        src: &str,
+        f: impl Fn(f64) -> f64,
+        at_least: usize,
+    ) {
+        let rules = crate::rules::standard();
+        let (text, reduced) = reduce_with(&rules, src, &[]);
+        assert!(reduced, "{src}: {text}");
+        let items = list_items(&text);
+        assert!(items.len() >= at_least, "{src}: {text}");
+        for item in &items {
+            for n in -20..=20 {
+                let x = eval(&rules, item, &[("n", f64::from(n))]);
+                assert!(f(x).abs() < 1e-8, "{item} at n = {n} (x = {x}) is not a solution of {src}: {text}");
+            }
+        }
+    }
+
+    #[test]
+    fn trigonometric_generalisations() {
+        // Different shifts in one equation.
+        check_families("solve_general(sin(x) = sin(2*x + 1), x)", |x| x.sin() - (2.0 * x + 1.0).sin(), 2);
+        check_families("solve_general(sin(x + 1) = cos(2*x), x)", |x| (x + 1.0).sin() - (2.0 * x).cos(), 2);
+        // Large multipliers.
+        check_families("solve_general(sin(30*x) = sin(2*x), x)", |x| (30.0 * x).sin() - (2.0 * x).sin(), 2);
+        check_families("solve_general(cos(27*x) = 1, x)", |x| (27.0 * x).cos() - 1.0, 1);
+        // Rational multipliers with different denominators.
+        check_families("solve_general(sin(x/3) = sin(x/2), x)", |x| (x / 3.0).sin() - (x / 2.0).sin(), 2);
+    }
+
+    #[test]
+    fn quintics_and_root_objects() {
+        let rules = crate::rules::standard();
+        // Solvable: radicals, verified by substitution.
+        for (src, poly) in [
+            ("solve(x^5 - 5*x + 12, x)", (vec![12.0, -5.0, 0.0, 0.0, 0.0, 1.0])),
+            ("solve(x^5 + 15*x + 12, x)", (vec![12.0, 15.0, 0.0, 0.0, 0.0, 1.0])),
+            ("solve(x^5 + 5*x^3 + 5*x + 3, x)", (vec![3.0, 5.0, 0.0, 5.0, 0.0, 1.0])),
+        ] {
+            let (text, reduced) = reduce_with(&rules, src, &[]);
+            assert!(reduced, "{src}: {text}");
+            assert!(!text.contains("root_of"), "{src} should be in radicals: {text}");
+            let items = list_items(&text);
+            assert_eq!(items.len(), 1, "{src}: {text}");
+            let x = eval(&rules, &items[0], &[]);
+            let residual: f64 = poly.iter().rev().fold(0.0, |acc, c| acc * x + c);
+            assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(5)), "{src}: {x} gives {residual}");
+        }
+        // Five real roots (cyclic group): cosines, all five roots.
+        let (text, reduced) = reduce_with(&rules, "solve(x^5 + x^4 - 4*x^3 - 3*x^2 + 3*x + 1, x)", &[]);
+        assert!(reduced && !text.contains("root_of") && text.contains("cos("), "{text}");
+        let items = list_items(&text);
+        assert_eq!(items.len(), 5, "{text}");
+        let mut values: Vec<f64> = items.iter().map(|i| eval(&rules, i, &[])).collect();
+        values.sort_by(f64::total_cmp);
+        for (v, want) in values.iter().zip([-1.918_985_947_228_994_7_f64, -1.309_721_467_890_570_2, -0.284_629_676_546_570_3, 0.830_830_026_003_772_9, 1.682_507_065_662_362_4]) {
+            assert!((v - want).abs() < 1e-8, "{values:?}");
+        }
+        // Decomposable and self-reciprocal polynomials of higher degree.
+        for (src, poly) in [
+            ("solve(x^6 + 3*x^5 + 6*x^4 + 7*x^3 + 6*x^2 + 3*x - 1, x)", vec![-1.0, 3.0, 6.0, 7.0, 6.0, 3.0, 1.0]),
+            ("solve(x^6 - 2*x^3 - 1, x)", vec![-1.0, 0.0, 0.0, -2.0, 0.0, 0.0, 1.0]),
+            ("solve(x^6 - x^4 - x^3 - x^2 + 1, x)", vec![1.0, 0.0, -1.0, -1.0, -1.0, 0.0, 1.0]),
+        ] {
+            let (text, reduced) = reduce_with(&rules, src, &[]);
+            assert!(reduced, "{src}: {text}");
+            let items = list_items(&text);
+            assert!(!items.is_empty() && !text.contains("root_of"), "{src}: {text}");
+            for item in &items {
+                let x = eval(&rules, item, &[]);
+                let residual: f64 = poly.iter().rev().fold(0.0, |acc, c| acc * x + c);
+                assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(6)), "{src}: {item} -> {x} gives {residual}");
+            }
+        }
+        // Unsolvable: exact root objects, canonical and numerically evaluable.
+        let (text, reduced) = reduce_with(&rules, "solve(x^5 - x - 1, x)", &[]);
+        assert!(reduced && text == "list(root_of(0, -1, -1, 0, 0, 0, 1))", "{text}");
+        let (text, _) = reduce_with(&rules, "solve(x^7 - 7*x + 3, x)", &[]);
+        assert!(text.matches("root_of").count() == 3, "{text}");
+        // A reducible polynomial: the object lives in the irreducible factor.
+        let (text, _) = reduce_with(&rules, "root_of(1, 1, 0, -1, 0, 0, -1, 1)", &[]);
+        assert_eq!(text, "root_of(0, -1, -1, 0, 0, 0, 1)");
+        let (text, _) = reduce_with(&rules, "root_of(1, -2, 0, 1)", &[]);
+        assert_eq!(text, "2^(1/2)");
+        let (value, radius) = crate::rules::testing::numeric(&rules, "root_of(0, -1, -1, 0, 0, 0, 1)", &[], 1e-12);
+        assert!((value - 1.167_303_978_261_418_7).abs() < 1e-12 && radius < 1e-12, "{value} {radius}");
+        // The de Moivre family with parameters.
+        let (text, reduced) = reduce_with(&rules, "solve(x^5 + 5*a*x^3 + 5*a^2*x + b, x)", &[]);
+        assert!(reduced, "{text}");
+        let items = list_items(&text);
+        let mut checked = 0;
+        for (a, b) in [(1.5, 2.0), (0.7, -3.0), (-1.0, 0.8), (-1.2, -1.5)] {
+            for item in &items {
+                let x = eval(&rules, item, &[("a", a), ("b", b)]);
+                if x.is_finite() {
+                    let residual = x.powi(5) + 5.0 * a * x.powi(3) + 5.0 * a * a * x + b;
+                    assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(5)), "{item} at a={a}, b={b}: {residual}");
+                    checked += 1;
+                }
+            }
+        }
+        assert!(checked >= 8, "{checked}: {text}");
     }
 
     #[test]
@@ -1405,6 +1667,11 @@ mod tests {
             let (x, y) = (pair[0], pair[1]);
             assert!((x * x + y * y - 4.0).abs() < 1e-8 && (x.exp() + y - 1.0).abs() < 1e-8, "{pair:?}");
         }
+        // Roots of even multiplicity: no sign change, found through f'.
+        let text = numeric_text("solve(cosh(x) = 1 + x^2/2 + x^4/24, x)");
+        let roots = numbers(&text);
+        assert_eq!(roots.len(), 1, "{text}");
+        assert!(roots[0].abs() < 5e-2, "{roots:?}");
         // Newton from a guess.
         let root = numbers(&numeric_text("nsolve(list(x^2 + y^2 = 4, x*y = 1), list(x, y), list(2, 0.5))"));
         assert_eq!(root.len(), 2);

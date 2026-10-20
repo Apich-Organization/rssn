@@ -1019,3 +1019,25 @@ pub fn max_abs(field: &Matrix<f64>) -> f64 {
 
     max_val
 }
+
+/// Second-order MAC projection solver for the lid-driven cavity.
+///
+/// 2D, or 3D with `dim = 3`, at Reynolds number `re`, run to `t_end`; see
+/// [`crate::sim::ns_mac`] for obstacles, inflow/outflow and periodic faces.
+///
+/// # Errors
+/// For invalid sizes.
+pub fn lid_driven_cavity_mac(
+    dim: usize,
+    n: usize,
+    re: f64,
+    t_end: f64,
+    dt: f64,
+) -> Result<crate::sim::ns_mac::NsSolver, String> {
+    use crate::sim::boundary::{Face, FluidBoundary, FluidFaceBcs};
+    let mut cfg = crate::sim::ns_mac::NsConfig::new(&vec![n; dim], &vec![1.0; dim], 1.0 / re)?;
+    cfg.bcs = FluidFaceBcs::uniform(&FluidBoundary::wall()).with(Face::YMax, FluidBoundary::moving_wall([1.0, 0.0, 0.0]));
+    let mut s = crate::sim::ns_mac::NsSolver::new(cfg, dt, &|_| [0.0; 3])?;
+    s.run((t_end / dt).round() as usize)?;
+    Ok(s)
+}

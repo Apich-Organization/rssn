@@ -36,28 +36,6 @@
 //! [`crate::sim::spectral`]): 3D, Robin and periodic faces for heat/wave/Poisson,
 //! time-dependent boundary data, absorbing boundaries, adaptive time stepping,
 //! Newton–Krylov nonlinear diffusion, multigrid and spectral solves.
-#![allow(
-    clippy::manual_midpoint,
-    clippy::missing_const_for_fn,
-    clippy::struct_field_names,
-    clippy::too_many_lines,
-    clippy::cast_precision_loss,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::indexing_slicing,
-    clippy::arithmetic_side_effects,
-    clippy::needless_range_loop,
-    clippy::too_many_arguments,
-    clippy::many_single_char_names,
-    clippy::type_complexity,
-    clippy::suboptimal_flops,
-    clippy::float_cmp,
-    clippy::similar_names,
-    clippy::while_float,
-    clippy::needless_pass_by_value,
-    clippy::neg_cmp_op_on_partial_ord,
-    clippy::too_long_first_doc_paragraph
-)]
 
 use crate::kernels::krylov::{Csr, SparseOrdering, cg};
 use crate::kernels::ode_adaptive::{OdeError, OdeOptions};
@@ -109,7 +87,7 @@ impl Boundary {
         Self::neumann(move |_, _| v)
     }
 
-    fn is_dirichlet(&self) -> bool {
+    const fn is_dirichlet(&self) -> bool {
         matches!(self, Self::Dirichlet(_))
     }
 
@@ -193,7 +171,7 @@ impl Grid1D {
     }
 
     fn validate(&self, min_n: usize) -> Result<(), PdeError> {
-        if self.n < min_n || !(self.x1 > self.x0) || !self.x0.is_finite() || !self.x1.is_finite() {
+        if self.n < min_n || (self.x1.is_nan() || self.x0.is_nan() || self.x1 <= self.x0) || !self.x0.is_finite() || !self.x1.is_finite() {
             return Err(PdeError::InvalidInput("grid needs enough nodes and x1 > x0"));
         }
         Ok(())
@@ -220,7 +198,7 @@ pub struct Grid2D {
 impl Grid2D {
     /// Unit square with `n x n` nodes.
     #[must_use]
-    pub fn unit_square(n: usize) -> Self {
+    pub const fn unit_square(n: usize) -> Self {
         Self { x0: 0.0, x1: 1.0, y0: 0.0, y1: 1.0, nx: n, ny: n }
     }
 
@@ -237,7 +215,7 @@ impl Grid2D {
     }
 
     fn validate(&self) -> Result<(), PdeError> {
-        if self.nx < 3 || self.ny < 3 || !(self.x1 > self.x0) || !(self.y1 > self.y0) {
+        if self.nx < 3 || self.ny < 3 || (self.x1.is_nan() || self.x0.is_nan() || self.x1 <= self.x0) || (self.y1.is_nan() || self.y0.is_nan() || self.y1 <= self.y0) {
             return Err(PdeError::InvalidInput("2D grid needs >= 3 nodes per axis and positive extents"));
         }
         Ok(())
@@ -336,9 +314,9 @@ fn axis_stencil(i: usize, n: usize, h: f64, lo: &Boundary, hi: &Boundary, glo: f
     (prev, -2.0 / h2, next, rhs)
 }
 
-/// Builds the Laplacian of a grid. `bcs` is `[left, right, bottom, top]`; the
-/// bottom/top entries are ignored when `two_d` is false.
-fn build_laplacian(
+/// Uniform grid geometry handed to [`build_laplacian`] (`ny == 1` and `two_d == false` in 1D).
+#[derive(Clone, Copy)]
+struct LapGrid {
     nx: usize,
     ny: usize,
     x0: f64,
@@ -346,8 +324,15 @@ fn build_laplacian(
     hx: f64,
     hy: f64,
     two_d: bool,
+}
+
+/// Builds the Laplacian of a grid. `bcs` is `[left, right, bottom, top]`; the
+/// bottom/top entries are ignored when `two_d` is false.
+fn build_laplacian(
+    g: &LapGrid,
     bcs: &[Boundary; 4],
 ) -> Laplacian {
+    let LapGrid { nx, ny, x0, y0, hx, hy, two_d } = *g;
     let n = nx * ny;
     let mut trip = Vec::with_capacity(5 * n);
     let mut b = vec![0.0; n];
@@ -402,7 +387,7 @@ fn build_laplacian(
 }
 
 fn check_steps(t_end: f64, steps: usize) -> Result<f64, PdeError> {
-    if steps == 0 || !(t_end > 0.0) || !t_end.is_finite() {
+    if steps == 0 || (t_end.is_nan() || t_end <= 0.0) || !t_end.is_finite() {
         return Err(PdeError::InvalidInput("need t_end > 0 and at least one time step"));
     }
     Ok(t_end / steps as f64)
@@ -490,11 +475,11 @@ pub fn heat_1d(
     steps: usize,
 ) -> Result<Field1D, PdeError> {
     grid.validate(3)?;
-    if !(alpha > 0.0) {
+    if alpha.is_nan() || alpha <= 0.0 {
         return Err(PdeError::InvalidInput("diffusivity must be positive"));
     }
     let dt = check_steps(t_end, steps)?;
-    let lap = build_laplacian(grid.n, 1, grid.x0, 0.0, grid.dx(), 1.0, false, &bcs_1d(bc));
+    let lap = build_laplacian(&LapGrid { nx: grid.n, ny: 1, x0: grid.x0, y0: 0.0, hx: grid.dx(), hy: 1.0, two_d: false }, &bcs_1d(bc));
     let u = crank_nicolson(&lap, alpha, dt, steps, initial_1d(grid, u0, &lap))?;
     Ok(field_1d(grid, u, t_end))
 }
@@ -513,11 +498,11 @@ pub fn heat_2d(
     steps: usize,
 ) -> Result<Field2D, PdeError> {
     grid.validate()?;
-    if !(alpha > 0.0) {
+    if alpha.is_nan() || alpha <= 0.0 {
         return Err(PdeError::InvalidInput("diffusivity must be positive"));
     }
     let dt = check_steps(t_end, steps)?;
-    let lap = build_laplacian(grid.nx, grid.ny, grid.x0, grid.y0, grid.dx(), grid.dy(), true, bc);
+    let lap = build_laplacian(&LapGrid { nx: grid.nx, ny: grid.ny, x0: grid.x0, y0: grid.y0, hx: grid.dx(), hy: grid.dy(), two_d: true }, bc);
     let u = crank_nicolson(&lap, alpha, dt, steps, initial_2d(grid, u0, &lap))?;
     Ok(field_2d(grid, u, t_end))
 }
@@ -526,13 +511,13 @@ pub fn heat_2d(
 // Wave equation (leapfrog)
 // ---------------------------------------------------------------------------
 
-fn leapfrog(lap: &Laplacian, c: f64, dt: f64, steps: usize, u0: Vec<f64>, v0: &[f64]) -> Result<Vec<f64>, PdeError> {
+fn leapfrog(lap: &Laplacian, c: f64, dt: f64, steps: usize, u0: &[f64], v0: &[f64]) -> Result<Vec<f64>, PdeError> {
     let n = u0.len();
     let c2dt2 = c * c * dt * dt;
     let mut lu = vec![0.0; n];
-    lap.a.matvec(&u0, &mut lu);
+    lap.a.matvec(u0, &mut lu);
     // second-order start: u1 = u0 + dt v0 + dt^2/2 c^2 (L u0 + b)
-    let mut prev = u0.clone();
+    let mut prev = u0.to_vec();
     let mut cur = vec![0.0; n];
     for i in 0..n {
         cur[i] = lap.dirichlet[i].unwrap_or(u0[i] + dt * v0[i] + 0.5 * c2dt2 * (lu[i] + lap.b[i]));
@@ -573,15 +558,15 @@ pub fn wave_1d(
     steps: usize,
 ) -> Result<Field1D, PdeError> {
     grid.validate(3)?;
-    if !(c > 0.0) {
+    if c.is_nan() || c <= 0.0 {
         return Err(PdeError::InvalidInput("wave speed must be positive"));
     }
     let dt = check_steps(t_end, steps)?;
     cfl_check(c * dt / grid.dx(), 1.0)?;
-    let lap = build_laplacian(grid.n, 1, grid.x0, 0.0, grid.dx(), 1.0, false, &bcs_1d(bc));
+    let lap = build_laplacian(&LapGrid { nx: grid.n, ny: 1, x0: grid.x0, y0: 0.0, hx: grid.dx(), hy: 1.0, two_d: false }, &bcs_1d(bc));
     let h = grid.dx();
     let vel: Vec<f64> = (0..grid.n).map(|i| v0(grid.x0 + i as f64 * h)).collect();
-    let u = leapfrog(&lap, c, dt, steps, initial_1d(grid, u0, &lap), &vel)?;
+    let u = leapfrog(&lap, c, dt, steps, &initial_1d(grid, u0, &lap), &vel)?;
     Ok(field_1d(grid, u, t_end))
 }
 
@@ -600,20 +585,20 @@ pub fn wave_2d(
     steps: usize,
 ) -> Result<Field2D, PdeError> {
     grid.validate()?;
-    if !(c > 0.0) {
+    if c.is_nan() || c <= 0.0 {
         return Err(PdeError::InvalidInput("wave speed must be positive"));
     }
     let dt = check_steps(t_end, steps)?;
     let (hx, hy) = (grid.dx(), grid.dy());
     cfl_check(c * dt * (1.0 / (hx * hx) + 1.0 / (hy * hy)).sqrt(), 1.0)?;
-    let lap = build_laplacian(grid.nx, grid.ny, grid.x0, grid.y0, hx, hy, true, bc);
+    let lap = build_laplacian(&LapGrid { nx: grid.nx, ny: grid.ny, x0: grid.x0, y0: grid.y0, hx, hy, two_d: true }, bc);
     let mut vel = vec![0.0; grid.nx * grid.ny];
     for j in 0..grid.ny {
         for i in 0..grid.nx {
             vel[j * grid.nx + i] = v0(grid.x0 + i as f64 * hx, grid.y0 + j as f64 * hy);
         }
     }
-    let u = leapfrog(&lap, c, dt, steps, initial_2d(grid, u0, &lap), &vel)?;
+    let u = leapfrog(&lap, c, dt, steps, &initial_2d(grid, u0, &lap), &vel)?;
     Ok(field_2d(grid, u, t_end))
 }
 
@@ -658,7 +643,7 @@ pub fn poisson_2d(
     }
     let (nx, ny) = (grid.nx, grid.ny);
     let (hx, hy) = (grid.dx(), grid.dy());
-    let lap = build_laplacian(nx, ny, grid.x0, grid.y0, hx, hy, true, bc);
+    let lap = build_laplacian(&LapGrid { nx, ny, x0: grid.x0, y0: grid.y0, hx, hy, two_d: true }, bc);
     let n = nx * ny;
     // rhs of -L u = f + b for free nodes, g for Dirichlet nodes
     let rhs: Vec<f64> = (0..n)
@@ -829,9 +814,11 @@ pub struct MolSolution {
     pub nfev: usize,
 }
 
-/// Semi-discretises `u_t = F(t, x, u, u_x, u_xx)` on `grid` with second-order
-/// central differences (ghost nodes for Neumann ends, Dirichlet nodes held
-/// fixed) and integrates the ODE system to `t_end` with a stiff solver.
+/// Method of lines for `u_t = F(t, x, u, u_x, u_xx)` on a 1D grid with a stiff ODE solver.
+///
+/// Semi-discretises with second-order central differences (ghost nodes for
+/// Neumann ends, Dirichlet nodes held fixed) and integrates the ODE system to
+/// `t_end`.
 ///
 /// # Errors
 /// [`PdeError::InvalidInput`] for a bad grid or `t_end`, [`PdeError::Ode`] if
@@ -846,7 +833,7 @@ pub fn method_of_lines_1d(
     opts: &OdeOptions,
 ) -> Result<MolSolution, PdeError> {
     grid.validate(3)?;
-    if !(t_end > 0.0) || !t_end.is_finite() {
+    if (t_end.is_nan() || t_end <= 0.0) || !t_end.is_finite() {
         return Err(PdeError::InvalidInput("t_end must be positive"));
     }
     let n = grid.n;

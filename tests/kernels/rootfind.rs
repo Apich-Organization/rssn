@@ -74,10 +74,10 @@ fn system(x: &[f64]) -> Vec<f64> {
 
 #[test]
 fn newton_broyden_system() {
-    let s = newton_system(system, None::<fn(&[f64]) -> Mat>, &[2.0, 0.5], 1e-12, 50).unwrap();
+    let s = newton_system(system, None::<&fn(&[f64]) -> Mat>, &[2.0, 0.5], 1e-12, 50).unwrap();
     assert!(system(&s.x).iter().all(|v| v.abs() < 1e-11));
     let jac = |x: &[f64]| Mat { rows: 2, cols: 2, data: vec![2.0 * x[0], 2.0 * x[1], x[1], x[0]] };
-    let s2 = newton_system(system, Some(jac), &[2.0, 0.5], 1e-12, 50).unwrap();
+    let s2 = newton_system(system, Some(&jac), &[2.0, 0.5], 1e-12, 50).unwrap();
     assert!((s.x[0] - s2.x[0]).abs() < 1e-8);
     let b = broyden(system, &[2.0, 0.5], 1e-10, 100).unwrap();
     assert!(system(&b.x).iter().all(|v| v.abs() < 1e-9));
@@ -86,7 +86,7 @@ fn newton_broyden_system() {
 #[test]
 fn newton_line_search_helps() {
     let f = |x: &[f64]| vec![x[0].atan()];
-    let s = newton_system(f, None::<fn(&[f64]) -> Mat>, &[3.0], 1e-12, 100).unwrap();
+    let s = newton_system(f, None::<&fn(&[f64]) -> Mat>, &[3.0], 1e-12, 100).unwrap();
     assert!(s.x[0].abs() < 1e-10);
 }
 

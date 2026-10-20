@@ -9,8 +9,9 @@
 //!   Rusanov, for the Euler equations of an ideal gas and the shallow-water
 //!   equations;
 //! * **SSP-RK3** time stepping with a CFL condition summed over axes;
-//! * boundary treatment per face: transmissive, reflective wall, periodic or
-//!   a fixed (inflow) state.
+//! * boundary treatment per face: transmissive, reflective wall, periodic, a
+//!   fixed (inflow) state or a linearised characteristic **non-reflecting**
+//!   boundary (Euler only).
 //!
 //! | Equation | 1D | 2D | 3D | Riemann solvers | Reconstruction |
 //! |---|---|---|---|---|---|
@@ -23,22 +24,6 @@
 //!
 //! Limitations: no source terms (bathymetry, gravity), no dry-bed treatment
 //! beyond a small depth floor, uniform grids only, no adaptive mesh.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::type_complexity,
-    clippy::many_single_char_names,
-    clippy::manual_midpoint,
-    clippy::while_float
-)]
 
 /// Conserved or primitive state with up to five components.
 pub type State = [f64; 5];
@@ -104,6 +89,11 @@ pub enum GasBc {
     Periodic,
     /// Fixed primitive state (inflow).
     Fixed(State),
+    /// Linearised characteristic non-reflecting boundary about the given
+    /// primitive far-field state (Euler only): the incoming acoustic
+    /// characteristic is set to its far-field value, the outgoing ones are
+    /// taken from the interior.
+    NonReflecting(State),
 }
 
 /// Cartesian cell grid.
@@ -130,11 +120,9 @@ impl FvGrid {
             return Err("invalid finite-volume grid".into());
         }
         let mut g = Self { dim, n: [1; 3], lo: [0.0; 3], hi: [1.0; 3] };
-        for a in 0..dim {
-            g.n[a] = n[a];
-            g.lo[a] = lo[a];
-            g.hi[a] = hi[a];
-        }
+        g.n[..dim].copy_from_slice(&n[..dim]);
+        g.lo[..dim].copy_from_slice(&lo[..dim]);
+        g.hi[..dim].copy_from_slice(&hi[..dim]);
         Ok(g)
     }
 
@@ -164,13 +152,13 @@ impl FvGrid {
 
     /// Flat index of cell `(i, j, k)`.
     #[must_use]
-    pub fn index(&self, i: [usize; 3]) -> usize {
+    pub const fn index(&self, i: [usize; 3]) -> usize {
         i[0] + self.n[0] * (i[1] + self.n[1] * i[2])
     }
 
     /// Cell multi-index.
     #[must_use]
-    pub fn ijk(&self, p: usize) -> [usize; 3] {
+    pub const fn ijk(&self, p: usize) -> [usize; 3] {
         let r = p / self.n[0];
         [p % self.n[0], r % self.n[1], r / self.n[1]]
     }
@@ -205,7 +193,7 @@ pub struct FvConfig {
 impl FvConfig {
     /// Euler solver with all faces transmissive, HLLC + WENO5, CFL 0.4.
     #[must_use]
-    pub fn euler(gamma: f64) -> Self {
+    pub const fn euler(gamma: f64) -> Self {
         Self {
             law: Law::Euler { gamma },
             recon: Reconstruction::Weno5,
@@ -217,7 +205,7 @@ impl FvConfig {
 
     /// Shallow-water solver with all faces transmissive, HLLC + MUSCL(minmod).
     #[must_use]
-    pub fn shallow_water(g: f64) -> Self {
+    pub const fn shallow_water(g: f64) -> Self {
         Self {
             law: Law::ShallowWater { g },
             recon: Reconstruction::Muscl(SlopeLimiter::Minmod),
@@ -229,7 +217,7 @@ impl FvConfig {
 
     /// Sets both faces of an axis.
     #[must_use]
-    pub fn with_axis(mut self, axis: usize, bc: GasBc) -> Self {
+    pub const fn with_axis(mut self, axis: usize, bc: GasBc) -> Self {
         self.bcs[2 * axis] = bc;
         self.bcs[2 * axis + 1] = bc;
         self
@@ -237,7 +225,7 @@ impl FvConfig {
 
     /// Sets one face (`2 * axis + is_max`).
     #[must_use]
-    pub fn with_face(mut self, face: usize, bc: GasBc) -> Self {
+    pub const fn with_face(mut self, face: usize, bc: GasBc) -> Self {
         self.bcs[face] = bc;
         self
     }
@@ -337,7 +325,7 @@ fn flux_x(law: Law, w: &State) -> State {
     }
 }
 
-fn swap_dir(s: &mut State, d: usize) {
+const fn swap_dir(s: &mut State, d: usize) {
     if d > 0 {
         s.swap(1, 1 + d);
     }
@@ -373,7 +361,7 @@ fn riemann_flux(law: Law, solver: RiemannSolver, l: &State, r: &State) -> State 
             let s = (l[1].abs() + cl).max(r[1].abs() + cr);
             let mut f = [0.0; 5];
             for c in 0..nv {
-                f[c] = 0.5 * (fl[c] + fr[c]) - 0.5 * s * (qr[c] - ql[c]);
+                f[c] = f64::midpoint(fl[c], fr[c]) - 0.5 * s * (qr[c] - ql[c]);
             }
             f
         },
@@ -415,7 +403,7 @@ fn riemann_flux(law: Law, solver: RiemannSolver, l: &State, r: &State) -> State 
             let mut diss = [0.0; 5];
             let fix = |lam: f64, delta: f64| {
                 let a = lam.abs();
-                if a < delta { 0.5 * (lam * lam / delta + delta) } else { a }
+                if a < delta { f64::midpoint(lam * lam / delta, delta) } else { a }
             };
             match law {
                 Law::Euler { gamma } => {
@@ -448,7 +436,7 @@ fn riemann_flux(law: Law, solver: RiemannSolver, l: &State, r: &State) -> State 
                 },
                 Law::ShallowWater { .. } => {
                     let vt = (sl_ * l[2] + sr_ * r[2]) / (sl_ + sr_);
-                    let ht = 0.5 * (l[0] + r[0]);
+                    let ht = f64::midpoint(l[0], r[0]);
                     let c = ct;
                     let (dh, dm) = (r[0] - l[0], r[0] * r[1] - l[0] * l[1]);
                     let a1 = ((ut + c) * dh - dm) / (2.0 * c);
@@ -466,7 +454,7 @@ fn riemann_flux(law: Law, solver: RiemannSolver, l: &State, r: &State) -> State 
             }
             let mut f = [0.0; 5];
             for c in 0..nv {
-                f[c] = 0.5 * (fl[c] + fr[c]) - 0.5 * diss[c];
+                f[c] = f64::midpoint(fl[c], fr[c]) - 0.5 * diss[c];
             }
             f
         },
@@ -482,7 +470,7 @@ fn limit(lim: SlopeLimiter, a: f64, b: f64) -> f64 {
         SlopeLimiter::Minmod => if a.abs() < b.abs() { a } else { b },
         SlopeLimiter::VanLeer => 2.0 * a * b / (a + b),
         SlopeLimiter::Mc => {
-            let c = 0.5 * (a + b);
+            let c = f64::midpoint(a, b);
             let m = (2.0 * a.abs()).min(2.0 * b.abs()).min(c.abs());
             m.copysign(a)
         },
@@ -534,6 +522,24 @@ fn face_states(recon: Reconstruction, line: &[State], k: usize, nv: usize) -> (S
     (l, r)
 }
 
+/// Ghost state of the linearised characteristic non-reflecting boundary.
+fn nrbc_ghost(law: Law, q: State, w_inf: &State, axis: usize, max: bool) -> State {
+    let Law::Euler { gamma } = law else { return q };
+    let wi = to_prim(law, q);
+    let c = (gamma * w_inf[4] / w_inf[0]).sqrt();
+    let rc = w_inf[0] * c;
+    let sgn = if max { 1.0 } else { -1.0 };
+    let (un_i, un_inf) = (sgn * wi[1 + axis], sgn * w_inf[1 + axis]);
+    let rp = f64::midpoint(wi[4] - w_inf[4], rc * (un_i - un_inf));
+    let p_g = (w_inf[4] + rp).max(1e-8);
+    let un_g = un_inf + rp / rc;
+    let mut wg = if un_inf >= 0.0 { wi } else { *w_inf };
+    wg[0] = (wg[0] + (p_g - if un_inf >= 0.0 { wi[4] } else { w_inf[4] }) / (c * c)).max(1e-8);
+    wg[4] = p_g;
+    wg[1 + axis] = sgn * un_g;
+    to_cons(law, wg)
+}
+
 const GHOST: usize = 3;
 
 struct Padded {
@@ -552,7 +558,7 @@ impl Padded {
         Self { np, g }
     }
 
-    fn idx(&self, i: [usize; 3]) -> usize {
+    const fn idx(&self, i: [usize; 3]) -> usize {
         i[0] + self.np[0] * (i[1] + self.np[1] * i[2])
     }
 
@@ -614,6 +620,12 @@ impl Stepper<'_> {
                                     GasBc::Periodic => gi.rem_euclid(n),
                                     GasBc::Fixed(w) => {
                                         p[pad.idx(dst)] = to_cons(law, w);
+                                        continue;
+                                    },
+                                    GasBc::NonReflecting(w_inf) => {
+                                        let mut edge = dst;
+                                        edge[a] = ((if max { n - 1 } else { 0 }) + gh) as usize;
+                                        p[pad.idx(dst)] = nrbc_ghost(law, p[pad.idx(edge)], &w_inf, a, max);
                                         continue;
                                     },
                                 };
@@ -708,6 +720,9 @@ pub fn solve(
 ) -> Result<FvSolution, String> {
     if !(cfg.cfl > 0.0 && cfg.cfl < 1.0) {
         return Err("cfl must be in (0, 1)".into());
+    }
+    if matches!(cfg.law, Law::ShallowWater { .. }) && cfg.bcs.iter().any(|b| matches!(b, GasBc::NonReflecting(_))) {
+        return Err("non-reflecting boundaries are available for the Euler equations only".into());
     }
     if matches!(cfg.law, Law::ShallowWater { .. }) && grid.dim == 3 {
         return Err("shallow water is two-dimensional at most".into());

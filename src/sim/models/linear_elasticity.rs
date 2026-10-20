@@ -353,3 +353,6 @@ pub fn simulate_cantilever_beam_scenario(output_dir: &Path) -> Result<(), String
 
     Ok(())
 }
+
+/// Simplex-mesh elasticity (plane stress/strain, 3D, P1/P2): see [`crate::sim::elasticity_fem`].
+pub use crate::sim::elasticity_fem::{ElasticityProblem, Material as SimplexMaterial, solve as solve_simplex_elasticity};

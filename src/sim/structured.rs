@@ -19,26 +19,9 @@
 //! nodes with spacing `(hi - lo)/n`.
 //!
 //! Limitations: constant-coefficient Laplacian only (variable diffusion is
-//! provided by [`nonlinear_diffusion`]); scalar PML is not available (use
-//! the FDTD model for PML); the Mur condition is first order.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::cast_lossless,
-    clippy::single_match_else,
-    clippy::manual_contains,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    clippy::needless_range_loop,
-    clippy::float_cmp,
-    clippy::missing_const_for_fn,
-    clippy::cognitive_complexity,
-    clippy::while_float,
-    clippy::manual_midpoint,
-    clippy::struct_excessive_bools,
-    clippy::option_if_let_else
-)]
+//! provided by [`nonlinear_diffusion`]); the scalar wave
+//! equation with a PML is in [`crate::sim::acoustics`]; the Mur condition
+//! here is first order.
 
 use crate::kernels::krylov::{Csr, Ilu0, SparseLu, SparseOrdering, bicgstab, gmres, identity_precond};
 use crate::sim::boundary::{BcValue, BoundaryCondition, Face, FaceBcs};
@@ -119,13 +102,13 @@ impl Grid {
 
     /// Flat index of node `(i, j, k)` (x fastest).
     #[must_use]
-    pub fn index(&self, i: [usize; 3]) -> usize {
+    pub const fn index(&self, i: [usize; 3]) -> usize {
         i[0] + self.n[0] * (i[1] + self.n[1] * i[2])
     }
 
     /// Node multi-index of a flat index.
     #[must_use]
-    pub fn ijk(&self, p: usize) -> [usize; 3] {
+    pub const fn ijk(&self, p: usize) -> [usize; 3] {
         let i = p % self.n[0];
         let r = p / self.n[0];
         [i, r % self.n[1], r / self.n[1]]
@@ -278,7 +261,7 @@ impl LaplacianOp {
 
     /// Whether any face carries an absorbing (wave-only) condition.
     #[must_use]
-    pub fn has_absorbing(&self) -> bool {
+    pub const fn has_absorbing(&self) -> bool {
         !self.absorbing.is_empty()
     }
 
@@ -758,13 +741,13 @@ impl<'a> NlStepper<'a> {
                 };
                 if g.periodic[a] || (i > 0 && i < n - 1) {
                     let (qm, qp) = (at((i + n - 1) % n), at((i + 1) % n));
-                    let dp = 0.5 * (dv[p] + dv[qp]);
-                    let dm = 0.5 * (dv[p] + dv[qm]);
+                    let dp = f64::midpoint(dv[p], dv[qp]);
+                    let dm = f64::midpoint(dv[p], dv[qm]);
                     acc += (dp * (u[qp] - u[p]) - dm * (u[p] - u[qm])) / (h * h);
                 } else {
                     let max = i == n - 1;
                     let qi = if max { at(n - 2) } else { at(1) };
-                    let din = 0.5 * (dv[p] + dv[qi]);
+                    let din = f64::midpoint(dv[p], dv[qi]);
                     let dudn = match &self.bc[a][usize::from(max)] {
                         Some((al, be, gv)) => (gv.eval(t, x) - al * u[p]) / be,
                         None => 0.0,

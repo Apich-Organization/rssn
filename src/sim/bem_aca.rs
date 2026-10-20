@@ -20,24 +20,14 @@
 //! point at the centre of a flat face of a closed surface), so no row sums
 //! are needed.
 //!
-//! Limitations: interior problems with at least one Dirichlet element (a
-//! pure Neumann problem is singular); compression helps from a few thousand
-//! elements upwards; no cluster-tree rebalancing for strongly anisotropic
-//! meshes.
-#![allow(
-    clippy::manual_memcpy,
-    clippy::too_long_first_doc_paragraph,
-    clippy::too_many_lines,
-    clippy::too_many_arguments,
-    clippy::needless_range_loop,
-    clippy::missing_const_for_fn,
-    clippy::float_cmp,
-    clippy::type_complexity,
-    clippy::many_single_char_names,
-    clippy::similar_names,
-    clippy::cognitive_complexity,
-    clippy::option_if_let_else
-)]
+//! Also provided: pure-Neumann interior problems through a bordered system
+//! that removes the constant nullspace, **exterior** problems
+//! ([`solve_laplace_bem_3d_exterior`], decaying at infinity) and a dense
+//! **linear-element** (P1) collocation solver ([`solve_laplace_bem_3d_p1`]).
+//!
+//! Limitations: compression helps from a few thousand elements upwards; the
+//! P1 solver is dense and not compressed; no cluster-tree rebalancing for
+//! strongly anisotropic meshes; exterior problems assume a closed surface.
 
 use crate::kernels::krylov::gmres;
 use crate::sim::physics_bem::{
@@ -110,7 +100,7 @@ enum Block {
 }
 
 impl Block {
-    fn stored(&self) -> usize {
+    const fn stored(&self) -> usize {
         match self {
             Self::Dense { data, .. } => data.len(),
             Self::LowRank { u, v, .. } => u.len() + v.len(),
@@ -341,24 +331,106 @@ fn build_hmatrix(
 
 /// Solves the interior Laplace BEM problem with ACA-compressed operators and GMRES.
 ///
+/// A pure Neumann problem (flux prescribed on every element) is singular up
+/// to an additive constant; it is solved as the nonsingular augmented system
+/// `[H 1; aᵀ 0] [u; λ] = [G q; 0]` with the area weights `a`, which selects
+/// the solution of zero area-weighted mean. The fluxes must satisfy the
+/// compatibility condition `Σ q_j a_j = 0`.
+///
 /// # Errors
-/// For an invalid mesh, wrong number or non-finite boundary data, a pure
-/// Neumann problem, or GMRES failure to converge.
+/// For an invalid mesh, wrong number or non-finite boundary data, an
+/// incompatible pure Neumann problem, or GMRES failure to converge.
 pub fn solve_laplace_bem_3d_aca(
     mesh: &SurfaceMesh3D,
     bcs: &[BoundaryCondition<f64>],
     opts: &AcaOptions,
 ) -> Result<(Bem3dSolution, AcaStats), String> {
-    mesh.validate()?;
+    solve_impl(mesh, bcs, opts, false)
+}
+
+/// Solves the **exterior** Laplace problem (domain outside the closed surface,
+/// solution decaying at infinity) with ACA compression and GMRES.
+///
+/// The boundary data follow the surface orientation: the flux is the derivative
+/// along the outward normal of the body, i.e. into the solution domain. The
+/// returned `q` uses the same convention (`u = 1/r` on the unit sphere has
+/// `q = -1`). Dirichlet, Neumann or mixed data are all nonsingular.
+///
+/// # Errors
+/// As [`solve_laplace_bem_3d_aca`] (except that pure Neumann data are allowed).
+pub fn solve_laplace_bem_3d_exterior(
+    mesh: &SurfaceMesh3D,
+    bcs: &[BoundaryCondition<f64>],
+    opts: &AcaOptions,
+) -> Result<(Bem3dSolution, AcaStats), String> {
+    solve_impl(mesh, bcs, opts, true)
+}
+
+/// Potential at a point **outside** the body from an exterior solution:
+/// `u(x) = -Σ_j (G_xj q_j + Ω_xj u_j / 4π)` with `q` along the body's outward normal.
+///
+/// # Errors
+/// If the solution does not match the mesh.
+pub fn evaluate_potential_3d_exterior(point: [f64; 3], mesh: &SurfaceMesh3D, solution: &Bem3dSolution) -> Result<f64, String> {
     let n = mesh.triangles.len();
-    if bcs.len() != n {
-        return Err(format!("expected {n} boundary conditions, got {}", bcs.len()));
+    if solution.u.len() != n || solution.q.len() != n {
+        return Err("solution does not match the mesh".into());
     }
-    if bcs.iter().any(|bc| matches!(bc, BoundaryCondition::Potential(v) | BoundaryCondition::Flux(v) if !v.is_finite())) {
+    let mut result = 0.0;
+    for t in 0..n {
+        let tri = mesh.corners(t).ok_or("invalid triangle index")?;
+        let g = inv_r_integral(point, tri, 0) / (4.0 * PI);
+        let h = solid_angle(point, tri) / (4.0 * PI);
+        result -= g * solution.q[t] + h * solution.u[t];
+    }
+    Ok(result)
+}
+
+fn flipped(mesh: &SurfaceMesh3D) -> SurfaceMesh3D {
+    SurfaceMesh3D { vertices: mesh.vertices.clone(), triangles: mesh.triangles.iter().map(|&[a, b, c]| [a, c, b]).collect() }
+}
+
+fn solve_impl(
+    mesh_in: &SurfaceMesh3D,
+    bcs_in: &[BoundaryCondition<f64>],
+    opts: &AcaOptions,
+    exterior: bool,
+) -> Result<(Bem3dSolution, AcaStats), String> {
+    mesh_in.validate()?;
+    let n = mesh_in.triangles.len();
+    if bcs_in.len() != n {
+        return Err(format!("expected {n} boundary conditions, got {}", bcs_in.len()));
+    }
+    if bcs_in.iter().any(|bc| matches!(bc, BoundaryCondition::Potential(v) | BoundaryCondition::Flux(v) if !v.is_finite())) {
         return Err("boundary data must be finite".into());
     }
-    if bcs.iter().all(|bc| matches!(bc, BoundaryCondition::Flux(_))) {
-        return Err("pure Neumann problems are singular; prescribe the potential on at least one element".into());
+    // exterior: interior formulation on the reversed orientation with flipped flux sign
+    let flipped_mesh;
+    let (mesh, owned_bcs);
+    let bcs: &[BoundaryCondition<f64>] = if exterior {
+        flipped_mesh = flipped(mesh_in);
+        mesh = &flipped_mesh;
+        owned_bcs = bcs_in
+            .iter()
+            .map(|b| match *b {
+                BoundaryCondition::Flux(v) => BoundaryCondition::Flux(-v),
+                BoundaryCondition::Potential(v) => BoundaryCondition::Potential(v),
+            })
+            .collect::<Vec<_>>();
+        &owned_bcs
+    } else {
+        mesh = mesh_in;
+        bcs_in
+    };
+    let all_flux = bcs.iter().all(|bc| matches!(bc, BoundaryCondition::Flux(_)));
+    let augmented = all_flux && !exterior;
+    let areas: Vec<f64> = (0..n).filter_map(|t| mesh.area(t)).collect();
+    if augmented {
+        let scale: f64 = bcs.iter().zip(&areas).map(|(b, a)| if let BoundaryCondition::Flux(q) = b { (q * a).abs() } else { 0.0 }).sum();
+        let net: f64 = bcs.iter().zip(&areas).map(|(b, a)| if let BoundaryCondition::Flux(q) = b { q * a } else { 0.0 }).sum();
+        if net.abs() > 1e-6 * scale.max(f64::MIN_POSITIVE) {
+            return Err("pure Neumann data violates the compatibility condition (net flux must vanish)".into());
+        }
     }
     let corners: Vec<[V3; 3]> = (0..n).filter_map(|t| mesh.corners(t)).collect();
     let cent: Vec<V3> = corners
@@ -386,15 +458,17 @@ pub fn solve_laplace_bem_3d_aca(
     for (new, &old) in perm.iter().enumerate() {
         inv_perm[old] = new;
     }
-    // masks in permuted ordering
     let is_dir: Vec<bool> = perm.iter().map(|&o| matches!(bcs[o], BoundaryCondition::Potential(_))).collect();
     let u_known: Vec<f64> = perm.iter().map(|&o| if let BoundaryCondition::Potential(v) = bcs[o] { v } else { 0.0 }).collect();
     let q_known: Vec<f64> = perm.iter().map(|&o| if let BoundaryCondition::Flux(v) = bcs[o] { v } else { 0.0 }).collect();
-    // rhs = -H u_D + G q_N
     let hu = hm.matvec(&u_known);
     let gq = gm.matvec(&q_known);
-    let rhs: Vec<f64> = (0..n).map(|i| gq[i] - hu[i]).collect();
-    // operator: x_j = q_j on Dirichlet elements, u_j on Neumann elements: A x = H x_N - G x_D
+    let mut rhs: Vec<f64> = (0..n).map(|i| gq[i] - hu[i]).collect();
+    let dim = if augmented { n + 1 } else { n };
+    let area_p: Vec<f64> = perm.iter().map(|&o| areas[o]).collect();
+    if augmented {
+        rhs.push(0.0);
+    }
     let apply = |x: &[f64], y: &mut [f64]| {
         let xd: Vec<f64> = (0..n).map(|i| if is_dir[i] { x[i] } else { 0.0 }).collect();
         let xn: Vec<f64> = (0..n).map(|i| if is_dir[i] { 0.0 } else { x[i] }).collect();
@@ -403,15 +477,25 @@ pub fn solve_laplace_bem_3d_aca(
         for i in 0..n {
             y[i] = hx[i] - gx[i];
         }
+        if augmented {
+            let lam = x[n];
+            for i in 0..n {
+                y[i] += lam;
+            }
+            y[n] = (0..n).map(|i| area_p[i] * x[i]).sum();
+        }
     };
-    let diag: Vec<f64> = (0..n)
+    let mut diag: Vec<f64> = (0..n)
         .map(|i| {
             let o = perm[i];
             if is_dir[i] { -g_entry(o, o) } else { 0.5 }
         })
         .collect();
+    if augmented {
+        diag.push(1.0);
+    }
     let precond = |r: &[f64], z: &mut [f64]| {
-        for i in 0..n {
+        for i in 0..dim {
             z[i] = r[i] / diag[i];
         }
     };
@@ -434,6 +518,11 @@ pub fn solve_laplace_bem_3d_aca(
             },
         }
     }
+    if exterior {
+        for v in &mut q {
+            *v = -*v;
+        }
+    }
     let stored: usize = gm.blocks.iter().chain(&hm.blocks).map(Block::stored).sum();
     let lowrank = gm.blocks.iter().chain(&hm.blocks).filter(|b| matches!(b, Block::LowRank { .. })).count();
     let stats = AcaStats {
@@ -445,4 +534,226 @@ pub fn solve_laplace_bem_3d_aca(
         residual: res.residual,
     };
     Ok((Bem3dSolution { u, q }, stats))
+}
+
+// ---------------------------------------------------------------------------
+// Linear (P1) elements
+// ---------------------------------------------------------------------------
+
+/// Boundary data at a mesh vertex for the linear-element BEM.
+pub type VertexBc = BoundaryCondition<f64>;
+
+/// Solution of the linear-element BEM: nodal potential and normal derivative.
+#[derive(Clone, Debug)]
+pub struct BemP1Solution {
+    /// Potential at the vertices.
+    pub u: Vec<f64>,
+    /// Derivative along the outward (body) normal at the vertices.
+    pub q: Vec<f64>,
+}
+
+const RADON_A: f64 = 0.101_286_507_323_456_3;
+const RADON_B: f64 = 0.470_142_064_105_115_1;
+
+fn radon7() -> [([f64; 3], f64); 7] {
+    // Radon's weights sum to 1/2 on the reference triangle; scale them to sum to one
+    let (wa, wb) = (2.0 * 0.062_969_590_272_413_6, 2.0 * 0.066_197_076_394_253_1);
+    [
+        ([1.0 / 3.0; 3], 0.225),
+        ([RADON_A, RADON_A, 1.0 - 2.0 * RADON_A], wa),
+        ([RADON_A, 1.0 - 2.0 * RADON_A, RADON_A], wa),
+        ([1.0 - 2.0 * RADON_A, RADON_A, RADON_A], wa),
+        ([RADON_B, RADON_B, 1.0 - 2.0 * RADON_B], wb),
+        ([RADON_B, 1.0 - 2.0 * RADON_B, RADON_B], wb),
+        ([1.0 - 2.0 * RADON_B, RADON_B, RADON_B], wb),
+    ]
+}
+
+fn sub3(a: V3, b: V3) -> V3 {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn nrm3(a: V3) -> f64 {
+    (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]).sqrt()
+}
+
+/// Adds `∫_T φ_k (kernel) dS` for k = 0..3 by adaptive subdivision (`single`
+/// selects `1/r`, otherwise `ν·(y - x)/r³`).
+fn p1_regular(x: V3, tri: [V3; 3], nu: V3, single: bool, depth: usize, out: &mut [f64; 3]) {
+    let centre = [
+        (tri[0][0] + tri[1][0] + tri[2][0]) / 3.0,
+        (tri[0][1] + tri[1][1] + tri[2][1]) / 3.0,
+        (tri[0][2] + tri[1][2] + tri[2][2]) / 3.0,
+    ];
+    let diam = nrm3(sub3(tri[0], tri[1])).max(nrm3(sub3(tri[1], tri[2]))).max(nrm3(sub3(tri[2], tri[0])));
+    let d = nrm3(sub3(centre, x));
+    if d < 1.5 * diam && depth < 5 {
+        let m = |a: V3, b: V3| [f64::midpoint(a[0], b[0]), f64::midpoint(a[1], b[1]), f64::midpoint(a[2], b[2])];
+        let (m01, m12, m20) = (m(tri[0], tri[1]), m(tri[1], tri[2]), m(tri[2], tri[0]));
+        // sub-triangle integrals carry the parent's shape functions: evaluate via barycentric lifting
+        for (sub, lift) in [
+            ([tri[0], m01, m20], [[1.0, 0.0, 0.0], [0.5, 0.5, 0.0], [0.5, 0.0, 0.5]]),
+            ([m01, tri[1], m12], [[0.5, 0.5, 0.0], [0.0, 1.0, 0.0], [0.0, 0.5, 0.5]]),
+            ([m20, m12, tri[2]], [[0.5, 0.0, 0.5], [0.0, 0.5, 0.5], [0.0, 0.0, 1.0]]),
+            ([m12, m20, m01], [[0.0, 0.5, 0.5], [0.5, 0.0, 0.5], [0.5, 0.5, 0.0]]),
+        ] {
+            let mut loc = [0.0; 3];
+            p1_regular(x, sub, nu, single, depth + 1, &mut loc);
+            // loc[k] integrates the sub-triangle's own vertex function k; parent function j = Σ_k lift[k][j] φ_k
+            for j in 0..3 {
+                for k in 0..3 {
+                    out[j] += lift[k][j] * loc[k];
+                }
+            }
+        }
+        return;
+    }
+    let a2 = {
+        let (e1, e2) = (sub3(tri[1], tri[0]), sub3(tri[2], tri[0]));
+        nrm3([e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]]) * 0.5
+    };
+    for (bary, w) in radon7() {
+        let y = [
+            bary[0] * tri[0][0] + bary[1] * tri[1][0] + bary[2] * tri[2][0],
+            bary[0] * tri[0][1] + bary[1] * tri[1][1] + bary[2] * tri[2][1],
+            bary[0] * tri[0][2] + bary[1] * tri[1][2] + bary[2] * tri[2][2],
+        ];
+        let r = sub3(y, x);
+        let rn = nrm3(r);
+        let k = if single { 1.0 / rn } else { (nu[0] * r[0] + nu[1] * r[1] + nu[2] * r[2]) / (rn * rn * rn) };
+        for j in 0..3 {
+            out[j] += a2 * w * bary[j] * k;
+        }
+    }
+}
+
+/// `∫_T φ_j / |y - x| dS` for `x` equal to vertex `k` of `T` (Duffy transformation).
+fn p1_singular(tri: [V3; 3], k: usize, out: &mut [f64; 3]) {
+    // 6-point Gauss-Legendre on [0,1]
+    const GX: [f64; 6] = [0.033_765_242_898_423_99, 0.169_395_306_766_867_74, 0.380_690_406_958_401_5, 0.619_309_593_041_598_5, 0.830_604_693_233_132_3, 0.966_234_757_101_576];
+    const GW: [f64; 6] = [0.085_662_246_189_585_17, 0.180_380_786_524_069_3, 0.233_956_967_286_345_5, 0.233_956_967_286_345_5, 0.180_380_786_524_069_3, 0.085_662_246_189_585_17];
+    let order = [k, (k + 1) % 3, (k + 2) % 3];
+    let (x, b, c) = (tri[order[0]], tri[order[1]], tri[order[2]]);
+    let (e1, e2) = (sub3(b, x), sub3(c, x));
+    let area2 = nrm3([e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]]);
+    for (iu, &u) in GX.iter().enumerate() {
+        let _ = u;
+        for (iw, &w) in GX.iter().enumerate() {
+            let dir = [(1.0 - w) * e1[0] + w * e2[0], (1.0 - w) * e1[1] + w * e2[1], (1.0 - w) * e1[2] + w * e2[2]];
+            let f = area2 / nrm3(dir);
+            let weight = GW[iu] * GW[iw] * f;
+            let xi = GX[iu] * (1.0 - w);
+            let eta = GX[iu] * w;
+            out[order[0]] += weight * (1.0 - xi - eta);
+            out[order[1]] += weight * xi;
+            out[order[2]] += weight * eta;
+        }
+    }
+}
+
+/// Solves the interior Laplace problem with **continuous piecewise-linear**
+/// potential and flux on the triangulated surface, by collocation at the
+/// vertices (dense LU).
+///
+/// `bcs` gives the data per **vertex**: the potential or the derivative along
+/// the outward normal. Single-layer integrals use adaptive subdivision away
+/// from the collocation point and a Duffy transformation for the elements
+/// that contain it; the double-layer kernel vanishes on those (planar)
+/// elements, and the free-term/diagonal is fixed by the rigid-body identity
+/// `Σ_j H_ij = 0`. Exterior problems: pass `exterior = true` (orientation
+/// reversed and the flux sign convention of
+/// [`solve_laplace_bem_3d_exterior`]).
+///
+/// # Errors
+/// For an invalid mesh, wrong data length, or a singular system (pure Neumann
+/// interior problems are singular).
+pub fn solve_laplace_bem_3d_p1(mesh: &SurfaceMesh3D, bcs: &[VertexBc], exterior: bool) -> Result<BemP1Solution, String> {
+    mesh.validate()?;
+    let nv = mesh.vertices.len();
+    if bcs.len() != nv {
+        return Err(format!("expected {nv} vertex conditions, got {}", bcs.len()));
+    }
+    if bcs.iter().any(|bc| matches!(bc, BoundaryCondition::Potential(v) | BoundaryCondition::Flux(v) if !v.is_finite())) {
+        return Err("boundary data must be finite".into());
+    }
+    let tris: Vec<[V3; 3]> = (0..mesh.triangles.len())
+        .filter_map(|t| {
+            let c = mesh.corners(t)?;
+            Some(if exterior { [c[0], c[2], c[1]] } else { c })
+        })
+        .collect();
+    let idx: Vec<[usize; 3]> = mesh.triangles.iter().map(|&[a, b, c]| if exterior { [a, c, b] } else { [a, b, c] }).collect();
+    let normals: Vec<V3> = tris
+        .iter()
+        .map(|t| {
+            let (e1, e2) = (sub3(t[1], t[0]), sub3(t[2], t[0]));
+            let c = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+            let l = nrm3(c);
+            [c[0] / l, c[1] / l, c[2] / l]
+        })
+        .collect();
+    let rows: Vec<(Vec<f64>, Vec<f64>)> = (0..nv)
+        .into_par_iter()
+        .map(|i| {
+            let x = mesh.vertices[i];
+            let mut g = vec![0.0; nv];
+            let mut h = vec![0.0; nv];
+            for (t, tri) in tris.iter().enumerate() {
+                let own = idx[t].iter().position(|&v| v == i);
+                let mut gl = [0.0; 3];
+                if let Some(k) = own { p1_singular(*tri, k, &mut gl) } else {
+                    p1_regular(x, *tri, normals[t], true, 0, &mut gl);
+                    let mut hl = [0.0; 3];
+                    p1_regular(x, *tri, normals[t], false, 0, &mut hl);
+                    for j in 0..3 {
+                        h[idx[t][j]] -= hl[j] / (4.0 * PI);
+                    }
+                }
+                for j in 0..3 {
+                    g[idx[t][j]] += gl[j] / (4.0 * PI);
+                }
+            }
+            let off: f64 = (0..nv).filter(|&j| j != i).map(|j| h[j]).sum();
+            // interior: rigid-body identity (constants solve the problem); exterior: complementary free term
+            h[i] = if exterior { 1.0 - off } else { -off };
+            (g, h)
+        })
+        .collect();
+    let sign = if exterior { -1.0 } else { 1.0 };
+    let mut a = crate::kernels::dense::Mat::zeros(nv, nv);
+    let mut rhs = vec![0.0; nv];
+    for (i, (g, h)) in rows.iter().enumerate() {
+        for (j, bc) in bcs.iter().enumerate() {
+            match *bc {
+                BoundaryCondition::Potential(u) => {
+                    a.set(i, j, -g[j]);
+                    rhs[i] -= h[j] * u;
+                },
+                BoundaryCondition::Flux(q) => {
+                    a.set(i, j, h[j]);
+                    rhs[i] += g[j] * sign * q;
+                },
+            }
+        }
+    }
+    let lu = crate::kernels::dense::lu_factor(&a).map_err(|e| format!("BEM system is singular: {e:?}"))?;
+    let sol = lu.solve(&rhs);
+    if sol.iter().any(|v| !v.is_finite()) {
+        return Err("BEM system has no finite solution".into());
+    }
+    let mut u = vec![0.0; nv];
+    let mut q = vec![0.0; nv];
+    for (j, bc) in bcs.iter().enumerate() {
+        match *bc {
+            BoundaryCondition::Potential(v) => {
+                u[j] = v;
+                q[j] = sign * sol[j];
+            },
+            BoundaryCondition::Flux(v) => {
+                q[j] = v;
+                u[j] = sol[j];
+            },
+        }
+    }
+    Ok(BemP1Solution { u, q })
 }

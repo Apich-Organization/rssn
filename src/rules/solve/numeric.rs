@@ -4,7 +4,8 @@
 //! * One equation in one unknown: the residual is sampled on a grid that
 //!   is dense near zero and reaches `±200`; every sign change is refined
 //!   by bisection and kept when the residual there is negligible (poles
-//!   are rejected). Roots of even multiplicity are not detected.
+//!   are rejected). Roots of even multiplicity are the zeros of the
+//!   residual at sign changes of its (symbolic) derivative.
 //! * A system: damped Newton iterations (Gauss–Newton when there are more
 //!   equations than unknowns) from a deterministic spread of starting
 //!   points, with a finite-difference Jacobian. A root is accepted when
@@ -214,39 +215,41 @@ pub(super) fn system_roots(
     Some(roots)
 }
 
-/// Real roots of one equation by sign changes on a grid.
-pub(super) fn scalar_roots(
-    graph: &mut Graph,
-    equation: NodeId,
-    unknown: SymbolId,
-    bindings: &[(SymbolId, f64)],
-) -> Option<Vec<f64>> {
-    let system = Compiled_::new(graph, &[equation], &[unknown], bindings)?;
-    let f = |t: f64| system.residual(&[t]).first().copied().filter(|v| v.is_finite()).unwrap_or(f64::NAN);
+/// The abscissae of the scan grid: dense near zero, reaching `±200`.
+fn grid() -> Vec<f64> {
     let steps = 8000_i32;
-    let point = |i: i32| {
-        let u = f64::from(i) / f64::from(steps);
-        200.0 * u * u.abs() * u.abs()
-    };
-    let mut roots: Vec<f64> = Vec::new();
-    let mut previous = f(point(-steps));
-    for i in -steps + 1..=steps {
-        let (a, b) = (point(i - 1), point(i));
-        let fb = f(b);
+    (-steps..=steps)
+        .map(|i| {
+            let u = f64::from(i) / f64::from(steps);
+            200.0 * u * u.abs() * u.abs()
+        })
+        .collect()
+}
+
+/// Sign changes of `g` on the grid, each refined by bisection.
+fn sign_changes(
+    g: &dyn Fn(f64) -> f64,
+    points: &[f64],
+) -> Vec<(f64, f64, f64)> {
+    let mut out = Vec::new();
+    let mut previous = g(points.first().copied().unwrap_or(0.0));
+    for pair in points.windows(2) {
+        let (a, b) = (pair[0], pair[1]);
+        let fb = g(b);
         let fa = previous;
         previous = fb;
         if fa.is_nan() || fb.is_nan() {
             continue;
         }
         if fa == 0.0 {
-            roots.push(a);
+            out.push((a, fa, fb));
             continue;
         }
         if fa * fb < 0.0 {
             let (mut lo, mut hi, mut flo) = (a, b, fa);
             for _ in 0..200 {
                 let mid = f64::midpoint(lo, hi);
-                let fm = f(mid);
+                let fm = g(mid);
                 if fm.is_nan() {
                     break;
                 }
@@ -257,14 +260,89 @@ pub(super) fn scalar_roots(
                     flo = fm;
                 }
             }
-            let r = f64::midpoint(lo, hi);
-            let scale = fa.abs().max(fb.abs());
-            if f(r).abs() <= 1e-8 * (1.0 + scale.min(1e6)) && f(r).abs() < 1e-6 {
-                roots.push(r);
+            out.push((f64::midpoint(lo, hi), fa, fb));
+        }
+    }
+    out
+}
+
+/// Real roots of one equation: sign changes of the residual on a grid, and
+/// the roots of even multiplicity, which are the zeros of the residual at
+/// sign changes of its derivative (a root of multiplicity `m` is a root of
+/// multiplicity `m - 1` of `f'`).
+pub(super) fn scalar_roots(
+    graph: &mut Graph,
+    equation: NodeId,
+    unknown: SymbolId,
+    bindings: &[(SymbolId, f64)],
+) -> Option<Vec<f64>> {
+    let system = Compiled_::new(graph, &[equation], &[unknown], bindings)?;
+    let f = |t: f64| system.residual(&[t]).first().copied().filter(|v| v.is_finite()).unwrap_or(f64::NAN);
+    let points = grid();
+    let mut roots: Vec<f64> = Vec::new();
+    for (r, fa, fb) in sign_changes(&f, &points) {
+        let value = f(r).abs();
+        let scale = fa.abs().max(fb.abs());
+        // Exact zeros of the grid are reported as such; a sign change across
+        // a pole leaves a large residual and is rejected.
+        if fa == 0.0 || (value <= 1e-8 * (1.0 + scale.min(1e6)) && value < 1e-6) {
+            roots.push(r);
+        }
+    }
+    // Roots of even multiplicity through f'.
+    let expr = as_expression(graph, equation);
+    if let Some(term) = best(graph, expr) {
+        let x_node = graph.symbol_node(unknown);
+        if let Some(d) = crate::rules::calculus::derivative(graph, term, x_node)
+            && let Some(dsystem) = Compiled_::new(graph, &[d], &[unknown], bindings)
+        {
+            let df = |t: f64| dsystem.residual(&[t]).first().copied().filter(|v| v.is_finite()).unwrap_or(f64::NAN);
+            // Round-off makes f' change sign many times near a root of high
+            // multiplicity: nearby candidates form one cluster, represented
+            // by the member where |f| is smallest.
+            let mut candidates: Vec<f64> = Vec::new();
+            for (r, _, _) in sign_changes(&df, &points) {
+                let value = f(r).abs();
+                let delta = 1e-3 * (1.0 + r.abs());
+                let scale = f(r - delta).abs().max(f(r + delta).abs());
+                if value.is_finite() && scale.is_finite() && value <= 1e-9 * scale + 1e-15 {
+                    candidates.push(r);
+                }
+            }
+            let mut clusters: Vec<Vec<f64>> = Vec::new();
+            for r in candidates {
+                match clusters.last_mut() {
+                    | Some(cluster) if cluster.last().is_some_and(|&l| (r - l).abs() <= 1e-2 * (1.0 + r.abs())) => cluster.push(r),
+                    | _ => clusters.push(vec![r]),
+                }
+            }
+            for cluster in clusters {
+                if let Some(best) = cluster.into_iter().min_by(|a, b| f(*a).abs().total_cmp(&f(*b).abs())) {
+                    roots.push(best);
+                }
             }
         }
     }
-    roots.dedup_by(|a, b| (*a - *b).abs() < 1e-9 * (1.0 + a.abs()));
+    roots.sort_by(f64::total_cmp);
+    roots.dedup_by(|a, b| (*a - *b).abs() < 1e-6 * (1.0 + a.abs()));
+    // Round-off flips the sign of a residual that is flat to machine
+    // precision many times: a dense chain of "roots" is one root of high
+    // multiplicity, represented by the member with the smallest residual.
+    let mut chains: Vec<Vec<f64>> = Vec::new();
+    for r in roots {
+        match chains.last_mut() {
+            | Some(chain) if chain.last().is_some_and(|&l| (r - l).abs() <= 1e-2 * (1.0 + r.abs())) => chain.push(r),
+            | _ => chains.push(vec![r]),
+        }
+    }
+    let mut roots: Vec<f64> = Vec::new();
+    for chain in chains {
+        if chain.len() >= 4 {
+            roots.extend(chain.into_iter().min_by(|a, b| f(*a).abs().total_cmp(&f(*b).abs())));
+        } else {
+            roots.extend(chain);
+        }
+    }
     Some(roots)
 }
 

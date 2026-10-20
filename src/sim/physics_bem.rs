@@ -1121,3 +1121,7 @@ pub fn solve_laplace_bem_3d() -> Result<(), String> {
         Err(format!("3D BEM self-check failed: flux error {worst}"))
     }
 }
+
+/// Iterative / compressed (ACA + GMRES), exterior, pure-Neumann and
+/// linear-element variants of the 3D solver live in [`crate::sim::bem_aca`].
+pub use crate::sim::bem_aca::{solve_laplace_bem_3d_aca, solve_laplace_bem_3d_exterior, solve_laplace_bem_3d_p1};
