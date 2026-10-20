@@ -129,7 +129,7 @@
 //! * Nonlinear equations: Hopf–Cole only for constant-coefficient Burgers on
 //!   the line; Riemann problems only for a single step and a convex or
 //!   concave flux (no convex-hull construction, shock interactions or
-//!   hodograph); the soliton operators cover KdV (`N ≤ 4`) and sine-Gordon
+//!   hodograph); the soliton operators cover `KdV` (`N ≤ 4`) and sine-Gordon
 //!   (`N ≤ 3`) as closed families, there is no tanh/sech ansatz solver, no
 //!   NLS, no Darboux transformation and no inverse scattering from general
 //!   initial data; Lie point symmetries and similarity reductions are those
