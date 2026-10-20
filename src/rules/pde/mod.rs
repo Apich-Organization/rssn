@@ -1274,10 +1274,14 @@ fn solve_classical(
         solution = diffusion::similarity(cx, p, conditions).or_else(|| diffusion::parabolic(cx, p, conditions));
     }
     if solution.is_none() && method == Any {
-        solution = classical::wave_half_line(cx, p, conditions).or_else(|| frameworks::fourier_evolution(cx, p, conditions));
+        solution = classical::wave_half_line(cx, p, conditions);
     }
     if solution.is_none() && matches!(method, Any | Dalembert | Wave3 | SecondOrder | KleinGordon) {
         solution = waves::wave(cx, p, conditions);
+    }
+    if solution.is_none() && method == Any {
+        // The Fourier-symbol fallback: last resort on whole space.
+        solution = frameworks::fourier_evolution(cx, p, conditions);
     }
     if solution.is_none() && method == Any && conditions.is_empty() && p.order() == 1 && p.nonlinear {
         solution = frameworks::complete_integral(cx, p);
