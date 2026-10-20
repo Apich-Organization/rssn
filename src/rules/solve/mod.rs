@@ -1297,6 +1297,37 @@ mod tests {
     }
 
     #[test]
+    fn sextics_and_septics_by_galois_group() {
+        let rules = crate::rules::standard();
+        // (equation, ascending coefficients, number of real roots)
+        let cases: [(&str, Vec<f64>, usize); 4] = [
+            // Cyclic septic (Gauss periods, conductor 29): seven real roots.
+            ("solve(x^7 + x^6 - 12*x^5 - 7*x^4 + 28*x^3 + 14*x^2 - 9*x + 1, x)", vec![1.0, -9.0, 14.0, 28.0, -7.0, -12.0, 1.0, 1.0], 7),
+            // 2 cos(2 pi / 13): cyclic sextic, six real roots.
+            ("solve(x^6 + x^5 - 5*x^4 - 4*x^3 + 6*x^2 + 3*x - 1, x)", vec![-1.0, 3.0, 6.0, -4.0, -5.0, 1.0, 1.0], 6),
+            // Sextic with group A4 on six points (block tower).
+            ("solve(x^6 - 12*x^4 - 64*x^3 - 144*x^2 + 1728, x)", vec![1728.0, 0.0, -144.0, -64.0, -12.0, 0.0, 1.0], 0),
+            // S4 on the six directed 4-cycles (block tower).
+            ("solve(x^6 + 6*x^5 + 24*x^4 + 56*x^3 + 160*x^2 + 224*x + 384, x)", vec![384.0, 224.0, 160.0, 56.0, 24.0, 6.0, 1.0], 0),
+        ];
+        for (src, poly, count) in cases {
+            let (text, reduced) = reduce_with(&rules, src, &[]);
+            eprintln!("{src}: {text}");
+            assert!(reduced, "{src}: {text}");
+            let items = list_items(&text);
+            if count > 0 {
+                assert_eq!(items.len(), count, "{src}: {text}");
+                assert!(!text.contains("root_of"), "{src}: {text}");
+            }
+            for item in &items {
+                let x = eval(&rules, item, &[]);
+                let residual: f64 = poly.iter().rev().fold(0.0, |acc, c| acc * x + c);
+                assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(7)), "{src}: {item} -> {x} gives {residual}");
+            }
+        }
+    }
+
+    #[test]
     fn quintics_and_root_objects() {
         let rules = crate::rules::standard();
         // Solvable: radicals, verified by substitution.

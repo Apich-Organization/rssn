@@ -174,9 +174,117 @@ fn shift(
 /// (index `j - 1`).
 type PoleOption = Vec<Q>;
 
+/// The location of a pole (or of a set of conjugate poles): the monic
+/// irreducible polynomial `f` whose roots they are. Linear for a rational
+/// pole.
+#[derive(Clone)]
+struct Loc {
+    f: Vec<Q>,
+}
+
+impl Loc {
+    fn from_integer_factor(factor: &[BigInt]) -> Option<Self> {
+        let lead = Q::from_integer(factor.last()?.clone());
+        Some(Self { f: factor.iter().map(|c| Q::from_integer(c.clone()) / &lead).collect() })
+    }
+
+    /// The pole itself when it is rational.
+    fn linear(&self) -> Option<Q> {
+        (self.f.len() == 2).then(|| -self.f.first().cloned().unwrap_or_else(Q::zero))
+    }
+
+    fn degree(&self) -> usize {
+        self.f.len().saturating_sub(1)
+    }
+
+    fn value(
+        &self,
+        x: &Q,
+    ) -> Q {
+        univariate::eval(&self.f, x)
+    }
+
+    /// `f'/f`, the sum of `1/(x - c)` over the conjugate poles.
+    fn log_derivative(&self) -> Option<Rat> {
+        Rat::new(&univariate::derivative(&self.f), &self.f)
+    }
+}
+
 struct Pole {
-    c: Q,
+    loc: Loc,
     options: Vec<PoleOption>,
+}
+
+/// `inverse` of `a` modulo `f` (extended Euclid on rational polynomials).
+fn inverse_mod(
+    a: &[Q],
+    f: &[Q],
+) -> Option<Vec<Q>> {
+    let (mut r0, mut r1) = (f.to_vec(), univariate::divrem(a, f)?.1);
+    let (mut t0, mut t1): (Vec<Q>, Vec<Q>) = (Vec::new(), vec![Q::one()]);
+    while !trim(r1.clone()).is_empty() {
+        let (quotient, remainder) = univariate::divrem(&r0, &r1)?;
+        let t2 = univariate::sub(&t0, &univariate::mul(&quotient, &t1));
+        r0 = r1;
+        r1 = trim(remainder);
+        t0 = t1;
+        t1 = t2;
+    }
+    // r0 is a constant (f irreducible and a not divisible by f).
+    let [constant] = trim(r0).as_slice() else { return None };
+    let scaled: Vec<Q> = t0.iter().map(|c| c / constant).collect();
+    Some(univariate::divrem(&scaled, f)?.1)
+}
+
+/// The coefficient `b` of `(x - c)^-2` of `r` at the conjugate poles `loc`
+/// (a pole of order two) when it is rational, the same for all conjugates.
+fn double_pole_coefficient(
+    r: &Rat,
+    loc: &Loc,
+) -> Option<Q> {
+    // r = N / (f^2 D~): b(c) = N(c) / (f'(c)^2 D~(c)).
+    let f2 = univariate::mul(&loc.f, &loc.f);
+    let (rest, remainder) = univariate::divrem(&r.den, &f2)?;
+    if !trim(remainder).is_empty() {
+        return None;
+    }
+    let derivative = univariate::derivative(&loc.f);
+    let denominator = univariate::mul(&univariate::mul(&derivative, &derivative), &rest);
+    let inverse = inverse_mod(&denominator, &loc.f)?;
+    let b = univariate::divrem(&univariate::mul(&r.num, &inverse), &loc.f)?.1;
+    match trim(b).as_slice() {
+        | [] => Some(Q::zero()),
+        | [constant] => Some(constant.clone()),
+        | _ => None,
+    }
+}
+
+/// Options at conjugate poles that are not rational: only orders one and
+/// two, with a rational `b` (the contribution is `α f'/f`).
+fn algebraic_pole_options(
+    r: &Rat,
+    loc: &Loc,
+    order: usize,
+) -> Option<Vec<PoleOption>> {
+    match order {
+        | 1 => Some(vec![vec![Q::one()]]),
+        | 2 => {
+            let (plus, minus) = square_root_pair(&double_pole_coefficient(r, loc)?)?;
+            Some(vec![vec![plus], vec![minus]])
+        },
+        | _ => None,
+    }
+}
+
+fn polynomial_node(
+    cx: &mut Cx<'_>,
+    x: NodeId,
+    v: &[Q],
+) -> NodeId {
+    let mut gens = crate::rules::poly::repr::Gens::default();
+    let gx = gens.index(cx.graph, x);
+    let numbers: Vec<Number> = v.iter().cloned().map(Number::rat).collect();
+    crate::rules::poly::repr::to_term(cx.graph, &gens, &crate::rules::poly::repr::Poly::from_univariate(gx, &numbers))
 }
 
 /// One choice at infinity: the polynomial part (ascending) and `α_∞`.
@@ -305,13 +413,20 @@ fn infinity_options(r: &Rat) -> Option<Vec<InfinityOption>> {
 /// `ω(x)` and `ω'(x)` for the chosen options.
 fn omega(
     polynomial: &[Q],
-    poles: &[(&Q, &PoleOption)],
+    poles: &[(&Loc, &PoleOption)],
     x: &Q,
 ) -> Option<(Q, Q)> {
     let mut value = univariate::eval(polynomial, x);
     let mut slope = univariate::eval(&univariate::derivative(polynomial), x);
-    for (c, coefficients) in poles {
-        let t = x - *c;
+    for (loc, coefficients) in poles {
+        let Some(c) = loc.linear() else {
+            let g = loc.log_derivative()?;
+            let alpha = coefficients.first()?;
+            value += alpha * g.eval(x)?;
+            slope += alpha * g.derivative()?.eval(x)?;
+            continue;
+        };
+        let t = x - &c;
         if t.is_zero() {
             return None;
         }
@@ -421,10 +536,13 @@ fn case_one(
     let (_, factors) = univariate::factor(&r.den);
     let mut poles: Vec<Pole> = Vec::new();
     for (factor, multiplicity) in factors {
-        let [c0, c1] = factor.as_slice() else { return None };
-        let c = Q::new(-c0.clone(), c1.clone());
+        let loc = Loc::from_integer_factor(&factor)?;
         let order = usize::try_from(multiplicity).ok()?;
-        poles.push(Pole { options: pole_options(r, &c, order)?, c });
+        let options = match loc.linear() {
+            | Some(c) => pole_options(r, &c, order)?,
+            | None => algebraic_pole_options(r, &loc, order)?,
+        };
+        poles.push(Pole { options, loc });
     }
     let infinity = infinity_options(r)?;
     // Enumerate the families.
@@ -439,13 +557,16 @@ fn case_one(
             let alpha_sum: Q = poles
                 .iter()
                 .zip(&chosen)
-                .map(|(p, &i)| p.options.get(i).and_then(|o| o.first()).cloned().unwrap_or_else(Q::zero))
+                .map(|(p, &i)| {
+                    p.options.get(i).and_then(|o| o.first()).cloned().unwrap_or_else(Q::zero)
+                        * Q::from_integer(BigInt::from(p.loc.degree()))
+                })
                 .sum();
             let d = &inf.alpha - alpha_sum;
             if d.denom().is_one() && !d.is_negative() && d.to_integer() <= BigInt::from(60) {
                 let degree = usize::try_from(d.to_integer().to_i64()?).ok()?;
-                let selection: Vec<(&Q, &PoleOption)> =
-                    poles.iter().zip(&chosen).filter_map(|(p, &i)| Some((&p.c, p.options.get(i)?))).collect();
+                let selection: Vec<(&Loc, &PoleOption)> =
+                    poles.iter().zip(&chosen).filter_map(|(p, &i)| Some((&p.loc, p.options.get(i)?))).collect();
                 if let Some(polynomial) = find_polynomial(r, &inf.polynomial, &selection, degree)
                     && let Some(node) = build(cx, x, p, &inf.polynomial, &selection, &polynomial)
                 {
@@ -480,7 +601,7 @@ fn case_one(
 fn find_polynomial(
     r: &Rat,
     omega_polynomial: &[Q],
-    poles: &[(&Q, &PoleOption)],
+    poles: &[(&Loc, &PoleOption)],
     d: usize,
 ) -> Option<Vec<Q>> {
     let size: usize = poles.iter().map(|(_, o)| o.len()).sum::<usize>() + omega_polynomial.len();
@@ -489,7 +610,7 @@ fn find_polynomial(
     let mut k = 0_i64;
     while points.len() < samples {
         let x0 = q(2 + k) + Q::new(BigInt::one(), BigInt::from(3));
-        if poles.iter().all(|(c, _)| x0 != **c) && r.eval(&x0).is_some() {
+        if poles.iter().all(|(l, _)| !l.value(&x0).is_zero()) && r.eval(&x0).is_some() {
             points.push(x0);
         }
         k += 1;
@@ -540,7 +661,7 @@ fn build(
     x: NodeId,
     p: &Rat,
     omega_polynomial: &[Q],
-    poles: &[(&Q, &PoleOption)],
+    poles: &[(&Loc, &PoleOption)],
     polynomial: &[Q],
 ) -> Option<NodeId> {
     let ln = cx.graph.ops().lookup("ln")?;
@@ -555,9 +676,17 @@ fn build(
         let power = cx.graph.node(core::POW, &[x, e]);
         exponent_terms.push(mul(cx.graph, &[coefficient, power]));
     }
-    for (c, coefficients) in poles {
+    for (loc, coefficients) in poles {
+        let Some(c) = loc.linear() else {
+            let alpha = coefficients.first().cloned().unwrap_or_else(Q::zero);
+            let f_node = polynomial_node(cx, x, &loc.f);
+            let log = cx.graph.node(ln, &[f_node]);
+            let cn = node_of(cx, &alpha);
+            exponent_terms.push(mul(cx.graph, &[cn, log]));
+            continue;
+        };
         let shifted = {
-            let minus_c = node_of(cx, &-(*c).clone());
+            let minus_c = node_of(cx, &-c.clone());
             cx.graph.node(core::ADD, &[x, minus_c])
         };
         for (j, coefficient) in coefficients.iter().enumerate() {
@@ -640,28 +769,23 @@ fn case_two(
 ) -> Option<Vec<NodeId>> {
     // Poles with their orders and the coefficient of (x - c)^-2.
     let (_, factors) = univariate::factor(&r.den);
-    let mut sets: Vec<(Q, Vec<i64>)> = Vec::new();
+    let mut sets: Vec<(Loc, Vec<i64>)> = Vec::new();
     let mut interesting = false;
     for (factor, multiplicity) in factors {
-        let [c0, c1] = factor.as_slice() else { return None };
-        let c = Q::new(-c0.clone(), c1.clone());
+        let loc = Loc::from_integer_factor(&factor)?;
         let order = usize::try_from(multiplicity).ok()?;
         let set = match order {
             | 1 => vec![4],
             | 2 => {
                 interesting = true;
-                let numerator = shift(&r.num, &c);
-                let denominator = shift(&r.den, &c);
-                let rest: Vec<Q> = denominator.iter().skip(2).cloned().collect();
-                let s = series_quotient(&numerator, &rest, 1)?;
-                order_two_set(s.first()?)
+                order_two_set(&double_pole_coefficient(r, &loc)?)
             },
             | n => {
                 interesting = true;
                 vec![i64::try_from(n).ok()?]
             },
         };
-        sets.push((c, set));
+        sets.push((loc, set));
     }
     if !interesting {
         return None;
@@ -685,7 +809,7 @@ fn case_two(
             let twice = e_inf - sum;
             if twice >= 0 && twice % 2 == 0 && twice / 2 <= 40 {
                 let degree = usize::try_from(twice / 2).ok()?;
-                let exponents: Vec<(&Q, i64)> = sets.iter().zip(&chosen).map(|((c, s), &i)| (c, s.get(i).copied().unwrap_or(0))).collect();
+                let exponents: Vec<(&Loc, i64)> = sets.iter().zip(&chosen).map(|((c, s), &i)| (c, s.get(i).copied().unwrap_or(0))).collect();
                 if let Some(polynomial) = find_third_order(r, &exponents, degree)
                     && let Some(found) = build_case_two(cx, x, p, r, &exponents, &polynomial)
                 {
@@ -716,20 +840,19 @@ fn case_two(
 
 /// `θ`, `θ'`, `θ''` at `x0`.
 fn theta_values(
-    exponents: &[(&Q, i64)],
+    exponents: &[(&Loc, i64)],
     x0: &Q,
 ) -> Option<(Q, Q, Q)> {
     let (mut t, mut t1, mut t2) = (Q::zero(), Q::zero(), Q::zero());
-    for (c, e) in exponents {
-        let d = x0 - *c;
-        if d.is_zero() {
-            return None;
-        }
-        let inv = d.recip();
-        let e = q(*e);
-        t += &e * &inv / q(2);
-        t1 -= &e * &inv * &inv / q(2);
-        t2 += &e * &inv * &inv * &inv;
+    for (loc, e) in exponents {
+        // theta = sum e/2 f'/f over the poles.
+        let g = loc.log_derivative()?;
+        let g1 = g.derivative()?;
+        let g2 = g1.derivative()?;
+        let half = q(*e) / q(2);
+        t += &half * g.eval(x0)?;
+        t1 += &half * g1.eval(x0)?;
+        t2 += &half * g2.eval(x0)?;
     }
     Some((t, t1, t2))
 }
@@ -738,7 +861,7 @@ fn theta_values(
 /// the third-order equation of Kovacic's case 2 (`P` with three derivatives).
 fn find_third_order(
     r: &Rat,
-    exponents: &[(&Q, i64)],
+    exponents: &[(&Loc, i64)],
     d: usize,
 ) -> Option<Vec<Q>> {
     let dr = r.derivative()?;
@@ -747,7 +870,7 @@ fn find_third_order(
     let mut k = 0_i64;
     while points.len() < samples {
         let x0 = q(2 + k) + Q::new(BigInt::one(), BigInt::from(3));
-        if exponents.iter().all(|(c, _)| x0 != **c) && r.eval(&x0).is_some() {
+        if exponents.iter().all(|(l, _)| !l.value(&x0).is_zero()) && r.eval(&x0).is_some() {
             points.push(x0);
         }
         k += 1;
@@ -794,15 +917,14 @@ fn build_case_two(
     x: NodeId,
     p: &Rat,
     r: &Rat,
-    exponents: &[(&Q, i64)],
+    exponents: &[(&Loc, i64)],
     polynomial: &[Q],
 ) -> Option<Vec<NodeId>> {
     let ln = cx.graph.ops().lookup("ln")?;
     // φ = θ + P'/P and R = 4 r - φ² - 2 φ'.
     let mut theta = Rat::new(&[], &[Q::one()])?;
-    for (c, e) in exponents {
-        let term = Rat::new(&[q(*e) / q(2)], &[-(*c).clone(), Q::one()])?;
-        theta = theta.add(&term)?;
+    for (loc, e) in exponents {
+        theta = theta.add(&loc.log_derivative()?.scale(&(q(*e) / q(2)))?)?;
     }
     let ratio = Rat::new(&univariate::derivative(polynomial), polynomial)?;
     let phi = theta.add(&ratio)?;
@@ -819,9 +941,14 @@ fn build_case_two(
     let node_of = |cx: &mut Cx<'_>, v: &Q| cx.graph.num(Number::rat(v.clone()));
     // Common part of the exponent: Σ e_c/4 ln(x - c) + ½ ln P - ½ ∫ p.
     let mut common: Vec<NodeId> = Vec::new();
-    for (c, e) in exponents {
-        let minus_c = node_of(cx, &-(*c).clone());
-        let shifted = cx.graph.node(core::ADD, &[x, minus_c]);
+    for (loc, e) in exponents {
+        let shifted = match loc.linear() {
+            | Some(c) => {
+                let minus_c = node_of(cx, &-c);
+                cx.graph.node(core::ADD, &[x, minus_c])
+            },
+            | None => to_node(cx, &loc.f),
+        };
         let log = cx.graph.node(ln, &[shifted]);
         let coefficient = node_of(cx, &(q(*e) / q(4)));
         common.push(mul(cx.graph, &[coefficient, log]));

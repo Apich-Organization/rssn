@@ -414,7 +414,7 @@ fn rationalize(z: &Fx) -> Option<BigRational> {
         let k_next = &q * &k + &k_prev;
         h_prev = std::mem::replace(&mut h, h_next);
         k_prev = std::mem::replace(&mut k, k_next);
-        if k.bits() > 160 {
+        if k.bits() > 100 {
             return None;
         }
     }
