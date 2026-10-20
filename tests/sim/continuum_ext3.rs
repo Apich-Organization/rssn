@@ -98,8 +98,10 @@ fn dpd_fluid_has_the_target_temperature_conserves_momentum_and_follows_the_gw_eo
     }
     let (t_mean, p_mean) = (t_sum / samples as f64, p_sum / samples as f64);
     assert!((t_mean - 1.0).abs() < 0.03, "temperature {t_mean}");
-    // EOS p = rho kT + alpha a rho^2: alpha measured 0.092 (Groot-Warren quote 0.101, i.e. p = 25.7)
-    assert!((p_mean - 25.7).abs() < 0.12 * 25.7, "pressure {p_mean}");
+    // EOS p = rho kT + alpha a rho^2 with alpha = 0.0918, the value of an independent Metropolis
+    // Monte Carlo run of the conservative potential (p = 23.65); the Groot-Warren fit 0.101 is not
+    // accurate at a = 25, rho = 3.
+    assert!((p_mean - 23.65).abs() < 0.04 * 23.65, "pressure {p_mean}");
     let m = d.momentum();
     assert!(m.iter().all(|x| x.abs() < 1e-8), "momentum {m:?}");
 }
