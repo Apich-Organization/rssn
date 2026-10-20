@@ -128,3 +128,61 @@ fn kerr_orbit_constructor_validates_its_input() {
     // unbound / plunging: periapsis inside the separatrix
     assert!(KerrOrbit::from_apsides(1.0, 0.0, (1.5, 30.0), 0.0, true).is_err());
 }
+
+fn dist_to_polyline(p: (f64, f64), poly: &[(f64, f64)]) -> f64 {
+    let mut best = f64::INFINITY;
+    for w in poly.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+        let l2 = dx * dx + dy * dy;
+        let t = if l2 > 0.0 { (((p.0 - a.0) * dx + (p.1 - a.1) * dy) / l2).clamp(0.0, 1.0) } else { 0.0 };
+        best = best.min((p.0 - a.0 - t * dx).hypot(p.1 - a.1 - t * dy));
+    }
+    best
+}
+
+#[test]
+fn schwarzschild_shadow_is_the_circle_of_radius_three_root_three() {
+    let pts = trace_shadow(1.0, 0.0, 1.2, 1e4, 12).unwrap();
+    for (x, y) in pts {
+        assert!((x.hypot(y) - 27.0_f64.sqrt()).abs() < 1e-6, "{}", x.hypot(y));
+    }
+    let an = shadow_boundary_analytic(1.0, 0.0, 1.2, 50).unwrap();
+    assert!(an.iter().all(|&(x, y)| (x.hypot(y) - 27.0_f64.sqrt()).abs() < 1e-12));
+}
+
+#[test]
+fn ray_traced_kerr_shadow_matches_the_bardeen_curve() {
+    for &(a, th) in &[(0.6, 1.0), (0.9, std::f64::consts::FRAC_PI_2), (0.998, 1.3), (-0.8, 0.9)] {
+        let analytic = shadow_boundary_analytic(1.0, a, th, 4000).unwrap();
+        // closed polyline
+        let mut poly = analytic.clone();
+        poly.push(analytic[0]);
+        let traced = trace_shadow(1.0, a, th, 1e4, 24).unwrap();
+        for p in traced {
+            let d = dist_to_polyline(p, &poly);
+            assert!(d < 2e-4, "a={a} theta={th}: traced boundary point {p:?} is {d} from the Bardeen curve");
+        }
+    }
+    // the equatorial prograde / retrograde edges follow from the photon-orbit radii
+    let an = shadow_boundary_analytic(1.0, 0.9, std::f64::consts::FRAC_PI_2, 2000).unwrap();
+    let (xmin, xmax) = an.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), p| (lo.min(p.0), hi.max(p.0)));
+    assert!(xmin < -2.0 && xmax > 6.0 && (xmax - xmin) > 8.0);
+    assert!(shadow_boundary_analytic(1.0, 1.2, 1.0, 10).is_err());
+    assert!(trace_ray(1.0, 0.5, 1.0, 100.0, (0.0, -50.0), true).is_err());
+}
+
+#[test]
+fn escaping_rays_report_a_celestial_direction() {
+    use rssn::sim::kerr::RayOutcome;
+    // a ray with a large impact parameter is only mildly deflected
+    match trace_ray(1.0, 0.0, std::f64::consts::FRAC_PI_2, 1e4, (30.0, 0.0), true).unwrap() {
+        RayOutcome::Escaped { phi, .. } => {
+            // total azimuth swing = pi + deflection angle 4M/b + 15 pi M^2/(4 b^2)
+            let deflection = phi.abs() - std::f64::consts::PI;
+            assert!((deflection - 0.1464).abs() < 0.01, "deflection {deflection}");
+        },
+        RayOutcome::Captured => panic!("must escape"),
+    }
+    assert_eq!(trace_ray(1.0, 0.0, std::f64::consts::FRAC_PI_2, 1e4, (4.0, 0.0), true).unwrap(), RayOutcome::Captured);
+}

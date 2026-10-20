@@ -470,3 +470,216 @@ fn solve3_sys(
     }
     Some(x)
 }
+
+// ---------------------------------------------------------------------------
+// Black-hole shadow
+// ---------------------------------------------------------------------------
+
+/// Radius of the circular equatorial photon orbit of Kerr (`prograde` or retrograde).
+#[must_use]
+pub fn kerr_photon_orbit_radius(
+    m: f64,
+    a: f64,
+    prograde: bool,
+) -> f64 {
+    let s = if prograde { -1.0 } else { 1.0 };
+    2.0 * m * (1.0 + (2.0 / 3.0 * (s * a / m).clamp(-1.0, 1.0).acos()).cos())
+}
+
+/// Impact parameters `(xi, eta) = (L/E, Q/E^2)` of the spherical photon orbit of radius `r`.
+fn photon_orbit_constants(
+    m: f64,
+    a: f64,
+    r: f64,
+) -> (f64, f64) {
+    let xi = (r * r * (3.0 * m - r) - a * a * (r + m)) / (a * (r - m));
+    let eta = r.powi(3) * (4.0 * a * a * m - r * (r - 3.0 * m).powi(2)) / (a * a * (r - m).powi(2));
+    (xi, eta)
+}
+
+/// Bardeen's critical curve: the boundary of the shadow of a Kerr black hole on the observer's
+/// image plane (celestial coordinates `(alpha, beta)` of an observer at infinity and inclination
+/// `theta_o`), as `2 n` points (upper half then lower half). For `a = 0` it is the circle of
+/// radius `3 sqrt(3) M`.
+///
+/// # Errors
+/// Fails for `|a| >= M`, an observer on the axis or `n < 2`.
+pub fn shadow_boundary_analytic(
+    m: f64,
+    a: f64,
+    theta_o: f64,
+    n: usize,
+) -> Result<Vec<(f64, f64)>, String> {
+    if a.abs() >= m || theta_o.sin().abs() < 1e-6 || n < 2 {
+        return Err("shadow needs |a| < M, an off-axis observer and n >= 2".into());
+    }
+    let mut out = Vec::with_capacity(2 * n);
+    if a.abs() < 1e-9 {
+        let rad = 27.0_f64.sqrt() * m;
+        for k in 0..2 * n {
+            let ang = 2.0 * PI * k as f64 / (2 * n) as f64;
+            out.push((rad * ang.cos(), rad * ang.sin()));
+        }
+        return Ok(out);
+    }
+    let (so, co) = theta_o.sin_cos();
+    let beta2 = |r: f64| {
+        let (xi, eta) = photon_orbit_constants(m, a, r);
+        eta + a * a * co * co - xi * xi * co * co / (so * so)
+    };
+    // beta^2 >= 0 between the two zeros inside [r_pro, r_retro]
+    let (r_lo, r_hi) = (kerr_photon_orbit_radius(m, a.abs(), true), kerr_photon_orbit_radius(m, a.abs(), false));
+    let samples = 20_000;
+    let rs: Vec<f64> = (0..=samples).map(|k| r_lo + (r_hi - r_lo) * k as f64 / f64::from(samples)).collect();
+    let first = rs.iter().position(|&r| beta2(r) >= 0.0).ok_or("no photon-orbit window for this observer")?;
+    let last = rs.iter().rposition(|&r| beta2(r) >= 0.0).ok_or("no photon-orbit window for this observer")?;
+    let refine = |mut lo: f64, mut hi: f64| {
+        // beta2(lo) < 0 <= beta2(hi) (or the reverse): bisection on the sign change
+        let flo = beta2(lo) >= 0.0;
+        for _ in 0..200 {
+            let mid = f64::midpoint(lo, hi);
+            if (beta2(mid) >= 0.0) == flo {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        f64::midpoint(lo, hi)
+    };
+    let ra = if first > 0 { refine(rs[first - 1], rs[first]) } else { rs[first] };
+    let rb = if last + 1 < rs.len() { refine(rs[last], rs[last + 1]) } else { rs[last] };
+    let mut upper = Vec::with_capacity(n);
+    for k in 0..n {
+        let r = ra + (rb - ra) * k as f64 / (n - 1) as f64;
+        let (xi, _) = photon_orbit_constants(m, a, r);
+        let b = beta2(r).max(0.0).sqrt();
+        upper.push((-xi / so, b));
+    }
+    let mut lower: Vec<(f64, f64)> = upper.iter().rev().map(|&(x, y)| (x, -y)).collect();
+    out.append(&mut upper);
+    out.append(&mut lower);
+    Ok(out)
+}
+
+/// Outcome of a backward-traced light ray.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum RayOutcome {
+    /// The ray fell through the horizon.
+    Captured,
+    /// The ray escaped to the observer radius at the given celestial position.
+    Escaped {
+        /// Polar angle of the arrival direction on the celestial sphere.
+        theta: f64,
+        /// Azimuth of the arrival direction.
+        phi: f64,
+    },
+}
+
+/// Traces a null geodesic with impact parameters `xi = L/E`, `eta = Q/E^2` from the observer at
+/// `(r_o, theta_o)` inwards (initial direction: decreasing `r`, polar motion toward larger
+/// `theta` if `polar_down`) by integrating the Mino-time equations with RK4.
+///
+/// # Errors
+/// Fails if the ray is not allowed at the observer (`R(r_o) < 0` or `Theta(theta_o) < 0`) or if
+/// the step budget is exhausted.
+pub fn trace_ray(
+    m: f64,
+    a: f64,
+    theta_o: f64,
+    r_o: f64,
+    (xi, eta): (f64, f64),
+    polar_down: bool,
+) -> Result<RayOutcome, String> {
+    let rh = m + (m * m - a * a).sqrt();
+    let rpot = |r: f64| (r * r + a * a - a * xi).powi(2) - (r * r - 2.0 * m * r + a * a) * ((xi - a).powi(2) + eta);
+    let z0 = theta_o.cos();
+    let zp2 = eta - (eta + xi * xi - a * a) * z0 * z0 - a * a * z0.powi(4);
+    if rpot(r_o) < 0.0 || zp2 < -1e-12 {
+        return Err("ray is not allowed at the observer".into());
+    }
+    let rhs = |y: &[f64; 5]| -> [f64; 5] {
+        let (r, z) = (y[0], y[2]);
+        let k = (xi - a).powi(2) + eta;
+        let rpp = 0.5 * (4.0 * r * (r * r + a * a - a * xi) - (2.0 * r - 2.0 * m) * k);
+        let zpp = -(eta + xi * xi - a * a) * z - 2.0 * a * a * z.powi(3);
+        let delta = r * r - 2.0 * m * r + a * a;
+        let p = r * r + a * a - a * xi;
+        let phid = a * p / delta - a + xi / (1.0 - z * z).max(1e-12);
+        [y[1], rpp, y[3], zpp, phid]
+    };
+    let mut y = [r_o, -rpot(r_o).sqrt(), z0, if polar_down { -1.0 } else { 1.0 } * zp2.max(0.0).sqrt(), 0.0];
+    let mut turned = false;
+    for _ in 0..4_000_000 {
+        let h = 0.01 * (1.0_f64).min(1.0 / y[0]);
+        let k1 = rhs(&y);
+        let mut t = y;
+        for i in 0..5 {
+            t[i] = y[i] + 0.5 * h * k1[i];
+        }
+        let k2 = rhs(&t);
+        for i in 0..5 {
+            t[i] = y[i] + 0.5 * h * k2[i];
+        }
+        let k3 = rhs(&t);
+        for i in 0..5 {
+            t[i] = y[i] + h * k3[i];
+        }
+        let k4 = rhs(&t);
+        for i in 0..5 {
+            y[i] += h / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
+        }
+        // project the velocities back onto the first integrals (keeps the large-radius branch stable)
+        y[1] = y[1].signum() * rpot(y[0]).max(0.0).sqrt();
+        let zz = y[2] * y[2];
+        y[3] = y[3].signum() * (eta - (eta + xi * xi - a * a) * zz - a * a * zz * zz).max(0.0).sqrt();
+        if y[0] <= rh * (1.0 + 1e-9) {
+            return Ok(RayOutcome::Captured);
+        }
+        if y[1] > 0.0 {
+            turned = true;
+        }
+        if turned && y[0] >= r_o {
+            return Ok(RayOutcome::Escaped { theta: y[2].clamp(-1.0, 1.0).acos(), phi: y[4] });
+        }
+    }
+    Err("ray tracing step budget exhausted".into())
+}
+
+/// Shadow boundary found by ray tracing: for each of `n` directions in the image plane the
+/// critical impact radius separating captured from escaping rays is located by bisection.
+/// Returns `(alpha, beta)` points of the observer's image plane (observer at inclination
+/// `theta_o`, far away at `r_o`).
+///
+/// # Errors
+/// Propagates [`trace_ray`] failures.
+pub fn trace_shadow(
+    m: f64,
+    a: f64,
+    theta_o: f64,
+    r_o: f64,
+    n: usize,
+) -> Result<Vec<(f64, f64)>, String> {
+    let (so, co) = theta_o.sin_cos();
+    let captured = |rho: f64, psi: f64| -> Result<bool, String> {
+        let (al, be) = (rho * psi.cos(), rho * psi.sin());
+        let xi = -al * so;
+        let eta = be * be + (al * al - a * a) * co * co;
+        Ok(trace_ray(m, a, theta_o, r_o, (xi, eta), be < 0.0)? == RayOutcome::Captured)
+    };
+    let mut out = Vec::with_capacity(n);
+    for k in 0..n {
+        let psi = 2.0 * PI * (k as f64 + 0.5) / n as f64;
+        let (mut lo, mut hi) = (1e-3 * m, 12.0 * m);
+        for _ in 0..60 {
+            let mid = f64::midpoint(lo, hi);
+            if captured(mid, psi)? {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        let rho = f64::midpoint(lo, hi);
+        out.push((rho * psi.cos(), rho * psi.sin()));
+    }
+    Ok(out)
+}
