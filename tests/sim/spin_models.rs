@@ -178,8 +178,8 @@ fn heisenberg_wolff_matches_metropolis_in_3d_and_1d_exact() {
 
 #[test]
 fn unsupported_combinations_are_errors() {
-    let mut m = OnModel::<2, 4>::new([4, 4], true, 1.0, 1).unwrap();
-    assert!(m.heat_bath_sweep().is_err());
+    let mut rng0 = rssn::kernels::random::Rng::new(3);
+    assert!(heat_bath_direction::<0>(&mut rng0, &[], 1.0).is_err());
     let mut h = OnModel::<2, 1>::new([4, 4], true, 1.0, 1).unwrap();
     h.field = 0.3;
     assert!(h.wolff_step().is_err());
@@ -361,7 +361,71 @@ fn heat_bath_direction_has_the_exact_conditional_mean() {
         assert!((c / n as f64 - exact3).abs() < 5e-3, "Heisenberg a {k3}: {} vs {exact3}", c / n as f64);
         assert!(norm_err < 1e-12);
     }
-    assert!(heat_bath_direction::<4>(&mut rng, &[1.0; 4], 1.0).is_err());
+}
+
+/// `<cos theta> = I_{N/2}(k) / I_{N/2-1}(k)` for the von Mises-Fisher distribution on `S^(N-1)`.
+fn vmf_mean_cosine(n: usize, k: f64) -> f64 {
+    // modified Bessel functions of half-integer order via the power series
+    let iv = |nu: f64| {
+        let mut term = (0.5 * k).powf(nu) / rssn::kernels::special::gamma_numerical(nu + 1.0);
+        let mut sum = term;
+        for m in 1..200 {
+            term *= 0.25 * k * k / (m as f64 * (m as f64 + nu));
+            sum += term;
+        }
+        sum
+    };
+    iv(0.5 * n as f64) / iv(0.5 * n as f64 - 1.0)
+}
+
+#[test]
+fn heat_bath_for_higher_n_is_von_mises_fisher_and_exact_on_chains() {
+    use rssn::kernels::random::Rng;
+    let mut rng = Rng::new(17);
+    let samples = 150_000;
+    for (a, beta) in [(0.0_f64, 1.0), (0.5, 1.0), (3.0, 1.0), (15.0, 0.5)] {
+        macro_rules! check_n {
+            ($n:literal) => {{
+                let mut f = [0.0; $n];
+                f[0] = 0.6 * a / beta;
+                f[1] = 0.8 * a / beta;
+                f[$n - 1] += 0.1 * a / beta;
+                let fm = f.iter().map(|x| x * x).sum::<f64>().sqrt();
+                let (mut c, mut c2, mut worst) = (0.0, 0.0, 0.0_f64);
+                for _ in 0..samples {
+                    let s = heat_bath_direction::<$n>(&mut rng, &f, beta).unwrap();
+                    let cs = if fm > 0.0 { s.iter().zip(&f).map(|(x, y)| x * y).sum::<f64>() / fm } else { s[0] };
+                    c += cs;
+                    c2 += cs * cs;
+                    worst = worst.max((s.iter().map(|x| x * x).sum::<f64>() - 1.0).abs());
+                }
+                let kappa = beta * fm;
+                let exact = if kappa < 1e-12 { 0.0 } else { vmf_mean_cosine($n, kappa) };
+                assert!((c / samples as f64 - exact).abs() < 6e-3, "N={} kappa {kappa}: {} vs {exact}", $n, c / samples as f64);
+                if a == 0.0 {
+                    // uniform sphere: <cos^2> = 1/N
+                    assert!((c2 / samples as f64 - 1.0 / $n as f64).abs() < 5e-3);
+                }
+                assert!(worst < 1e-12);
+            }};
+        }
+        check_n!(4);
+        check_n!(5);
+        check_n!(6);
+    }
+    // open O(4) chain: <s_i . s_{i+1}> = A_4(beta) for every bond exactly
+    let beta = 1.3;
+    let mut chain = OnModel::<1, 4>::new([60], false, beta, 41).unwrap();
+    let (e, _) = series_on(&mut chain, Update::HeatBath, 300, 6000);
+    let (mean, err) = mean_and_error(&e);
+    let exact = -(59.0 / 60.0) * vmf_mean_cosine(4, beta);
+    assert!((mean - exact).abs() < 5.0 * err + 0.005, "{mean} vs {exact}");
+    // O(4) 2-D: heat bath and Wolff cluster updates sample the same distribution
+    let mut hb = OnModel::<2, 4>::new([6, 6], true, 0.8, 71).unwrap();
+    let mut wf = OnModel::<2, 4>::new([6, 6], true, 0.8, 72).unwrap();
+    let (e1, _) = series_on(&mut hb, Update::HeatBath, 500, 15000);
+    let (e2, _) = series_on(&mut wf, Update::Wolff, 500, 15000);
+    agree(&e1, &e2, 5.0, 0.004);
 }
 
 #[test]

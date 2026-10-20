@@ -29,9 +29,11 @@
 //! supplied spin arrays via the public `spins` field.
 //!
 //! Limitations: only nearest-neighbour hypercubic lattices; the field `h`
-//! couples to component 0 and is incompatible with cluster updates; the heat bath is
-//! implemented for O(N) with `N <= 3`; Wang-Landau for continuous spins is restricted to a
-//! user-supplied energy window (moves leaving it are rejected) and uses single-spin moves.
+//! couples to component 0 and is incompatible with cluster updates; the quantum (XXZ / worm /
+//! loop) algorithms are not implemented; single-walker Wang-Landau for continuous spins
+//! ([`wang_landau_on`]) is restricted to a user-supplied energy window (moves leaving it are
+//! rejected) and uses single-spin moves ([`replica_exchange_wang_landau`] adds windows and
+//! walkers).
 
 use crate::kernels::random::Rng;
 
@@ -205,10 +207,12 @@ impl UnionFind {
 }
 
 /// Draws a unit vector from `P(s) ~ exp(beta s . f)` on the sphere `S^(N-1)` (`N = 1, 2, 3`):
-/// the heat-bath conditional distribution of an O(N) spin in the local field `f`.
+/// the heat-bath conditional distribution of an O(N) spin in the local field `f`
+/// (von Mises-Fisher distribution; `N = 1` logistic, `N = 2` Best-Fisher, `N = 3` exact inverse
+/// CDF, `N >= 4` Wood's rejection algorithm).
 ///
 /// # Errors
-/// Fails for `N = 0` or `N > 3`.
+/// Fails for `N = 0`.
 pub fn heat_bath_direction<const N: usize>(
     rng: &mut Rng,
     f: &[f64; N],
@@ -269,7 +273,58 @@ pub fn heat_bath_direction<const N: usize>(
                 out[k] = x * axis[k] + sx * (psi.cos() * e1[k] + psi.sin() * e2[k]);
             }
         },
-        _ => return Err("heat bath is implemented for N = 1, 2, 3".into()),
+        0 => return Err("heat bath needs N >= 1".into()),
+        _ => {
+            // von Mises-Fisher distribution on S^(N-1) with concentration `a` (Wood, 1994):
+            // sample the cosine `w` to the mean direction by rejection from a Beta envelope,
+            // then a uniform direction orthogonal to it.
+            let nm1 = (N - 1) as f64;
+            let w = if a < 1e-10 {
+                2.0 * rng.beta(0.5 * nm1, 0.5 * nm1) - 1.0
+            } else {
+                let b = nm1 / (2.0 * a + (4.0 * a * a + nm1 * nm1).sqrt());
+                let x0 = (1.0 - b) / (1.0 + b);
+                let c = a * x0 + nm1 * (1.0 - x0 * x0).ln();
+                loop {
+                    let z = rng.beta(0.5 * nm1, 0.5 * nm1);
+                    let u = rng.uniform();
+                    let wc = (1.0 - (1.0 + b) * z) / (1.0 - (1.0 - b) * z);
+                    if a * wc + nm1 * (1.0 - x0 * wc).ln() - c >= u.ln() {
+                        break wc;
+                    }
+                }
+            };
+            let mut mu = [0.0; N];
+            if fm > 0.0 {
+                for k in 0..N {
+                    mu[k] = f[k] / fm;
+                }
+            } else {
+                mu[0] = 1.0;
+            }
+            // uniform unit vector orthogonal to mu
+            let perp = loop {
+                let mut g = [0.0; N];
+                for c in &mut g {
+                    *c = rng.normal();
+                }
+                let proj = dot(&g, &mu);
+                for k in 0..N {
+                    g[k] -= proj * mu[k];
+                }
+                let n = dot(&g, &g).sqrt();
+                if n > 1e-12 {
+                    for c in &mut g {
+                        *c /= n;
+                    }
+                    break g;
+                }
+            };
+            let sw = (1.0 - w * w).max(0.0).sqrt();
+            for k in 0..N {
+                out[k] = w * mu[k] + sw * perp[k];
+            }
+        },
     }
     Ok(out)
 }
@@ -422,11 +477,8 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
     /// (Best-Fisher rejection); Heisenberg: exact inverse CDF of `exp(a cos theta)`.
     ///
     /// # Errors
-    /// Returns an error for `N > 3`.
+    /// Returns an error for `N = 0`.
     pub fn heat_bath_sweep(&mut self) -> Result<(), String> {
-        if N > 3 {
-            return Err("heat bath is implemented for N = 1, 2, 3".into());
-        }
         for i in 0..self.lattice.sites() {
             let f = self.local_field(i);
             self.spins[i] = heat_bath_direction::<N>(&mut self.rng, &f, self.beta)?;
