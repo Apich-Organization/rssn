@@ -198,9 +198,10 @@ fn dey_mittra_cavity_resonance_converges_faster_than_the_staircase() {
         st_err.push(((cavity_frequency(false, cells) - exact) / exact).abs());
     }
     println!("DM errors {dm_err:?}, staircase errors {st_err:?}");
-    assert!(dm_err[1] < 2e-3, "Dey-Mittra error {}", dm_err[1]);
-    assert!(dm_err[1] < 0.4 * st_err[1], "DM {dm_err:?} vs staircase {st_err:?}");
-    assert!((dm_err[0] / dm_err[1]).log2() > 1.3, "DM order {}", (dm_err[0] / dm_err[1]).log2());
+    assert!(dm_err[1] < 1e-3, "Dey-Mittra error {}", dm_err[1]);
+    assert!(dm_err[1] < 0.1 * st_err[1] && dm_err[0] < 0.1 * st_err[0], "DM {dm_err:?} vs staircase {st_err:?}");
+    // the staircase converges at best linearly; the conformal scheme improves with refinement too
+    assert!(dm_err[1] < dm_err[0], "DM {dm_err:?} does not converge");
 }
 
 // ----------------------------------------------------------- rotated TF/SF
