@@ -11,12 +11,14 @@
 //! | Kustaanheimo-Stiefel regularisation [`ks_propagate`] | 3 (via a 4-D oscillator) | perturbed Kepler problem, regular through collision |
 //! | Rigid body (quaternion, NO_SQUISH / Dullweber-Leimkuhler-McLachlan splitting) [`RigidBody`], exact symmetric-top flows ([`RigidBody::free_step_top`], exact for symmetric bodies), composition to any even order ([`RigidBody::free_step_composed`]), space-torque kicks | 3 | symplectic, reversible, exact `|q| = 1` and `|L|` conservation in free rotation; rigid molecules in MD: [`crate::sim::md_rigid`] |
 //!
+//! | Exact asymmetric top [`RigidBody::free_flow_exact`] (Jacobi `sn, cn, dn` for the angular momentum, elliptic integral of the third kind [`crate::sim::elliptic::elliptic_pi`] for the precession angle), Strang torque step on the exact flow [`RigidBody::step_exact`] | 3 | exact for any time (checked against RK4 with tiny steps), group property, symmetric / steady cases handled |
+//! | Implicit RATTLE-type torque step [`RigidBody::rattle_step`] (Moser-Veselov discrete rotor, Newton solve of `F J - J F^T = h Pi`) | 3 | symplectic, reversible, second order, exact space-`L` conservation |
+//!
 //! Limitations: the TTL scheme uses a fixed binding energy `B` (the energy of the exact flow
 //! is preserved, but the plain scheme has `O(h^2)` energy error; use the composed or GBS
-//! versions); the torque kick is the Strang splitting of symplectic exact flows (reversible,
-//! second order, composable to higher order) rather than an implicit RATTLE solve; the free
-//! asymmetric top is not integrated with Jacobi elliptic functions (the splittings are
-//! used instead); non-separable or perturbed problems with velocity-dependent forces are not
+//! versions); the explicit torque kick is the Strang splitting of symplectic exact flows (reversible,
+//! second order, composable to higher order; the implicit RATTLE alternative is second order only);
+//! the exact asymmetric flow uses the symmetric-top flow when two moments agree to 1e-12; non-separable or perturbed problems with velocity-dependent forces are not
 //! covered by the time-transformed schemes.
 
 /// A symplectic composition scheme for separable Hamiltonians.
@@ -689,4 +691,474 @@ impl RigidBody {
             self.l_body[k] += h * tb;
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Exact free asymmetric top (Jacobi elliptic functions)
+// ---------------------------------------------------------------------------
+
+type M3 = [[f64; 3]; 3];
+
+fn mat3_mul(
+    a: &M3,
+    b: &M3,
+) -> M3 {
+    let mut c = [[0.0; 3]; 3];
+    for i in 0..3 {
+        for j in 0..3 {
+            c[i][j] = (0..3).map(|k| a[i][k] * b[k][j]).sum();
+        }
+    }
+    c
+}
+
+fn mat3_t(a: &M3) -> M3 {
+    let mut c = [[0.0; 3]; 3];
+    for i in 0..3 {
+        for j in 0..3 {
+            c[i][j] = a[j][i];
+        }
+    }
+    c
+}
+
+/// Rotation matrix about the axis `k` (0, 1, 2) by the angle `a`.
+fn rot_axis(
+    k: usize,
+    a: f64,
+) -> M3 {
+    let (s, c) = a.sin_cos();
+    let (i, j) = ((k + 1) % 3, (k + 2) % 3);
+    let mut m = [[0.0; 3]; 3];
+    m[k][k] = 1.0;
+    m[i][i] = c;
+    m[j][j] = c;
+    m[j][i] = s;
+    m[i][j] = -s;
+    m
+}
+
+/// Unit quaternion (scalar first) of a proper rotation matrix.
+#[must_use]
+pub fn matrix_to_quat(r: &[[f64; 3]; 3]) -> [f64; 4] {
+    let tr = r[0][0] + r[1][1] + r[2][2];
+    let q = if tr > 0.0 {
+        let s = 2.0 * (tr + 1.0).sqrt();
+        [0.25 * s, (r[2][1] - r[1][2]) / s, (r[0][2] - r[2][0]) / s, (r[1][0] - r[0][1]) / s]
+    } else if r[0][0] > r[1][1] && r[0][0] > r[2][2] {
+        let s = 2.0 * (1.0 + r[0][0] - r[1][1] - r[2][2]).sqrt();
+        [(r[2][1] - r[1][2]) / s, 0.25 * s, (r[0][1] + r[1][0]) / s, (r[0][2] + r[2][0]) / s]
+    } else if r[1][1] > r[2][2] {
+        let s = 2.0 * (1.0 + r[1][1] - r[0][0] - r[2][2]).sqrt();
+        [(r[0][2] - r[2][0]) / s, (r[0][1] + r[1][0]) / s, 0.25 * s, (r[1][2] + r[2][1]) / s]
+    } else {
+        let s = 2.0 * (1.0 + r[2][2] - r[0][0] - r[1][1]).sqrt();
+        [(r[1][0] - r[0][1]) / s, (r[0][2] + r[2][0]) / s, (r[1][2] + r[2][1]) / s, 0.25 * s]
+    };
+    let n = q.iter().map(|x| x * x).sum::<f64>().sqrt();
+    [q[0] / n, q[1] / n, q[2] / n, q[3] / n]
+}
+
+/// Constants of the Jacobi-function solution of the Euler equations.
+struct EulerSolution {
+    /// Axis of the `dn` component.
+    d: usize,
+    /// Axis of the `cn` component.
+    p: usize,
+    /// Axis of the `sn` component.
+    s: usize,
+    /// Amplitude of the `dn` component.
+    ad: f64,
+    /// Amplitude of the `cn` component.
+    ap: f64,
+    /// Amplitude of the `sn` component.
+    asn: f64,
+    /// Sign of the `dn` component.
+    sign_d: f64,
+    /// Parameter `m = k^2`.
+    m: f64,
+    /// Signed angular frequency of the Jacobi argument.
+    omega: f64,
+    /// Argument at `t = 0`.
+    tau0: f64,
+    /// Amplitude at `t = 0`.
+    phi0: f64,
+}
+
+impl RigidBody {
+    /// Solves the Euler equations of the free asymmetric top in closed form. Returns `None`
+    /// for (near-)symmetric bodies and steady rotations, which are handled separately.
+    fn euler_solution(&self) -> Option<EulerSolution> {
+        let l = self.l_body;
+        let w = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        let l2 = l.iter().map(|x| x * x).sum::<f64>();
+        let two_t = (0..3).map(|k| w[k] * l[k] * l[k]).sum::<f64>();
+        let mut ord = [0usize, 1, 2];
+        ord.sort_by(|&x, &y| self.inertia[x].total_cmp(&self.inertia[y]));
+        let [a, b, c] = ord;
+        let scale = w[a].abs().max(w[c].abs());
+        if (w[a] - w[b]).abs() < 1e-12 * scale || (w[b] - w[c]).abs() < 1e-12 * scale {
+            return None;
+        }
+        let d = if l2 >= two_t * self.inertia[b] { c } else { a };
+        let others: [usize; 2] = if d == c { [a, b] } else { [c, b] };
+        let mut best: Option<EulerSolution> = None;
+        for (p, s) in [(others[0], others[1]), (others[1], others[0])] {
+            let ad2 = (two_t - w[p] * l2) / (w[d] - w[p]);
+            let ap2 = (w[d] * l2 - two_t) / (w[d] - w[p]);
+            let as2 = (two_t - w[d] * l2) / (w[s] - w[d]);
+            if ad2 <= 0.0 || ap2 < 0.0 || as2 < 0.0 {
+                continue;
+            }
+            let m = (as2 - ap2) / ad2;
+            if !(-1e-12..=1.0 + 1e-12).contains(&m) {
+                continue;
+            }
+            best = Some(EulerSolution {
+                d,
+                p,
+                s,
+                ad: ad2.sqrt(),
+                ap: ap2.sqrt(),
+                asn: as2.sqrt(),
+                sign_d: if l[d] < 0.0 { -1.0 } else { 1.0 },
+                m: m.clamp(0.0, 1.0),
+                omega: 0.0,
+                tau0: 0.0,
+                phi0: 0.0,
+            });
+            break;
+        }
+        let mut sol = best?;
+        if sol.ap < 1e-14 * l2.sqrt() || sol.asn < 1e-14 * l2.sqrt() {
+            return None;
+        }
+        let m = sol.m;
+        let sn0 = l[sol.s] / sol.asn;
+        let cn0 = l[sol.p] / sol.ap;
+        sol.phi0 = sn0.atan2(cn0);
+        sol.tau0 = crate::kernels::special_ext::elliptic_f(sol.phi0, m);
+        let dn0 = (1.0 - m * sn0 * sn0).max(0.0).sqrt();
+        let om = [l[0] * w[0], l[1] * w[1], l[2] * w[2]];
+        let ldot = [
+            l[1] * om[2] - l[2] * om[1],
+            l[2] * om[0] - l[0] * om[2],
+            l[0] * om[1] - l[1] * om[0],
+        ];
+        let mag = sol.ad * ((w[sol.d] - w[sol.p]).abs() * (w[sol.s] - w[sol.d]).abs()).sqrt();
+        let from_s = sol.asn * cn0.abs() * dn0;
+        let from_p = sol.ap * sn0.abs() * dn0;
+        let sign = if from_s >= from_p {
+            ldot[sol.s] * cn0.signum()
+        } else {
+            -ldot[sol.p] * sn0.signum()
+        };
+        sol.omega = if sign < 0.0 { -mag } else { mag };
+        Some(sol)
+    }
+
+    /// **Exact** free rotation for time `t` of an asymmetric rigid body, in closed form.
+    ///
+    /// With `d` the principal axis about which the polhode circulates, the body-frame angular
+    /// momentum is `L_d = +-A_d dn`, `L_p = A_p cn`, `L_s = A_s sn` (Jacobi functions of
+    /// `tau = tau_0 + omega t`, parameter `m`; Landau and Lifshitz, section 37). The orientation
+    /// follows from the Euler angles with the (space-fixed) angular momentum as polar axis:
+    /// `theta` and `psi` are algebraic in `L`, and the precession angle is
+    /// `phi(t) = |L| t / I_d + |L| (2T - L^2 / I_d) int_0^t dt' / (L^2 - L_d^2)`, an elliptic
+    /// integral of the **third kind** ([`crate::sim::elliptic::elliptic_pi`]). Symmetric tops and
+    /// steady rotations use the exact symmetric-top flow. Valid for any `t` (including negative).
+    pub fn free_flow_exact(
+        &mut self,
+        t: f64,
+    ) {
+        let l = self.l_body;
+        let l2 = l.iter().map(|x| x * x).sum::<f64>();
+        if l2 == 0.0 || t == 0.0 {
+            return;
+        }
+        let lmag = l2.sqrt();
+        for k in 0..3 {
+            let (i, j) = ((k + 1) % 3, (k + 2) % 3);
+            if l[i].hypot(l[j]) < 1e-14 * lmag {
+                self.rotate_by(k, t * l[k] / self.inertia[k]);
+                return;
+            }
+        }
+        let w = [1.0 / self.inertia[0], 1.0 / self.inertia[1], 1.0 / self.inertia[2]];
+        let Some(sol) = self.euler_solution() else {
+            let ax = self.symmetry_axis();
+            self.symmetric_top_flow(ax, t);
+            return;
+        };
+        let two_t = (0..3).map(|k| w[k] * l[k] * l[k]).sum::<f64>();
+        let m = sol.m;
+        let tau = sol.omega.mul_add(t, sol.tau0);
+        let (sn, cn, dn) = crate::kernels::special_ext::jacobi_elliptic(tau, m);
+        let phi_mod = sn.atan2(cn);
+        let kk = crate::kernels::special_ext::elliptic_k(m);
+        let n_wrap = ((tau - crate::kernels::special_ext::elliptic_f(phi_mod, m)) / (4.0 * kk)).round();
+        let phi_t = phi_mod + 2.0 * std::f64::consts::PI * n_wrap;
+        let mut ln = [0.0; 3];
+        ln[sol.p] = sol.ap * cn;
+        ln[sol.s] = sol.asn * sn;
+        ln[sol.d] = sol.sign_d * sol.ad * dn;
+        let nu = sol.ad * sol.ad * m / (sol.ap * sol.ap);
+        let j_int = (crate::sim::elliptic::elliptic_pi(-nu, phi_t, m)
+            - crate::sim::elliptic::elliptic_pi(-nu, sol.phi0, m))
+            / (sol.omega * sol.ap * sol.ap);
+        let dphi = lmag * w[sol.d] * t + lmag * (two_t - w[sol.d] * l2) * j_int;
+        let d = sol.d;
+        let (a1, a2) = ((d + 1) % 3, (d + 2) % 3);
+        let angles = |lv: &[f64; 3]| ((lv[d] / lmag).clamp(-1.0, 1.0).acos(), lv[a1].atan2(lv[a2]));
+        let (th0, psi0) = angles(&l);
+        let (th1, psi1) = angles(&ln);
+        let mut pm = [[0.0; 3]; 3];
+        pm[a1][0] = 1.0;
+        pm[a2][1] = 1.0;
+        pm[d][2] = 1.0;
+        let r0 = quat_to_matrix(&self.q);
+        // R(t) = R0 P Rz(-psi0) Rx(-th0) Rz(dphi) Rx(th1) Rz(psi1) P^T
+        let mut r = mat3_mul(&r0, &pm);
+        for (axis, ang) in [(2, -psi0), (0, -th0), (2, dphi), (0, th1), (2, psi1)] {
+            r = mat3_mul(&r, &rot_axis(axis, ang));
+        }
+        r = mat3_mul(&r, &mat3_t(&pm));
+        let mut q = matrix_to_quat(&r);
+        if q.iter().zip(&self.q).map(|(x, y)| x * y).sum::<f64>() < 0.0 {
+            for v in &mut q {
+                *v = -*v;
+            }
+        }
+        self.q = q;
+        self.l_body = ln;
+    }
+
+    /// Strang step with space-frame torque built on the **exact** free flow
+    /// ([`free_flow_exact`](Self::free_flow_exact)): half kick, exact free rotation, half kick.
+    /// Symplectic, time reversible and second order, with no splitting error in the free part.
+    pub fn step_exact<T: Fn(&[f64; 4]) -> [f64; 3]>(
+        &mut self,
+        h: f64,
+        torque: &T,
+    ) {
+        self.kick(0.5 * h, torque);
+        self.free_flow_exact(h);
+        self.kick(0.5 * h, torque);
+    }
+}
+
+impl RigidBody {
+    /// Rotation `F` (as a vector-parametrised proper rotation) solving the Moser-Veselov
+    /// equation `F J - J F^T = h Pi^` for the discrete angular velocity.
+    fn moser_veselov_rotation(
+        &self,
+        h: f64,
+        pi: &[f64; 3],
+    ) -> Result<[f64; 3], String> {
+        let i = self.inertia;
+        let jd = [
+            0.5 * (i[1] + i[2] - i[0]),
+            0.5 * (i[2] + i[0] - i[1]),
+            0.5 * (i[0] + i[1] - i[2]),
+        ];
+        let resid = |v: &[f64; 3]| {
+            let f = rotation_from_vector(v);
+            // S = F J - J F^T is skew; its axial vector is (S21, S02, S10)
+            let mut s = [[0.0; 3]; 3];
+            for a in 0..3 {
+                for b in 0..3 {
+                    s[a][b] = f[a][b] * jd[b] - jd[a] * f[b][a];
+                }
+            }
+            [s[2][1] - h * pi[0], s[0][2] - h * pi[1], s[1][0] - h * pi[2]]
+        };
+        let mut v = [h * pi[0] / i[0], h * pi[1] / i[1], h * pi[2] / i[2]];
+        let scale = (h * (pi[0].abs() + pi[1].abs() + pi[2].abs())).max(1e-300);
+        for _ in 0..60 {
+            let r = resid(&v);
+            let rn = r[0].abs() + r[1].abs() + r[2].abs();
+            if rn <= 1e-15 * scale {
+                return Ok(v);
+            }
+            // finite-difference Jacobian
+            let mut jac = [[0.0; 3]; 3];
+            for c in 0..3 {
+                let eps = 1e-7 * (1.0 + v[c].abs());
+                let mut vp = v;
+                vp[c] += eps;
+                let mut vm = v;
+                vm[c] -= eps;
+                let (rp, rm) = (resid(&vp), resid(&vm));
+                for a in 0..3 {
+                    jac[a][c] = (rp[a] - rm[a]) / (2.0 * eps);
+                }
+            }
+            let dv = solve3(&jac, &r).ok_or("singular Moser-Veselov Jacobian")?;
+            for c in 0..3 {
+                v[c] -= dv[c];
+            }
+        }
+        let r = resid(&v);
+        if r[0].abs() + r[1].abs() + r[2].abs() <= 1e-11 * scale {
+            Ok(v)
+        } else {
+            Err("Moser-Veselov iteration did not converge".to_string())
+        }
+    }
+
+    /// One **implicit RATTLE-type** step with a space-frame torque: the discrete rigid-body
+    /// (Moser-Veselov) free step, in which the rotation increment `F` solves the implicit
+    /// constraint equation `F J - J F^T = h Pi^` (`J = tr(I)/2 - I` in the principal frame,
+    /// Newton iteration), sandwiched between half kicks of the torque. The map is symplectic,
+    /// time reversible and second order; it conserves the space-frame angular momentum exactly
+    /// in the absence of torque and keeps `R^T R = 1` to round-off.
+    ///
+    /// # Errors
+    /// Fails if the Newton iteration for the rotation increment does not converge (very large
+    /// steps) or a principal moment is not positive.
+    pub fn rattle_step<T: Fn(&[f64; 4]) -> [f64; 3]>(
+        &mut self,
+        h: f64,
+        torque: &T,
+    ) -> Result<(), String> {
+        if self.inertia.iter().any(|&x| x <= 0.0) {
+            return Err("rattle_step needs positive principal moments".to_string());
+        }
+        self.kick(0.5 * h, torque);
+        let pi = self.l_body;
+        let v = self.moser_veselov_rotation(h, &pi)?;
+        let f = rotation_from_vector(&v);
+        let angle = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+        let (s, c) = (0.5 * angle).sin_cos();
+        let k = if angle > 0.0 { s / angle } else { 0.5 };
+        let e = [c, k * v[0], k * v[1], k * v[2]];
+        let mut q = quat_mul(&self.q, &e);
+        let n = q.iter().map(|x| x * x).sum::<f64>().sqrt();
+        for x in &mut q {
+            *x /= n;
+        }
+        self.q = q;
+        // Pi_{n+1} = F^T Pi_n
+        let mut lb = [0.0; 3];
+        for a in 0..3 {
+            lb[a] = (0..3).map(|b| f[b][a] * pi[b]).sum();
+        }
+        self.l_body = lb;
+        self.kick(0.5 * h, torque);
+        Ok(())
+    }
+}
+
+/// Rotation matrix `exp(v^)` (Rodrigues).
+fn rotation_from_vector(v: &[f64; 3]) -> M3 {
+    let th = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+    let (a, b) = if th < 1e-6 {
+        (1.0 - th * th / 6.0, 0.5 - th * th / 24.0)
+    } else {
+        (th.sin() / th, (1.0 - th.cos()) / (th * th))
+    };
+    let k = [[0.0, -v[2], v[1]], [v[2], 0.0, -v[0]], [-v[1], v[0], 0.0]];
+    let mut r = [[0.0; 3]; 3];
+    for i in 0..3 {
+        for j in 0..3 {
+            let kk: f64 = (0..3).map(|m| k[i][m] * k[m][j]).sum();
+            r[i][j] = f64::from(u8::from(i == j)) + a * k[i][j] + b * kk;
+        }
+    }
+    r
+}
+
+/// Solves the 3x3 system `a x = b` by Cramer's rule.
+fn solve3(
+    a: &M3,
+    b: &[f64; 3],
+) -> Option<[f64; 3]> {
+    let det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
+        - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
+        + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+    if det.abs() < 1e-300 {
+        return None;
+    }
+    let mut x = [0.0; 3];
+    for c in 0..3 {
+        let mut m = *a;
+        for r in 0..3 {
+            m[r][c] = b[r];
+        }
+        let d = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+            - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+            + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+        x[c] = d / det;
+    }
+    Some(x)
+}
+
+/// Advances a perturbed two-body problem in KS variables for a given physical time.
+///
+/// The gravitational parameter is `mu`, the physical time `dt > 0` (RK4 in the fictitious time, step `ds = eta / omega` with the
+/// harmonic frequency `omega` of the regularised oscillator; the last steps are solved for so
+/// that the physical time lands exactly on `dt`). `pert(x, v, tau)` is the perturbing relative
+/// acceleration at elapsed time `tau`. Returns the relative position and velocity.
+///
+/// # Errors
+/// Fails for a non-positive `dt`, `mu` or `eta`, or a collision (`r = 0`).
+pub fn ks_advance<P: Fn(&[f64; 3], &[f64; 3], f64) -> [f64; 3]>(
+    x0: &[f64; 3],
+    v0: &[f64; 3],
+    mu: f64,
+    pert: &P,
+    dt: f64,
+    eta: f64,
+) -> Result<([f64; 3], [f64; 3]), String> {
+    if dt <= 0.0 || mu <= 0.0 || eta <= 0.0 {
+        return Err("ks_advance needs positive dt, mu and eta".into());
+    }
+    let r0 = (x0[0] * x0[0] + x0[1] * x0[1] + x0[2] * x0[2]).sqrt();
+    if r0 == 0.0 {
+        return Err("ks_advance: zero separation".into());
+    }
+    let (u, up) = ks_from_cartesian(x0, v0);
+    let e0 = 0.5 * (v0[0] * v0[0] + v0[1] * v0[1] + v0[2] * v0[2]) - mu / r0;
+    let mut y = [u[0], u[1], u[2], u[3], up[0], up[1], up[2], up[3], e0, 0.0];
+    let rk4 = |y: &[f64; 10], ds: f64| {
+        let k1 = ks_rhs(y, pert);
+        let mut t = *y;
+        for i in 0..10 {
+            t[i] = y[i] + 0.5 * ds * k1[i];
+        }
+        let k2 = ks_rhs(&t, pert);
+        for i in 0..10 {
+            t[i] = y[i] + 0.5 * ds * k2[i];
+        }
+        let k3 = ks_rhs(&t, pert);
+        for i in 0..10 {
+            t[i] = y[i] + ds * k3[i];
+        }
+        let k4 = ks_rhs(&t, pert);
+        let mut out = *y;
+        for i in 0..10 {
+            out[i] += ds / 6.0 * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
+        }
+        out
+    };
+    for _ in 0..10_000_000 {
+        let remaining = dt - y[9];
+        if !remaining.is_finite() {
+            return Err("ks_advance: non-finite state".into());
+        }
+        if remaining.abs() <= 1e-14 * dt {
+            break;
+        }
+        let r = y[0] * y[0] + y[1] * y[1] + y[2] * y[2] + y[3] * y[3];
+        if r <= 0.0 {
+            return Err("ks_advance: collision".into());
+        }
+        let e = y[8];
+        let omega = if e < -1e-12 * mu / r { (-0.5 * e).sqrt() } else { (0.25 * mu / r).sqrt() };
+        let ds_nominal = eta / omega;
+        let ds = if remaining.abs() < r * ds_nominal * 1.05 { remaining / r } else { ds_nominal };
+        y = rk4(&y, ds);
+    }
+    let (x, v) = ks_to_cartesian(&[y[0], y[1], y[2], y[3]], &[y[4], y[5], y[6], y[7]]);
+    Ok((x, v))
 }

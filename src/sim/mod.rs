@@ -13,12 +13,13 @@
 //! |---|---|---|---|
 //! | [`md_engine`] | any (const generic) | open, periodic, reflecting, thermal, Lees-Edwards | cell+Verlet lists, LJ/Morse/Coulomb, bonded, NHC/Langevin/Berendsen, Berendsen/MTK and flexible-cell Parrinello-Rahman/MTTK barostats on triclinic cells, SHAKE/RATTLE (also with barostat and Langevin), RDF/MSD/VACF |
 //! | [`md_rigid`] | 3 | periodic | rigid molecules: COM + quaternion, symmetric-top / NO_SQUISH rotor splitting, molecular virial |
-//! | [`ewald`] | 3 | periodic | Ewald, smooth PME |
-//! | [`nbody`], [`fmm`] | 1-3 (FMM: 2, 3) | open | Barnes-Hut, adaptive 2-D/3-D FMM |
+//! | [`ewald`] | 3 | periodic (orthorhombic and triclinic) | Ewald, smooth PME |
+//! | [`nbody`], [`fmm`] | 1-3 (FMM: 2, 3) | open (3-D FMM also periodic) | Barnes-Hut, adaptive 2-D/3-D FMM with softened far field, periodic triclinic FMM |
+//! | [`hermite`] | 3 | open | 4th/6th-order Hermite with block time steps, 1PN EIH terms, KS-regularised binaries |
 //! | [`symplectic`] | any | - | order 2-8 schemes, TTL (composed to order 8), KS, rigid body (exact symmetric-top flows) |
 //! | [`chain`] | 3 | open | Mikkola-Aarseth chain regularisation, algorithmic regularisation + GBS extrapolation |
 //! | [`spin_models`] | any | periodic / open | Ising, Potts, O(N); Metropolis, heat bath (also XY/Heisenberg), Wolff, SW, PT (O(N) and Potts), WL (Ising and continuous spins) |
-//! | [`relativity`] | 3+1 | horizon / escape events | Kerr-Newman geodesics |
+//! | [`relativity`], [`kerr`], [`elliptic`] | 3+1 | horizon / escape events | Kerr-Newman geodesics; exact bound Kerr orbits in Mino time, shadows; third-kind elliptic integrals |
 //! | [`sph`] | any | open, periodic, reflecting, fixed particles | cubic / Wendland kernels |
 //! | `classical`, `physics_md`, `physics_rkm`, `integrators` | fixed or runtime | see module docs | legacy / ODE tools |
 
@@ -82,6 +83,10 @@ pub mod scenario;
 pub mod scenario_engines;
 /// Ewald summation and particle-mesh Ewald.
 pub mod ewald;
+/// Elliptic integrals of the third kind and Jacobi-function integrals.
+pub mod elliptic;
+/// Hermite N-body integrators with block time steps, PN terms and KS binaries.
+pub mod hermite;
 /// Dimension-generic molecular dynamics engine.
 pub mod md_engine;
 /// Rigid-molecule molecular dynamics.
@@ -94,6 +99,8 @@ pub mod fmm;
 pub mod chain;
 /// Kerr-Newman geodesics.
 pub mod relativity;
+/// Exact bound Kerr geodesics in Mino time and black-hole shadows.
+pub mod kerr;
 /// Smoothed-particle hydrodynamics in 1-3 dimensions.
 pub mod sph;
 /// Lattice spin models (Ising, Potts, XY, Heisenberg) with cluster updates.

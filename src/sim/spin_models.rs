@@ -8,13 +8,13 @@
 //! | Algorithm | Ising (O(1)) | XY / Heisenberg (O(N), N>=2) | Potts |
 //! |---|---|---|---|
 //! | Metropolis | yes | yes (random-walk proposal) | yes |
-//! | Heat bath | yes | yes (exact: von Mises for XY, inverse-CDF `exp(a cos theta)` for Heisenberg; field included) | yes |
+//! | Heat bath | yes | yes (exact: von Mises for XY, inverse-CDF `exp(a cos theta)` for Heisenberg, Wood's von Mises-Fisher algorithm for `N >= 4`; field included) | yes |
 //! | Wolff cluster (embedded Ising for O(N)), `h = 0`, `J > 0` | yes | yes | yes |
 //! | Swendsen-Wang (embedded) | yes | yes | yes |
 //! | Over-relaxation (micro-canonical) | - | yes | - |
 //!
 //! Further tools: [`ParallelTempering`] (replica exchange for O(N) models),
-//! [`PottsTempering`] (replica exchange for Potts), [`wang_landau_ising`] (density of
+//! [`PottsTempering`] (replica exchange for Potts), [`replica_exchange_wang_landau`] (multi-window, multi-walker REWL for Ising and O(N)), [`wang_landau_ising`] (density of
 //! states of the Ising model) and [`wang_landau_on`] (density of states of continuous O(N)
 //! spins on a binned energy axis), single-histogram reweighting ([`reweight`],
 //! [`canonical_from_dos`]), finite-size-scaling helpers
@@ -29,9 +29,11 @@
 //! supplied spin arrays via the public `spins` field.
 //!
 //! Limitations: only nearest-neighbour hypercubic lattices; the field `h`
-//! couples to component 0 and is incompatible with cluster updates; the heat bath is
-//! implemented for O(N) with `N <= 3`; Wang-Landau for continuous spins is restricted to a
-//! user-supplied energy window (moves leaving it are rejected) and uses single-spin moves.
+//! couples to component 0 and is incompatible with cluster updates; the quantum (XXZ / worm /
+//! loop) algorithms are not implemented; single-walker Wang-Landau for continuous spins
+//! ([`wang_landau_on`]) is restricted to a user-supplied energy window (moves leaving it are
+//! rejected) and uses single-spin moves ([`replica_exchange_wang_landau`] adds windows and
+//! walkers).
 
 use crate::kernels::random::Rng;
 
@@ -204,11 +206,14 @@ impl UnionFind {
     }
 }
 
-/// Draws a unit vector from `P(s) ~ exp(beta s . f)` on the sphere `S^(N-1)` (`N = 1, 2, 3`):
-/// the heat-bath conditional distribution of an O(N) spin in the local field `f`.
+/// Draws a heat-bath direction for an O(N) spin.
+///
+/// The unit vector has density `P(s) ~ exp(beta s . f)` on the sphere `S^(N-1)`: the heat-bath conditional distribution of an O(N) spin in the local field `f`
+/// (von Mises-Fisher distribution; `N = 1` logistic, `N = 2` Best-Fisher, `N = 3` exact inverse
+/// CDF, `N >= 4` Wood's rejection algorithm).
 ///
 /// # Errors
-/// Fails for `N = 0` or `N > 3`.
+/// Fails for `N = 0`.
 pub fn heat_bath_direction<const N: usize>(
     rng: &mut Rng,
     f: &[f64; N],
@@ -269,7 +274,58 @@ pub fn heat_bath_direction<const N: usize>(
                 out[k] = x * axis[k] + sx * (psi.cos() * e1[k] + psi.sin() * e2[k]);
             }
         },
-        _ => return Err("heat bath is implemented for N = 1, 2, 3".into()),
+        0 => return Err("heat bath needs N >= 1".into()),
+        _ => {
+            // von Mises-Fisher distribution on S^(N-1) with concentration `a` (Wood, 1994):
+            // sample the cosine `w` to the mean direction by rejection from a Beta envelope,
+            // then a uniform direction orthogonal to it.
+            let nm1 = (N - 1) as f64;
+            let w = if a < 1e-10 {
+                2.0 * rng.beta(0.5 * nm1, 0.5 * nm1) - 1.0
+            } else {
+                let b = nm1 / (2.0 * a + (4.0 * a * a + nm1 * nm1).sqrt());
+                let x0 = (1.0 - b) / (1.0 + b);
+                let c = a * x0 + nm1 * (1.0 - x0 * x0).ln();
+                loop {
+                    let z = rng.beta(0.5 * nm1, 0.5 * nm1);
+                    let u = rng.uniform();
+                    let wc = (1.0 - (1.0 + b) * z) / (1.0 - (1.0 - b) * z);
+                    if a * wc + nm1 * (1.0 - x0 * wc).ln() - c >= u.ln() {
+                        break wc;
+                    }
+                }
+            };
+            let mut mu = [0.0; N];
+            if fm > 0.0 {
+                for k in 0..N {
+                    mu[k] = f[k] / fm;
+                }
+            } else {
+                mu[0] = 1.0;
+            }
+            // uniform unit vector orthogonal to mu
+            let perp = loop {
+                let mut g = [0.0; N];
+                for c in &mut g {
+                    *c = rng.normal();
+                }
+                let proj = dot(&g, &mu);
+                for k in 0..N {
+                    g[k] -= proj * mu[k];
+                }
+                let n = dot(&g, &g).sqrt();
+                if n > 1e-12 {
+                    for c in &mut g {
+                        *c /= n;
+                    }
+                    break g;
+                }
+            };
+            let sw = (1.0 - w * w).max(0.0).sqrt();
+            for k in 0..N {
+                out[k] = w * mu[k] + sw * perp[k];
+            }
+        },
     }
     Ok(out)
 }
@@ -422,11 +478,8 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
     /// (Best-Fisher rejection); Heisenberg: exact inverse CDF of `exp(a cos theta)`.
     ///
     /// # Errors
-    /// Returns an error for `N > 3`.
+    /// Returns an error for `N = 0`.
     pub fn heat_bath_sweep(&mut self) -> Result<(), String> {
-        if N > 3 {
-            return Err("heat bath is implemented for N = 1, 2, 3".into());
-        }
         for i in 0..self.lattice.sites() {
             let f = self.local_field(i);
             self.spins[i] = heat_bath_direction::<N>(&mut self.rng, &f, self.beta)?;
@@ -1273,4 +1326,277 @@ pub fn ising1d_energy_per_site(
     let z = c.powf(nn) + s.powf(nn);
     let dz = nn * c.powf(nn - 1.0) * s + nn * s.powf(nn - 1.0) * c;
     -j * dz / z / nn
+}
+
+// ---------------------------------------------------------------------------
+// Replica-exchange Wang-Landau with multiple walkers per window
+// ---------------------------------------------------------------------------
+
+/// Parameters of [`replica_exchange_wang_landau`].
+#[derive(Clone, Copy, Debug)]
+pub struct RewlOptions {
+    /// Energy window `(e_min, e_max)` covered by all energy windows together.
+    pub range: (f64, f64),
+    /// Number of energy bins over `range`.
+    pub nbins: usize,
+    /// Number of overlapping energy windows.
+    pub windows: usize,
+    /// Fraction of a window shared with its neighbour, in `[0, 1)`.
+    pub overlap: f64,
+    /// Walkers per window; all walkers of a window share one `ln g` and histogram.
+    pub walkers: usize,
+    /// Single-spin proposal width for continuous spins (ignored for Ising).
+    pub delta: f64,
+    /// Final modification factor `ln f`.
+    pub ln_f_final: f64,
+    /// Flatness criterion `min H > flatness mean H` per window.
+    pub flatness: f64,
+    /// Sweeps of every walker between two exchange attempts and flatness checks.
+    pub sweeps_per_exchange: usize,
+    /// Random seed.
+    pub seed: u64,
+}
+
+/// One walker of the replica-exchange Wang-Landau simulation.
+struct WlWalker<const D: usize, const N: usize> {
+    model: OnModel<D, N>,
+    energy: f64,
+    bin: usize,
+}
+
+/// Greedy steering of a configuration into the energy interval `[lo, hi)`.
+fn steer_into_window<const D: usize, const N: usize>(
+    m: &mut OnModel<D, N>,
+    lo: f64,
+    hi: f64,
+    delta: f64,
+) -> Result<f64, String> {
+    let n = m.lattice.sites();
+    let target = f64::midpoint(lo, hi);
+    let mut e = m.energy();
+    for _ in 0..4000 * n.max(16) {
+        if e >= lo && e < hi {
+            return Ok(e);
+        }
+        let i = m.rng.below(n as u64) as usize;
+        let f = m.local_field_public(i);
+        let old = m.spins[i];
+        let mut new = old;
+        if N == 1 {
+            new[0] = -old[0];
+        } else {
+            for k in 0..N {
+                new[k] = old[k] + delta * m.rng.normal();
+            }
+            let nn = dot(&new, &new).sqrt();
+            for c in &mut new {
+                *c /= nn;
+            }
+        }
+        let mut de = 0.0;
+        for k in 0..N {
+            de -= (new[k] - old[k]) * f[k];
+        }
+        if (e + de - target).abs() <= (e - target).abs() || m.rng.uniform() < 0.01 {
+            m.spins[i] = new;
+            e += de;
+        }
+    }
+    let e = m.energy();
+    if e >= lo && e < hi {
+        Ok(e)
+    } else {
+        Err("could not steer a walker into its energy window".into())
+    }
+}
+
+/// Replica-exchange Wang-Landau with several walkers per energy window.
+///
+/// After Vogel, Li, Wuest and Landau (2013): the energy range is split into overlapping windows, each window runs its own
+/// Wang-Landau iteration with `walkers` walkers sharing `ln g`, neighbouring windows exchange
+/// configurations with probability `min(1, g_i(E_a) g_j(E_b) / (g_i(E_b) g_j(E_a)))`, and the
+/// per-window densities of states are joined at the overlap bin where their logarithmic
+/// derivatives agree best. Works for the Ising model (`N = 1`) and continuous O(N) spins.
+///
+/// Returns `(bin centre, ln g)` for the visited bins, normalised to `sum g = 1`.
+///
+/// # Errors
+/// Fails for invalid options, lattice errors, or if a walker cannot be placed in its window.
+pub fn replica_exchange_wang_landau<const D: usize, const N: usize>(
+    dims: [usize; D],
+    periodic: bool,
+    opt: &RewlOptions,
+) -> Result<Vec<(f64, f64)>, String> {
+    let (e_min, e_max) = opt.range;
+    let nbins = opt.nbins;
+    let nwin = opt.windows.max(1);
+    if nbins < 2 || e_max <= e_min || !(0.0..1.0).contains(&opt.overlap) || opt.walkers == 0 {
+        return Err("invalid replica-exchange Wang-Landau options".into());
+    }
+    let width = (e_max - e_min) / nbins as f64;
+    // window layout in bins: [lo_w, hi_w)
+    let span = 1.0 + (nwin - 1) as f64 * (1.0 - opt.overlap);
+    let nw = ((nbins as f64 / span).ceil() as usize).clamp(2, nbins);
+    let stride = if nwin > 1 { (((nbins - nw) as f64) / (nwin - 1) as f64).ceil().max(1.0) as usize } else { 0 };
+    let ranges: Vec<(usize, usize)> = (0..nwin)
+        .map(|w| {
+            let lo = (w * stride).min(nbins - nw);
+            let hi = if w + 1 == nwin { nbins } else { (lo + nw).min(nbins) };
+            (lo, hi)
+        })
+        .collect();
+    for w in 1..nwin {
+        if ranges[w].0 >= ranges[w - 1].1 {
+            return Err("energy windows do not overlap; increase `overlap` or `nbins`".into());
+        }
+    }
+    let bin_of = |e: f64| -> Option<usize> {
+        if e < e_min || e >= e_max {
+            None
+        } else {
+            Some((((e - e_min) / width) as usize).min(nbins - 1))
+        }
+    };
+    let mut walkers: Vec<Vec<WlWalker<D, N>>> = Vec::new();
+    for (w, &(lo, hi)) in ranges.iter().enumerate() {
+        let mut ws = Vec::new();
+        for k in 0..opt.walkers {
+            let seed = opt.seed.wrapping_add(7919 * (w * opt.walkers + k) as u64 + 1);
+            let mut model = OnModel::<D, N>::new(dims, periodic, 1.0, seed)?;
+            let elo = e_min + lo as f64 * width;
+            let ehi = e_min + hi as f64 * width;
+            let energy = steer_into_window(&mut model, elo, ehi, opt.delta)?;
+            let bin = bin_of(energy).ok_or("walker left the energy range")?;
+            ws.push(WlWalker { model, energy, bin });
+        }
+        walkers.push(ws);
+    }
+    let n = walkers[0][0].model.lattice.sites();
+    let mut ln_g = vec![vec![0.0f64; nbins]; nwin];
+    let mut visited = vec![vec![false; nbins]; nwin];
+    let mut hist = vec![vec![0usize; nbins]; nwin];
+    let mut ln_f = 1.0;
+    let mut xrng = Rng::new(opt.seed ^ 0x9E37_79B9);
+    let steps = opt.sweeps_per_exchange.max(1) * n;
+    let mut round = 0usize;
+    let mut guard = 0usize;
+    while ln_f > opt.ln_f_final {
+        for h in &mut hist {
+            h.fill(0);
+        }
+        loop {
+            for (w, &(lo, hi)) in ranges.iter().enumerate() {
+                for wk in &mut walkers[w] {
+                    for _ in 0..steps {
+                        let i = wk.model.rng.below(n as u64) as usize;
+                        let f = wk.model.local_field_public(i);
+                        let old = wk.model.spins[i];
+                        let mut new = old;
+                        if N == 1 {
+                            new[0] = -old[0];
+                        } else {
+                            for k in 0..N {
+                                new[k] = old[k] + opt.delta * wk.model.rng.normal();
+                            }
+                            let nn = dot(&new, &new).sqrt();
+                            for c in &mut new {
+                                *c /= nn;
+                            }
+                        }
+                        let mut de = 0.0;
+                        for k in 0..N {
+                            de -= (new[k] - old[k]) * f[k];
+                        }
+                        if let Some(nb) = bin_of(wk.energy + de)
+                            && nb >= lo
+                            && nb < hi
+                        {
+                            let d = ln_g[w][wk.bin] - ln_g[w][nb];
+                            if d >= 0.0 || wk.model.rng.uniform() < d.exp() {
+                                wk.model.spins[i] = new;
+                                wk.energy += de;
+                                wk.bin = nb;
+                            }
+                        }
+                        ln_g[w][wk.bin] += ln_f;
+                        hist[w][wk.bin] += 1;
+                        visited[w][wk.bin] = true;
+                    }
+                    wk.energy = wk.model.energy();
+                    wk.bin = bin_of(wk.energy).unwrap_or(wk.bin).clamp(lo, hi - 1);
+                }
+            }
+            // replica exchange between neighbouring windows (alternating parity)
+            let mut w = round % 2;
+            while w + 1 < nwin {
+                let a = xrng.below(opt.walkers as u64) as usize;
+                let b = xrng.below(opt.walkers as u64) as usize;
+                let (ba, bb) = (walkers[w][a].bin, walkers[w + 1][b].bin);
+                let (lo1, hi1) = ranges[w + 1];
+                let (lo0, hi0) = ranges[w];
+                if ba >= lo1 && ba < hi1 && bb >= lo0 && bb < hi0 {
+                    let d = ln_g[w][ba] - ln_g[w][bb] + ln_g[w + 1][bb] - ln_g[w + 1][ba];
+                    if d >= 0.0 || xrng.uniform() < d.exp() {
+                        let (left, right) = walkers.split_at_mut(w + 1);
+                        std::mem::swap(&mut left[w][a].model.spins, &mut right[0][b].model.spins);
+                        std::mem::swap(&mut left[w][a].energy, &mut right[0][b].energy);
+                        std::mem::swap(&mut left[w][a].bin, &mut right[0][b].bin);
+                    }
+                }
+                w += 2;
+            }
+            round += 1;
+            guard += 1;
+            let flat = ranges.iter().enumerate().all(|(w, &(lo, hi))| {
+                let vals: Vec<usize> = (lo..hi).filter(|&k| visited[w][k]).map(|k| hist[w][k]).collect();
+                if vals.is_empty() {
+                    return false;
+                }
+                let mean = vals.iter().sum::<usize>() as f64 / vals.len() as f64;
+                let mn = vals.iter().copied().min().unwrap_or(0) as f64;
+                mn > opt.flatness * mean
+            });
+            if flat || guard > 200_000 {
+                break;
+            }
+        }
+        ln_f /= 2.0;
+    }
+    // join the windows: shift each window onto the merged left part by the mean offset over the
+    // interior overlap bins (window edge bins carry the Wang-Landau boundary artefact), and
+    // switch from the left to the right window in the middle of the overlap
+    let mut merged = vec![f64::NAN; nbins];
+    let mut known = vec![false; nbins];
+    let (lo0, hi0) = ranges[0];
+    for k in lo0..hi0 {
+        if visited[0][k] {
+            merged[k] = ln_g[0][k];
+            known[k] = true;
+        }
+    }
+    for w in 1..nwin {
+        let (lo, hi) = ranges[w];
+        let prev_hi = ranges[w - 1].1;
+        let mut common: Vec<usize> = (lo..prev_hi).filter(|&k| visited[w][k] && known[k]).collect();
+        if common.is_empty() {
+            return Err("adjacent windows share no visited bin".into());
+        }
+        let all = common.clone();
+        if common.len() >= 4 {
+            common.remove(0);
+            common.pop();
+        }
+        let shift = common.iter().map(|&k| merged[k] - ln_g[w][k]).sum::<f64>() / common.len() as f64;
+        let mid = all[all.len() / 2];
+        for k in mid..hi {
+            if visited[w][k] {
+                merged[k] = ln_g[w][k] + shift;
+                known[k] = true;
+            }
+        }
+    }
+    let mx = (0..nbins).filter(|&k| known[k]).map(|k| merged[k]).fold(f64::NEG_INFINITY, f64::max);
+    let total: f64 = (0..nbins).filter(|&k| known[k]).map(|k| (merged[k] - mx).exp()).sum();
+    let shift = -(mx + total.ln());
+    Ok((0..nbins).filter(|&k| known[k]).map(|k| (e_min + (k as f64 + 0.5) * width, merged[k] + shift)).collect())
 }

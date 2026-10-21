@@ -844,6 +844,149 @@ fn constrained_langevin_keeps_bonds_rigid_and_samples_the_target_temperature() {
     }
     assert!(worst < 1e-9, "bond drift {worst}");
     assert!((tm / ns as f64 - 1.5).abs() < 0.06, "T = {}", tm / ns as f64);
-    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 30.0, CellMode::Isotropic));
-    assert!(sim.step().is_err());
+    // the flexible cell now composes with Langevin dynamics
+    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 30.0, CellMode::Isotropic).with_langevin_cell(1.0));
+    assert!(sim.step().is_ok());
+}
+
+fn ideal_gas(n: usize, l: f64, seed: u64) -> MdSimulation<3> {
+    let bx = SimBox::<3>::periodic([l; 3]);
+    let mut rng = Rng::new(seed);
+    let pos = random_positions(n, &bx, 0.0, &mut rng).unwrap();
+    let mut sys = MdSystem::new(pos, bx);
+    sys.maxwell_boltzmann(1.0, &mut rng);
+    MdSimulation::new(sys, ForceField::<3>::new(vec![], 1.0), 0.3, 0.01, seed + 1).unwrap()
+}
+
+#[test]
+fn langevin_piston_samples_the_isothermal_isobaric_ensemble_of_an_ideal_gas() {
+    // p(V) ~ V^N exp(-P V / T): <V> = (N + 1) T / P, cell kinetic energy = dof_cell T / 2
+    let n = 20;
+    for (mode, cell_dof) in [(CellMode::Isotropic, 1.0), (CellMode::Orthorhombic, 3.0)] {
+        let mut sim = ideal_gas(n, 5.0, 3);
+        sim.thermostat = Thermostat::Langevin { t0: 1.0, gamma: 1.0 };
+        sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 4.0, mode).with_langevin_cell(0.5));
+        sim.run(3000).unwrap();
+        let (mut v, mut cke, mut cnt) = (0.0, 0.0, 0.0);
+        for k in 0..40_000 {
+            sim.step().unwrap();
+            if k % 4 == 0 {
+                v += sim.sys.bx.volume();
+                if let Barostat::Flexible(b) = &sim.barostat {
+                    cke += b.pg.iter().map(|x| x * x).sum::<f64>() / (2.0 * b.w);
+                }
+                cnt += 1.0;
+            }
+        }
+        let (v, cke) = (v / cnt, cke / cnt);
+        let expected = (n + 1) as f64;
+        assert!((v / expected - 1.0).abs() < 0.08, "{mode:?}: <V> = {v} vs {expected}");
+        assert!((cke / (0.5 * cell_dof) - 1.0).abs() < 0.08, "{mode:?}: cell kinetic energy {cke}");
+    }
+}
+
+#[test]
+fn langevin_piston_with_full_cell_reaches_target_stress_for_a_lj_fluid() {
+    let (t0, p0) = (1.2, 1.0);
+    let mut sim = lj_fluid_3d(3, 0.7, t0, 0.005, 191);
+    sim.thermostat = Thermostat::Langevin { t0, gamma: 1.0 };
+    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, p0, 20.0, CellMode::Full).with_langevin_cell(1.0));
+    sim.run(1500).unwrap();
+    let (mut tm, mut pt) = (0.0, [[0.0; 3]; 3]);
+    let ns = 3000;
+    for _ in 0..ns {
+        sim.step().unwrap();
+        tm += sim.temperature();
+        let p = sim.pressure_tensor();
+        for a in 0..3 {
+            for b in 0..3 {
+                pt[a][b] += p[a][b];
+            }
+        }
+    }
+    let nsf = ns as f64;
+    assert!((tm / nsf - t0).abs() < 0.06, "T = {}", tm / nsf);
+    let pm = (pt[0][0] + pt[1][1] + pt[2][2]) / (3.0 * nsf);
+    assert!((pm - p0).abs() < 0.15, "mean pressure {pm}");
+}
+
+#[test]
+fn constrained_dimers_under_a_langevin_piston_stay_rigid() {
+    let d = 0.7;
+    let mut sim = dimer_system(32, 7.0, d, 121);
+    sim.thermostat = Thermostat::Langevin { t0: 1.0, gamma: 1.5 };
+    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 0.5, 30.0, CellMode::Isotropic).with_langevin_cell(1.0));
+    sim.run(500).unwrap();
+    let (mut worst, mut tm) = (0.0_f64, 0.0);
+    let ns = 2500;
+    for _ in 0..ns {
+        sim.step().unwrap();
+        worst = worst.max(max_bond_error(&sim));
+        tm += sim.temperature();
+    }
+    assert!(worst < 1e-9, "bond drift {worst}");
+    assert!((tm / ns as f64 - 1.0).abs() < 0.12, "T = {}", tm / ns as f64);
+    let tr: f64 = (0..3).map(|a| sim.constraint_virial[a][a]).sum();
+    assert!(tr.is_finite() && tr != 0.0);
+}
+
+#[test]
+fn sllod_on_a_deforming_cell_is_exact_for_free_particles_and_reduces_the_cell() {
+    let rate = 0.4;
+    let run = |dt: f64| -> f64 {
+        let mut sim = ideal_gas(30, 4.0, 5);
+        sim.dt = dt;
+        let (v0, x0) = (sim.sys.vel.clone(), sim.sys.unwrapped.clone());
+        sim.barostat = Barostat::Flexible(FlexibleBarostat::shear_flow(3, rate));
+        let t_end = 3.0;
+        let steps = (t_end / dt).round() as usize;
+        let mut worst_offset = 0.0_f64;
+        for _ in 0..steps {
+            sim.step().unwrap();
+            let c = sim.sys.bx.cell.unwrap();
+            worst_offset = worst_offset.max(c[1][0].abs());
+        }
+        // the sheared cell has been wrapped back (strain 4.8 > half a box)
+        assert!(worst_offset <= 2.0 + 1e-9, "cell offset {worst_offset}");
+        let c = sim.sys.bx.cell.unwrap();
+        let wraps = ((rate * t_end * 4.0 - c[1][0]) / 4.0).round();
+        assert!((rate * t_end * 4.0 - c[1][0] - wraps * 4.0).abs() < 1e-8, "lattice-equivalent strain");
+        let mut err = 0.0_f64;
+        for i in 0..30 {
+            // v_x(t) = v_x0 - rate v_y0 t, v_y, v_z constant; x(t) = x0 + (v_x0 + rate y0) t
+            err = err.max((sim.sys.vel[i][0] - (v0[i][0] - rate * v0[i][1] * t_end)).abs());
+            err = err.max((sim.sys.vel[i][1] - v0[i][1]).abs()).max((sim.sys.vel[i][2] - v0[i][2]).abs());
+            let xe = x0[i][0] + (v0[i][0] + rate * x0[i][1]) * t_end;
+            err = err.max((sim.sys.unwrapped[i][0] - xe).abs());
+            err = err.max((sim.sys.unwrapped[i][1] - (x0[i][1] + v0[i][1] * t_end)).abs());
+        }
+        err
+    };
+    let (e1, e2) = (run(0.02), run(0.01));
+    // the integrator is exact for the (nilpotent) shear flow of free particles, for any step
+    assert!(e1 < 1e-9 && e2 < 1e-9, "SLLOD error {e1} {e2}");
+}
+
+#[test]
+fn sllod_shear_viscosity_of_a_lj_fluid_is_positive_and_shear_thins_weakly() {
+    let mut stress = Vec::new();
+    for rate in [0.4, 0.8] {
+        let mut sim = lj_fluid_3d(3, 0.8442, 1.0, 0.004, 301);
+        let dof = sim.dof();
+        sim.thermostat = Thermostat::NoseHooverChain(NoseHooverChain::new(1.0, 0.2, 3, dof));
+        sim.barostat = Barostat::Flexible(FlexibleBarostat::shear_flow(3, rate));
+        sim.run(800).unwrap();
+        let (mut pxy, mut tm) = (0.0, 0.0);
+        let ns = 1500;
+        for _ in 0..ns {
+            sim.step().unwrap();
+            pxy += sim.pressure_tensor()[0][1];
+            tm += sim.temperature();
+        }
+        let eta = -pxy / ns as f64 / rate;
+        assert!((tm / ns as f64 - 1.0).abs() < 0.15, "T = {}", tm / ns as f64);
+        assert!(eta > 1.0 && eta < 5.0, "rate {rate}: eta = {eta}");
+        stress.push(-pxy / ns as f64);
+    }
+    assert!(stress[1] > stress[0], "stress must grow with the rate: {stress:?}");
 }

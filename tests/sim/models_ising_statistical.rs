@@ -154,3 +154,31 @@ fn wolff_observables_come_from_the_generic_engine_and_reject_tiny_lattices() {
     let o = run_wolff_simulation(16, 16, 1.2, 100, 500, 2);
     assert!(o.magnetization > 0.97 && o.mean_cluster > 0.9);
 }
+
+#[test]
+fn checkerboard_is_correct_on_odd_periodic_lattices() {
+    use rssn::sim::spin_models::enumerate_ising_dos;
+    // exact canonical energy per spin by enumeration vs the long-run average of the checkerboard
+    for (w, h) in [(3usize, 3usize), (5, 3), (3, 4)] {
+        let t = 2.5;
+        let dos = enumerate_ising_dos::<2>([w, h], true).unwrap();
+        let z: f64 = dos.iter().map(|&(e, c)| c * (-(e as f64) / t).exp()).sum();
+        let exact = dos.iter().map(|&(e, c)| c * e as f64 * (-(e as f64) / t).exp()).sum::<f64>() / z / (w * h) as f64;
+        let mut acc = 0.0;
+        let runs = 1500;
+        for s in 0..runs {
+            let (g, _) = run_ising_simulation_seeded(
+                &IsingParameters { width: w, height: h, temperature: t, mc_steps: 15 },
+                1000 + s,
+            );
+            acc += energy_per_spin(&g, w, h);
+        }
+        let mean = acc / runs as f64;
+        assert!((mean - exact).abs() < 0.04, "{w}x{h}: {mean} vs exact {exact}");
+    }
+    // invalid input does not panic
+    let (g, m) = run_ising_simulation_seeded(&IsingParameters { width: 0, height: 4, temperature: 1.0, mc_steps: 3 }, 1);
+    assert!(g.is_empty() && m.is_nan());
+    let (_, m) = run_ising_simulation_seeded(&IsingParameters { width: 4, height: 4, temperature: -1.0, mc_steps: 3 }, 1);
+    assert!(m.is_nan());
+}

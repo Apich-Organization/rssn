@@ -14,8 +14,11 @@
 //!
 //! Helpers [`gravity_accelerations`] and [`coulomb_forces`] wrap the fields
 //! for use with the integrators of [`crate::sim::symplectic`].
-//! The FMM algorithms live in [`crate::sim::fmm`]. Limitations: the FMM far field is the unsoftened
-//! kernel (softening acts on the near field only); there is no periodic FMM (use Ewald/PME).
+//! The FMM algorithms live in [`crate::sim::fmm`]: the far field uses the same Plummer-softened
+//! kernel as the near field, and [`crate::sim::fmm::periodic_fmm3d`] provides the periodic 3-D FMM
+//! (triclinic cells). Hermite integrators with block time steps, 1PN terms and KS binaries are in
+//! [`crate::sim::hermite`]. Limitations: Barnes-Hut and the 2-D FMM are open-boundary only;
+//! the periodic FMM treats the lattice beyond the near images with the unsoftened kernel.
 
 const NONE: u32 = u32::MAX;
 const MAX_DEPTH: usize = 48;

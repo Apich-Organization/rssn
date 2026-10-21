@@ -16,9 +16,20 @@
 //! * [`fmm2d`] is the 2-D analogue (complex-variable expansions of the
 //!   logarithmic potential, M2M/M2L/L2L) on an adaptive quadtree.
 //!
-//! Plummer softening `eps` is applied to the near field only (the far field is
-//! the exact Coulomb kernel; the neglected relative error is `O(eps^2/r^2)` at
-//! the well-separated distances where expansions are used).
+//! Plummer softening `eps` is applied **consistently** to the near field and to the
+//! expansions: the multipole-to-local translation uses the derivative tensors of the
+//! softened kernel `(|x|^2 + eps^2)^(-1/2)`, so the result converges to the direct softened sum.
+//!
+//! * [`periodic_fmm3d`] is the **periodic** 3-D FMM for a general triclinic cell: the central cell
+//!   and its `(2w+1)^3 - 1` nearest images are treated by the tree code and the remaining lattice
+//!   by the Taylor expansion of the Ewald-regularised lattice potential (tinfoil boundary
+//!   conditions, neutralising background), whose derivative tensors are built from the Ewald
+//!   splitting with incomplete-gamma derivatives of the screened kernel.
+//!
+//! Limitations: the lattice beyond the near images uses the unsoftened kernel (relative
+//! effect `O(eps^2/(w L)^2)`); the 2-D solver is open-boundary only; P3M (particle-particle,
+//! particle-mesh) is not implemented, [`crate::sim::ewald::pme_reciprocal_cell`] covers the
+//! mesh route for Coulomb systems.
 
 
 /// Parameters of an FMM evaluation.
@@ -247,13 +258,16 @@ impl Tables3 {
         self.fact[k[0]] * self.fact[k[1]] * self.fact[k[2]]
     }
 
-    /// Derivatives `D^k (1/r)` at `x` for all `|k| <= 2p`.
+    /// Derivatives `D^k (q^(-1/2))` at `x`, `q = |x|^2 + eps2`, for all `|k| <= 2p`
+    /// (`eps2 = 0`: the Coulomb kernel; `eps2 > 0`: the Plummer-softened kernel, for which the
+    /// same Leibniz recurrence holds because `q` is a quadratic polynomial of `x`).
     fn derivs(
         &self,
         x: [f64; 3],
+        eps2: f64,
         out: &mut Vec<f64>,
     ) {
-        let r2 = x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+        let r2 = x[0] * x[0] + x[1] * x[1] + x[2] * x[2] + eps2;
         out.clear();
         out.resize(self.list.len(), 0.0);
         out[0] = 1.0 / r2.sqrt();
@@ -419,7 +433,7 @@ pub fn fmm3d(
     let parity: Vec<f64> = t.list.iter().map(|k| if (k[0] + k[1] + k[2]) % 2 == 0 { 1.0 } else { -1.0 }).collect();
     for (a, b) in m2l_list {
         let x = sub3(&tree.nodes[a].center, &tree.nodes[b].center);
-        t.derivs(x, &mut dbuf);
+        t.derivs(x, eps2, &mut dbuf);
         for g in 0..nc {
             let mut s = 0.0;
             for al in 0..nc {
@@ -645,4 +659,324 @@ pub fn fmm2d(
         }
     }
     Ok(out)
+}
+
+// ---------------------------------------------------------------------------
+// Periodic FMM
+// ---------------------------------------------------------------------------
+
+/// Parameters of [`periodic_fmm3d`].
+#[derive(Clone, Copy, Debug)]
+pub struct PeriodicFmmOptions {
+    /// Options of the tree code that handles the central cell and its near images.
+    pub fmm: FmmOptions,
+    /// Number of shells `w` of near images treated explicitly (`(2w+1)^3` cells).
+    pub near_shells: usize,
+    /// Half of the total degree `P = 2 half` of the Taylor expansion of the far lattice potential.
+    pub far_half_order: usize,
+}
+
+impl Default for PeriodicFmmOptions {
+    fn default() -> Self {
+        Self { fmm: FmmOptions::default(), near_shells: 1, far_half_order: 8 }
+    }
+}
+
+/// `F^(m)(q)` for `F(q) = erfc(alpha sqrt(q))/sqrt(q)`, `m = 0..=mmax`, by the upward recurrence of
+/// the incomplete gamma function: `F^(m) = (-1)^m q^(-m-1/2) Gamma(m+1/2, alpha^2 q)/sqrt(pi)`.
+fn erfc_kernel_derivatives(
+    alpha: f64,
+    q: f64,
+    mmax: usize,
+) -> Vec<f64> {
+    let x = alpha * alpha * q;
+    let sqrt_pi = std::f64::consts::PI.sqrt();
+    let mut g = sqrt_pi * crate::kernels::special::erfc_numerical(x.sqrt());
+    let mut out = Vec::with_capacity(mmax + 1);
+    let mut qpow = 1.0 / q.sqrt();
+    let ex = (-x).exp();
+    for m in 0..=mmax {
+        let sign = if m % 2 == 0 { 1.0 } else { -1.0 };
+        out.push(sign * qpow * g / sqrt_pi);
+        let a = m as f64 + 0.5;
+        g = a * g + x.powf(a) * ex;
+        qpow /= q;
+    }
+    out
+}
+
+/// Derivatives `d^k F(|x|^2)` of a radial function at `x0` for all multi-indices of `t.list`
+/// with `|k| <= p_max`, given `f[m] = F^(m)(|x0|^2)`.
+fn radial_derivatives(
+    t: &Tables3,
+    x0: [f64; 3],
+    f: &[f64],
+    p_max: usize,
+) -> Vec<f64> {
+    let mut out = vec![0.0; t.list.len()];
+    for (i, k) in t.list.iter().enumerate() {
+        let kk = k[0] + k[1] + k[2];
+        if kk > p_max {
+            continue;
+        }
+        let mut sum = 0.0;
+        for j0 in 0..=k[0] / 2 {
+            for j1 in 0..=k[1] / 2 {
+                for j2 in 0..=k[2] / 2 {
+                    let j = [j0, j1, j2];
+                    let mut coef = 1.0;
+                    let mut xp = 1.0;
+                    for a in 0..3 {
+                        coef *= t.fact[k[a]] / (t.fact[j[a]] * t.fact[k[a] - 2 * j[a]]);
+                        xp *= x0[a].powi((k[a] - 2 * j[a]) as i32);
+                    }
+                    let jj = j0 + j1 + j2;
+                    sum += coef * 2.0_f64.powi((kk - 2 * jj) as i32) * xp * f[kk - jj];
+                }
+            }
+        }
+        out[i] = sum;
+    }
+    out
+}
+
+/// Derivative tensor `d^k Phi_far(0)` (`|k| <= 2 half`) of the far-lattice potential
+/// `Phi_far(x) = sum_{|n|_inf > w} 1/|x - n|` (lattice vectors `n = n_a h_a`), defined by the
+/// Ewald-regularised lattice potential (tinfoil boundary conditions, neutralising background)
+/// minus the explicitly treated images.
+fn far_lattice_tensor(
+    t: &Tables3,
+    h: &[[f64; 3]; 3],
+    w: i32,
+) -> Result<Vec<f64>, String> {
+    let b = crate::sim::ewald::reciprocal_basis(h)?;
+    let vol = (h[0][0] * (h[1][1] * h[2][2] - h[1][2] * h[2][1]) - h[0][1] * (h[1][0] * h[2][2] - h[1][2] * h[2][0])
+        + h[0][2] * (h[1][0] * h[2][1] - h[1][1] * h[2][0]))
+        .abs();
+    let pmax = t.q;
+    // smallest lattice-plane spacing sets the splitting parameter
+    let bmax = (0..3).map(|i| (b[i][0] * b[i][0] + b[i][1] * b[i][1] + b[i][2] * b[i][2]).sqrt()).fold(0.0, f64::max);
+    let lmin = 2.0 * std::f64::consts::PI / bmax;
+    let alpha = 3.5 / lmin;
+    let mut tensor = vec![0.0; t.list.len()];
+    // real-space images with erfc screening
+    let rcut = 7.0 / alpha;
+    let nmax: Vec<i32> = (0..3)
+        .map(|i| {
+            let bn = (b[i][0] * b[i][0] + b[i][1] * b[i][1] + b[i][2] * b[i][2]).sqrt();
+            (rcut * bn / (2.0 * std::f64::consts::PI)).ceil() as i32 + 1
+        })
+        .collect();
+    for nx in -nmax[0]..=nmax[0] {
+        for ny in -nmax[1]..=nmax[1] {
+            for nz in -nmax[2]..=nmax[2] {
+                if (nx, ny, nz) == (0, 0, 0) {
+                    continue;
+                }
+                let (fx, fy, fz) = (f64::from(nx), f64::from(ny), f64::from(nz));
+                // x0 = -n: derivative point of g(delta - n)
+                let n_vec: [f64; 3] = std::array::from_fn(|c| fx * h[0][c] + fy * h[1][c] + fz * h[2][c]);
+                let r2 = n_vec[0] * n_vec[0] + n_vec[1] * n_vec[1] + n_vec[2] * n_vec[2];
+                if r2 > rcut * rcut {
+                    continue;
+                }
+                let x0 = [-n_vec[0], -n_vec[1], -n_vec[2]];
+                let f = erfc_kernel_derivatives(alpha, r2, pmax);
+                let d = radial_derivatives(t, x0, &f, pmax);
+                for (tt, dd) in tensor.iter_mut().zip(&d) {
+                    *tt += dd;
+                }
+            }
+        }
+    }
+    // regular part of the n = 0 term: -erf(alpha r)/r = -(2 alpha/sqrt(pi)) sum_m (-1)^m alpha^(2m) q^m/(m!(2m+1))
+    let c2 = 2.0 * alpha / std::f64::consts::PI.sqrt();
+    for (i, k) in t.list.iter().enumerate() {
+        if k[0] % 2 == 0 && k[1] % 2 == 0 && k[2] % 2 == 0 && k[0] + k[1] + k[2] <= pmax {
+            let j = [k[0] / 2, k[1] / 2, k[2] / 2];
+            let m = j[0] + j[1] + j[2];
+            let sign = if m % 2 == 0 { 1.0 } else { -1.0 };
+            tensor[i] -= c2 * sign * alpha.powi(2 * m as i32) * t.fact[k[0]] * t.fact[k[1]] * t.fact[k[2]]
+                / (t.fact[j[0]] * t.fact[j[1]] * t.fact[j[2]] * (2 * m + 1) as f64);
+        }
+    }
+    // reciprocal sum: (4 pi/V) sum_k exp(-k^2/4a^2)/k^2 cos(k.delta)
+    let kcut = 14.0 * alpha;
+    let mmax: Vec<i32> = (0..3)
+        .map(|i| {
+            let an = (h[i][0] * h[i][0] + h[i][1] * h[i][1] + h[i][2] * h[i][2]).sqrt();
+            (kcut * an / (2.0 * std::f64::consts::PI)).ceil() as i32 + 1
+        })
+        .collect();
+    let four_pi_v = 4.0 * std::f64::consts::PI / vol;
+    for mx in -mmax[0]..=mmax[0] {
+        for my in -mmax[1]..=mmax[1] {
+            for mz in -mmax[2]..=mmax[2] {
+                if (mx, my, mz) == (0, 0, 0) {
+                    continue;
+                }
+                let (fx, fy, fz) = (f64::from(mx), f64::from(my), f64::from(mz));
+                let k: [f64; 3] = std::array::from_fn(|c| fx * b[0][c] + fy * b[1][c] + fz * b[2][c]);
+                let k2 = k[0] * k[0] + k[1] * k[1] + k[2] * k[2];
+                if k2 > kcut * kcut {
+                    continue;
+                }
+                let wgt = four_pi_v * (-k2 / (4.0 * alpha * alpha)).exp() / k2;
+                for (i, kk) in t.list.iter().enumerate() {
+                    let deg = kk[0] + kk[1] + kk[2];
+                    if deg % 2 == 0 && deg <= pmax {
+                        let sign = if (deg / 2) % 2 == 0 { 1.0 } else { -1.0 };
+                        tensor[i] += wgt * sign * k[0].powi(kk[0] as i32) * k[1].powi(kk[1] as i32) * k[2].powi(kk[2] as i32);
+                    }
+                }
+            }
+        }
+    }
+    // neutralising background (potential of a unit charge in a tinfoil cell)
+    tensor[0] -= std::f64::consts::PI / (vol * alpha * alpha);
+    // subtract the explicitly treated near images
+    let mut dbuf = Vec::new();
+    for nx in -w..=w {
+        for ny in -w..=w {
+            for nz in -w..=w {
+                if (nx, ny, nz) == (0, 0, 0) {
+                    continue;
+                }
+                let (fx, fy, fz) = (f64::from(nx), f64::from(ny), f64::from(nz));
+                let x0: [f64; 3] = std::array::from_fn(|c| -(fx * h[0][c] + fy * h[1][c] + fz * h[2][c]));
+                t.derivs(x0, 0.0, &mut dbuf);
+                for (tt, dd) in tensor.iter_mut().zip(&dbuf) {
+                    *tt -= dd;
+                }
+            }
+        }
+    }
+    Ok(tensor)
+}
+
+/// Periodic 3-D FMM in a triclinic cell.
+///
+/// Evaluates the potential `sum s_j / r` and field `sum s_j (x_j - x_i)/r^3` of charges in the
+/// cell `h` (rows are the lattice vectors) with tinfoil boundary conditions and a
+/// neutralising background.
+///
+/// The central cell and its `(2w+1)^3 - 1` nearest images are summed by the adaptive tree code
+/// ([`fmm3d`], Plummer softening `opts.fmm.eps` included); the rest of the lattice enters through
+/// the Taylor expansion (degree `2 far_half_order`) of the regularised Ewald lattice potential
+/// about the cell centre, combined with the cell's multipole moments. Positions are wrapped into
+/// the cell. Self-image interactions are included, the particle's own `n = 0` image is not.
+///
+/// # Errors
+/// Fails for empty input, mismatched lengths, a singular cell, or invalid FMM options.
+pub fn periodic_fmm3d(
+    pos: &[[f64; 3]],
+    src: &[f64],
+    h: &[[f64; 3]; 3],
+    opts: &PeriodicFmmOptions,
+) -> Result<Fmm3Result, String> {
+    let n = pos.len();
+    if n == 0 || src.len() != n {
+        return Err("positions and sources must be non-empty and of equal length".into());
+    }
+    let b = crate::sim::ewald::reciprocal_basis(h)?;
+    let w = opts.near_shells as i32;
+    // wrap into the cell centred on the origin
+    let centre: [f64; 3] = std::array::from_fn(|c| 0.5 * (h[0][c] + h[1][c] + h[2][c]));
+    let wrapped: Vec<[f64; 3]> = pos
+        .iter()
+        .map(|x| {
+            let d = [x[0] - centre[0], x[1] - centre[1], x[2] - centre[2]];
+            let s: [f64; 3] = std::array::from_fn(|a| (d[0] * b[a][0] + d[1] * b[a][1] + d[2] * b[a][2]) / (2.0 * std::f64::consts::PI));
+            let s = [s[0] - s[0].round(), s[1] - s[1].round(), s[2] - s[2].round()];
+            std::array::from_fn(|c| s[0] * h[0][c] + s[1] * h[1][c] + s[2] * h[2][c])
+        })
+        .collect();
+    // near images: central cell first
+    let mut all_pos = wrapped.clone();
+    let mut all_src = src.to_vec();
+    for nx in -w..=w {
+        for ny in -w..=w {
+            for nz in -w..=w {
+                if (nx, ny, nz) == (0, 0, 0) {
+                    continue;
+                }
+                let (fx, fy, fz) = (f64::from(nx), f64::from(ny), f64::from(nz));
+                let shift: [f64; 3] = std::array::from_fn(|c| fx * h[0][c] + fy * h[1][c] + fz * h[2][c]);
+                for (x, &s) in wrapped.iter().zip(src) {
+                    all_pos.push([x[0] + shift[0], x[1] + shift[1], x[2] + shift[2]]);
+                    all_src.push(s);
+                }
+            }
+        }
+    }
+    let near = fmm3d(&all_pos, &all_src, &opts.fmm)?;
+    let mut pot = near.potential[..n].to_vec();
+    let mut fld = near.field[..n].to_vec();
+    // far lattice
+    let t = Tables3::new(opts.far_half_order);
+    let tensor = far_lattice_tensor(&t, h, w)?;
+    let nc_all = t.list.len();
+    let pdeg = t.q;
+    // moments Mom_a = sum s y^a
+    let mut mom = vec![0.0; nc_all];
+    for (x, &s) in wrapped.iter().zip(src) {
+        let pw = |v: f64| -> Vec<f64> {
+            let mut o = vec![1.0; pdeg + 1];
+            for i in 1..=pdeg {
+                o[i] = o[i - 1] * v;
+            }
+            o
+        };
+        let (px, py, pz) = (pw(x[0]), pw(x[1]), pw(x[2]));
+        for (i, k) in t.list.iter().enumerate() {
+            if k[0] + k[1] + k[2] <= pdeg {
+                mom[i] += s * px[k[0]] * py[k[1]] * pz[k[2]];
+            }
+        }
+    }
+    // L_b = sum_a D_{a+b} (-1)^|a| Mom_a / a!
+    let mut local = vec![0.0; nc_all];
+    for (ib, kb) in t.list.iter().enumerate() {
+        let db = kb[0] + kb[1] + kb[2];
+        if db > pdeg {
+            continue;
+        }
+        let mut acc = 0.0;
+        for (ia, ka) in t.list.iter().enumerate() {
+            let da = ka[0] + ka[1] + ka[2];
+            if da + db > pdeg {
+                continue;
+            }
+            let sign = if da % 2 == 0 { 1.0 } else { -1.0 };
+            acc += tensor[t.at([ka[0] + kb[0], ka[1] + kb[1], ka[2] + kb[2]])] * sign * mom[ia] / t.fact3(ka);
+        }
+        local[ib] = acc;
+    }
+    for (i, x) in wrapped.iter().enumerate() {
+        let pw = |v: f64| -> Vec<f64> {
+            let mut o = vec![1.0; pdeg + 1];
+            for j in 1..=pdeg {
+                o[j] = o[j - 1] * v;
+            }
+            o
+        };
+        let (px, py, pz) = (pw(x[0]), pw(x[1]), pw(x[2]));
+        for (ib, kb) in t.list.iter().enumerate() {
+            if kb[0] + kb[1] + kb[2] > pdeg {
+                continue;
+            }
+            let c = local[ib] / t.fact3(kb);
+            pot[i] += c * px[kb[0]] * py[kb[1]] * pz[kb[2]];
+            if kb[0] > 0 {
+                fld[i][0] += c * kb[0] as f64 * px[kb[0] - 1] * py[kb[1]] * pz[kb[2]];
+            }
+            if kb[1] > 0 {
+                fld[i][1] += c * kb[1] as f64 * px[kb[0]] * py[kb[1] - 1] * pz[kb[2]];
+            }
+            if kb[2] > 0 {
+                fld[i][2] += c * kb[2] as f64 * px[kb[0]] * py[kb[1]] * pz[kb[2] - 1];
+            }
+        }
+    }
+    Ok(Fmm3Result { potential: pot, field: fld })
 }
