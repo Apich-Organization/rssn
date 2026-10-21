@@ -762,3 +762,143 @@ fn numeric_modal_expansions_on_disks_and_balls() {
     }
     close(value(&rhs(&s), &[("r", r), ("th", th), ("t", t)]), reference, 1e-5, &s);
 }
+
+/// `v_t = v_rr + (d/r) v_r - (λ/r²) v` on `[1, 13]` (Dirichlet at both ends) by Crank-Nicolson; the
+/// value at `at`.
+fn exterior_heat_reference(
+    d: f64,
+    lambda: f64,
+    f: &dyn Fn(f64) -> f64,
+    t_end: f64,
+    at: f64,
+) -> f64 {
+    let (n, steps) = (1200_usize, 250_usize);
+    let h = 12.0 / n as f64;
+    let dt = t_end / steps as f64;
+    let radius = |i: usize| 1.0 + h * i as f64;
+    let mut u: Vec<f64> = (0..=n).map(|i| f(radius(i))).collect();
+    u[0] = 0.0;
+    for _ in 0..steps {
+        let (mut lower, mut diag, mut upper, mut rhs_) = (vec![0.0; n + 1], vec![1.0; n + 1], vec![0.0; n + 1], vec![0.0; n + 1]);
+        for i in 1..n {
+            let r_i = radius(i);
+            let (a, b) = (1.0 / (h * h) - d / (2.0 * h * r_i), 1.0 / (h * h) + d / (2.0 * h * r_i));
+            let c = -2.0 / (h * h) - lambda / (r_i * r_i);
+            let operator = a * u[i - 1] + c * u[i] + b * u[i + 1];
+            rhs_[i] = u[i] + 0.5 * dt * operator;
+            lower[i] = -0.5 * dt * a;
+            diag[i] = 1.0 - 0.5 * dt * c;
+            upper[i] = -0.5 * dt * b;
+        }
+        for i in 1..=n {
+            let m = lower[i] / diag[i - 1];
+            diag[i] -= m * upper[i - 1];
+            rhs_[i] -= m * rhs_[i - 1];
+        }
+        u[n] = rhs_[n] / diag[n];
+        for i in (0..n).rev() {
+            u[i] = (rhs_[i] - upper[i] * u[i + 1]) / diag[i];
+        }
+    }
+    u[((at - 1.0) / h).round() as usize]
+}
+
+/// `v_tt = v_rr + (d/r) v_r - (λ/r²) v` on `[1, 21]` with `v = 0` at both ends, `v_t(0) = 0`, by leapfrog.
+fn exterior_wave_reference(
+    d: f64,
+    lambda: f64,
+    f: &dyn Fn(f64) -> f64,
+    t_end: f64,
+    at: f64,
+) -> f64 {
+    let (h, dt) = (0.005_f64, 0.0025_f64);
+    let n = 4000_usize;
+    let steps = (t_end / dt).round() as usize;
+    let radius = |i: usize| 1.0 + h * i as f64;
+    let acceleration = |u: &[f64]| -> Vec<f64> {
+        let mut out = vec![0.0; u.len()];
+        for i in 1..u.len() - 1 {
+            let r_i = radius(i);
+            out[i] = (u[i + 1] - 2.0 * u[i] + u[i - 1]) / (h * h) + d / r_i * (u[i + 1] - u[i - 1]) / (2.0 * h) - lambda / (r_i * r_i) * u[i];
+        }
+        out
+    };
+    let mut previous: Vec<f64> = (0..=n).map(|i| f(radius(i))).collect();
+    previous[0] = 0.0;
+    let a0 = acceleration(&previous);
+    let mut current: Vec<f64> = previous.iter().zip(&a0).map(|(u, a)| u + 0.5 * dt * dt * a).collect();
+    for _ in 1..steps {
+        let a = acceleration(&current);
+        let next: Vec<f64> = (0..=n).map(|i| 2.0 * current[i] - previous[i] + dt * dt * a[i]).collect();
+        previous = current;
+        current = next;
+    }
+    current[((at - 1.0) / h).round() as usize]
+}
+
+#[test]
+fn weber_transforms_with_angular_dependence_and_exterior_waves() {
+    let bounds = |text: &str| text.replace(", rho, 1, oo)", ", rho, 1, 9)").replace(", k, 0, oo)", ", k, 0, 8)");
+    // Heat outside the unit disk, first angular harmonic: u = v(r, t) cos θ.
+    let lap = "diff(diff(u(r, th, t), r), r) + diff(u(r, th, t), r)/r + diff(diff(u(r, th, t), th), th)/r^2";
+    let s = any(&format!("pdsolve(diff(u(r, th, t), t) = {lap}, u(r, th, t), list(u(1, th, t) = 0, u(oo, th, t) = 0, u(r, th, 0) = exp(-(r - 4)^2)*cos(th)))"));
+    let (r, th, t) = (2.0_f64, 0.6_f64, 0.4_f64);
+    let text = expand_integrals(&bounds(&rhs(&s)), 90);
+    let reference = exterior_heat_reference(1.0, 1.0, &|q| (-(q - 4.0) * (q - 4.0)).exp(), t, r) * th.cos();
+    close(value(&text, &[("r", r), ("th", th), ("t", t)]), reference, 4e-3, &s);
+    // Waves outside the unit disk, radial: u_tt = Δu.
+    let s = any("pdsolve(diff(diff(u(r, t), t), t) = diff(diff(u(r, t), r), r) + diff(u(r, t), r)/r, u(r, t), list(u(1, t) = 0, u(oo, t) = 0, u(r, 0) = exp(-2*(r - 4)^2), at(diff(u(r, t), t), t, 0) = 0))");
+    let (r, t) = (3.0_f64, 1.2_f64);
+    let text = expand_integrals(&bounds(&rhs(&s)), 90);
+    let reference = exterior_wave_reference(1.0, 0.0, &|q| (-2.0 * (q - 4.0) * (q - 4.0)).exp(), t, r);
+    close(value(&text, &[("r", r), ("t", t)]), reference, 6e-3, &s);
+    // Heat outside the unit ball, degree one: u = r^{-1/2} F cos θ with the Bessel order 3/2.
+    let lap = "diff(diff(u(r, th, t), r), r) + 2*diff(u(r, th, t), r)/r + diff(diff(u(r, th, t), th), th)/r^2 + cos(th)/sin(th)*diff(u(r, th, t), th)/r^2";
+    let s = any(&format!("pdsolve(diff(u(r, th, t), t) = {lap}, u(r, th, t), list(u(1, th, t) = 0, u(oo, th, t) = 0, u(r, th, 0) = exp(-(r - 4)^2)*cos(th)))"));
+    assert!(s.contains("legendre") || s.contains("cos(th)"), "{s}");
+    let (r, th, t) = (2.0_f64, 0.6_f64, 0.4_f64);
+    let text = expand_integrals(&bounds(&rhs(&s)), 90);
+    let reference = exterior_heat_reference(2.0, 2.0, &|q| (-(q - 4.0) * (q - 4.0)).exp(), t, r) * th.cos();
+    close(value(&text, &[("r", r), ("th", th), ("t", t)]), reference, 4e-3, &s);
+}
+
+#[test]
+fn wave_kernels_mellin_and_nls_soliton() {
+    use super::extension_tests::complex_value;
+    // Impulse responses of the wave equation on whole space.
+    let w1 = "diff(diff(u(x, t), t), t) = 4*diff(diff(u(x, t), x), x)";
+    let s = any(&format!("pde_greens_function({w1}, u(x, t))"));
+    let (x, s0, t) = (0.7_f64, 0.2_f64, 0.5_f64);
+    close(value(&rhs(&s), &[("x", x), ("s_x", s0), ("t", t)]), 0.25, 1e-12, &s);
+    close(value(&rhs(&s), &[("x", 3.0), ("s_x", s0), ("t", t)]), 0.0, 1e-12, &s);
+    let s = any(&format!("pde_greens_function({w1}, u(x, t), list(u(0, t) = 0))"));
+    close(value(&rhs(&s), &[("x", x), ("s_x", 0.3), ("t", 0.6)]), 0.0, 1e-12, &s);
+    close(value(&rhs(&s), &[("x", 0.25), ("s_x", 0.3), ("t", 0.1)]), 0.25, 1e-12, &s);
+    // The plane: ∫ G ds = t (the response to u_t(0) = 1), radial quadrature with r = c t sin φ.
+    let w2 = "diff(diff(u(x, y, t), t), t) = diff(diff(u(x, y, t), x), x) + diff(diff(u(x, y, t), y), y)";
+    let s = any(&format!("pde_greens_function({w2}, u(x, y, t))"));
+    let t = 0.8_f64;
+    let integral = simpson(
+        &|phi| {
+            let r = t * phi.sin();
+            2.0 * PI * r * t * phi.cos() * value(&rhs(&s), &[("x", r), ("y", 0.0), ("s_x", 0.0), ("s_y", 0.0), ("t", t)])
+        },
+        0.0,
+        PI / 2.0 - 1e-6,
+    );
+    close(integral, t, 1e-3, &s);
+    // Mellin: u_t = x² u_xx + x u_x on x > 0 is the heat equation in s = ln x.
+    let s = any("pdsolve(diff(u(x, t), t) = x^2*diff(diff(u(x, t), x), x) + x*diff(u(x, t), x), u(x, t), list(u(x, 0) = exp(-ln(x)^2)))");
+    let (x, t) = (1.7_f64, 0.3_f64);
+    let text = expand_integrals(&rhs(&s).replace("-oo", "-12").replace(", oo)", ", 12)"), 600);
+    let sx = x.ln();
+    close(value(&text, &[("x", x), ("t", t)]), (-sx * sx / (1.0 + 4.0 * t)).exp() / (1.0 + 4.0 * t).sqrt(), 1e-5, &s);
+    // The bright NLS soliton solves i ψ_t + ψ_xx/2 + |ψ|² ψ = 0.
+    let s = run("pde_nls_soliton(list(3/2, 1/2, 1/5, 1/3))");
+    let psi = |x: f64, t: f64| complex_value(&s, &[("x", x), ("t", t)]);
+    let (x, t, h) = (0.4_f64, 0.3_f64, 1e-3_f64);
+    let u_t = (psi(x, t + h) - psi(x, t - h)) / (2.0 * h);
+    let u_xx = (psi(x + h, t) - 2.0 * psi(x, t) + psi(x - h, t)) / (h * h);
+    let residual = num_complex::Complex64::new(0.0, 1.0) * u_t + 0.5 * u_xx + psi(x, t).norm_sqr() * psi(x, t);
+    close(residual.norm(), 0.0, 5e-4, &s);
+}

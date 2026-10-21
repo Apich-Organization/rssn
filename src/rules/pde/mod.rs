@@ -290,6 +290,7 @@ enum Request {
     Green,
     KdvSoliton,
     SineGordonSoliton,
+    NlsSoliton,
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -341,6 +342,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("pde/pde_order", Tier::Reduce, Pde { op, request: Request::Order });
     let op = i.op(heavy("pde_kdv_soliton", Arity::Fixed(2)))?;
     i.kernel("pde/pde_kdv_soliton", Tier::Reduce, Pde { op, request: Request::KdvSoliton });
+    let op = i.op(heavy("pde_nls_soliton", Arity::Fixed(1)))?;
+    i.kernel("pde/pde_nls_soliton", Tier::Reduce, Pde { op, request: Request::NlsSoliton });
     let op = i.op(heavy("pde_sine_gordon_soliton", Arity::Fixed(2)))?;
     i.kernel("pde/pde_sine_gordon_soliton", Tier::Reduce, Pde { op, request: Request::SineGordonSoliton });
     let op = i.op(heavy("pde_greens_function", Arity::Variadic))?;
@@ -371,6 +374,19 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 };
                 Outcome::Equal(cx.graph.int(i64::from(problem.order())))
+            },
+            | Request::NlsSoliton => {
+                let &[list] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                let Some(list) = best(cx.graph, list) else {
+                    return Outcome::Pass;
+                };
+                if cx.graph.op(list) != core::LIST {
+                    return Outcome::Pass;
+                }
+                let parameters = cx.graph.children(list).to_vec();
+                nonlinear::nls_soliton(cx, &parameters).map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::KdvSoliton | Request::SineGordonSoliton => {
                 let &[first, second] = args.as_slice() else {

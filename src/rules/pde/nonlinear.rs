@@ -442,3 +442,37 @@ pub(super) fn sine_gordon_soliton(
     }
     Some(cx.simplify(u))
 }
+
+/// `pde_nls_soliton(list(η, v, x₀, φ₀))`: the bright soliton
+/// `ψ = η sech(η (x - v t - x₀)) exp(i (v x + (η² - v²) t / 2 + φ₀))` of
+/// `i ψ_t + ψ_xx/2 + |ψ|² ψ = 0`.
+pub(super) fn nls_soliton(
+    cx: &mut Cx<'_>,
+    parameters: &[NodeId],
+) -> Option<NodeId> {
+    let &[eta, v, x0, phase] = parameters else {
+        return None;
+    };
+    let (x, t) = (cx.graph.sym("x"), cx.graph.sym("t"));
+    let i_unit = call(cx, "I", &[])?;
+    let vt = mul(cx.graph, &[v, t]);
+    let moving = {
+        let a = sub(cx.graph, x, vt);
+        sub(cx.graph, a, x0)
+    };
+    let argument = mul(cx.graph, &[eta, moving]);
+    let sech = call(cx, "sech", &[argument])?;
+    let amplitude = mul(cx.graph, &[eta, sech]);
+    let vx = mul(cx.graph, &[v, x]);
+    let (eta2, v2) = (powi(cx.graph, eta, 2), powi(cx.graph, v, 2));
+    let half = cx.graph.num(crate::graph::Number::fraction(1, 2)?);
+    let frequency = {
+        let gap = sub(cx.graph, eta2, v2);
+        mul(cx.graph, &[half, gap, t])
+    };
+    let total = add(cx.graph, &[vx, frequency, phase]);
+    let exponent = mul(cx.graph, &[i_unit, total]);
+    let carrier = call(cx, "exp", &[exponent])?;
+    let psi = mul(cx.graph, &[amplitude, carrier]);
+    Some(cx.simplify(psi))
+}
