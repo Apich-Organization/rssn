@@ -84,6 +84,10 @@ pub mod jacobian;
 pub mod eigs_ext;
 /// Complex-parameter pFq, 2F1, 1F1 and Tricomi U by Taylor continuation of the defining ODE.
 pub mod hypergeometric;
+/// Algebraic multigrid for non-symmetric systems (Ruge-Stueben, Petrov-Galerkin aggregation).
+pub mod amg_general;
+/// Multilevel nested dissection (heavy-edge coarsening, FM refinement, vertex-cover separators).
+pub mod ordering_ml;
 /// MINRES, BiCGSTAB(l), IDR(s) and flexible GMRES.
 pub mod krylov_ext;
 /// Lanczos and Arnoldi eigensolvers with restarts and shift-invert.
