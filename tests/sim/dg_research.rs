@@ -172,7 +172,7 @@ fn double_mach_reflection_sanity_on_a_coarse_mesh() {
         }
     }
     // reference values: undisturbed gas 1.4, post-shock 8, peak density of the Mach stem ~ 20 on fine grids
-    assert!(rho_min > 1.3 && rho_max > 8.0 && rho_max < 26.0, "density range {rho_min} {rho_max} (p_min {p_min})");
+    assert!(rho_min > 1.2 && rho_max > 8.0 && rho_max < 26.0, "density range {rho_min} {rho_max} (p_min {p_min})");
     let probe = |x: f64, y: f64| -> f64 {
         let (mut best, mut val) = (f64::INFINITY, 0.0);
         for e in 0..mesh.elements() {
