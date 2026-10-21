@@ -26,8 +26,12 @@
 //!   conditions, neutralising background), whose derivative tensors are built from the Ewald
 //!   splitting with incomplete-gamma derivatives of the screened kernel.
 //!
-//! Limitations: the lattice beyond the near images uses the unsoftened kernel (relative
-//! effect `O(eps^2/(w L)^2)`); the 2-D solver is open-boundary only; P3M (particle-particle,
+//! The far lattice is softened consistently too: the Plummer sphere's form factor `k eps K_1(k eps)`
+//! multiplies the reciprocal lattice sum, the regular self part is integrated numerically, and the
+//! explicitly treated near images are subtracted with the softened kernel
+//! ([`PeriodicFmmOptions::soften_far`]); the (exponentially small) screened real-space tail is not softened.
+//!
+//! Limitations: the 2-D solver is open-boundary only; P3M (particle-particle,
 //! particle-mesh) is not implemented, [`crate::sim::ewald::pme_reciprocal_cell`] covers the
 //! mesh route for Coulomb systems.
 
@@ -674,12 +678,33 @@ pub struct PeriodicFmmOptions {
     pub near_shells: usize,
     /// Half of the total degree `P = 2 half` of the Taylor expansion of the far lattice potential.
     pub far_half_order: usize,
+    /// Apply the Plummer softening `fmm.eps` also to the far lattice (reciprocal-space form factor
+    /// `k eps K_1(k eps)` of the Plummer sphere and softened subtraction of the near images).
+    pub soften_far: bool,
 }
 
 impl Default for PeriodicFmmOptions {
     fn default() -> Self {
-        Self { fmm: FmmOptions::default(), near_shells: 1, far_half_order: 8 }
+        Self { fmm: FmmOptions::default(), near_shells: 1, far_half_order: 8, soften_far: true }
     }
+}
+
+/// Modified Bessel function `K_1(x)` (`x > 0`) from `K_1(x) = int_0^inf exp(-x cosh t) cosh t dt`
+/// by the trapezoidal rule (exponentially convergent).
+fn bessel_k1(x: f64) -> f64 {
+    let h = 0.04;
+    let mut sum = 0.0;
+    let mut t = 0.0_f64;
+    loop {
+        let ch = t.cosh();
+        let term = (-x * ch).exp() * ch;
+        sum += if t == 0.0 { 0.5 * term } else { term };
+        if x * ch > 60.0 {
+            break;
+        }
+        t += h;
+    }
+    sum * h
 }
 
 /// `F^(m)(q)` for `F(q) = erfc(alpha sqrt(q))/sqrt(q)`, `m = 0..=mmax`, by the upward recurrence of
@@ -748,6 +773,7 @@ fn far_lattice_tensor(
     t: &Tables3,
     h: &[[f64; 3]; 3],
     w: i32,
+    eps: f64,
 ) -> Result<Vec<f64>, String> {
     let b = crate::sim::ewald::reciprocal_basis(h)?;
     let vol = (h[0][0] * (h[1][1] * h[2][2] - h[1][2] * h[2][1]) - h[0][1] * (h[1][0] * h[2][2] - h[1][2] * h[2][0])
@@ -791,8 +817,42 @@ fn far_lattice_tensor(
     }
     // regular part of the n = 0 term: -erf(alpha r)/r = -(2 alpha/sqrt(pi)) sum_m (-1)^m alpha^(2m) q^m/(m!(2m+1))
     let c2 = 2.0 * alpha / std::f64::consts::PI.sqrt();
+    // softened: -(rho_eps * erf(alpha r)/r) has the transform 4 pi exp(-k^2/4a^2) eps K_1(k eps)/k
+    let soft_radial: Vec<f64> = if eps > 0.0 {
+        let kmax = 14.0 * alpha;
+        let nq = 4000;
+        let dk = kmax / f64::from(nq);
+        (0..=pmax)
+            .map(|deg| {
+                if deg % 2 == 1 {
+                    return 0.0;
+                }
+                let mut acc = 0.0;
+                for q in 0..=nq {
+                    let k = f64::from(q) * dk;
+                    let wq = if q == 0 || q == nq { 1.0 } else if q % 2 == 1 { 4.0 } else { 2.0 };
+                    let f = if k == 0.0 { 0.0 } else { k.powi(1 + deg as i32) * (-k * k / (4.0 * alpha * alpha)).exp() * eps * bessel_k1(k * eps) };
+                    acc += wq * f;
+                }
+                acc * dk / 3.0
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
     for (i, k) in t.list.iter().enumerate() {
-        if k[0] % 2 == 0 && k[1] % 2 == 0 && k[2] % 2 == 0 && k[0] + k[1] + k[2] <= pmax {
+        if eps > 0.0 {
+            if k[0] % 2 == 0 && k[1] % 2 == 0 && k[2] % 2 == 0 && k[0] + k[1] + k[2] <= pmax {
+                let deg = k[0] + k[1] + k[2];
+                let dfact = |m: usize| -> f64 { (1..=m).rev().step_by(2).map(|x| x as f64).product::<f64>() };
+                let ang = 4.0 * std::f64::consts::PI * dfact(k[0].max(1) - 1) * dfact(k[1].max(1) - 1) * dfact(k[2].max(1) - 1) / dfact(deg + 1);
+                let sign = if (deg / 2) % 2 == 0 { 1.0 } else { -1.0 };
+                // -(1/(2 pi)^3) i^deg * ang * int k^(2+deg) F dk with k^(2+deg) F = 4 pi k^(1+deg) e^{..} eps K1
+                tensor[i] -= sign * ang * 4.0 * std::f64::consts::PI * soft_radial[deg] / (2.0 * std::f64::consts::PI).powi(3);
+            }
+            continue;
+        }
+        if k[0] % 2 == 0 && k[1] % 2 == 0 && k[0] + k[1] + k[2] <= pmax && k[2] % 2 == 0 {
             let j = [k[0] / 2, k[1] / 2, k[2] / 2];
             let m = j[0] + j[1] + j[2];
             let sign = if m % 2 == 0 { 1.0 } else { -1.0 };
@@ -821,7 +881,8 @@ fn far_lattice_tensor(
                 if k2 > kcut * kcut {
                     continue;
                 }
-                let wgt = four_pi_v * (-k2 / (4.0 * alpha * alpha)).exp() / k2;
+                let form = if eps > 0.0 { let x = k2.sqrt() * eps; if x < 1e-10 { 1.0 } else { x * bessel_k1(x) } } else { 1.0 };
+                let wgt = four_pi_v * (-k2 / (4.0 * alpha * alpha)).exp() / k2 * form;
                 for (i, kk) in t.list.iter().enumerate() {
                     let deg = kk[0] + kk[1] + kk[2];
                     if deg % 2 == 0 && deg <= pmax {
@@ -844,7 +905,7 @@ fn far_lattice_tensor(
                 }
                 let (fx, fy, fz) = (f64::from(nx), f64::from(ny), f64::from(nz));
                 let x0: [f64; 3] = std::array::from_fn(|c| -(fx * h[0][c] + fy * h[1][c] + fz * h[2][c]));
-                t.derivs(x0, 0.0, &mut dbuf);
+                t.derivs(x0, eps * eps, &mut dbuf);
                 for (tt, dd) in tensor.iter_mut().zip(&dbuf) {
                     *tt -= dd;
                 }
@@ -914,7 +975,7 @@ pub fn periodic_fmm3d(
     let mut fld = near.field[..n].to_vec();
     // far lattice
     let t = Tables3::new(opts.far_half_order);
-    let tensor = far_lattice_tensor(&t, h, w)?;
+    let tensor = far_lattice_tensor(&t, h, w, if opts.soften_far { opts.fmm.eps } else { 0.0 })?;
     let nc_all = t.list.len();
     let pdeg = t.q;
     // moments Mom_a = sum s y^a

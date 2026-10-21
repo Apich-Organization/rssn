@@ -62,7 +62,7 @@ fn softened_far_field_matches_the_direct_softened_sum() {
 
 fn check_periodic(h: [[f64; 3]; 3], neutral: bool, tol_f: f64, tol_e: f64) {
     let (pos, q) = random_system(24, &h, 3, neutral);
-    let opts = PeriodicFmmOptions { fmm: FmmOptions { order: 8, leaf_size: 40, theta: 0.5, eps: 0.0 }, near_shells: 1, far_half_order: 8 };
+    let opts = PeriodicFmmOptions { fmm: FmmOptions { order: 8, leaf_size: 40, theta: 0.5, eps: 0.0 }, near_shells: 1, far_half_order: 8, soften_far: true };
     let r = periodic_fmm3d(&pos, &q, &h, &opts).unwrap();
     let (e_ref, f_ref) = ewald_energy_forces_cell(&pos, &q, &h, 0.9, 14, 9.0, 1.0).unwrap();
     let fmax = f_ref.iter().map(|f| f[0].abs().max(f[1].abs()).max(f[2].abs())).fold(0.0, f64::max);
@@ -93,7 +93,7 @@ fn periodic_fmm_is_invariant_under_lattice_translations_and_converges_with_the_f
         .enumerate()
         .map(|(i, x)| if i % 3 == 0 { [x[0] + h[0][0] + 2.0 * h[1][0], x[1] + 2.0 * h[1][1], x[2] + h[2][2] * 0.0] } else { *x })
         .collect();
-    let base = PeriodicFmmOptions { fmm: FmmOptions { order: 8, leaf_size: 40, theta: 0.5, eps: 0.0 }, near_shells: 1, far_half_order: 8 };
+    let base = PeriodicFmmOptions { fmm: FmmOptions { order: 8, leaf_size: 40, theta: 0.5, eps: 0.0 }, near_shells: 1, far_half_order: 8, soften_far: true };
     let a = periodic_fmm3d(&pos, &q, &h, &base).unwrap();
     let b = periodic_fmm3d(&shifted, &q, &h, &base).unwrap();
     for i in 0..pos.len() {
@@ -111,4 +111,21 @@ fn periodic_fmm_is_invariant_under_lattice_translations_and_converges_with_the_f
     assert!(e4 < e2, "far-order convergence: {e2} -> {e4}");
     assert!(periodic_fmm3d(&[], &[], &h, &base).is_err());
     assert!(periodic_fmm3d(&pos, &q, &[[1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 1.0]], &base).is_err());
+}
+
+#[test]
+fn periodic_fmm_far_lattice_is_consistently_softened() {
+    // With a large softening the unsoftened far lattice is visibly inconsistent with an
+    // explicit sum over more near images; the Plummer form factor in the far lattice removes it.
+    let h = [[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]];
+    let (pos, q) = random_system(8, &h, 21, true);
+    let fmm = FmmOptions { order: 8, leaf_size: 40, theta: 0.5, eps: 1.2 };
+    let reference = periodic_fmm3d(&pos, &q, &h, &PeriodicFmmOptions { fmm, near_shells: 3, far_half_order: 8, soften_far: true }).unwrap();
+    let err = |soften: bool| {
+        let r = periodic_fmm3d(&pos, &q, &h, &PeriodicFmmOptions { fmm, near_shells: 1, far_half_order: 8, soften_far: soften }).unwrap();
+        (0..pos.len()).map(|i| (0..3).map(|k| (r.field[i][k] - reference.field[i][k]).abs()).fold(0.0, f64::max)).fold(0.0, f64::max)
+    };
+    let (e_soft, e_plain) = (err(true), err(false));
+    assert!(e_soft < 0.2 * e_plain, "softened far lattice {e_soft} vs unsoftened {e_plain}");
+    assert!(e_soft < 3e-4, "residual {e_soft}");
 }
