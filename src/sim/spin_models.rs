@@ -29,8 +29,8 @@
 //! supplied spin arrays via the public `spins` field.
 //!
 //! Limitations: only nearest-neighbour hypercubic lattices; the field `h`
-//! couples to component 0 and is incompatible with cluster updates; the quantum (XXZ / worm /
-//! loop) algorithms are not implemented; single-walker Wang-Landau for continuous spins
+//! couples to component 0 and is incompatible with cluster updates; the quantum spin-1/2 XXZ
+//! model (SSE with directed loops) lives in [`crate::sim::sse`]; single-walker Wang-Landau for continuous spins
 //! ([`wang_landau_on`]) is restricted to a user-supplied energy window (moves leaving it are
 //! rejected) and uses single-spin moves ([`replica_exchange_wang_landau`] adds windows and
 //! walkers).

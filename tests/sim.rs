@@ -80,6 +80,8 @@ mod structured;
 mod physics_sm;
 #[path = "sim/fmm.rs"]
 mod fmm;
+#[path = "sim/sse.rs"]
+mod sse;
 #[path = "sim/hermite.rs"]
 mod hermite;
 #[path = "sim/elliptic.rs"]

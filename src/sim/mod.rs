@@ -15,6 +15,7 @@
 //! | [`md_rigid`] | 3 | periodic | rigid molecules: COM + quaternion, symmetric-top / NO_SQUISH rotor splitting, molecular virial |
 //! | [`ewald`] | 3 | periodic (orthorhombic and triclinic) | Ewald, smooth PME |
 //! | [`nbody`], [`fmm`] | 1-3 (FMM: 2, 3) | open (3-D FMM also periodic) | Barnes-Hut, adaptive 2-D/3-D FMM with softened far field, periodic triclinic FMM |
+//! | [`sse`] | any bipartite graph | periodic / open | spin-1/2 XXZ quantum Monte Carlo: stochastic series expansion with directed loops |
 //! | [`hermite`] | 3 | open | 4th/6th-order Hermite with block time steps, 1PN EIH terms, KS-regularised binaries |
 //! | [`symplectic`] | any | - | order 2-8 schemes, TTL (composed to order 8), KS, rigid body (exact symmetric-top flows) |
 //! | [`chain`] | 3 | open | Mikkola-Aarseth chain regularisation, algorithmic regularisation + GBS extrapolation |
@@ -87,6 +88,8 @@ pub mod ewald;
 pub mod elliptic;
 /// Hermite N-body integrators with block time steps, PN terms and KS binaries.
 pub mod hermite;
+/// Stochastic series expansion (directed loops) for spin-1/2 XXZ models.
+pub mod sse;
 /// Dimension-generic molecular dynamics engine.
 pub mod md_engine;
 /// Rigid-molecule molecular dynamics.
