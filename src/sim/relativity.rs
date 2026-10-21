@@ -16,8 +16,8 @@
 //! | Events | horizon-crossing (`r <= r_stop`, located by bisection on the step), escape (`r >= r_max`) |
 //! | Dimensions | 3+1 (a single physical spacetime; this module is not dimension generic) |
 //!
-//! Closed-form bound orbits (Mino time, Jacobi and elliptic integrals) and shadow ray tracing are in
-//! [`crate::sim::kerr`].
+//! Closed-form bound orbits (Mino time, Jacobi and elliptic integrals), shadow ray tracing and
+//! horizon- and pole-penetrating geodesics in Kerr-Schild coordinates are in [`crate::sim::kerr`].
 //!
 //! Limitations: Boyer-Lindquist coordinates are singular at the horizon, so
 //! integration stops at a user radius slightly outside it; the poles

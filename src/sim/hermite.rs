@@ -166,7 +166,7 @@ fn norm(a: V3) -> f64 {
 // ---------------------------------------------------------------------------
 
 /// Scalar field used by the generic EIH acceleration (plain reals or dual numbers).
-trait Scalar:
+pub(crate) trait Scalar:
     Copy + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + Neg<Output = Self>
 {
     fn from_f64(x: f64) -> Self;
@@ -185,9 +185,9 @@ impl Scalar for f64 {
 
 /// First-order dual number `v + d eps`.
 #[derive(Clone, Copy, Debug)]
-struct Dual {
-    v: f64,
-    d: f64,
+pub(crate) struct Dual {
+    pub(crate) v: f64,
+    pub(crate) d: f64,
 }
 
 impl Add for Dual {
