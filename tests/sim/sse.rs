@@ -74,7 +74,8 @@ fn thermal(evs: &[f64], beta: f64) -> (f64, f64) {
 
 #[test]
 fn sse_reproduces_exact_diagonalisation_of_small_xxz_systems() {
-    let cases: [(usize, Vec<(usize, usize)>, f64, f64); 4] = [
+    type Case = (usize, Vec<(usize, usize)>, f64, f64);
+    let cases: [Case; 4] = [
         (6, chain_bonds(6, true), 1.0, 2.0),
         (6, chain_bonds(6, true), 0.5, 1.5),
         (6, chain_bonds(6, true), 0.0, 2.0),

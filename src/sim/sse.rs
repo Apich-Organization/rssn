@@ -165,7 +165,7 @@ impl SseXxz {
 
     /// Number of bonds.
     #[must_use]
-    pub fn n_bonds(&self) -> usize {
+    pub const fn n_bonds(&self) -> usize {
         self.bonds.len()
     }
 
@@ -211,7 +211,7 @@ impl SseXxz {
                     self.ops[p] = (b as u32 + 1) * 2;
                     self.n_ops += 1;
                 }
-            } else if op % 2 == 0 {
+            } else if op.is_multiple_of(2) {
                 let b = (op / 2 - 1) as usize;
                 let (i, j) = self.bonds[b];
                 let w = self.weight([self.spins[i], self.spins[j], self.spins[i], self.spins[j]]);
@@ -394,6 +394,7 @@ impl SseXxz {
         }
         let cnt = sweeps.max(1) as f64;
         let nbar = sn / cnt;
+        let (n2_mean, nbar_sq) = (sn2 / cnt, nbar * nbar);
         let energy = nb * self.shift - nbar / self.beta;
         // blocked error of <n>
         let blocks = 20.min(series.len().max(1));
@@ -404,7 +405,7 @@ impl SseXxz {
         SseResult {
             energy,
             energy_error: (var / blocks as f64).sqrt() / self.beta,
-            specific_heat: sn2 / cnt - nbar * nbar - nbar,
+            specific_heat: n2_mean - nbar_sq - nbar,
             magnetisation_sq: sm2 / cnt,
             staggered_sq: ss2 / cnt,
             mean_ops: nbar,

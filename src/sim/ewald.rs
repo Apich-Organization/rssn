@@ -598,7 +598,8 @@ pub fn p3m_reciprocal_cell(
                 }
                 let g = num / (k2 * den * den);
                 let f = qg[idx(i, j, k)];
-                let ek = pref * g * (f.0 * f.0 + f.1 * f.1);
+                let mag = f.0 * f.0 + f.1 * f.1;
+                let ek = pref * g * mag;
                 energy += ek;
                 let w = -2.0 * (1.0 / k2 + 1.0 / four_alpha2);
                 for x in 0..3 {
@@ -619,7 +620,7 @@ pub fn p3m_reciprocal_cell(
             for j in 0..grid[1] {
                 for k in 0..grid[2] {
                     let nn = [signed(i, grid[0]), signed(j, grid[1]), signed(k, grid[2])];
-                    let nyq = (grid[0] % 2 == 0 && i == grid[0] / 2) || (grid[1] % 2 == 0 && j == grid[1] / 2) || (grid[2] % 2 == 0 && k == grid[2] / 2);
+                    let nyq = (grid[0].is_multiple_of(2) && i == grid[0] / 2) || (grid[1].is_multiple_of(2) && j == grid[1] / 2) || (grid[2].is_multiple_of(2) && k == grid[2] / 2);
                     if nyq {
                         continue;
                     }
