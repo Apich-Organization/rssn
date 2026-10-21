@@ -15,7 +15,11 @@
 //! (`σ n = t`), traction-free. Body force `f(x)`. Stress recovery per cell
 //! (exact for P1, centroid value for P2) and von Mises stress are provided.
 //!
-//! Limitations: isotropic, homogeneous material; small strain; static only.
+//! Large deformation (St. Venant–Kirchhoff, neo-Hookean), elastodynamics
+//! (Newmark, generalised-α) and penalty contact are in
+//! [`hyperelastic`](crate::sim::hyperelastic).
+//!
+//! Limitations: this module is isotropic, homogeneous, small strain and static.
 
 use crate::kernels::krylov::Csr;
 use crate::sim::boundary::{ElasticBoundary, MarkerBcs};

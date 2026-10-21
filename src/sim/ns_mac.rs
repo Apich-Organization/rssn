@@ -98,7 +98,7 @@ impl ConvLimiter {
             Self::Minmod => r.clamp(0.0, 1.0),
             Self::VanLeer => (r + r.abs()) / (1.0 + r.abs()),
             Self::Superbee => (2.0 * r).min(1.0).max(r.min(2.0)).max(0.0),
-            Self::Mc => ((1.0 + r) * 0.5).min(2.0).min(2.0 * r).max(0.0),
+            Self::Mc => f64::midpoint(1.0, r).min(2.0).min(2.0 * r).max(0.0),
         }
     }
 }
@@ -435,8 +435,8 @@ impl NsSolver {
                     let mut len = [0.0; 3];
                     for a in 0..dim {
                         lo[a] -= 0.5 * hs[a];
-                        len[a] = hs[a];
                     }
+                    len[..dim].copy_from_slice(&hs[..dim]);
                     dual_beta[p] = cutcell::open_fraction(&phi, lo, len, &axes_all, cutcell::default_depth(dim));
                     for a in 0..dim {
                         let others: Vec<usize> = (0..dim).filter(|&b| b != a).collect();
@@ -927,7 +927,7 @@ impl NsSolver {
     fn face_value(&self, ext: &[(Vec<f64>, [usize; 3])], c: usize, nodes: [[isize; 3]; 4], v: f64) -> f64 {
         let q0 = self.ext_get(ext, c, nodes[1]);
         let q1 = self.ext_get(ext, c, nodes[2]);
-        let central = 0.5 * (q0 + q1);
+        let central = f64::midpoint(q0, q1);
         if self.cfg.convection == Convection::Central {
             return central;
         }
@@ -959,10 +959,8 @@ impl NsSolver {
         if sgn > 0 {
             hi[a] += 1;
             lo[a] += 1;
-            lo[c] -= 1;
-        } else {
-            lo[c] -= 1;
         }
+        lo[c] -= 1;
         f64::midpoint(self.ext_get(ext, a, lo), self.ext_get(ext, a, hi))
     }
 
@@ -992,28 +990,27 @@ impl NsSolver {
                 let th = self.ib_theta(c, p, a);
                 let th = if si == 0 { th.0 } else { th.1 };
                 let wall = self.ib_cross(c, p, a, si);
-                let (v, q) = if let Some(w) = wall {
-                    let val = if cons { uc + (w - uc) * (0.5 / th).min(1.0) } else { 0.5 * (uc + (uc + (w - uc) / th.max(0.3))) };
-                    if a == c {
-                        (val, val)
-                    } else {
-                        (self.transport_velocity(ext, c, a, ii, sgn), val)
-                    }
-                } else {
-                    // nodes along a around the dual face: (before, n0, n1, after)
-                    let nodes = if sgn > 0 {
-                        [shift(ii, a, -1), ii, shift(ii, a, 1), shift(ii, a, 2)]
-                    } else {
-                        [shift(ii, a, -2), shift(ii, a, -1), ii, shift(ii, a, 1)]
-                    };
-                    let v = if a == c {
-                        let nb = self.ext_get(ext, c, shift(ii, a, sgn));
-                        0.5 * (uc + nb)
-                    } else {
-                        self.transport_velocity(ext, c, a, ii, sgn)
-                    };
-                    (v, self.face_value(ext, c, nodes, v))
-                };
+                let (v, q) = wall.map_or_else(
+                    || {
+                        // nodes along a around the dual face: (before, n0, n1, after)
+                        let nodes = if sgn > 0 {
+                            [shift(ii, a, -1), ii, shift(ii, a, 1), shift(ii, a, 2)]
+                        } else {
+                            [shift(ii, a, -2), shift(ii, a, -1), ii, shift(ii, a, 1)]
+                        };
+                        let v = if a == c {
+                            let nb = self.ext_get(ext, c, shift(ii, a, sgn));
+                            f64::midpoint(uc, nb)
+                        } else {
+                            self.transport_velocity(ext, c, a, ii, sgn)
+                        };
+                        (v, self.face_value(ext, c, nodes, v))
+                    },
+                    |w| {
+                        let val = if cons { uc + (w - uc) * (0.5 / th).min(1.0) } else { f64::midpoint(uc, uc + (w - uc) / th.max(0.3)) };
+                        (if a == c { val } else { self.transport_velocity(ext, c, a, ii, sgn) }, val)
+                    },
+                );
                 let ap = if cons { self.ib.as_ref().map_or(1.0, |ib| ib.dual_ap[c][6 * p + 2 * a + si]) } else { 1.0 };
                 fl[si] = ap * v * q;
                 sdiv[a] += if si == 1 { ap } else { -ap };
@@ -1471,7 +1468,7 @@ impl NsSolver {
         let (c0, c1) = (cell(fi - 1), cell(fi));
         match (c0, c1) {
             (Some(l), Some(r)) => {
-                let central = 0.5 * (l + r);
+                let central = f64::midpoint(l, r);
                 if self.cfg.convection == Convection::Central {
                     return central;
                 }
@@ -1575,7 +1572,7 @@ impl NsSolver {
         hi[c] = i[c].min(n[c] - 1);
         let mut lo = i;
         lo[c] = i[c].saturating_sub(1).min(n[c] - 1);
-        th.gbeta[c] * (0.5 * (tval(hi) + tval(lo)) - th.t_ref)
+        th.gbeta[c] * (f64::midpoint(tval(hi), tval(lo)) - th.t_ref)
     }
 
     /// Velocity gradient `G[c][a] = ∂_a u_c` at the centre of cell `j`.
@@ -1585,7 +1582,7 @@ impl NsSolver {
         let ucen = |c: usize, cell: [isize; 3]| {
             let mut hi = cell;
             hi[c] += 1;
-            0.5 * (self.ext_get(ext, c, cell) + self.ext_get(ext, c, hi))
+            f64::midpoint(self.ext_get(ext, c, cell), self.ext_get(ext, c, hi))
         };
         for c in 0..dim {
             for a in 0..dim {
@@ -1615,7 +1612,7 @@ impl NsSolver {
             let mut sij = [[0.0; 3]; 3];
             for r in 0..3 {
                 for c in 0..3 {
-                    sij[r][c] = 0.5 * (g[r][c] + g[c][r]);
+                    sij[r][c] = f64::midpoint(g[r][c], g[c][r]);
                 }
             }
             let ss: f64 = sij.iter().flatten().map(|x| x * x).sum();
@@ -1633,7 +1630,7 @@ impl NsSolver {
                     let mut sd2 = 0.0;
                     for r in 0..3 {
                         for c in 0..3 {
-                            let v = 0.5 * (g2[r][c] + g2[c][r]) - if r == c { tr / 3.0 } else { 0.0 };
+                            let v = f64::midpoint(g2[r][c], g2[c][r]) - if r == c { tr / 3.0 } else { 0.0 };
                             sd2 += v * v;
                         }
                     }

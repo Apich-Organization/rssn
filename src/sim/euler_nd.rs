@@ -22,8 +22,13 @@
 //! water the first `1 + dim`. Initial data are given in primitive variables
 //! `[ρ, u, v, w, p]` (Euler) or `[h, u, v, 0, 0]` (shallow water).
 //!
+//! Block-structured adaptive refinement with sub-cycling and refluxing for 1D
+//! and 2D is provided by [`euler_amr`](crate::sim::euler_amr), built on the
+//! reconstruction and Riemann kernels of this module.
+//!
 //! Limitations: no source terms (bathymetry, gravity), no dry-bed treatment
-//! beyond a small depth floor, uniform grids only, no adaptive mesh.
+//! beyond a small depth floor; this solver itself uses a uniform grid (3D has
+//! no adaptive mesh).
 
 /// Conserved or primitive state with up to five components.
 pub type State = [f64; 5];

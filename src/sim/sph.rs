@@ -10,7 +10,7 @@
 //! | Kernels | cubic B-spline, Wendland C2 (support radius `2h`, normalised in every `D`) |
 //! | Density | summation `rho_i = sum m_j W(r_ij, h_i)` with fixed-point `h` iteration |
 //! | Momentum / energy | symmetric pressure gradient with symmetrised kernel gradient, `du/dt` consistent with `dv/dt` |
-//! | Artificial viscosity | Monaghan `alpha`, `beta` with Balsara-free form |
+//! | Artificial viscosity | Monaghan `alpha`, `beta`, optional **Balsara switch** ([`Sph::balsara`]) that suppresses the viscosity in shear flow |
 //! | Boundaries per axis ([`SphBoundary`]) | open, periodic (ghost images), reflecting walls (mirror ghost particles); fixed boundary particles via [`Sph::fixed`] |
 //! | Integrator | Heun (RK2) with CFL helper |
 //! | Neighbour search | uniform cell grid, `O(N)` |
@@ -21,7 +21,7 @@
 //! momentum with variable smoothing lengths. Dissipative particle dynamics
 //! lives in [`crate::sim::dpd`].
 //!
-//! Limitations: no Balsara switch, no self-gravity.
+//! Limitations: no self-gravity.
 
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -164,6 +164,8 @@ pub struct Sph<const D: usize> {
     pub bc: [SphBoundary; D],
     /// Use the grad-h (Springel–Hernquist) corrected, variational equations of motion.
     pub grad_h: bool,
+    /// Balsara (1995) shear switch `f = |∇·v| / (|∇·v| + |∇×v| + 10⁻⁴ c / h)` on the artificial viscosity.
+    pub balsara: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -253,6 +255,7 @@ impl<const D: usize> Sph<D> {
             hi,
             bc,
             grad_h: false,
+            balsara: false,
         };
         // initial h guess from the bounding volume
         let vol: f64 = (0..D).map(|a| (hi[a] - lo[a]).max(1e-12)).product();
@@ -405,6 +408,48 @@ impl<const D: usize> Sph<D> {
                 omega[i] = 1.0 + self.h[i] / (D as f64 * self.rho[i]) * sum;
             }
         }
+        // Balsara switch from the SPH estimates of the divergence and curl of the velocity
+        let mut fbal = vec![1.0; n];
+        if self.balsara {
+            for i in 0..n {
+                let (mut div, mut curl) = (0.0, [0.0; 3]);
+                grid.for_near(&self.pos[i], |jj| {
+                    let g = &gh[jj];
+                    let j = g.src;
+                    if jj == i {
+                        return;
+                    }
+                    let mut rij = [0.0; D];
+                    let mut vij = [0.0; D];
+                    let mut r2 = 0.0;
+                    for a in 0..D {
+                        rij[a] = self.pos[i][a] - g.pos[a];
+                        vij[a] = self.vel[i][a] - g.flip[a] * self.vel[j][a];
+                        r2 += rij[a] * rij[a];
+                    }
+                    let r = r2.sqrt();
+                    let hi = self.h[i];
+                    if r >= 2.0 * hi || r == 0.0 {
+                        return;
+                    }
+                    let dw = self.kernel.dw(D, r, hi);
+                    let mut gradw = [0.0; 3];
+                    let mut v3 = [0.0; 3];
+                    for a in 0..D {
+                        gradw[a] = dw * rij[a] / r;
+                        v3[a] = vij[a];
+                    }
+                    div -= self.mass[j] * (0..D).map(|a| v3[a] * gradw[a]).sum::<f64>();
+                    curl[0] += self.mass[j] * (v3[1] * gradw[2] - v3[2] * gradw[1]);
+                    curl[1] += self.mass[j] * (v3[2] * gradw[0] - v3[0] * gradw[2]);
+                    curl[2] += self.mass[j] * (v3[0] * gradw[1] - v3[1] * gradw[0]);
+                });
+                let rho = self.rho[i];
+                let divv = (div / rho).abs();
+                let curlv = (curl[0] * curl[0] + curl[1] * curl[1] + curl[2] * curl[2]).sqrt() / rho;
+                fbal[i] = divv / (divv + curlv + 1e-4 * c[i] / self.h[i]);
+            }
+        }
         for i in 0..n {
             grid.for_near(&self.pos[i], |jj| {
                 let g = &gh[jj];
@@ -433,7 +478,7 @@ impl<const D: usize> Sph<D> {
                     let mu = hb * vr / (r2 + 0.01 * hb * hb);
                     let cb = f64::midpoint(c[i], c[j]);
                     let rb = f64::midpoint(self.rho[i], self.rho[j]);
-                    (-self.alpha * cb * mu + self.beta * mu * mu) / rb
+                    (-self.alpha * cb * mu + self.beta * mu * mu) / rb * f64::midpoint(fbal[i], fbal[j])
                 } else {
                     0.0
                 };

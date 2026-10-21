@@ -106,3 +106,5 @@ mod amr;
 mod bem_research;
 #[path = "sim/hyperelastic.rs"]
 mod hyperelastic;
+#[path = "sim/continuum_misc.rs"]
+mod continuum_misc;

@@ -184,7 +184,7 @@ fn self_terms(k: f64, tri: [V3; 3]) -> (Complex64, Complex64) {
         let dperp = norm(sub(foot, c));
         let (s1, s2) = (-s0, len - s0);
         let (th1, th2) = ((s1 / dperp).atan(), (s2 / dperp).atan());
-        let (half, mid) = (0.5 * (th2 - th1), 0.5 * (th2 + th1));
+        let (half, mid) = (0.5 * (th2 - th1), f64::midpoint(th2, th1));
         for q in 0..8 {
             let th = mid + half * GL8_X[q];
             let wth = half * GL8_W[q];
@@ -203,9 +203,9 @@ fn self_terms(k: f64, tri: [V3; 3]) -> (Complex64, Complex64) {
                     let mut zn = z * z;
                     let mut fact = 2.0;
                     for n in 2..9 {
-                        sum += zn * ((1.0 - n as f64) / fact);
+                        sum += zn * ((1.0 - f64::from(n)) / fact);
                         zn *= z;
-                        fact *= (n + 1) as f64;
+                        fact *= f64::from(n + 1);
                     }
                     sum / (r * r)
                 } else {
@@ -318,7 +318,7 @@ pub fn solve_helmholtz_exterior(
                     } else {
                         (Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0))
                     };
-                    let diag = match kind {
+                    match kind {
                         Scatterer::SoundHard => {
                             let kk = if own { Complex64::new(0.0, 0.0) } else { integrate(Kernel::Double, k, x, nx, tris[j], normals[j], 0) };
                             let nn = if own { n_ij } else if alpha.norm() > 0.0 { integrate(Kernel::Hyper, k, x, nx, tris[j], normals[j], 0) } else { Complex64::new(0.0, 0.0) };
@@ -331,8 +331,7 @@ pub fn solve_helmholtz_exterior(
                             let half = if own { 0.5 } else { 0.0 };
                             ss + alpha * (Complex64::new(half, 0.0) + kp)
                         },
-                    };
-                    diag
+                    }
                 })
                 .collect()
         })

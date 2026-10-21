@@ -23,11 +23,19 @@
 //! Also provided: pure-Neumann interior problems through a bordered system
 //! that removes the constant nullspace, **exterior** problems
 //! ([`solve_laplace_bem_3d_exterior`], decaying at infinity) and a dense
-//! **linear-element** (P1) collocation solver ([`solve_laplace_bem_3d_p1`]).
+//! **linear-element** (P1) collocation solver ([`solve_laplace_bem_3d_p1`]) and
+//! its **hierarchical-matrix version** ([`solve_laplace_bem_3d_p1_aca`]): the
+//! vertex matrices `G` and `H` are assembled lazily from the element integrals
+//! (adaptive subdivision / Duffy transformation), far blocks of the vertex
+//! cluster tree are compressed by ACA, the rigid-body diagonal of `H` comes
+//! from one compressed product with the vector of ones, and the system is
+//! solved by Jacobi-preconditioned GMRES. Helmholtz problems (exterior
+//! acoustics, Burton–Miller) are in [`bem_helmholtz`](crate::sim::bem_helmholtz).
 //!
-//! Limitations: compression helps from a few thousand elements upwards; the
-//! P1 solver is dense and not compressed; no cluster-tree rebalancing for
-//! strongly anisotropic meshes; exterior problems assume a closed surface.
+//! Limitations: compression helps from a few thousand elements upwards; no
+//! cluster-tree rebalancing for strongly anisotropic meshes; exterior problems
+//! assume a closed surface; the P1 cluster admissibility uses the vertex
+//! bounding boxes (use `eta <= 1`); the Helmholtz solver is dense.
 
 use crate::kernels::krylov::gmres;
 use crate::sim::physics_bem::{
@@ -759,8 +767,9 @@ pub fn solve_laplace_bem_3d_p1(mesh: &SurfaceMesh3D, bcs: &[VertexBc], exterior:
 }
 
 /// Solves the Laplace problem with **linear (P1) elements** like
-/// [`solve_laplace_bem_3d_p1`], but with hierarchical-matrix compression:
-/// the vertex collocation matrices `G` and `H` are assembled lazily from the
+/// [`solve_laplace_bem_3d_p1`], but with hierarchical-matrix compression.
+///
+/// The vertex collocation matrices `G` and `H` are assembled lazily from the
 /// element integrals (adaptive subdivision away from the collocation point,
 /// Duffy transformation on elements containing it), far blocks of the vertex
 /// cluster tree are compressed by adaptive cross approximation, the rigid-body

@@ -389,8 +389,7 @@ impl Yee {
             }
         }
         let mut dt = dt;
-        let mut dm = None;
-        if let Some(body) = &cfg.pec_body {
+        let dm = if let Some(body) = &cfg.pec_body {
             if use_pml || periodic.iter().any(|&b| b) {
                 return Err("the subcell PEC scheme is available with PEC walls only".into());
             }
@@ -429,8 +428,10 @@ impl Yee {
                 }
             }
             dt *= min_area.sqrt();
-            dm = Some(DeyMittra { len, area_inv, scratch: std::array::from_fn(|_| vec![0.0; nn]) });
-        }
+            Some(DeyMittra { len, area_inv, scratch: std::array::from_fn(|_| vec![0.0; nn]) })
+        } else {
+            None
+        };
         Ok(Self {
             cfg,
             dt,
@@ -545,7 +546,7 @@ impl Yee {
         let mut pos = pos;
         if let Some(r) = &o.rot {
             // local coordinates in the frame of the rotated box (rotation about its centre)
-            let c: [f64; 3] = std::array::from_fn(|a| 0.5 * (o.lo[a] + o.hi[a]));
+            let c: [f64; 3] = std::array::from_fn(|a| f64::midpoint(o.lo[a], o.hi[a]));
             let d: [f64; 3] = std::array::from_fn(|a| pos[a] - c[a]);
             pos = std::array::from_fn(|a| c[a] + (0..3).map(|b| r[b][a] * d[b]).sum::<f64>());
         }

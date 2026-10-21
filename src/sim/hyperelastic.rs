@@ -30,6 +30,7 @@ use crate::sim::fem_simplex::SimplexMesh;
 use crate::sim::structured::{LinearSolver, LinearSystem};
 
 type M3 = [[f64; 3]; 3];
+type Triplets = Vec<(usize, usize, f64)>;
 
 /// Hyperelastic constitutive model.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -246,7 +247,7 @@ impl<'a> Assembler<'a> {
         Ok(Self { prob, dim: mesh.dim, grads, volumes })
     }
 
-    fn ndof(&self) -> usize {
+    const fn ndof(&self) -> usize {
         self.prob.mesh.nodes.len() * self.dim
     }
 
@@ -266,7 +267,7 @@ impl<'a> Assembler<'a> {
     }
 
     /// Internal force vector and (optionally) the tangent triplets.
-    fn internal(&self, u: &[f64], want_tangent: bool) -> Result<(Vec<f64>, Vec<(usize, usize, f64)>), String> {
+    fn internal(&self, u: &[f64], want_tangent: bool) -> Result<(Vec<f64>, Triplets), String> {
         let (dim, mat) = (self.dim, &self.prob.material);
         let mut fint = vec![0.0; self.ndof()];
         let mut trip = Vec::new();
@@ -461,8 +462,10 @@ pub struct HyperSolution {
     pub iterations: Vec<usize>,
 }
 
-/// Static solution with `steps` equal load increments (the displacement data, tractions and body force
-/// are scaled by `s / steps`) and Newton iterations (tolerance on the free-dof residual relative to the
+/// Static solution by load stepping and Newton iterations.
+///
+/// The load is applied in `steps` equal increments (the displacement data, tractions and body force
+/// are scaled by `s / steps`) with Newton iterations (tolerance on the free-dof residual relative to the
 /// largest external or internal force norm).
 ///
 /// # Errors

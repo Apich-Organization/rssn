@@ -12,13 +12,34 @@
 //! | Burgers ([`Burgers`]) | yes | yes | same |
 //! | Euler ([`Euler1d`], [`Euler2d`]) | yes | yes | same |
 //!
-//! Shocks are handled by [`solve_dg_limited`]: a TVB minmod slope limiter on
-//! troubled elements and the Zhang–Shu positivity-preserving scaling of density
-//! and pressure, applied after every Runge–Kutta stage (an exponential modal
-//! filter is also available). Custom systems implement [`DgLaw`]. Meshes are uniform tensor-product
-//! quadrilaterals (intervals in 1D); no hanging nodes, no p-adaptivity.
-//! Smooth problems converge with order `p + 1`; shocks need the filter and
-//! are first-order accurate locally.
+//! Shocks are handled by [`solve_dg_limited`] (TVB minmod slope limiter on
+//! troubled elements plus the Zhang–Shu positivity-preserving scaling of
+//! density and pressure, applied after every Runge–Kutta stage; an exponential
+//! modal filter is also available) or by the richer [`solve_dg_with`] and
+//! [`DgOptions`]:
+//!
+//! | Option | Effect |
+//! |---|---|
+//! | [`ShockLimiter::Tvb`] | component-wise TVB minmod |
+//! | [`ShockLimiter::TvbCharacteristic`] | TVB minmod on the **characteristic variables** (Euler eigenvectors of the Jacobian at the element mean, [`DgLaw::to_characteristic`]) |
+//! | [`ShockLimiter::Hierarchical`] | Krivodonova's hierarchical moment limiter (modal coefficients bounded from the top degree down), 1D and 2D |
+//! | [`ShockLimiter::Weno`] | Zhong–Shu WENO reconstruction of troubled elements (1D) |
+//! | `positivity` | Zhang–Shu scaling |
+//! | `entropy_stable` | flux-differencing volume terms with the entropy-conservative two-point flux ([`DgLaw::two_point_flux`]; Chandrashekar flux for Euler) and Lax–Friedrichs interface dissipation |
+//!
+//! Boundary faces: periodic, outflow, fixed state, slip wall ([`DgBc::Wall`])
+//! and a free function of the interior trace ([`DgBc::Custom`], e.g. the
+//! mixed wall / inflow bottom of the double-Mach problem). The 3D solver on
+//! hexahedra lives in [`dg3d`](crate::sim::dg3d). Custom systems implement
+//! [`DgLaw`]. Meshes are uniform tensor-product quadrilaterals (intervals in
+//! 1D); no hanging nodes, no p-adaptivity. Smooth problems converge with order
+//! `p + 1`; shocks are first-order accurate locally, the characteristic and
+//! hierarchical limiters keep the post-shock oscillations of the Shu–Osher
+//! problem much smaller than the component-wise limiter.
+//!
+//! Limitations: the characteristic limiter needs a law with eigenvectors
+//! (Euler 1D/2D); the WENO limiter is one-dimensional; the hierarchical limiter
+//! does not limit modes at non-periodic domain boundaries.
 
 use std::sync::Arc;
 
@@ -77,6 +98,7 @@ pub trait DgLaw: Send + Sync {
         out[..v.len()].copy_from_slice(v);
     }
     /// Inverse of [`DgLaw::to_characteristic`]: `R(q_ref) w`.
+    #[allow(clippy::wrong_self_convention)] // mirrors `to_characteristic`: applies the eigenvector matrix of the Jacobian
     fn from_characteristic(&self, _q_ref: &[f64], _dir: usize, w: &[f64], out: &mut [f64]) {
         out[..w.len()].copy_from_slice(w);
     }
@@ -253,14 +275,14 @@ pub(crate) fn euler_ec_flux(gamma: f64, nvel: usize, dir: usize, ql: &[f64], qr:
     let (bl, br) = (rl / (2.0 * pl), rr / (2.0 * pr));
     let rho_ln = log_mean(rl, rr);
     let beta_ln = log_mean(bl, br);
-    let rho_avg = 0.5 * (rl + rr);
-    let beta_avg = 0.5 * (bl + br);
+    let rho_avg = f64::midpoint(rl, rr);
+    let beta_avg = f64::midpoint(bl, br);
     let p_hat = rho_avg / (2.0 * beta_avg);
     let mut ubar = [0.0; 3];
     let mut v2 = 0.0;
     for k in 0..nvel {
-        ubar[k] = 0.5 * (vl[k] + vr[k]);
-        v2 += 0.5 * (vl[k] * vl[k] + vr[k] * vr[k]);
+        ubar[k] = f64::midpoint(vl[k], vr[k]);
+        v2 += f64::midpoint(vl[k] * vl[k], vr[k] * vr[k]);
     }
     let f_rho = rho_ln * ubar[dir];
     out[0] = f_rho;
@@ -287,7 +309,7 @@ pub(crate) fn euler_eigen_transform(gamma: f64, nvel: usize, dir: usize, q: &[f6
     if nvel == 1 {
         if to_char {
             let l = [
-                [0.5 * (b2 + un / c), -0.5 * (b1 * un + 1.0 / c), 0.5 * b1],
+                [f64::midpoint(b2, un / c), -0.5 * (b1 * un + 1.0 / c), 0.5 * b1],
                 [1.0 - b2, b1 * un, -b1],
                 [0.5 * (b2 - un / c), -0.5 * (b1 * un - 1.0 / c), 0.5 * b1],
             ];
@@ -307,7 +329,7 @@ pub(crate) fn euler_eigen_transform(gamma: f64, nvel: usize, dir: usize, q: &[f6
     if to_char {
         let w = [v[0], v[1 + dir], v[1 + t], v[3]];
         let l = [
-            [0.5 * (b2 + un / c), -0.5 * (b1 * un + 1.0 / c), -0.5 * b1 * ut, 0.5 * b1],
+            [f64::midpoint(b2, un / c), -0.5 * (b1 * un + 1.0 / c), -0.5 * b1 * ut, 0.5 * b1],
             [-ut, 0.0, 1.0, 0.0],
             [1.0 - b2, b1 * un, b1 * ut, -b1],
             [0.5 * (b2 - un / c), -0.5 * (b1 * un - 1.0 / c), -0.5 * b1 * ut, 0.5 * b1],
@@ -339,6 +361,9 @@ pub(crate) fn euler_wall_state(nvel: usize, dir: usize, q: &[f64], out: &mut [f6
     out[1 + dir] = -q[1 + dir];
 }
 
+/// Exterior-state function of a [`DgBc::Custom`] face: `(t, x, interior state) -> exterior state`.
+pub type DgBcFn = dyn Fn(f64, [f64; 2], &[f64]) -> Vec<f64> + Send + Sync;
+
 /// Boundary treatment of one mesh face.
 #[derive(Clone)]
 pub enum DgBc {
@@ -352,7 +377,7 @@ pub enum DgBc {
     Wall,
     /// Exterior state `q_ext(t, x, q_interior)` computed from the interior
     /// trace (mixed wall / inflow faces, time-dependent states).
-    Custom(Arc<dyn Fn(f64, [f64; 2], &[f64]) -> Vec<f64> + Send + Sync>),
+    Custom(Arc<DgBcFn>),
 }
 
 /// Uniform Cartesian element mesh.
@@ -655,12 +680,13 @@ impl Ctx<'_> {
                         let qi = at(e, nd);
                         let nb = nbr(e, a, max);
                         let mut qo = vec![0.0; nv];
-                        match nb {
-                            Some(en) => {
+                        if let Some(en) = nb {
+                            {
                                 let ond = if a == 0 { self.node(self.n1 - 1 - edge, t_idx) } else { self.node(t_idx, self.n1 - 1 - edge) };
                                 qo.copy_from_slice(at(en, ond));
-                            },
-                            None => {
+                            }
+                        } else {
+                            {
                                 let bc = &self.bcs[2 * a + usize::from(max)];
                                 let xpos = || {
                                     let ij = if a == 0 { [edge, t_idx] } else { [t_idx, edge] };
@@ -677,7 +703,7 @@ impl Ctx<'_> {
                                     DgBc::Wall => self.law.wall_state(qi, a, &mut qo),
                                     _ => qo.copy_from_slice(qi),
                                 }
-                            },
+                            }
                         }
                         let mut fstar = vec![0.0; nv];
                         match (max, self.es) {
@@ -1074,6 +1100,7 @@ impl Ctx<'_> {
         out
     }
 
+    #[allow(clippy::wrong_self_convention)] // inverse of `to_modal`
     fn from_modal(&self, c: &[f64]) -> Vec<f64> {
         let n1 = self.n1;
         let v = &self.vmat;

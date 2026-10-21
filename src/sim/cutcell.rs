@@ -110,14 +110,14 @@ pub fn open_length_fraction(phi: LevelSet<'_>, x0: [f64; 3], axis: usize, len: f
             // bisection on the true level set
             let (mut a, mut b) = (t0, t1);
             for _ in 0..60 {
-                let m = 0.5 * (a + b);
+                let m = f64::midpoint(a, b);
                 if (at(m) > 0.0) == p0 {
                     a = m;
                 } else {
                     b = m;
                 }
             }
-            let root = 0.5 * (a + b);
+            let root = f64::midpoint(a, b);
             open += if p0 { root - t0 } else { t1 - root };
         }
     }

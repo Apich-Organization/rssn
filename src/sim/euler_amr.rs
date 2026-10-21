@@ -112,7 +112,7 @@ fn minmod(a: f64, b: f64) -> f64 {
 }
 
 impl Amr {
-    fn dom(&self, l: usize) -> [isize; 2] {
+    const fn dom(&self, l: usize) -> [isize; 2] {
         let f = 1isize << l;
         [self.n0[0] as isize * f, if self.dim == 2 { self.n0[1] as isize * f } else { 1 }]
     }
@@ -486,10 +486,10 @@ impl Amr {
 
     /// Conserved state of a cell of level `l` without any time interpolation (current data).
     fn current(&self, l: usize, idx: [isize; 2]) -> State {
-        self.sample_now(l, idx, 0.0)
+        self.sample_now(l, idx)
     }
 
-    fn sample_now(&self, l: usize, idx: [isize; 2], tau: f64) -> State {
+    fn sample_now(&self, l: usize, idx: [isize; 2]) -> State {
         // the current data of every level equal `new` (= `q`); set the interpolation weight to one
         let dom = self.dom(l);
         let inside = (0..2).all(|a| idx[a] >= 0 && idx[a] < dom[a]);
@@ -497,7 +497,7 @@ impl Amr {
             return match self.bc_map(l, idx) {
                 Mapped::Fixed(s) => s,
                 Mapped::Cell(j, flip) => {
-                    let mut s = self.sample_now(l, [j[0] as isize, j[1] as isize], tau);
+                    let mut s = self.sample_now(l, [j[0] as isize, j[1] as isize]);
                     for a in 0..2 {
                         if flip[a] {
                             s[1 + a] = -s[1 + a];
@@ -512,14 +512,14 @@ impl Amr {
             return self.levels[l].patches[k].q[flat];
         }
         let parent = [idx[0].div_euclid(2), idx[1].div_euclid(2)];
-        let q0 = self.sample_now(l - 1, parent, tau);
+        let q0 = self.sample_now(l - 1, parent);
         let mut out = q0;
         for a in 0..self.dim {
             let mut ep = parent;
             ep[a] += 1;
             let mut em = parent;
             em[a] -= 1;
-            let (qp, qm) = (self.sample_now(l - 1, ep, tau), self.sample_now(l - 1, em, tau));
+            let (qp, qm) = (self.sample_now(l - 1, ep), self.sample_now(l - 1, em));
             let off = if idx[a].rem_euclid(2) == 0 { -0.25 } else { 0.25 };
             for c in 0..5 {
                 out[c] += off * minmod(qp[c] - q0[c], q0[c] - qm[c]);
@@ -615,7 +615,7 @@ impl Amr {
                         let gi = [flo[0] + i, flo[1] + j];
                         // copy from an old patch of the same level when possible
                         let from_old = old_levels.get(l).and_then(|ps| ps.iter().find(|p| p.contains(gi)).map(|p| p.q[p.flat(gi)]));
-                        q.push(from_old.unwrap_or_else(|| self.sample_now(l + 1, [gi[0] as isize, gi[1] as isize], t)));
+                        q.push(from_old.unwrap_or_else(|| self.sample_now(l + 1, [gi[0] as isize, gi[1] as isize])));
                     }
                 }
                 patches.push(Patch::new(flo, fnn, q));
@@ -663,7 +663,8 @@ fn cluster(tags: &[bool], valid: &[bool], nd: [usize; 2], eff: f64) -> Vec<([usi
         }
         // signature along the long axis: split at the emptiest slice in the middle half
         let (a0, a1) = (bl[axis], bh[axis]);
-        let mut best = (usize::MAX, (a0 + a1) / 2);
+        let mid_cut = usize::midpoint(a0, a1);
+        let mut best = (usize::MAX, mid_cut);
         for cut in a0 + size[axis] / 4..=a1 - size[axis] / 4 {
             if cut <= a0 || cut >= a1 {
                 continue;
@@ -676,7 +677,7 @@ fn cluster(tags: &[bool], valid: &[bool], nd: [usize; 2], eff: f64) -> Vec<([usi
                     count += 1;
                 }
             }
-            if count < best.0 || (count == best.0 && cut.abs_diff((a0 + a1) / 2) < best.1.abs_diff((a0 + a1) / 2)) {
+            if count < best.0 || (count == best.0 && cut.abs_diff(mid_cut) < best.1.abs_diff(mid_cut)) {
                 best = (count, cut);
             }
         }
@@ -821,7 +822,7 @@ pub fn solve_amr(grid: &FvGrid, cfg: &AmrConfig, init: &dyn Fn([f64; 3]) -> Stat
             return Err("periodic must be set on both faces of an axis".into());
         }
     }
-    if grid.n[0] % 2 != 0 || (grid.dim == 2 && grid.n[1] % 2 != 0) {
+    if !grid.n[0].is_multiple_of(2) || (grid.dim == 2 && !grid.n[1].is_multiple_of(2)) {
         return Err("the base grid needs an even number of cells per axis".into());
     }
     let nv = match cfg.fv.law {

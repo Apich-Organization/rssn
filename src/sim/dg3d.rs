@@ -166,12 +166,12 @@ pub struct Dg3Solution {
 }
 
 impl Dg3Solution {
-    fn node_ijk(&self, node: usize) -> [usize; 3] {
+    const fn node_ijk(&self, node: usize) -> [usize; 3] {
         let n1 = self.mesh.p + 1;
         [node % n1, (node / n1) % n1, node / (n1 * n1)]
     }
 
-    fn elem_ijk(&self, e: usize) -> [usize; 3] {
+    const fn elem_ijk(&self, e: usize) -> [usize; 3] {
         let ne = self.mesh.ne;
         [e % ne[0], (e / ne[0]) % ne[1], e / (ne[0] * ne[1])]
     }
@@ -238,7 +238,7 @@ struct Ctx<'a> {
 }
 
 impl Ctx<'_> {
-    fn neighbour(&self, e: usize, axis: usize, max: bool) -> Option<usize> {
+    const fn neighbour(&self, e: usize, axis: usize, max: bool) -> Option<usize> {
         let ne = self.mesh.ne;
         let mut c = [e % ne[0], (e / ne[0]) % ne[1], e / (ne[0] * ne[1])];
         let periodic = matches!(self.bcs[2 * axis], Dg3Bc::Periodic);
@@ -445,7 +445,7 @@ pub fn solve_dg3d(
     let n1 = mesh.p + 1;
     let np = mesh.nodes_per_element();
     let ctx = Ctx { mesh: *mesh, law, bcs, d, w: w.clone(), xi: xi.clone(), nv, np, n1, es: opt.entropy_stable };
-    let mut sol = Dg3Solution { mesh: *mesh, xi: xi.clone(), w, q: vec![0.0; mesh.elements() * np * nv], nvar: nv, t: 0.0, steps: 0 };
+    let mut sol = Dg3Solution { mesh: *mesh, xi, w, q: vec![0.0; mesh.elements() * np * nv], nvar: nv, t: 0.0, steps: 0 };
     for e in 0..mesh.elements() {
         for nd in 0..np {
             let v = init(sol.coord(e, nd));
