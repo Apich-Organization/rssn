@@ -230,7 +230,21 @@ pub(super) fn solve(
         let Some((b, a0)) = laplacian(cx, p, layout, time_index) else {
             continue;
         };
-        if let Some(solution) = solve_layout(cx, p, conditions, layout, time_index, b, a0) {
+        let exact = solve_layout(cx, p, conditions, layout, time_index, b, a0);
+        // A closed or series answer without unevaluated integrals stands;
+        // otherwise try the numeric modal expansion (general data).
+        if let Some(solution) = exact
+            && !super::util::contains_op(cx.graph, solution, "defint")
+        {
+            return Some(solution);
+        }
+        if let (Some(t_index), None) = (time_index, layout.z) {
+            let geometry = super::modal::Geometry { r: layout.r, theta: layout.theta, phi: layout.phi, sphere: layout.sphere };
+            if let Some(solution) = super::modal::solve(cx, p, conditions, geometry, t_index, (b, a0)) {
+                return Some(solution);
+            }
+        }
+        if let Some(solution) = exact {
             return Some(solution);
         }
         if let Some(solution) = numeric_sphere(cx, p, conditions, layout, time_index, a0) {
@@ -349,7 +363,7 @@ fn hankel_whole_space(
 }
 
 /// The Gauss–Legendre nodes and weights on `[-1, 1]`.
-fn gauss_legendre(n: usize) -> Vec<(f64, f64)> {
+pub(super) fn gauss_legendre(n: usize) -> Vec<(f64, f64)> {
     let mut out = Vec::with_capacity(n);
     for i in 0..n {
         let mut x = (std::f64::consts::PI * (i as f64 + 0.75) / (n as f64 + 0.5)).cos();
@@ -376,7 +390,7 @@ fn gauss_legendre(n: usize) -> Vec<(f64, f64)> {
 }
 
 /// `P_l^m(x)` (no Condon–Shortley phase) for all `l ≤ lmax` at fixed `m`.
-fn associated_values(
+pub(super) fn associated_values(
     x: f64,
     m: usize,
     lmax: usize,
