@@ -75,10 +75,10 @@ fn select(
             continue;
         }
         let slot = objects.iter().position(|(v, _)| (v - value).abs() <= 1e-6 * (1.0 + v.abs()))?;
-        if let Some(entry) = chosen.get_mut(slot) {
-            if entry.is_none() {
-                *entry = Some((value, node));
-            }
+        if let Some(entry) = chosen.get_mut(slot)
+            && entry.is_none()
+        {
+            *entry = Some((value, node));
         }
     }
     chosen.into_iter().collect()

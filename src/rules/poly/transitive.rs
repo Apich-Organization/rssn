@@ -131,19 +131,9 @@ impl TransitiveGroup {
             // Smallest block system with 0 and j in one block (union-find
             // closed under the generators).
             let mut parent: Vec<usize> = (0..n).collect();
-            fn find(
-                parent: &mut [usize],
-                i: usize,
-            ) -> usize {
-                let mut root = i;
-                while parent.get(root).copied().unwrap_or(root) != root {
-                    root = parent.get(root).copied().unwrap_or(root);
-                }
-                root
-            }
             let mut pending = vec![(0_usize, j)];
             while let Some((a, b)) = pending.pop() {
-                let (ra, rb) = (find(&mut parent, a), find(&mut parent, b));
+                let (ra, rb) = (find(&parent, a), find(&parent, b));
                 if ra == rb {
                     continue;
                 }
@@ -155,7 +145,7 @@ impl TransitiveGroup {
                     pending.push((image(a), image(b)));
                 }
             }
-            let roots: Vec<usize> = (0..n).map(|i| find(&mut parent, i)).collect();
+            let roots: Vec<usize> = (0..n).map(|i| find(&parent, i)).collect();
             let mut blocks: Vec<Vec<usize>> = Vec::new();
             let mut keys: Vec<usize> = Vec::new();
             for (i, &root) in roots.iter().enumerate() {
@@ -177,6 +167,17 @@ impl TransitiveGroup {
         }
         systems
     }
+}
+
+fn find(
+    parent: &[usize],
+    i: usize,
+) -> usize {
+    let mut root = i;
+    while parent.get(root).copied().unwrap_or(root) != root {
+        root = parent.get(root).copied().unwrap_or(root);
+    }
+    root
 }
 
 fn parity(p: &[u8]) -> bool {
@@ -219,7 +220,7 @@ mod tests {
         for group in transitive_groups(6) {
             assert_eq!(group.block_systems().is_empty(), !group.solvable, "{}", group.label);
         }
-        assert!(transitive_groups(6).iter().filter(|g| g.is_abelian()).count() == 1);
+        assert_eq!(transitive_groups(6).iter().filter(|g| g.is_abelian()).count(), 1);
         assert!(transitive_groups(7).iter().all(|g| g.block_systems().is_empty()));
     }
 }

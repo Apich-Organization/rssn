@@ -59,7 +59,7 @@ fn trim(mut p: Vec<Q>) -> Vec<Q> {
 }
 
 /// A number field `Q[α]/(m)`; `m = x` is the rational field itself.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Field {
     /// The monic irreducible minimal polynomial of `α` (ascending).
     pub modulus: Vec<Q>,
@@ -74,19 +74,19 @@ impl Field {
 
     /// `Q[α]/(m)` for a monic irreducible `m`.
     #[must_use]
-    pub fn extension(modulus: Vec<Q>) -> Self {
+    pub const fn extension(modulus: Vec<Q>) -> Self {
         Self { modulus }
     }
 
     /// Degree over `Q`.
     #[must_use]
-    pub fn degree(&self) -> usize {
+    pub const fn degree(&self) -> usize {
         self.modulus.len().saturating_sub(1)
     }
 
     /// Whether this is `Q`.
     #[must_use]
-    pub fn is_rational(&self) -> bool {
+    pub const fn is_rational(&self) -> bool {
         self.degree() == 1
     }
 
@@ -105,6 +105,8 @@ impl Field {
 
     /// A rational number as an element.
     #[must_use]
+    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
+    #[allow(clippy::wrong_self_convention, reason = "the field is the context of the element")]
     pub fn from_q(
         &self,
         c: &Q,
@@ -112,6 +114,7 @@ impl Field {
         trim(vec![c.clone()])
     }
 
+    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
     fn add(
         &self,
         a: &[Q],
@@ -120,6 +123,7 @@ impl Field {
         trim(univariate::add(a, b))
     }
 
+    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
     fn sub(
         &self,
         a: &[Q],
@@ -136,6 +140,7 @@ impl Field {
         self.reduce(univariate::mul(a, b))
     }
 
+    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
     fn scale(
         &self,
         a: &[Q],
@@ -168,16 +173,9 @@ impl Field {
         Some(self.reduce(t0.iter().map(|c| c / constant).collect()))
     }
 
-    fn pow(
-        &self,
-        a: &[Q],
-        n: usize,
-    ) -> Elt {
-        (0..n).fold(vec![Q::one()], |acc, _| self.mul(&acc, a))
-    }
-
     /// The rational number an element equals, if it is one.
     #[must_use]
+    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
     pub fn as_rational(
         &self,
         a: &[Q],
@@ -191,6 +189,7 @@ impl Field {
 
     /// Numeric value for the embedding `α ↦ alpha`.
     #[must_use]
+    #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
     pub fn numeric(
         &self,
         a: &[Q],
@@ -282,7 +281,7 @@ fn poly_mul(
 }
 
 impl Euler {
-    fn empty() -> Self {
+    const fn empty() -> Self {
         Self { terms: BTreeMap::new() }
     }
 
@@ -382,7 +381,7 @@ impl Euler {
             one
         }];
         for _ in 1..max_degree {
-            let next = powers.last().map(|last| last.compose(field, &lambda)).unwrap_or_else(Self::empty);
+            let next = powers.last().map_or_else(Self::empty, |last| last.compose(field, &lambda));
             powers.push(next);
         }
         let mut out = Self::empty();
@@ -393,7 +392,7 @@ impl Euler {
                 }
                 let Some(power) = powers.get(i) else { continue };
                 let mut monomial = Self::empty();
-                monomial.add_term(field, *j, &[coefficient.clone()]);
+                monomial.add_term(field, *j, std::slice::from_ref(coefficient));
                 let product = monomial.compose(field, power);
                 for (jj, pp) in &product.terms {
                     out.add_term(field, *jj, pp);
@@ -554,14 +553,6 @@ pub struct FormalSolution {
     pub rho: Elt,
     /// The series coefficients `c_k` (`c_0 = 1`).
     pub coefficients: Vec<Elt>,
-}
-
-impl FormalSolution {
-    /// Whether the solution has no exponential factor.
-    #[must_use]
-    pub const fn is_regular(&self) -> bool {
-        self.exponent.is_empty()
-    }
 }
 
 struct Search<'a> {
@@ -746,14 +737,21 @@ fn regular(
     exponent: &[(i64, Elt)],
 ) {
     let Some(indicial) = op.terms.get(&j0) else { return };
-    let reduced: Vec<Elt> = indicial.iter().skip(skip).cloned().collect();
+    let full: Vec<Elt> = indicial.iter().skip(skip).cloned().collect();
+    // A factor θ^m: the root 0 (once; repeated roots would need logarithms).
+    let zeros = full.iter().take_while(|c| c.is_empty()).count();
+    let reduced: Vec<Elt> = full.into_iter().skip(zeros).collect();
     let width = reduced.len().saturating_sub(1);
-    if width == 0 {
-        return;
-    }
     // Roots of the indicial polynomial.
     let mut roots: Vec<(Field, Elt)> = Vec::new();
-    if field.is_rational() {
+    if zeros > 0 {
+        roots.push((field.clone(), Vec::new()));
+    }
+    if width == 0 && roots.is_empty() {
+        return;
+    }
+    if width == 0 {
+    } else if field.is_rational() {
         let rational: Option<Vec<Q>> = reduced.iter().map(|c| field.as_rational(c)).collect();
         let Some(rational) = rational else { return };
         for g in irreducible_factors(&rational) {
@@ -967,8 +965,8 @@ mod tests {
     fn regular_point_at_an_algebraic_singularity() {
         // (x^2 - 2) y'' + x y' = 0 has y' ∝ (x^2-2)^(-1/2): exponents 0 and 1/2 at sqrt(2).
         let solutions = formal_solutions(&[qs(&[]), qs(&[0, 1]), qs(&[-2, 0, 1])], &Point::Finite(qs(&[-2, 0, 1])), 6);
-        let rhos: Vec<Option<Q>> = solutions.iter().map(|s| s.field.as_rational(&s.rho)).collect();
-        assert!(rhos.contains(&Some(Q::new(BigInt::one(), BigInt::from(2)))), "{solutions:?}");
+        let half = Some(Q::new(BigInt::one(), BigInt::from(2)));
+        assert!(solutions.iter().any(|s| s.field.as_rational(&s.rho) == half), "{solutions:?}");
     }
 
     #[test]

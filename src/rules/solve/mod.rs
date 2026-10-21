@@ -57,11 +57,26 @@
 //!   always returns every real root. In numeric runs the values are
 //!   returned instead. `solve_complex(eq, x)` gives *all* complex roots of a
 //!   polynomial equation exactly (rationals, quadratic radicals with `I`,
-//!   `root_of` objects). Not done: a Galois-group analysis for degree seven
-//!   and up (Gauss periods and general solvable groups of composite
-//!   degree), so irreducible polynomials of degree six or more that are
-//!   neither decomposable nor reciprocal stay `root_of` objects even when
-//!   they are solvable.
+//!   `root_of` objects).
+//! * **Sextics and septics by their Galois group.** For an irreducible
+//!   polynomial of degree six or seven that is not decomposable or
+//!   reciprocal the Galois group is computed exactly (relative resolvents
+//!   over all cosets of the transitive groups, with the roots to 190
+//!   digits; see `rules::poly::galois_high`). A cyclic group whose real
+//!   roots lie in a Gauss-period field of prime conductor `p` gives
+//!   `Σ c_j 2 cos(2π j / p)` with rational `c_j` (the cyclic septic of
+//!   conductor 29, `2 cos(2π/13)`'s sextic, …). Every solvable sextic
+//!   group is imprimitive, and its block tower (a cubic or quadratic for the
+//!   block invariant `θ`, then a quadratic or cubic over `Q(θ)` with
+//!   coefficients found numerically and recognised as rationals) is solved
+//!   with the radical/trigonometric formulas, taking only the real values of
+//!   `θ`. Not done: the non-abelian solvable septic groups `D7`, `F21`,
+//!   `F42` (apart from pure powers `x^7 - a`), cyclic fields of composite
+//!   conductor, sextics with non-real `θ` for a real root, and polynomials
+//!   of degree eight and more without decomposition: they stay `root_of`
+//!   objects, as do the unsolvable groups (`A5`, `S5`, `A6`, `S6`,
+//!   `PSL(3,2)`, `A7`, `S7`). `solve_complex` returns `root_of` objects for
+//!   the non-real roots of these polynomials.
 //!
 //! Beyond that, the sub-solvers interlock:
 //!

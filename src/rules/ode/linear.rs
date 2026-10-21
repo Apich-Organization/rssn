@@ -169,7 +169,7 @@ fn rational_roots_of(p: &[Q]) -> Option<Vec<Q>> {
 }
 
 /// One generalised hypergeometric series solution `x^ρ pFq(a; b; c x^d)`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pfq {
     /// The exponent `ρ`.
     pub rho: Q,

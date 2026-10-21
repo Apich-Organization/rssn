@@ -25,6 +25,12 @@
 //!   The answer is truncated, with the order written as `big_o(t^n)`.
 //!   Exponents must be rational (the discriminant of the indicial
 //!   polynomial a rational square).
+//! * **Irregular points of any rank** (and ramified, irrational or
+//!   algebraic cases) are expanded by the Newton-polygon method of
+//!   [`super::formal`] when the rank-one search fails: the result carries
+//!   `exp(Σ κ_s v^{-s}) v^ρ Σ c_k v^k` with `v^r = x - x0` (or `1/x`), `κ`
+//!   and `ρ` possibly algebraic (`root_of` objects), and `ode_frobenius`
+//!   lists `(exponent part, ρ)` pairs and an empty recurrence.
 //! * `ode_frobenius(eq, y(x), x0, n)` returns
 //!   `list(y(x) = C1 y1 + C2 y2, list(r1, r2), recurrence)` where the
 //!   recurrence is the explicit finite-order relation
@@ -605,7 +611,7 @@ pub(super) enum NewtonPoint {
     Rational(Q),
     /// The root number `k` (in the order of `root_of`) of a monic
     /// irreducible polynomial.
-    Algebraic(Vec<Q>, usize),
+    Algebraic(Vec<Q>),
 }
 
 /// Newton-polygon expansions at the point (see [`super::formal`]).
@@ -634,7 +640,7 @@ fn newton(
                 if factor.len() > 2 {
                     let lead = Q::from_integer(factor.last().cloned().unwrap_or_else(BigInt::one));
                     let monic: Vec<Q> = factor.iter().map(|c| Q::from_integer(c.clone()) / &lead).collect();
-                    candidates.push((NewtonPoint::Algebraic(monic.clone(), 0), FormalPoint::Finite(monic)));
+                    candidates.push((NewtonPoint::Algebraic(monic.clone()), FormalPoint::Finite(monic)));
                 }
             }
         },
@@ -648,12 +654,7 @@ fn newton(
             }
         }
         if items.len() >= 2 {
-            // An algebraic singular point: the first embedding of its polynomial.
-            let located = match new_point {
-                | NewtonPoint::Algebraic(f, _) => NewtonPoint::Algebraic(f, 0),
-                | other => other,
-            };
-            return Some(Local::Newton { point: located, items });
+            return Some(Local::Newton { point: new_point, items });
         }
     }
     None
@@ -702,7 +703,7 @@ fn newton_parts(
     let t = match point {
         | NewtonPoint::Infinity => local_variable(cx, x, None),
         | NewtonPoint::Rational(x0) => local_variable(cx, x, Some(x0)),
-        | NewtonPoint::Algebraic(f, _) => {
+        | NewtonPoint::Algebraic(f) => {
             let mut arguments = vec![cx.graph.int(i64::try_from(k).ok()?)];
             for c in f {
                 arguments.push(node_of(cx.graph, c));
@@ -1187,6 +1188,41 @@ fn recurrence_node(
     let lhs = add(cx.graph, &parts);
     let zero = cx.graph.int(0);
     Some(cx.graph.node(core::EQ, &[lhs, zero]))
+}
+
+/// `ode_asymptotic(equation, y(x), x0, n, x1, k)`.
+pub(super) fn asymptotic(
+    cx: &mut Cx<'_>,
+    equation: NodeId,
+    unknown: NodeId,
+    x0: NodeId,
+    n: NodeId,
+    x1: NodeId,
+    which: NodeId,
+) -> Option<NodeId> {
+    let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?).ok().filter(|&n| n <= 400)?;
+    let which = usize::try_from(cx.graph.number_of(which)?.to_i64()?).ok()?;
+    let at = cx.graph.number_of(x1)?.to_f64();
+    let infinity = cx.graph.ops().lookup("oo").is_some_and(|op| cx.graph.op(x0) == op);
+    let centre = if infinity { None } else { Some(cx.graph.number_of(x0)?.to_rational()?) };
+    let point = centre.clone().map_or(Point::Infinity, |c| Point::Finite(Some(c)));
+    let problem = super::parse(cx.graph, equation, unknown)?;
+    let (a, forcing) = linear_second_order(cx, &problem)?;
+    if !cx.is_zero(forcing) {
+        return None;
+    }
+    let p = polynomials(cx, &a, problem.x)?;
+    let Local::Newton { items, .. } = newton(&p, n, &point)? else { return None };
+    let (solution, k) = items.get(which)?;
+    let embeddings = solution.field.embeddings();
+    let alpha = if solution.field.is_rational() { num_complex::Complex64::new(0.0, 0.0) } else { *embeddings.get(*k)? };
+    let t = match &centre {
+        | None => 1.0 / at,
+        | Some(c) => at - c.to_f64()?,
+    };
+    let (value, error) = solution.evaluate(alpha, num_complex::Complex64::new(t, 0.0));
+    let (re, im, err) = (cx.graph.float(value.re), cx.graph.float(value.im), cx.graph.float(error));
+    Some(cx.graph.node(core::LIST, &[re, im, err]))
 }
 
 /// `ode_frobenius(equation, y(x), x0, n)`; `x0` may be `oo`.

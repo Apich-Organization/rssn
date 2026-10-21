@@ -1,9 +1,11 @@
-//! Kovacic's algorithm, case 1: hyperexponential solutions of linear
-//! second-order equations with rational coefficients.
+//! Kovacic's algorithm: Liouvillian solutions of linear second-order
+//! equations with rational coefficients (cases 1, 2 and 3).
 //!
 //! `a2 y'' + a1 y' + a0 y = 0` is brought to the normal form `u'' = r u`
 //! with `y = u exp(-½ ∫ a1/a2)`, `r = p²/4 + p'/2 - q` (`p = a1/a2`,
-//! `q = a0/a2`). Kovacic's first case looks for a solution
+//! `q = a0/a2`).
+//!
+//! **Case 1** looks for a solution
 //! `u = P exp(∫ω)` with `P` a polynomial and `ω` a rational function built
 //! from the poles of `r`: at a pole of order `1` the contribution is
 //! `1/(x - c)`; of order `2` it is `α/(x - c)` with `α = (1 ± sqrt(1 + 4b))/2`
@@ -14,11 +16,24 @@
 //! the monic `P` of degree `d` with `P'' + 2ωP' + (ω' + ω² - r)P = 0` is
 //! found by exact linear algebra.
 //!
-//! The poles must be rational and the square roots that occur rational.
-//! Cases 2 and 3 (solutions whose logarithmic derivative is algebraic of
-//! degree 2, 4, 6, 12) are not implemented, so an equation with only such
-//! solutions is not solved here. The second solution comes from reduction
-//! of order in the caller.
+//! **Case 2** (`ω` algebraic of degree 2) uses the exponent sets
+//! `{4}`, `{2 + k sqrt(1 + 4b)}`, … at each pole and infinity and the
+//! third-order equation for `P`.
+//!
+//! **Case 3** (finite primitive monodromy, `ω` algebraic of degree
+//! `n = 4, 6, 12`) uses poles of order one or two, the exponent sets `{12}`
+//! and `{6 + 12 k sqrt(1 + 4b)/n}`, `θ = (n/12) Σ e_c f'/f`, `S = Π f`, and
+//! the recursion (derived and checked on the Schwarz triples
+//! `(1/2, 1/3, 1/3)`, `(1/2, 1/3, 1/4)`, `(1/2, 1/3, 1/5)`)
+//! `p_n = -P`, `p_{k-1} = (n - k) S' p_k - Sθ p_k - S p_k' - (k + 1)(n - k)
+//! S² r p_{k+1}`, `p_{-1} = 0`, linear in `P`; `ω` is then a root of
+//! `Σ_k S^k p_k ω^k / (n - k)!`, which is returned as a `root_of` object.
+//!
+//! The poles may be rational or conjugate algebraic numbers (an irreducible
+//! factor `f` of the denominator, contributing `α f'/f`) as long as the
+//! local data (`α`, the exponents) are rational and shared by the conjugates;
+//! the square roots that occur must be rational. The second solution of
+//! case 1 comes from reduction of order in the caller.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -193,7 +208,7 @@ impl Loc {
         (self.f.len() == 2).then(|| -self.f.first().cloned().unwrap_or_else(Q::zero))
     }
 
-    fn degree(&self) -> usize {
+    const fn degree(&self) -> usize {
         self.f.len().saturating_sub(1)
     }
 
@@ -546,7 +561,7 @@ fn case_one(
             | Some(c) => pole_options(r, &c, order)?,
             | None => algebraic_pole_options(r, &loc, order)?,
         };
-        poles.push(Pole { options, loc });
+        poles.push(Pole { loc, options });
     }
     let infinity = infinity_options(r)?;
     // Enumerate the families.

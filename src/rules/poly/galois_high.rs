@@ -70,7 +70,7 @@ pub struct Analysis {
 impl Analysis {
     /// Number of roots.
     #[must_use]
-    pub fn degree(&self) -> usize {
+    pub const fn degree(&self) -> usize {
         self.monic.len().saturating_sub(1)
     }
 
@@ -157,12 +157,12 @@ pub fn discriminant(g: &[BigInt]) -> Option<BigInt> {
     // n-1 rows of g (descending coefficients), n rows of g'.
     for r in 0..n - 1 {
         for (k, c) in g.iter().rev().enumerate() {
-            *matrix.get_mut(r)?.get_mut(r + k)? = c.clone();
+            matrix.get_mut(r)?.get_mut(r + k)?.clone_from(c);
         }
     }
     for r in 0..n {
         for (k, c) in derivative.iter().rev().enumerate() {
-            *matrix.get_mut(n - 1 + r)?.get_mut(r + k)? = c.clone();
+            matrix.get_mut(n - 1 + r)?.get_mut(r + k)?.clone_from(c);
         }
     }
     let resultant = bareiss(matrix)?;
@@ -186,30 +186,31 @@ fn bareiss(mut m: Vec<Vec<BigInt>>) -> Option<BigInt> {
                 *m.get_mut(i)?.get_mut(j)? = value;
             }
         }
-        previous = m.get(k)?.get(k)?.clone();
+        previous.clone_from(m.get(k)?.get(k)?);
     }
     Some(sign * m.get(n - 1)?.get(n - 1)?.clone())
+}
+
+fn heap_permutations(
+    k: usize,
+    a: &mut [u8],
+    out: &mut Vec<Vec<u8>>,
+) {
+    if k <= 1 {
+        out.push(a.to_vec());
+        return;
+    }
+    for i in 0..k {
+        heap_permutations(k - 1, a, out);
+        let j = if k.is_multiple_of(2) { i } else { 0 };
+        a.swap(j, k - 1);
+    }
 }
 
 fn all_permutations(n: usize) -> Vec<Vec<u8>> {
     let mut out = Vec::new();
     let mut current: Vec<u8> = (0..n).map(|i| u8::try_from(i).unwrap_or(0)).collect();
-    fn heap(
-        k: usize,
-        a: &mut Vec<u8>,
-        out: &mut Vec<Vec<u8>>,
-    ) {
-        if k <= 1 {
-            out.push(a.clone());
-            return;
-        }
-        for i in 0..k {
-            heap(k - 1, a, out);
-            let j = if k % 2 == 0 { i } else { 0 };
-            a.swap(j, k - 1);
-        }
-    }
-    heap(n, &mut current, &mut out);
+    heap_permutations(n, &mut current, &mut out);
     out
 }
 
@@ -252,10 +253,12 @@ fn orbit_sum(
     Some(total)
 }
 
-/// The Galois group of the irreducible polynomial `c` (ascending, degree 6
-/// or 7) and a labelling of its roots; `None` for other degrees, when the
-/// polynomial is not in range of the working precision, or when the test is
-/// inconclusive.
+/// The Galois group of the irreducible polynomial `c` and a labelling of
+/// its roots.
+///
+/// The degree is 6 or 7 (ascending coefficients); the result is `None` for
+/// other degrees, when the polynomial is not in range of the working
+/// precision, or when the test is inconclusive.
 #[must_use]
 pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
     let n = c.len().checked_sub(1)?;
@@ -280,7 +283,7 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
                     let t = r.add(&r.mul(r).mul(&Fx::integer(&BigInt::from(k))));
                     let mut row = vec![Fx::integer(&BigInt::one())];
                     for _ in 1..=max_exponent {
-                        let next = row.last().map(|last| last.mul(&t)).unwrap_or_else(Fx::zero);
+                        let next = row.last().map_or_else(Fx::zero, |last| last.mul(&t));
                         row.push(next);
                     }
                     row
@@ -505,7 +508,7 @@ fn build_tower(
         .map(|t| {
             let mut row = vec![Fx::integer(&BigInt::one())];
             for _ in 1..k {
-                let next = row.last().map(|l| l.mul(t)).unwrap_or_else(Fx::zero);
+                let next = row.last().map_or_else(Fx::zero, |l| l.mul(t));
                 row.push(next);
             }
             row
@@ -626,9 +629,9 @@ fn primitive_root(p: u64) -> Option<u64> {
     let mut m = p - 1;
     let mut d = 2;
     while d * d <= m {
-        if m % d == 0 {
+        if m.is_multiple_of(d) {
             factors.push(d);
-            while m % d == 0 {
+            while m.is_multiple_of(d) {
                 m /= d;
             }
         }
@@ -653,7 +656,7 @@ fn primitive_root(p: u64) -> Option<u64> {
 }
 
 fn is_prime(p: u64) -> bool {
-    p >= 2 && (2..).take_while(|d| d * d <= p).all(|d| p % d != 0)
+    p >= 2 && (2..=p).take_while(|d| d * d <= p).all(|d| !p.is_multiple_of(d))
 }
 
 /// Gauss-period form of the roots of a cyclic polynomial with all roots
@@ -694,7 +697,7 @@ pub fn cyclotomic(analysis: &Analysis) -> Option<Cyclotomic> {
             let coset = |k: u64| -> Vec<u64> { (0..size).map(|t| power(e * k + n_u64 * t)).collect() };
             let eta: Vec<BigInt> = (0..n_u64).map(|k| coset(k).iter().map(|&j| cos_table.get(usize::try_from(j).unwrap_or(0)).cloned().unwrap_or_default()).sum()).collect();
             let matrix: Vec<Vec<Fx>> = (0..n)
-                .map(|k| (0..n).map(|t| eta.get((k + t) % n).cloned().map(Fx::real).unwrap_or_else(Fx::zero)).collect())
+                .map(|k| (0..n).map(|t| eta.get((k + t) % n).cloned().map_or_else(Fx::zero, Fx::real)).collect())
                 .collect();
             let rhs: Vec<Vec<Fx>> = (0..n)
                 .map(|k| analysis.ordering.get(k).and_then(|&i| analysis.roots.get(i)).map(|r| vec![Fx::real(r.re.clone())]))
