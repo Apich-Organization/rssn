@@ -182,8 +182,9 @@ fn unsupported_combinations_are_errors() {
     assert!(heat_bath_direction::<0>(&mut rng0, &[], 1.0).is_err());
     let mut h = OnModel::<2, 1>::new([4, 4], true, 1.0, 1).unwrap();
     h.field = 0.3;
+    assert!(h.wolff_step().is_ok());
+    h.j = -1.0;
     assert!(h.wolff_step().is_err());
-    assert!(h.swendsen_wang_step().is_err());
     assert!(Potts::<2>::new([4, 4], true, 1, 1.0, 1).is_err());
 }
 
@@ -555,4 +556,61 @@ fn replica_exchange_wang_landau_for_continuous_spins_matches_open_chain() {
     let mut bad = opt;
     bad.walkers = 0;
     assert!(replica_exchange_wang_landau::<1, 3>([6], false, &bad).is_err());
+}
+
+#[test]
+fn wolff_and_swendsen_wang_with_a_field_reproduce_exact_ising_averages() {
+    // 4x4 periodic Ising in a field: exact canonical averages by enumeration
+    let (beta, h) = (0.45, 0.3);
+    let dims = [4usize, 4];
+    let n = 16;
+    let bonds: Vec<(usize, usize)> = (0..n).flat_map(|i| [(i, (i / 4) * 4 + (i % 4 + 1) % 4), (i, ((i / 4 + 1) % 4) * 4 + i % 4)]).collect();
+    let (mut z, mut e_acc, mut m_acc) = (0.0, 0.0, 0.0);
+    for state in 0u32..(1 << n) {
+        let s: Vec<f64> = (0..n).map(|i| if (state >> i) & 1 == 1 { 1.0 } else { -1.0 }).collect();
+        let mag: f64 = s.iter().sum();
+        let e = -bonds.iter().map(|&(i, j)| s[i] * s[j]).sum::<f64>() - h * mag;
+        let w = (-beta * e).exp();
+        z += w;
+        e_acc += w * e;
+        m_acc += w * mag;
+    }
+    let (e_ex, m_ex) = (e_acc / z / n as f64, m_acc / z / n as f64);
+    for upd in [Update::Wolff, Update::SwendsenWang] {
+        let mut model = OnModel::<2, 1>::new(dims, true, beta, 77).unwrap();
+        model.field = h;
+        let (mut es, mut ms) = (Vec::new(), Vec::new());
+        for k in 0..60_000 {
+            model.update(upd).unwrap();
+            if k > 2000 {
+                es.push(model.energy() / n as f64);
+                ms.push(model.magnetisation()[0] / n as f64);
+            }
+        }
+        let (e, ee) = mean_and_error(&es);
+        let (m, me) = mean_and_error(&ms);
+        assert!((e - e_ex).abs() < 5.0 * ee + 2e-3, "{upd:?}: e = {e} +- {ee} vs {e_ex}");
+        assert!((m - m_ex).abs() < 5.0 * me + 2e-3, "{upd:?}: m = {m} +- {me} vs {m_ex}");
+    }
+}
+
+#[test]
+fn cluster_updates_with_a_field_agree_with_heat_bath_for_o_n_models() {
+    fn check<const N: usize>(seed: u64) {
+        let mut a = OnModel::<2, N>::new([5, 5], true, 0.6, seed).unwrap();
+        let mut b = OnModel::<2, N>::new([5, 5], true, 0.6, seed + 1).unwrap();
+        let mut c = OnModel::<2, N>::new([5, 5], true, 0.6, seed + 2).unwrap();
+        for m in [&mut a, &mut b, &mut c] {
+            m.field = -0.4;
+        }
+        let (ea, ma) = series_on(&mut a, Update::HeatBath, 1000, 30_000);
+        let (eb, mb) = series_on(&mut b, Update::Wolff, 1000, 30_000);
+        let (ec, mc) = series_on(&mut c, Update::SwendsenWang, 1000, 30_000);
+        agree(&ea, &eb, 5.0, 0.01);
+        agree(&ma, &mb, 5.0, 0.01);
+        agree(&ea, &ec, 5.0, 0.01);
+        agree(&ma, &mc, 5.0, 0.01);
+    }
+    check::<2>(500);
+    check::<3>(510);
 }
