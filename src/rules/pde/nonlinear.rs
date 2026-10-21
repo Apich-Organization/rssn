@@ -243,22 +243,27 @@ fn riemann(
     let curvature = derivative(cx.graph, speed_w, w)?;
     let w_symbol = cx.graph.symbol_of(w)?;
     let mut convex: Option<bool> = None;
+    let mut mixed = false;
     for k in 0..=8_u32 {
         let value = vl + (vr - vl) * f64::from(k) / 8.0;
         let mut env = crate::graph::Env::numeric(0.0);
         env.bind(w_symbol, value);
         let c = cx.graph.eval(curvature, &env).filter(|v| v.is_finite())?;
         if c.abs() < 1e-12 {
-            return None;
+            mixed = true;
+            continue;
         }
         match convex {
             | None => convex = Some(c > 0.0),
-            | Some(known) if known != (c > 0.0) => return None,
+            | Some(known) if known != (c > 0.0) => mixed = true,
             | Some(_) => {},
         }
     }
-    let shock = convex? == (vl > vr);
     let shifted = sub(cx.graph, x, x0);
+    if mixed {
+        return hull_riemann(cx, (ul, ur), (vl, vr), speed_w, w, shifted, t);
+    }
+    let shock = convex? == (vl > vr);
     if shock {
         // s = (f(u_r) - f(u_l))/(u_r - u_l) with f' = speed.
         let flux = antiderivative(cx, speed_w, w)?;
@@ -475,4 +480,197 @@ pub(super) fn nls_soliton(
     let carrier = call(cx, "exp", &[exponent])?;
     let psi = mul(cx.graph, &[amplitude, carrier]);
     Some(cx.simplify(psi))
+}
+
+/// One wave of a Riemann solution.
+enum Wave {
+    Shock { from: f64, to: f64, speed: f64 },
+    Fan { from: f64, to: f64 },
+}
+
+fn snapped_value(
+    cx: &mut Cx<'_>,
+    v: f64,
+) -> NodeId {
+    for q in 1..=24_i64 {
+        #[allow(clippy::cast_precision_loss)]
+        let scaled = (v * q as f64).round();
+        #[allow(clippy::cast_precision_loss)]
+        if (v * q as f64 - scaled).abs() < 1e-7 {
+            #[allow(clippy::cast_possible_truncation)]
+            if let Some(n) = crate::graph::Number::fraction(scaled as i64, q) {
+                return cx.graph.num(n);
+            }
+        }
+    }
+    cx.graph.num(crate::graph::Number::from(v))
+}
+
+/// The Riemann problem for a flux that is neither convex nor concave
+/// between the states: the waves follow the lower convex envelope of the
+/// flux on `[u_l, u_r]` (for `u_l < u_r`) or the upper concave envelope (for
+/// `u_l > u_r`) — chords of the envelope are shocks or contact
+/// discontinuities (Oleinik), its curved parts rarefaction fans. The
+/// envelope is found on a fine grid and the tangent points refined.
+#[allow(clippy::too_many_lines)]
+fn hull_riemann(
+    cx: &mut Cx<'_>,
+    (ul, ur): (NodeId, NodeId),
+    (vl, vr): (f64, f64),
+    speed_w: NodeId,
+    w: NodeId,
+    shifted: NodeId,
+    t: NodeId,
+) -> Option<NodeId> {
+    const CELLS: usize = 4000;
+    let flux = antiderivative(cx, speed_w, w)?;
+    let w_symbol = cx.graph.symbol_of(w)?;
+    let at = |cx: &Cx<'_>, node: NodeId, v: f64| -> Option<f64> {
+        let mut env = crate::graph::Env::numeric(0.0);
+        env.bind(w_symbol, v);
+        cx.graph.eval(node, &env).filter(|x| x.is_finite())
+    };
+    let (lo, hi) = (vl.min(vr), vl.max(vr));
+    let sign = if vl < vr { 1.0 } else { -1.0 };
+    let us: Vec<f64> = (0..=CELLS).map(|k| lo + (hi - lo) * k as f64 / CELLS as f64).collect();
+    let fs: Vec<f64> = us.iter().map(|&u| at(cx, flux, u)).collect::<Option<_>>()?;
+    // The lower hull of (u, sign f).
+    let g = |k: usize| sign * fs.get(k).copied().unwrap_or(0.0);
+    let scale = fs.iter().fold(0.0_f64, |a, b| a.max(b.abs())).max(1e-300);
+    let mut hull: Vec<usize> = Vec::new();
+    for k in 0..=CELLS {
+        while hull.len() >= 2 {
+            let (a, b) = (hull[hull.len() - 2], hull[hull.len() - 1]);
+            let cross = (us[b] - us[a]) * (g(k) - g(a)) - (g(b) - g(a)) * (us[k] - us[a]);
+            if cross <= 1e-12 * scale * (hi - lo) {
+                hull.pop();
+            } else {
+                break;
+            }
+        }
+        hull.push(k);
+    }
+    // The waves in order from the left state.
+    let mut edges: Vec<(usize, usize)> = hull.windows(2).map(|pair| (pair[0], pair[1])).collect();
+    if vl > vr {
+        edges.reverse();
+    }
+    let mut waves: Vec<Wave> = Vec::new();
+    for &(a, b) in &edges {
+        let (from_index, to_index) = if vl < vr { (a, b) } else { (b, a) };
+        let (from, to) = (us[from_index], us[to_index]);
+        if b - a >= 3 {
+            let speed = (fs[b] - fs[a]) / (us[b] - us[a]);
+            waves.push(Wave::Shock { from, to, speed });
+        } else if let Some(Wave::Fan { to: end, .. }) = waves.last_mut() {
+            *end = to;
+        } else {
+            waves.push(Wave::Fan { from, to });
+        }
+    }
+    // Refine the tangent points of chords whose other end is a given state.
+    let refine = |cx: &Cx<'_>, fixed: f64, near: f64| -> Option<f64> {
+        let step = (hi - lo) * 6.0 / CELLS as f64;
+        let (mut a, mut b) = ((near - step).max(lo), (near + step).min(hi));
+        let slope = |cx: &Cx<'_>, v: f64| -> Option<f64> {
+            let fv = at(cx, flux, v)?;
+            let ff = at(cx, flux, fixed)?;
+            Some(sign * (fv - ff) / (v - fixed))
+        };
+        for _ in 0..80 {
+            let (m1, m2) = (a + (b - a) / 3.0, b - (b - a) / 3.0);
+            if (slope(cx, m1)? < slope(cx, m2)?) == (near > fixed) {
+                b = m2;
+            } else {
+                a = m1;
+            }
+        }
+        Some(0.5 * (a + b))
+    };
+    // Chord ends: refine against a fixed outer state.
+    for wave in &mut waves {
+        if let Wave::Shock { from, to, speed } = wave {
+            let from_fixed = (*from - vl).abs() < 1e-12;
+            let to_fixed = (*to - vr).abs() < 1e-12;
+            if from_fixed && !to_fixed {
+                if let Some(r) = refine(cx, *from, *to) {
+                    *to = r;
+                }
+            } else if to_fixed && !from_fixed {
+                if let Some(r) = refine(cx, *to, *from) {
+                    *from = r;
+                }
+            }
+            let (ff, ft) = (at(cx, flux, *from)?, at(cx, flux, *to)?);
+            *speed = (ft - ff) / (*to - *from);
+        }
+    }
+    // Make consecutive states agree after the refinement.
+    for index in 1..waves.len() {
+        let previous_end = match &waves[index - 1] {
+            | Wave::Shock { to, .. } | Wave::Fan { to, .. } => *to,
+        };
+        match &mut waves[index] {
+            | Wave::Shock { from, .. } | Wave::Fan { from, .. } => *from = previous_end,
+        }
+    }
+    // Assemble the solution by the Heaviside functions of the fronts.
+    let one = cx.graph.int(1);
+    let mut terms = vec![ul];
+    let front = |cx: &mut Cx<'_>, speed: NodeId| {
+        let st = mul(cx.graph, &[speed, t]);
+        let argument = sub(cx.graph, shifted, st);
+        call(cx, "heaviside", &[argument])
+    };
+    let xi = {
+        let q = div(cx, shifted, t);
+        cx.simplify(q)
+    };
+    for wave in &waves {
+        match *wave {
+            | Wave::Shock { from, to, speed } => {
+                let (n_speed, jump) = (snapped_value(cx, speed), snapped_value(cx, to - from));
+                let h = front(cx, n_speed)?;
+                terms.push(mul(cx.graph, &[jump, h]));
+            },
+            | Wave::Fan { from, to } => {
+                let (s_left, s_right) = (at(cx, speed_w, from)?, at(cx, speed_w, to)?);
+                let (n_left, n_right) = (snapped_value(cx, s_left), snapped_value(cx, s_right));
+                let (n_from, n_to) = (snapped_value(cx, from), snapped_value(cx, to));
+                // The inverse of the flux derivative on [from, to].
+                let marker = cx.graph.sym("xi_fan");
+                let equation = sub(cx.graph, speed_w, marker);
+                let roots = solve_for(cx.graph, equation, w, 0)?;
+                let middle = 0.5 * (from + to);
+                let speed_middle = at(cx, speed_w, middle)?;
+                let marker_symbol = cx.graph.symbol_of(marker)?;
+                let mut best: Option<(f64, NodeId)> = None;
+                for root in roots {
+                    let mut env = crate::graph::Env::numeric(0.0);
+                    env.bind(marker_symbol, speed_middle);
+                    if let Some(v) = cx.graph.eval(root, &env).filter(|v| v.is_finite()) {
+                        let distance = (v - middle).abs();
+                        if best.is_none_or(|(d, _)| distance < d) {
+                            best = Some((distance, root));
+                        }
+                    }
+                }
+                let (_, root) = best?;
+                let inverse = cx.graph.substitute(root, marker, xi);
+                let h_left = front(cx, n_left)?;
+                let h_right = front(cx, n_right)?;
+                let inside = {
+                    let rise = sub(cx.graph, inverse, n_from);
+                    let not_right = sub(cx.graph, one, h_right);
+                    mul(cx.graph, &[rise, h_left, not_right])
+                };
+                terms.push(inside);
+                let jump = sub(cx.graph, n_to, n_from);
+                terms.push(mul(cx.graph, &[jump, h_right]));
+            },
+        }
+    }
+    let u = add(cx.graph, &terms);
+    let _ = ur;
+    Some(cx.simplify(u))
 }

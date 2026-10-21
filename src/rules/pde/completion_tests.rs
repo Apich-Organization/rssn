@@ -902,3 +902,19 @@ fn wave_kernels_mellin_and_nls_soliton() {
     let residual = num_complex::Complex64::new(0.0, 1.0) * u_t + 0.5 * u_xx + psi(x, t).norm_sqr() * psi(x, t);
     close(residual.norm(), 0.0, 5e-4, &s);
 }
+
+#[test]
+fn riemann_problem_with_a_non_convex_flux() {
+    // u_t + (u³)_x = 0: from -1 to 1 a shock of speed 3/4 to the tangent state 1/2 followed by a fan
+    // u = sqrt(ξ/3); from 1 to -1 the mirror image.
+    let eq = "diff(u(x, t), t) + 3*u(x, t)^2*diff(u(x, t), x) = 0";
+    let s = any(&format!("pdsolve({eq}, u(x, t), list(u(x, 0) = -1 + 2*heaviside(x)))"));
+    close(value(&rhs(&s), &[("x", 0.5), ("t", 1.0)]), -1.0, 1e-9, &s);
+    close(value(&rhs(&s), &[("x", 1.5), ("t", 1.0)]), 0.5_f64.sqrt(), 1e-9, &s);
+    close(value(&rhs(&s), &[("x", 2.5), ("t", 1.0)]), (2.5_f64 / 3.0).sqrt(), 1e-9, &s);
+    close(value(&rhs(&s), &[("x", 4.0), ("t", 1.0)]), 1.0, 1e-9, &s);
+    let s = any(&format!("pdsolve({eq}, u(x, t), list(u(x, 0) = 1 - 2*heaviside(x)))"));
+    close(value(&rhs(&s), &[("x", 0.5), ("t", 1.0)]), 1.0, 1e-9, &s);
+    close(value(&rhs(&s), &[("x", 1.5), ("t", 1.0)]), -0.5_f64.sqrt(), 1e-9, &s);
+    close(value(&rhs(&s), &[("x", 4.0), ("t", 1.0)]), -1.0, 1e-9, &s);
+}
