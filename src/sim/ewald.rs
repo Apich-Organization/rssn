@@ -9,6 +9,7 @@
 //! |---|---|---|
 //! | [`ewald_reciprocal`] | `O(N K^3)` | direct reciprocal sum, energy, forces and virial |
 //! | [`pme_reciprocal`] | `O(N p^3 + K^3 log K)` | cardinal B-spline (even order) charge spreading, 3-D FFT from [`crate::kernels::fftconv`], analytic spline-derivative forces |
+//! | [`p3m_reciprocal_cell`] | `O(N p^3 + K^3 log K)` | **P3M** with the optimal Hockney-Eastwood influence function (alias sums), `ik` differentiation, triclinic cells; clearly smaller force errors than smooth PME on the same mesh |
 //! | [`ewald_energy_forces`] | `O(N^2 + N K^3)` | full reference (real space with minimum image, needs `r_cut <= L/2`) |
 //! | [`ewald_reciprocal_cell`], [`pme_reciprocal_cell`], [`ewald_energy_forces_cell`] | as above | **triclinic cells** (rows of `h` are the lattice vectors): reciprocal basis, fractional-coordinate B-splines with the `h^-1` chain rule, real-space sum over all images within `r_cut` |
 //!
@@ -493,6 +494,165 @@ pub fn pme_reciprocal_cell(
     Ok(Recip { energy, forces, virial })
 }
 
+/// P3M reciprocal-space energy, forces and virial with the **optimal (Hockney-Eastwood)
+/// influence function** for a general triclinic cell.
+///
+/// Charges are assigned with cardinal B-splines of even `order` on a mesh in fractional
+/// coordinates; the influence function minimises the rms force error over all charge
+/// configurations for `ik` differentiation,
+/// `G(k) = sum_m U^2(k_m) (k . k_m) R(k_m) / (k^2 [sum_m U^2(k_m)]^2)` with
+/// `R(k) = 4 pi exp(-k^2/4 alpha^2)/k^2`, `U` the transform of the assignment function and the sum
+/// running over the `(2 n_alias + 1)^3` aliases `k_m = k + m K b`. The field is obtained by
+/// `ik` differentiation of the mesh potential (three inverse FFTs) and interpolated with the
+/// assignment function; the virial uses the analytic Ewald reciprocal form with the optimal `G`
+/// (exact up to the aliasing error). The self and neutralising-background terms are included.
+///
+/// # Errors
+/// Fails for a singular cell, an odd or too small spline order, or a mesh smaller than the order.
+pub fn p3m_reciprocal_cell(
+    pos: &[[f64; 3]],
+    q: &[f64],
+    h: &[[f64; 3]; 3],
+    alpha: f64,
+    grid: [usize; 3],
+    order: usize,
+    kc: f64,
+) -> Result<Recip, String> {
+    const N_ALIAS: i64 = 2;
+    if order < 2 || !order.is_multiple_of(2) || grid.iter().any(|&g| g < order) {
+        return Err("P3M needs an even spline order >= 2 and meshes at least as large".into());
+    }
+    let vol = det3(h).abs();
+    let hinv = inv3(h).ok_or("singular cell matrix")?;
+    let bvec = reciprocal_basis(h)?;
+    let n = pos.len();
+    let total = grid[0] * grid[1] * grid[2];
+    let idx = |i: usize, j: usize, k: usize| (i * grid[1] + j) * grid[2] + k;
+    // charge assignment
+    let mut qg = vec![(0.0, 0.0); total];
+    let mut spl: Vec<([i64; 3], [Vec<f64>; 3])> = Vec::with_capacity(n);
+    for i in 0..n {
+        let mut base = [0i64; 3];
+        let mut w: [Vec<f64>; 3] = [vec![], vec![], vec![]];
+        for a in 0..3 {
+            let s = pos[i][0] * hinv[0][a] + pos[i][1] * hinv[1][a] + pos[i][2] * hinv[2][a];
+            let u = (s - s.floor()) * grid[a] as f64;
+            let fl = u.floor();
+            base[a] = fl as i64;
+            for j in 0..order {
+                w[a].push(bspline(order, u - fl + j as f64));
+            }
+        }
+        for jx in 0..order {
+            for jy in 0..order {
+                for jz in 0..order {
+                    let ix = (base[0] - jx as i64).rem_euclid(grid[0] as i64) as usize;
+                    let iy = (base[1] - jy as i64).rem_euclid(grid[1] as i64) as usize;
+                    let iz = (base[2] - jz as i64).rem_euclid(grid[2] as i64) as usize;
+                    qg[idx(ix, iy, iz)].0 += q[i] * w[0][jx] * w[1][jy] * w[2][jz];
+                }
+            }
+        }
+        spl.push((base, w));
+    }
+    fft3(&mut qg, grid, false);
+    let signed = |m: usize, k: usize| if m <= k / 2 { m as i64 } else { m as i64 - k as i64 };
+    let sinc_pow = |x: f64| -> f64 {
+        if x.abs() < 1e-12 {
+            1.0
+        } else {
+            (x.sin() / x).powi(2 * order as i32)
+        }
+    };
+    let kvec = |m: [i64; 3]| -> [f64; 3] {
+        std::array::from_fn(|c| m[0] as f64 * bvec[0][c] + m[1] as f64 * bvec[1][c] + m[2] as f64 * bvec[2][c])
+    };
+    let four_alpha2 = 4.0 * alpha * alpha;
+    let pref = kc / (2.0 * vol);
+    let mut energy = charge_terms(q, vol, alpha, kc);
+    let mut virial = [[0.0; 3]; 3];
+    let mut phi = vec![(0.0, 0.0); total];
+    for i in 0..grid[0] {
+        for j in 0..grid[1] {
+            for k in 0..grid[2] {
+                if i == 0 && j == 0 && k == 0 {
+                    continue;
+                }
+                let nn = [signed(i, grid[0]), signed(j, grid[1]), signed(k, grid[2])];
+                let kv = kvec(nn);
+                let k2 = kv[0] * kv[0] + kv[1] * kv[1] + kv[2] * kv[2];
+                let (mut num, mut den) = (0.0, 0.0);
+                for ax in -N_ALIAS..=N_ALIAS {
+                    for ay in -N_ALIAS..=N_ALIAS {
+                        for az in -N_ALIAS..=N_ALIAS {
+                            let m = [nn[0] + ax * grid[0] as i64, nn[1] + ay * grid[1] as i64, nn[2] + az * grid[2] as i64];
+                            let km = kvec(m);
+                            let km2 = km[0] * km[0] + km[1] * km[1] + km[2] * km[2];
+                            let u2 = sinc_pow(std::f64::consts::PI * m[0] as f64 / grid[0] as f64)
+                                * sinc_pow(std::f64::consts::PI * m[1] as f64 / grid[1] as f64)
+                                * sinc_pow(std::f64::consts::PI * m[2] as f64 / grid[2] as f64);
+                            den += u2;
+                            num += u2 * (kv[0] * km[0] + kv[1] * km[1] + kv[2] * km[2]) * 4.0 * PI * (-km2 / four_alpha2).exp() / km2;
+                        }
+                    }
+                }
+                let g = num / (k2 * den * den);
+                let f = qg[idx(i, j, k)];
+                let ek = pref * g * (f.0 * f.0 + f.1 * f.1);
+                energy += ek;
+                let w = -2.0 * (1.0 / k2 + 1.0 / four_alpha2);
+                for x in 0..3 {
+                    for y in 0..3 {
+                        virial[x][y] += ek * (if x == y { 1.0 } else { 0.0 } + w * kv[x] * kv[y]);
+                    }
+                }
+                phi[idx(i, j, k)] = (g * f.0, g * f.1);
+            }
+        }
+    }
+    // ik differentiation: E_c(k) = -i k_c phi(k); Nyquist components of the derivative vanish
+    let ntot = total as f64;
+    let mut fields: Vec<Vec<(f64, f64)>> = Vec::with_capacity(3);
+    for c in 0..3 {
+        let mut ec = vec![(0.0, 0.0); total];
+        for i in 0..grid[0] {
+            for j in 0..grid[1] {
+                for k in 0..grid[2] {
+                    let nn = [signed(i, grid[0]), signed(j, grid[1]), signed(k, grid[2])];
+                    let nyq = (grid[0] % 2 == 0 && i == grid[0] / 2) || (grid[1] % 2 == 0 && j == grid[1] / 2) || (grid[2] % 2 == 0 && k == grid[2] / 2);
+                    if nyq {
+                        continue;
+                    }
+                    let kv = kvec(nn);
+                    let p = phi[idx(i, j, k)];
+                    // -i k_c (a + i b) = k_c b - i k_c a
+                    ec[idx(i, j, k)] = (kv[c] * p.1, -kv[c] * p.0);
+                }
+            }
+        }
+        fft3(&mut ec, grid, true);
+        fields.push(ec);
+    }
+    let mut forces = vec![[0.0; 3]; n];
+    for i in 0..n {
+        let (base, w) = &spl[i];
+        for jx in 0..order {
+            for jy in 0..order {
+                for jz in 0..order {
+                    let ix = (base[0] - jx as i64).rem_euclid(grid[0] as i64) as usize;
+                    let iy = (base[1] - jy as i64).rem_euclid(grid[1] as i64) as usize;
+                    let iz = (base[2] - jz as i64).rem_euclid(grid[2] as i64) as usize;
+                    let wt = w[0][jx] * w[1][jy] * w[2][jz];
+                    for c in 0..3 {
+                        forces[i][c] += q[i] * wt * fields[c][idx(ix, iy, iz)].0 * ntot * kc / vol;
+                    }
+                }
+            }
+        }
+    }
+    Ok(Recip { energy, forces, virial })
+}
+
 /// Force callback adding the direct-Ewald reciprocal, self and background terms to an MD force evaluation.
 #[must_use]
 pub fn ewald_extra(
@@ -551,4 +711,29 @@ pub fn real_space_pair(
     kc: f64,
 ) -> f64 {
     kc * qq * erfc_numerical(alpha * r) / r
+}
+
+/// Force callback adding the P3M reciprocal (optimal influence function), self and background terms.
+#[must_use]
+pub fn p3m_extra(
+    alpha: f64,
+    grid: [usize; 3],
+    order: usize,
+    kc: f64,
+) -> ExtraForce<3> {
+    Box::new(move |sys, out| {
+        let h = sys.bx.cell.unwrap_or_else(|| diag_cell(sys.bx.len));
+        let r = p3m_reciprocal_cell(&sys.pos, &sys.charge, &h, alpha, grid, order, kc).unwrap_or_else(|_| failed_recip(sys.pos.len()));
+        out.epot += r.energy;
+        for (f, g) in out.f.iter_mut().zip(&r.forces) {
+            for a in 0..3 {
+                f[a] += g[a];
+            }
+        }
+        for a in 0..3 {
+            for b in 0..3 {
+                out.virial[a][b] += r.virial[a][b];
+            }
+        }
+    })
 }
