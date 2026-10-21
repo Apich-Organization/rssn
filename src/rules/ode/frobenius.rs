@@ -25,6 +25,12 @@
 //!   The answer is truncated, with the order written as `big_o(t^n)`.
 //!   Exponents must be rational (the discriminant of the indicial
 //!   polynomial a rational square).
+//! * **Irregular points of any rank** (and ramified, irrational or
+//!   algebraic cases) are expanded by the Newton-polygon method of
+//!   [`super::formal`] when the rank-one search fails: the result carries
+//!   `exp(Σ κ_s v^{-s}) v^ρ Σ c_k v^k` with `v^r = x - x0` (or `1/x`), `κ`
+//!   and `ρ` possibly algebraic (`root_of` objects), and `ode_frobenius`
+//!   lists `(exponent part, ρ)` pairs and an empty recurrence.
 //! * `ode_frobenius(eq, y(x), x0, n)` returns
 //!   `list(y(x) = C1 y1 + C2 y2, list(r1, r2), recurrence)` where the
 //!   recurrence is the explicit finite-order relation
@@ -44,6 +50,9 @@ use super::mul;
 use super::neg;
 use super::reduce::fresh_function;
 use super::reduce::linear_second_order;
+use super::formal::FormalSolution;
+use super::formal::Point as FormalPoint;
+use super::formal::formal_solutions as formal_solutions_newton;
 use crate::graph::Cx;
 use crate::graph::Graph;
 use crate::graph::NodeId;
@@ -587,6 +596,158 @@ pub(super) enum Local {
     Quadratic { centre: Option<Q>, data: QuadraticData },
     /// Irregular singular: two formal solutions with exponential factors.
     Formal { centre: Option<Q>, items: Vec<Formal> },
+    /// Newton-polygon expansion (any Poincaré rank, ramified, irrational or
+    /// complex exponential parts, algebraic singular points): the
+    /// formal solutions with the index of the embedding of their field.
+    Newton { point: NewtonPoint, items: Vec<(FormalSolution, usize)> },
+}
+
+/// The expansion point of a Newton-polygon expansion.
+#[derive(Clone)]
+pub(super) enum NewtonPoint {
+    /// `x = ∞`.
+    Infinity,
+    /// A rational point.
+    Rational(Q),
+    /// The root number `k` (in the order of `root_of`) of a monic
+    /// irreducible polynomial.
+    Algebraic(Vec<Q>),
+}
+
+/// Newton-polygon expansions at the point (see [`super::formal`]).
+fn newton(
+    p: &[Vec<Q>; 3],
+    n: usize,
+    point: &Point,
+) -> Option<Local> {
+    let operator: &[Vec<Q>] = p;
+    let mut candidates: Vec<(NewtonPoint, FormalPoint)> = Vec::new();
+    match point {
+        | Point::Infinity => candidates.push((NewtonPoint::Infinity, FormalPoint::Infinity)),
+        | Point::Finite(Some(x0)) => candidates.push((NewtonPoint::Rational(x0.clone()), FormalPoint::Finite(vec![-x0.clone(), Q::one()]))),
+        | Point::Finite(None) => {
+            let mut rational = vec![Q::zero()];
+            for r in univariate::rational_roots(&p[2]) {
+                if !rational.contains(&r) {
+                    rational.push(r);
+                }
+            }
+            for x0 in rational {
+                candidates.push((NewtonPoint::Rational(x0.clone()), FormalPoint::Finite(vec![-x0, Q::one()])));
+            }
+            let (_, factors) = univariate::factor(&p[2]);
+            for (factor, _) in factors {
+                if factor.len() > 2 {
+                    let lead = Q::from_integer(factor.last().cloned().unwrap_or_else(BigInt::one));
+                    let monic: Vec<Q> = factor.iter().map(|c| Q::from_integer(c.clone()) / &lead).collect();
+                    candidates.push((NewtonPoint::Algebraic(monic.clone()), FormalPoint::Finite(monic)));
+                }
+            }
+        },
+    }
+    for (new_point, formal_point) in candidates {
+        let solutions = formal_solutions_newton(operator, &formal_point, n);
+        let mut items: Vec<(FormalSolution, usize)> = Vec::new();
+        for solution in solutions {
+            for k in 0..solution.field.degree() {
+                items.push((solution.clone(), k));
+            }
+        }
+        if items.len() >= 2 {
+            return Some(Local::Newton { point: new_point, items });
+        }
+    }
+    None
+}
+
+/// The pieces of a Newton-polygon solution as terms: the exponent
+/// `Σ κ_s v^{-s}` (zero when absent), the exponent `ρ`, the truncated series
+/// and the variable `v`.
+fn newton_parts(
+    cx: &mut Cx<'_>,
+    x: NodeId,
+    point: &NewtonPoint,
+    solution: &FormalSolution,
+    k: usize,
+    n: usize,
+) -> Option<(NodeId, NodeId, NodeId, NodeId)> {
+    let root_of = cx.graph.ops().lookup("root_of")?;
+    let alpha = if solution.field.is_rational() {
+        None
+    } else {
+        let mut arguments = vec![cx.graph.int(i64::try_from(k).ok()?)];
+        for c in &solution.field.modulus {
+            arguments.push(node_of(cx.graph, c));
+        }
+        Some(cx.graph.node(root_of, &arguments))
+    };
+    let element = |cx: &mut Cx<'_>, e: &[Q]| -> NodeId {
+        let mut terms = Vec::new();
+        for (i, c) in e.iter().enumerate() {
+            if c.is_zero() {
+                continue;
+            }
+            let cn = node_of(cx.graph, c);
+            match (i, alpha) {
+                | (0, _) => terms.push(cn),
+                | (_, Some(a)) => {
+                    let exponent = cx.graph.int(i64::try_from(i).unwrap_or(0));
+                    let power = cx.graph.node(core::POW, &[a, exponent]);
+                    terms.push(mul(cx.graph, &[cn, power]));
+                },
+                | _ => {},
+            }
+        }
+        add(cx.graph, &terms)
+    };
+    let t = match point {
+        | NewtonPoint::Infinity => local_variable(cx, x, None),
+        | NewtonPoint::Rational(x0) => local_variable(cx, x, Some(x0)),
+        | NewtonPoint::Algebraic(f) => {
+            let mut arguments = vec![cx.graph.int(i64::try_from(k).ok()?)];
+            for c in f {
+                arguments.push(node_of(cx.graph, c));
+            }
+            let a = cx.graph.node(root_of, &arguments);
+            let minus_a = neg(cx.graph, a);
+            cx.graph.node(core::ADD, &[x, minus_a])
+        },
+    };
+    let v = if solution.ramification > 1 {
+        let exponent = cx.graph.num(Number::fraction(1, i64::try_from(solution.ramification).ok()?)?);
+        cx.graph.node(core::POW, &[t, exponent])
+    } else {
+        t
+    };
+    let mut exponent_terms = Vec::new();
+    for (s, kappa) in &solution.exponent {
+        let kn = element(cx, kappa);
+        let e = cx.graph.int(-*s);
+        let power = cx.graph.node(core::POW, &[v, e]);
+        exponent_terms.push(mul(cx.graph, &[kn, power]));
+    }
+    let exponent = add(cx.graph, &exponent_terms);
+    let rho = element(cx, &solution.rho);
+    let mut series_terms = Vec::new();
+    for (j, c) in solution.coefficients.iter().enumerate().take(n) {
+        if c.is_empty() {
+            continue;
+        }
+        let cn = element(cx, c);
+        let power = if j == 0 {
+            cx.graph.int(1)
+        } else {
+            let e = cx.graph.int(i64::try_from(j).ok()?);
+            cx.graph.node(core::POW, &[v, e])
+        };
+        series_terms.push(mul(cx.graph, &[cn, power]));
+    }
+    let order_symbol = cx.graph.ops().lookup("big_o")?;
+    let e = cx.graph.int(i64::try_from(n).ok()?);
+    let tail = cx.graph.node(core::POW, &[v, e]);
+    series_terms.push(cx.graph.node(order_symbol, &[tail]));
+    let series = add(cx.graph, &series_terms);
+    Some((exponent, rho, series, v))
 }
 
 /// The equation in `t = 1/x`: `P2 (t^4 Y'' + 2 t^3 Y') - P1 t^2 Y' + P0 Y`
@@ -737,7 +898,9 @@ fn local(
             if let Some(data) = frobenius_quadratic(&transformed, n) {
                 return Some(Local::Quadratic { centre: None, data });
             }
-            formal_solutions(&transformed, n).map(|items| Local::Formal { centre: None, items })
+            formal_solutions(&transformed, n)
+                .map(|items| Local::Formal { centre: None, items })
+                .or_else(|| newton(p, n, point))
         },
         | Point::Finite(preferred) => {
             let mut points: Vec<Q> = Vec::new();
@@ -767,7 +930,7 @@ fn local(
                     return Some(Local::Formal { centre: Some(x0.clone()), items });
                 }
             }
-            None
+            newton(p, n, point)
         },
     }
 }
@@ -927,6 +1090,24 @@ fn solutions(
             let (&first, &second) = (pair.first()?, pair.get(1)?);
             Some((first, second))
         },
+        | Local::Newton { point, items } => {
+            let exp = cx.graph.ops().lookup("exp")?;
+            let mut nodes = Vec::new();
+            for (solution, k) in items.iter().take(2) {
+                let (exponent, rho, series, v) = newton_parts(cx, x, point, solution, *k, n)?;
+                let mut factors = Vec::new();
+                if !cx.is_zero(exponent) {
+                    factors.push(cx.graph.node(exp, &[exponent]));
+                }
+                if !cx.is_zero(rho) {
+                    factors.push(cx.graph.node(core::POW, &[v, rho]));
+                }
+                factors.push(series);
+                nodes.push(mul(cx.graph, &factors));
+            }
+            let (&first, &second) = (nodes.first()?, nodes.get(1)?);
+            Some((first, second))
+        },
         | Local::Formal { centre, items } => {
             let t = local_variable(cx, x, centre.as_ref());
             let exp = cx.graph.ops().lookup("exp")?;
@@ -1009,6 +1190,41 @@ fn recurrence_node(
     Some(cx.graph.node(core::EQ, &[lhs, zero]))
 }
 
+/// `ode_asymptotic(equation, y(x), x0, n, x1, k)`.
+pub(super) fn asymptotic(
+    cx: &mut Cx<'_>,
+    equation: NodeId,
+    unknown: NodeId,
+    x0: NodeId,
+    n: NodeId,
+    x1: NodeId,
+    which: NodeId,
+) -> Option<NodeId> {
+    let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?).ok().filter(|&n| n <= 400)?;
+    let which = usize::try_from(cx.graph.number_of(which)?.to_i64()?).ok()?;
+    let at = cx.graph.number_of(x1)?.to_f64();
+    let infinity = cx.graph.ops().lookup("oo").is_some_and(|op| cx.graph.op(x0) == op);
+    let centre = if infinity { None } else { Some(cx.graph.number_of(x0)?.to_rational()?) };
+    let point = centre.clone().map_or(Point::Infinity, |c| Point::Finite(Some(c)));
+    let problem = super::parse(cx.graph, equation, unknown)?;
+    let (a, forcing) = linear_second_order(cx, &problem)?;
+    if !cx.is_zero(forcing) {
+        return None;
+    }
+    let p = polynomials(cx, &a, problem.x)?;
+    let Local::Newton { items, .. } = newton(&p, n, &point)? else { return None };
+    let (solution, k) = items.get(which)?;
+    let embeddings = solution.field.embeddings();
+    let alpha = if solution.field.is_rational() { num_complex::Complex64::new(0.0, 0.0) } else { *embeddings.get(*k)? };
+    let t = match &centre {
+        | None => 1.0 / at,
+        | Some(c) => at - c.to_f64()?,
+    };
+    let (value, error) = solution.evaluate(alpha, num_complex::Complex64::new(t, 0.0));
+    let (re, im, err) = (cx.graph.float(value.re), cx.graph.float(value.im), cx.graph.float(error));
+    Some(cx.graph.node(core::LIST, &[re, im, err]))
+}
+
 /// `ode_frobenius(equation, y(x), x0, n)`; `x0` may be `oo`.
 pub(super) fn report(
     cx: &mut Cx<'_>,
@@ -1053,6 +1269,14 @@ pub(super) fn report(
             let minus_offset = neg(cx.graph, offset);
             let (r1, r2) = (add(cx.graph, &[sigma, offset]), add(cx.graph, &[sigma, minus_offset]));
             (cx.graph.node(core::LIST, &[r1, r2]), cx.graph.node(core::LIST, &[]))
+        },
+        | Local::Newton { point, items } => {
+            let mut pairs = Vec::new();
+            for (solution, k) in items {
+                let (exponent, rho, _, _) = newton_parts(cx, x, point, solution, *k, n)?;
+                pairs.push(cx.graph.node(core::LIST, &[exponent, rho]));
+            }
+            (cx.graph.node(core::LIST, &pairs), cx.graph.node(core::LIST, &[]))
         },
         | Local::Formal { items, .. } => {
             let mut pairs = Vec::new();

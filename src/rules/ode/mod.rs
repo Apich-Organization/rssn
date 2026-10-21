@@ -65,10 +65,20 @@
 //!   `P exp(∫ω)` with `P` a polynomial and `ω` rational (case 1), or the
 //!   pair `exp(∫(φ ± sqrt(4r - φ² - 2φ'))/2)` with `φ = θ + P'/P` rational
 //!   (case 2), found from the poles of `r` with exact linear algebra
-//!   (rational poles and rational square roots required); the second
+//!   (rational square roots required); the second
 //!   solution of case 1 is a reduction-of-order quadrature (an inert
-//!   `integral` unless it integrates). Case 3 (octahedral, icosahedral and
-//!   tetrahedral monodromy) is not implemented.
+//!   `integral` unless it integrates). Poles may be conjugate algebraic
+//!   numbers (an irreducible factor of the denominator of `r`) when the
+//!   local data are rational (order one, or order two with a rational
+//!   coefficient of the double pole). Case 3 (tetrahedral `n = 4`,
+//!   octahedral `n = 6`, icosahedral `n = 12` monodromy) finds the
+//!   polynomial `P` by Kovacic's recursion and returns `exp(∫ω)` with
+//!   `ω = root_of(j, c_0(x), …, c_n(x))` a root of the minimal polynomial
+//!   (the index counts the roots in the order of `root_of` at the
+//!   evaluation point, so a solution is a branch on a region where that
+//!   order is constant, and the answer is not spot-checked). Not done: poles
+//!   of order three or more at non-rational points, and irrational local
+//!   data.
 //! * **Hypergeometric matching**: Gauss's equation (`c`, `a + b + 1` and
 //!   `a b` the coefficients of `x(1 - x) y'' + (c - (a + b + 1) x) y' - a b y = 0`)
 //!   as `hyper2f1`, Kummer as `hyper1f1`, and Whittaker
@@ -85,13 +95,34 @@
 //!   rank one with rational exponents `λ` give the formal solutions
 //!   `exp(λ/t) t^ρ Σ a_k t^k` (`exp(λ x)` at infinity). Results are
 //!   truncated series (eight terms in `dsolve`, order written
-//!   `big_o(t^n)`). Not done: irregular points of higher rank or with
-//!   ramified (fractional-power) solutions, irrational `λ`, non-rational
-//!   singular points.
+//!   `big_o(t^n)`). When these fail, the Newton-polygon expansion of
+//!   [`formal`] is used: irregular points of any Poincaré rank, ramified
+//!   (fractional-power) solutions such as Airy's at infinity, exponential
+//!   parts `exp(Σ κ_s t^{-s/q})` with several terms, irrational or complex
+//!   `κ` (the coefficient field is extended by a factor of the
+//!   characteristic polynomial and the conjugates are `root_of` objects) and
+//!   singular points that are roots of an irreducible polynomial of degree
+//!   above one. Not done: logarithmic terms at irregular points (an exponent
+//!   resonant with another root of the same indicial polynomial is
+//!   skipped), and, once the coefficient field is not `Q`, characteristic or
+//!   indicial polynomials of degree above one.
+//!
+//! **Linear equations of order three and more** with polynomial
+//! coefficients (`linear`): operators that are hypergeometric in `θ = x d/dx`
+//! (two monomials) are solved by `x^ρ hyperpfq(…)` (generalised `pFq`, the
+//! operator `hyperpfq(p, a_1 … a_p, b_1 … b_q, z)`), and otherwise a
+//! hyperexponential solution `P Π f^ρ exp(E)` is found from the local
+//! formal solutions, the order is reduced by exact right division by `D - y'/y`
+//! and the quotient is handed back to the full solver (second-order
+//! quotients reach Kovacic's cases 1–3 and the hypergeometric families);
+//! the other solutions are `y1 ∫ z / y1`. Not done: the eigenring
+//! (Beke / van Hoeij) factorisation into factors of order above one and
+//! left factors.
 //!
 //! | operator | value |
 //! |---|---|
 //! | `ode_frobenius(eq, y(x), x0, n)` | `list(y(x) = C1 y1 + C2 y2, list(r1, r2), recurrence)`: Frobenius series to order `n` about `x0`, the indicial roots and the explicit finite recurrence of the larger exponent |
+//! | `ode_asymptotic(eq, y(x), x0, n, x1, k)` | `list(re, im, error)`: the `k`-th (counting from 0) Newton-polygon formal solution at `x1` (`x0` rational or `oo`), its series with `n` terms summed up to the smallest term (optimal truncation); the error is the size of that term |
 //! | `ode_series(eq, y(x), x0, n)` | the power-series solution about `x0` to order `n` |
 //! | `rsolve_z(eq, y(n), conditions?)` | a linear recurrence solved by the z transform |
 //! | `ode_classify(eq, y(x))` | the list of classes the equation belongs to |
@@ -138,9 +169,11 @@ use super::solve::solve_for;
 use super::solve::solve_linear;
 
 mod classes;
+mod formal;
 mod frobenius;
 mod kovacic;
 mod lie;
+mod linear;
 mod nonlinear;
 #[cfg(test)]
 mod battery;
@@ -166,9 +199,12 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("ode/extras", Tier::Reduce, Extras { series, rsolve, classify, symmetries, fourier });
     let frobenius = i.op(OpDescriptor::new("ode_frobenius", Arity::Fixed(4)).flags(OpFlags::HEAVY).cost(100))?;
     i.kernel("ode/frobenius", Tier::Reduce, FrobeniusReport { op: frobenius });
+    let asymptotic = i.op(OpDescriptor::new("ode_asymptotic", Arity::Fixed(6)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("ode/asymptotic", Tier::Reduce, Asymptotic { op: asymptotic });
     i.op(OpDescriptor::new("big_o", Arity::Fixed(1)).eval(|_| 0.0))?;
     i.op(OpDescriptor::new("hyper1f1", Arity::Fixed(3)).eval(frobenius::hyper1f1))?;
     i.op(OpDescriptor::new("hyper2f1", Arity::Fixed(4)).eval(frobenius::hyper2f1))?;
+    i.op(OpDescriptor::new("hyperpfq", Arity::Variadic).eval(linear::hyper_pfq))?;
     i.kernel("ode/odeint", Tier::Reduce, Odeint { odeint });
     Ok(())
 }
@@ -1624,6 +1660,7 @@ fn dispatch(
         reduce::special_function_equation,
         frobenius::hypergeometric,
         reduce::variable_coefficients,
+        linear::high_order,
         reduce::missing_dependent,
         reduce::autonomous,
         reduce::scale_invariant,
@@ -1669,6 +1706,29 @@ impl Kernel for FrobeniusReport {
     ) -> Outcome {
         match *cx.graph.children(node) {
             | [e, u, x0, n] => frobenius::report(cx, e, u, x0, n).map_or(Outcome::Pass, Outcome::Pinned),
+            | _ => Outcome::Pass,
+        }
+    }
+}
+
+/// `ode_asymptotic(eq, y(x), x0, n, x1, k)`: the `k`-th formal solution at
+/// `x1` summed up to its smallest term.
+struct Asymptotic {
+    op: OpId,
+}
+
+impl Kernel for Asymptotic {
+    fn ops(&self) -> Vec<OpId> {
+        vec![self.op]
+    }
+
+    fn reduce(
+        &self,
+        cx: &mut Cx<'_>,
+        node: NodeId,
+    ) -> Outcome {
+        match *cx.graph.children(node) {
+            | [e, u, x0, n, x1, k] => frobenius::asymptotic(cx, e, u, x0, n, x1, k).map_or(Outcome::Pass, Outcome::Pinned),
             | _ => Outcome::Pass,
         }
     }
@@ -2419,6 +2479,89 @@ mod tests {
                 assert!(residual.abs() < 1e-3 * (1.0 + y.abs() * 10.0), "{answer} at {x}: {residual}");
             }
         }
+    }
+
+    #[test]
+    fn newton_polygon_expansions() {
+        let rules = crate::rules::standard();
+        let run = |src: &str| simplify(&rules, src);
+        let rhs_of = |report: &str| -> String {
+            report.strip_prefix("list(y(x) = ").and_then(|t| t.split(", list(").next()).unwrap_or("").to_string()
+        };
+        // Airy at infinity: ramified, exp(+-(2/3) x^(3/2)).
+        let airy = run("ode_frobenius(diff(diff(y(x), x), x) - x*y(x), y(x), oo, 24)");
+        assert!(airy.contains("^(1/2)") || airy.contains("^(-1/2)"), "{airy}");
+        let rhs = rhs_of(&airy);
+        for x in [6.0_f64, 8.0] {
+            for basis in [(1.0, 0.0), (0.0, 1.0)] {
+                let h = 1e-3;
+                let f = |t: f64| solution_value(&rules, &rhs, t, basis);
+                let (y, up, down) = (f(x), f(x + h), f(x - h));
+                let second = (up - 2.0 * y + down) / (h * h);
+                let residual = second - x * y;
+                assert!(residual.abs() < 1e-4 * (x * y).abs(), "{airy} at {x}: {residual} vs {y}");
+            }
+        }
+        // Optimal truncation: Ai(5) = 1.0834e-4 and Bi(5) = 657.79 (up to the
+        // normalisations 1/(2 sqrt pi) and 1/sqrt pi of the asymptotic series).
+        let mut values = Vec::new();
+        for k in 0..2 {
+            let text = run(&format!("ode_asymptotic(diff(diff(y(x), x), x) - x*y(x), y(x), oo, 60, 5, {k})"));
+            let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
+            let numbers: Vec<f64> = inner.split(", ").filter_map(|s| s.parse().ok()).collect();
+            assert_eq!(numbers.len(), 3, "{text}");
+            values.push(numbers[0]);
+        }
+        values.sort_by(f64::total_cmp);
+        let sqrt_pi = std::f64::consts::PI.sqrt();
+        assert!((values[0] / (2.0 * sqrt_pi) - 1.083_444_3e-4).abs() < 1e-8, "{values:?}");
+        assert!((values[1] / sqrt_pi - 657.793_6).abs() < 2e-2, "{values:?}");
+        // Poincare rank two at 0: x^6 y'' = y, exp(+-1/(2 x^2)) x^(3/2) (1 + ...).
+        let rank_two = run("ode_frobenius(x^6*diff(diff(y(x), x), x) - y(x), y(x), 0, 14)");
+        let rhs = rhs_of(&rank_two);
+        for x in [0.12_f64, 0.16] {
+            for basis in [(1.0, 0.0), (0.0, 1.0)] {
+                let h = 1e-4;
+                let f = |t: f64| solution_value(&rules, &rhs, t, basis);
+                let (y, up, down) = (f(x), f(x + h), f(x - h));
+                let residual = x.powi(6) * (up - 2.0 * y + down) / (h * h) - y;
+                assert!(residual.abs() < 2e-3 * y.abs(), "{rank_two} at {x}: {residual} vs {y}");
+            }
+        }
+    }
+
+    #[test]
+    fn third_order_equations_reduce() {
+        let rules = crate::rules::standard();
+        // (D^2 - x)(D - 1) y = D^3 - D^2 - x D + x: e^x and, through
+        // (D - 1) y = Ai, Bi, quadratures of Airy functions.
+        let answer = simplify(
+            &rules,
+            "dsolve(diff(diff(diff(y(x), x), x), x) - diff(diff(y(x), x), x) - x*diff(y(x), x) + x*y(x), y(x))",
+        );
+        assert!(answer.contains("exp(x)") && answer.contains("airy"), "{answer}");
+        // The first solution is e^x.
+        let rhs = answer.strip_prefix("y(x) = ").unwrap_or(&answer);
+        let first = solution_value(&rules, rhs.split(" + ").find(|t| t.contains("C1")).unwrap_or(rhs), 0.7, (1.0, 0.0));
+        assert!((first - 0.7_f64.exp()).abs() < 1e-9, "{answer}");
+        // A hypergeometric operator of order three: 3F2.
+        let hyper = simplify(
+            &rules,
+            "dsolve(x^3*(1 - x)*diff(diff(diff(y(x), x), x), x) + (13/6*x^2 - 9*x^3)*diff(diff(y(x), x), x) + (1/3*x - 18*x^2)*diff(y(x), x) - 6*x*y(x), y(x))",
+        );
+        assert!(hyper.contains("hyperpfq"), "{hyper}");
+    }
+
+    #[test]
+    fn kovacic_case_three_tetrahedral() {
+        let rules = crate::rules::standard();
+        // Exponent differences (1/2, 1/3, 1/3) at 0, 1, oo: tetrahedral
+        // monodromy. u'' = r u with r = -(3/16 (x-1)^2 + 2/9 x^2 - 3/16 x (x-1)) / (x^2 (x-1)^2).
+        let answer = simplify(
+            &rules,
+            "dsolve(x^2*(x - 1)^2*diff(diff(y(x), x), x) + (3/16*(x - 1)^2 + 2/9*x^2 - 3/16*x*(x - 1))*y(x), y(x))",
+        );
+        assert!(answer.contains("root_of") && answer.contains("exp(") && answer.contains("integral("), "{answer}");
     }
 
     #[test]
