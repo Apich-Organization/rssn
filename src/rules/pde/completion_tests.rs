@@ -711,3 +711,54 @@ fn hankel_transform_for_radial_evolution_on_whole_space() {
     let exact = ((r + t) * (-(r + t) * (r + t)).exp() + (r - t) * (-(r - t) * (r - t)).exp()) / (2.0 * r);
     close(value(&text, &[("r", r), ("t", t)]), exact, 1e-3, &s);
 }
+
+#[test]
+fn numeric_modal_expansions_on_disks_and_balls() {
+    use crate::kernels::special::bessel_j0;
+    use crate::kernels::special::bessel_j1;
+    let coefficient = |mode: &dyn Fn(f64) -> f64, f: &dyn Fn(f64) -> f64, weight: i32| {
+        simpson(&|q| q.powi(weight) * f(q) * mode(q), 0.0, 1.0) / simpson(&|q| q.powi(weight) * mode(q) * mode(q), 0.0, 1.0)
+    };
+    // Disk heat with non-polynomial data e^{-r} (1 + r cos θ), Dirichlet at r = 1.
+    let lap_disk = "diff(diff(u(r, th, t), r), r) + diff(u(r, th, t), r)/r + diff(diff(u(r, th, t), th), th)/r^2";
+    let s = any(&format!("pdsolve(diff(u(r, th, t), t) = {lap_disk}, u(r, th, t), list(u(1, th, t) = 0, u(r, th, 0) = exp(-r)*(1 + r*cos(th))))"));
+    assert!(!s.contains("defint"), "{s}");
+    let (r, th, t) = (0.45_f64, 0.8_f64, 0.02_f64);
+    let mut reference = 0.0;
+    for k in roots(&bessel_j0, 60.0, 20) {
+        let c = coefficient(&|q| bessel_j0(k * q), &|q| (-q).exp(), 1);
+        reference += c * (-k * k * t).exp() * bessel_j0(k * r);
+    }
+    for k in roots(&bessel_j1, 60.0, 20) {
+        let c = coefficient(&|q| bessel_j1(k * q), &|q| q * (-q).exp(), 1);
+        reference += c * (-k * k * t).exp() * bessel_j1(k * r) * th.cos();
+    }
+    close(value(&rhs(&s), &[("r", r), ("th", th), ("t", t)]), reference, 1e-6, &s);
+    // Disk wave, radial data (1 - r²)² cos r: u = Σ c cos(κ t) J_0(κ r).
+    let s = any("pdsolve(diff(diff(u(r, t), t), t) = diff(diff(u(r, t), r), r) + diff(u(r, t), r)/r, u(r, t), list(u(1, t) = 0, u(r, 0) = (1 - r^2)^2*cos(r), at(diff(u(r, t), t), t, 0) = 0))");
+    assert!(!s.contains("defint"), "{s}");
+    let (r, t) = (0.35_f64, 0.3_f64);
+    let mut reference = 0.0;
+    for k in roots(&bessel_j0, 140.0, 40) {
+        let c = coefficient(&|q| bessel_j0(k * q), &|q| (1.0 - q * q).powi(2) * q.cos(), 1);
+        reference += c * (k * t).cos() * bessel_j0(k * r);
+    }
+    close(value(&rhs(&s), &[("r", r), ("t", t)]), reference, 2e-4, &s);
+    // Axisymmetric ball heat, data e^{-r} (2 + r cos θ), Dirichlet at r = 1.
+    let lap_ball = "diff(diff(u(r, th, t), r), r) + 2*diff(u(r, th, t), r)/r + diff(diff(u(r, th, t), th), th)/r^2 + cos(th)/sin(th)*diff(u(r, th, t), th)/r^2";
+    let s = any(&format!("pdsolve(diff(u(r, th, t), t) = {lap_ball}, u(r, th, t), list(u(1, th, t) = 0, u(r, th, 0) = exp(-r)*(2 + r*cos(th))))"));
+    assert!(!s.contains("defint"), "{s}");
+    let (r, th, t) = (0.5_f64, 1.1_f64, 0.01_f64);
+    let mut reference = 0.0;
+    for k in 1..=40 {
+        let kappa = PI * f64::from(k);
+        let c = coefficient(&|q| if q < 1e-12 { kappa } else { (kappa * q).sin() / q }, &|q| 2.0 * (-q).exp(), 2);
+        reference += c * (-kappa * kappa * t).exp() * (kappa * r).sin() / r;
+    }
+    let j1 = |x: f64| if x < 1e-12 { 0.0 } else { (PI / (2.0 * x)).sqrt() * bessel_j(1.5, x) };
+    for kappa in roots(&|x| bessel_j(1.5, x), 120.0, 30) {
+        let c = coefficient(&|q| j1(kappa * q), &|q| q * (-q).exp(), 2);
+        reference += c * (-kappa * kappa * t).exp() * j1(kappa * r) * th.cos();
+    }
+    close(value(&rhs(&s), &[("r", r), ("th", th), ("t", t)]), reference, 1e-5, &s);
+}

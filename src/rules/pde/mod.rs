@@ -194,6 +194,7 @@ mod diffusion;
 mod elliptic;
 mod frameworks;
 mod green;
+mod modal;
 mod modes;
 mod nonlinear;
 mod numeric;
