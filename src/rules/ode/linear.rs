@@ -884,32 +884,38 @@ fn eigenring_right_factors(op: &[Vec<Q>]) -> Vec<Ore> {
     let mut out = Vec::new();
     let Some(l) = Ore::from_polynomials(op) else { return out };
     let n = op.len().saturating_sub(1);
-    for bound in 0..=2_usize {
-        let mut basis: Vec<(usize, usize, Ore)> = Vec::new();
+    let Some(lc) = op.last() else { return out };
+    let degree = lc.len().saturating_sub(1);
+    // Elements Σ p_j(x) / lc^m D^j with deg p_j ≤ bound: first the polynomial
+    // ones, then the denominators lc and lc², with the degree bound growing
+    // with the degree of lc (the Beke / van Hoeij search space).
+    let schedule: Vec<(usize, usize)> =
+        vec![(0, 0), (0, 1), (0, 2), (1, degree + 2), (1, 2 * degree + 2), (2, 3 * degree + 2)];
+    for (power, bound) in schedule {
+        let mut denominator = vec![Q::one()];
+        for _ in 0..power {
+            denominator = poly_mul(&denominator, lc);
+        }
+        let mut basis: Vec<Ore> = Vec::new();
         let mut images: Vec<Ore> = Vec::new();
         for s in 0..=bound {
             for j in 0..n {
                 let mut monomial = vec![Q::zero(); s];
                 monomial.push(Q::one());
                 let Some(mut coefficients) = (0..j).map(|_| zero_rat()).collect::<Option<Vec<Rat>>>() else { continue };
-                let Some(top) = rat(&monomial, &[Q::one()]) else { continue };
+                let Some(top) = rat(&monomial, &denominator) else { continue };
                 coefficients.push(top);
                 let e = Ore::new(coefficients);
                 let Some(image) = l.mul(&e).and_then(|p| p.right_divide(&l)).map(|(_, r)| r) else { continue };
-                basis.push((s, j, e));
+                basis.push(e);
                 images.push(image);
             }
         }
         let Some(rows) = operator_rows(&images, n) else { continue };
         for u in nullspace(rows, images.len()) {
-            // R = Σ u_k e_k; skip the scalars (only the constant term).
-            let scalar = u.iter().zip(&basis).all(|(c, (s, j, _))| c.is_zero() || (*s == 0 && *j == 0));
-            if scalar {
-                continue;
-            }
             let mut r = Ore::new(Vec::new());
             let mut ok = true;
-            for (c, (_, _, e)) in u.iter().zip(&basis) {
+            for (c, e) in u.iter().zip(&basis) {
                 if c.is_zero() {
                     continue;
                 }
@@ -918,12 +924,28 @@ fn eigenring_right_factors(op: &[Vec<Q>]) -> Vec<Ore> {
                     | None => ok = false,
                 }
             }
-            if !ok {
+            // Skip the scalars: an element of order zero in the eigenring is constant.
+            if !ok || r.order().is_none_or(|o| o == 0) {
                 continue;
             }
             out.extend(factors_from_eigenvalue_element(&l, &r, n));
             if !out.is_empty() {
                 return out;
+            }
+        }
+    }
+    out
+}
+
+fn poly_mul(
+    a: &[Q],
+    b: &[Q],
+) -> Vec<Q> {
+    let mut out = vec![Q::zero(); (a.len() + b.len()).saturating_sub(1)];
+    for (i, x) in a.iter().enumerate() {
+        for (j, y) in b.iter().enumerate() {
+            if let Some(t) = out.get_mut(i + j) {
+                *t += x * y;
             }
         }
     }
@@ -988,7 +1010,34 @@ fn eigenring_reduction(
     let x = problem.x;
     let order = op.len().checked_sub(1)?;
     let l = Ore::from_polynomials(op)?;
-    for f in eigenring_right_factors(op) {
+    let factors = eigenring_right_factors(op);
+    // Two coprime right factors whose orders add up to the order of L: the
+    // solution space of L is the direct sum of theirs.
+    for (i, f1) in factors.iter().enumerate() {
+        for f2 in factors.iter().skip(i + 1) {
+            if f1.order().zip(f2.order()).is_none_or(|(a, b)| a + b != order) {
+                continue;
+            }
+            if !l.right_divide(f1).is_some_and(|(_, r)| r.is_zero()) || !l.right_divide(f2).is_some_and(|(_, r)| r.is_zero()) {
+                continue;
+            }
+            if !f1.right_gcd(f2).is_some_and(|g| g.order() == Some(0)) {
+                continue;
+            }
+            let (Some(p1), Some(p2)) = (clear_denominators(&f1.c), clear_denominators(&f2.c)) else { continue };
+            let (Some(b1), Some(b2)) = (reduced_basis(cx, x, &p1, depth), reduced_basis(cx, x, &p2, depth)) else { continue };
+            let mut terms = Vec::new();
+            for y in b1.iter().chain(&b2) {
+                let c = problem.constant(cx.graph);
+                terms.push(mul(cx.graph, &[c, *y]));
+            }
+            if terms.len() == order {
+                let solution = add(cx.graph, &terms);
+                return Some(explicit(cx, problem, solution));
+            }
+        }
+    }
+    for f in factors {
         let Some((m, remainder)) = l.right_divide(&f) else { continue };
         if !remainder.is_zero() {
             continue;
@@ -1173,5 +1222,24 @@ mod tests {
         assert!(orders.iter().all(|&o| (1..3).contains(&o)), "{orders:?}");
         let linear = Ore::from_polynomials(&[qs(&[-1]), qs(&[1])]).expect("D - 1");
         assert!(factors.iter().any(|f| f.sub(&linear).is_some_and(|d| d.is_zero())), "D - 1 not found");
+    }
+
+    #[test]
+    fn eigenring_splits_the_lclm_of_airy_and_bessel() {
+        // lclm of y'' = x y and x y'' + y' + x y = 0: order four, no first-order factor;
+        // the eigenring (rational coefficients with denominator lc(L)) contains the
+        // projectors onto the two second-order pieces.
+        let op: Vec<Vec<Q>> = [
+            &[3, 0, 2, 8, -1, -2, -1][..],
+            &[0, 5, 12, -3, -4, -1],
+            &[6, -3, -7, 5, 1, -1, -1],
+            &[-3, -6, 1, 0, -1],
+            &[0, -1, -3, 1, 2, 1],
+        ]
+        .iter()
+        .map(|c| qs(c))
+        .collect();
+        let factors = eigenring_right_factors(&op);
+        assert!(factors.iter().any(|f| f.order() == Some(2)), "no second-order right factor");
     }
 }

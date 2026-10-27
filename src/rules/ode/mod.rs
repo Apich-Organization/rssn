@@ -2639,6 +2639,16 @@ mod tests {
     }
 
     #[test]
+    fn eigenring_factorisation_with_special_function_factors() {
+        let rules = crate::rules::standard();
+        // The least common left multiple of Airy's equation and x y'' + y' + x y = 0: order
+        // four, no first-order factor, so the eigenring supplies the two second-order
+        // right factors; the solutions combine Airy and Bessel functions.
+        let answer = simplify(&rules, "dsolve(((3)*x^0+(2)*x^2+(8)*x^3+(-1)*x^4+(-2)*x^5+(-1)*x^6)*y(x) + ((5)*x^1+(12)*x^2+(-3)*x^3+(-4)*x^4+(-1)*x^5)*diff(y(x), x) + ((6)*x^0+(-3)*x^1+(-7)*x^2+(5)*x^3+(1)*x^4+(-1)*x^5+(-1)*x^6)*diff(diff(y(x), x), x) + ((-3)*x^0+(-6)*x^1+(1)*x^2+(-1)*x^4)*diff(diff(diff(y(x), x), x), x) + ((-1)*x^1+(-3)*x^2+(1)*x^3+(2)*x^4+(1)*x^5)*diff(diff(diff(diff(y(x), x), x), x), x), y(x))");
+        assert!(answer.contains("airy") && answer.contains("bessel"), "{answer}");
+    }
+
+    #[test]
     fn kovacic_case_three_tetrahedral() {
         let rules = crate::rules::standard();
         // Exponent differences (1/2, 1/3, 1/3) at 0, 1, oo: tetrahedral
