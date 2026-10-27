@@ -854,6 +854,143 @@ pub fn cyclotomic(analysis: &Analysis) -> Option<Cyclotomic> {
 }
 
 
+// ---------------------------------------------------------------------
+// Lagrange resolvents of the metacyclic septic groups D7, F21, F42.
+
+/// Data for writing the real roots of a septic with Galois group `D7`,
+/// `F21` or `F42` in radicals through the Lagrange resolvents
+/// `t_j = Σ_k ζ_7^{jk} z_k` and `R_j = t_j^7`, whose conjugates `R_1 … R_6`
+/// are the roots of an integer sextic `Φ`.
+#[derive(Clone, Debug)]
+pub enum Lagrange {
+    /// Exactly one real root: with the roots labelled so that it is `z_0` and
+    /// conjugation is `k -> -k`, every `t_j` and `R_j` is real and
+    /// `z_0 = (t_0 + Σ_{j=1}^{6} R_j^{1/7}) / 7` (real seventh roots). `Φ`
+    /// is a totally real cyclic sextic.
+    OneReal {
+        /// `Φ(w) = Π (w - R_j)`, ascending integer coefficients.
+        phi: Vec<BigInt>,
+        /// The real numbers `R_1 … R_6`.
+        resolvents: Vec<f64>,
+        /// `t_0 = Σ z_k`.
+        trace: BigInt,
+    },
+    /// All roots real: `R_{-j} = conj R_j`. With `s_j = R_j + R_{-j}` (the
+    /// roots of the cubic `s_poly`) and `n_j = |R_j|² = c_0 + c_1 s_j +
+    /// c_2 s_j²`, writing `R_j = ρ_j e^{iφ_j}` (`j` with positive imaginary
+    /// part, `ρ_j² = n_j`, `cos φ_j = s_j / (2 ρ_j)`) gives
+    /// `z_k = (t_0 + 2 Σ_j ρ_j^{1/7} cos((φ_j + 2π m_j)/7 - 2π j k/7)) / 7`.
+    AllReal {
+        /// The monic integer cubic of the `s_j`.
+        s_poly: Vec<BigInt>,
+        /// `n` as a polynomial in `s`.
+        n_poly: Vec<BigRational>,
+        /// For each of the three conjugate pairs: `(j, s_j, m_j)`.
+        terms: Vec<(usize, f64, i64)>,
+        /// `t_0 = Σ z_k`.
+        trace: BigInt,
+    },
+}
+
+fn fx_pow7(z: &Fx) -> Fx {
+    let z2 = z.mul(z);
+    let z4 = z2.mul(&z2);
+    z4.mul(&z2).mul(z)
+}
+
+fn fx_to_f64(v: &BigInt) -> Option<f64> {
+    BigRational::new(v.clone(), one()).to_f64()
+}
+
+/// The Lagrange-resolvent data of a septic with group `D7`, `F21` or `F42`.
+#[must_use]
+pub fn lagrange(analysis: &Analysis) -> Option<Lagrange> {
+    if !matches!(analysis.group.label, "D7" | "F21" | "F42") {
+        return None;
+    }
+    let pi = pi_fixed(BITS + 64);
+    // ζ^m = cos(2πm/7) + i sin(2πm/7); sin(x) = cos(x - π/2).
+    let zeta: Vec<Fx> = (0..7_u64)
+        .map(|m| Fx { re: cos_fixed(m, 7, &pi, 64), im: cos_fixed((4 * m + 21) % 28, 28, &pi, 64) })
+        .collect();
+    let real_tolerance = BigInt::one() << (BITS - 100);
+    let real_positions: Vec<usize> = (0..7)
+        .filter(|&p| analysis.ordering.get(p).and_then(|&i| analysis.roots.get(i)).is_some_and(|r| r.im.abs() < real_tolerance))
+        .collect();
+    let (shift, all_real) = match real_positions.as_slice() {
+        | [p] => (*p, false),
+        | list if list.len() == 7 => (0, true),
+        | _ => return None,
+    };
+    let z: Vec<Fx> = (0..7).map(|k| analysis.ordering.get((k + shift) % 7).and_then(|&i| analysis.roots.get(i)).cloned()).collect::<Option<_>>()?;
+    if !all_real {
+        for k in 0..7 {
+            if !z.get((7 - k) % 7)?.close(&z.get(k)?.conj(), 300) {
+                return None;
+            }
+        }
+    }
+    let t: Vec<Fx> = (0..7)
+        .map(|j| {
+            let mut sum = Fx::zero();
+            for (k, zk) in z.iter().enumerate() {
+                if let Some(w) = zeta.get((j * k) % 7) {
+                    sum = sum.add(&w.mul(zk));
+                }
+            }
+            sum
+        })
+        .collect();
+    let trace = round_integer(t.first()?)?;
+    let r: Vec<Fx> = t.iter().map(fx_pow7).collect();
+    // Elementary symmetric functions of a list of values -> integer polynomial.
+    let integer_poly = |values: &[Fx]| -> Option<Vec<BigInt>> {
+        let mut poly = vec![Fx::integer(&BigInt::one())];
+        for v in values {
+            let mut next = vec![Fx::zero(); poly.len() + 1];
+            for (i, a) in poly.iter().enumerate() {
+                if let Some(slot) = next.get_mut(i + 1) {
+                    *slot = slot.add(a);
+                }
+                if let Some(slot) = next.get_mut(i) {
+                    *slot = slot.sub(&a.mul(v));
+                }
+            }
+            poly = next;
+        }
+        poly.iter().map(round_integer).collect()
+    };
+    if !all_real {
+        let values: Vec<Fx> = r.iter().skip(1).cloned().collect();
+        let phi = integer_poly(&values)?;
+        let resolvents: Vec<f64> = values.iter().map(|v| fx_to_f64(&v.re)).collect::<Option<_>>()?;
+        return Some(Lagrange::OneReal { phi, resolvents, trace });
+    }
+    // All real: pair R_j with R_{7-j}.
+    let s: Vec<Fx> = (1..=3).map(|j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.add(b)))).collect::<Option<_>>()?;
+    let n: Vec<Fx> = (1..=3).map(|j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.mul(b)))).collect::<Option<_>>()?;
+    let s_poly = integer_poly(&s)?;
+    // n_j = c0 + c1 s_j + c2 s_j^2.
+    let vandermonde: Vec<Vec<Fx>> = s.iter().map(|v| vec![Fx::integer(&BigInt::one()), v.clone(), v.mul(v)]).collect();
+    let rhs: Vec<Vec<Fx>> = n.iter().map(|v| vec![v.clone()]).collect();
+    let solution = solve_system(vandermonde, rhs)?;
+    let n_poly: Vec<BigRational> = solution.iter().map(|row| row.first().and_then(rationalize)).collect::<Option<_>>()?;
+    let mut terms = Vec::new();
+    for j in 1..=3_usize {
+        let rj = r.get(j)?;
+        let (representative, value) = if rj.im.is_positive() { (j, rj.clone()) } else { (7 - j, r.get(7 - j)?.clone()) };
+        let s_value = fx_to_f64(&s.get(j - 1)?.re)?;
+        let rho = (fx_to_f64(&n.get(j - 1)?.re)?).sqrt();
+        let phi = (s_value / (2.0 * rho)).clamp(-1.0, 1.0).acos();
+        let tj = t.get(representative)?;
+        let angle = fx_to_f64(&tj.im)?.atan2(fx_to_f64(&tj.re)?);
+        let _ = value;
+        let m = ((7.0 * angle - phi) / std::f64::consts::TAU).round() as i64;
+        terms.push((representative, s_value, m.rem_euclid(7)));
+    }
+    Some(Lagrange::AllReal { s_poly, n_poly, terms, trace })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

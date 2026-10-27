@@ -1315,11 +1315,17 @@ mod tests {
     fn sextics_and_septics_by_galois_group() {
         let rules = crate::rules::standard();
         // (equation, ascending coefficients, number of real roots)
-        let cases: [(&str, Vec<f64>, usize); 4] = [
+        let cases: [(&str, Vec<f64>, usize); 7] = [
             // Cyclic septic (Gauss periods, conductor 29): seven real roots.
             ("solve(x^7 + x^6 - 12*x^5 - 7*x^4 + 28*x^3 + 14*x^2 - 9*x + 1, x)", vec![1.0, -9.0, 14.0, 28.0, -7.0, -12.0, 1.0, 1.0], 7),
             // 2 cos(2 pi / 13): cyclic sextic, six real roots.
             ("solve(x^6 + x^5 - 5*x^4 - 4*x^3 + 6*x^2 + 3*x - 1, x)", vec![-1.0, 3.0, 6.0, -4.0, -5.0, 1.0, 1.0], 6),
+            // Cyclic sextic of composite conductor 91 = 7 * 13.
+            ("solve(x^6 - x^5 - 14*x^4 + 9*x^3 + 35*x^2 - 16*x - 1, x)", vec![-1.0, -16.0, 35.0, 9.0, -14.0, -1.0, 1.0], 6),
+            // D7(x) - 3: group F42, one real root through Lagrange resolvents.
+            ("solve(x^7 - 7*x^5 + 14*x^3 - 7*x - 3, x)", vec![-3.0, -7.0, 0.0, 14.0, 0.0, -7.0, 0.0, 1.0], 1),
+            // D7(x) - 1/4: group F21, seven real roots (trigonometric form).
+            ("solve(4*x^7 - 28*x^5 + 56*x^3 - 28*x - 1, x)", vec![-1.0, -28.0, 0.0, 56.0, 0.0, -28.0, 0.0, 4.0], 7),
             // Sextic with group A4 on six points (block tower).
             ("solve(x^6 - 12*x^4 - 64*x^3 - 144*x^2 + 1728, x)", vec![1728.0, 0.0, -144.0, -64.0, -12.0, 0.0, 1.0], 0),
             // S4 on the six directed 4-cycles (block tower).
