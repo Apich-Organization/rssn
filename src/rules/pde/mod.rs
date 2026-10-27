@@ -115,6 +115,12 @@
 //! | heat / wave outside a ball without axial symmetry | exterior of a ball | 3 | Weber transforms per real spherical harmonic `P_l^m cos/sin mφ` (`l ≤ 5`) |
 //! | `pde_kdv_scattering(u0(x), x, t)` | line | 1 | numeric Gelfand–Levitan–Marchenko: Jost solutions, bound states, reflection coefficient, Nyström solution of the Marchenko equation (any decaying `u0`, `abs(t)` moderate) |
 //! | `pde_hodograph(λ(r, s), μ(r, s))` | `r_t + λ r_x = 0`, `s_t + μ s_x = 0` | 1 | the linear hodograph equation `(λ-μ) t_rs + λ_r t_s - μ_s t_r = 0` |
+//! | Coulomb scattering states, `coulomb_wave(Z, ℓ, k, r)` | half-line | 1 | data outside the bound-state span: bound states (`n ≤ 14`) plus `∫_0^{16} c(k) u_k(r) e^{D(e₀-k²)t} dk` with `c(k) = ∫ f u_k dr`, energy-normalised regular solutions by RK4 and the WKB amplitude; accepted when the sum reproduces the data to 3% at `t = 0` |
+//! | Helmholtz / Laplace in prolate and oblate spheroidal coordinates `(xi\|zeta, eta[, phi])` | inside a spheroid, Dirichlet data | 2, 3 | angular `S_mn` (`spheroidal_mode`), regular radial `R_mn` (`spheroidal_radial`, ODE in `cosh τ` / `sinh σ`), finite expansion verified against the data |
+//! | parabolic equation with a Robin signal `u_x + h u = g(t)`; hyperbolic signals with non-quiet initial data | half-line | 1 | Laplace route with the `erfc` kernel and `τ = t - σ²`; initial data by superposition with the homogeneous-boundary solution |
+//! | `pde_greens_robin(d, h)`, `pde_greens_ball_robin(R, h)` | half-space (Neumann for `h = 0`), interior of a ball | 2, 3 | images plus `-2h ∫ e^{-hw} G₀ dw`; Legendre series with `A_l = -(h-(l+1)/R) R^{-(2l+1)}/(4π(h+l/R))` |
+//! | `pde_crum_kdv(u, list(ψ…))`, `pde_hodograph_solution(F, G)` | line | 1 | Crum determinant `u - 2 ∂² ln W`; `x = r t + F(r) = s t + G(s)` for `λ = r`, `μ = s` |
+//! | heat / waves outside a disk or ball with sources | exterior | 2, 3 | Duhamel integral of the Weber solution (velocity kernel for waves); real spherical harmonics up to `l ≤ 8` |
 //!
 //! Limitations (what is still not covered):
 //!
@@ -122,31 +128,37 @@
 //!   differentiated in the shifted coefficients (closed forms, `defint` and
 //!   `sum` bodies); other cases are refused.
 //! * Exterior domains: non-axisymmetric problems are restricted to balls
-//!   (`l <= 5`) with homogeneous data on the sphere and no sources.
+//!   (`l <= 8`) with homogeneous data on the sphere; non-homogeneous sphere
+//!   data only in the radial case.
 //! * Numeric modal route: disks and balls only (cylinders with non-polynomial
 //!   data stay as `defint`s of numeric integrands).
 //! * Sturm-Liouville: smooth regular coefficients (numeric operators),
 //!   polynomial families, Legendre, Euler-Cauchy, Bessel, periodic Hill
-//!   problems, separable products and Coulomb bound states. Not covered:
-//!   the Coulomb continuum (data outside the bound-state span), spheroidal
-//!   PDE routing (the angular operators are provided), continuous spectra
-//!   and Weyl-Titchmarsh measures in general (only the Hankel and Weber
-//!   instances), zero order terms that are not a sum of single-variable
-//!   functions.
+//!   problems, separable products and the Coulomb problem (bound states and
+//!   scattering states, `l` an integer, attractive charge, numeric
+//!   continuum with a cut-off at `k = 16`). Not covered: repulsive Coulomb
+//!   continua, spheroidal exterior (radiation) problems and Neumann/Robin
+//!   data on spheroids, other continuous spectra and Weyl-Titchmarsh
+//!   measures (only the Hankel, Weber and Coulomb instances), zero order
+//!   terms that are not a sum of single-variable functions.
 //! * Transform methods: Fourier (with sources) is general; Hankel only for
 //!   radial whole-space evolution and Weber on the exterior disk; the Laplace
-//!   route covers boundary signals on half-lines for hyperbolic equations
-//!   with a quiet start. Table inversion of the Fourier solution succeeds
-//!   only when `inverse_fourier` closes the product.
-//! * Green's functions: Dirichlet only on disks, balls and exteriors; no
-//!   Neumann/Robin or curvilinear boxes.
+//!   route covers boundary signals on half-lines (hyperbolic Dirichlet and
+//!   Neumann, parabolic Robin) with arbitrary initial data by superposition.
+//!   Table inversion of the Fourier solution succeeds only when
+//!   `inverse_fourier` closes the product.
+//! * Green's functions: Dirichlet on disks, balls and exteriors; Neumann and
+//!   Robin on half-spaces and (Robin, `h > 0`) the interior of a ball; no
+//!   Neumann ball (generalised Green's function), exterior Robin or
+//!   curvilinear boxes.
 //! * Nonlinear equations: Hopf-Cole for constant-coefficient Burgers; Riemann
 //!   problems for a single step; the soliton operators cover `KdV`
 //!   (`N <= 4`), sine-Gordon (`N <= 3`) and bright NLS; the tanh/sech
-//!   ansatz needs a travelling wave; Darboux is a single `KdV` step; the
-//!   GLM route is numeric point evaluation for `KdV`; the hodograph
-//!   operator returns the linear equation without solving it. Not covered:
-//!   shock interactions, symbolic solutions by hodograph.
+//!   ansatz needs a travelling wave; Darboux/Crum determinants for `KdV`
+//!   (given the eigenfunctions); the GLM route is numeric point evaluation
+//!   for `KdV`; the hodograph equation is solved only for `lambda = r`,
+//!   `mu = s`. Not covered: shock interactions, Riemann's method for
+//!   general hodograph equations.
 //! * Annuli: the Neumann constant is treated separately; modes with a
 //!   negative eigenvalue are found by a numeric scan (at most four); a
 //!   symbolic angular order that could hide a zero or negative mode is

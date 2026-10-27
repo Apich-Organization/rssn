@@ -1105,7 +1105,13 @@ fn weber_exterior(
             let q = neg(cx.graph, q);
             cx.simplify(q)
         };
-        pairs.push((cx.graph.substitute(forcing, t, tau), 2));
+        // A steady source integrates its kernel in closed form.
+        let steady = !cx.graph.symbol_of(t).is_some_and(|s| cx.graph.depends_on(cx.graph.find(forcing), s));
+        if steady {
+            pairs.push((forcing, 3));
+        } else {
+            pairs.push((cx.graph.substitute(forcing, t, tau), 2));
+        }
     }
     let mut terms = Vec::new();
     for (value, kind) in pairs {
@@ -1173,6 +1179,27 @@ fn weber_exterior(
                     let sn = call(cx, "sin", &[ckt])?;
                     div(cx, sn, ck)
                 }
+            };
+            let multiplier = if kind == 3 {
+                // `∫_0^t M(t - τ) dτ`: `(1 - e^{-D k² t})/(D k²)` or `(1 - cos(c k t))/(c k)²`.
+                if order == 1 {
+                    let k_squared = powi(cx.graph, k, 2);
+                    let dk2 = mul(cx.graph, &[diffusivity, k_squared]);
+                    let e = mul(cx.graph, &[dk2, t]);
+                    let e = neg(cx.graph, e);
+                    let decay = call(cx, "exp", &[e])?;
+                    let gap = sub(cx.graph, one, decay);
+                    div(cx, gap, dk2)
+                } else {
+                    let ck = mul(cx.graph, &[sqrt_d, k]);
+                    let ckt = mul(cx.graph, &[ck, t]);
+                    let cs = call(cx, "cos", &[ckt])?;
+                    let gap = sub(cx.graph, one, cs);
+                    let ck2 = powi(cx.graph, ck, 2);
+                    div(cx, gap, ck2)
+                }
+            } else {
+                multiplier
             };
             let norm = {
                 let (a2, b2) = (powi(cx.graph, a_coeff, 2), powi(cx.graph, b_coeff, 2));

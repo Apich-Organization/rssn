@@ -1485,12 +1485,12 @@ fn spheroidal_helmholtz_and_laplace_problems() {
 
 #[test]
 fn sources_outside_a_disk_by_duhamel() {
-    let bounds = |text: &str| text.replace(", rho, 1, oo)", ", rho, 1, 6.5)").replace(", k, 0, oo)", ", k, 0, 4.5)");
+    let bounds = |text: &str| text.replace(", rho, 1, oo)", ", rho, 1, 9)").replace(", k, 0, oo)", ", k, 0, 8)");
     let lap = "diff(diff(u(r, th, t), r), r) + diff(u(r, th, t), r)/r + diff(diff(u(r, th, t), th), th)/r^2";
     // Zero start, steady forcing exp(-(r - 3)²) cos θ.
     let s = any(&format!("pdsolve(diff(u(r, th, t), t) = {lap} + exp(-(r - 3)^2)*cos(th), u(r, th, t), list(u(1, th, t) = 0, u(oo, th, t) = 0, u(r, th, 0) = 0))"));
     let (r, th, t) = (2.0_f64, 0.6_f64, 0.3_f64);
-    let text = expand_integrals(&bounds(&rhs(&s)), 18);
+    let text = expand_integrals(&bounds(&rhs(&s)), 90);
     let forcing = |q: f64| (-(q - 3.0) * (q - 3.0)).exp();
     // Duhamel: ∫_0^t U(t - τ)[forcing] dτ with U the homogeneous evolution (Simpson in τ).
     let intervals = 12_usize;
@@ -1503,5 +1503,5 @@ fn sources_outside_a_disk_by_duhamel() {
         reference += weight * value;
     }
     reference *= h / 3.0 * th.cos();
-    close(value(&text, &[("r", r), ("th", th), ("t", t)]), reference, 6e-2 * reference.abs().max(0.02), &s);
+    close(value(&text, &[("r", r), ("th", th), ("t", t)]), reference, 4e-3 * reference.abs().max(0.02), &s);
 }
