@@ -18,6 +18,8 @@ use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::mul;
+use crate::rules::complex::build::neg;
+use crate::rules::complex::build::pow;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
 
@@ -150,4 +152,158 @@ pub(super) fn greens_ball(
         div(cx, log, four_pi)
     };
     Some(cx.simplify(g))
+}
+
+/// The fundamental solution of `-Δ` in `d` dimensions at squared distance `q`.
+fn fundamental_laplace(
+    cx: &mut Cx<'_>,
+    dimension: i64,
+    q: NodeId,
+) -> Option<NodeId> {
+    let pi = super::util::pi(cx)?;
+    if dimension == 3 {
+        let four_pi = {
+            let four = cx.graph.int(4);
+            mul(cx.graph, &[four, pi])
+        };
+        let root = sqrt(cx, q)?;
+        let denominator = mul(cx.graph, &[four_pi, root]);
+        let one = cx.graph.int(1);
+        Some(div(cx, one, denominator))
+    } else {
+        let four_pi = {
+            let four = cx.graph.int(4);
+            mul(cx.graph, &[four, pi])
+        };
+        let log = call(cx, "ln", &[q])?;
+        let value = div(cx, log, four_pi);
+        Some(neg(cx.graph, value))
+    }
+}
+
+/// `pde_greens_robin(d, h)`: the Green's function of `-Δ` in the half-space
+/// whose last coordinate (`y` for `d = 2`, `z` for `d = 3`) is positive, with
+/// the Robin condition `∂_n u + h u = 0` (`∂_n = -∂_z`, `h ≥ 0`; `h = 0` is the
+/// Neumann problem, the Green's function up to the usual constant):
+///
+/// `G = G₀(x - s) + G₀(x - s*) - 2h ∫_0^∞ e^{-hw} G₀(x_∥ - s_∥, z + s_z + w) dw`.
+pub(super) fn greens_robin(
+    cx: &mut Cx<'_>,
+    dimension: i64,
+    h: NodeId,
+) -> Option<NodeId> {
+    if !(2..=3).contains(&dimension) {
+        return None;
+    }
+    let names: &[(&str, &str)] = if dimension == 2 { &[("x", "s_x"), ("y", "s_y")] } else { &[("x", "s_x"), ("y", "s_y"), ("z", "s_z")] };
+    let last = names.len() - 1;
+    let w = cx.graph.sym("w");
+    let mut direct = Vec::new();
+    let mut image = Vec::new();
+    let mut integral = Vec::new();
+    for (k, &(a, b)) in names.iter().enumerate() {
+        let (xa, sa) = (cx.graph.sym(a), cx.graph.sym(b));
+        if k == last {
+            let minus = sub(cx.graph, xa, sa);
+            direct.push(powi(cx.graph, minus, 2));
+            let plus = add(cx.graph, &[xa, sa]);
+            image.push(powi(cx.graph, plus, 2));
+            let shifted = add(cx.graph, &[xa, sa, w]);
+            integral.push(powi(cx.graph, shifted, 2));
+        } else {
+            let gap = sub(cx.graph, xa, sa);
+            let square = powi(cx.graph, gap, 2);
+            direct.push(square);
+            image.push(square);
+            integral.push(square);
+        }
+    }
+    let (q_direct, q_image, q_integral) = (add(cx.graph, &direct), add(cx.graph, &image), add(cx.graph, &integral));
+    let first = fundamental_laplace(cx, dimension, q_direct)?;
+    let second = fundamental_laplace(cx, dimension, q_image)?;
+    let mut terms = vec![first, second];
+    if !cx.is_zero(h) {
+        let g0 = fundamental_laplace(cx, dimension, q_integral)?;
+        let decay = {
+            let e = mul(cx.graph, &[h, w]);
+            let e = neg(cx.graph, e);
+            call(cx, "exp", &[e])?
+        };
+        let body = mul(cx.graph, &[decay, g0]);
+        let zero = cx.graph.int(0);
+        let oo = super::util::infinity(cx)?;
+        let integral = defint(cx, body, w, zero, oo)?;
+        let minus_two = cx.graph.int(-2);
+        terms.push(mul(cx.graph, &[minus_two, h, integral]));
+    }
+    let g = add(cx.graph, &terms);
+    Some(cx.simplify(g))
+}
+
+/// `pde_greens_ball_robin(R, h)`: the interior Green's function of `-Δ` in
+/// the ball of radius `R` with `∂_r u + h u = 0` on `r = R` (`h > 0`):
+///
+/// `G = 1/(4π|x - s|) + Σ_l A_l (r s)^l P_l(cos γ)`,
+/// `A_l = -(h - (l+1)/R) R^{-(2l+1)} / (4π (h + l/R))`.
+pub(super) fn greens_ball_robin(
+    cx: &mut Cx<'_>,
+    radius: NodeId,
+    h: NodeId,
+) -> Option<NodeId> {
+    let names = [("x", "s_x"), ("y", "s_y"), ("z", "s_z")];
+    let mut gaps = Vec::new();
+    let (mut rr, mut ss, mut dot) = (Vec::new(), Vec::new(), Vec::new());
+    for &(a, b) in &names {
+        let (xa, sa) = (cx.graph.sym(a), cx.graph.sym(b));
+        let gap = sub(cx.graph, xa, sa);
+        gaps.push(powi(cx.graph, gap, 2));
+        rr.push(powi(cx.graph, xa, 2));
+        ss.push(powi(cx.graph, sa, 2));
+        dot.push(mul(cx.graph, &[xa, sa]));
+    }
+    let (q, xx, sss, xs) = (add(cx.graph, &gaps), add(cx.graph, &rr), add(cx.graph, &ss), add(cx.graph, &dot));
+    let free = fundamental_laplace(cx, 3, q)?;
+    let (r, s) = (sqrt(cx, xx)?, sqrt(cx, sss)?);
+    let rs = mul(cx.graph, &[r, s]);
+    let cosine = div(cx, xs, rs);
+    let l = cx.graph.sym("l");
+    let one = cx.graph.int(1);
+    let l1 = add(cx.graph, &[l, one]);
+    let pi = super::util::pi(cx)?;
+    let four_pi = {
+        let four = cx.graph.int(4);
+        mul(cx.graph, &[four, pi])
+    };
+    // A_l (r s)^l P_l(cos γ).
+    let numerator = {
+        let ratio = div(cx, l1, radius);
+        let bracket = sub(cx.graph, h, ratio);
+        neg(cx.graph, bracket)
+    };
+    let power = {
+        let two_l1 = {
+            let two = cx.graph.int(2);
+            let tl = mul(cx.graph, &[two, l]);
+            add(cx.graph, &[tl, one])
+        };
+        let p = pow(cx.graph, radius, two_l1);
+        div(cx, one, p)
+    };
+    let denominator = {
+        let ratio = div(cx, l, radius);
+        let bracket = add(cx.graph, &[h, ratio]);
+        mul(cx.graph, &[four_pi, bracket])
+    };
+    let coefficient = {
+        let top = mul(cx.graph, &[numerator, power]);
+        div(cx, top, denominator)
+    };
+    let rs_l = pow(cx.graph, rs, l);
+    let legendre = call(cx, "legendre", &[l, cosine])?;
+    let body = mul(cx.graph, &[coefficient, rs_l, legendre]);
+    let zero = cx.graph.int(0);
+    let oo = super::util::infinity(cx)?;
+    let series = call(cx, "sum", &[body, l, zero, oo])?;
+    let g = add(cx.graph, &[free, series]);
+    Some(g)
 }

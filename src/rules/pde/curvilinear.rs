@@ -799,7 +799,9 @@ fn exterior_evolution(
     far: &Condition,
 ) -> Option<NodeId> {
     let t_index = time_index?;
-    if !p.homogeneous(cx.graph) || !cx.is_zero(a0) || !cx.is_zero(far.value) {
+    // Sources are handled (by Duhamel's principle) only on the Weber route.
+    let weber = !layout.sphere || layout.theta.is_some();
+    if (!p.homogeneous(cx.graph) && !weber) || !cx.is_zero(a0) || !cx.is_zero(far.value) {
         return None;
     }
     let n = p.dimension();
@@ -918,7 +920,7 @@ struct Harmonic {
 }
 
 /// The decomposition of `data(r, θ, φ)` into the real spherical harmonics
-/// `P_l^m(cos θ) cos mφ` and `P_l^m(cos θ) sin mφ` (`l ≤ 6`, the tail must
+/// `P_l^m(cos θ) cos mφ` and `P_l^m(cos θ) sin mφ` (`l ≤ 8`, the tail must
 /// vanish): the coefficient is the exact double integral divided by
 /// `2π(l+m)!/((2l+1)(l-m)!) · (1 or 1/2)`.
 fn spherical_harmonics(
@@ -927,7 +929,7 @@ fn spherical_harmonics(
     theta: NodeId,
     phi: NodeId,
 ) -> Option<Vec<Harmonic>> {
-    const TOP: i64 = 6;
+    const TOP: i64 = 9;
     let factorial = |n: i64| -> i64 { (1..=n).product() };
     let pi = super::util::pi(cx)?;
     let (zero, two) = (cx.graph.int(0), cx.graph.int(2));
@@ -1086,12 +1088,29 @@ fn weber_exterior(
     let (zero, one) = (cx.graph.int(0), cx.graph.int(1));
     let oo = super::util::infinity(cx)?;
     let sqrt_d = super::util::sqrt(cx, diffusivity)?;
-    let mut pairs = vec![(displacement.value, true)];
+    // Data: displacement (0), velocity (1) and the source, whose response is
+    // the Duhamel integral of the velocity kernel (second order) or of the
+    // initial-value solution (first order) (2).
+    let mut pairs = vec![(displacement.value, 0_u8)];
     if let Some(v) = velocity {
-        pairs.push((v.value, false));
+        pairs.push((v.value, 1));
+    }
+    let (tau, _) = super::dummy(cx, p, "tau");
+    let elapsed = sub(cx.graph, t, tau);
+    if !p.homogeneous(cx.graph) {
+        // `a ∂_t^o u = b Δu - source`.
+        let a = p.coefficient(cx.graph, &p.unit(t_index, order));
+        let forcing = {
+            let q = div(cx, p.source, a);
+            let q = neg(cx.graph, q);
+            cx.simplify(q)
+        };
+        pairs.push((cx.graph.substitute(forcing, t, tau), 2));
     }
     let mut terms = Vec::new();
-    for (value, is_displacement) in pairs {
+    for (value, kind) in pairs {
+        let is_displacement = kind == 0;
+        let time_arg = if kind == 2 { elapsed } else { t };
         if cx.is_zero(value) {
             continue;
         }
@@ -1142,12 +1161,12 @@ fn weber_exterior(
             let inner = defint(cx, inner_body, rho, radius, oo)?;
             let multiplier = if order == 1 {
                 let k2 = powi(cx.graph, k, 2);
-                let e = mul(cx.graph, &[diffusivity, k2, t]);
+                let e = mul(cx.graph, &[diffusivity, k2, time_arg]);
                 let e = neg(cx.graph, e);
                 call(cx, "exp", &[e])?
             } else {
                 let ck = mul(cx.graph, &[sqrt_d, k]);
-                let ckt = mul(cx.graph, &[ck, t]);
+                let ckt = mul(cx.graph, &[ck, time_arg]);
                 if is_displacement {
                     call(cx, "cos", &[ckt])?
                 } else {
@@ -1162,6 +1181,7 @@ fn weber_exterior(
             };
             let outer_body = mul(cx.graph, &[k, multiplier, phi_r, inner, norm]);
             let radial = defint(cx, outer_body, k, zero, oo)?;
+            let radial = if kind == 2 { defint(cx, radial, tau, zero, t)? } else { radial };
             let radial = if layout.sphere {
                 let minus_half = cx.graph.num(Number::fraction(-1, 2)?);
                 let root = pow(cx.graph, r, minus_half);

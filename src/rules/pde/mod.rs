@@ -217,6 +217,7 @@ mod nonlinear;
 mod numeric;
 mod poisson;
 mod sl;
+mod spheroidal;
 mod spectral;
 mod sturm;
 mod symmetry;
@@ -313,6 +314,10 @@ enum Request {
     KdvScattering,
     GreensBall,
     Hodograph,
+    CrumKdv,
+    HodographSolution,
+    GreensRobin,
+    GreensBallRobin,
     KdvReflectionless,
     DarbouxKdv,
 }
@@ -322,6 +327,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     sl::install(i)?;
     hill::install(i)?;
     coulomb::install(i)?;
+    spheroidal::install(i)?;
     let heavy = |name: &str, arity: Arity| OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100);
     let at = i.op(heavy("at", Arity::Fixed(3)).flags(OpFlags::OPAQUE_ON_APPLY))?;
     let symmetries = i.op(heavy("pde_symmetries", Arity::Fixed(2)))?;
@@ -376,6 +382,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("pde/pde_poisson_integral", Tier::Reduce, Pde { op, request: Request::PoissonIntegral });
     let op = i.op(heavy("pde_greens_ball", Arity::Fixed(2)))?;
     i.kernel("pde/pde_greens_ball", Tier::Reduce, Pde { op, request: Request::GreensBall });
+    for (name, request) in [("pde_crum_kdv", Request::CrumKdv), ("pde_hodograph_solution", Request::HodographSolution), ("pde_greens_robin", Request::GreensRobin), ("pde_greens_ball_robin", Request::GreensBallRobin)] {
+        let op = i.op(heavy(name, Arity::Fixed(2)))?;
+        i.kernel(&format!("pde/{name}"), Tier::Reduce, Pde { op, request });
+    }
     let op = i.op(heavy("pde_hodograph", Arity::Fixed(2)))?;
     i.kernel("pde/pde_hodograph", Tier::Reduce, Pde { op, request: Request::Hodograph });
     let op = i.op(heavy("pde_kdv_scattering", Arity::Fixed(3)))?;
@@ -418,6 +428,28 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 };
                 let found = if self.request == Request::KdvReflectionless { nonlinear::kdv_reflectionless(cx, first, second) } else { nonlinear::darboux_kdv(cx, first, second) };
+                found.map_or(Outcome::Pass, Outcome::Pinned)
+            },
+            | Request::CrumKdv | Request::HodographSolution | Request::GreensRobin | Request::GreensBallRobin => {
+                let &[first, second] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                let found = match self.request {
+                    | Request::CrumKdv => {
+                        let Some(list) = best(cx.graph, second).filter(|&l| cx.graph.op(l) == core::LIST) else {
+                            return Outcome::Pass;
+                        };
+                        let psis = cx.graph.children(list).to_vec();
+                        nonlinear::crum_kdv(cx, first, &psis)
+                    },
+                    | Request::HodographSolution => nonlinear::hodograph_solution(cx, first, second),
+                    | Request::GreensRobin => match modes::exact_value(cx, first) {
+                        #[allow(clippy::cast_possible_truncation)]
+                        | Some(d) => poisson::greens_robin(cx, d.round() as i64, second),
+                        | None => None,
+                    },
+                    | _ => poisson::greens_ball_robin(cx, first, second),
+                };
                 found.map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::Hodograph => {
@@ -1320,7 +1352,9 @@ fn solve(
     let classical = if conditions.has_robin() {
         // Robin conditions on a half-line (heat kernels with the Robin image).
         if matches!(method, Method::Any | Method::Heat1 | Method::Heat3 | Method::Fourier) && kind(cx, p) == "heat" {
-            diffusion::parabolic(cx, p, conditions).map(|solution| cx.graph.node(core::EQ, &[p.unknown, solution]))
+            let found = diffusion::parabolic(cx, p, conditions);
+            let found = if found.is_none() && method == Method::Any { laplace::signalling(cx, p, conditions) } else { found };
+            found.map(|solution| cx.graph.node(core::EQ, &[p.unknown, solution]))
         } else if matches!(method, Method::Any | Method::Dalembert | Method::SecondOrder) && kind(cx, p) == "wave" {
             classical::wave_half_line_robin(cx, p, conditions).map(|solution| cx.graph.node(core::EQ, &[p.unknown, solution]))
         } else {
