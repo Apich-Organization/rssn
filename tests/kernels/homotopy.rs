@@ -1,6 +1,6 @@
 //! Tests for the projective homotopy solver with endgame.
 
-use rssn::kernels::homotopy::{HomotopyOptions, PathEnd, homotopy_solve};
+use rssn::kernels::homotopy::{HomotopyOptions, PathEnd, Precision, homotopy_solve};
 use rssn::kernels::rootfind::PolyTerm;
 
 fn t(coef: f64, exps: &[u32]) -> PolyTerm {
@@ -105,4 +105,55 @@ fn regular_systems_and_path_jumping() {
     }
     assert!(r.iter().all(|p| !p.suspect));
     assert!(homotopy_solve(&[], &HomotopyOptions::default()).is_err());
+}
+
+/// `x (x - d)(x - 3d)` with `d = 2^-27`: three roots 7.5e-9 apart (centroid `4d/3`, not a root), coefficients exact in `f64`.
+fn clustered_cubic() -> (Vec<Vec<PolyTerm>>, f64) {
+    let d = 2.0_f64.powi(-27);
+    let sys = vec![vec![t(1.0, &[3]), t(-4.0 * d, &[2]), t(3.0 * d * d, &[1]), t(0.0, &[0])]];
+    (sys, d)
+}
+
+#[test]
+fn double_double_resolves_tight_clusters() {
+    let (sys, d) = clustered_cubic();
+    for precision in [Precision::DoubleDouble, Precision::Adaptive] {
+        let opts = HomotopyOptions { precision, ..HomotopyOptions::default() };
+        let r = homotopy_solve(&sys, &opts).unwrap();
+        assert_eq!(r.len(), 3);
+        let mut roots: Vec<(f64, f64)> = r.iter().map(|p| (p.x[0].0 + p.x_lo[0].0, p.x[0].1)).collect();
+        roots.sort_by(|a, b| a.0.total_cmp(&b.0));
+        for (k, rt) in roots.iter().enumerate() {
+            let want = [0.0, 1.0, 3.0][k] * d;
+            assert!((rt.0 - want).abs() < 1e-5 * d, "{precision:?}: root {k}: {} vs {want}", rt.0);
+            assert!(rt.1.abs() < 1e-5 * d);
+        }
+        assert!(
+            r.iter().all(|p| p.winding == 1 && !p.singular && p.converged && !p.suspect),
+            "{precision:?}: {r:?}"
+        );
+        assert!(r.iter().all(|p| p.extended), "{precision:?}");
+    }
+    // ordinary systems report extra digits in the extended mode
+    let sys = vec![vec![t(1.0, &[2]), t(-2.0, &[0])]];
+    let opts = HomotopyOptions { precision: Precision::DoubleDouble, ..HomotopyOptions::default() };
+    let r = homotopy_solve(&sys, &opts).unwrap();
+    let mut v: Vec<(f64, f64)> = r.iter().map(|p| (p.x[0].0, p.x_lo[0].0)).collect();
+    v.sort_by(|a, b| a.0.total_cmp(&b.0));
+    // sqrt(2) = 1.41421356237309504880168872420969807856967...
+    let hi = 2.0_f64.sqrt();
+    let lo = -9.667_293_313_452_913e-17;
+    assert!((v[1].0 - hi).abs() < 1e-15);
+    assert!((v[1].1 - lo).abs() < 1e-30, "{} vs {lo}", v[1].1);
+    assert!((v[0].0 + hi).abs() < 1e-15);
+}
+
+#[test]
+fn adaptive_leaves_easy_paths_in_double() {
+    let sys = vec![vec![t(1.0, &[2, 0]), t(-1.0, &[0, 0])], vec![t(1.0, &[1, 1]), t(-1.0, &[0, 0])]];
+    let opts = HomotopyOptions { precision: Precision::Adaptive, ..HomotopyOptions::default() };
+    let r = homotopy_solve(&sys, &opts).unwrap();
+    assert_eq!(r.len(), 4);
+    // the two regular solutions stay in f64
+    assert!(r.iter().filter(|p| !p.at_infinity && !p.singular).all(|p| !p.extended));
 }
