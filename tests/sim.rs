@@ -104,3 +104,17 @@ mod md_rigid;
 mod nbody;
 #[path = "sim/sph.rs"]
 mod sph;
+#[path = "sim/ns_research.rs"]
+mod ns_research;
+#[path = "sim/fdtd_research.rs"]
+mod fdtd_research;
+#[path = "sim/dg_research.rs"]
+mod dg_research;
+#[path = "sim/amr.rs"]
+mod amr;
+#[path = "sim/bem_research.rs"]
+mod bem_research;
+#[path = "sim/hyperelastic.rs"]
+mod hyperelastic;
+#[path = "sim/continuum_misc.rs"]
+mod continuum_misc;

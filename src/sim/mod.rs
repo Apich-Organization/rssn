@@ -64,6 +64,16 @@ pub mod elasticity_fem;
 pub mod fem_simplex;
 /// Incompressible Navier-Stokes projection solver on a MAC grid (2D/3D).
 pub mod ns_mac;
+/// Large-deformation hyperelasticity, elastodynamics and penalty contact.
+pub mod hyperelastic;
+/// Block-structured AMR (Berger-Colella) for Euler / shallow water in 1D and 2D.
+pub mod euler_amr;
+/// Nodal DG on hexahedra (3D).
+pub mod dg3d;
+/// Helmholtz BEM: exterior acoustic scattering with Burton-Miller.
+pub mod bem_helmholtz;
+/// Cut-cell geometry (open fractions of segments, faces and cells) from a level set.
+pub mod cutcell;
 /// Yee FDTD for Maxwell in 1D-3D with PML and TF/SF.
 pub mod yee_fdtd;
 /// Pseudo-spectral Fourier and Chebyshev solvers (1D-3D).

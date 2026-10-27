@@ -30,8 +30,29 @@
 //! wavelength; use the auxiliary-grid source for normal incidence when exact
 //! cancellation is needed).
 //!
-//! Limitations: no dispersive or anisotropic media, no conductivity,
-//! axis-aligned TF/SF boxes only, PMC boundaries not available.
+//! **Extensions.**
+//!
+//! * *Dispersive media* ([`Pole`], [`YeeConfig::dispersive`]): any number of
+//!   Lorentz / Drude poles per cell through auxiliary differential equations
+//!   `P_tt + γ P_t + ω0² P = a E` (central differences, second order). A
+//!   Drude pole has `ω0 = 0`; `ε(ω) = ε∞ + Σ a / (ω0² - ω² - i γ ω)`.
+//! * *Complex-frequency-shifted PML*: `κ` stretching and `α` shift
+//!   ([`YeeConfig::pml_kappa_max`], [`YeeConfig::pml_alpha_max`]) absorb
+//!   evanescent and grazing waves that the plain PML reflects.
+//! * *Subcell PEC* (Dey–Mittra, [`YeeConfig::pec_body`]): a PEC body given
+//!   by a level set modifies the Faraday update with exact edge-length and
+//!   face-area fractions (see [`cutcell`](crate::sim::cutcell)); faces with a
+//!   free area below [`YeeConfig::dm_min_area`] are frozen and the time step is
+//!   reduced to keep the scheme stable. Resonances of curved cavities
+//!   converge with second order instead of the first order of a staircase.
+//! * *Rotated TF/SF boxes*: [`Yee::set_oblique_plane_wave_rotated`] applies a
+//!   rotation to the box of an [`ObliquePlaneWave`] (staircase boundary with
+//!   the usual consistent total/scattered correction).
+//!
+//! Limitations: no anisotropic or magnetic media, no conductivity, the
+//! Dey–Mittra treatment is not combined with the TF/SF source or periodic
+//! faces, the auxiliary-grid plane wave and the analytic oblique wave assume
+//! a vacuum incident medium, PMC boundaries not available.
 
 use crate::sim::boundary::{BoundaryCondition, Face, FaceBcs};
 
@@ -99,6 +120,7 @@ pub struct ObliquePlaneWave {
 }
 
 struct ObliqueState {
+    rot: Option<[[f64; 3]; 3]>,
     lo: [f64; 3],
     hi: [f64; 3],
     n: [f64; 3],
@@ -107,6 +129,43 @@ struct ObliqueState {
     origin: [f64; 3],
     waveform: Box<dyn Fn(f64) -> f64 + Send + Sync>,
 }
+
+/// One Lorentz / Drude pole of the electric susceptibility,
+/// `P_tt + γ P_t + ω0² P = a E` (unit `ε0`).
+#[derive(Clone, Copy, Debug)]
+pub struct Pole {
+    /// Resonance angular frequency `ω0` (zero for a Drude pole).
+    pub omega0: f64,
+    /// Damping rate `γ`.
+    pub gamma: f64,
+    /// Drive strength `a` (`Δε ω0²` for a Lorentz pole, `ω_p²` for a Drude pole).
+    pub strength: f64,
+}
+
+impl Pole {
+    /// Lorentz pole with static contribution `Δε`: `χ = Δε ω0² / (ω0² - ω² - i γ ω)`.
+    #[must_use]
+    pub fn lorentz(delta_eps: f64, omega0: f64, gamma: f64) -> Self {
+        Self { omega0, gamma, strength: delta_eps * omega0 * omega0 }
+    }
+
+    /// Drude pole with plasma frequency `ω_p`: `χ = -ω_p² / (ω² + i γ ω)`.
+    #[must_use]
+    pub const fn drude(omega_p: f64, gamma: f64) -> Self {
+        Self { omega0: 0.0, gamma, strength: omega_p * omega_p }
+    }
+
+    /// Susceptibility `χ(ω)` (time dependence `e^{-iωt}`) as `(re, im)`.
+    #[must_use]
+    pub fn susceptibility(&self, omega: f64) -> (f64, f64) {
+        let (re, im) = (self.omega0 * self.omega0 - omega * omega, -self.gamma * omega);
+        let den = re * re + im * im;
+        (self.strength * re / den, -self.strength * im / den)
+    }
+}
+
+/// Per-cell list of poles as a function of the position.
+pub type PoleFn = dyn Fn([f64; 3]) -> Vec<Pole> + Send + Sync;
 
 /// Solver configuration.
 pub struct YeeConfig {
@@ -124,8 +183,19 @@ pub struct YeeConfig {
     pub pml_cells: usize,
     /// PML grading exponent.
     pub pml_order: f64,
-    /// Relative permittivity at `E` nodes (vacuum when `None`).
+    /// Relative permittivity at `E` nodes (vacuum when `None`); with poles this is `ε∞`.
     pub eps_r: Option<Box<dyn Fn([f64; 3]) -> f64 + Send + Sync>>,
+    /// Maximum PML coordinate stretching `κ` (1 = plain PML).
+    pub pml_kappa_max: f64,
+    /// Maximum complex-frequency shift `α` of the PML (0 = plain PML), in
+    /// inverse time units; it is graded to zero towards the PML interface.
+    pub pml_alpha_max: f64,
+    /// Dispersive poles per position (none when `None`).
+    pub dispersive: Option<Box<PoleFn>>,
+    /// Level set of a PEC body (`φ <= 0` inside) treated with the Dey–Mittra subcell scheme.
+    pub pec_body: Option<Box<dyn Fn([f64; 3]) -> f64 + Send + Sync>>,
+    /// Faces of the PEC scheme with a free-area fraction below this value are frozen.
+    pub dm_min_area: f64,
 }
 
 impl YeeConfig {
@@ -147,6 +217,11 @@ impl YeeConfig {
             pml_cells: 10,
             pml_order: 3.0,
             eps_r: None,
+            pml_kappa_max: 1.0,
+            pml_alpha_max: 0.0,
+            dispersive: None,
+            pec_body: None,
+            dm_min_area: 0.05,
         };
         c.n[..dim].copy_from_slice(&n[..dim]);
         c.h[..dim].copy_from_slice(&h[..dim]);
@@ -166,14 +241,32 @@ pub struct Yee {
     eps_inv: Vec<f64>,
     periodic: [bool; 3],
     pec_lo: [bool; 3],
-    // PML coefficients per axis: (b, a) at integer and half positions
-    pml_int: [Vec<(f64, f64)>; 3],
-    pml_half: [Vec<(f64, f64)>; 3],
+    // PML coefficients per axis: (b, a, kappa) at integer and half positions
+    pml_int: [Vec<(f64, f64, f64)>; 3],
+    pml_half: [Vec<(f64, f64, f64)>; 3],
+    layers: Vec<PoleLayer>,
+    dm: Option<DeyMittra>,
     psi: Vec<Vec<f64>>,
     use_pml: bool,
     sources: Vec<CurrentSource>,
     pw: Option<PlaneWaveState>,
     obl: Option<ObliqueState>,
+}
+
+/// One pole slot of every cell with the polarisation of the last two steps.
+struct PoleLayer {
+    strength: Vec<f64>,
+    omega2: Vec<f64>,
+    gamma: Vec<f64>,
+    p: [Vec<f64>; 3],
+    pm: [Vec<f64>; 3],
+}
+
+/// Dey–Mittra geometry: free edge fractions of `E` and inverse free face areas of `H`.
+struct DeyMittra {
+    len: [Vec<f64>; 3],
+    area_inv: [Vec<f64>; 3],
+    scratch: [Vec<f64>; 3],
 }
 
 struct PlaneWaveState {
@@ -217,8 +310,8 @@ impl Yee {
         let mut periodic = [false; 3];
         let mut pec_lo = [false; 3];
         let mut use_pml = false;
-        let mut pml_int: [Vec<(f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a]]);
-        let mut pml_half: [Vec<(f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0); cfg.n[a]]);
+        let mut pml_int: [Vec<(f64, f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0, 1.0); cfg.n[a]]);
+        let mut pml_half: [Vec<(f64, f64, f64)>; 3] = std::array::from_fn(|a| vec![(1.0, 0.0, 1.0); cfg.n[a]]);
         for a in 0..cfg.dim {
             periodic[a] = cfg.bcs.axis_periodic(a)?;
             pec_lo[a] = !periodic[a];
@@ -240,9 +333,13 @@ impl Yee {
                                 let pos = i as f64 + if half { 0.5 } else { 0.0 };
                                 let depth = if max { pos - (n - d) as f64 } else { d as f64 - pos };
                                 if depth > 0.0 {
-                                    let sigma = smax * (depth / d as f64).powf(m);
-                                    let b = (-sigma * dt).exp();
-                                    let coef = (b, b - 1.0);
+                                    let frac = (depth / d as f64).min(1.0);
+                                    let sigma = smax * frac.powf(m);
+                                    let kappa = 1.0 + (cfg.pml_kappa_max - 1.0) * frac.powf(m);
+                                    let alpha = cfg.pml_alpha_max * (1.0 - frac);
+                                    let b = (-(sigma / kappa + alpha) * dt).exp();
+                                    let den = sigma * kappa + kappa * kappa * alpha;
+                                    let coef = (b, if den > 0.0 { sigma / den * (b - 1.0) } else { 0.0 }, kappa);
                                     if half {
                                         pml_half[a][i] = coef;
                                     } else {
@@ -264,9 +361,82 @@ impl Yee {
             })
             .collect();
         let psi = if use_pml { vec![vec![0.0; nn]; 12] } else { Vec::new() };
+        let mut layers: Vec<PoleLayer> = Vec::new();
+        if let Some(pf) = &cfg.dispersive {
+            let per_cell: Vec<Vec<Pole>> = (0..nn)
+                .map(|p| {
+                    let i = [p % cfg.n[0], (p / cfg.n[0]) % cfg.n[1], p / (cfg.n[0] * cfg.n[1])];
+                    pf([i[0] as f64 * cfg.h[0], i[1] as f64 * cfg.h[1], i[2] as f64 * cfg.h[2]])
+                })
+                .collect();
+            let kmax = per_cell.iter().map(Vec::len).max().unwrap_or(0);
+            for k in 0..kmax {
+                let mut l = PoleLayer {
+                    strength: vec![0.0; nn],
+                    omega2: vec![0.0; nn],
+                    gamma: vec![0.0; nn],
+                    p: std::array::from_fn(|_| vec![0.0; nn]),
+                    pm: std::array::from_fn(|_| vec![0.0; nn]),
+                };
+                for (p, poles) in per_cell.iter().enumerate() {
+                    if let Some(pole) = poles.get(k) {
+                        l.strength[p] = pole.strength;
+                        l.omega2[p] = pole.omega0 * pole.omega0;
+                        l.gamma[p] = pole.gamma;
+                    }
+                }
+                layers.push(l);
+            }
+        }
+        let mut dt = dt;
+        let dm = if let Some(body) = &cfg.pec_body {
+            if use_pml || periodic.iter().any(|&b| b) {
+                return Err("the subcell PEC scheme is available with PEC walls only".into());
+            }
+            let outside = |x: [f64; 3]| body(x);
+            let mut len: [Vec<f64>; 3] = std::array::from_fn(|_| vec![1.0; nn]);
+            let mut area_inv: [Vec<f64>; 3] = std::array::from_fn(|_| vec![1.0; nn]);
+            let mut min_area: f64 = 1.0;
+            for p in 0..nn {
+                let i = [p % cfg.n[0], (p / cfg.n[0]) % cfg.n[1], p / (cfg.n[0] * cfg.n[1])];
+                let x0 = [i[0] as f64 * cfg.h[0], i[1] as f64 * cfg.h[1], i[2] as f64 * cfg.h[2]];
+                for c in 0..3 {
+                    len[c][p] = if c < cfg.dim {
+                        crate::sim::cutcell::open_length_fraction(&outside, x0, c, cfg.h[c])
+                    } else {
+                        f64::from(u8::from(outside(x0) > 0.0))
+                    };
+                    // face normal to c (H_c): spans the other active axes
+                    let axes: Vec<usize> = (0..cfg.dim).filter(|&b| b != c).collect();
+                    let mut hl = [0.0; 3];
+                    for &b in &axes {
+                        hl[b] = cfg.h[b];
+                    }
+                    let a = if axes.is_empty() {
+                        1.0
+                    } else {
+                        crate::sim::cutcell::open_fraction(&outside, x0, hl, &axes, crate::sim::cutcell::default_depth(axes.len()))
+                    };
+                    if a >= cfg.dm_min_area {
+                        area_inv[c][p] = 1.0 / a;
+                        if a < 1.0 - 1e-12 {
+                            min_area = min_area.min(a);
+                        }
+                    } else {
+                        area_inv[c][p] = 0.0;
+                    }
+                }
+            }
+            dt *= min_area.sqrt();
+            Some(DeyMittra { len, area_inv, scratch: std::array::from_fn(|_| vec![0.0; nn]) })
+        } else {
+            None
+        };
         Ok(Self {
             cfg,
             dt,
+            layers,
+            dm,
             t: 0.0,
             f: std::array::from_fn(|_| vec![0.0; nn]),
             eps_inv,
@@ -328,7 +498,36 @@ impl Yee {
             }
         }
         let h = [n[1] * e[2] - n[2] * e[1], n[2] * e[0] - n[0] * e[2], n[0] * e[1] - n[1] * e[0]];
-        self.obl = Some(ObliqueState { lo: w.lo, hi: w.hi, n, e, h, origin: w.origin, waveform: w.waveform });
+        self.obl = Some(ObliqueState { rot: None, lo: w.lo, hi: w.hi, n, e, h, origin: w.origin, waveform: w.waveform });
+        Ok(())
+    }
+
+    /// Installs an oblique plane wave on a **rotated** box: the box
+    /// `[lo, hi]` of `w` is rotated about its centre by the orthonormal
+    /// matrix `rotation` (columns are the images of the axes). The incident
+    /// wave itself keeps the direction and polarisation given in `w`.
+    ///
+    /// # Errors
+    /// As [`Yee::set_oblique_plane_wave`], and for a matrix that is not
+    /// orthonormal or that mixes in an inactive axis.
+    pub fn set_oblique_plane_wave_rotated(&mut self, w: ObliquePlaneWave, rotation: [[f64; 3]; 3]) -> Result<(), String> {
+        for i in 0..3 {
+            for j in 0..3 {
+                let dot: f64 = (0..3).map(|k| rotation[k][i] * rotation[k][j]).sum();
+                if (dot - f64::from(u8::from(i == j))).abs() > 1e-9 {
+                    return Err("the rotation must be orthonormal".into());
+                }
+            }
+        }
+        for a in self.cfg.dim..3 {
+            if (0..3).any(|b| b != a && (rotation[a][b].abs() > 1e-12 || rotation[b][a].abs() > 1e-12)) {
+                return Err("the rotation must not mix in inactive axes".into());
+            }
+        }
+        self.set_oblique_plane_wave(w)?;
+        if let Some(o) = &mut self.obl {
+            o.rot = Some(rotation);
+        }
         Ok(())
     }
 
@@ -344,6 +543,13 @@ impl Yee {
 
     fn in_box(&self, pos: [f64; 3]) -> f64 {
         let Some(o) = &self.obl else { return 0.0 };
+        let mut pos = pos;
+        if let Some(r) = &o.rot {
+            // local coordinates in the frame of the rotated box (rotation about its centre)
+            let c: [f64; 3] = std::array::from_fn(|a| f64::midpoint(o.lo[a], o.hi[a]));
+            let d: [f64; 3] = std::array::from_fn(|a| pos[a] - c[a]);
+            pos = std::array::from_fn(|a| c[a] + (0..3).map(|b| r[b][a] * d[b]).sum::<f64>());
+        }
         for a in 0..self.cfg.dim {
             let tol = 1e-9 * self.cfg.h[a];
             if pos[a] < o.lo[a] - tol || pos[a] > o.hi[a] + tol {
@@ -486,12 +692,12 @@ impl Yee {
         let mut d1 = self.dfw(&self.f[f1], ijk, a1) + self.tf_corr(fc, f1, ijk, a1, true);
         let mut d2 = self.dfw(&self.f[f2], ijk, a2) + self.tf_corr(fc, f2, ijk, a2, true);
         if self.use_pml {
-            let (b, a) = self.pml_half[a1][ijk[a1]];
+            let (b, a, k) = self.pml_half[a1][ijk[a1]];
             self.psi[m1][p] = b * self.psi[m1][p] + a * d1;
-            d1 += self.psi[m1][p];
-            let (b, a) = self.pml_half[a2][ijk[a2]];
+            d1 = d1 / k + self.psi[m1][p];
+            let (b, a, k) = self.pml_half[a2][ijk[a2]];
             self.psi[m2][p] = b * self.psi[m2][p] + a * d2;
-            d2 += self.psi[m2][p];
+            d2 = d2 / k + self.psi[m2][p];
         }
         d1 - d2
     }
@@ -502,12 +708,12 @@ impl Yee {
         let mut d1 = self.dbw(&self.f[f1], ijk, a1) + self.tf_corr(fc, f1, ijk, a1, false);
         let mut d2 = self.dbw(&self.f[f2], ijk, a2) + self.tf_corr(fc, f2, ijk, a2, false);
         if self.use_pml {
-            let (b, a) = self.pml_int[a1][ijk[a1]];
+            let (b, a, k) = self.pml_int[a1][ijk[a1]];
             self.psi[m1][p] = b * self.psi[m1][p] + a * d1;
-            d1 += self.psi[m1][p];
-            let (b, a) = self.pml_int[a2][ijk[a2]];
+            d1 = d1 / k + self.psi[m1][p];
+            let (b, a, k) = self.pml_int[a2][ijk[a2]];
             self.psi[m2][p] = b * self.psi[m2][p] + a * d2;
-            d2 += self.psi[m2][p];
+            d2 = d2 / k + self.psi[m2][p];
         }
         d1 - d2
     }
@@ -515,6 +721,15 @@ impl Yee {
     /// Advances `H` by `dt_h` using the current `E`.
     fn update_h(&mut self, dt_h: f64) {
         let n = self.cfg.n;
+        if let Some(dm) = &mut self.dm {
+            // the Faraday circulation uses the free parts of the edges: E -> L E
+            for c in 0..3 {
+                for p in 0..self.f[c].len() {
+                    dm.scratch[c][p] = self.f[c][p] * dm.len[c][p];
+                }
+                std::mem::swap(&mut self.f[c], &mut dm.scratch[c]);
+            }
+        }
         for k in 0..n[2] {
             for j in 0..n[1] {
                 for i in 0..n[0] {
@@ -524,10 +739,16 @@ impl Yee {
                     let cx = self.curl_h(3, p, ijk, CurlTerm { f: 2, axis: 1, psi: 0 }, CurlTerm { f: 1, axis: 2, psi: 1 });
                     let cy = self.curl_h(4, p, ijk, CurlTerm { f: 0, axis: 2, psi: 2 }, CurlTerm { f: 2, axis: 0, psi: 3 });
                     let cz = self.curl_h(5, p, ijk, CurlTerm { f: 1, axis: 0, psi: 4 }, CurlTerm { f: 0, axis: 1, psi: 5 });
-                    self.f[3][p] -= dt_h * cx;
-                    self.f[4][p] -= dt_h * cy;
-                    self.f[5][p] -= dt_h * cz;
+                    let (sx, sy, sz) = self.dm.as_ref().map_or((1.0, 1.0, 1.0), |d| (d.area_inv[0][p], d.area_inv[1][p], d.area_inv[2][p]));
+                    self.f[3][p] -= dt_h * cx * sx;
+                    self.f[4][p] -= dt_h * cy * sy;
+                    self.f[5][p] -= dt_h * cz * sz;
                 }
+            }
+        }
+        if let Some(dm) = &mut self.dm {
+            for c in 0..3 {
+                std::mem::swap(&mut self.f[c], &mut dm.scratch[c]);
             }
         }
     }
@@ -545,9 +766,30 @@ impl Yee {
                     let cy = self.curl_e(1, p, ijk, CurlTerm { f: 3, axis: 2, psi: 8 }, CurlTerm { f: 5, axis: 0, psi: 9 });
                     let cz = self.curl_e(2, p, ijk, CurlTerm { f: 4, axis: 0, psi: 10 }, CurlTerm { f: 3, axis: 1, psi: 11 });
                     let ei = self.eps_inv[p];
-                    self.f[0][p] += dt * ei * cx;
-                    self.f[1][p] += dt * ei * cy;
-                    self.f[2][p] += dt * ei * cz;
+                    let mut dp = [0.0; 3];
+                    for layer in &mut self.layers {
+                        if layer.strength[p] == 0.0 && layer.omega2[p] == 0.0 && layer.gamma[p] == 0.0 {
+                            continue;
+                        }
+                        let (g, o2, a) = (layer.gamma[p], layer.omega2[p], layer.strength[p]);
+                        for c in 0..3 {
+                            let (pn, pnm) = (layer.p[c][p], layer.pm[c][p]);
+                            let pnew = ((2.0 - o2 * dt * dt) * pn - (1.0 - 0.5 * g * dt) * pnm + a * dt * dt * self.f[c][p]) / (1.0 + 0.5 * g * dt);
+                            dp[c] += pnew - pn;
+                            layer.pm[c][p] = pn;
+                            layer.p[c][p] = pnew;
+                        }
+                    }
+                    self.f[0][p] += ei * (dt * cx - dp[0]);
+                    self.f[1][p] += ei * (dt * cy - dp[1]);
+                    self.f[2][p] += ei * (dt * cz - dp[2]);
+                    if let Some(dm) = &self.dm {
+                        for c in 0..3 {
+                            if dm.len[c][p] <= 0.0 {
+                                self.f[c][p] = 0.0;
+                            }
+                        }
+                    }
                 }
             }
         }
