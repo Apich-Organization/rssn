@@ -40,6 +40,8 @@ use num_traits::Signed;
 use num_traits::ToPrimitive;
 use num_traits::Zero;
 
+use crate::rules::poly::galois::Fx;
+use crate::rules::poly::galois::BITS;
 use crate::rules::poly::univariate;
 
 type Q = BigRational;
@@ -693,14 +695,105 @@ fn expand(
                 };
                 descend(search, &new_field, op, ramification, exponent, s, &kappa);
             }
-        } else if width == 1 {
-            // Linear: κ = -c_0 / c_1.
-            let (Some(c0), Some(c1)) = (chi.first(), chi.get(1)) else { continue };
-            let Some(inverse) = field.inverse(c1) else { continue };
-            let kappa = field.scale(&field.mul(c0, &inverse), &q(-1));
-            descend(search, field, op, ramification, exponent, s, &kappa);
+        } else {
+            // Over a number field: the roots that lie in the field (a linear
+            // polynomial has its one root there).
+            for kappa in roots_in_field(field, &chi) {
+                descend(search, field, op, ramification, exponent, s, &kappa);
+            }
         }
     }
+}
+
+/// Newton refinement of a root of the fixed-point polynomial `p` (ascending).
+fn refine_root(
+    p: &[Fx],
+    start: Complex64,
+) -> Option<Fx> {
+    let derivative: Vec<Fx> = p
+        .iter()
+        .enumerate()
+        .skip(1)
+        .map(|(i, c)| c.mul(&Fx::integer(&BigInt::from(i))))
+        .collect();
+    let value = |poly: &[Fx], z: &Fx| poly.iter().rev().fold(Fx::zero(), |acc, c| acc.mul(z).add(c));
+    let mut z = Fx::from_f64(start.re, start.im)?;
+    for _ in 0..14 {
+        let step = value(p, &z).div(&value(&derivative, &z))?;
+        z = z.sub(&step);
+    }
+    Some(z)
+}
+
+/// The roots in `K = Q(α)` of a polynomial over `K` (ascending), found
+/// numerically at 190 digits for one embedding of `α` and recognised as
+/// rational combinations of `1, α, …, α^{d-1}` by lattice reduction, then
+/// checked exactly. Roots outside `K` (they would need a larger field) are
+/// not returned.
+fn roots_in_field(
+    field: &Field,
+    poly: &[Elt],
+) -> Vec<Elt> {
+    let degree = poly.len().saturating_sub(1);
+    if degree == 0 {
+        return Vec::new();
+    }
+    if field.is_rational() {
+        let Some(rational): Option<Vec<Q>> = poly.iter().map(|c| field.as_rational(c)).collect() else { return Vec::new() };
+        return irreducible_factors(&rational).into_iter().filter(|(g, _)| g.len() == 2).map(|(g, _)| field.from_q(&-g[0].clone())).collect();
+    }
+    let d = field.degree();
+    let to_fx = |q: &Q| Fx::real((q.numer() << BITS) / q.denom());
+    // The embedding α ≈ alpha0.
+    let modulus: Vec<Fx> = field.modulus.iter().map(to_fx).collect();
+    let Some(alpha0) = field.embeddings().first().copied().and_then(|a| refine_root(&modulus, a)) else { return Vec::new() };
+    let mut powers = vec![Fx::integer(&BigInt::one())];
+    for _ in 1..d {
+        let next = powers.last().map_or_else(Fx::zero, |l| l.mul(&alpha0));
+        powers.push(next);
+    }
+    let evaluate = |e: &[Q]| -> Fx { e.iter().zip(&powers).fold(Fx::zero(), |acc, (c, p)| acc.add(&p.mul(&to_fx(c)))) };
+    let numeric: Vec<Fx> = poly.iter().map(|e| evaluate(e)).collect();
+    let as_complex = |z: &Fx| -> Option<Complex64> {
+        let scale = |v: &BigInt| num_traits::ToPrimitive::to_f64(&Q::new(v.clone(), crate::rules::poly::galois::one()));
+        Some(Complex64::new(scale(&z.re)?, scale(&z.im)?))
+    };
+    let Some(coefficients): Option<Vec<Complex64>> = numeric.iter().map(as_complex).collect() else { return Vec::new() };
+    let mut found: Vec<Elt> = Vec::new();
+    let shift = BITS - 250;
+    for start in super::resum::complex_roots(&coefficients) {
+        let Some(root) = refine_root(&numeric, start) else { continue };
+        // Rows: unit vectors with (Re, Im) of α^i, and of the root.
+        let mut rows: Vec<Vec<BigInt>> = Vec::new();
+        for (i, p) in powers.iter().chain(std::iter::once(&root)).enumerate() {
+            let mut row = vec![BigInt::zero(); d + 1];
+            if let Some(slot) = row.get_mut(i) {
+                *slot = BigInt::one();
+            }
+            row.push(p.re.clone() >> shift);
+            row.push(p.im.clone() >> shift);
+            rows.push(row);
+        }
+        let Some(reduced) = crate::rules::poly::galois::lll(rows) else { continue };
+        let tolerance = BigInt::one() << 60;
+        let Some(relation) = reduced.into_iter().find(|r| {
+            r.get(d).is_some_and(|c| !c.is_zero()) && r.get(d + 1).is_some_and(|v| v.abs() < tolerance) && r.get(d + 2).is_some_and(|v| v.abs() < tolerance)
+        }) else {
+            continue;
+        };
+        let Some(denominator) = relation.get(d).cloned() else { continue };
+        let element: Elt = trim(
+            (0..d)
+                .map(|i| Q::new(-relation.get(i).cloned().unwrap_or_default(), denominator.clone()))
+                .collect(),
+        );
+        // Exact check.
+        let value = poly.iter().rev().fold(Vec::new(), |acc, c| field.add(&field.mul(&acc, &element), c));
+        if value.is_empty() && !found.contains(&element) {
+            found.push(element);
+        }
+    }
+    found
 }
 
 fn descend(
@@ -760,10 +853,10 @@ fn regular(
                     roots.push((f, rho, multiplicity));
                 }
             }
-        } else if width == 1 {
-            let (Some(c0), Some(c1)) = (reduced.first(), reduced.get(1)) else { return };
-            let Some(inverse) = field.inverse(c1) else { return };
-            roots.push((field.clone(), field.scale(&field.mul(c0, &inverse), &q(-1)), 1));
+        } else {
+            for rho in roots_in_field(field, &reduced) {
+                roots.push((field.clone(), rho, 1));
+            }
         }
     }
     for (f, rho, multiplicity) in roots {
@@ -1115,6 +1208,21 @@ mod tests {
         let j0 = 0.938_469_807_240_813;
         let expected = j0 * 0.5_f64.ln() + 0.0625 - 3.0 * 0.5_f64.powi(4) / 128.0 + 11.0 * 0.5_f64.powi(6) / 13824.0;
         assert!((value.re - expected).abs() < 2e-5, "{value} vs {expected}");
+    }
+
+    #[test]
+    fn roots_in_a_number_field() {
+        let field = Field::extension(qs(&[-2, 0, 1]));
+        // k^2 - 2 over Q(sqrt 2): the roots +-alpha.
+        let mut roots = roots_in_field(&field, &[qs(&[-2]), Vec::new(), qs(&[1])]);
+        roots.sort();
+        assert_eq!(roots, vec![qs(&[0, -1]), qs(&[0, 1])]);
+        // k^2 - 3 has no root there.
+        assert!(roots_in_field(&field, &[qs(&[-3]), Vec::new(), qs(&[1])]).is_empty());
+        // (k - 1 - alpha)(k + alpha) = k^2 - k - 2 - alpha.
+        let mut roots = roots_in_field(&field, &[qs(&[-2, -1]), qs(&[-1]), qs(&[1])]);
+        roots.sort();
+        assert_eq!(roots, vec![qs(&[0, -1]), qs(&[1, 1])]);
     }
 
     #[test]

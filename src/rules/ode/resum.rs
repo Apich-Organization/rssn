@@ -93,7 +93,7 @@ fn horner(
 }
 
 /// Complex roots by the Durand–Kerner iteration.
-fn complex_roots(coefficients: &[Complex64]) -> Vec<Complex64> {
+pub(super) fn complex_roots(coefficients: &[Complex64]) -> Vec<Complex64> {
     let n = coefficients.len().saturating_sub(1);
     let Some(lead) = coefficients.last().copied().filter(|l| l.norm() > 0.0) else { return Vec::new() };
     if n == 0 {
