@@ -30,13 +30,15 @@
 //! * `U(a, b, z)`: the asymptotic expansion for large `|z|`; for
 //!   `Re z >= 0` the solution is continued *inwards* along a ray from a point
 //!   where the expansion is accurate (the recessive solution grows in that
-//!   direction, so the continuation is stable, also for integer `b`); for
-//!   `Re z < 0` the connection formula to `M(a, b, z)` and
-//!   `z^{1-b} M(a - b + 1, 2 - b, z)` is used, with Richardson extrapolation
-//!   in `b` when `b` is within `1e-3` of an integer.
+//!   direction, so the continuation is stable, also for integer `b` and for
+//!   parameters of modulus 60 and more); for `Re z < 0` the value on the
+//!   imaginary axis at the same modulus is continued along the circle
+//!   `|z| = const` into the left half plane, where the competing solution
+//!   `e^z z^{a-b}` is damped. No connection formula (and hence no
+//!   cancellation near integer `b`) is used.
 //!
-//! Limitations: parameters of very large modulus (more than about 50) lose
-//! accuracy; `b_j` equal to a non-positive integer (without termination) and
+//! Limitations: `pFq` and `M` with parameters of very large modulus (more than
+//! about 50) lose accuracy; `b_j` equal to a non-positive integer (without termination) and
 //! divergent cases (`p > q + 1`) give NaN.
 
 use num_complex::Complex64;
@@ -495,13 +497,6 @@ fn u_asymptotic(a: C, b: C, z: C) -> Option<C> {
     None
 }
 
-fn u_connection(a: C, b: C, z: C) -> C {
-    let lz = z.ln();
-    let t1 = gamma_c(ONE - b) / gamma_c(a - b + 1.0) * hyp1f1_cplx(a, b, z);
-    let t2 = gamma_c(b - 1.0) / gamma_c(a) * ((ONE - b) * lz).exp() * hyp1f1_cplx(a - b + 1.0, C::new(2.0, 0.0) - b, z);
-    t1 + t2
-}
-
 /// Tricomi's confluent hypergeometric function `U(a, b, z)` for complex
 /// arguments on the principal branch (cut along the negative real axis;
 /// the upper side is returned for `z < 0`).
@@ -553,21 +548,23 @@ pub fn hyp_u_cplx(a: C, b: C, z: C) -> C {
         }
         return nan();
     }
-    // Re z < 0: connection formula, Richardson in b near an integer
-    let dist = (b - C::new(b.re.round(), 0.0)).norm();
-    if dist > 1e-3 {
-        return u_connection(a, b, z);
-    }
-    let g = |eps: f64| 0.5 * (u_connection(a, b + eps, z) + u_connection(a, b - eps, z));
-    let e0 = 0.04;
-    let mut tab = vec![g(e0), g(e0 / 2.0), g(e0 / 4.0), g(e0 / 8.0)];
-    let mut fac = 4.0;
-    for _ in 0..3 {
-        for i in 0..tab.len() - 1 {
-            tab[i] = (tab[i + 1] * fac - tab[i]) / (fac - 1.0);
-        }
-        tab.pop();
-        fac *= 4.0;
-    }
-    tab[0]
+    // Re z < 0: start on the imaginary axis at the same modulus (reached by the
+    // stable inward continuation above) and walk along the circle |z| = const
+    // into the left half plane. Along that arc Re z decreases, so the
+    // other solution of the equation, which behaves like e^z, is damped and the
+    // algebraically behaving Tricomi function stays dominant.
+    let rho = z.norm();
+    let side = if z.im < 0.0 { -1.0 } else { 1.0 };
+    let zb = C::new(0.0, side * rho);
+    let u0 = hyp_u_cplx(a, b, zb);
+    let u1 = hyp_u_cplx(a + 1.0, b + 1.0, zb);
+    let phi_b = side * std::f64::consts::FRAC_PI_2;
+    let phi = if z.im == 0.0 { std::f64::consts::PI } else { z.arg() };
+    let steps = ((phi - phi_b).abs() / 0.15).ceil().max(1.0) as usize;
+    let mut way: Vec<C> = (1..steps)
+        .map(|k| C::from_polar(rho, phi_b + (phi - phi_b) * k as f64 / steps as f64))
+        .collect();
+    way.push(z);
+    let ode = HypOde::new(&[a], &[b]);
+    ode.walk(zb, vec![u0, -a * u1], &way)[0]
 }

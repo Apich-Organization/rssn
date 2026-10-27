@@ -243,3 +243,39 @@ fn tricomi_u_recurrences_and_reflection() {
     let want = z * z - 2.0 * (b + 1.0) * z + b * (b + 1.0);
     close(got, want, 1e-12, "U(-2,b,z)");
 }
+
+#[test]
+fn tricomi_u_large_parameters_all_regions() {
+    // recurrences and the Kummer transformation hold to near rounding level for |a|, |b| up to ~60,
+    // including the left half plane, where continuation along a circle replaces the connection formula
+    let cases = [
+        (c(5.3, 1.0), c(7.1, -0.5)),
+        (c(12.3, 3.0), c(15.1, -2.0)),
+        (c(25.3, 3.0), c(30.1, -2.0)),
+        (c(50.3, -3.0), c(61.7, 2.0)),
+        (c(25.3, 3.0), c(30.0, 0.0)), // integer b
+    ];
+    for (a, b) in cases {
+        for z in [
+            c(0.5, 0.2),
+            c(5.0, 0.0),
+            c(-0.5, 0.3),
+            c(-2.0, 1.0),
+            c(-5.0, 3.0),
+            c(-15.0, -4.0),
+            c(-40.0, 10.0),
+            c(-5.0, 30.0),
+            c(30.0, 10.0),
+            c(0.0, 8.0),
+            c(-7.0, 0.0),
+        ] {
+            let lhs = hyp_u_cplx(a, b, z);
+            let up = hyp_u_cplx(a, b + 1.0, z);
+            let r = (b - a - 1.0) * hyp_u_cplx(a, b - 1.0, z) + (c(1.0, 0.0) - b - z) * lhs + z * up;
+            let sc = ((c(1.0, 0.0) - b - z) * lhs).norm().max((z * up).norm());
+            assert!(r.norm() < 1e-9 * sc, "b-recurrence a={a} b={b} z={z}: {:.2e}", r.norm() / sc);
+            let rhs = z.powc(c(1.0, 0.0) - b) * hyp_u_cplx(a - b + 1.0, c(2.0, 0.0) - b, z);
+            close(lhs, rhs, 1e-9, &format!("Kummer transformation a={a} b={b} z={z}"));
+        }
+    }
+}
