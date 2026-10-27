@@ -420,7 +420,7 @@ fn finite_candidates(
         push(&mut out, zero.clone(), Q::zero());
     }
     for solution in formal_solutions(op, &FormalPoint::Finite(f.to_vec()), 2) {
-        if solution.ramification != 1 {
+        if solution.ramification != 1 || solution.has_logarithms() {
             continue;
         }
         let Some(rho) = solution.field.as_rational(&solution.rho) else { continue };
@@ -455,7 +455,7 @@ fn finite_candidates(
 fn infinity_candidates(op: &[Vec<Q>]) -> Vec<(Rat, Q)> {
     let mut out: Vec<(Rat, Q)> = Vec::new();
     for solution in formal_solutions(op, &FormalPoint::Infinity, 2) {
-        if solution.ramification != 1 {
+        if solution.ramification != 1 || solution.has_logarithms() {
             continue;
         }
         let Some(rho) = solution.field.as_rational(&solution.rho) else { continue };

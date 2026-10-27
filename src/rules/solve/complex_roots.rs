@@ -125,6 +125,10 @@ impl Kernel for SolveComplex {
                     roots.extend(found);
                 },
                 | _ => {
+                    if let Some(found) = super::tower::complex_roots(graph, &factor) {
+                        roots.extend(found);
+                        continue;
+                    }
                     let Some(found) = all_roots_as_objects(graph, &factor) else { return Outcome::Pass };
                     roots.extend(found);
                 },
@@ -189,6 +193,26 @@ mod tests {
         for r in &roots {
             let residual = (r - 2.0) * (r * r + r + 1.0) * (r * r * r - 2.0);
             assert!(residual.norm() < 1e-8, "{r}: {residual}");
+        }
+    }
+
+    #[test]
+    fn exact_complex_roots_of_solvable_sextics_and_septics() {
+        // Φ7: the imaginary cyclic sextic, exp(2πi j/7) combinations.
+        let (text, roots) = complex_roots("solve_complex(x^6 + x^5 + x^4 + x^3 + x^2 + x + 1, x)");
+        assert_eq!(roots.len(), 6, "{text}");
+        assert!(!text.contains("root_of"), "{text}");
+        for r in &roots {
+            assert!((r.powi(7) - Complex64::new(1.0, 0.0)).norm() < 1e-9, "{r}");
+        }
+        // D7(x) - 3 (group F42): one real root and three conjugate pairs, through the
+        // Lagrange resolvents.
+        let (text, roots) = complex_roots("solve_complex(x^7 - 7*x^5 + 14*x^3 - 7*x - 3, x)");
+        assert_eq!(roots.len(), 7, "{text}");
+        assert!(!text.contains("root_of"), "{text}");
+        for r in &roots {
+            let residual = r.powi(7) - 7.0 * r.powi(5) + 14.0 * r.powi(3) - 7.0 * r - 3.0;
+            assert!(residual.norm() < 1e-7 * (1.0 + r.norm().powi(7)), "{r}: {residual}");
         }
     }
 }

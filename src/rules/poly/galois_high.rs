@@ -308,6 +308,7 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
             })
             .collect();
         let mut ambiguous = false;
+        let mut conclusive = false;
         let choices: Vec<(usize, Vec<usize>)> =
             (0..powers_by_transform.len()).flat_map(|t| exponent_choices(n).into_iter().map(move |e| (t, e))).collect();
         for (transform, e) in choices {
@@ -317,10 +318,13 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
                 values.push(orbit_sum(&elements, sigma, powers, &e)?);
             }
             if values.iter().any(|v| v.re.bits() > magnitude_limit || v.im.bits() > magnitude_limit) {
-                return None;
+                // Out of the working precision for this choice: try another.
+                ambiguous = true;
+                continue;
             }
                     let hits: Vec<usize> = values.iter().enumerate().filter(|(_, v)| round_integer(v).is_some()).map(|(i, _)| i).collect();
             if hits.is_empty() {
+                conclusive = true;
                 break;
             }
             // Several cosets are integral when the normaliser is larger
@@ -342,7 +346,9 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
                 roots,
             });
         }
-        let _ = ambiguous;
+        if ambiguous && !conclusive {
+            return None;
+        }
     }
     None
 }
@@ -351,7 +357,7 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
 // Linear algebra and rational recognition on fixed-point numbers.
 
 /// Solves `A X = B` (complex fixed point) by Gaussian elimination.
-fn solve_system(
+pub(crate) fn solve_system(
     mut a: Vec<Vec<Fx>>,
     mut b: Vec<Vec<Fx>>,
 ) -> Option<Vec<Vec<Fx>>> {
@@ -571,8 +577,13 @@ fn build_tower(
 pub struct Cyclotomic {
     /// The modulus `m` of the cyclotomic field `Q(ζ_m)` containing the roots.
     pub conductor: u64,
-    /// For each root: `(position, [(j, coefficient of 2cos(2πj/p))])`.
+    /// For each root: `(position, [(j, coefficient)])`: in the real form the
+    /// coefficient of `2cos(2πj/m)`, in the complex form (`complex`) the
+    /// coefficient of `exp(2πi j/m)`.
     pub roots: Vec<(usize, Vec<(u64, BigRational)>)>,
+    /// Whether the roots are given as combinations of `exp(2πi j/m)` (the
+    /// field need not be real).
+    pub complex: bool,
 }
 
 fn pi_fixed(precision: usize) -> BigInt {
@@ -683,6 +694,7 @@ fn unit_generators(
 fn real_characters(
     m: u64,
     n: usize,
+    real: bool,
 ) -> Vec<std::collections::HashMap<u64, usize>> {
     let units: Vec<u64> = (1..m).filter(|&u| gcd_u64(u, m) == 1).collect();
     let generators = unit_generators(&units, m);
@@ -720,7 +732,7 @@ fn real_characters(
                 }
             }
         }
-        if !consistent || chi.get(&(m - 1)).copied() != Some(0) {
+        if !consistent || (real && chi.get(&(m - 1)).copied() != Some(0)) {
             continue;
         }
         let image: std::collections::HashSet<usize> = chi.values().copied().collect();
@@ -780,22 +792,38 @@ fn candidate_moduli(disc: &BigInt) -> Vec<u64> {
 /// circulant system (`e` a unit mod `n` chosen by the labelling).
 #[must_use]
 pub fn cyclotomic(analysis: &Analysis) -> Option<Cyclotomic> {
+    cyclotomic_search(analysis, true)
+}
+
+/// Like [`cyclotomic`] for fields that need not be real: every root as a
+/// rational combination of `exp(2πi j/m)` (the periods `η_k` are then complex).
+#[must_use]
+pub fn cyclotomic_complex(analysis: &Analysis) -> Option<Cyclotomic> {
+    cyclotomic_search(analysis, false)
+}
+
+fn cyclotomic_search(
+    analysis: &Analysis,
+    real: bool,
+) -> Option<Cyclotomic> {
     let n = analysis.degree();
     if !analysis.group.is_abelian() || n < 3 {
         return None;
     }
     let real_tolerance = BigInt::one() << (BITS - 100);
-    if analysis.roots.iter().any(|r| r.im.abs() > real_tolerance) {
+    if real && analysis.roots.iter().any(|r| r.im.abs() > real_tolerance) {
         return None;
     }
     let disc = discriminant(&analysis.monic)?;
     let pi = pi_fixed(BITS + 64);
     for m in candidate_moduli(&disc) {
-        let characters = real_characters(m, n);
+        let characters = real_characters(m, n, real);
         if characters.is_empty() {
             continue;
         }
         let cos_table: Vec<BigInt> = (0..m).map(|j| cos_fixed(j, m, &pi, 64)).collect();
+        // sin(2πu/m) = cos(2π (4u - m) / 4m)
+        let sin_table: Vec<BigInt> = (0..m).map(|u| cos_fixed((4 * u + 3 * m) % (4 * m), 4 * m, &pi, 64)).collect();
         for chi in &characters {
             let coset = |k: usize| -> Vec<u64> {
                 let mut elements: Vec<u64> = chi.iter().filter(|(_, v)| **v == k).map(|(u, _)| *u).collect();
@@ -803,14 +831,29 @@ pub fn cyclotomic(analysis: &Analysis) -> Option<Cyclotomic> {
                 elements
             };
             for e in (1..n).filter(|e| gcd_u64(*e as u64, n as u64) == 1) {
-                let eta: Vec<BigInt> = (0..n)
-                    .map(|k| coset(k).iter().map(|&j| cos_table.get(usize::try_from(j).unwrap_or(0)).cloned().unwrap_or_default()).sum())
+                let eta: Vec<Fx> = (0..n)
+                    .map(|k| {
+                        let mut sum = Fx::zero();
+                        for j in coset(k) {
+                            let index = usize::try_from(j).unwrap_or(0);
+                            let re = cos_table.get(index).cloned().unwrap_or_default();
+                            let im = if real { BigInt::zero() } else { sin_table.get(index).cloned().unwrap_or_default() };
+                            sum = sum.add(&Fx { re, im });
+                        }
+                        sum
+                    })
                     .collect();
                 let matrix: Vec<Vec<Fx>> = (0..n)
-                    .map(|k| (0..n).map(|t| eta.get(e * (k + t) % n).cloned().map_or_else(Fx::zero, Fx::real)).collect())
+                    .map(|k| (0..n).map(|t| eta.get(e * (k + t) % n).cloned().unwrap_or_else(Fx::zero)).collect())
                     .collect();
                 let rhs: Vec<Vec<Fx>> = (0..n)
-                    .map(|k| analysis.ordering.get(k).and_then(|&i| analysis.roots.get(i)).map(|r| vec![Fx::real(r.re.clone())]))
+                    .map(|k| {
+                        analysis
+                            .ordering
+                            .get(k)
+                            .and_then(|&i| analysis.roots.get(i))
+                            .map(|r| vec![if real { Fx::real(r.re.clone()) } else { r.clone() }])
+                    })
                     .collect::<Option<_>>()?;
                 let Some(solution) = solve_system(matrix.clone(), rhs.clone()) else { continue };
                 let Some(c) = solution.iter().map(|row| row.first().and_then(rationalize)).collect::<Option<Vec<BigRational>>>() else {
@@ -833,7 +876,7 @@ pub fn cyclotomic(analysis: &Analysis) -> Option<Cyclotomic> {
                     let mut terms: Vec<(u64, BigRational)> = Vec::new();
                     for (t, q) in c.iter().enumerate() {
                         for j in coset(e * (k + t) % n) {
-                            if j > m - j {
+                            if real && j > m - j {
                                 continue;
                             }
                             match terms.iter_mut().find(|(jj, _)| *jj == j) {
@@ -846,7 +889,7 @@ pub fn cyclotomic(analysis: &Analysis) -> Option<Cyclotomic> {
                     terms.sort_by_key(|(j, _)| *j);
                     roots.push((k, terms));
                 }
-                return Some(Cyclotomic { conductor: m, roots });
+                return Some(Cyclotomic { conductor: m, roots, complex: !real });
             }
         }
     }
@@ -1107,5 +1150,12 @@ mod tests {
         let cyclo = cyclotomic(&a).expect("periods");
         assert_eq!(cyclo.conductor, 29);
         assert_eq!(cyclo.roots.len(), 7);
+    }
+
+    #[test]
+    fn debug_lagrange() {
+        let a = analyse(&poly(&[-3, -7, 0, 14, 0, -7, 0, 1])).expect("group");
+        eprintln!("DBG label {}", a.group.label);
+        eprintln!("DBG lagrange {:?}", lagrange(&a));
     }
 }

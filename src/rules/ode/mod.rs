@@ -123,6 +123,7 @@
 //! |---|---|
 //! | `ode_frobenius(eq, y(x), x0, n)` | `list(y(x) = C1 y1 + C2 y2, list(r1, r2), recurrence)`: Frobenius series to order `n` about `x0`, the indicial roots and the explicit finite recurrence of the larger exponent |
 //! | `ode_asymptotic(eq, y(x), x0, n, x1, k)` | `list(re, im, error)`: the `k`-th (counting from 0) Newton-polygon formal solution at `x1` (`x0` rational or `oo`), its series with `n` terms summed up to the smallest term (optimal truncation); the error is the size of that term |
+//! | `ode_borel(eq, y(x), x0, n, x1, k)` | `list(re, im, error, stokes)`: the same formal solution summed by Borel–Padé resummation (Padé approximant of the Borel transform, Laplace integral along the ray of `x1`; when a Borel singularity lies near the ray, the median of the two lateral sums, `stokes = 1`) |
 //! | `ode_series(eq, y(x), x0, n)` | the power-series solution about `x0` to order `n` |
 //! | `rsolve_z(eq, y(n), conditions?)` | a linear recurrence solved by the z transform |
 //! | `ode_classify(eq, y(x))` | the list of classes the equation belongs to |
@@ -178,6 +179,7 @@ mod nonlinear;
 #[cfg(test)]
 mod battery;
 mod reduce;
+mod resum;
 mod series_method;
 mod systems;
 
@@ -200,7 +202,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let frobenius = i.op(OpDescriptor::new("ode_frobenius", Arity::Fixed(4)).flags(OpFlags::HEAVY).cost(100))?;
     i.kernel("ode/frobenius", Tier::Reduce, FrobeniusReport { op: frobenius });
     let asymptotic = i.op(OpDescriptor::new("ode_asymptotic", Arity::Fixed(6)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("ode/asymptotic", Tier::Reduce, Asymptotic { op: asymptotic });
+    i.kernel("ode/asymptotic", Tier::Reduce, Asymptotic { op: asymptotic, borel: false });
+    let borel = i.op(OpDescriptor::new("ode_borel", Arity::Fixed(6)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("ode/borel", Tier::Reduce, Asymptotic { op: borel, borel: true });
     i.op(OpDescriptor::new("big_o", Arity::Fixed(1)).eval(|_| 0.0))?;
     i.op(OpDescriptor::new("hyper1f1", Arity::Fixed(3)).eval(frobenius::hyper1f1))?;
     i.op(OpDescriptor::new("hyper2f1", Arity::Fixed(4)).eval(frobenius::hyper2f1))?;
@@ -1715,6 +1719,8 @@ impl Kernel for FrobeniusReport {
 /// `x1` summed up to its smallest term.
 struct Asymptotic {
     op: OpId,
+    /// Borel–Padé resummation instead of optimal truncation.
+    borel: bool,
 }
 
 impl Kernel for Asymptotic {
@@ -1728,7 +1734,7 @@ impl Kernel for Asymptotic {
         node: NodeId,
     ) -> Outcome {
         match *cx.graph.children(node) {
-            | [e, u, x0, n, x1, k] => frobenius::asymptotic(cx, e, u, x0, n, x1, k).map_or(Outcome::Pass, Outcome::Pinned),
+            | [e, u, x0, n, x1, k] => frobenius::asymptotic(cx, e, u, x0, n, x1, k, self.borel).map_or(Outcome::Pass, Outcome::Pinned),
             | _ => Outcome::Pass,
         }
     }
@@ -2516,6 +2522,19 @@ mod tests {
         let sqrt_pi = std::f64::consts::PI.sqrt();
         assert!((values[0] / (2.0 * sqrt_pi) - 1.083_444_3e-4).abs() < 1e-8, "{values:?}");
         assert!((values[1] / sqrt_pi - 657.793_6).abs() < 2e-2, "{values:?}");
+        // Borel-Pade resummation: the same Airy solutions to much higher accuracy for the
+        // decaying one, and the median (Stokes) sum, Bi, for the growing one.
+        let mut borel = Vec::new();
+        for k in 0..2 {
+            let text = run(&format!("ode_borel(diff(diff(y(x), x), x) - x*y(x), y(x), oo, 90, 5, {k})"));
+            let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
+            let numbers: Vec<f64> = inner.split(", ").filter_map(|s| s.parse().ok()).collect();
+            assert_eq!(numbers.len(), 4, "{text}");
+            borel.push((numbers[0], numbers[2], numbers[3]));
+        }
+        borel.sort_by(|a, b| a.0.total_cmp(&b.0));
+        assert!((borel[0].0 / (2.0 * sqrt_pi) - 1.083_444_3e-4).abs() < 1e-9, "{borel:?}");
+        assert!((borel[1].0 / sqrt_pi / 657.793_6 - 1.0).abs() < 2e-3, "{borel:?}");
         // Poincare rank two at 0: x^6 y'' = y, exp(+-1/(2 x^2)) x^(3/2) (1 + ...).
         let rank_two = run("ode_frobenius(x^6*diff(diff(y(x), x), x) - y(x), y(x), 0, 14)");
         let rhs = rhs_of(&rank_two);
