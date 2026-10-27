@@ -5,10 +5,10 @@
 //! system, `(ξ, η)` without azimuthal dependence), multiplied by the common
 //! scale factor,
 //!
-//! * prolate: `(ξ²-1) u_ξξ + 2ξ u_ξ + (1-η²) u_ηη - 2η u_η
-//!   + (ξ²-η²)/((ξ²-1)(1-η²)) u_φφ + c² (ξ²-η²) u = 0`,
-//! * oblate:  `(ζ²+1) u_ζζ + 2ζ u_ζ + (1-η²) u_ηη - 2η u_η
-//!   + (ζ²+η²)/((ζ²+1)(1-η²)) u_φφ + c² (ζ²+η²) u = 0`,
+//! * prolate: `(ξ²-1) u_ξξ + 2ξ u_ξ + (1-η²) u_ηη - 2η u_η`, plus
+//!   `(ξ²-η²)/((ξ²-1)(1-η²)) u_φφ`, plus `c² (ξ²-η²) u`, equals zero,
+//! * oblate:  `(ζ²+1) u_ζζ + 2ζ u_ζ + (1-η²) u_ηη - 2η u_η`, plus
+//!   `(ζ²+η²)/((ζ²+1)(1-η²)) u_φφ`, plus `c² (ζ²+η²) u`, equals zero,
 //!
 //! is recognised from its coefficients (any common factor, `c²` constant,
 //! either sign). It separates into the angular equation
@@ -91,7 +91,7 @@ fn radial_table(
     } else {
         // The focal disk: parity of the angular function.
         start = 0;
-        (y, p) = if (n - m) % 2 == 0 { (1.0, 0.0) } else { (0.0, 1.0) };
+        (y, p) = if (n - m).is_multiple_of(2) { (1.0, 0.0) } else { (0.0, 1.0) };
     }
     table[start] = y;
     let potential = |t: f64| -> f64 {

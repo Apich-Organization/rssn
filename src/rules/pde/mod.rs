@@ -454,7 +454,7 @@ impl Kernel for Pde {
                         let psis = cx.graph.children(list).to_vec();
                         nonlinear::crum_kdv(cx, first, &psis)
                     },
-                    | Request::HodographSolution => nonlinear::hodograph_solution(cx, first, second),
+                    | Request::HodographSolution => Some(nonlinear::hodograph_solution(cx, first, second)),
                     | Request::GreensRobin => match modes::exact_value(cx, first) {
                         #[allow(clippy::cast_possible_truncation)]
                         | Some(d) => poisson::greens_robin(cx, d.round() as i64, second),

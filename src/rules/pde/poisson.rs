@@ -161,20 +161,16 @@ fn fundamental_laplace(
     q: NodeId,
 ) -> Option<NodeId> {
     let pi = super::util::pi(cx)?;
+    let four_pi = {
+        let four = cx.graph.int(4);
+        mul(cx.graph, &[four, pi])
+    };
     if dimension == 3 {
-        let four_pi = {
-            let four = cx.graph.int(4);
-            mul(cx.graph, &[four, pi])
-        };
         let root = sqrt(cx, q)?;
         let denominator = mul(cx.graph, &[four_pi, root]);
         let one = cx.graph.int(1);
         Some(div(cx, one, denominator))
     } else {
-        let four_pi = {
-            let four = cx.graph.int(4);
-            mul(cx.graph, &[four, pi])
-        };
         let log = call(cx, "ln", &[q])?;
         let value = div(cx, log, four_pi);
         Some(neg(cx.graph, value))

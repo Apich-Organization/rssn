@@ -1281,7 +1281,7 @@ fn laplace_route_with_initial_data_and_parabolic_robin_signals() {
     ] {
         let mut conditions = format!("at(diff(u(x, t), x), x, 0) + {h}*u(0, t) = {datum}");
         match initial {
-            | Some(f) => conditions.push_str(&format!(", u(x, 0) = {f}")),
+            | Some(f) => conditions = format!("{conditions}, u(x, 0) = {f}"),
             | None => conditions.push_str(", u(x, 0) = 0"),
         }
         let s = any(&format!("pdsolve({equation}, u(x, t), list({conditions}))"));
@@ -1330,7 +1330,7 @@ fn crum_determinants_and_hodograph_solutions() {
     };
     let (r, sv) = (0.7_f64, -0.4_f64);
     let (x_value, t_value) = (value(&xs, &[("r", r), ("s", sv)]), value(&ts, &[("r", r), ("s", sv)]));
-    close(x_value, r * t_value + r * r, 1e-12, &s);
+    close(x_value, r * (t_value + r), 1e-12, &s);
     close(x_value, sv * t_value + sv.sin(), 1e-12, &s);
 }
 
@@ -1449,7 +1449,8 @@ fn coulomb_continuum_completes_the_expansion() {
     let r = 100.0_f64;
     let slope = (u(r + h) - u(r - h)) / (2.0 * h);
     let local = (k * k + 2.0 * z / r - 2.0 / (r * r)).sqrt();
-    close(local * u(r) * u(r) / k + slope * slope / (local * k), 2.0 / PI, 2e-2, "amplitude");
+    let amplitude = (local * u(r).powi(2) + slope * slope / local) / k;
+    close(amplitude, 2.0 / PI, 2e-2, "amplitude");
     // Data outside the span of the bound states: the heat equation with a Coulomb potential.
     let s = any("pdsolve(diff(u(r, t), t) = diff(diff(u(r, t), r), r) + 2/r*u(r, t), u(r, t), list(u(0, t) = 0, u(r, 0) = r*exp(-3*r)))");
     assert!(s.contains("coulomb_wave"), "{s}");

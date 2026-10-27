@@ -1125,7 +1125,7 @@ pub(super) fn hodograph_solution(
     cx: &mut Cx<'_>,
     f: NodeId,
     g: NodeId,
-) -> Option<NodeId> {
+) -> NodeId {
     let (r, s) = (cx.graph.sym("r"), cx.graph.sym("s"));
     let numerator = sub(cx.graph, g, f);
     let denominator = sub(cx.graph, r, s);
@@ -1133,5 +1133,5 @@ pub(super) fn hodograph_solution(
     let rt = mul(cx.graph, &[r, t]);
     let x = add(cx.graph, &[rt, f]);
     let (x, t) = (cx.simplify(x), cx.simplify(t));
-    Some(cx.graph.node(crate::graph::op::core::LIST, &[x, t]))
+    cx.graph.node(crate::graph::op::core::LIST, &[x, t])
 }
