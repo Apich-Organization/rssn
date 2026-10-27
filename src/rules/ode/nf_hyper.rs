@@ -112,9 +112,10 @@ fn embed(
 /// (x - c)^power` (a sum of `κ (x - c)^{-s}`), the exponent `ρ`.
 #[derive(Clone)]
 struct Local {
-    point: Q,
-    /// `E = Σ_s e[s] (x - c)^{-s}` with `s = 1…`.
-    e: Vec<Elt>,
+    /// The monic irreducible polynomial of the pole (linear for a rational one).
+    f: Vec<Q>,
+    /// `E = Σ_s e[s] / f^s` with `s = 1…` (`e[s]` polynomials over `L`).
+    e: Vec<Poly>,
     rho: Elt,
 }
 
@@ -130,8 +131,8 @@ struct AtInfinity {
 pub(super) struct HyperK {
     pub(super) field: Field,
     pub(super) poly: Poly,
-    /// `(c, ρ)`.
-    pub(super) factors: Vec<(Q, Elt)>,
+    /// `(f, ρ)`: the factors `f^ρ`.
+    pub(super) factors: Vec<(Vec<Q>, Elt)>,
     /// `E = numerator / denominator`.
     pub(super) exponent: (Poly, Poly),
 }
@@ -230,11 +231,98 @@ fn local_candidates(
             if infinity {
                 far.push(AtInfinity { e, rho });
             } else {
-                near.push(Local { point: c.clone(), e, rho });
+                let polys: Vec<Poly> = e.into_iter().map(|k| if k.is_empty() { Vec::new() } else { vec![k] }).collect();
+                near.push(Local { f: vec![-c.clone(), Q::one()], e: polys, rho });
             }
         }
     }
     (near, far)
+}
+
+/// Power sums `p_0 … p_{d-1}` of the roots of the monic polynomial `f`.
+fn power_sums(f: &[Q]) -> Vec<Q> {
+    let d = f.len().saturating_sub(1);
+    let coefficient = |i: usize| -> Q { f.get(d - i).cloned().unwrap_or_else(Q::zero) };
+    let mut p: Vec<Q> = vec![q(i64::try_from(d).unwrap_or(0))];
+    for k in 1..d {
+        let mut value = -coefficient(k) * q(i64::try_from(k).unwrap_or(0));
+        for i in 1..k {
+            value -= coefficient(i) * p.get(k - i).cloned().unwrap_or_else(Q::zero);
+        }
+        p.push(value);
+    }
+    p
+}
+
+/// The trace to `Q` of a polynomial with coefficients in `Q[c]/f`.
+fn trace_poly(
+    f: &[Q],
+    p: &[Elt],
+) -> Vec<Q> {
+    let sums = power_sums(f);
+    p.iter()
+        .map(|e| e.iter().zip(&sums).fold(Q::zero(), |acc, (r, s)| acc + r * s))
+        .collect()
+}
+
+/// Candidates at the conjugate poles of the irreducible `f` (degree above one)
+/// with data in `Q(c)`: `ρ` rational and the exponent parts summed over the
+/// conjugates, which gives polynomials over `Q`.
+fn algebraic_candidates(
+    op: &[Vec<Q>],
+    f: &[Q],
+    l: &Field,
+) -> Vec<Local> {
+    let mut out = Vec::new();
+    let k = Field::extension(f.to_vec());
+    let d = f.len() - 1;
+    // q_c(x) = f(x)/(x - c) over K: b_{d-1} = 1, b_{i-1} = a_i + c b_i.
+    let c = k.generator();
+    let mut quotient: Poly = vec![Vec::new(); d];
+    if let Some(top) = quotient.get_mut(d - 1) {
+        *top = k.from_q(&Q::one());
+    }
+    for i in (1..d).rev() {
+        let next = k.add(&k.from_q(f.get(i).unwrap_or(&Q::zero())), &k.mul(&c, quotient.get(i).map_or(&[][..], Vec::as_slice)));
+        if let Some(slot) = quotient.get_mut(i - 1) {
+            *slot = next;
+        }
+    }
+    for solution in formal_solutions(op, &FormalPoint::Finite(f.to_vec()), 2) {
+        if solution.ramification != 1 || solution.has_logarithms() {
+            continue;
+        }
+        let same = solution.field == k;
+        if !(same || solution.field.is_rational()) {
+            continue;
+        }
+        let Some(rho) = solution.field.as_rational(&solution.rho) else { continue };
+        let mut e: Vec<Poly> = Vec::new();
+        let mut ok = true;
+        for (s, kappa) in &solution.exponent {
+            let Ok(s) = usize::try_from(*s) else {
+                ok = false;
+                break;
+            };
+            // κ q_c(x)^s, traced.
+            let mut power: Poly = vec![k.from_q(&Q::one())];
+            for _ in 0..s {
+                power = pmul(&k, &power, &quotient);
+            }
+            let scaled = pscale(&k, &power, kappa);
+            let traced = trace_poly(f, &scaled);
+            while e.len() <= s {
+                e.push(Vec::new());
+            }
+            if let Some(slot) = e.get_mut(s) {
+                *slot = traced.iter().map(|r| l.from_q(r)).collect();
+            }
+        }
+        if ok {
+            out.push(Local { f: f.to_vec(), e, rho: l.from_q(&rho) });
+        }
+    }
+    out
 }
 
 /// Linear algebra over `L`: the polynomials `P` of degree at most `d` over `L`
@@ -323,28 +411,32 @@ pub(super) fn hyperexponential_over_field(op: &[Vec<Q>]) -> Vec<HyperK> {
     let mut out = Vec::new();
     let Some(lead) = op.last() else { return out };
     let (_, factors) = univariate::factor(lead);
-    // Rational singular points only.
-    let mut points: Vec<Q> = Vec::new();
+    // Singular points: rational ones, and conjugate sets of algebraic ones.
+    let mut monic_factors: Vec<Vec<Q>> = Vec::new();
     for (f, _) in &factors {
-        if let [c0, c1] = f.as_slice() {
-            points.push(Q::new(-c0.clone(), c1.clone()));
-        } else if f.len() > 2 {
-            return out;
+        if f.len() < 2 {
+            continue;
         }
+        let lead = Q::from_integer(f.last().cloned().unwrap_or_else(BigInt::one));
+        monic_factors.push(f.iter().map(|c| Q::from_integer(c.clone()) / &lead).collect());
     }
-    // First pass: the global field is the first extension met.
+    // First pass: the global field is the first extension met at a rational point or at infinity.
     let mut target: Option<Field> = None;
-    for c in &points {
-        let _ = local_candidates(op, &FormalPoint::Finite(vec![-c.clone(), Q::one()]), &mut target, false);
+    for f in monic_factors.iter().filter(|f| f.len() == 2) {
+        let _ = local_candidates(op, &FormalPoint::Finite(f.clone()), &mut target, false);
     }
     let _ = local_candidates(op, &FormalPoint::Infinity, &mut target, true);
-    let Some(field) = target else { return out };
+    let field = target.unwrap_or_else(Field::rationals);
     // Second pass with the field fixed: candidates over Q and over fields isomorphic to it.
     let mut local2: Vec<Vec<Local>> = Vec::new();
     let mut fixed = Some(field.clone());
-    for c in &points {
-        let (near, _) = local_candidates(op, &FormalPoint::Finite(vec![-c.clone(), Q::one()]), &mut fixed, false);
-        local2.push(near);
+    for f in &monic_factors {
+        if f.len() == 2 {
+            let (near, _) = local_candidates(op, &FormalPoint::Finite(f.clone()), &mut fixed, false);
+            local2.push(near);
+        } else {
+            local2.push(algebraic_candidates(op, f, &field));
+        }
     }
     let (_, infinity) = local_candidates(op, &FormalPoint::Infinity, &mut fixed, true);
     let total: usize = local2.iter().map(Vec::len).product::<usize>().saturating_mul(infinity.len());
@@ -389,10 +481,10 @@ fn try_combination(
     selected: &[&Local],
     far: &AtInfinity,
 ) -> Option<Vec<HyperK>> {
-    // Degree of P: -ρ_∞ - Σ ρ_c.
+    // Degree of P: -ρ_∞ - Σ ρ_f deg f.
     let mut sum = far.rho.clone();
     for l in selected {
-        sum = field.add(&sum, &l.rho);
+        sum = field.add(&sum, &field.mul(&l.rho, &[q(i64::try_from(l.f.len() - 1).unwrap_or(0))]));
     }
     let sum = field.scale(&sum, &q(-1));
     let degree = field.as_rational(&sum)?;
@@ -400,28 +492,27 @@ fn try_combination(
         return None;
     }
     let d = usize::try_from(degree.to_integer().to_i64()?).ok()?;
-    // E = Σ_c Σ_s κ (x - c)^{-s} + Σ_s κ_∞ x^s as En / Ed with Ed = Π (x - c)^{smax}.
+    // E = Σ_f Σ_s e_s / f^s + Σ_s κ_∞ x^s as En / Ed with Ed = Π f^{smax}.
     let one = field.from_q(&Q::one());
     let mut ed: Poly = vec![one.clone()];
     let mut en: Poly = Vec::new();
     for l in selected {
         let smax = l.e.len().saturating_sub(1);
-        let factor: Poly = vec![field.from_q(&-l.point.clone()), one.clone()];
+        let factor: Poly = embed(field, &l.f);
         let mut power: Poly = vec![one.clone()];
         for _ in 0..smax {
             power = pmul(field, &power, &factor);
         }
-        // Existing numerator times the new denominator, plus the new part times the old denominator.
         let mut part: Poly = Vec::new();
-        for (s, kappa) in l.e.iter().enumerate().skip(1) {
-            if kappa.is_empty() {
+        for (s, numerator) in l.e.iter().enumerate().skip(1) {
+            if numerator.is_empty() {
                 continue;
             }
             let mut cofactor: Poly = vec![one.clone()];
             for _ in 0..smax - s {
                 cofactor = pmul(field, &cofactor, &factor);
             }
-            part = padd(field, &part, &pscale(field, &cofactor, kappa));
+            part = padd(field, &part, &pmul(field, &cofactor, numerator));
         }
         en = padd(field, &pmul(field, &en, &power), &pmul(field, &part, &ed));
         ed = pmul(field, &ed, &power);
@@ -437,10 +528,10 @@ fn try_combination(
         }
     }
     en = padd(field, &en, &pmul(field, &poly_part, &ed));
-    // ω = E' + Σ ρ_c / (x - c) over the denominator Ed^2 Π (x - c).
+    // ω = E' + Σ ρ_f f'/f over the denominator Ed^2 Π f.
     let mut product_c: Poly = vec![one.clone()];
     for l in selected {
-        product_c = pmul(field, &product_c, &[field.from_q(&-l.point.clone()), one.clone()]);
+        product_c = pmul(field, &product_c, &embed(field, &l.f));
     }
     let ed2 = pmul(field, &ed, &ed);
     let omega_d = pmul(field, &ed2, &product_c);
@@ -454,10 +545,12 @@ fn try_combination(
         let mut others: Poly = vec![one.clone()];
         for (j, m) in selected.iter().enumerate() {
             if j != index {
-                others = pmul(field, &others, &[field.from_q(&-m.point.clone()), one.clone()]);
+                others = pmul(field, &others, &embed(field, &m.f));
             }
         }
-        omega_n = padd(field, &omega_n, &pscale(field, &pmul(field, &ed2, &others), &l.rho));
+        let derivative = embed(field, &univariate::derivative(&l.f));
+        let term = pmul(field, &pmul(field, &ed2, &others), &derivative);
+        omega_n = padd(field, &omega_n, &pscale(field, &term, &l.rho));
     }
     let solutions = solve_polynomial(field, op, &omega_n, &omega_d, d);
     if solutions.is_empty() {
@@ -469,7 +562,7 @@ fn try_combination(
             .map(|poly| HyperK {
                 field: field.clone(),
                 poly,
-                factors: selected.iter().map(|l| (l.point.clone(), l.rho.clone())).collect(),
+                factors: selected.iter().map(|l| (l.f.clone(), l.rho.clone())).collect(),
                 exponent: (en.clone(), ed.clone()),
             })
             .collect(),
@@ -549,12 +642,11 @@ pub(super) fn solution_nodes(
             Some(cx.graph.node(root_of, &arguments))
         };
         let mut factors = Vec::new();
-        for (c, rho) in &hyper.factors {
+        for (f, rho) in &hyper.factors {
             if rho.is_empty() {
                 continue;
             }
-            let minus_c = cx.graph.num(Number::rat(-c.clone()));
-            let base = cx.graph.node(core::ADD, &[x, minus_c]);
+            let base = super::kovacic::polynomial_node(cx, x, f);
             let exponent = element_node(cx, &hyper.field, alpha, rho);
             factors.push(cx.graph.node(core::POW, &[base, exponent]));
         }
@@ -601,7 +693,7 @@ pub(super) fn second_order_solutions(
     }
     for hyper in hyperexponential_over_field(&op) {
         if let Some(nodes) = solution_nodes(cx, x, &hyper)
-            && nodes.len() >= 2
+            && !nodes.is_empty()
         {
             return nodes;
         }
@@ -630,5 +722,15 @@ mod tests {
         }
         // Both conjugates are produced.
         assert!(found.len() >= 2, "{}", found.len());
+    }
+
+    #[test]
+    fn essential_singularity_at_conjugate_points() {
+        // D(D - w) with w = (1/(x^2+1))': solution exp(1/(x^2+1)), the pole at ±i of order 2
+        // in the exponent: (x^2+1)^3 y'' + 2x (x^2+1) y' + (2 - 6 x^2) y = 0.
+        let op = vec![qs(&[2, 0, -6]), qs(&[0, 2, 0, 2]), qs(&[1, 0, 3, 0, 3, 0, 1])];
+        let found = hyperexponential_over_field(&op);
+        assert!(!found.is_empty(), "no solution");
+        assert!(found.iter().any(|h| h.field.is_rational() && h.poly.len() == 1 && !h.exponent.0.is_empty()), "exp(1/(x^2+1)) not found");
     }
 }
