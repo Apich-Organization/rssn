@@ -220,29 +220,71 @@ pub fn borel_pade(
         }
         b.push(coefficients.get(k + 1).copied()? / factorial);
     }
-    let m = ((terms - 1) / 2).min(24);
-    let sum_with = |m: usize| -> Option<(BorelSum, Vec<Complex64>)> {
-        // An exactly rational Borel transform makes the system singular for large
-        // orders: use the largest order that solves.
-        let (p, q) = (1..=m).rev().find_map(|order| pade(&b, order))?;
-        let poles = complex_roots(&q);
-        let arg_v = v.arg();
-        let near = poles.iter().filter(|z| z.norm() > 0.0).map(|z| ((z.arg() - arg_v + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU) - std::f64::consts::PI).abs()).fold(f64::INFINITY, f64::min);
-        let (value, jump, stokes) = if near < 0.15 {
-            let offset = 0.25;
+    let top = ((terms - 1) / 2).min(24);
+    // Orders 2, 4, … up to the top one: the sum is taken at the order where it
+    // changes least from the previous one.
+    let orders: Vec<usize> = (1..=top).filter(|m| m % 2 == 0 || *m == top).collect();
+    let mut previous: Option<BorelSum> = None;
+    let mut best: Option<BorelSum> = None;
+    for order in orders {
+        let Some(current) = sum_at_order(&b, order, c0, v) else { continue };
+        if let Some(before) = previous {
+            let change = (current.value - before.value).norm().max(current.error);
+            if best.is_none_or(|b| change < b.error) {
+                best = Some(BorelSum { error: change, ..current });
+            }
+        }
+        previous = Some(current);
+    }
+    best.or(previous)
+}
+
+fn wrap_angle(angle: f64) -> f64 {
+    (angle + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU) - std::f64::consts::PI
+}
+
+/// The sum with the Padé approximant of the largest solvable order up to
+/// `order`. The ray of integration is chosen from the poles: far from all
+/// of them, the ray itself; when a pole is near (the quadrature would suffer)
+/// the ray is rotated away from it, which does not change the value as long as
+/// no pole is crossed; with a pole *on* the ray (a Stokes direction) the median
+/// of the two lateral sums is taken, the offset adapted to the gap to the
+/// next pole.
+fn sum_at_order(
+    b: &[Complex64],
+    order: usize,
+    c0: Complex64,
+    v: Complex64,
+) -> Option<BorelSum> {
+    // An exactly rational Borel transform makes the system singular for large
+    // orders: use the largest order that solves.
+    let (p, q) = (1..=order).rev().find_map(|m| pade(b, m))?;
+    let poles = complex_roots(&q);
+    let arg_v = v.arg();
+    let relative: Vec<f64> = poles.iter().filter(|z| z.norm() > 0.0).map(|z| wrap_angle(z.arg() - arg_v)).collect();
+    let nearest = relative.iter().copied().min_by(|a, b| a.abs().total_cmp(&b.abs()));
+    let (value, jump, stokes) = match nearest {
+        | Some(delta) if delta.abs() < 1e-3 => {
+            // Poles on the ray: lateral sums, offset up to half the gap to the others.
+            let gap = relative.iter().map(|d| d.abs()).filter(|d| *d > 1e-3).fold(f64::INFINITY, f64::min);
+            let offset = (0.5 * gap).clamp(0.05, 0.25);
             let (up, down) = (laplace_along(&p, &q, v, arg_v + offset), laplace_along(&p, &q, v, arg_v - offset));
             ((up + down) / 2.0, (up - down).norm() / 2.0, true)
-        } else {
-            (laplace_along(&p, &q, v, arg_v), 0.0, false)
-        };
-        Some((BorelSum { value: c0 + value, error: jump, stokes }, poles))
+        },
+        | Some(delta) if delta.abs() < 0.15 => {
+            // Rotate away from the near pole, staying clear of the others.
+            let away = -delta.signum();
+            let room = relative
+                .iter()
+                .filter(|d| (d.signum() - away).abs() < 0.5 && d.abs() > 1e-9)
+                .map(|d| d.abs())
+                .fold(0.4, f64::min);
+            let rotation = away * (0.6 * room).clamp(0.02, 0.2);
+            (laplace_along(&p, &q, v, arg_v + rotation), 0.0, false)
+        },
+        | _ => (laplace_along(&p, &q, v, arg_v), 0.0, false),
     };
-    let (best, _) = sum_with(m)?;
-    let error = match sum_with(m.saturating_sub(2).max(1)) {
-        | Some((coarser, _)) => (best.value - coarser.value).norm().max(best.error),
-        | None => best.error,
-    };
-    Some(BorelSum { error, ..best })
+    Some(BorelSum { value: c0 + value, error: jump, stokes })
 }
 
 #[cfg(test)]
@@ -286,5 +328,28 @@ mod tests {
         // The imaginary part cancels in the median and the error estimate carries the jump.
         assert!(sum.value.im.abs() < 1e-6, "{sum:?}");
         assert!(sum.error > 1e-10 && sum.error < 1e-5, "{sum:?}");
+    }
+
+    #[test]
+    fn near_stokes_pole_does_not_need_the_median() {
+        // c_k = k! e^{-ik δ}, δ = 0.1: the Borel pole is 0.1 rad off the ray of v = 0.05,
+        // so the Borel sum is the integral ∫_0^∞ e^{-t}/(1 - z t) dt with z = v e^{-iδ}
+        // along the real axis (the pole at 1/z lies above it).
+        let delta = 0.1_f64;
+        let coefficients: Vec<Complex64> = euler(40, 1.0).iter().enumerate().map(|(k, c)| c * Complex64::from_polar(1.0, -(k as f64) * delta)).collect();
+        let sum = borel_pade(&coefficients, Complex64::new(0.05, 0.0)).expect("sum");
+        assert!(!sum.stokes, "{sum:?}");
+        // Reference by composite Gauss-Legendre of the Euler integral.
+        let z = Complex64::from_polar(0.05, -delta);
+        let rule = gauss_legendre(40);
+        let mut reference = Complex64::new(0.0, 0.0);
+        for panel in 0..200 {
+            let (a, b) = (f64::from(panel) * 0.25, f64::from(panel + 1) * 0.25);
+            for (x, w) in &rule {
+                let t = 0.5 * (b - a) * x + f64::midpoint(a, b);
+                reference += (-t).exp() / (Complex64::new(1.0, 0.0) - z * t) * (0.5 * (b - a) * w);
+            }
+        }
+        assert!((sum.value - reference).norm() < 1e-6, "{sum:?} vs {reference}");
     }
 }

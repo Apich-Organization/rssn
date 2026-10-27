@@ -535,6 +535,9 @@ pub(super) fn variable_coefficients(
     if solutions.is_empty() {
         solutions = super::kovacic::solutions(cx, &a, x);
     }
+    if solutions.is_empty() {
+        solutions = super::nf_hyper::second_order_solutions(cx, &a, x);
+    }
     let Some(&y1) = solutions.first() else {
         return super::classes::normal_form(cx, problem, &a, forcing, depth);
     };

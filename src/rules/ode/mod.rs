@@ -183,6 +183,7 @@ mod frobenius;
 mod kovacic;
 mod lie;
 mod linear;
+mod nf_hyper;
 mod nonlinear;
 mod ore;
 #[cfg(test)]
@@ -2625,6 +2626,26 @@ mod tests {
             "dsolve(x^3*(1 - x)*diff(diff(diff(y(x), x), x), x) + (13/6*x^2 - 9*x^3)*diff(diff(y(x), x), x) + (1/3*x - 18*x^2)*diff(y(x), x) - 6*x*y(x), y(x))",
         );
         assert!(hyper.contains("hyperpfq"), "{hyper}");
+    }
+
+    #[test]
+    fn hyperexponential_solutions_over_a_number_field() {
+        let rules = crate::rules::standard();
+        // x^2 (y'' - 2 y' + y) = y: x^b e^x with b^2 - b - 1 = 0, b = (1 +- sqrt 5)/2 (Kovacic's
+        // case 1 with irrational local data); the two solutions are conjugate.
+        let answer = simplify(&rules, "dsolve(x^2*(diff(diff(y(x), x), x) - 2*diff(y(x), x) + y(x)) - y(x), y(x))");
+        assert!((answer.contains("root_of") || answer.contains("5^(1/2)")) && answer.contains("exp("), "{answer}");
+        check_second_order(&rules, &answer, |x| (x * x, -2.0 * x * x, x * x - 1.0), &[0.7, 1.4, 2.1], 1e-3);
+    }
+
+    #[test]
+    fn eigenring_factorisation_with_special_function_factors() {
+        let rules = crate::rules::standard();
+        // The least common left multiple of Airy's equation and x y'' + y' + x y = 0: order
+        // four, no first-order factor, so the eigenring supplies the two second-order
+        // right factors; the solutions combine Airy and Bessel functions.
+        let answer = simplify(&rules, "dsolve(((3)*x^0+(2)*x^2+(8)*x^3+(-1)*x^4+(-2)*x^5+(-1)*x^6)*y(x) + ((5)*x^1+(12)*x^2+(-3)*x^3+(-4)*x^4+(-1)*x^5)*diff(y(x), x) + ((6)*x^0+(-3)*x^1+(-7)*x^2+(5)*x^3+(1)*x^4+(-1)*x^5+(-1)*x^6)*diff(diff(y(x), x), x) + ((-3)*x^0+(-6)*x^1+(1)*x^2+(-1)*x^4)*diff(diff(diff(y(x), x), x), x) + ((-1)*x^1+(-3)*x^2+(1)*x^3+(2)*x^4+(1)*x^5)*diff(diff(diff(diff(y(x), x), x), x), x), y(x))");
+        assert!(answer.contains("airy") && answer.contains("bessel"), "{answer}");
     }
 
     #[test]
