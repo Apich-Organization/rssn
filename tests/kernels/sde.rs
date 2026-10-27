@@ -1,7 +1,10 @@
 //! Tests for the SDE integrators.
 
 use rssn::kernels::random::Rng;
-use rssn::kernels::sde::{brownian_increments, euler_maruyama, heun_stratonovich, milstein, sde_adaptive_with, srk_platen, SdeAdaptiveOptions};
+use rssn::kernels::sde::{
+    SdeAdaptiveOptions, aggregate_noise, brownian_increments, euler_maruyama, heun_stratonovich, levy_areas, milstein,
+    milstein_noncommutative, sample_noise, sde_adaptive_with, srk_platen,
+};
 
 const MU: f64 = 0.8;
 const SIGMA: f64 = 0.6;
@@ -154,4 +157,96 @@ fn adaptive_steps_reproduce_ou_statistics() {
     let se = ex * ((SIGMA * SIGMA).exp() - 1.0).sqrt() / (paths as f64).sqrt();
     assert!((mean - ex).abs() < 5.0 * se, "{mean} vs {ex}");
     assert!(sde_adaptive_with(gbm_a, gbm_g, 1, 1.0, 0.0, &[1.0], &SdeAdaptiveOptions { rtol: 1e-3, atol: 1e-4, seed: 1, max_steps: 100 }).is_err());
+}
+
+#[test]
+fn levy_area_statistics() {
+    // I_12 given the increments: mean dW1 dW2 / 2, E[(I_12 - dW1 dW2 / 2)^2] / h^2 = E[(1 + xi1^2 + xi2^2)] / 12 = 1/4,
+    // and E[(I_12 - dW1 dW2 / 2)^2 xi1^2] / h^2 = E[xi1^2 (1 + xi1^2 + xi2^2)] / 12 = 5/12
+    let h = 0.1_f64;
+    let m = 3;
+    for terms in [1usize, 5, 30] {
+        let mut rng = Rng::new(99 + terms as u64);
+        let n = 120_000;
+        let (mut v, mut w, mut cross, mut sym) = (0.0, 0.0, 0.0, 0.0);
+        for _ in 0..n {
+            let dw: Vec<f64> = (0..m).map(|_| h.sqrt() * rng.normal()).collect();
+            let a = levy_areas(&mut rng, m, h, &dw, terms);
+            // exact algebraic identities
+            sym += ((a[1] + a[m]) - dw[0] * dw[1]).abs() + (a[0] - 0.5 * (dw[0] * dw[0] - h)).abs();
+            let area = (a[1] - 0.5 * dw[0] * dw[1]) / (h);
+            v += area * area;
+            w += area * area * (dw[0] * dw[0] / h);
+            // independence of the areas of different pairs (conditionally uncorrelated)
+            cross += (a[1] - 0.5 * dw[0] * dw[1]) * (a[2] - 0.5 * dw[0] * dw[2]) / (h * h);
+        }
+        let nf = f64::from(n);
+        assert!(sym < 1e-9 * nf, "identities, terms {terms}");
+        assert!((v / nf - 0.25).abs() < 0.006, "terms {terms}: variance {}", v / nf);
+        assert!((w / nf - 5.0 / 12.0).abs() < 0.015, "terms {terms}: weighted {}", w / nf);
+        // Cov(A12, A13) = E[xi_2 xi_3 ...] = 0 by symmetry
+        assert!((cross / nf).abs() < 0.006, "terms {terms}: cross {}", cross / nf);
+    }
+    // total variance of I_12 is h^2 / 2
+    let mut rng = Rng::new(5);
+    let mut v = 0.0;
+    let n = 100_000;
+    for _ in 0..n {
+        let dw: Vec<f64> = (0..2).map(|_| h.sqrt() * rng.normal()).collect();
+        let a = levy_areas(&mut rng, 2, h, &dw, 3);
+        v += a[1] * a[1];
+    }
+    assert!((v / f64::from(n) / (h * h) - 0.5).abs() < 0.008);
+}
+
+fn nc_drift(_t: f64, y: &[f64], o: &mut [f64]) {
+    o[0] = -0.5 * y[0];
+    o[1] = -0.3 * y[1] + 0.1;
+}
+
+/// Two non-commuting noise fields: the Lie bracket `[g1, g2]` is `(-0.09 y1, 0.09 y2)`-ish and nonzero.
+fn nc_diff(_t: f64, y: &[f64], o: &mut [f64]) {
+    // row-major n x m: g1 = (0.3 y2, 0.2), g2 = (0.1, 0.3 y1)
+    o[0] = 0.3 * y[1];
+    o[1] = 0.1;
+    o[2] = 0.2;
+    o[3] = 0.3 * y[0];
+}
+
+#[test]
+fn milstein_with_levy_areas_has_strong_order_one_for_noncommutative_noise() {
+    let m = 2;
+    let fine = 512usize;
+    let hf = 1.0 / fine as f64;
+    let groups = [8usize, 16, 32];
+    let paths = 250;
+    let mut rng = Rng::new(31337);
+    let mut err_mil = [0.0; 3];
+    let mut err_em = [0.0; 3];
+    for _ in 0..paths {
+        let fine_noise = sample_noise(&mut rng, m, fine, hf, 8);
+        let reference =
+            milstein_noncommutative(nc_drift, nc_diff, m, 0.0, hf, &[1.0, 0.5], &fine_noise).unwrap();
+        let yref = reference.last().unwrap().clone();
+        for (gi, &gsz) in groups.iter().enumerate() {
+            let coarse = aggregate_noise(&fine_noise, gsz, m);
+            let h = hf * gsz as f64;
+            let y = milstein_noncommutative(nc_drift, nc_diff, m, 0.0, h, &[1.0, 0.5], &coarse).unwrap();
+            let e = euler_maruyama(nc_drift, nc_diff, m, 0.0, h, &[1.0, 0.5], &coarse.dws).unwrap();
+            let (yl, el) = (y.last().unwrap(), e.last().unwrap());
+            err_mil[gi] += ((yl[0] - yref[0]).powi(2) + (yl[1] - yref[1]).powi(2)) / f64::from(paths);
+            err_em[gi] += ((el[0] - yref[0]).powi(2) + (el[1] - yref[1]).powi(2)) / f64::from(paths);
+        }
+    }
+    let rms = |v: [f64; 3]| [v[0].sqrt(), v[1].sqrt(), v[2].sqrt()];
+    let (em, ee) = (rms(err_mil), rms(err_em));
+    let slope = |e: [f64; 3]| (e[2] / e[0]).ln() / ((groups[2] as f64) / (groups[0] as f64)).ln();
+    eprintln!("milstein errors {em:?} slope {}, euler errors {ee:?} slope {}", slope(em), slope(ee));
+    assert!(slope(em) > 0.8, "Milstein with Levy areas: observed order {}", slope(em));
+    assert!(slope(ee) < 0.7, "Euler-Maruyama: observed order {}", slope(ee));
+    assert!(em[2] * 2.0 < ee[2], "Milstein {} vs Euler {}", em[2], ee[2]);
+    // invalid shapes
+    let mut bad = sample_noise(&mut rng, m, 4, 0.1, 3);
+    bad.areas[0].pop();
+    assert!(milstein_noncommutative(nc_drift, nc_diff, m, 0.0, 0.1, &[1.0, 0.5], &bad).is_err());
 }
