@@ -29,6 +29,13 @@
 //! S² r p_{k+1}`, `p_{-1} = 0`, linear in `P`; `ω` is then a root of
 //! `Σ_k S^k p_k ω^k / (n - k)!`, which is returned as a `root_of` object.
 //!
+//! **Symmetric square.** When none of the cases applies with rational local
+//! data, `w''' - 4 r w' - 2 r' w = 0` is solved for a hyperexponential `u`
+//! (over a number field, [`super::nf_hyper`]) with rational logarithmic
+//! derivative `S`; then `v_± = sqrt(u) exp(± ½ ∫ sqrt(4 r - S² - 2 S'))`
+//! (case 2 with irrational exponent differences, e.g. `(√x + √(x-1))^{±√5}`).
+//! Only `S` over `Q` is used.
+//!
 //! The poles may be rational or conjugate algebraic numbers (an irreducible
 //! factor `f` of the denominator, contributing `α f'/f`) as long as the
 //! local data (`α`, the exponents) are rational and shared by the conjugates;
@@ -996,6 +1003,14 @@ fn symmetric_square(
         let Some(s) = super::nf_hyper::log_derivative(&hyper) else { continue };
         let discriminant = r.scale(&q(4))?.add(&s.mul(&s)?.scale(&q(-1))?)?.add(&s.derivative()?.scale(&q(-2))?)?;
         if discriminant.num.is_empty() {
+            continue;
+        }
+        // A discriminant that is negative wherever it is sampled gives exp(± i ...): leave
+        // those to the real forms (cos, sin) of the other methods.
+        let positive_somewhere = [2_i64, 3, 5, 7, -2, -3, -5, 11, 13]
+            .iter()
+            .any(|&t| discriminant.eval(&q(t)).is_some_and(|v| v.is_positive()));
+        if !positive_somewhere {
             continue;
         }
         let nodes = super::nf_hyper::solution_nodes(cx, x, &hyper)?;

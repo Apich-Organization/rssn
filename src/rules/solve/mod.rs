@@ -80,7 +80,11 @@
 //!   pairs `R_j = ρ_j e^{iφ_j}` give
 //!   `z_k = (t_0 + 2 Σ ρ_j^{1/7} cos((φ_j + 2π m_j)/7 - 2π j k/7))/7` with `ρ_j²`,
 //!   `cos φ_j` in a cyclic cubic field; Dickson polynomials `D7(x) - t` are
-//!   the degenerate case with only `R_{±1}` non-zero. `solve_complex` gives
+//!   the degenerate case with only `R_{±1}` non-zero. When the sextic `Φ` is out of
+//!   range of the group test (the class-field septic of `Q(√-71)`, whose `Φ` has
+//!   roots from 1e-8 to 1e5), the invariants `u_j = t_j t_{-j}` — roots of a small
+//!   cubic — give `R_j + R_{-j} = s(u_j)` and `R_j R_{-j} = u_j^7`, so that each
+//!   `R_j` is a root of `w² - s w + u_j^7`. `solve_complex` gives
 //!   exact forms (combinations of `exp(2πi j/m)`, or `ζ_7^{-jk}` times real
 //!   seventh roots) for the non-real roots of the cyclic sextics/septics and
 //!   of the one-real-root `D7`/`F42` septics. Not done: sextic towers with

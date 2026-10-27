@@ -20,11 +20,15 @@
 //!   `P_{j0}(ρ+k) c_k = -Σ_{l ≥ 1} P_{j0+l}(ρ+k-l) c_{k-l}` the series.
 //!
 //! A formal solution is `exp(Σ κ_s v^{-s}) v^ρ Σ c_k v^k`, `v^q = t`.
-//! Limits: no logarithmic terms (an exponent that is resonant with another
-//! root of the same indicial polynomial is skipped); once the field is not
-//! `Q` (algebraic singular point or a previous extension) further roots
-//! must be of linear factors, i.e. segments of width one; the solutions
-//! analytic at the point (negative slopes) are not produced.
+//! When a characteristic or indicial polynomial over `K = Q(α)` has a root
+//! outside `K`, the field is extended (a tower step, [`tower_roots`]): the
+//! norm of `β + k α` over `Q` is computed numerically and rationalised, an
+//! irreducible factor of it defines `K' = Q[y]/F`, and `α`, `β` are recovered
+//! as polynomials in the generator by lattice reduction and verified exactly;
+//! the operator and the exponent list are then carried to `K'`.
+//! Limits: only the first root of a non-split indicial factor is followed
+//! (no logarithms there); the solutions analytic at the point (negative
+//! slopes) are not produced.
 //!
 //! [`optimal_truncation`] evaluates such a series numerically: the terms are
 //! summed up to the smallest one (the error is of that order, the Borel
