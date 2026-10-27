@@ -5,7 +5,7 @@ use rssn::kernels::dense::{self, Mat};
 use rssn::kernels::eigs::{EigsOptions, Which};
 use rssn::kernels::eigs_ext::{
     GenEigsOptions, JdOptions, complex_schur, eigs_gen_shift_invert, eigs_gen_sym_shift_invert,
-    eigs_jd_sym, eigs_krylov_schur, eigs_sym_block, reorder_schur,
+    eigs_jd, eigs_jd_sym, eigs_krylov_schur, eigs_sym_block, reorder_schur,
 };
 use rssn::kernels::krylov::{Csr, SparseOrdering};
 
@@ -415,5 +415,90 @@ fn generalised_nonsymmetric_matches_dense() {
     }
     for i in 0..3 {
         assert!(r.residuals[i] < 1e-5 * r.values[i].0.abs().max(1.0), "{}", r.residuals[i]);
+    }
+}
+
+#[test]
+fn nonsymmetric_jacobi_davidson_interior_real_eigenvalues() {
+    // tridiag(-1-c, 2, -1+c): eigenvalues 2 + 2 sqrt(1 - c^2) cos(j pi / (n + 1)), all real
+    // moderate non-normality (eigenvalue condition ~1e6) so that the exact eigenvalues are meaningful
+    let n = 50;
+    let c = 0.3;
+    let mut trip = Vec::new();
+    for i in 0..n {
+        trip.push((i, i, 2.0));
+        if i > 0 {
+            trip.push((i, i - 1, -1.0 - c));
+        }
+        if i + 1 < n {
+            trip.push((i, i + 1, -1.0 + c));
+        }
+    }
+    let a = Csr::from_triplets(n, n, &trip);
+    let s = 2.0 * (1.0 - c * c).sqrt();
+    let target = 2.0 + 0.3 * s;
+    let mut exact: Vec<f64> =
+        (1..=n).map(|j| 2.0 + s * (std::f64::consts::PI * j as f64 / (n as f64 + 1.0)).cos()).collect();
+    exact.sort_by(|x, y| (x - target).abs().total_cmp(&(y - target).abs()));
+    // preconditioner: sparse LU of A - (target + 0.01) I
+    let mut shifted = a.clone();
+    for i in 0..n {
+        for p in shifted.indptr[i]..shifted.indptr[i + 1] {
+            if shifted.indices[p] == i {
+                shifted.values[p] -= target + 0.01;
+            }
+        }
+    }
+    let lu = shifted.sparse_lu(SparseOrdering::Natural).unwrap();
+    let pc = |x: &[f64], y: &mut [f64]| y.copy_from_slice(&lu.solve(x));
+    let opts = JdOptions { tol: 1e-9, ..JdOptions::default() };
+    let r = eigs_jd(|x, y| a.matvec(x, y), n, 3, (target, 0.0), &opts, Some(&pc)).unwrap();
+    assert!(r.converged, "iterations {}", r.restarts);
+    let mut got: Vec<f64> = r.values.iter().map(|v| v.0).collect();
+    got.sort_by(|x, y| (x - target).abs().total_cmp(&(y - target).abs()));
+    for i in 0..3 {
+        assert!((got[i] - exact[i]).abs() < 1e-5, "{i}: {} vs {}", got[i], exact[i]);
+        assert!(r.values[i].1.abs() < 1e-5);
+        assert!(r.residuals[i] < 1e-6, "residual {}", r.residuals[i]);
+    }
+    assert!(eigs_jd(|_, _| {}, n, 0, (target, 0.0), &opts, None).is_err());
+}
+
+#[test]
+fn nonsymmetric_jacobi_davidson_complex_target() {
+    // block upper triangular with 2x2 rotation blocks: eigenvalues a_j +- i b_j, non-normal coupling
+    let nb = 25;
+    let n = 2 * nb;
+    let mut m = Mat::zeros(n, n);
+    let mut seed = 7u64;
+    for j in 0..nb {
+        let (a, b) = (0.1 * j as f64, 1.0 + 0.05 * j as f64);
+        m.set(2 * j, 2 * j, a);
+        m.set(2 * j, 2 * j + 1, -b);
+        m.set(2 * j + 1, 2 * j, b);
+        m.set(2 * j + 1, 2 * j + 1, a);
+    }
+    for i in 0..n {
+        for j in 2 * (i / 2) + 2..n {
+            m.set(i, j, 0.4 * lcg(&mut seed));
+        }
+    }
+    let opts = JdOptions { tol: 1e-9, harmonic: true, inner_iters: 40, max_iter: 400, ..JdOptions::default() };
+    // target near a_12 + i b_12 = 1.2 + 1.6 i
+    let r = eigs_jd(|x, y| y.copy_from_slice(&m.matvec(x)), n, 1, (1.23, 1.58), &opts, None).unwrap();
+    assert!(r.converged, "iterations {}", r.restarts);
+    assert!((r.values[0].0 - 1.2).abs() < 1e-6 && (r.values[0].1 - 1.6).abs() < 1e-6, "{:?}", r.values[0]);
+    assert!(r.residuals[0] < 1e-6);
+    // the eigenvector is genuinely complex
+    assert!(r.vectors_im[0].iter().any(|v| v.abs() > 1e-3));
+    // two eigenvalues around a conjugate target pair on the real axis
+    let r = eigs_jd(|x, y| y.copy_from_slice(&m.matvec(x)), n, 2, (1.2, 0.0), &opts, None).unwrap();
+    assert!(r.converged);
+    for v in &r.values {
+        let near = (0..nb).any(|j| {
+            let (a, b) = (0.1 * j as f64, 1.0 + 0.05 * j as f64);
+            ((v.0 - a).abs() < 1e-6) && ((v.1.abs() - b).abs() < 1e-6)
+        });
+        assert!(near, "{v:?} is not an eigenvalue");
     }
 }
