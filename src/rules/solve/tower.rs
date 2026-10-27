@@ -32,6 +32,9 @@ use crate::graph::NodeId;
 use crate::graph::Number;
 use crate::rules::poly::galois_high::analyse;
 use crate::rules::poly::galois_high::cyclotomic;
+use crate::rules::poly::galois_high::cyclotomic_complex;
+use crate::rules::poly::galois_high::lagrange;
+use crate::rules::poly::galois_high::Lagrange;
 use crate::rules::poly::galois_high::towers;
 use crate::rules::poly::galois_high::Analysis;
 use crate::rules::poly::galois_high::Tower;
@@ -178,6 +181,196 @@ fn tower_roots(
     select(graph, factor, candidates, objects)
 }
 
+/// Nodes for the roots (as `(value, node)`) of an integer polynomial that
+/// match the given numeric values one to one.
+fn matched_roots(
+    graph: &mut Graph,
+    polynomial: &[BigInt],
+    targets: &[f64],
+) -> Option<Vec<NodeId>> {
+    let rational: Vec<BigRational> = polynomial.iter().cloned().map(BigRational::from_integer).collect();
+    let nodes = super::rational_polynomial_roots(graph, &rational)?;
+    let mut valued: Vec<(f64, NodeId)> = Vec::new();
+    for node in nodes {
+        valued.push((value_of(graph, node)?, node));
+    }
+    // A repeated root of the polynomial (zero, in the Dickson case) is one
+    // node matched by several targets.
+    let mut out = Vec::new();
+    for &target in targets {
+        let slot = valued.iter().position(|(v, _)| (v - target).abs() <= 1e-7 * (1.0 + target.abs()))?;
+        out.push(valued.get(slot)?.1);
+    }
+    Some(out)
+}
+
+/// The real roots of a septic with group `D7`, `F21` or `F42` through the
+/// Lagrange resolvents.
+fn lagrange_roots(
+    graph: &mut Graph,
+    factor: &[BigInt],
+    analysis: &Analysis,
+    objects: &[(f64, NodeId)],
+) -> Option<Vec<(f64, NodeId)>> {
+    let data = lagrange(analysis)?;
+    let seventh = Number::fraction(1, 7)?;
+    let mut candidates = Vec::new();
+    match data {
+        | Lagrange::OneReal { phi, resolvents, trace } => {
+            let nodes = matched_roots(graph, &phi, &resolvents)?;
+            let mut terms = vec![graph.num(Number::Int(trace))];
+            for node in nodes {
+                terms.push(super::symbolic::real_root(graph, node, 7)?);
+            }
+            let sum = graph.node(core::ADD, &terms);
+            let factor_node = graph.num(seventh);
+            let z = mul(graph, &[factor_node, sum]);
+            candidates.push(original_variable(graph, analysis, z));
+        },
+        | Lagrange::AllReal { s_poly, n_poly, terms, trace } => {
+            let targets: Vec<f64> = terms.iter().map(|t| t.1).collect();
+            let s_nodes = matched_roots(graph, &s_poly, &targets)?;
+            let (acos, cos, pi) = (graph.ops().lookup("acos")?, graph.ops().lookup("cos")?, graph.ops().lookup("pi")?);
+            let pi_node = graph.node(pi, &[]);
+            let half = graph.num(Number::fraction(1, 2)?);
+            let minus_half = graph.num(Number::fraction(-1, 2)?);
+            let fourteenth = graph.num(Number::fraction(1, 14)?);
+            // n_j and the angles.
+            let mut pieces: Vec<(NodeId, NodeId, usize, i64)> = Vec::new();
+            for ((s_node, (j, _, m)), _) in s_nodes.iter().zip(&terms).zip(0..) {
+                let mut n_terms = Vec::new();
+                for (power, c) in n_poly.iter().enumerate() {
+                    let coefficient = rational_node(graph, c);
+                    let exponent = graph.int(i64::try_from(power).ok()?);
+                    let p = if power == 0 { graph.int(1) } else { graph.node(core::POW, &[*s_node, exponent]) };
+                    n_terms.push(mul(graph, &[coefficient, p]));
+                }
+                let n_node = graph.node(core::ADD, &n_terms);
+                let amplitude = graph.node(core::POW, &[n_node, fourteenth]);
+                let inverse_root = graph.node(core::POW, &[n_node, minus_half]);
+                let cosine = mul(graph, &[half, *s_node, inverse_root]);
+                let phi = graph.node(acos, &[cosine]);
+                pieces.push((amplitude, phi, *j, *m));
+            }
+            for k in 0..7_i64 {
+                let mut sum_terms = vec![graph.num(Number::Int(trace.clone()))];
+                for (amplitude, phi, j, m) in &pieces {
+                    let two_m = graph.int(2 * m);
+                    let turn = mul(graph, &[two_m, pi_node]);
+                    let numerator = graph.node(core::ADD, &[*phi, turn]);
+                    let seventh_node = graph.num(Number::fraction(1, 7)?);
+                    let first = mul(graph, &[seventh_node, numerator]);
+                    let shift_coefficient = graph.num(Number::fraction(-2 * i64::try_from(*j).ok()? * k, 7)?);
+                    let second = mul(graph, &[shift_coefficient, pi_node]);
+                    let angle = graph.node(core::ADD, &[first, second]);
+                    let wave = graph.node(cos, &[angle]);
+                    let two = graph.int(2);
+                    sum_terms.push(mul(graph, &[two, *amplitude, wave]));
+                }
+                let sum = graph.node(core::ADD, &sum_terms);
+                let factor_node = graph.num(seventh.clone());
+                let z = mul(graph, &[factor_node, sum]);
+                candidates.push(original_variable(graph, analysis, z));
+            }
+        },
+    }
+    select(graph, factor, candidates, objects)
+}
+
+/// `exp(2 π i u / m)` as a term.
+fn unit_root(
+    graph: &mut Graph,
+    u: i64,
+    m: i64,
+) -> Option<NodeId> {
+    let (cos, sin, pi, i_unit) =
+        (graph.ops().lookup("cos")?, graph.ops().lookup("sin")?, graph.ops().lookup("pi")?, graph.ops().lookup("I")?);
+    let pi_node = graph.node(pi, &[]);
+    let angle_factor = graph.num(Number::fraction(2 * u, m)?);
+    let angle = mul(graph, &[angle_factor, pi_node]);
+    let c = graph.node(cos, &[angle]);
+    let s = graph.node(sin, &[angle]);
+    let i_node = graph.node(i_unit, &[]);
+    let imaginary = mul(graph, &[i_node, s]);
+    Some(graph.node(core::ADD, &[c, imaginary]))
+}
+
+/// All complex roots of an irreducible integer polynomial of degree 6 or 7
+/// with a solvable Galois group, as `((re, im), term)`, when they have an
+/// exact form here: abelian groups through `exp(2πi j/m)` combinations
+/// (Gauss periods, also for fields that are not real), and the septic groups
+/// `D7`, `F21`, `F42` through the Lagrange resolvents (`ζ_7` powers times real
+/// seventh roots).
+pub(super) fn complex_roots(
+    graph: &mut Graph,
+    factor: &[BigInt],
+) -> Option<Vec<((f64, f64), NodeId)>> {
+    if !(7..=8).contains(&factor.len()) {
+        return None;
+    }
+    let rational: Vec<BigRational> = factor.iter().cloned().map(BigRational::from_integer).collect();
+    let analysis = analyse(&rational)?;
+    if !analysis.group.solvable {
+        return None;
+    }
+    let degree = factor.len() - 1;
+    let mut candidates: Vec<NodeId> = Vec::new();
+    if let Some(cyclo) = cyclotomic_complex(&analysis) {
+        let m = i64::try_from(cyclo.conductor).ok()?;
+        for (_, terms) in &cyclo.roots {
+            let mut sum_terms = Vec::new();
+            for (u, w) in terms {
+                let wave = unit_root(graph, i64::try_from(*u).ok()?, m)?;
+                let coefficient = rational_node(graph, w);
+                sum_terms.push(mul(graph, &[coefficient, wave]));
+            }
+            let z = graph.node(core::ADD, &sum_terms);
+            candidates.push(original_variable(graph, &analysis, z));
+        }
+    } else if degree == 7 {
+        let Some(Lagrange::OneReal { phi, resolvents, trace }) = lagrange(&analysis) else { return None };
+        let nodes = matched_roots(graph, &phi, &resolvents)?;
+        let mut roots7 = Vec::new();
+        for node in nodes {
+            roots7.push(super::symbolic::real_root(graph, node, 7)?);
+        }
+        let seventh = graph.num(Number::fraction(1, 7)?);
+        for k in 0..7_i64 {
+            let mut terms = vec![graph.num(Number::Int(trace.clone()))];
+            for (j0, t) in roots7.iter().enumerate() {
+                let j = i64::try_from(j0 + 1).ok()?;
+                // ζ^{-jk}
+                let phase = unit_root(graph, (-j * k).rem_euclid(7), 7)?;
+                terms.push(mul(graph, &[phase, *t]));
+            }
+            let sum = graph.node(core::ADD, &terms);
+            let z = mul(graph, &[seventh, sum]);
+            candidates.push(original_variable(graph, &analysis, z));
+        }
+    } else {
+        return None;
+    }
+    // Keep the candidates that are roots and distinct.
+    let mut out: Vec<((f64, f64), NodeId)> = Vec::new();
+    for node in candidates {
+        let Some(z) = graph.eval_complex(node, &std::collections::HashMap::new()) else { continue };
+        let mut value = num_complex::Complex64::new(0.0, 0.0);
+        let mut scale = 0.0_f64;
+        for c in factor.iter().rev() {
+            let c = c.to_f64()?;
+            value = value * z + c;
+            scale = scale * z.norm() + c.abs();
+        }
+        if !value.re.is_finite() || value.norm() > 1e-7 * scale.max(f64::MIN_POSITIVE) {
+            return None;
+        }
+        if !out.iter().any(|((re, im), _)| (re - z.re).hypot(im - z.im) < 1e-9 * (1.0 + z.norm())) {
+            out.push(((z.re, z.im), node));
+        }
+    }
+    (out.len() == degree).then_some(out)
+}
+
 /// Radical or trigonometric forms of the real roots of the irreducible
 /// integer polynomial `factor` (degree 6 or 7) when its Galois group
 /// allows them; `objects` are its real roots as `root_of` objects.
@@ -195,6 +388,11 @@ pub(super) fn roots(
         return None;
     }
     if let Some(found) = gauss_period_roots(graph, factor, &analysis, objects) {
+        return Some(found);
+    }
+    if factor.len() == 8
+        && let Some(found) = lagrange_roots(graph, factor, &analysis, objects)
+    {
         return Some(found);
     }
     if factor.len() == 7 {

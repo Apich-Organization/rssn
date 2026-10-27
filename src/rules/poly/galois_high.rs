@@ -25,12 +25,14 @@
 //! numerically and recognising rationals by continued fractions (checked to
 //! 2^-250). Solving `Θ` and then `h` over `Q(θ)` is the tower.
 //!
-//! **Gauss periods.** A cyclic group of degree `n` with conductor a prime
-//! `p ≡ 1 (mod 2n)` (all roots real) gives roots in the degree `n` subfield
-//! of `Q(ζ_p)`: with the periods `η_k = Σ_{j ∈ g^k K} ζ_p^j` over the
-//! subgroup `K` of index `n`, the roots are `Σ_t c_t η_{k+t}` with rational
-//! `c`, found as the solution of a circulant system. Composite conductors
-//! are not searched.
+//! **Gauss periods.** A cyclic group of degree `n` with all roots real gives
+//! roots in the degree `n` subfield of some `Q(ζ_m)`, `m` built from the
+//! primes of the discriminant (prime powers `p`, `p²` for 3 and 7, `4`, `8`,
+//! `16`, composite `m` allowed). The real characters `χ` of `(Z/m)*` of order
+//! `n` (found by assigning images to a generating set and closing under
+//! multiplication) give the periods `η_k = Σ_{χ(u) = k} ζ_m^u`; the roots are
+//! `Σ_t c_t η_{e(k+t)}` with rational `c`, found as the solution of a
+//! circulant system and checked to 2^-250.
 
 use num_bigint::BigInt;
 use num_integer::Integer;
@@ -292,7 +294,7 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
         })
         .collect();
     let permutations = all_permutations(n);
-    let magnitude_limit = u64::try_from(BITS).unwrap_or(0) + 120;
+    let magnitude_limit = u64::try_from(BITS).unwrap_or(0) + 300;
     for group in groups {
         let elements = group.elements();
         // Coset representatives: sigma minimal in its coset sigma.H.
@@ -306,6 +308,7 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
             })
             .collect();
         let mut ambiguous = false;
+        let mut conclusive = false;
         let choices: Vec<(usize, Vec<usize>)> =
             (0..powers_by_transform.len()).flat_map(|t| exponent_choices(n).into_iter().map(move |e| (t, e))).collect();
         for (transform, e) in choices {
@@ -315,10 +318,13 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
                 values.push(orbit_sum(&elements, sigma, powers, &e)?);
             }
             if values.iter().any(|v| v.re.bits() > magnitude_limit || v.im.bits() > magnitude_limit) {
-                return None;
+                // Out of the working precision for this choice: try another.
+                ambiguous = true;
+                continue;
             }
                     let hits: Vec<usize> = values.iter().enumerate().filter(|(_, v)| round_integer(v).is_some()).map(|(i, _)| i).collect();
             if hits.is_empty() {
+                conclusive = true;
                 break;
             }
             // Several cosets are integral when the normaliser is larger
@@ -340,7 +346,9 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
                 roots,
             });
         }
-        let _ = ambiguous;
+        if ambiguous && !conclusive {
+            return None;
+        }
     }
     None
 }
@@ -349,11 +357,15 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
 // Linear algebra and rational recognition on fixed-point numbers.
 
 /// Solves `A X = B` (complex fixed point) by Gaussian elimination.
-fn solve_system(
+pub(crate) fn solve_system(
     mut a: Vec<Vec<Fx>>,
     mut b: Vec<Vec<Fx>>,
 ) -> Option<Vec<Vec<Fx>>> {
     let n = a.len();
+    // A pivot below 2^-300 of the largest entry is a rounding residue of a
+    // singular system.
+    let largest = a.iter().flatten().map(|v| v.re.abs() + v.im.abs()).max().unwrap_or_else(BigInt::zero);
+    let negligible = largest >> 300_u32;
     for k in 0..n {
         let pivot = (k..n).max_by_key(|&r| {
             a.get(r).and_then(|row| row.get(k)).map_or_else(BigInt::zero, |v| v.re.abs() + v.im.abs())
@@ -361,6 +373,9 @@ fn solve_system(
         a.swap(k, pivot);
         b.swap(k, pivot);
         let pivot_value = a.get(k)?.get(k)?.clone();
+        if pivot_value.re.abs() + pivot_value.im.abs() <= negligible {
+            return None;
+        }
         for i in k + 1..n {
             let factor = a.get(i)?.get(k)?.div(&pivot_value)?;
             for j in k..n {
@@ -567,10 +582,15 @@ fn build_tower(
 /// `x = shift + z / scale` with `z = Σ_j coefficient_j 2 cos(2π j / p)`.
 #[derive(Clone, Debug)]
 pub struct Cyclotomic {
-    /// The prime conductor `p`.
+    /// The modulus `m` of the cyclotomic field `Q(ζ_m)` containing the roots.
     pub conductor: u64,
-    /// For each root: `(position, [(j, coefficient of 2cos(2πj/p))])`.
+    /// For each root: `(position, [(j, coefficient)])`: in the real form the
+    /// coefficient of `2cos(2πj/m)`, in the complex form (`complex`) the
+    /// coefficient of `exp(2πi j/m)`.
     pub roots: Vec<(usize, Vec<(u64, BigRational)>)>,
+    /// Whether the roots are given as combinations of `exp(2πi j/m)` (the
+    /// field need not be real).
+    pub complex: bool,
 }
 
 fn pi_fixed(precision: usize) -> BigInt {
@@ -624,126 +644,420 @@ fn cos_fixed(
     sum >> guard
 }
 
-fn primitive_root(p: u64) -> Option<u64> {
-    let mut factors = Vec::new();
-    let mut m = p - 1;
-    let mut d = 2;
-    while d * d <= m {
-        if m.is_multiple_of(d) {
-            factors.push(d);
-            while m.is_multiple_of(d) {
-                m /= d;
-            }
-        }
-        d += 1;
-    }
-    if m > 1 {
-        factors.push(m);
-    }
-    let pow_mod = |mut b: u64, mut e: u64| -> u64 {
-        let mut r = 1_u64;
-        b %= p;
-        while e > 0 {
-            if e & 1 == 1 {
-                r = r * b % p;
-            }
-            b = b * b % p;
-            e >>= 1;
-        }
-        r
-    };
-    (2..p).find(|&g| factors.iter().all(|&f| pow_mod(g, (p - 1) / f) != 1))
+fn gcd_u64(
+    a: u64,
+    b: u64,
+) -> u64 {
+    if b == 0 { a } else { gcd_u64(b, a % b) }
 }
 
-fn is_prime(p: u64) -> bool {
-    p >= 2 && (2..=p).take_while(|d| d * d <= p).all(|d| !p.is_multiple_of(d))
+/// The distinct prime factors of `n` below `limit` (trial division).
+fn small_prime_factors(
+    n: &BigInt,
+    limit: u64,
+) -> Vec<u64> {
+    let mut rest = n.abs();
+    let mut out = Vec::new();
+    let mut p = 2_u64;
+    while p < limit && rest > BigInt::one() {
+        if (&rest % BigInt::from(p)).is_zero() {
+            out.push(p);
+            while (&rest % BigInt::from(p)).is_zero() {
+                rest /= BigInt::from(p);
+            }
+        }
+        p += if p == 2 { 1 } else { 2 };
+    }
+    out
 }
 
-/// Gauss-period form of the roots of a cyclic polynomial with all roots
-/// real, when its conductor is a prime `p < 4000`.
+/// A generating set of the unit group `(Z/m)*`, found greedily.
+fn unit_generators(
+    units: &[u64],
+    m: u64,
+) -> Vec<u64> {
+    let mut generators: Vec<u64> = Vec::new();
+    let mut generated: std::collections::HashSet<u64> = std::iter::once(1).collect();
+    for &u in units {
+        if generated.contains(&u) {
+            continue;
+        }
+        generators.push(u);
+        let mut frontier: Vec<u64> = generated.iter().copied().collect();
+        while let Some(x) = frontier.pop() {
+            for &g in &generators {
+                let y = x * g % m;
+                if generated.insert(y) {
+                    frontier.push(y);
+                }
+            }
+        }
+    }
+    generators
+}
+
+/// The kernels of the surjective characters `(Z/m)* -> Z/n` with
+/// `χ(-1) = 0` (real fields), each with the character: `unit -> χ(unit)`.
+fn real_characters(
+    m: u64,
+    n: usize,
+    real: bool,
+) -> Vec<std::collections::HashMap<u64, usize>> {
+    let units: Vec<u64> = (1..m).filter(|&u| gcd_u64(u, m) == 1).collect();
+    let generators = unit_generators(&units, m);
+    if generators.len() > 5 {
+        return Vec::new();
+    }
+    let total = n.pow(u32::try_from(generators.len()).unwrap_or(0));
+    let mut seen: std::collections::HashSet<Vec<u64>> = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for code in 0..total {
+        let images: Vec<usize> = (0..generators.len()).scan(code, |c, _| {
+            let digit = *c % n;
+            *c /= n;
+            Some(digit)
+        }).collect();
+        let mut chi: std::collections::HashMap<u64, usize> = std::collections::HashMap::new();
+        chi.insert(1, 0);
+        let mut frontier = vec![1_u64];
+        let mut consistent = true;
+        'bfs: while let Some(x) = frontier.pop() {
+            let value = chi.get(&x).copied().unwrap_or(0);
+            for (g, a) in generators.iter().zip(&images) {
+                let y = x * g % m;
+                let expected = (value + a) % n;
+                match chi.get(&y) {
+                    | Some(&v) if v != expected => {
+                        consistent = false;
+                        break 'bfs;
+                    },
+                    | Some(_) => {},
+                    | None => {
+                        chi.insert(y, expected);
+                        frontier.push(y);
+                    },
+                }
+            }
+        }
+        if !consistent || (real && chi.get(&(m - 1)).copied() != Some(0)) {
+            continue;
+        }
+        let image: std::collections::HashSet<usize> = chi.values().copied().collect();
+        if image.len() != n {
+            continue;
+        }
+        let mut kernel: Vec<u64> = chi.iter().filter(|(_, v)| **v == 0).map(|(u, _)| *u).collect();
+        kernel.sort_unstable();
+        if seen.insert(kernel) {
+            out.push(chi);
+        }
+    }
+    out
+}
+
+/// Candidate moduli: products of prime powers (`p`, `p^2` for 3 and 7, `4`,
+/// `8`) over the primes dividing the discriminant, in increasing order.
+fn candidate_moduli(disc: &BigInt) -> Vec<u64> {
+    let primes = small_prime_factors(disc, 20_000);
+    let mut options: Vec<Vec<u64>> = Vec::new();
+    for &p in primes.iter().take(6) {
+        let mut powers = vec![p];
+        if p == 2 {
+            powers = vec![4, 8, 16];
+        } else if p == 3 || p == 7 {
+            powers.push(p * p);
+        }
+        options.push(powers);
+    }
+    let mut moduli: Vec<u64> = vec![1];
+    for powers in &options {
+        let mut next = moduli.clone();
+        for &m in &moduli {
+            for &q in powers {
+                let product = m.saturating_mul(q);
+                if product <= 4000 {
+                    next.push(product);
+                }
+            }
+        }
+        // Prime powers of one prime exclude each other.
+        moduli = next;
+    }
+    moduli.retain(|&m| m > 2 && m % 4 != 2);
+    moduli.sort_unstable();
+    moduli.dedup();
+    moduli
+}
+
+/// Gauss-period (cyclotomic) form of the roots of a cyclic polynomial with
+/// all roots real.
+///
+/// For each modulus `m` built from the primes of the discriminant, the real
+/// characters `χ` of `(Z/m)*` of order `n` give the subfield of `Q(ζ_m)` fixed
+/// by `ker χ` with the periods `η_k = Σ_{χ(u) = k} ζ_m^u`; the roots are
+/// `Σ_t c_t η_{e(k+t)}` with rational `c`, found as the solution of a
+/// circulant system (`e` a unit mod `n` chosen by the labelling).
 #[must_use]
 pub fn cyclotomic(analysis: &Analysis) -> Option<Cyclotomic> {
+    cyclotomic_search(analysis, true)
+}
+
+/// Like [`cyclotomic`] for fields that need not be real: every root as a
+/// rational combination of `exp(2πi j/m)` (the periods `η_k` are then complex).
+#[must_use]
+pub fn cyclotomic_complex(analysis: &Analysis) -> Option<Cyclotomic> {
+    cyclotomic_search(analysis, false)
+}
+
+fn cyclotomic_search(
+    analysis: &Analysis,
+    real: bool,
+) -> Option<Cyclotomic> {
     let n = analysis.degree();
     if !analysis.group.is_abelian() || n < 3 {
         return None;
     }
-    let n_u64 = u64::try_from(n).ok()?;
     let real_tolerance = BigInt::one() << (BITS - 100);
-    if analysis.roots.iter().any(|r| r.im.abs() > real_tolerance) {
+    if real && analysis.roots.iter().any(|r| r.im.abs() > real_tolerance) {
         return None;
     }
-    let disc = discriminant(&analysis.monic)?.abs();
+    let disc = discriminant(&analysis.monic)?;
     let pi = pi_fixed(BITS + 64);
-    for p in (2 * n_u64 + 1..4000).step_by(usize::try_from(2 * n_u64).ok()?) {
-        if !is_prime(p) || !(&disc % BigInt::from(p)).is_zero() {
+    for m in candidate_moduli(&disc) {
+        let characters = real_characters(m, n, real);
+        if characters.is_empty() {
             continue;
         }
-        let g = primitive_root(p)?;
-        let cos_table: Vec<BigInt> = (0..p).map(|j| cos_fixed(j, p, &pi, 64)).collect();
-        let size = (p - 1) / n_u64; // |K|
-        let power = |e: u64| -> u64 {
-            let (mut r, mut b, mut e) = (1_u64, g % p, e);
-            while e > 0 {
-                if e & 1 == 1 {
-                    r = r * b % p;
-                }
-                b = b * b % p;
-                e >>= 1;
-            }
-            r
-        };
-        for e in (1..n_u64).filter(|e| e.gcd(&n_u64) == 1) {
-            // Coset k of K = <g^n>: exponents g^(e k + n t).
-            let coset = |k: u64| -> Vec<u64> { (0..size).map(|t| power(e * k + n_u64 * t)).collect() };
-            let eta: Vec<BigInt> = (0..n_u64).map(|k| coset(k).iter().map(|&j| cos_table.get(usize::try_from(j).unwrap_or(0)).cloned().unwrap_or_default()).sum()).collect();
-            let matrix: Vec<Vec<Fx>> = (0..n)
-                .map(|k| (0..n).map(|t| eta.get((k + t) % n).cloned().map_or_else(Fx::zero, Fx::real)).collect())
-                .collect();
-            let rhs: Vec<Vec<Fx>> = (0..n)
-                .map(|k| analysis.ordering.get(k).and_then(|&i| analysis.roots.get(i)).map(|r| vec![Fx::real(r.re.clone())]))
-                .collect::<Option<_>>()?;
-            let Some(solution) = solve_system(matrix.clone(), rhs.clone()) else { continue };
-            let Some(c) = solution.iter().map(|row| row.first().and_then(rationalize)).collect::<Option<Vec<BigRational>>>() else {
-                continue;
+        let cos_table: Vec<BigInt> = (0..m).map(|j| cos_fixed(j, m, &pi, 64)).collect();
+        // sin(2πu/m) = cos(2π (4u - m) / 4m)
+        let sin_table: Vec<BigInt> = (0..m).map(|u| cos_fixed((4 * u + 3 * m) % (4 * m), 4 * m, &pi, 64)).collect();
+        for chi in &characters {
+            let coset = |k: usize| -> Vec<u64> {
+                let mut elements: Vec<u64> = chi.iter().filter(|(_, v)| **v == k).map(|(u, _)| *u).collect();
+                elements.sort_unstable();
+                elements
             };
-            // Verify.
-            let ok = (0..n).all(|k| {
-                let mut value = Fx::zero();
-                for (t, q) in c.iter().enumerate() {
-                    if let Some(entry) = matrix.get(k).and_then(|row| row.get(t)) {
-                        value = value.add(&from_rational(q).mul(entry));
-                    }
-                }
-                rhs.get(k).and_then(|r| r.first()).is_some_and(|target| value.close(target, 250))
-            });
-            if !ok {
-                continue;
-            }
-            // z_k = sum_t c_t eta_{k+t}; eta_m = sum_{j in coset m / ±} 2 cos(2 pi j/p).
-            let mut roots = Vec::new();
-            for k in 0..n_u64 {
-                let mut terms: Vec<(u64, BigRational)> = Vec::new();
-                for (t, q) in c.iter().enumerate() {
-                    let m = (k + u64::try_from(t).ok()?) % n_u64;
-                    for j in coset(m) {
-                        let canonical = j.min(p - j);
-                        if j > p - j {
-                            continue;
+            for e in (1..n).filter(|e| gcd_u64(*e as u64, n as u64) == 1) {
+                let eta: Vec<Fx> = (0..n)
+                    .map(|k| {
+                        let mut sum = Fx::zero();
+                        for j in coset(k) {
+                            let index = usize::try_from(j).unwrap_or(0);
+                            let re = cos_table.get(index).cloned().unwrap_or_default();
+                            let im = if real { BigInt::zero() } else { sin_table.get(index).cloned().unwrap_or_default() };
+                            sum = sum.add(&Fx { re, im });
                         }
-                        match terms.iter_mut().find(|(jj, _)| *jj == canonical) {
-                            | Some((_, slot)) => *slot += q,
-                            | None => terms.push((canonical, q.clone())),
+                        sum
+                    })
+                    .collect();
+                let matrix: Vec<Vec<Fx>> = (0..n)
+                    .map(|k| (0..n).map(|t| eta.get(e * (k + t) % n).cloned().unwrap_or_else(Fx::zero)).collect())
+                    .collect();
+                let rhs: Vec<Vec<Fx>> = (0..n)
+                    .map(|k| {
+                        analysis
+                            .ordering
+                            .get(k)
+                            .and_then(|&i| analysis.roots.get(i))
+                            .map(|r| vec![if real { Fx::real(r.re.clone()) } else { r.clone() }])
+                    })
+                    .collect::<Option<_>>()?;
+                let Some(solution) = solve_system(matrix.clone(), rhs.clone()) else { continue };
+                let Some(c) = solution.iter().map(|row| row.first().and_then(rationalize)).collect::<Option<Vec<BigRational>>>() else {
+                    continue;
+                };
+                let ok = (0..n).all(|k| {
+                    let mut value = Fx::zero();
+                    for (t, q) in c.iter().enumerate() {
+                        if let Some(entry) = matrix.get(k).and_then(|row| row.get(t)) {
+                            value = value.add(&from_rational(q).mul(entry));
                         }
                     }
+                    rhs.get(k).and_then(|r| r.first()).is_some_and(|target| value.close(target, 250))
+                });
+                if !ok {
+                    continue;
                 }
-                terms.retain(|(_, q)| !q.is_zero());
-                terms.sort_by_key(|(j, _)| *j);
-                roots.push((usize::try_from(k).ok()?, terms));
+                let mut roots = Vec::new();
+                for k in 0..n {
+                    let mut terms: Vec<(u64, BigRational)> = Vec::new();
+                    for (t, q) in c.iter().enumerate() {
+                        for j in coset(e * (k + t) % n) {
+                            if real && j > m - j {
+                                continue;
+                            }
+                            match terms.iter_mut().find(|(jj, _)| *jj == j) {
+                                | Some((_, slot)) => *slot += q,
+                                | None => terms.push((j, q.clone())),
+                            }
+                        }
+                    }
+                    terms.retain(|(_, q)| !q.is_zero());
+                    terms.sort_by_key(|(j, _)| *j);
+                    roots.push((k, terms));
+                }
+                return Some(Cyclotomic { conductor: m, roots, complex: !real });
             }
-            return Some(Cyclotomic { conductor: p, roots });
         }
     }
     None
+}
+
+
+// ---------------------------------------------------------------------
+// Lagrange resolvents of the metacyclic septic groups D7, F21, F42.
+
+/// Data for the real roots of a `D7`, `F21` or `F42` septic in radicals.
+///
+/// The Lagrange resolvents are `t_j = Σ_k ζ_7^{jk} z_k` and `R_j = t_j^7`,
+/// whose conjugates `R_1 … R_6` are the roots of an integer sextic `Φ`.
+#[derive(Clone, Debug)]
+pub enum Lagrange {
+    /// Exactly one real root: with the roots labelled so that it is `z_0` and
+    /// conjugation is `k -> -k`, every `t_j` and `R_j` is real and
+    /// `z_0 = (t_0 + Σ_{j=1}^{6} R_j^{1/7}) / 7` (real seventh roots). `Φ`
+    /// is a totally real cyclic sextic.
+    OneReal {
+        /// `Φ(w) = Π (w - R_j)`, ascending integer coefficients.
+        phi: Vec<BigInt>,
+        /// The real numbers `R_1 … R_6`.
+        resolvents: Vec<f64>,
+        /// `t_0 = Σ z_k`.
+        trace: BigInt,
+    },
+    /// All roots real: `R_{-j} = conj R_j`. With `s_j = R_j + R_{-j}` (the
+    /// roots of the cubic `s_poly`) and `n_j = |R_j|² = c_0 + c_1 s_j +
+    /// c_2 s_j²`, writing `R_j = ρ_j e^{iφ_j}` (`j` with positive imaginary
+    /// part, `ρ_j² = n_j`, `cos φ_j = s_j / (2 ρ_j)`) gives
+    /// `z_k = (t_0 + 2 Σ_j ρ_j^{1/7} cos((φ_j + 2π m_j)/7 - 2π j k/7)) / 7`.
+    AllReal {
+        /// The monic integer cubic of the `s_j`.
+        s_poly: Vec<BigInt>,
+        /// `n` as a polynomial in `s`.
+        n_poly: Vec<BigRational>,
+        /// For each of the three conjugate pairs: `(j, s_j, m_j)`.
+        terms: Vec<(usize, f64, i64)>,
+        /// `t_0 = Σ z_k`.
+        trace: BigInt,
+    },
+}
+
+fn fx_pow7(z: &Fx) -> Fx {
+    let z2 = z.mul(z);
+    let z4 = z2.mul(&z2);
+    z4.mul(&z2).mul(z)
+}
+
+fn fx_to_f64(v: &BigInt) -> Option<f64> {
+    BigRational::new(v.clone(), one()).to_f64()
+}
+
+/// The Lagrange-resolvent data of a septic with group `D7`, `F21` or `F42`.
+#[must_use]
+pub fn lagrange(analysis: &Analysis) -> Option<Lagrange> {
+    if !matches!(analysis.group.label, "D7" | "F21" | "F42") {
+        return None;
+    }
+    let pi = pi_fixed(BITS + 64);
+    // ζ^m = cos(2πm/7) + i sin(2πm/7); sin(x) = cos(x - π/2).
+    let zeta: Vec<Fx> = (0..7_u64)
+        .map(|m| Fx { re: cos_fixed(m, 7, &pi, 64), im: cos_fixed((4 * m + 21) % 28, 28, &pi, 64) })
+        .collect();
+    let real_tolerance = BigInt::one() << (BITS - 100);
+    let real_positions: Vec<usize> = (0..7)
+        .filter(|&p| analysis.ordering.get(p).and_then(|&i| analysis.roots.get(i)).is_some_and(|r| r.im.abs() < real_tolerance))
+        .collect();
+    let (shift, all_real) = match real_positions.as_slice() {
+        | [p] => (*p, false),
+        | list if list.len() == 7 => (0, true),
+        | _ => return None,
+    };
+    let z: Vec<Fx> = (0..7).map(|k| analysis.ordering.get((k + shift) % 7).and_then(|&i| analysis.roots.get(i)).cloned()).collect::<Option<_>>()?;
+    if !all_real {
+        for k in 0..7 {
+            if !z.get((7 - k) % 7)?.close(&z.get(k)?.conj(), 300) {
+                return None;
+            }
+        }
+    }
+    let t: Vec<Fx> = (0..7)
+        .map(|j| {
+            let mut sum = Fx::zero();
+            for (k, zk) in z.iter().enumerate() {
+                if let Some(w) = zeta.get((j * k) % 7) {
+                    sum = sum.add(&w.mul(zk));
+                }
+            }
+            sum
+        })
+        .collect();
+    let trace = round_integer(t.first()?)?;
+    let r: Vec<Fx> = t.iter().map(fx_pow7).collect();
+    // Elementary symmetric functions of a list of values -> integer polynomial.
+    let integer_poly = |values: &[Fx]| -> Option<Vec<BigInt>> {
+        let mut poly = vec![Fx::integer(&BigInt::one())];
+        for v in values {
+            let mut next = vec![Fx::zero(); poly.len() + 1];
+            for (i, a) in poly.iter().enumerate() {
+                if let Some(slot) = next.get_mut(i + 1) {
+                    *slot = slot.add(a);
+                }
+                if let Some(slot) = next.get_mut(i) {
+                    *slot = slot.sub(&a.mul(v));
+                }
+            }
+            poly = next;
+        }
+        poly.iter().map(round_integer).collect()
+    };
+    if !all_real {
+        let values: Vec<Fx> = r.iter().skip(1).cloned().collect();
+        let phi = integer_poly(&values)?;
+        let resolvents: Vec<f64> = values.iter().map(|v| fx_to_f64(&v.re)).collect::<Option<_>>()?;
+        return Some(Lagrange::OneReal { phi, resolvents, trace });
+    }
+    // All real: pair R_j with R_{7-j}. Pairs with R_j = 0 (the Dickson case has
+    // only j = ±1) are dropped; one or three pairs remain.
+    let negligible = BigInt::one() << (BITS - 300);
+    let pairs: Vec<usize> = (1..=3)
+        .filter(|&j| r.get(j).is_some_and(|a| a.re.abs() > negligible || a.im.abs() > negligible))
+        .collect();
+    if pairs.len() != 1 && pairs.len() != 3 {
+        return None;
+    }
+    let s: Vec<Fx> = pairs.iter().map(|&j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.add(b)))).collect::<Option<_>>()?;
+    let n: Vec<Fx> = pairs.iter().map(|&j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.mul(b)))).collect::<Option<_>>()?;
+    let s_poly = integer_poly(&s)?;
+    // n_j = c0 + c1 s_j + c2 s_j^2 (constant when there is one pair).
+    let size = pairs.len();
+    let vandermonde: Vec<Vec<Fx>> = s
+        .iter()
+        .map(|v| {
+            let mut row = vec![Fx::integer(&BigInt::one())];
+            for _ in 1..size {
+                let next = row.last().map_or_else(Fx::zero, |l| l.mul(v));
+                row.push(next);
+            }
+            row
+        })
+        .collect();
+    let rhs: Vec<Vec<Fx>> = n.iter().map(|v| vec![v.clone()]).collect();
+    let solution = solve_system(vandermonde, rhs)?;
+    let n_poly: Vec<BigRational> = solution.iter().map(|row| row.first().and_then(rationalize)).collect::<Option<_>>()?;
+    let mut terms = Vec::new();
+    for (index, &j) in pairs.iter().enumerate() {
+        let rj = r.get(j)?;
+        let (representative, value) = if rj.im.is_positive() { (j, rj.clone()) } else { (7 - j, r.get(7 - j)?.clone()) };
+        let s_value = fx_to_f64(&s.get(index)?.re)?;
+        let rho = (fx_to_f64(&n.get(index)?.re)?).sqrt();
+        let phi = (s_value / (2.0 * rho)).clamp(-1.0, 1.0).acos();
+        let tj = t.get(representative)?;
+        let angle = fx_to_f64(&tj.im)?.atan2(fx_to_f64(&tj.re)?);
+        let _ = value;
+        let m = ((7.0 * angle - phi) / std::f64::consts::TAU).round() as i64;
+        terms.push((representative, s_value, m.rem_euclid(7)));
+    }
+    Some(Lagrange::AllReal { s_poly, n_poly, terms, trace })
 }
 
 #[cfg(test)]
@@ -792,6 +1106,21 @@ mod tests {
             // Sextic resolvent of x^5 - x - 1.
             (&[102400, -3091456, 44800, 8960, 880, 40, 1], "S5(6)=PGL(2,5)", 120),
             (&[-1, -1, 0, 0, 0, 0, 1], "S6", 720),
+            // Found by systematic search and checked against the cycle types
+            // of Frobenius elements (all observed types occur in the group; the
+            // types present exclude every smaller candidate):
+            // the norm of x^3 + a x + b over Z[sqrt 3] (C2 wr S3) ...
+            (&[9, 18, 6, -6, -6, 0, 1], "2S4(6)=C2wrS3", 48),
+            // ... over Z[sqrt 2] (S3 wr C2) ...
+            (&[-8, -8, -1, 0, -2, 0, 1], "3^2:D4=S3wrC2", 72),
+            // ... the norm of a cubic over Z[sqrt 3] with S3 x S3.
+            (&[-3, 0, 0, 6, 0, 0, 1], "S3xS3", 36),
+            // The sextic resolvent of x^5 + 20 x - 16 (square discriminant, 3-cycles
+            // and 5-cycles among the Frobenius elements: A5): PSL(2,5) on six points.
+            (&[6_553_600_000_000, -557_056_000_000, 7_168_000_000, -71_680_000, 352_000, -800, 1], "A5(6)=PSL(2,5)", 60),
+            // x^6 - 24 x - 20: square discriminant, Frobenius elements of types (5,1)
+            // and (4,2): only A6 contains both and only even permutations.
+            (&[-20, -24, 0, 0, 0, 0, 1], "A6", 360),
         ];
         for (c, label, order) in cases {
             assert_eq!(group_of(c), Some((*label, *order)), "{c:?}");
@@ -817,6 +1146,26 @@ mod tests {
         assert_eq!(group_of(&[-2, 0, 0, 0, 0, 0, 0, 1]), Some(("F42", 42)));
         assert_eq!(group_of(&[3, -7, 0, 0, 0, 0, 0, 1]), Some(("PSL(3,2)", 168)));
         assert_eq!(group_of(&[-1, -1, 0, 0, 0, 0, 0, 1]), Some(("S7", 5040)));
+        // The Dickson polynomial D7(x) - 1/4 (times 4): t^2 - 4 = -7 (3/4)^2 puts
+        // sqrt(-7) in Q(zeta7), which cuts the multipliers down to the squares: F21.
+        assert_eq!(group_of(&[-1, -28, 0, 56, 0, -28, 0, 4]), Some(("F21", 21)));
+        // D7(x) - 3: the generic case, F42.
+        assert_eq!(group_of(&[-3, -7, 0, 14, 0, -7, 0, 1]), Some(("F42", 42)));
+    }
+
+    #[test]
+    fn composite_conductors() {
+        // 2cos(2π/7) + (1 ± sqrt 13)/2: the cyclic sextic of conductor 91 = 7 * 13.
+        let a = analyse(&poly(&[-1, -16, 35, 9, -14, -1, 1])).expect("group");
+        assert_eq!(a.group.label, "C6");
+        let cyclo = cyclotomic(&a).expect("periods");
+        assert_eq!(cyclo.conductor, 91);
+        assert_eq!(cyclo.roots.len(), 6);
+        // The degree-7 field of conductor 29 * 43 (product of two order-7 characters).
+        let a = analyse(&poly(&[7_143_424, -1_426_432, -332_064, 73_224, 1196, -534, -1, 1])).expect("group");
+        assert_eq!(a.group.label, "C7");
+        let cyclo = cyclotomic(&a).expect("periods");
+        assert_eq!(cyclo.conductor, 1247);
     }
 
     #[test]

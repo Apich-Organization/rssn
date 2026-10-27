@@ -102,10 +102,14 @@
 //!   `κ` (the coefficient field is extended by a factor of the
 //!   characteristic polynomial and the conjugates are `root_of` objects) and
 //!   singular points that are roots of an irreducible polynomial of degree
-//!   above one. Not done: logarithmic terms at irregular points (an exponent
-//!   resonant with another root of the same indicial polynomial is
-//!   skipped), and, once the coefficient field is not `Q`, characteristic or
-//!   indicial polynomials of degree above one.
+//!   above one. Multiple and integer-spaced indicial roots give logarithmic
+//!   terms: the coefficients are polynomials in `ln v` (basis `L^i/i!`),
+//!   obtained by solving `P(ρ + k + D_L) c_k(L) = rhs` with the degree
+//!   raised at a resonance. Over a number field the characteristic and
+//!   indicial roots that lie in the field are found numerically at 190
+//!   digits and recognised by lattice reduction; roots that would need a
+//!   larger field (towers of extensions) are not produced. `ode_borel` sums
+//!   the series by Borel–Padé resummation instead of optimal truncation.
 //!
 //! **Linear equations of order three and more** with polynomial
 //! coefficients (`linear`): operators that are hypergeometric in `θ = x d/dx`
@@ -115,14 +119,19 @@
 //! formal solutions, the order is reduced by exact right division by `D - y'/y`
 //! and the quotient is handed back to the full solver (second-order
 //! quotients reach Kovacic's cases 1–3 and the hypergeometric families);
-//! the other solutions are `y1 ∫ z / y1`. Not done: the eigenring
-//! (Beke / van Hoeij) factorisation into factors of order above one and
-//! left factors.
+//! the other solutions are `y1 ∫ z / y1`. When there is no hyperexponential
+//! solution, a first-order *left* factor is found through the adjoint
+//! operator (`L = (D + ω*) N` when `L*` has the hyperexponential solution
+//! `y*`), `N` is solved recursively and a particular solution of `N y = 1/y*`
+//! comes from variation of parameters (inert integrals allowed). Not done:
+//! the eigenring (Beke / van Hoeij) factorisation into factors of order
+//! above one.
 //!
 //! | operator | value |
 //! |---|---|
 //! | `ode_frobenius(eq, y(x), x0, n)` | `list(y(x) = C1 y1 + C2 y2, list(r1, r2), recurrence)`: Frobenius series to order `n` about `x0`, the indicial roots and the explicit finite recurrence of the larger exponent |
 //! | `ode_asymptotic(eq, y(x), x0, n, x1, k)` | `list(re, im, error)`: the `k`-th (counting from 0) Newton-polygon formal solution at `x1` (`x0` rational or `oo`), its series with `n` terms summed up to the smallest term (optimal truncation); the error is the size of that term |
+//! | `ode_borel(eq, y(x), x0, n, x1, k)` | `list(re, im, error, stokes)`: the same formal solution summed by Borel–Padé resummation (Padé approximant of the Borel transform, Laplace integral along the ray of `x1`; when a Borel singularity lies near the ray, the median of the two lateral sums, `stokes = 1`) |
 //! | `ode_series(eq, y(x), x0, n)` | the power-series solution about `x0` to order `n` |
 //! | `rsolve_z(eq, y(n), conditions?)` | a linear recurrence solved by the z transform |
 //! | `ode_classify(eq, y(x))` | the list of classes the equation belongs to |
@@ -175,9 +184,11 @@ mod kovacic;
 mod lie;
 mod linear;
 mod nonlinear;
+mod ore;
 #[cfg(test)]
 mod battery;
 mod reduce;
+mod resum;
 mod series_method;
 mod systems;
 
@@ -200,7 +211,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let frobenius = i.op(OpDescriptor::new("ode_frobenius", Arity::Fixed(4)).flags(OpFlags::HEAVY).cost(100))?;
     i.kernel("ode/frobenius", Tier::Reduce, FrobeniusReport { op: frobenius });
     let asymptotic = i.op(OpDescriptor::new("ode_asymptotic", Arity::Fixed(6)).flags(OpFlags::HEAVY).cost(100))?;
-    i.kernel("ode/asymptotic", Tier::Reduce, Asymptotic { op: asymptotic });
+    i.kernel("ode/asymptotic", Tier::Reduce, Asymptotic { op: asymptotic, borel: false });
+    let borel = i.op(OpDescriptor::new("ode_borel", Arity::Fixed(6)).flags(OpFlags::HEAVY).cost(100))?;
+    i.kernel("ode/borel", Tier::Reduce, Asymptotic { op: borel, borel: true });
     i.op(OpDescriptor::new("big_o", Arity::Fixed(1)).eval(|_| 0.0))?;
     i.op(OpDescriptor::new("hyper1f1", Arity::Fixed(3)).eval(frobenius::hyper1f1))?;
     i.op(OpDescriptor::new("hyper2f1", Arity::Fixed(4)).eval(frobenius::hyper2f1))?;
@@ -1324,13 +1337,53 @@ fn variation_of_parameters(
     forcing: NodeId,
     x: NodeId,
 ) -> Option<NodeId> {
+    variation_core(cx, basis, leading, forcing, x, false)
+}
+
+/// [`variation_of_parameters`] where an integral without a closed form stays
+/// as an inert `integral(…)`.
+fn variation_of_parameters_inert(
+    cx: &mut Cx<'_>,
+    basis: &[NodeId],
+    leading: NodeId,
+    forcing: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    variation_core(cx, basis, leading, forcing, x, true)
+}
+
+/// The antiderivative of `f`, or (when `inert`) the unevaluated `integral(f, x)`.
+fn integral_of(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    x: NodeId,
+    inert: bool,
+) -> Option<NodeId> {
+    match integrate(cx, f, x) {
+        | Some(found) => Some(found),
+        | None if inert => {
+            let op = cx.graph.ops().lookup("integral")?;
+            Some(cx.graph.node(op, &[f, x]))
+        },
+        | None => None,
+    }
+}
+
+fn variation_core(
+    cx: &mut Cx<'_>,
+    basis: &[NodeId],
+    leading: NodeId,
+    forcing: NodeId,
+    x: NodeId,
+    inert: bool,
+) -> Option<NodeId> {
     let normalised = div(cx.graph, forcing, leading);
     match *basis {
         | [y1] => {
             // y_p = y1 ∫ r / y1
             let integrand = div(cx.graph, normalised, y1);
             let integrand = cx.simplify(integrand);
-            let integral = integrate(cx, integrand, x)?;
+            let integral = integral_of(cx, integrand, x, inert)?;
             Some(mul(cx.graph, &[y1, integral]))
         },
         | [y1, y2] => {
@@ -1345,7 +1398,7 @@ fn variation_of_parameters(
             let u1 = cx.simplify(u1);
             let u2 = mul(cx.graph, &[y1, normalised, inverse]);
             let u2 = cx.simplify(u2);
-            let (i1, i2) = (integrate(cx, u1, x)?, integrate(cx, u2, x)?);
+            let (i1, i2) = (integral_of(cx, u1, x, inert)?, integral_of(cx, u2, x, inert)?);
             let left = mul(cx.graph, &[y1, i1]);
             let left = neg(cx.graph, left);
             let right = mul(cx.graph, &[y2, i2]);
@@ -1383,7 +1436,7 @@ fn variation_of_parameters(
                 let ui = cx.simplify(ui);
                 let ui = crate::rules::poly::expand_form(cx.graph, ui).unwrap_or(ui);
                 let ui = cx.simplify(ui);
-                let integral = integrate(cx, ui, x)?;
+                let integral = integral_of(cx, ui, x, inert)?;
                 terms.push(mul(cx.graph, &[yi, integral]));
             }
             Some(add(cx.graph, &terms))
@@ -1715,6 +1768,8 @@ impl Kernel for FrobeniusReport {
 /// `x1` summed up to its smallest term.
 struct Asymptotic {
     op: OpId,
+    /// Borel–Padé resummation instead of optimal truncation.
+    borel: bool,
 }
 
 impl Kernel for Asymptotic {
@@ -1728,7 +1783,7 @@ impl Kernel for Asymptotic {
         node: NodeId,
     ) -> Outcome {
         match *cx.graph.children(node) {
-            | [e, u, x0, n, x1, k] => frobenius::asymptotic(cx, e, u, x0, n, x1, k).map_or(Outcome::Pass, Outcome::Pinned),
+            | [e, u, x0, n, x1, k] => frobenius::asymptotic(cx, e, u, x0, n, (x1, k, self.borel)).map_or(Outcome::Pass, Outcome::Pinned),
             | _ => Outcome::Pass,
         }
     }
@@ -2516,6 +2571,19 @@ mod tests {
         let sqrt_pi = std::f64::consts::PI.sqrt();
         assert!((values[0] / (2.0 * sqrt_pi) - 1.083_444_3e-4).abs() < 1e-8, "{values:?}");
         assert!((values[1] / sqrt_pi - 657.793_6).abs() < 2e-2, "{values:?}");
+        // Borel-Pade resummation: the same Airy solutions to much higher accuracy for the
+        // decaying one, and the median (Stokes) sum, Bi, for the growing one.
+        let mut borel = Vec::new();
+        for k in 0..2 {
+            let text = run(&format!("ode_borel(diff(diff(y(x), x), x) - x*y(x), y(x), oo, 90, 5, {k})"));
+            let inner = text.strip_prefix("list(").and_then(|t| t.strip_suffix(')')).unwrap_or("");
+            let numbers: Vec<f64> = inner.split(", ").filter_map(|s| s.parse().ok()).collect();
+            assert_eq!(numbers.len(), 4, "{text}");
+            borel.push((numbers[0], numbers[2], numbers[3]));
+        }
+        borel.sort_by(|a, b| a.0.total_cmp(&b.0));
+        assert!((borel[0].0 / (2.0 * sqrt_pi) - 1.083_444_3e-4).abs() < 1e-9, "{borel:?}");
+        assert!((borel[1].0 / sqrt_pi / 657.793_6 - 1.0).abs() < 2e-3, "{borel:?}");
         // Poincare rank two at 0: x^6 y'' = y, exp(+-1/(2 x^2)) x^(3/2) (1 + ...).
         let rank_two = run("ode_frobenius(x^6*diff(diff(y(x), x), x) - y(x), y(x), 0, 14)");
         let rhs = rhs_of(&rank_two);
@@ -2544,6 +2612,13 @@ mod tests {
         let rhs = answer.strip_prefix("y(x) = ").unwrap_or(&answer);
         let first = solution_value(&rules, rhs.split(" + ").find(|t| t.contains("C1")).unwrap_or(rhs), 0.7, (1.0, 0.0));
         assert!((first - 0.7_f64.exp()).abs() < 1e-9, "{answer}");
+        // (D - 1)(D^2 - x): no hyperexponential solution, but the left factor D - 1
+        // reduces the order; the quotient is Airy's equation.
+        let left = simplify(
+            &rules,
+            "dsolve(diff(diff(diff(y(x), x), x), x) - diff(diff(y(x), x), x) - x*diff(y(x), x) + (x - 1)*y(x), y(x))",
+        );
+        assert!(left.contains("airyai") && left.contains("airybi"), "{left}");
         // A hypergeometric operator of order three: 3F2.
         let hyper = simplify(
             &rules,

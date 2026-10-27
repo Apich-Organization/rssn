@@ -729,11 +729,30 @@ fn newton_parts(
     let exponent = add(cx.graph, &exponent_terms);
     let rho = element(cx, &solution.rho);
     let mut series_terms = Vec::new();
+    let ln = cx.graph.ops().lookup("ln")?;
+    let log_of_v = cx.graph.node(ln, &[v]);
     for (j, c) in solution.coefficients.iter().enumerate().take(n) {
-        if c.is_empty() {
+        let logs: &[Vec<Q>] = solution.log_terms.get(j).map_or(&[][..], Vec::as_slice);
+        if c.is_empty() && logs.iter().all(Vec::is_empty) {
             continue;
         }
-        let cn = element(cx, c);
+        let mut parts = Vec::new();
+        if !c.is_empty() {
+            parts.push(element(cx, c));
+        }
+        let mut factorial = 1_i64;
+        for (i, lc) in logs.iter().enumerate() {
+            factorial *= i64::try_from(i + 1).ok()?;
+            if lc.is_empty() {
+                continue;
+            }
+            let coefficient = element(cx, lc);
+            let divisor = cx.graph.num(Number::fraction(1, factorial)?);
+            let exponent_node = cx.graph.int(i64::try_from(i + 1).ok()?);
+            let power = cx.graph.node(core::POW, &[log_of_v, exponent_node]);
+            parts.push(mul(cx.graph, &[coefficient, divisor, power]));
+        }
+        let cn = add(cx.graph, &parts);
         let power = if j == 0 {
             cx.graph.int(1)
         } else {
@@ -1197,8 +1216,7 @@ pub(super) fn asymptotic(
     unknown: NodeId,
     x0: NodeId,
     n: NodeId,
-    x1: NodeId,
-    which: NodeId,
+    (x1, which, borel): (NodeId, NodeId, bool),
 ) -> Option<NodeId> {
     let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?).ok().filter(|&n| n <= 400)?;
     let which = usize::try_from(cx.graph.number_of(which)?.to_i64()?).ok()?;
@@ -1220,7 +1238,13 @@ pub(super) fn asymptotic(
         | None => 1.0 / at,
         | Some(c) => at - c.to_f64()?,
     };
-    let (value, error) = solution.evaluate(alpha, num_complex::Complex64::new(t, 0.0));
+    let t = num_complex::Complex64::new(t, 0.0);
+    if borel {
+        let (value, error, stokes) = solution.evaluate_borel(alpha, t)?;
+        let parts = [cx.graph.float(value.re), cx.graph.float(value.im), cx.graph.float(error), cx.graph.int(i64::from(stokes))];
+        return Some(cx.graph.node(core::LIST, &parts));
+    }
+    let (value, error) = solution.evaluate(alpha, t);
     let (re, im, err) = (cx.graph.float(value.re), cx.graph.float(value.im), cx.graph.float(error));
     Some(cx.graph.node(core::LIST, &[re, im, err]))
 }
