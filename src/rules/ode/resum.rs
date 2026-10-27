@@ -167,13 +167,13 @@ fn laplace_along(
     }
     let r_max = 45.0 / decay;
     let rule = gauss_legendre(20);
-    let panels = 120;
+    let panels = 120_u32;
     let mut total = Complex64::new(0.0, 0.0);
     for panel in 0..panels {
         // Finer near the origin.
-        let (a, b) = (r_max * (panel as f64 / panels as f64).powi(2), r_max * ((panel + 1) as f64 / panels as f64).powi(2));
+        let (a, b) = (r_max * (f64::from(panel) / f64::from(panels)).powi(2), r_max * (f64::from(panel + 1) / f64::from(panels)).powi(2));
         for (x, w) in &rule {
-            let r = 0.5 * (b - a) * x + 0.5 * (b + a);
+            let r = 0.5 * (b - a) * x + f64::midpoint(a, b);
             let s = direction * r;
             let value = horner(p, s) / horner(q, s) * (-s / v).exp();
             total += value * (0.5 * (b - a) * w) * direction;

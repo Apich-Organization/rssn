@@ -812,14 +812,6 @@ fn descend(
     expand(search, field, &conjugated, ramification, &extended, &Selection::Below(q(s)));
 }
 
-fn evaluate_theta(
-    field: &Field,
-    p: &[Elt],
-    rho: &[Q],
-) -> Elt {
-    p.iter().rev().fold(Vec::new(), |acc, c| field.add(&field.mul(&acc, rho), c))
-}
-
 fn regular(
     search: &mut Search<'_>,
     field: &Field,

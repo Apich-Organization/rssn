@@ -907,10 +907,10 @@ fn cyclotomic_search(
 // ---------------------------------------------------------------------
 // Lagrange resolvents of the metacyclic septic groups D7, F21, F42.
 
-/// Data for writing the real roots of a septic with Galois group `D7`,
-/// `F21` or `F42` in radicals through the Lagrange resolvents
-/// `t_j = Σ_k ζ_7^{jk} z_k` and `R_j = t_j^7`, whose conjugates `R_1 … R_6`
-/// are the roots of an integer sextic `Φ`.
+/// Data for the real roots of a `D7`, `F21` or `F42` septic in radicals.
+///
+/// The Lagrange resolvents are `t_j = Σ_k ζ_7^{jk} z_k` and `R_j = t_j^7`,
+/// whose conjugates `R_1 … R_6` are the roots of an integer sextic `Φ`.
 #[derive(Clone, Debug)]
 pub enum Lagrange {
     /// Exactly one real root: with the roots labelled so that it is `z_0` and

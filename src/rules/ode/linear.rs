@@ -939,7 +939,7 @@ fn factors_from_eigenvalue_element(
     let Some(identity) = Ore::from_polynomials(&[vec![Q::one()]]) else { return out };
     let mut powers: Vec<Ore> = vec![identity];
     let Some((_, r_reduced)) = r.right_divide(l) else { return out };
-    powers.push(r_reduced.clone());
+    powers.push(r_reduced);
     for k in 1..=n + 1 {
         let Some(rows) = operator_rows(&powers, n) else { return out };
         let dependencies = nullspace(rows, powers.len());
@@ -1009,7 +1009,7 @@ fn eigenring_reduction(
         for z in &basis_m {
             let forcing = mul(cx.graph, &[d_node, *z]);
             let forcing = cx.simplify(forcing);
-            let Some(particular) = super::variation_of_parameters_inert(cx, &basis_f, leading, forcing, x) else { return None };
+            let particular = super::variation_of_parameters_inert(cx, &basis_f, leading, forcing, x)?;
             let c = problem.constant(cx.graph);
             terms.push(mul(cx.graph, &[c, particular]));
         }

@@ -11,7 +11,6 @@
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::One;
-use num_traits::Zero;
 
 use super::kovacic::Rat;
 
@@ -44,7 +43,7 @@ impl Ore {
     }
 
     /// The order, `None` for the zero operator.
-    pub(super) fn order(&self) -> Option<usize> {
+    pub(super) const fn order(&self) -> Option<usize> {
         self.c.len().checked_sub(1)
     }
 
@@ -158,7 +157,7 @@ impl Ore {
     }
 
     /// Whether the operator is the zero operator.
-    pub(super) fn is_zero(&self) -> bool {
+    pub(super) const fn is_zero(&self) -> bool {
         self.c.is_empty()
     }
 }

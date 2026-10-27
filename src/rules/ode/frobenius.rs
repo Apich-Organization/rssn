@@ -1216,9 +1216,7 @@ pub(super) fn asymptotic(
     unknown: NodeId,
     x0: NodeId,
     n: NodeId,
-    x1: NodeId,
-    which: NodeId,
-    borel: bool,
+    (x1, which, borel): (NodeId, NodeId, bool),
 ) -> Option<NodeId> {
     let n = usize::try_from(cx.graph.number_of(n)?.to_i64()?).ok().filter(|&n| n <= 400)?;
     let which = usize::try_from(cx.graph.number_of(which)?.to_i64()?).ok()?;

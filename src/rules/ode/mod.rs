@@ -1783,7 +1783,7 @@ impl Kernel for Asymptotic {
         node: NodeId,
     ) -> Outcome {
         match *cx.graph.children(node) {
-            | [e, u, x0, n, x1, k] => frobenius::asymptotic(cx, e, u, x0, n, x1, k, self.borel).map_or(Outcome::Pass, Outcome::Pinned),
+            | [e, u, x0, n, x1, k] => frobenius::asymptotic(cx, e, u, x0, n, (x1, k, self.borel)).map_or(Outcome::Pass, Outcome::Pinned),
             | _ => Outcome::Pass,
         }
     }
