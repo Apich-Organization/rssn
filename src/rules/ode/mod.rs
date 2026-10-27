@@ -2634,7 +2634,7 @@ mod tests {
         // x^2 (y'' - 2 y' + y) = y: x^b e^x with b^2 - b - 1 = 0, b = (1 +- sqrt 5)/2 (Kovacic's
         // case 1 with irrational local data); the two solutions are conjugate.
         let answer = simplify(&rules, "dsolve(x^2*(diff(diff(y(x), x), x) - 2*diff(y(x), x) + y(x)) - y(x), y(x))");
-        assert!(answer.contains("root_of") && answer.contains("exp("), "{answer}");
+        assert!((answer.contains("root_of") || answer.contains("5^(1/2)")) && answer.contains("exp("), "{answer}");
         check_second_order(&rules, &answer, |x| (x * x, -2.0 * x * x, x * x - 1.0), &[0.7, 1.4, 2.1], 1e-3);
     }
 

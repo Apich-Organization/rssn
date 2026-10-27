@@ -539,7 +539,12 @@ pub(crate) fn filter_candidates(
         let free = graph.free_symbols(graph.find(substituted)).to_vec();
         let keep = if free.is_empty() {
             match graph.eval(substituted, &Env::numeric(0.0)) {
-                | Some(v) => v.abs() <= 1e-7,
+                // The tolerance grows with the size of the candidate: the residual of a
+                // high-degree polynomial at a large root carries rounding of that order.
+                | Some(v) => {
+                    let at = graph.eval(candidate, &Env::numeric(0.0)).filter(|a| a.is_finite()).unwrap_or(0.0);
+                    v.abs() <= 1e-7 * (1.0 + at.abs().powi(8))
+                },
                 | None => true,
             }
         } else {
