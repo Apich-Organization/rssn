@@ -103,6 +103,9 @@
 //! | non-convex scalar conservation laws | line | 1 | convex-hull construction (rarefaction, shock and contact segments) for step data |
 //! | NLS `i u_t + u_xx + 2 abs(u)² u = 0` | line | 1 | bright soliton family (`pde_nls_soliton`) |
 //! | autonomous scalar evolution equations with polynomial nonlinearity (`KdV`, mKdV, Burgers, Allen–Cahn, Fisher) | line | 1 | tanh method `Σ a_j tanh^j(μ(x - ct))`, residual solved by Levenberg–Marquardt, fractions recovered |
+//! | `pde_kdv_reflectionless(N, κ)` | line | 1 | KdV with the datum `-N(N+1)κ² sech²(κx)` (`N ≤ 4`): eigenvalues `nκ`, Pöschl–Teller norming constants in the determinant formula |
+//! | `pde_darboux_kdv(u, ψ)` | line | 1 | one Darboux step `ũ = u - 2 ∂²_x ln ψ` of a KdV solution with a Lax eigenfunction |
+//! | sech ansatz | line | 1 | `Σ a_j sech^j(μ(x - ct))` (focusing mKdV, …) in the same solver as the tanh method, tanh degrees up to 5, sech up to 4 |
 //!
 //! Limitations (what is still not covered):
 //!
@@ -128,10 +131,10 @@
 //!   curvilinear domains.
 //! * Nonlinear equations: Hopf-Cole for constant-coefficient Burgers; Riemann
 //!   problems for a single step; the soliton operators cover `KdV`
-//!   (`N <= 4`), sine-Gordon (`N <= 3`) and bright NLS; the tanh method
-//!   needs a travelling wave of polynomial degree <= 3 in tanh. Not covered:
-//!   shock interactions, hodograph and Darboux transformations, inverse
-//!   scattering from general initial data.
+//!   (`N <= 4`), sine-Gordon (`N <= 3`) and bright NLS; the tanh/sech
+//!   ansatz needs a travelling wave; Darboux is a single KdV step, inverse
+//!   scattering covers reflectionless data only. Not covered: shock
+//!   interactions, hodograph transformations, general GLM scattering data.
 //! * Annuli: the Neumann constant is treated separately; modes with a
 //!   negative eigenvalue are found by a numeric scan (at most four); a
 //!   symbolic angular order that could hide a zero or negative mode is
@@ -290,6 +293,8 @@ enum Request {
     KdvSoliton,
     SineGordonSoliton,
     NlsSoliton,
+    KdvReflectionless,
+    DarbouxKdv,
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
@@ -342,6 +347,10 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("pde/pde_order", Tier::Reduce, Pde { op, request: Request::Order });
     let op = i.op(heavy("pde_kdv_soliton", Arity::Fixed(2)))?;
     i.kernel("pde/pde_kdv_soliton", Tier::Reduce, Pde { op, request: Request::KdvSoliton });
+    let op = i.op(heavy("pde_kdv_reflectionless", Arity::Fixed(2)))?;
+    i.kernel("pde/pde_kdv_reflectionless", Tier::Reduce, Pde { op, request: Request::KdvReflectionless });
+    let op = i.op(heavy("pde_darboux_kdv", Arity::Fixed(2)))?;
+    i.kernel("pde/pde_darboux_kdv", Tier::Reduce, Pde { op, request: Request::DarbouxKdv });
     let op = i.op(heavy("pde_nls_soliton", Arity::Fixed(1)))?;
     i.kernel("pde/pde_nls_soliton", Tier::Reduce, Pde { op, request: Request::NlsSoliton });
     let op = i.op(heavy("pde_sine_gordon_soliton", Arity::Fixed(2)))?;
@@ -374,6 +383,13 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 };
                 Outcome::Equal(cx.graph.int(i64::from(problem.order())))
+            },
+            | Request::KdvReflectionless | Request::DarbouxKdv => {
+                let &[first, second] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                let found = if self.request == Request::KdvReflectionless { nonlinear::kdv_reflectionless(cx, first, second) } else { nonlinear::darboux_kdv(cx, first, second) };
+                found.map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::NlsSoliton => {
                 let &[list] = args.as_slice() else {
