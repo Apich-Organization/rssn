@@ -109,6 +109,9 @@ pub(super) fn solve(
     p: &Problem,
     conditions: &Conditions,
 ) -> Option<NodeId> {
+    if conditions.0.is_empty() {
+        return tanh_method(cx, p);
+    }
     let law = decompose(cx, p)?;
     let time = p.time(cx.graph);
     let zero_index = vec![0; 2];
@@ -243,22 +246,27 @@ fn riemann(
     let curvature = derivative(cx.graph, speed_w, w)?;
     let w_symbol = cx.graph.symbol_of(w)?;
     let mut convex: Option<bool> = None;
+    let mut mixed = false;
     for k in 0..=8_u32 {
         let value = vl + (vr - vl) * f64::from(k) / 8.0;
         let mut env = crate::graph::Env::numeric(0.0);
         env.bind(w_symbol, value);
         let c = cx.graph.eval(curvature, &env).filter(|v| v.is_finite())?;
         if c.abs() < 1e-12 {
-            return None;
+            mixed = true;
+            continue;
         }
         match convex {
             | None => convex = Some(c > 0.0),
-            | Some(known) if known != (c > 0.0) => return None,
+            | Some(known) if known != (c > 0.0) => mixed = true,
             | Some(_) => {},
         }
     }
-    let shock = convex? == (vl > vr);
     let shifted = sub(cx.graph, x, x0);
+    if mixed {
+        return hull_riemann(cx, (ul, ur), (vl, vr), speed_w, w, shifted, t);
+    }
+    let shock = convex? == (vl > vr);
     if shock {
         // s = (f(u_r) - f(u_l))/(u_r - u_l) with f' = speed.
         let flux = antiderivative(cx, speed_w, w)?;
@@ -441,4 +449,493 @@ pub(super) fn sine_gordon_soliton(
         return None;
     }
     Some(cx.simplify(u))
+}
+
+/// `pde_nls_soliton(list(η, v, x₀, φ₀))`: the bright soliton
+/// `ψ = η sech(η (x - v t - x₀)) exp(i (v x + (η² - v²) t / 2 + φ₀))` of
+/// `i ψ_t + ψ_xx/2 + |ψ|² ψ = 0`.
+pub(super) fn nls_soliton(
+    cx: &mut Cx<'_>,
+    parameters: &[NodeId],
+) -> Option<NodeId> {
+    let &[eta, v, x0, phase] = parameters else {
+        return None;
+    };
+    let (x, t) = (cx.graph.sym("x"), cx.graph.sym("t"));
+    let i_unit = call(cx, "I", &[])?;
+    let vt = mul(cx.graph, &[v, t]);
+    let moving = {
+        let a = sub(cx.graph, x, vt);
+        sub(cx.graph, a, x0)
+    };
+    let argument = mul(cx.graph, &[eta, moving]);
+    let sech = call(cx, "sech", &[argument])?;
+    let amplitude = mul(cx.graph, &[eta, sech]);
+    let vx = mul(cx.graph, &[v, x]);
+    let (eta2, v2) = (powi(cx.graph, eta, 2), powi(cx.graph, v, 2));
+    let half = cx.graph.num(crate::graph::Number::fraction(1, 2)?);
+    let frequency = {
+        let gap = sub(cx.graph, eta2, v2);
+        mul(cx.graph, &[half, gap, t])
+    };
+    let total = add(cx.graph, &[vx, frequency, phase]);
+    let exponent = mul(cx.graph, &[i_unit, total]);
+    let carrier = call(cx, "exp", &[exponent])?;
+    let psi = mul(cx.graph, &[amplitude, carrier]);
+    Some(cx.simplify(psi))
+}
+
+/// One wave of a Riemann solution.
+enum Wave {
+    Shock { from: f64, to: f64, speed: f64 },
+    Fan { from: f64, to: f64 },
+}
+
+fn snapped_value(
+    cx: &mut Cx<'_>,
+    v: f64,
+) -> NodeId {
+    for q in 1..=24_i64 {
+        #[allow(clippy::cast_precision_loss)]
+        let scaled = (v * q as f64).round();
+        #[allow(clippy::cast_precision_loss)]
+        if (v * q as f64 - scaled).abs() < 1e-7 {
+            #[allow(clippy::cast_possible_truncation)]
+            if let Some(n) = crate::graph::Number::fraction(scaled as i64, q) {
+                return cx.graph.num(n);
+            }
+        }
+    }
+    cx.graph.num(crate::graph::Number::from(v))
+}
+
+/// The Riemann problem for a flux that is neither convex nor concave
+/// between the states: the waves follow the lower convex envelope of the
+/// flux on `[u_l, u_r]` (for `u_l < u_r`) or the upper concave envelope (for
+/// `u_l > u_r`) — chords of the envelope are shocks or contact
+/// discontinuities (Oleinik), its curved parts rarefaction fans. The
+/// envelope is found on a fine grid and the tangent points refined.
+#[allow(clippy::too_many_lines)]
+fn hull_riemann(
+    cx: &mut Cx<'_>,
+    (ul, ur): (NodeId, NodeId),
+    (vl, vr): (f64, f64),
+    speed_w: NodeId,
+    w: NodeId,
+    shifted: NodeId,
+    t: NodeId,
+) -> Option<NodeId> {
+    const CELLS: usize = 4000;
+    let flux = antiderivative(cx, speed_w, w)?;
+    let w_symbol = cx.graph.symbol_of(w)?;
+    let at = |cx: &Cx<'_>, node: NodeId, v: f64| -> Option<f64> {
+        let mut env = crate::graph::Env::numeric(0.0);
+        env.bind(w_symbol, v);
+        cx.graph.eval(node, &env).filter(|x| x.is_finite())
+    };
+    let (lo, hi) = (vl.min(vr), vl.max(vr));
+    let sign = if vl < vr { 1.0 } else { -1.0 };
+    let us: Vec<f64> = (0..=CELLS).map(|k| lo + (hi - lo) * k as f64 / CELLS as f64).collect();
+    let fs: Vec<f64> = us.iter().map(|&u| at(cx, flux, u)).collect::<Option<_>>()?;
+    // The lower hull of (u, sign f).
+    let g = |k: usize| sign * fs.get(k).copied().unwrap_or(0.0);
+    let scale = fs.iter().fold(0.0_f64, |a, b| a.max(b.abs())).max(1e-300);
+    let mut hull: Vec<usize> = Vec::new();
+    for k in 0..=CELLS {
+        while hull.len() >= 2 {
+            let (a, b) = (hull[hull.len() - 2], hull[hull.len() - 1]);
+            let cross = (us[b] - us[a]) * (g(k) - g(a)) - (g(b) - g(a)) * (us[k] - us[a]);
+            if cross <= 1e-12 * scale * (hi - lo) {
+                hull.pop();
+            } else {
+                break;
+            }
+        }
+        hull.push(k);
+    }
+    // The waves in order from the left state.
+    let mut edges: Vec<(usize, usize)> = hull.windows(2).map(|pair| (pair[0], pair[1])).collect();
+    if vl > vr {
+        edges.reverse();
+    }
+    let mut waves: Vec<Wave> = Vec::new();
+    for &(a, b) in &edges {
+        let (from_index, to_index) = if vl < vr { (a, b) } else { (b, a) };
+        let (from, to) = (us[from_index], us[to_index]);
+        if b - a >= 3 {
+            let speed = (fs[b] - fs[a]) / (us[b] - us[a]);
+            waves.push(Wave::Shock { from, to, speed });
+        } else if let Some(Wave::Fan { to: end, .. }) = waves.last_mut() {
+            *end = to;
+        } else {
+            waves.push(Wave::Fan { from, to });
+        }
+    }
+    // Refine the tangent points of chords whose other end is a given state.
+    let refine = |cx: &Cx<'_>, fixed: f64, near: f64| -> Option<f64> {
+        let step = (hi - lo) * 6.0 / CELLS as f64;
+        let (mut a, mut b) = ((near - step).max(lo), (near + step).min(hi));
+        let slope = |cx: &Cx<'_>, v: f64| -> Option<f64> {
+            let fv = at(cx, flux, v)?;
+            let ff = at(cx, flux, fixed)?;
+            Some(sign * (fv - ff) / (v - fixed))
+        };
+        for _ in 0..80 {
+            let (m1, m2) = (a + (b - a) / 3.0, b - (b - a) / 3.0);
+            if (slope(cx, m1)? < slope(cx, m2)?) == (near > fixed) {
+                b = m2;
+            } else {
+                a = m1;
+            }
+        }
+        Some(f64::midpoint(a, b))
+    };
+    // Chord ends: refine against a fixed outer state.
+    for wave in &mut waves {
+        if let Wave::Shock { from, to, speed } = wave {
+            let from_fixed = (*from - vl).abs() < 1e-12;
+            let to_fixed = (*to - vr).abs() < 1e-12;
+            if from_fixed && !to_fixed {
+                if let Some(r) = refine(cx, *from, *to) {
+                    *to = r;
+                }
+            } else if to_fixed
+                && !from_fixed
+                && let Some(r) = refine(cx, *to, *from)
+            {
+                *from = r;
+            }
+            let (ff, ft) = (at(cx, flux, *from)?, at(cx, flux, *to)?);
+            *speed = (ft - ff) / (*to - *from);
+        }
+    }
+    // Make consecutive states agree after the refinement.
+    for index in 1..waves.len() {
+        let previous_end = match &waves[index - 1] {
+            | Wave::Shock { to, .. } | Wave::Fan { to, .. } => *to,
+        };
+        match &mut waves[index] {
+            | Wave::Shock { from, .. } | Wave::Fan { from, .. } => *from = previous_end,
+        }
+    }
+    // Assemble the solution by the Heaviside functions of the fronts.
+    let one = cx.graph.int(1);
+    let mut terms = vec![ul];
+    let front = |cx: &mut Cx<'_>, speed: NodeId| {
+        let st = mul(cx.graph, &[speed, t]);
+        let argument = sub(cx.graph, shifted, st);
+        call(cx, "heaviside", &[argument])
+    };
+    let xi = {
+        let q = div(cx, shifted, t);
+        cx.simplify(q)
+    };
+    for wave in &waves {
+        match *wave {
+            | Wave::Shock { from, to, speed } => {
+                let (n_speed, jump) = (snapped_value(cx, speed), snapped_value(cx, to - from));
+                let h = front(cx, n_speed)?;
+                terms.push(mul(cx.graph, &[jump, h]));
+            },
+            | Wave::Fan { from, to } => {
+                let (s_left, s_right) = (at(cx, speed_w, from)?, at(cx, speed_w, to)?);
+                let (n_left, n_right) = (snapped_value(cx, s_left), snapped_value(cx, s_right));
+                let (n_from, n_to) = (snapped_value(cx, from), snapped_value(cx, to));
+                // The inverse of the flux derivative on [from, to].
+                let marker = cx.graph.sym("xi_fan");
+                let equation = sub(cx.graph, speed_w, marker);
+                let roots = solve_for(cx.graph, equation, w, 0)?;
+                let middle = f64::midpoint(from, to);
+                let speed_middle = at(cx, speed_w, middle)?;
+                let marker_symbol = cx.graph.symbol_of(marker)?;
+                let mut best: Option<(f64, NodeId)> = None;
+                for root in roots {
+                    let mut env = crate::graph::Env::numeric(0.0);
+                    env.bind(marker_symbol, speed_middle);
+                    if let Some(v) = cx.graph.eval(root, &env).filter(|v| v.is_finite()) {
+                        let distance = (v - middle).abs();
+                        if best.is_none_or(|(d, _)| distance < d) {
+                            best = Some((distance, root));
+                        }
+                    }
+                }
+                let (_, root) = best?;
+                let inverse = cx.graph.substitute(root, marker, xi);
+                let h_left = front(cx, n_left)?;
+                let h_right = front(cx, n_right)?;
+                let inside = {
+                    let rise = sub(cx.graph, inverse, n_from);
+                    let not_right = sub(cx.graph, one, h_right);
+                    mul(cx.graph, &[rise, h_left, not_right])
+                };
+                terms.push(inside);
+                let jump = sub(cx.graph, n_to, n_from);
+                terms.push(mul(cx.graph, &[jump, h_right]));
+            },
+        }
+    }
+    let u = add(cx.graph, &terms);
+    let _ = ur;
+    Some(cx.simplify(u))
+}
+
+// ----------------------------------------------------------------------
+// The tanh method
+// ----------------------------------------------------------------------
+
+/// Polynomials in `T` as coefficient vectors.
+fn poly_derivative(p: &[f64]) -> Vec<f64> {
+    p.iter().enumerate().skip(1).map(|(k, c)| c * k as f64).collect()
+}
+
+fn poly_eval(
+    p: &[f64],
+    t: f64,
+) -> f64 {
+    p.iter().rev().fold(0.0, |acc, c| acc * t + c)
+}
+
+/// `μ (1 - T²) dP/dT`, the derivative of `P(tanh(μ ξ))` with respect to `ξ`.
+fn poly_x_derivative(
+    p: &[f64],
+    mu: f64,
+) -> Vec<f64> {
+    let d = poly_derivative(p);
+    let mut out = vec![0.0; d.len() + 2];
+    for (k, c) in d.iter().enumerate() {
+        out[k] += mu * c;
+        out[k + 2] -= mu * c;
+    }
+    out
+}
+
+/// Solves `J δ = r` by Gaussian elimination with partial pivoting.
+fn solve_linear(
+    mut a: Vec<Vec<f64>>,
+    mut b: Vec<f64>,
+) -> Option<Vec<f64>> {
+    let n = b.len();
+    for col in 0..n {
+        let pivot = (col..n).max_by(|&i, &j| a[i][col].abs().total_cmp(&a[j][col].abs()))?;
+        if a[pivot][col].abs() < 1e-300 {
+            return None;
+        }
+        a.swap(col, pivot);
+        b.swap(col, pivot);
+        for row in (col + 1)..n {
+            let factor = a[row][col] / a[col][col];
+            for k in col..n {
+                let v = a[col][k];
+                a[row][k] -= factor * v;
+            }
+            let v = b[col];
+            b[row] -= factor * v;
+        }
+    }
+    let mut x = vec![0.0; n];
+    for row in (0..n).rev() {
+        let tail: f64 = ((row + 1)..n).map(|k| a[row][k] * x[k]).sum();
+        x[row] = (b[row] - tail) / a[row][row];
+    }
+    Some(x)
+}
+
+/// Travelling-wave solutions `u = Σ_{j=0}^{m} a_j tanh^j(μ (x - c t))` of a
+/// scalar evolution equation whose residual is a polynomial in the
+/// derivatives of `u` (`KdV`, `mKdV`, Burgers, Allen–Cahn, Fisher, …). The
+/// unknowns `a_j, μ, c` make the residual, a polynomial in `T = tanh`,
+/// vanish; the polynomial system is solved by Levenberg–Marquardt from
+/// several starts on the residual sampled at points of `(-1, 1)`, the
+/// solution is rounded to small fractions when that keeps the residual
+/// zero, and the first non-trivial solution (`a_m ≠ 0`, `μ ≠ 0`) of the
+/// smallest degree `m ≤ 3` is returned. Equations that have a family of
+/// solutions (`KdV`: any speed) yield one member.
+#[allow(clippy::too_many_lines)]
+fn tanh_method(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+) -> Option<NodeId> {
+    if p.dimension() != 2 || !p.homogeneous(cx.graph) {
+        return None;
+    }
+    let time = p.time(cx.graph);
+    let space = 1 - time;
+    let (x, t) = (p.vars[space], p.vars[time]);
+    // Replace u and its jets by symbols so that the residual can be evaluated.
+    let mut residual = p.residual;
+    let mut bindings: Vec<(crate::graph::SymbolId, Vec<u32>)> = Vec::new();
+    let mut jets: Vec<(Vec<u32>, NodeId)> = p.jets.clone();
+    jets.sort_by_key(|(i, _)| std::cmp::Reverse(i.iter().sum::<u32>()));
+    for (index, node) in &jets {
+        let symbol = cx.graph.interner_mut().fresh_symbol("j");
+        let marker = cx.graph.symbol_node(symbol);
+        residual = cx.graph.replace_subterm(residual, *node, marker);
+        bindings.push((symbol, index.clone()));
+    }
+    let u_symbol = cx.graph.interner_mut().fresh_symbol("j");
+    let u_marker = cx.graph.symbol_node(u_symbol);
+    residual = cx.graph.replace_subterm(residual, p.unknown, u_marker);
+    let free = cx.graph.free_symbols(cx.graph.find(residual)).to_vec();
+    let known: Vec<crate::graph::SymbolId> = bindings.iter().map(|(s, _)| *s).chain(std::iter::once(u_symbol)).collect();
+    if free.iter().any(|s| !known.contains(s)) {
+        return None;
+    }
+    let samples: Vec<f64> = (0..28).map(|k| -0.93 + 1.86 * f64::from(k) / 27.0).collect();
+    let unknown_index = p.unit(space, 1);
+    let _ = unknown_index;
+    let evaluate = |cx: &Cx<'_>, z: &[f64], degree: usize| -> Option<Vec<f64>> {
+        let (a, mu, c) = (&z[..=degree], z[degree + 1], z[degree + 2]);
+        // Derivatives in x: P, D P, D² P, …
+        let mut by_order: Vec<Vec<f64>> = vec![a.to_vec()];
+        for _ in 0..4 {
+            let last = by_order.last()?.clone();
+            by_order.push(poly_x_derivative(&last, mu));
+        }
+        let mut out = Vec::new();
+        for &tv in &samples {
+            let mut env = crate::graph::Env::numeric(0.0);
+            env.bind(u_symbol, poly_eval(a, tv));
+            for (symbol, index) in &bindings {
+                let (nx, nt) = (index[space] as usize, index[time] as usize);
+                let order = nx + nt;
+                let value = (-c).powi(i32::try_from(nt).ok()?) * poly_eval(by_order.get(order)?, tv);
+                env.bind(*symbol, value);
+            }
+            out.push(cx.graph.eval(residual, &env).filter(|v| v.is_finite())?);
+        }
+        Some(out)
+    };
+    let mut seed = 0x2545_f491_4f6c_dd1d_u64;
+    let mut random = move || {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        (seed >> 11) as f64 / (1_u64 << 53) as f64 * 4.0 - 2.0
+    };
+    for degree in 1..=3_usize {
+        let dimension = degree + 3;
+        for _start in 0..80 {
+            let mut z: Vec<f64> = (0..dimension).map(|_| random()).collect();
+            let mut lambda = 1e-2;
+            let mut current = evaluate(cx, &z, degree);
+            for _ in 0..120 {
+                let Some(r) = current.clone() else {
+                    break;
+                };
+                let norm: f64 = r.iter().map(|v| v * v).sum();
+                if norm < 1e-24 {
+                    break;
+                }
+                // Finite-difference Jacobian.
+                let mut jacobian = vec![vec![0.0; dimension]; r.len()];
+                let mut ok = true;
+                for k in 0..dimension {
+                    let mut zp = z.clone();
+                    let h = 1e-7 * z[k].abs().max(1.0);
+                    zp[k] += h;
+                    match evaluate(cx, &zp, degree) {
+                        | Some(rp) => {
+                            for (row, (a, b)) in jacobian.iter_mut().zip(rp.iter().zip(&r)) {
+                                row[k] = (a - b) / h;
+                            }
+                        },
+                        | None => ok = false,
+                    }
+                }
+                if !ok {
+                    break;
+                }
+                let mut normal = vec![vec![0.0; dimension]; dimension];
+                let mut gradient = vec![0.0; dimension];
+                for (row, rv) in jacobian.iter().zip(&r) {
+                    for i in 0..dimension {
+                        gradient[i] -= row[i] * rv;
+                        for j in 0..dimension {
+                            normal[i][j] += row[i] * row[j];
+                        }
+                    }
+                }
+                let mut improved = false;
+                for _ in 0..12 {
+                    let mut damped = normal.clone();
+                    for (i, row) in damped.iter_mut().enumerate() {
+                        row[i] += lambda * (1.0 + normal[i][i]);
+                    }
+                    if let Some(step) = solve_linear(damped, gradient.clone()) {
+                        let candidate: Vec<f64> = z.iter().zip(&step).map(|(a, b)| a + b).collect();
+                        if let Some(rc) = evaluate(cx, &candidate, degree) {
+                            let candidate_norm: f64 = rc.iter().map(|v| v * v).sum();
+                            if candidate_norm < norm {
+                                z = candidate;
+                                current = Some(rc);
+                                lambda = (lambda * 0.3).max(1e-12);
+                                improved = true;
+                                break;
+                            }
+                        }
+                    }
+                    lambda *= 4.0;
+                }
+                if !improved {
+                    break;
+                }
+            }
+            let Some(r) = current else {
+                continue;
+            };
+            let worst = r.iter().fold(0.0_f64, |a, b| a.max(b.abs()));
+            let (leading, mu) = (z[degree], z[degree + 1]);
+            if worst > 1e-9 || leading.abs() < 2e-2 || mu.abs() < 5e-2 {
+                continue;
+            }
+            // Round to small fractions when the residual stays zero.
+            let snap = |v: f64| -> f64 {
+                for q in 1..=48_i64 {
+                    #[allow(clippy::cast_precision_loss)]
+                    let scaled = (v * q as f64).round();
+                    #[allow(clippy::cast_precision_loss)]
+                    if (v * q as f64 - scaled).abs() < 1e-6 {
+                        #[allow(clippy::cast_precision_loss)]
+                        return scaled / q as f64;
+                    }
+                }
+                v
+            };
+            let rounded: Vec<f64> = z.iter().map(|&v| snap(v)).collect();
+            let chosen = match evaluate(cx, &rounded, degree) {
+                | Some(rr) if rr.iter().all(|v| v.abs() < 1e-8) => rounded,
+                | _ => z,
+            };
+            // Assemble Σ a_j tanh(μ (x - c t))^j.
+            let number = |cx: &mut Cx<'_>, v: f64| -> Option<NodeId> {
+                for q in 1..=48_i64 {
+                    #[allow(clippy::cast_precision_loss)]
+                    let scaled = (v * q as f64).round();
+                    #[allow(clippy::cast_precision_loss)]
+                    if (v * q as f64 - scaled).abs() < 1e-12 {
+                        #[allow(clippy::cast_possible_truncation)]
+                        return Some(cx.graph.num(crate::graph::Number::fraction(scaled as i64, q)?));
+                    }
+                }
+                Some(cx.graph.num(crate::graph::Number::from(v)))
+            };
+            let (mu_node, c_node) = (number(cx, chosen[degree + 1])?, number(cx, chosen[degree + 2])?);
+            let ct = mul(cx.graph, &[c_node, t]);
+            let xi = sub(cx.graph, x, ct);
+            let argument = mul(cx.graph, &[mu_node, xi]);
+            let tanh = call(cx, "tanh", &[argument])?;
+            let mut terms = Vec::new();
+            for (j, &a) in chosen.iter().take(degree + 1).enumerate() {
+                if a.abs() < 1e-12 {
+                    continue;
+                }
+                let a_node = number(cx, a)?;
+                let power = powi(cx.graph, tanh, i64::try_from(j).ok()?);
+                terms.push(mul(cx.graph, &[a_node, power]));
+            }
+            let u = add(cx.graph, &terms);
+            return Some(cx.simplify(u));
+        }
+    }
+    None
 }

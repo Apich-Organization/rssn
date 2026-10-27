@@ -125,7 +125,122 @@ pub(super) fn greens_function(
     {
         return heat_kernel(cx, p, conditions, &space, &cjj, c0, (t, a1));
     }
+    if let Some(t) = time
+        && cx.is_zero(a1)
+        && !cx.is_zero(a2)
+        && cx.is_zero(c0)
+        && space.iter().all(|&j| on_axis(j) <= 1)
+    {
+        return wave_kernel(cx, p, conditions, &space, &cjj, (t, a2));
+    }
     None
+}
+
+/// The impulse response (`G = 0`, `G_t = δ` at `t = 0`) of
+/// `a₂ u_tt + c Δ u` on whole space and orthants, with `c² = -c/a₂`:
+///
+/// * one dimension: `H(ct - |x - s|)/(2c)`;
+/// * two: `H(ct - r)/(2π c √(c²t² - r²))`;
+/// * three: `δ(ct - r)/(4π c r)`;
+///
+/// plus the images `±E(x - s')` for a Dirichlet or Neumann condition per
+/// axis.
+fn wave_kernel(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+    space: &[usize],
+    cjj: &[NodeId],
+    (time, a2): (usize, NodeId),
+) -> Option<NodeId> {
+    let d = space.len();
+    let c0_value = *cjj.first()?;
+    for &other in &cjj[1..] {
+        let gap = sub(cx.graph, c0_value, other);
+        if !cx.is_zero(gap) {
+            return None;
+        }
+    }
+    let speed2 = {
+        let q = div(cx, c0_value, a2);
+        let q = neg(cx.graph, q);
+        cx.simplify(q)
+    };
+    if super::util::sample(cx.graph, speed2, 0)? <= 0.0 {
+        return None;
+    }
+    let c = sqrt(cx, speed2)?;
+    let t = p.vars[time];
+    let ct = mul(cx.graph, &[c, t]);
+    let mut reflections = Vec::new();
+    for (pos, &j) in space.iter().enumerate() {
+        if let Some(cond) = conditions.0.iter().find(|q| q.on == j) {
+            if cond.robin.is_some() || !cx.is_zero(cond.value) {
+                return None;
+            }
+            let sign = if cond.derivative == vec![0; p.dimension()] {
+                -1
+            } else if cond.derivative == p.unit(j, 1) {
+                1
+            } else {
+                return None;
+            };
+            reflections.push((pos, cond.point, sign));
+        }
+    }
+    let xs: Vec<NodeId> = space.iter().map(|&j| p.vars[j]).collect();
+    let ss: Vec<NodeId> = xs.iter().map(|&x| source_variable(cx, x)).collect::<Option<_>>()?;
+    let mut terms = Vec::new();
+    for mask in 0..(1_usize << reflections.len()) {
+        let mut sources = ss.clone();
+        let mut sign = 1_i64;
+        for (bit, &(pos, point, s)) in reflections.iter().enumerate() {
+            if mask >> bit & 1 == 1 {
+                let two = cx.graph.int(2);
+                let two_a = mul(cx.graph, &[two, point]);
+                sources[pos] = sub(cx.graph, two_a, sources[pos]);
+                sign *= s;
+            }
+        }
+        let squares: Vec<NodeId> = xs
+            .iter()
+            .zip(&sources)
+            .map(|(x, s)| {
+                let gap = sub(cx.graph, *x, *s);
+                powi(cx.graph, gap, 2)
+            })
+            .collect();
+        let r2 = add(cx.graph, &squares);
+        let r = sqrt(cx, r2)?;
+        let reach = sub(cx.graph, ct, r);
+        let kernel = match d {
+            | 1 => {
+                let h = call(cx, "heaviside", &[reach])?;
+                let two = cx.graph.int(2);
+                let denominator = mul(cx.graph, &[two, c]);
+                div(cx, h, denominator)
+            },
+            | 2 => {
+                let h = call(cx, "heaviside", &[reach])?;
+                let (two, pi_node) = (cx.graph.int(2), pi(cx)?);
+                let ct2 = powi(cx.graph, ct, 2);
+                let gap = sub(cx.graph, ct2, r2);
+                let root = sqrt(cx, gap)?;
+                let denominator = mul(cx.graph, &[two, pi_node, c, root]);
+                div(cx, h, denominator)
+            },
+            | _ => {
+                let delta = call(cx, "dirac", &[reach])?;
+                let (four, pi_node) = (cx.graph.int(4), pi(cx)?);
+                let denominator = mul(cx.graph, &[four, pi_node, c, r]);
+                div(cx, delta, denominator)
+            },
+        };
+        let sign_node = cx.graph.int(sign);
+        terms.push(mul(cx.graph, &[sign_node, kernel]));
+    }
+    let sum = add(cx.graph, &terms);
+    Some(cx.simplify(sum))
 }
 
 /// The heat kernel of `a₁ u_t + Σ c_j u_jj + c₀ u` on whole space and

@@ -95,45 +95,43 @@
 //! | any homogeneous or sourced constant-coefficient evolution | whole space | 1, 2 | Fourier transform; data and sources go through the table of `src/rules/transforms.rs` (`fourier`, `inverse_fourier`), nested `defint`s otherwise; Duhamel in `τ` for sources |
 //! | annulus with a zero eigenvalue (`A r^ν + B r^{-ν}`, `A + B ln r`) | annulus, shell | 2, 3 | extra mode written out first, then negative modes, then the positive roots |
 //! | `pde_greens_function` | periodic axes (`u(a) = u(b)`), damped second order `a₂ u_tt + a₁ u_t + L u`, heat kernels on whole space and orthants | 1, 2, 3 | cos/sin families, `e^{-αt} sinh(βt)/(a₂β)`, Gaussians with images |
+//! | heat / wave on disks, balls, cylinders with general (non-polynomial) radial or angular data | disk, ball | 2, 3 | numeric modal route (`modal.rs`): Fourier–Bessel and spherical-harmonic coefficients by Gauss–Legendre quadrature, numeric coefficients in the closed series |
+//! | heat / wave outside a disk or ball with angular dependence | exterior of a disk, ball (axisymmetric in 3D) | 2, 3 | Weber transform per angular harmonic (heat), per-mode Weber integrals with `cos`, `sin(ckt)/(ck)` multipliers (plane waves) |
+//! | wave kernels, Mellin | whole space | 1, 2, 3 | Green's function of the damped / massive wave operator, Mellin by `x = e^s` |
+//! | `A u_xx + c(x) u` periodic (Mathieu, Hill) | periodic interval | 1 | Hill's method (`hill_eigen`, `hill_mode`: Fourier-Galerkin matrix, Jacobi eigen solver, 24 harmonics) |
+//! | `Σ_j [a_j(x_j) u_jj + b_j(x_j) u_j] + (C + Σ_j g_j(x_j)) u` | box | 2, 3 | one numeric Sturm–Liouville axis per variable (`Shape::General`), eigenvalues added |
+//! | non-convex scalar conservation laws | line | 1 | convex-hull construction (rarefaction, shock and contact segments) for step data |
+//! | NLS `i u_t + u_xx + 2 abs(u)² u = 0` | line | 1 | bright soliton family (`pde_nls_soliton`) |
+//! | autonomous scalar evolution equations with polynomial nonlinearity (`KdV`, mKdV, Burgers, Allen–Cahn, Fisher) | line | 1 | tanh method `Σ a_j tanh^j(μ(x - ct))`, residual solved by Levenberg–Marquardt, fractions recovered |
 //!
 //! Limitations (what is still not covered):
 //!
 //! * Systems: second-order Jordan systems; bounded domains with derivative
 //!   couplings or non-homogeneous boundary values for Jordan blocks (only
 //!   derivative-free couplings and zero boundary values are solved).
-//! * Exterior domains: angular dependence (heat by Weber/Hankel transforms
-//!   per angular mode, waves by outgoing-mode expansions) and exterior waves
-//!   in the plane. Radial exterior heat in the plane, radial exterior waves
-//!   outside a ball (Dirichlet, Neumann, Robin) and Laplace/Helmholtz with
-//!   angular dependence are covered.
-//! * Balls, disks, cylinders: general (non-polynomial) angular data is
-//!   handled numerically only for Laplace's equation on balls (degree 20,
-//!   numeric coefficients); heat and wave problems need data that is a
-//!   trigonometric polynomial in the angles (a polynomial in `cos θ`), and
-//!   non-polynomial radial data stays as `defint`s of numeric integrands
-//!   evaluated by quadrature (no separate numeric coefficient series).
-//! * Sturm–Liouville: smooth regular coefficients in one variable (numeric
-//!   operators), the polynomial families (Hermite, Laguerre, Jacobi),
-//!   Legendre, Euler–Cauchy and Bessel by structure. Not covered: other
-//!   singular endpoints (Coulomb/Whittaker), Mathieu and spheroidal
-//!   problems (Hill determinants), continuous spectra and Weyl–Titchmarsh
-//!   measures on half-lines, separable variable coefficients in several
-//!   space variables.
+//! * Exterior domains: three-dimensional exterior problems without axial
+//!   symmetry; exterior waves in 3D with angular dependence beyond the
+//!   Laplace/Helmholtz cases.
+//! * Numeric modal route: disks and balls only (cylinders with non-polynomial
+//!   data stay as `defint`s of numeric integrands).
+//! * Sturm-Liouville: smooth regular coefficients (numeric operators),
+//!   polynomial families, Legendre, Euler-Cauchy, Bessel, periodic Hill
+//!   problems and separable products. Not covered: Coulomb/Whittaker
+//!   singular endpoints, spheroidal problems, continuous spectra and
+//!   Weyl-Titchmarsh measures in general (only the Hankel instance), zero
+//!   order terms that are not a sum of single-variable functions.
 //! * Transform methods: Fourier (with sources) is general; Hankel only for
-//!   radial (order 0) whole-space evolution and the exterior disk (Weber);
-//!   there is no Laplace-in-time or Mellin fallback. Table inversion of the
-//!   Fourier solution succeeds only when `inverse_fourier` closes the
-//!   product; tested in one and two dimensions.
-//! * Green's functions: no boundary data (Poisson kernels), no whole-space
-//!   wave kernels, no exterior or curvilinear domains.
-//! * Nonlinear equations: Hopf–Cole only for constant-coefficient Burgers on
-//!   the line; Riemann problems only for a single step and a convex or
-//!   concave flux (no convex-hull construction, shock interactions or
-//!   hodograph); the soliton operators cover `KdV` (`N ≤ 4`) and sine-Gordon
-//!   (`N ≤ 3`) as closed families, there is no tanh/sech ansatz solver, no
-//!   NLS, no Darboux transformation and no inverse scattering from general
-//!   initial data; Lie point symmetries and similarity reductions are those
-//!   of `pde_symmetries` / `pde_similarity`.
+//!   radial whole-space evolution and Weber on the exterior disk; no
+//!   Laplace-in-time fallback. Table inversion of the Fourier solution
+//!   succeeds only when `inverse_fourier` closes the product.
+//! * Green's functions: no boundary data (Poisson kernels), no exterior or
+//!   curvilinear domains.
+//! * Nonlinear equations: Hopf-Cole for constant-coefficient Burgers; Riemann
+//!   problems for a single step; the soliton operators cover `KdV`
+//!   (`N <= 4`), sine-Gordon (`N <= 3`) and bright NLS; the tanh method
+//!   needs a travelling wave of polynomial degree <= 3 in tanh. Not covered:
+//!   shock interactions, hodograph and Darboux transformations, inverse
+//!   scattering from general initial data.
 //! * Annuli: the Neumann constant is treated separately; modes with a
 //!   negative eigenvalue are found by a numeric scan (at most four); a
 //!   symbolic angular order that could hide a zero or negative mode is
@@ -194,6 +192,8 @@ mod diffusion;
 mod elliptic;
 mod frameworks;
 mod green;
+mod hill;
+mod modal;
 mod modes;
 mod nonlinear;
 mod numeric;
@@ -289,11 +289,13 @@ enum Request {
     Green,
     KdvSoliton,
     SineGordonSoliton,
+    NlsSoliton,
 }
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     numeric::install(i)?;
     sl::install(i)?;
+    hill::install(i)?;
     let heavy = |name: &str, arity: Arity| OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100);
     let at = i.op(heavy("at", Arity::Fixed(3)).flags(OpFlags::OPAQUE_ON_APPLY))?;
     let symmetries = i.op(heavy("pde_symmetries", Arity::Fixed(2)))?;
@@ -340,6 +342,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("pde/pde_order", Tier::Reduce, Pde { op, request: Request::Order });
     let op = i.op(heavy("pde_kdv_soliton", Arity::Fixed(2)))?;
     i.kernel("pde/pde_kdv_soliton", Tier::Reduce, Pde { op, request: Request::KdvSoliton });
+    let op = i.op(heavy("pde_nls_soliton", Arity::Fixed(1)))?;
+    i.kernel("pde/pde_nls_soliton", Tier::Reduce, Pde { op, request: Request::NlsSoliton });
     let op = i.op(heavy("pde_sine_gordon_soliton", Arity::Fixed(2)))?;
     i.kernel("pde/pde_sine_gordon_soliton", Tier::Reduce, Pde { op, request: Request::SineGordonSoliton });
     let op = i.op(heavy("pde_greens_function", Arity::Variadic))?;
@@ -370,6 +374,19 @@ impl Kernel for Pde {
                     return Outcome::Pass;
                 };
                 Outcome::Equal(cx.graph.int(i64::from(problem.order())))
+            },
+            | Request::NlsSoliton => {
+                let &[list] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                let Some(list) = best(cx.graph, list) else {
+                    return Outcome::Pass;
+                };
+                if cx.graph.op(list) != core::LIST {
+                    return Outcome::Pass;
+                }
+                let parameters = cx.graph.children(list).to_vec();
+                nonlinear::nls_soliton(cx, &parameters).map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::KdvSoliton | Request::SineGordonSoliton => {
                 let &[first, second] = args.as_slice() else {

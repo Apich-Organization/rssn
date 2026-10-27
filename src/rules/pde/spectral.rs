@@ -137,6 +137,9 @@ pub(super) enum Shape {
     /// operators `sl_eigen`, `sl_mode`, `sl_weight` (`params` their shared
     /// arguments after the mode index and the point).
     General { start: NodeId, stop: NodeId, params: Vec<NodeId> },
+    /// A periodic problem solved by Hill's method: orthonormal modes
+    /// `hill_mode(m, x - start, params…)`, eigenvalues `hill_eigen`.
+    Hill { start: NodeId, stop: NodeId, params: Vec<NodeId> },
     /// Polynomial eigenfunctions (Hermite, Laguerre, Jacobi type) on
     /// `[start, stop]` with weight `weight`: `(mode, eigenvalue, norm)` per
     /// degree.
@@ -191,7 +194,7 @@ impl Axis {
             | Shape::Polar { .. } => Some((zero, pi(cx)?)),
             | Shape::Legendre => Some((cx.graph.int(-1), cx.graph.int(1))),
             | Shape::Radial { radius, inner, .. } => Some((inner.as_ref().map_or(zero, |(a, _)| *a), *radius)),
-            | Shape::General { start, stop, .. } | Shape::Orthogonal { start, stop, .. } => Some((*start, *stop)),
+            | Shape::General { start, stop, .. } | Shape::Hill { start, stop, .. } | Shape::Orthogonal { start, stop, .. } => Some((*start, *stop)),
         }
     }
 
@@ -200,7 +203,7 @@ impl Axis {
         cx: &mut Cx<'_>,
     ) -> Option<NodeId> {
         Some(match &self.shape {
-            | Shape::Interval(_) | Shape::Angle | Shape::Legendre => cx.graph.int(1),
+            | Shape::Interval(_) | Shape::Angle | Shape::Legendre | Shape::Hill { .. } => cx.graph.int(1),
             | Shape::Polar { .. } => call(cx, "sin", &[self.var])?,
             | Shape::Radial { sphere, .. } => powi(cx.graph, self.var, if *sphere { 2 } else { 1 }),
             | Shape::Orthogonal { weight, .. } => *weight,
@@ -277,6 +280,17 @@ impl Axis {
                 let odd = add(cx.graph, &[two_n, one]);
                 let norm = div(cx, two, odd);
                 Some(vec![Family::new(mode, eigen, 0, 0, Some(norm))])
+            },
+            | Shape::Hill { start, params, .. } => {
+                let offset = sub(cx.graph, self.var, *start);
+                let mut mode_args = vec![n, offset];
+                mode_args.extend(params);
+                let mode = call(cx, "hill_mode", &mode_args)?;
+                let mut eigen_args = vec![n];
+                eigen_args.extend(params);
+                let eigen = call(cx, "hill_eigen", &eigen_args)?;
+                let one = cx.graph.int(1);
+                Some(vec![Family::new(mode, eigen, 1, 0, Some(one))])
             },
             | Shape::Orthogonal { modes, .. } => {
                 let literal = if numeric { cx.graph.number_of(n).and_then(Number::to_i64) } else { None };

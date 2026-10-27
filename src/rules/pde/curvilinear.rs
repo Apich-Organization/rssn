@@ -50,6 +50,7 @@ use crate::rules::calculus::derivative;
 use crate::rules::complex::build::add;
 use crate::rules::complex::build::neg;
 use crate::rules::complex::build::mul;
+use crate::rules::complex::build::pow;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
 
@@ -230,7 +231,21 @@ pub(super) fn solve(
         let Some((b, a0)) = laplacian(cx, p, layout, time_index) else {
             continue;
         };
-        if let Some(solution) = solve_layout(cx, p, conditions, layout, time_index, b, a0) {
+        let exact = solve_layout(cx, p, conditions, layout, time_index, b, a0);
+        // A closed or series answer without unevaluated integrals stands;
+        // otherwise try the numeric modal expansion (general data).
+        if let Some(solution) = exact
+            && !super::util::contains_op(cx.graph, solution, "defint")
+        {
+            return Some(solution);
+        }
+        if let (Some(t_index), None) = (time_index, layout.z) {
+            let geometry = super::modal::Geometry { r: layout.r, theta: layout.theta, phi: layout.phi, sphere: layout.sphere };
+            if let Some(solution) = super::modal::solve(cx, p, conditions, geometry, t_index, (b, a0)) {
+                return Some(solution);
+            }
+        }
+        if let Some(solution) = exact {
             return Some(solution);
         }
         if let Some(solution) = numeric_sphere(cx, p, conditions, layout, time_index, a0) {
@@ -349,7 +364,7 @@ fn hankel_whole_space(
 }
 
 /// The Gauss–Legendre nodes and weights on `[-1, 1]`.
-fn gauss_legendre(n: usize) -> Vec<(f64, f64)> {
+pub(super) fn gauss_legendre(n: usize) -> Vec<(f64, f64)> {
     let mut out = Vec::with_capacity(n);
     for i in 0..n {
         let mut x = (std::f64::consts::PI * (i as f64 + 0.75) / (n as f64 + 0.5)).cos();
@@ -376,7 +391,7 @@ fn gauss_legendre(n: usize) -> Vec<(f64, f64)> {
 }
 
 /// `P_l^m(x)` (no Condon–Shortley phase) for all `l ≤ lmax` at fixed `m`.
-fn associated_values(
+pub(super) fn associated_values(
     x: f64,
     m: usize,
     lmax: usize,
@@ -784,7 +799,7 @@ fn exterior_evolution(
     far: &Condition,
 ) -> Option<NodeId> {
     let t_index = time_index?;
-    if layout.theta.is_some() || layout.phi.is_some() || !p.homogeneous(cx.graph) || !cx.is_zero(a0) || !cx.is_zero(far.value) {
+    if layout.phi.is_some() || !p.homogeneous(cx.graph) || !cx.is_zero(a0) || !cx.is_zero(far.value) {
         return None;
     }
     let n = p.dimension();
@@ -831,9 +846,10 @@ fn exterior_evolution(
         let u = div(cx, v, r);
         return Some(cx.simplify(u));
     }
-    if !layout.sphere {
-        return exterior_plane_heat(cx, p, conditions, (r, t), (t_index, order), diffusivity, &end);
+    if !layout.sphere || layout.theta.is_some() {
+        return weber_exterior(cx, p, conditions, layout, (t_index, order), diffusivity, &end);
     }
+    let _ = (r, t);
     // The scalar problem for w(x, t) = (x + R) u(x + R, t).
     let (x, _) = super::dummy(cx, p, "x");
     let w_symbol = cx.graph.interner_mut().fresh_symbol("w");
@@ -893,72 +909,211 @@ fn exterior_evolution(
     Some(cx.simplify(u))
 }
 
-/// The heat equation outside a disk for radial data and a homogeneous
-/// Dirichlet, Neumann or Robin condition at `r = R` (Weber's transform):
+/// A harmonic of the data: its angular factor and radial coefficient.
+struct Harmonic {
+    index: i64,
+    /// The angular factor (`cos nθ`, `sin nθ` or `P_l(cos θ)`).
+    angular: NodeId,
+    radial: NodeId,
+}
+
+/// The angular decomposition of `data(r, θ)`: Fourier harmonics on a disk
+/// (up to 12, the tail must vanish) or Legendre polynomials on a ball
+/// (axisymmetric, up to degree 9).
+fn harmonics(
+    cx: &mut Cx<'_>,
+    data: NodeId,
+    theta: Option<NodeId>,
+    sphere: bool,
+) -> Option<Vec<Harmonic>> {
+    let Some(theta) = theta else {
+        let one = cx.graph.int(1);
+        return Some(vec![Harmonic { index: 0, angular: one, radial: data }]);
+    };
+    let mut out = Vec::new();
+    let pi = super::util::pi(cx)?;
+    if sphere {
+        let (c, s) = (call(cx, "cos", &[theta])?, call(cx, "sin", &[theta])?);
+        for l in 0..=10_i64 {
+            let mode = super::modes::associated_mode(cx, theta, l, 0)?;
+            let body = mul(cx.graph, &[data, mode]);
+            let integral = super::modes::legendre_integral(cx, body, c, Some(s), theta)?;
+            let scale = cx.graph.num(Number::fraction(2 * l + 1, 2)?);
+            let coefficient = mul(cx.graph, &[scale, integral]);
+            let coefficient = cx.simplify(coefficient);
+            if super::util::contains_op(cx.graph, coefficient, "defint") {
+                return None;
+            }
+            if !cx.is_zero(coefficient) {
+                if l == 10 {
+                    return None;
+                }
+                let l_node = cx.graph.int(l);
+                let leg = call(cx, "legendre", &[l_node, c])?;
+                out.push(Harmonic { index: l, angular: leg, radial: coefficient });
+            }
+        }
+        return Some(out);
+    }
+    let zero = cx.graph.int(0);
+    let two_pi = {
+        let two = cx.graph.int(2);
+        mul(cx.graph, &[two, pi])
+    };
+    for k in 0..=12_i64 {
+        let k_node = cx.graph.int(k);
+        let k_theta = mul(cx.graph, &[k_node, theta]);
+        let kinds: Vec<(&str, bool)> = if k == 0 { vec![("cos", true)] } else { vec![("cos", true), ("sin", false)] };
+        for (name, _) in kinds {
+            let wave = call(cx, name, &[k_theta])?;
+            let body = mul(cx.graph, &[data, wave]);
+            let integral = defint(cx, body, theta, zero, two_pi)?;
+            let norm = if k == 0 { two_pi } else { pi };
+            let coefficient = div(cx, integral, norm);
+            let coefficient = cx.simplify(coefficient);
+            if super::util::contains_op(cx.graph, coefficient, "defint") {
+                return None;
+            }
+            if !cx.is_zero(coefficient) {
+                if k > 10 {
+                    return None;
+                }
+                out.push(Harmonic { index: k, angular: wave, radial: coefficient });
+            }
+        }
+    }
+    Some(out)
+}
+
+/// The evolution outside a disk or an axisymmetric ball with a homogeneous
+/// Dirichlet, Neumann or Robin condition, by Weber's transform of the order
+/// `ν` of each harmonic (`ν = n` on a disk, `ν = l + 1/2` for the radial
+/// factor `r^{-1/2} F` of a ball):
 ///
-/// `u = ∫_0^∞ k e^{-D k² t} Φ_k(r) [∫_R^∞ ρ f(ρ) Φ_k(ρ) dρ] / (A² + B²) dk`
+/// `F = ∫_0^∞ k M(k) Φ_k(r) [∫_R^∞ ρ F₀(ρ) Φ_k(ρ) dρ] / (A² + B²) dk`
 ///
-/// with `Φ_k = A J_0(k r) - B Y_0(k r)`, `A = p Y_0(kR) - q k Y_1(kR)`,
-/// `B = p J_0(kR) - q k J_1(kR)` so that `p Φ + q Φ' = 0` at `r = R`.
-fn exterior_plane_heat(
+/// with `Φ_k = A J_ν(k r) - B Y_ν(k r)`, `A = p Y_ν(kR) + q k Y_ν'(kR)`,
+/// `B = p J_ν(kR) + q k J_ν'(kR)` so that `p Φ + q Φ' = 0` at `r = R`
+/// (`p - q/(2R)` for a ball); `M` is `e^{-D k² t}` (first order in time) or
+/// `cos(√D k t)` and `sin(√D k t)/(√D k)` for displacement and velocity.
+#[allow(clippy::too_many_lines)]
+fn weber_exterior(
     cx: &mut Cx<'_>,
     p: &Problem,
     conditions: &Conditions,
-    (r, t): (NodeId, NodeId),
+    layout: Layout,
     (t_index, order): (usize, u32),
     diffusivity: NodeId,
     end: &End,
 ) -> Option<NodeId> {
-    if order != 1 || !cx.is_zero(end.value) {
+    if !cx.is_zero(end.value) {
         return None;
     }
-    let zero_index = vec![0; p.dimension()];
-    let initial = conditions.find(cx.graph, t_index, &zero_index, None)?;
-    if conditions.0.iter().any(|c| c.on == t_index && c.derivative != zero_index) {
+    let n = p.dimension();
+    let zero_index = vec![0; n];
+    let displacement = conditions.find(cx.graph, t_index, &zero_index, None)?;
+    let velocity = if order == 2 { conditions.find(cx.graph, t_index, &p.unit(t_index, 1), None) } else { None };
+    if conditions.0.iter().filter(|c| c.on == t_index).count() != 1 + usize::from(velocity.is_some()) {
         return None;
     }
+    let (r, t) = (p.vars[layout.r], p.vars[t_index]);
+    let theta = layout.theta.map(|j| p.vars[j]);
     let radius = end.point;
     let (k, _) = super::dummy(cx, p, "k");
     let (rho, _) = super::dummy(cx, p, "rho");
     let (zero, one) = (cx.graph.int(0), cx.graph.int(1));
-    let bessel = |cx: &mut Cx<'_>, second: bool, order: NodeId, z: NodeId| call(cx, if second { "bessely" } else { "besselj" }, &[order, z]);
-    let kr0 = mul(cx.graph, &[k, radius]);
-    // A = p Y_0(kR) - q k Y_1(kR), B likewise with J.
-    let coefficient = |cx: &mut Cx<'_>, second: bool| -> Option<NodeId> {
-        let z0 = bessel(cx, second, zero, kr0)?;
-        let z1 = bessel(cx, second, one, kr0)?;
-        let first = mul(cx.graph, &[end.p, z0]);
-        let slope = mul(cx.graph, &[end.q, k, z1]);
-        Some(sub(cx.graph, first, slope))
-    };
-    let (a_coeff, b_coeff) = (coefficient(cx, true)?, coefficient(cx, false)?);
-    let phi = |cx: &mut Cx<'_>, x: NodeId| -> Option<NodeId> {
-        let kx = mul(cx.graph, &[k, x]);
-        let (j, y) = (bessel(cx, false, zero, kx)?, bessel(cx, true, zero, kx)?);
-        let first = mul(cx.graph, &[a_coeff, j]);
-        let second = mul(cx.graph, &[b_coeff, y]);
-        Some(sub(cx.graph, first, second))
-    };
-    let phi_r = phi(cx, r)?;
-    let phi_rho = phi(cx, rho)?;
-    let f_rho = cx.graph.substitute(initial.value, r, rho);
     let oo = super::util::infinity(cx)?;
-    let body = mul(cx.graph, &[rho, f_rho, phi_rho]);
-    let inner = defint(cx, body, rho, radius, oo)?;
-    let k2 = powi(cx.graph, k, 2);
-    let decay = {
-        let e = mul(cx.graph, &[diffusivity, k2, t]);
-        let e = neg(cx.graph, e);
-        call(cx, "exp", &[e])?
-    };
-    let norm = {
-        let (a2, b2) = (powi(cx.graph, a_coeff, 2), powi(cx.graph, b_coeff, 2));
-        let total = add(cx.graph, &[a2, b2]);
-        powi(cx.graph, total, -1)
-    };
-    let outer_body = mul(cx.graph, &[k, decay, phi_r, inner, norm]);
-    let u = defint(cx, outer_body, k, zero, oo)?;
-    Some(u)
+    let sqrt_d = super::util::sqrt(cx, diffusivity)?;
+    let mut pairs = vec![(displacement.value, true)];
+    if let Some(v) = velocity {
+        pairs.push((v.value, false));
+    }
+    let mut terms = Vec::new();
+    for (value, is_displacement) in pairs {
+        if cx.is_zero(value) {
+            continue;
+        }
+        for harmonic in harmonics(cx, value, theta, layout.sphere)? {
+            let nu = if layout.sphere {
+                cx.graph.num(Number::fraction(2 * harmonic.index + 1, 2)?)
+            } else {
+                cx.graph.int(harmonic.index)
+            };
+            let nu_up = add(cx.graph, &[nu, one]);
+            // p - q/(2R) for the ball's r^{-1/2} factor.
+            let p_shift = if layout.sphere {
+                let half = cx.graph.num(Number::fraction(-1, 2)?);
+                let q_over_r = div(cx, end.q, radius);
+                let shift = mul(cx.graph, &[half, q_over_r]);
+                add(cx.graph, &[end.p, shift])
+            } else {
+                end.p
+            };
+            let kr0 = mul(cx.graph, &[k, radius]);
+            let z = |cx: &mut Cx<'_>, second: bool, order_node: NodeId, arg: NodeId| call(cx, if second { "bessely" } else { "besselj" }, &[order_node, arg]);
+            // p Z + q k Z' with Z' = -Z_{ν+1} + (ν/z) Z_ν at z = kR.
+            let coefficient = |cx: &mut Cx<'_>, second: bool| -> Option<NodeId> {
+                let (z_nu, z_up) = (z(cx, second, nu, kr0)?, z(cx, second, nu_up, kr0)?);
+                let first = mul(cx.graph, &[p_shift, z_nu]);
+                let ratio = div(cx, nu, radius);
+                let qr = mul(cx.graph, &[end.q, ratio, z_nu]);
+                let qk = mul(cx.graph, &[end.q, k, z_up]);
+                let nqk = neg(cx.graph, qk);
+                Some(add(cx.graph, &[first, qr, nqk]))
+            };
+            let (a_coeff, b_coeff) = (coefficient(cx, true)?, coefficient(cx, false)?);
+            let phi = |cx: &mut Cx<'_>, x: NodeId| -> Option<NodeId> {
+                let kx = mul(cx.graph, &[k, x]);
+                let (j, y) = (z(cx, false, nu, kx)?, z(cx, true, nu, kx)?);
+                let first = mul(cx.graph, &[a_coeff, j]);
+                let second = mul(cx.graph, &[b_coeff, y]);
+                Some(sub(cx.graph, first, second))
+            };
+            let (phi_r, phi_rho) = (phi(cx, r)?, phi(cx, rho)?);
+            let mut f0 = cx.graph.substitute(harmonic.radial, r, rho);
+            if layout.sphere {
+                let half = cx.graph.num(Number::fraction(1, 2)?);
+                let root = pow(cx.graph, rho, half);
+                f0 = mul(cx.graph, &[root, f0]);
+            }
+            let inner_body = mul(cx.graph, &[rho, f0, phi_rho]);
+            let inner = defint(cx, inner_body, rho, radius, oo)?;
+            let multiplier = if order == 1 {
+                let k2 = powi(cx.graph, k, 2);
+                let e = mul(cx.graph, &[diffusivity, k2, t]);
+                let e = neg(cx.graph, e);
+                call(cx, "exp", &[e])?
+            } else {
+                let ck = mul(cx.graph, &[sqrt_d, k]);
+                let ckt = mul(cx.graph, &[ck, t]);
+                if is_displacement {
+                    call(cx, "cos", &[ckt])?
+                } else {
+                    let sn = call(cx, "sin", &[ckt])?;
+                    div(cx, sn, ck)
+                }
+            };
+            let norm = {
+                let (a2, b2) = (powi(cx.graph, a_coeff, 2), powi(cx.graph, b_coeff, 2));
+                let total = add(cx.graph, &[a2, b2]);
+                powi(cx.graph, total, -1)
+            };
+            let outer_body = mul(cx.graph, &[k, multiplier, phi_r, inner, norm]);
+            let radial = defint(cx, outer_body, k, zero, oo)?;
+            let radial = if layout.sphere {
+                let minus_half = cx.graph.num(Number::fraction(-1, 2)?);
+                let root = pow(cx.graph, r, minus_half);
+                mul(cx.graph, &[root, radial])
+            } else {
+                radial
+            };
+            terms.push(mul(cx.graph, &[harmonic.angular, radial]));
+        }
+    }
+    if terms.is_empty() {
+        return None;
+    }
+    Some(add(cx.graph, &terms))
 }
 
 /// `Δu = f(r)` with a polynomial `f` and Dirichlet data on `r = R`: the

@@ -711,3 +711,285 @@ fn hankel_transform_for_radial_evolution_on_whole_space() {
     let exact = ((r + t) * (-(r + t) * (r + t)).exp() + (r - t) * (-(r - t) * (r - t)).exp()) / (2.0 * r);
     close(value(&text, &[("r", r), ("t", t)]), exact, 1e-3, &s);
 }
+
+#[test]
+fn numeric_modal_expansions_on_disks_and_balls() {
+    use crate::kernels::special::bessel_j0;
+    use crate::kernels::special::bessel_j1;
+    let coefficient = |mode: &dyn Fn(f64) -> f64, f: &dyn Fn(f64) -> f64, weight: i32| {
+        simpson(&|q| q.powi(weight) * f(q) * mode(q), 0.0, 1.0) / simpson(&|q| q.powi(weight) * mode(q) * mode(q), 0.0, 1.0)
+    };
+    // Disk heat with non-polynomial data e^{-r} (1 + r cos θ), Dirichlet at r = 1.
+    let lap_disk = "diff(diff(u(r, th, t), r), r) + diff(u(r, th, t), r)/r + diff(diff(u(r, th, t), th), th)/r^2";
+    let s = any(&format!("pdsolve(diff(u(r, th, t), t) = {lap_disk}, u(r, th, t), list(u(1, th, t) = 0, u(r, th, 0) = exp(-r)*(1 + r*cos(th))))"));
+    assert!(!s.contains("defint"), "{s}");
+    let (r, th, t) = (0.45_f64, 0.8_f64, 0.02_f64);
+    let mut reference = 0.0;
+    for k in roots(&bessel_j0, 60.0, 20) {
+        let c = coefficient(&|q| bessel_j0(k * q), &|q| (-q).exp(), 1);
+        reference += c * (-k * k * t).exp() * bessel_j0(k * r);
+    }
+    for k in roots(&bessel_j1, 60.0, 20) {
+        let c = coefficient(&|q| bessel_j1(k * q), &|q| q * (-q).exp(), 1);
+        reference += c * (-k * k * t).exp() * bessel_j1(k * r) * th.cos();
+    }
+    close(value(&rhs(&s), &[("r", r), ("th", th), ("t", t)]), reference, 1e-6, &s);
+    // Disk wave, radial data (1 - r²)² cos r: u = Σ c cos(κ t) J_0(κ r).
+    let s = any("pdsolve(diff(diff(u(r, t), t), t) = diff(diff(u(r, t), r), r) + diff(u(r, t), r)/r, u(r, t), list(u(1, t) = 0, u(r, 0) = (1 - r^2)^2*cos(r), at(diff(u(r, t), t), t, 0) = 0))");
+    assert!(!s.contains("defint"), "{s}");
+    let (r, t) = (0.35_f64, 0.3_f64);
+    let mut reference = 0.0;
+    for k in roots(&bessel_j0, 140.0, 40) {
+        let c = coefficient(&|q| bessel_j0(k * q), &|q| (1.0 - q * q).powi(2) * q.cos(), 1);
+        reference += c * (k * t).cos() * bessel_j0(k * r);
+    }
+    close(value(&rhs(&s), &[("r", r), ("t", t)]), reference, 2e-4, &s);
+    // Axisymmetric ball heat, data e^{-r} (2 + r cos θ), Dirichlet at r = 1.
+    let lap_ball = "diff(diff(u(r, th, t), r), r) + 2*diff(u(r, th, t), r)/r + diff(diff(u(r, th, t), th), th)/r^2 + cos(th)/sin(th)*diff(u(r, th, t), th)/r^2";
+    let s = any(&format!("pdsolve(diff(u(r, th, t), t) = {lap_ball}, u(r, th, t), list(u(1, th, t) = 0, u(r, th, 0) = exp(-r)*(2 + r*cos(th))))"));
+    assert!(!s.contains("defint"), "{s}");
+    let (r, th, t) = (0.5_f64, 1.1_f64, 0.01_f64);
+    let mut reference = 0.0;
+    for k in 1..=40 {
+        let kappa = PI * f64::from(k);
+        let c = coefficient(&|q| if q < 1e-12 { kappa } else { (kappa * q).sin() / q }, &|q| 2.0 * (-q).exp(), 2);
+        reference += c * (-kappa * kappa * t).exp() * (kappa * r).sin() / r;
+    }
+    let j1 = |x: f64| if x < 1e-12 { 0.0 } else { (PI / (2.0 * x)).sqrt() * bessel_j(1.5, x) };
+    for kappa in roots(&|x| bessel_j(1.5, x), 120.0, 30) {
+        let c = coefficient(&|q| j1(kappa * q), &|q| q * (-q).exp(), 2);
+        reference += c * (-kappa * kappa * t).exp() * j1(kappa * r) * th.cos();
+    }
+    close(value(&rhs(&s), &[("r", r), ("th", th), ("t", t)]), reference, 1e-5, &s);
+}
+
+/// `v_t = v_rr + (d/r) v_r - (λ/r²) v` on `[1, 13]` (Dirichlet at both ends) by Crank-Nicolson; the
+/// value at `at`.
+fn exterior_heat_reference(
+    d: f64,
+    lambda: f64,
+    f: &dyn Fn(f64) -> f64,
+    t_end: f64,
+    at: f64,
+) -> f64 {
+    let (n, steps) = (1200_usize, 250_usize);
+    let h = 12.0 / n as f64;
+    let dt = t_end / steps as f64;
+    let radius = |i: usize| 1.0 + h * i as f64;
+    let mut u: Vec<f64> = (0..=n).map(|i| f(radius(i))).collect();
+    u[0] = 0.0;
+    for _ in 0..steps {
+        let (mut lower, mut diag, mut upper, mut rhs_) = (vec![0.0; n + 1], vec![1.0; n + 1], vec![0.0; n + 1], vec![0.0; n + 1]);
+        for i in 1..n {
+            let r_i = radius(i);
+            let (a, b) = (1.0 / (h * h) - d / (2.0 * h * r_i), 1.0 / (h * h) + d / (2.0 * h * r_i));
+            let c = -2.0 / (h * h) - lambda / (r_i * r_i);
+            let operator = a * u[i - 1] + c * u[i] + b * u[i + 1];
+            rhs_[i] = u[i] + 0.5 * dt * operator;
+            lower[i] = -0.5 * dt * a;
+            diag[i] = 1.0 - 0.5 * dt * c;
+            upper[i] = -0.5 * dt * b;
+        }
+        for i in 1..=n {
+            let m = lower[i] / diag[i - 1];
+            diag[i] -= m * upper[i - 1];
+            rhs_[i] -= m * rhs_[i - 1];
+        }
+        u[n] = rhs_[n] / diag[n];
+        for i in (0..n).rev() {
+            u[i] = (rhs_[i] - upper[i] * u[i + 1]) / diag[i];
+        }
+    }
+    u[((at - 1.0) / h).round() as usize]
+}
+
+/// `v_tt = v_rr + (d/r) v_r - (λ/r²) v` on `[1, 21]` with `v = 0` at both ends, `v_t(0) = 0`, by leapfrog.
+fn exterior_wave_reference(
+    d: f64,
+    lambda: f64,
+    f: &dyn Fn(f64) -> f64,
+    t_end: f64,
+    at: f64,
+) -> f64 {
+    let (h, dt) = (0.005_f64, 0.0025_f64);
+    let n = 4000_usize;
+    let steps = (t_end / dt).round() as usize;
+    let radius = |i: usize| 1.0 + h * i as f64;
+    let acceleration = |u: &[f64]| -> Vec<f64> {
+        let mut out = vec![0.0; u.len()];
+        for i in 1..u.len() - 1 {
+            let r_i = radius(i);
+            out[i] = (u[i + 1] - 2.0 * u[i] + u[i - 1]) / (h * h) + d / r_i * (u[i + 1] - u[i - 1]) / (2.0 * h) - lambda / (r_i * r_i) * u[i];
+        }
+        out
+    };
+    let mut previous: Vec<f64> = (0..=n).map(|i| f(radius(i))).collect();
+    previous[0] = 0.0;
+    let a0 = acceleration(&previous);
+    let mut current: Vec<f64> = previous.iter().zip(&a0).map(|(u, a)| u + 0.5 * dt * dt * a).collect();
+    for _ in 1..steps {
+        let a = acceleration(&current);
+        let next: Vec<f64> = (0..=n).map(|i| 2.0 * current[i] - previous[i] + dt * dt * a[i]).collect();
+        previous = current;
+        current = next;
+    }
+    current[((at - 1.0) / h).round() as usize]
+}
+
+#[test]
+fn weber_transforms_with_angular_dependence_and_exterior_waves() {
+    let bounds = |text: &str| text.replace(", rho, 1, oo)", ", rho, 1, 9)").replace(", k, 0, oo)", ", k, 0, 8)");
+    // Heat outside the unit disk, first angular harmonic: u = v(r, t) cos θ.
+    let lap = "diff(diff(u(r, th, t), r), r) + diff(u(r, th, t), r)/r + diff(diff(u(r, th, t), th), th)/r^2";
+    let s = any(&format!("pdsolve(diff(u(r, th, t), t) = {lap}, u(r, th, t), list(u(1, th, t) = 0, u(oo, th, t) = 0, u(r, th, 0) = exp(-(r - 4)^2)*cos(th)))"));
+    let (r, th, t) = (2.0_f64, 0.6_f64, 0.4_f64);
+    let text = expand_integrals(&bounds(&rhs(&s)), 90);
+    let reference = exterior_heat_reference(1.0, 1.0, &|q| (-(q - 4.0) * (q - 4.0)).exp(), t, r) * th.cos();
+    close(value(&text, &[("r", r), ("th", th), ("t", t)]), reference, 4e-3, &s);
+    // Waves outside the unit disk, radial: u_tt = Δu.
+    let s = any("pdsolve(diff(diff(u(r, t), t), t) = diff(diff(u(r, t), r), r) + diff(u(r, t), r)/r, u(r, t), list(u(1, t) = 0, u(oo, t) = 0, u(r, 0) = exp(-2*(r - 4)^2), at(diff(u(r, t), t), t, 0) = 0))");
+    let (r, t) = (3.0_f64, 1.2_f64);
+    let text = expand_integrals(&bounds(&rhs(&s)), 90);
+    let reference = exterior_wave_reference(1.0, 0.0, &|q| (-2.0 * (q - 4.0) * (q - 4.0)).exp(), t, r);
+    close(value(&text, &[("r", r), ("t", t)]), reference, 6e-3, &s);
+    // Heat outside the unit ball, degree one: u = r^{-1/2} F cos θ with the Bessel order 3/2.
+    let lap = "diff(diff(u(r, th, t), r), r) + 2*diff(u(r, th, t), r)/r + diff(diff(u(r, th, t), th), th)/r^2 + cos(th)/sin(th)*diff(u(r, th, t), th)/r^2";
+    let s = any(&format!("pdsolve(diff(u(r, th, t), t) = {lap}, u(r, th, t), list(u(1, th, t) = 0, u(oo, th, t) = 0, u(r, th, 0) = exp(-(r - 4)^2)*cos(th)))"));
+    assert!(s.contains("legendre") || s.contains("cos(th)"), "{s}");
+    let (r, th, t) = (2.0_f64, 0.6_f64, 0.4_f64);
+    let text = expand_integrals(&bounds(&rhs(&s)), 90);
+    let reference = exterior_heat_reference(2.0, 2.0, &|q| (-(q - 4.0) * (q - 4.0)).exp(), t, r) * th.cos();
+    close(value(&text, &[("r", r), ("th", th), ("t", t)]), reference, 4e-3, &s);
+}
+
+#[test]
+fn wave_kernels_mellin_and_nls_soliton() {
+    use super::extension_tests::complex_value;
+    // Impulse responses of the wave equation on whole space.
+    let w1 = "diff(diff(u(x, t), t), t) = 4*diff(diff(u(x, t), x), x)";
+    let s = any(&format!("pde_greens_function({w1}, u(x, t))"));
+    let (x, s0, t) = (0.7_f64, 0.2_f64, 0.5_f64);
+    close(value(&rhs(&s), &[("x", x), ("s_x", s0), ("t", t)]), 0.25, 1e-12, &s);
+    close(value(&rhs(&s), &[("x", 3.0), ("s_x", s0), ("t", t)]), 0.0, 1e-12, &s);
+    let s = any(&format!("pde_greens_function({w1}, u(x, t), list(u(0, t) = 0))"));
+    close(value(&rhs(&s), &[("x", x), ("s_x", 0.3), ("t", 0.6)]), 0.0, 1e-12, &s);
+    close(value(&rhs(&s), &[("x", 0.25), ("s_x", 0.3), ("t", 0.1)]), 0.25, 1e-12, &s);
+    // The plane: ∫ G ds = t (the response to u_t(0) = 1), radial quadrature with r = c t sin φ.
+    let w2 = "diff(diff(u(x, y, t), t), t) = diff(diff(u(x, y, t), x), x) + diff(diff(u(x, y, t), y), y)";
+    let s = any(&format!("pde_greens_function({w2}, u(x, y, t))"));
+    let t = 0.8_f64;
+    let integral = simpson(
+        &|phi| {
+            let r = t * phi.sin();
+            2.0 * PI * r * t * phi.cos() * value(&rhs(&s), &[("x", r), ("y", 0.0), ("s_x", 0.0), ("s_y", 0.0), ("t", t)])
+        },
+        0.0,
+        PI / 2.0 - 1e-6,
+    );
+    close(integral, t, 1e-3, &s);
+    // Mellin: u_t = x² u_xx + x u_x on x > 0 is the heat equation in s = ln x.
+    let s = any("pdsolve(diff(u(x, t), t) = x^2*diff(diff(u(x, t), x), x) + x*diff(u(x, t), x), u(x, t), list(u(x, 0) = exp(-ln(x)^2)))");
+    let (x, t) = (1.7_f64, 0.3_f64);
+    let text = expand_integrals(&rhs(&s).replace("-oo", "-12").replace(", oo)", ", 12)"), 600);
+    let sx = x.ln();
+    close(value(&text, &[("x", x), ("t", t)]), (-sx * sx / (1.0 + 4.0 * t)).exp() / (1.0 + 4.0 * t).sqrt(), 1e-5, &s);
+    // The bright NLS soliton solves i ψ_t + ψ_xx/2 + |ψ|² ψ = 0.
+    let s = run("pde_nls_soliton(list(3/2, 1/2, 1/5, 1/3))");
+    let psi = |x: f64, t: f64| complex_value(&s, &[("x", x), ("t", t)]);
+    let (x, t, h) = (0.4_f64, 0.3_f64, 1e-3_f64);
+    let u_t = (psi(x, t + h) - psi(x, t - h)) / (2.0 * h);
+    let u_xx = (psi(x + h, t) - 2.0 * psi(x, t) + psi(x - h, t)) / (h * h);
+    let residual = num_complex::Complex64::new(0.0, 1.0) * u_t + 0.5 * u_xx + psi(x, t).norm_sqr() * psi(x, t);
+    close(residual.norm(), 0.0, 5e-4, &s);
+}
+
+#[test]
+fn riemann_problem_with_a_non_convex_flux() {
+    // u_t + (u³)_x = 0: from -1 to 1 a shock of speed 3/4 to the tangent state 1/2 followed by a fan
+    // u = sqrt(ξ/3); from 1 to -1 the mirror image.
+    let eq = "diff(u(x, t), t) + 3*u(x, t)^2*diff(u(x, t), x) = 0";
+    let s = any(&format!("pdsolve({eq}, u(x, t), list(u(x, 0) = -1 + 2*heaviside(x)))"));
+    close(value(&rhs(&s), &[("x", 0.5), ("t", 1.0)]), -1.0, 1e-9, &s);
+    close(value(&rhs(&s), &[("x", 1.5), ("t", 1.0)]), 0.5_f64.sqrt(), 1e-9, &s);
+    close(value(&rhs(&s), &[("x", 2.5), ("t", 1.0)]), (2.5_f64 / 3.0).sqrt(), 1e-9, &s);
+    close(value(&rhs(&s), &[("x", 4.0), ("t", 1.0)]), 1.0, 1e-9, &s);
+    let s = any(&format!("pdsolve({eq}, u(x, t), list(u(x, 0) = 1 - 2*heaviside(x)))"));
+    close(value(&rhs(&s), &[("x", 0.5), ("t", 1.0)]), 1.0, 1e-9, &s);
+    close(value(&rhs(&s), &[("x", 1.5), ("t", 1.0)]), -0.5_f64.sqrt(), 1e-9, &s);
+    close(value(&rhs(&s), &[("x", 4.0), ("t", 1.0)]), -1.0, 1e-9, &s);
+}
+
+#[test]
+fn mathieu_problems_by_hills_method() {
+    use super::hill::hill_eigen;
+    use super::hill::hill_mode;
+    // Characteristic values of Mathieu's equation for q = 1 on a period 2π (Abramowitz–Stegun 20.1):
+    // a₀, b₁, b₂ ... in ascending order: -0.4551386, -0.1102488, 1.8591081, 3.9170248, 4.3713010.
+    let m = 256_usize;
+    let mut args = vec![2.0 * PI, 24.0];
+    args.extend((0..m).map(|j| 2.0 * (2.0 * 2.0 * PI * j as f64 / m as f64).cos()));
+    let want = [-0.455_138_60, -0.110_248_82, 1.859_108_07, 3.917_024_77, 4.371_300_98];
+    for (k, w) in want.iter().enumerate() {
+        let mut call = vec![(k + 1) as f64];
+        call.extend_from_slice(&args);
+        close(hill_eigen(&call), *w, 1e-6, "Mathieu characteristic value");
+    }
+    // The eigenfunctions are orthonormal on the period.
+    let mode = |index: f64, x: f64| {
+        let mut call = vec![index, x];
+        call.extend_from_slice(&args);
+        hill_mode(&call)
+    };
+    close(simpson(&|x| mode(1.0, x) * mode(1.0, x), 0.0, 2.0 * PI), 1.0, 1e-8, "norm");
+    close(simpson(&|x| mode(1.0, x) * mode(2.0, x), 0.0, 2.0 * PI), 0.0, 1e-8, "orthogonality");
+    // The heat equation u_t = u_xx - 2 cos(2x) u on a periodic interval: each term solves it (residual).
+    let eq = "diff(u(x, t), t) = diff(diff(u(x, t), x), x) - 2*cos(2*x)*u(x, t)";
+    let s = any(&format!("pdsolve({eq}, u(x, t), list(u(0, t) = u(2*pi, t), u(x, 0) = 1 + sin(x)))"));
+    assert!(s.contains("hill_mode") && s.contains("hill_eigen"), "{s}");
+    let text = expand_integrals(&expand_sums(&rhs(&s), 10), 130);
+    let u = |x: f64, t: f64| value(&text, &[("x", x), ("t", t)]);
+    let (x0, t0, h) = (1.0_f64, 0.5_f64, 2e-3_f64);
+    let residual = (u(x0, t0 + h) - u(x0, t0 - h)) / (2.0 * h) - (u(x0 + h, t0) - 2.0 * u(x0, t0) + u(x0 - h, t0)) / (h * h) + 2.0 * (2.0 * x0).cos() * u(x0, t0);
+    close(residual, 0.0, 2e-3, "residual");
+    close(u(0.3, t0), u(0.3 + 2.0 * PI, t0), 1e-6, "periodic");
+}
+
+#[test]
+fn tanh_method_finds_travelling_waves() {
+    type Law = dyn Fn(f64, f64, f64, f64, f64) -> f64;
+    // (equation, residual from u, u_t, u_x, u_xx, u_xxx)
+    let cases: Vec<(&str, Box<Law>)> = vec![
+        ("diff(u(x, t), t) + 6*u(x, t)*diff(u(x, t), x) + diff(diff(diff(u(x, t), x), x), x) = 0", Box::new(|u, ut, ux, _, uxxx| ut + 6.0 * u * ux + uxxx)),
+        ("diff(u(x, t), t) = diff(diff(u(x, t), x), x) + u(x, t)*(1 - u(x, t))", Box::new(|u, ut, _, uxx, _| ut - uxx - u * (1.0 - u))),
+        ("diff(u(x, t), t) = diff(diff(u(x, t), x), x) + u(x, t) - u(x, t)^3", Box::new(|u, ut, _, uxx, _| ut - uxx - u + u * u * u)),
+        ("diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = 1/2*diff(diff(u(x, t), x), x)", Box::new(|u, ut, ux, uxx, _| ut + u * ux - 0.5 * uxx)),
+    ];
+    for (equation, law) in cases {
+        let s = any(&format!("pdsolve({equation}, u(x, t))"));
+        assert!(s.contains("tanh"), "{s}");
+        let text = rhs(&s);
+        let u = |x: f64, t: f64| value(&text, &[("x", x), ("t", t)]);
+        let (x, t, h) = (0.35_f64, 0.2_f64, 2e-3_f64);
+        let ut = (u(x, t + h) - u(x, t - h)) / (2.0 * h);
+        let ux = (u(x + h, t) - u(x - h, t)) / (2.0 * h);
+        let uxx = (u(x + h, t) - 2.0 * u(x, t) + u(x - h, t)) / (h * h);
+        let uxxx = (u(x + 2.0 * h, t) - 2.0 * u(x + h, t) + 2.0 * u(x - h, t) - u(x - 2.0 * h, t)) / (2.0 * h.powi(3));
+        close(law(u(x, t), ut, ux, uxx, uxxx), 0.0, 2e-3 * (1.0 + uxxx.abs()), &s);
+        // Non-trivial: the wave varies in space.
+        assert!((u(-3.0, t) - u(3.0, t)).abs() > 1e-3 || (u(0.0, t) - u(3.0, t)).abs() > 1e-3, "{s}");
+    }
+}
+
+#[test]
+fn separable_variable_coefficients_in_two_variables() {
+    // u_t = (1 + x)² u_xx + (1 + x) u_x + u_yy: an Euler mode times sin(y).
+    let eq = "diff(u(x, y, t), t) = (1 + x)^2*diff(diff(u(x, y, t), x), x) + (1 + x)*diff(u(x, y, t), x) + diff(diff(u(x, y, t), y), y)";
+    let l = 2.0_f64.ln();
+    let data = "sin(pi*ln(1 + x)/ln(2))*sin(y)";
+    let s = any(&format!("pdsolve({eq}, u(x, y, t), list(u(0, y, t) = 0, u(1, y, t) = 0, u(x, 0, t) = 0, u(x, pi, t) = 0, u(x, y, 0) = {data}))"));
+    assert!(s.contains("sl_mode"), "{s}");
+    let (x, y, t) = (0.45_f64, 1.1_f64, 0.01_f64);
+    let exact = (-((PI / l).powi(2) + 1.0) * t).exp() * (PI * x.ln_1p() / l).sin() * y.sin();
+    let text = expand_integrals(&expand_sums(&rhs(&s), 4), 120);
+    close(value(&text, &[("x", x), ("y", y), ("t", t)]), exact, 5e-4, &s);
+}
