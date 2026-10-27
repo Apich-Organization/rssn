@@ -117,7 +117,7 @@ impl Field {
     }
 
     #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
-    fn add(
+    pub(super) fn add(
         &self,
         a: &[Q],
         b: &[Q],
@@ -126,7 +126,7 @@ impl Field {
     }
 
     #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
-    fn sub(
+    pub(super) fn sub(
         &self,
         a: &[Q],
         b: &[Q],
@@ -134,7 +134,7 @@ impl Field {
         trim(univariate::sub(a, b))
     }
 
-    fn mul(
+    pub(super) fn mul(
         &self,
         a: &[Q],
         b: &[Q],
@@ -143,7 +143,7 @@ impl Field {
     }
 
     #[allow(clippy::unused_self, reason = "kept as methods for a uniform field interface")]
-    fn scale(
+    pub(super) fn scale(
         &self,
         a: &[Q],
         c: &Q,
@@ -730,7 +730,7 @@ fn refine_root(
 /// rational combinations of `1, α, …, α^{d-1}` by lattice reduction, then
 /// checked exactly. Roots outside `K` (they would need a larger field) are
 /// not returned.
-fn roots_in_field(
+pub(super) fn roots_in_field(
     field: &Field,
     poly: &[Elt],
 ) -> Vec<Elt> {

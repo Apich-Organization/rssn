@@ -312,7 +312,7 @@ impl Hyper {
     }
 }
 
-fn nullspace(
+pub(super) fn nullspace(
     mut rows: Vec<Vec<Q>>,
     columns: usize,
 ) -> Vec<Vec<Q>> {
