@@ -1155,6 +1155,9 @@ mod tests {
         // groups with all six Lagrange resolvents non-zero.
         assert_eq!(group_of(&[-6573, -198_548, -241_276, 60_368, 40_656, -2688, -896, 64]), Some(("F21", 21)));
         assert_eq!(group_of(&[-921, -4522, -7105, 462, 539, -42, -14, 1]), Some(("F42", 42)));
+        // The Weber-type septic of the Hilbert class field of Q(sqrt(-71)) (class number 7,
+        // discriminant -71^3): the dihedral group D7.
+        assert_eq!(group_of(&[1, 2, -1, -1, 1, -1, -1, 1]), Some(("D7", 14)));
     }
 
     #[test]

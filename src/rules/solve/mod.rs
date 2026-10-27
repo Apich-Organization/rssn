@@ -1374,6 +1374,11 @@ mod tests {
                 assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(7)), "{src}: {item} -> {x} gives {residual}");
             }
         }
+        // The class-field septic of Q(sqrt(-71)) has group D7 (verified in `poly::galois_high`),
+        // but its sextic resolvent has roots spanning 13 orders of magnitude, beyond the range
+        // of the group test: the root stays an exact `root_of` object, quickly.
+        let (text, reduced) = reduce_with(&rules, "solve(x^7 - x^6 - x^5 + x^4 - x^3 - x^2 + 2*x + 1, x)", &[]);
+        assert!(reduced && text.contains("root_of"), "{text}");
     }
 
     #[test]

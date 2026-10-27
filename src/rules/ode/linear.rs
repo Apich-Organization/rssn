@@ -25,8 +25,14 @@
 //!   `L = (D + y*'/y*) N`, and `N y = 1/y*` is solved by variation of
 //!   parameters over a basis of `N y = 0` (found by the full solver).
 //!
-//! Not done: the eigenring (Beke/van Hoeij) factorisation into factors of
-//! order greater than one, and solutions whose exponents are irrational.
+//! * **Eigenring.** Elements `Σ p_j(x)/lc(L)^m D^j` (m ≤ 2, growing degree bounds) of
+//!   the eigenring give right factors of any order; two coprime factors whose orders
+//!   add up to the order of `L` give the solution space as a direct sum (for example
+//!   the lclm of Airy's and Bessel's equations).
+//!
+//! Not done: eigenrings with denominators other than powers of the leading
+//! coefficient, and towers over number fields when the characteristic polynomial does
+//! not split.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;

@@ -183,6 +183,14 @@ fn tower_roots(
 
 /// Nodes for the roots (as `(value, node)`) of an integer polynomial that
 /// match the given numeric values one to one.
+fn contains_op(
+    graph: &Graph,
+    node: NodeId,
+    op: crate::graph::OpId,
+) -> bool {
+    graph.op(node) == op || graph.children(node).iter().any(|&c| contains_op(graph, c, op))
+}
+
 fn matched_roots(
     graph: &mut Graph,
     polynomial: &[BigInt],
@@ -190,6 +198,13 @@ fn matched_roots(
 ) -> Option<Vec<NodeId>> {
     let rational: Vec<BigRational> = polynomial.iter().cloned().map(BigRational::from_integer).collect();
     let nodes = super::rational_polynomial_roots(graph, &rational)?;
+    // Unsolved factors stay `root_of` objects, which are of no use inside a larger
+    // closed form (and expensive to evaluate for large coefficients).
+    if let Some(root_of) = graph.ops().lookup("root_of")
+        && nodes.iter().any(|&n| contains_op(graph, n, root_of))
+    {
+        return None;
+    }
     let mut valued: Vec<(f64, NodeId)> = Vec::new();
     for node in nodes {
         valued.push((value_of(graph, node)?, node));
