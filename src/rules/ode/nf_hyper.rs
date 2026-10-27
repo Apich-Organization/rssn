@@ -622,6 +622,31 @@ fn poly_node(
     add(cx.graph, &terms)
 }
 
+/// `u'/u` for `u = P Π f^ρ exp(E)`, when every coefficient is rational.
+pub(super) fn log_derivative(hyper: &HyperK) -> Option<super::kovacic::Rat> {
+    use super::kovacic::Rat;
+    let field = &hyper.field;
+    let rational = |p: &[Elt]| -> Option<Vec<Q>> { p.iter().map(|c| field.as_rational(c)).collect() };
+    let one = [Q::one()];
+    let mut total = Rat::new(&[], &one)?;
+    let p = rational(&hyper.poly)?;
+    if p.len() > 1 {
+        total = total.add(&Rat::new(&univariate::derivative(&p), &p)?)?;
+    }
+    for (f, rho) in &hyper.factors {
+        let rho = field.as_rational(rho)?;
+        if rho.is_zero() {
+            continue;
+        }
+        total = total.add(&Rat::new(&univariate::derivative(f), f)?.scale(&rho)?)?;
+    }
+    if !hyper.exponent.0.is_empty() {
+        let e = Rat::new(&rational(&hyper.exponent.0)?, &rational(&hyper.exponent.1)?)?;
+        total = total.add(&e.derivative()?)?;
+    }
+    Some(total)
+}
+
 /// The solutions as terms, one for each embedding of the field.
 pub(super) fn solution_nodes(
     cx: &mut Cx<'_>,
