@@ -102,10 +102,14 @@
 //!   `κ` (the coefficient field is extended by a factor of the
 //!   characteristic polynomial and the conjugates are `root_of` objects) and
 //!   singular points that are roots of an irreducible polynomial of degree
-//!   above one. Not done: logarithmic terms at irregular points (an exponent
-//!   resonant with another root of the same indicial polynomial is
-//!   skipped), and, once the coefficient field is not `Q`, characteristic or
-//!   indicial polynomials of degree above one.
+//!   above one. Multiple and integer-spaced indicial roots give logarithmic
+//!   terms: the coefficients are polynomials in `ln v` (basis `L^i/i!`),
+//!   obtained by solving `P(ρ + k + D_L) c_k(L) = rhs` with the degree
+//!   raised at a resonance. Over a number field the characteristic and
+//!   indicial roots that lie in the field are found numerically at 190
+//!   digits and recognised by lattice reduction; roots that would need a
+//!   larger field (towers of extensions) are not produced. `ode_borel` sums
+//!   the series by Borel–Padé resummation instead of optimal truncation.
 //!
 //! **Linear equations of order three and more** with polynomial
 //! coefficients (`linear`): operators that are hypergeometric in `θ = x d/dx`
@@ -115,9 +119,13 @@
 //! formal solutions, the order is reduced by exact right division by `D - y'/y`
 //! and the quotient is handed back to the full solver (second-order
 //! quotients reach Kovacic's cases 1–3 and the hypergeometric families);
-//! the other solutions are `y1 ∫ z / y1`. Not done: the eigenring
-//! (Beke / van Hoeij) factorisation into factors of order above one and
-//! left factors.
+//! the other solutions are `y1 ∫ z / y1`. When there is no hyperexponential
+//! solution, a first-order *left* factor is found through the adjoint
+//! operator (`L = (D + ω*) N` when `L*` has the hyperexponential solution
+//! `y*`), `N` is solved recursively and a particular solution of `N y = 1/y*`
+//! comes from variation of parameters (inert integrals allowed). Not done:
+//! the eigenring (Beke / van Hoeij) factorisation into factors of order
+//! above one.
 //!
 //! | operator | value |
 //! |---|---|
@@ -176,6 +184,7 @@ mod kovacic;
 mod lie;
 mod linear;
 mod nonlinear;
+mod ore;
 #[cfg(test)]
 mod battery;
 mod reduce;

@@ -20,9 +20,13 @@
 //!   hypergeometric families and this method again apply), and each
 //!   solution `z` of `M` gives `y1 ∫ z / y1`.
 //!
+//! * **Left factors.** Without a hyperexponential solution, the adjoint
+//!   operator is tried: a hyperexponential solution `y*` of `L*` gives
+//!   `L = (D + y*'/y*) N`, and `N y = 1/y*` is solved by variation of
+//!   parameters over a basis of `N y = 0` (found by the full solver).
+//!
 //! Not done: the eigenring (Beke/van Hoeij) factorisation into factors of
-//! order greater than one, left factors, and solutions whose exponents are
-//! irrational.
+//! order greater than one, and solutions whose exponents are irrational.
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -40,6 +44,7 @@ use super::formal::Point as FormalPoint;
 use super::integrate;
 use super::kovacic::polynomial_node;
 use super::kovacic::Rat;
+use super::ore::Ore;
 use super::mul;
 use super::occurs;
 use super::reduce::chain;
@@ -658,7 +663,7 @@ pub(super) fn high_order(
     // Hyperexponential solution and reduction of order.
     let found = hyperexponential_solutions(&op);
     let Some(hyper) = found.first() else {
-        return left_factor(cx, problem, &op, depth);
+        return left_factor(cx, problem, &op, depth).or_else(|| eigenring_reduction(cx, problem, &op, depth));
     };
     let y1 = hyper_node(cx, x, hyper)?;
     let omega = hyper.log_derivative()?;
@@ -829,6 +834,194 @@ fn left_factor(
     Some(explicit(cx, problem, solution))
 }
 
+
+// ---------------------------------------------------------------------
+// Eigenring factorisation.
+
+/// The common denominator of rational functions.
+fn common_denominator(items: &[&Rat]) -> Option<Vec<Q>> {
+    let mut common = vec![Q::one()];
+    for r in items {
+        let g = univariate::gcd(&common, &r.den);
+        common = univariate::divrem(&univariate::mul(&common, &r.den), &g)?.0;
+    }
+    Some(common)
+}
+
+/// The linear conditions (rows over `Q`) for `Σ u_k ops[k] = 0`, each
+/// operator of order below `n` with rational-function coefficients: the
+/// coefficients of every power of `x` in every coefficient of `D^i`, after
+/// clearing denominators.
+fn operator_rows(
+    ops: &[Ore],
+    n: usize,
+) -> Option<Vec<Vec<Q>>> {
+    let mut rows = Vec::new();
+    for i in 0..n {
+        let entries: Vec<Option<&Rat>> = ops.iter().map(|o| o.c.get(i)).collect();
+        let present: Vec<&Rat> = entries.iter().flatten().copied().collect();
+        let common = common_denominator(&present)?;
+        let numerators: Vec<Vec<Q>> = entries
+            .iter()
+            .map(|e| match e {
+                | Some(r) => Some(univariate::mul(&r.num, &univariate::divrem(&common, &r.den)?.0)),
+                | None => Some(Vec::new()),
+            })
+            .collect::<Option<_>>()?;
+        let height = numerators.iter().map(Vec::len).max().unwrap_or(0);
+        for m in 0..height {
+            rows.push(numerators.iter().map(|v| v.get(m).cloned().unwrap_or_else(Q::zero)).collect());
+        }
+    }
+    Some(rows)
+}
+
+/// Proper right factors of `L` from its eigenring: elements `R = Σ r_j(x) D^j`
+/// with polynomial `r_j` of degree up to a small bound and `L ∘ R ≡ 0 (mod L)`;
+/// for a factor `g` of the minimal polynomial of `R` modulo `L`,
+/// `gcrd(L, g(R))` is a right factor.
+fn eigenring_right_factors(op: &[Vec<Q>]) -> Vec<Ore> {
+    let mut out = Vec::new();
+    let Some(l) = Ore::from_polynomials(op) else { return out };
+    let n = op.len().saturating_sub(1);
+    for bound in 0..=2_usize {
+        let mut basis: Vec<(usize, usize, Ore)> = Vec::new();
+        let mut images: Vec<Ore> = Vec::new();
+        for s in 0..=bound {
+            for j in 0..n {
+                let mut monomial = vec![Q::zero(); s];
+                monomial.push(Q::one());
+                let Some(mut coefficients) = (0..j).map(|_| zero_rat()).collect::<Option<Vec<Rat>>>() else { continue };
+                let Some(top) = rat(&monomial, &[Q::one()]) else { continue };
+                coefficients.push(top);
+                let e = Ore::new(coefficients);
+                let Some(image) = l.mul(&e).and_then(|p| p.right_divide(&l)).map(|(_, r)| r) else { continue };
+                basis.push((s, j, e));
+                images.push(image);
+            }
+        }
+        let Some(rows) = operator_rows(&images, n) else { continue };
+        for u in nullspace(rows, images.len()) {
+            // R = Σ u_k e_k; skip the scalars (only the constant term).
+            let scalar = u.iter().zip(&basis).all(|(c, (s, j, _))| c.is_zero() || (*s == 0 && *j == 0));
+            if scalar {
+                continue;
+            }
+            let mut r = Ore::new(Vec::new());
+            let mut ok = true;
+            for (c, (_, _, e)) in u.iter().zip(&basis) {
+                if c.is_zero() {
+                    continue;
+                }
+                match e.scale(c).and_then(|t| r.add(&t)) {
+                    | Some(sum) => r = sum,
+                    | None => ok = false,
+                }
+            }
+            if !ok {
+                continue;
+            }
+            out.extend(factors_from_eigenvalue_element(&l, &r, n));
+            if !out.is_empty() {
+                return out;
+            }
+        }
+    }
+    out
+}
+
+fn factors_from_eigenvalue_element(
+    l: &Ore,
+    r: &Ore,
+    n: usize,
+) -> Vec<Ore> {
+    let mut out = Vec::new();
+    let Some(identity) = Ore::from_polynomials(&[vec![Q::one()]]) else { return out };
+    let mut powers: Vec<Ore> = vec![identity];
+    let Some((_, r_reduced)) = r.right_divide(l) else { return out };
+    powers.push(r_reduced.clone());
+    for k in 1..=n + 1 {
+        let Some(rows) = operator_rows(&powers, n) else { return out };
+        let dependencies = nullspace(rows, powers.len());
+        if let Some(mu) = dependencies.into_iter().find(|v| v.get(k).is_some_and(|c| !c.is_zero())) {
+            let (_, factors) = univariate::factor(&mu);
+            if factors.len() == 1 && factors.first().is_some_and(|(_, e)| *e == 1) {
+                return out;
+            }
+            for (g, _) in factors {
+                let mut g_of_r = Ore::new(Vec::new());
+                let mut ok = true;
+                for (c, p) in g.iter().zip(&powers) {
+                    match p.scale(&Q::from_integer(c.clone())).and_then(|t| g_of_r.add(&t)) {
+                        | Some(sum) => g_of_r = sum,
+                        | None => ok = false,
+                    }
+                }
+                if !ok || g_of_r.is_zero() {
+                    continue;
+                }
+                if let Some(f) = l.right_gcd(&g_of_r)
+                    && f.order().is_some_and(|o| o >= 1 && o < n)
+                {
+                    out.push(f);
+                }
+            }
+            return out;
+        }
+        let Some(last) = powers.last() else { return out };
+        let Some(next) = r.mul(last).and_then(|p| p.right_divide(l)).map(|(_, rem)| rem) else { return out };
+        powers.push(next);
+    }
+    out
+}
+
+/// Reduction through a proper right factor `F` found in the eigenring:
+/// `L = M ∘ F`; the solutions of `F` and of `M` are found by the full
+/// solver, and each solution `z` of `M` gives a solution of `F y = z` by
+/// variation of parameters.
+fn eigenring_reduction(
+    cx: &mut Cx<'_>,
+    problem: &mut Problem,
+    op: &[Vec<Q>],
+    depth: u32,
+) -> Option<NodeId> {
+    let x = problem.x;
+    let order = op.len().checked_sub(1)?;
+    let l = Ore::from_polynomials(op)?;
+    for f in eigenring_right_factors(op) {
+        let Some((m, remainder)) = l.right_divide(&f) else { continue };
+        if !remainder.is_zero() {
+            continue;
+        }
+        let f_polys = clear_denominators(&f.c)?;
+        let m_polys = clear_denominators(&m.c)?;
+        let f_den = common_denominator(&f.c.iter().collect::<Vec<_>>())?;
+        let (Some(basis_f), Some(basis_m)) = (reduced_basis(cx, x, &f_polys, depth), reduced_basis(cx, x, &m_polys, depth)) else {
+            continue;
+        };
+        let leading = polynomial_node(cx, x, f_polys.last()?);
+        let d_node = polynomial_node(cx, x, &f_den);
+        let mut terms = Vec::new();
+        for y in &basis_f {
+            let c = problem.constant(cx.graph);
+            terms.push(mul(cx.graph, &[c, *y]));
+        }
+        for z in &basis_m {
+            let forcing = mul(cx.graph, &[d_node, *z]);
+            let forcing = cx.simplify(forcing);
+            let Some(particular) = super::variation_of_parameters_inert(cx, &basis_f, leading, forcing, x) else { return None };
+            let c = problem.constant(cx.graph);
+            terms.push(mul(cx.graph, &[c, particular]));
+        }
+        if terms.len() != order {
+            return None;
+        }
+        let solution = add(cx.graph, &terms);
+        return Some(explicit(cx, problem, solution));
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -967,5 +1160,18 @@ mod tests {
         let star = adjoint(&left);
         let found = hyperexponential_solutions(&star);
         assert!(found.iter().any(|h| h.exponent.num == qs(&[0, -1]) && h.poly == qs(&[1])), "exp(-x) not a solution of the adjoint");
+    }
+
+    #[test]
+    fn eigenring_finds_the_factors_of_a_constant_coefficient_operator() {
+        // (D - 1)(D - 2)(D - 3): D lies in the eigenring and its minimal polynomial
+        // modulo L splits, so the right factors D - 1, D - 2, D - 3 appear.
+        let op = vec![qs(&[-6]), qs(&[11]), qs(&[-6]), qs(&[1])];
+        let factors = eigenring_right_factors(&op);
+        assert!(!factors.is_empty());
+        let orders: Vec<usize> = factors.iter().filter_map(Ore::order).collect();
+        assert!(orders.iter().all(|&o| (1..3).contains(&o)), "{orders:?}");
+        let linear = Ore::from_polynomials(&[qs(&[-1]), qs(&[1])]).expect("D - 1");
+        assert!(factors.iter().any(|f| f.sub(&linear).is_some_and(|d| d.is_zero())), "D - 1 not found");
     }
 }

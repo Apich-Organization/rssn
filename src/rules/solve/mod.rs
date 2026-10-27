@@ -64,19 +64,30 @@
 //!   over all cosets of the transitive groups, with the roots to 190
 //!   digits; see `rules::poly::galois_high`). A cyclic group whose real
 //!   roots lie in a Gauss-period field of prime conductor `p` gives
-//!   `Σ c_j 2 cos(2π j / p)` with rational `c_j` (the cyclic septic of
-//!   conductor 29, `2 cos(2π/13)`'s sextic, …). Every solvable sextic
+//!   `Σ c_j 2 cos(2π j / m)` with rational `c_j` (the cyclic septic of
+//!   conductor 29, `2 cos(2π/13)`'s sextic, …); the modulus `m` may be
+//!   composite (conductor 91 = 7·13 for a sextic, 1247 = 29·43 for a septic),
+//!   found from the real characters of `(Z/m)*` of order `n`. Every solvable sextic
 //!   group is imprimitive, and its block tower (a cubic or quadratic for the
 //!   block invariant `θ`, then a quadratic or cubic over `Q(θ)` with
 //!   coefficients found numerically and recognised as rationals) is solved
 //!   with the radical/trigonometric formulas, taking only the real values of
-//!   `θ`. Not done: the non-abelian solvable septic groups `D7`, `F21`,
-//!   `F42` (apart from pure powers `x^7 - a`), cyclic fields of composite
-//!   conductor, sextics with non-real `θ` for a real root, and polynomials
-//!   of degree eight and more without decomposition: they stay `root_of`
-//!   objects, as do the unsolvable groups (`A5`, `S5`, `A6`, `S6`,
-//!   `PSL(3,2)`, `A7`, `S7`). `solve_complex` returns `root_of` objects for
-//!   the non-real roots of these polynomials.
+//!   `θ`. The metacyclic septic groups `D7`, `F21`, `F42` use the Lagrange
+//!   resolvents `t_j = Σ ζ_7^{jk} z_k`: with one real root the real
+//!   resolvents `R_j = t_j^7` are the roots of an integer sextic `Φ` (cyclic,
+//!   solved recursively by the Gauss periods) and the real root is
+//!   `(t_0 + Σ R_j^{1/7})/7`; with seven real roots (`F21`) the conjugate
+//!   pairs `R_j = ρ_j e^{iφ_j}` give
+//!   `z_k = (t_0 + 2 Σ ρ_j^{1/7} cos((φ_j + 2π m_j)/7 - 2π j k/7))/7` with `ρ_j²`,
+//!   `cos φ_j` in a cyclic cubic field; Dickson polynomials `D7(x) - t` are
+//!   the degenerate case with only `R_{±1}` non-zero. `solve_complex` gives
+//!   exact forms (combinations of `exp(2πi j/m)`, or `ζ_7^{-jk}` times real
+//!   seventh roots) for the non-real roots of the cyclic sextics/septics and
+//!   of the one-real-root `D7`/`F42` septics. Not done: sextic towers with
+//!   non-real block invariants, septics with three real pairs and no real
+//!   root, polynomials of degree eight and more without decomposition: they
+//!   stay `root_of` objects, as do the unsolvable groups (`A5`, `S5`, `A6`,
+//!   `S6`, `PSL(3,2)`, `A7`, `S7`).
 //!
 //! Beyond that, the sub-solvers interlock:
 //!
