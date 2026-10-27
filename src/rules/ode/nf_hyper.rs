@@ -283,7 +283,7 @@ fn algebraic_candidates(
         *top = k.from_q(&Q::one());
     }
     for i in (1..d).rev() {
-        let next = k.add(&k.from_q(f.get(i).unwrap_or(&Q::zero())), &k.mul(&c, quotient.get(i).map_or(&[][..], Vec::as_slice)));
+        let next = k.add(&k.from_q(&f.get(i).cloned().unwrap_or_else(Q::zero)), &k.mul(&c, quotient.get(i).map_or(&[][..], Vec::as_slice)));
         if let Some(slot) = quotient.get_mut(i - 1) {
             *slot = next;
         }
@@ -692,6 +692,10 @@ pub(super) fn second_order_solutions(
         op.push(value);
     }
     for hyper in hyperexponential_over_field(&op) {
+        // Complex fields (Q(i), …) are left to the real forms of the other methods.
+        if hyper.field.embeddings().iter().any(|z| z.im.abs() > 1e-12) {
+            continue;
+        }
         if let Some(nodes) = solution_nodes(cx, x, &hyper)
             && !nodes.is_empty()
         {

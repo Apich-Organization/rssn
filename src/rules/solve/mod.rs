@@ -543,7 +543,7 @@ pub(crate) fn filter_candidates(
                 // high-degree polynomial at a large root carries rounding of that order.
                 | Some(v) => {
                     let at = graph.eval(candidate, &Env::numeric(0.0)).filter(|a| a.is_finite()).unwrap_or(0.0);
-                    v.abs() <= 1e-7 * (1.0 + at.abs().powi(8))
+                    v.abs() <= 1e-7_f64.max(1e-12 * at.abs().powi(8))
                 },
                 | None => true,
             }

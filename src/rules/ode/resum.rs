@@ -276,7 +276,7 @@ fn sum_at_order(
             let away = -delta.signum();
             let room = relative
                 .iter()
-                .filter(|d| d.signum() == away && d.abs() > 1e-9)
+                .filter(|d| (d.signum() - away).abs() < 0.5 && d.abs() > 1e-9)
                 .map(|d| d.abs())
                 .fold(0.4, f64::min);
             let rotation = away * (0.6 * room).clamp(0.02, 0.2);
@@ -344,9 +344,9 @@ mod tests {
         let rule = gauss_legendre(40);
         let mut reference = Complex64::new(0.0, 0.0);
         for panel in 0..200 {
-            let (a, b) = (panel as f64 * 0.25, (panel + 1) as f64 * 0.25);
+            let (a, b) = (f64::from(panel) * 0.25, f64::from(panel + 1) * 0.25);
             for (x, w) in &rule {
-                let t = 0.5 * (b - a) * x + 0.5 * (a + b);
+                let t = 0.5 * (b - a) * x + f64::midpoint(a, b);
                 reference += (-t).exp() / (Complex64::new(1.0, 0.0) - z * t) * (0.5 * (b - a) * w);
             }
         }

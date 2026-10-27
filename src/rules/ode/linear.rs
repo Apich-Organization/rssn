@@ -1027,7 +1027,7 @@ fn eigenring_reduction(
             if !l.right_divide(f1).is_some_and(|(_, r)| r.is_zero()) || !l.right_divide(f2).is_some_and(|(_, r)| r.is_zero()) {
                 continue;
             }
-            if !f1.right_gcd(f2).is_some_and(|g| g.order() == Some(0)) {
+            if f1.right_gcd(f2).is_none_or(|g| g.order() != Some(0)) {
                 continue;
             }
             let (Some(p1), Some(p2)) = (clear_denominators(&f1.c), clear_denominators(&f2.c)) else { continue };
