@@ -29,6 +29,13 @@
 //! S² r p_{k+1}`, `p_{-1} = 0`, linear in `P`; `ω` is then a root of
 //! `Σ_k S^k p_k ω^k / (n - k)!`, which is returned as a `root_of` object.
 //!
+//! **Symmetric square.** When none of the cases applies with rational local
+//! data, `w''' - 4 r w' - 2 r' w = 0` is solved for a hyperexponential `u`
+//! (over a number field, [`super::nf_hyper`]) with rational logarithmic
+//! derivative `S`; then `v_± = sqrt(u) exp(± ½ ∫ sqrt(4 r - S² - 2 S'))`
+//! (case 2 with irrational exponent differences, e.g. `(√x + √(x-1))^{±√5}`).
+//! Only `S` over `Q` is used.
+//!
 //! The poles may be rational or conjugate algebraic numbers (an irreducible
 //! factor `f` of the denominator, contributing `α f'/f`) as long as the
 //! local data (`α`, the exponents) are rational and shared by the conjugates;
@@ -518,7 +525,10 @@ pub(super) fn solutions(
     if let Some(found) = case_two(cx, x, &p, &r) {
         return found;
     }
-    case_three(cx, x, &p, &r).unwrap_or_default()
+    if let Some(found) = case_three(cx, x, &p, &r) {
+        return found;
+    }
+    symmetric_square(cx, x, &p, &r).unwrap_or_default()
 }
 
 /// `p = a1/a2` and `r = p²/4 + p'/2 - a0/a2`.
@@ -930,6 +940,105 @@ fn find_third_order(
     Some(coefficients)
 }
 
+/// `∫ sqrt(R) dx` for a rational function `R`, with the square root written
+/// factor by factor; an inert `integral` when no closed form is found.
+fn sqrt_integral(
+    cx: &mut Cx<'_>,
+    x: NodeId,
+    discriminant: &Rat,
+) -> Option<NodeId> {
+    let root = {
+        let (nc, nf) = univariate::factor(&discriminant.num);
+        let (dc, df) = univariate::factor(&discriminant.den);
+        let half = cx.graph.num(Number::fraction(1, 2)?);
+        let lead = cx.graph.num(Number::rat(nc / dc));
+        let mut factors = vec![cx.graph.node(core::POW, &[lead, half])];
+        for (list, sign) in [(nf, 1_i64), (df, -1)] {
+            for (f, multiplicity) in list {
+                let polynomial: Vec<Q> = f.iter().cloned().map(Q::from_integer).collect();
+                let base = polynomial_node(cx, x, &polynomial);
+                let exponent =
+                    cx.graph.num(Number::rat(Q::new(BigInt::from(sign * i64::from(multiplicity)), BigInt::from(2))));
+                factors.push(cx.graph.node(core::POW, &[base, exponent]));
+            }
+        }
+        let product = mul(cx.graph, &factors);
+        cx.simplify(product)
+    };
+    Some(match integrate(cx, root, x) {
+        | Some(found) => found,
+        | None => {
+            let op = cx.graph.ops().lookup("integral")?;
+            cx.graph.node(op, &[root, x])
+        },
+    })
+}
+
+/// Case 2 through the symmetric square: `w''' - 4 r w' - 2 r' w = 0` has a
+/// hyperexponential solution `u = y_1 y_2` exactly when the equation
+/// `v'' = r v` has two solutions with `v_1 v_2 = u`. With `S = u'/u` the
+/// two Riccati solutions are `ω = (S ± sqrt(4 r - S² - 2 S'))/2`, so
+/// `v_± = sqrt(u) exp(± ½ ∫ sqrt(4 r - S² - 2 S'))`. Irrational local data
+/// (exponent differences such as `√5`) are no obstacle here, since only `u`
+/// has to be found.
+fn symmetric_square(
+    cx: &mut Cx<'_>,
+    x: NodeId,
+    p: &Rat,
+    r: &Rat,
+) -> Option<Vec<NodeId>> {
+    let (n, d) = (&r.num, &r.den);
+    let d2 = univariate::mul(d, d);
+    let scale = |v: &[Q], c: i64| -> Vec<Q> { v.iter().map(|a| a * q(c)).collect() };
+    let c0 = scale(
+        &univariate::sub(
+            &univariate::mul(&univariate::derivative(n), d),
+            &univariate::mul(n, &univariate::derivative(d)),
+        ),
+        -2,
+    );
+    let c1 = scale(&univariate::mul(n, d), -4);
+    let op = vec![c0, c1, Vec::new(), d2];
+    for hyper in super::nf_hyper::hyperexponential_over_field(&op) {
+        let Some(s) = super::nf_hyper::log_derivative(&hyper) else { continue };
+        let discriminant = r.scale(&q(4))?.add(&s.mul(&s)?.scale(&q(-1))?)?.add(&s.derivative()?.scale(&q(-2))?)?;
+        if discriminant.num.is_empty() {
+            continue;
+        }
+        // A discriminant that is negative wherever it is sampled gives exp(± i ...): leave
+        // those to the real forms (cos, sin) of the other methods.
+        let positive_somewhere = [2_i64, 3, 5, 7, -2, -3, -5, 11, 13]
+            .iter()
+            .any(|&t| discriminant.eval(&q(t)).is_some_and(|v| v.is_positive()));
+        if !positive_somewhere {
+            continue;
+        }
+        let nodes = super::nf_hyper::solution_nodes(cx, x, &hyper)?;
+        let Some(&u) = nodes.first() else { continue };
+        let half = cx.graph.num(Number::fraction(1, 2)?);
+        let sqrt_u = cx.graph.node(core::POW, &[u, half]);
+        let root_integral = sqrt_integral(cx, x, &discriminant)?;
+        let p_node = {
+            let (pn, pd) = (polynomial_node(cx, x, &p.num), polynomial_node(cx, x, &p.den));
+            super::div(cx.graph, pn, pd)
+        };
+        let p_integral = integrate(cx, p_node, x)?;
+        let minus_half = cx.graph.num(Number::fraction(-1, 2)?);
+        let shift = mul(cx.graph, &[minus_half, p_integral]);
+        let mut out = Vec::new();
+        for sign in [1_i64, -1] {
+            let coefficient = cx.graph.num(Number::rat(Q::new(BigInt::from(sign), BigInt::from(2))));
+            let scaled = mul(cx.graph, &[coefficient, root_integral]);
+            let exponent = add(cx.graph, &[scaled, shift]);
+            let e = super::exp_of(cx, exponent)?;
+            let y = mul(cx.graph, &[sqrt_u, e]);
+            out.push(cx.simplify(y));
+        }
+        return Some(out);
+    }
+    None
+}
+
 /// Both solutions of case 2 as terms.
 fn build_case_two(
     cx: &mut Cx<'_>,
@@ -985,31 +1094,8 @@ fn build_case_two(
     let integral = integrate(cx, p_node, x)?;
     let minus_half = cx.graph.num(Number::fraction(-1, 2)?);
     common.push(mul(cx.graph, &[minus_half, integral]));
-    // ± ½ ∫ sqrt(R), with sqrt written factor by factor.
-    let root = {
-        let (nc, nf) = univariate::factor(&discriminant.num);
-        let (dc, df) = univariate::factor(&discriminant.den);
-        let half = cx.graph.num(Number::fraction(1, 2)?);
-        let lead = node_of(cx, &(nc / dc));
-        let mut factors = vec![cx.graph.node(core::POW, &[lead, half])];
-        for (list, sign) in [(nf, 1_i64), (df, -1)] {
-            for (f, multiplicity) in list {
-                let polynomial: Vec<Q> = f.iter().cloned().map(Q::from_integer).collect();
-                let base = to_node(cx, &polynomial);
-                let exponent = node_of(cx, &Q::new(BigInt::from(sign * i64::from(multiplicity)), BigInt::from(2)));
-                factors.push(cx.graph.node(core::POW, &[base, exponent]));
-            }
-        }
-        let product = mul(cx.graph, &factors);
-        cx.simplify(product)
-    };
-    let root_integral = match integrate(cx, root, x) {
-        | Some(found) => found,
-        | None => {
-            let op = cx.graph.ops().lookup("integral")?;
-            cx.graph.node(op, &[root, x])
-        },
-    };
+    // ± ½ ∫ sqrt(R).
+    let root_integral = sqrt_integral(cx, x, &discriminant)?;
     let mut out = Vec::new();
     for sign in [1_i64, -1] {
         let coefficient = cx.graph.num(Number::rat(Q::new(BigInt::from(sign), BigInt::from(2))));

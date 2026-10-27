@@ -20,11 +20,15 @@
 //!   `P_{j0}(ρ+k) c_k = -Σ_{l ≥ 1} P_{j0+l}(ρ+k-l) c_{k-l}` the series.
 //!
 //! A formal solution is `exp(Σ κ_s v^{-s}) v^ρ Σ c_k v^k`, `v^q = t`.
-//! Limits: no logarithmic terms (an exponent that is resonant with another
-//! root of the same indicial polynomial is skipped); once the field is not
-//! `Q` (algebraic singular point or a previous extension) further roots
-//! must be of linear factors, i.e. segments of width one; the solutions
-//! analytic at the point (negative slopes) are not produced.
+//! When a characteristic or indicial polynomial over `K = Q(α)` has a root
+//! outside `K`, the field is extended (a tower step, [`tower_roots`]): the
+//! norm of `β + k α` over `Q` is computed numerically and rationalised, an
+//! irreducible factor of it defines `K' = Q[y]/F`, and `α`, `β` are recovered
+//! as polynomials in the generator by lattice reduction and verified exactly;
+//! the operator and the exponent list are then carried to `K'`.
+//! Limits: only the first root of a non-split indicial factor is followed
+//! (no logarithms there); the solutions analytic at the point (negative
+//! slopes) are not produced.
 //!
 //! [`optimal_truncation`] evaluates such a series numerically: the terms are
 //! summed up to the smallest one (the error is of that order, the Borel
@@ -360,6 +364,22 @@ impl Euler {
         let mut out = Self::empty();
         for (j, p) in &self.terms {
             out.add_term(field, *j, p);
+        }
+        out
+    }
+
+    /// The same operator over an extension `K'` of `K`, with `α ↦ h`.
+    fn map_field(
+        &self,
+        from: &Field,
+        to: &Field,
+        h: &[Q],
+    ) -> Self {
+        let _ = from;
+        let mut out = Self::empty();
+        for (j, p) in &self.terms {
+            let mapped: Vec<Elt> = p.iter().map(|c| map_element(to, c, h)).collect();
+            out.add_term(to, *j, &mapped);
         }
         out
     }
@@ -701,6 +721,13 @@ fn expand(
             for kappa in roots_in_field(field, &chi) {
                 descend(search, field, op, ramification, exponent, s, &kappa);
             }
+            // Roots in a proper extension of the field: one more step of the tower.
+            for extension in tower_roots(field, &chi) {
+                let mapped_op = op.map_field(field, &extension.field, &extension.alpha);
+                let mapped_exponent: Vec<(i64, Elt)> =
+                    exponent.iter().map(|(t, k)| (*t, map_element(&extension.field, k, &extension.alpha))).collect();
+                descend(search, &extension.field, &mapped_op, ramification, &mapped_exponent, s, &extension.root);
+            }
         }
     }
 }
@@ -796,6 +823,163 @@ pub(super) fn roots_in_field(
     found
 }
 
+/// A finite extension `K' = K(β)` of a number field `K = Q(α)` in which a polynomial
+/// over `K` has a root.
+pub(super) struct Extension {
+    /// `K'` as a simple extension of `Q`.
+    pub(super) field: Field,
+    /// The root `β` in `K'`.
+    pub(super) root: Elt,
+    /// The image of `α` in `K'`.
+    pub(super) alpha: Elt,
+}
+
+/// The value of a polynomial over `K` (an element is a polynomial in `α`) at `α ↦ h`
+/// in `K'`.
+fn map_element(
+    target: &Field,
+    element: &[Q],
+    h: &[Q],
+) -> Elt {
+    element.iter().rev().fold(Vec::new(), |acc, c| target.add(&target.mul(&acc, h), &target.from_q(c)))
+}
+
+/// Roots of `poly` (over `K = Q(α)`, `K` not rational) that lie in extensions of `K`
+/// but not in `K`: a tower step `K ⊂ K(β)`. The norm
+/// `N(y) = Π_σ Π_β (y - (β + k σ(α)))` over the embeddings `σ` of `K` and the roots
+/// `β` of `σ(poly)` is computed numerically and rationalised; for a suitable
+/// small `k` it is square-free, and an irreducible factor `F` of it with `θ = β + k α`
+/// as a root defines `K' = Q[y]/F` with `α` and `β` as polynomials in `θ` (found by
+/// lattice reduction and checked exactly).
+pub(super) fn tower_roots(
+    field: &Field,
+    poly: &[Elt],
+) -> Vec<Extension> {
+    let degree = poly.len().saturating_sub(1);
+    let d = field.degree();
+    if degree == 0 || field.is_rational() || d * degree > 24 {
+        return Vec::new();
+    }
+    let to_fx = |q: &Q| Fx::real((q.numer() << BITS) / q.denom());
+    let modulus: Vec<Fx> = field.modulus.iter().map(to_fx).collect();
+    let Some(alphas): Option<Vec<Fx>> = field.embeddings().into_iter().map(|a| refine_root(&modulus, a)).collect() else {
+        return Vec::new();
+    };
+    let value_at = |e: &[Q], alpha: &Fx| -> Fx { e.iter().rev().fold(Fx::zero(), |acc, c| acc.mul(alpha).add(&to_fx(c))) };
+    let as_complex = |z: &Fx| -> Option<Complex64> {
+        let scale = |v: &BigInt| ToPrimitive::to_f64(&Q::new(v.clone(), crate::rules::poly::galois::one()));
+        Some(Complex64::new(scale(&z.re)?, scale(&z.im)?))
+    };
+    // All roots β of σ(poly) for every embedding σ: (σ index, β).
+    let mut betas: Vec<(usize, Fx)> = Vec::new();
+    for (index, alpha) in alphas.iter().enumerate() {
+        let numeric: Vec<Fx> = poly.iter().map(|e| value_at(e, alpha)).collect();
+        let Some(coefficients): Option<Vec<Complex64>> = numeric.iter().map(as_complex).collect() else { return Vec::new() };
+        for start in super::resum::complex_roots(&coefficients) {
+            let Some(root) = refine_root(&numeric, start) else { return Vec::new() };
+            betas.push((index, root));
+        }
+    }
+    if betas.len() != d * degree {
+        return Vec::new();
+    }
+    let gap = BigInt::one() << (BITS - 80);
+    for k in 0..8_i64 {
+        let thetas: Vec<Fx> = betas
+            .iter()
+            .filter_map(|(i, b)| alphas.get(*i).map(|a| b.add(&a.mul(&Fx::integer(&BigInt::from(k))))))
+            .collect();
+        let distinct = thetas.iter().enumerate().all(|(i, a)| thetas.iter().skip(i + 1).all(|b| !a.close(b, 80)));
+        let _ = &gap;
+        if !distinct {
+            continue;
+        }
+        // N(y) from its roots.
+        let mut norm: Vec<Fx> = vec![Fx::integer(&BigInt::one())];
+        for theta in &thetas {
+            let mut next = vec![Fx::zero(); norm.len() + 1];
+            for (i, a) in norm.iter().enumerate() {
+                if let Some(slot) = next.get_mut(i + 1) {
+                    *slot = slot.add(a);
+                }
+                if let Some(slot) = next.get_mut(i) {
+                    *slot = slot.sub(&a.mul(theta));
+                }
+            }
+            norm = next;
+        }
+        let Some(rational): Option<Vec<Q>> = norm.iter().map(crate::rules::poly::galois_high::rationalize).collect() else {
+            continue;
+        };
+        let (_, factors) = univariate::factor(&rational);
+        let Some(alpha0) = alphas.first() else { return Vec::new() };
+        let mut out: Vec<Extension> = Vec::new();
+        for (index, beta) in &betas {
+            if *index != 0 {
+                continue;
+            }
+            let theta0 = beta.add(&alpha0.mul(&Fx::integer(&BigInt::from(k))));
+            for (f, multiplicity) in &factors {
+                if *multiplicity != 1 || f.len() <= d + 1 {
+                    continue;
+                }
+                let residual = crate::rules::poly::galois::horner(f, &theta0);
+                if !residual.close(&Fx::zero(), 150) {
+                    continue;
+                }
+                let lead = Q::from_integer(f.last().cloned().unwrap_or_else(BigInt::one));
+                let monic: Vec<Q> = f.iter().map(|c| Q::from_integer(c.clone()) / &lead).collect();
+                if out.iter().any(|e| e.field.modulus == monic) {
+                    continue;
+                }
+                let target = Field::extension(monic);
+                let n = target.degree();
+                // α and β as polynomials in θ.
+                let mut powers = vec![Fx::integer(&BigInt::one())];
+                for _ in 1..n {
+                    let next = powers.last().map_or_else(Fx::zero, |l| l.mul(&theta0));
+                    powers.push(next);
+                }
+                let recognise = |value: &Fx| -> Option<Elt> {
+                    let shift = BITS - 250;
+                    let mut rows: Vec<Vec<BigInt>> = Vec::new();
+                    for (i, p) in powers.iter().chain(std::iter::once(value)).enumerate() {
+                        let mut row = vec![BigInt::zero(); n + 1];
+                        if let Some(slot) = row.get_mut(i) {
+                            *slot = BigInt::one();
+                        }
+                        row.push(p.re.clone() >> shift);
+                        row.push(p.im.clone() >> shift);
+                        rows.push(row);
+                    }
+                    let reduced = crate::rules::poly::galois::lll(rows)?;
+                    let tolerance = BigInt::one() << 60;
+                    let relation = reduced.into_iter().find(|r| {
+                        r.get(n).is_some_and(|c| !c.is_zero())
+                            && r.get(n + 1).is_some_and(|v| v.abs() < tolerance)
+                            && r.get(n + 2).is_some_and(|v| v.abs() < tolerance)
+                    })?;
+                    let denominator = relation.get(n).cloned()?;
+                    Some(trim((0..n).map(|i| Q::new(-relation.get(i).cloned().unwrap_or_default(), denominator.clone())).collect()))
+                };
+                let (Some(h), Some(beta_element)) = (recognise(alpha0), recognise(beta)) else { continue };
+                // Exact checks: m(h) = 0 and poly(β) = 0 in K'.
+                if !map_element(&target, &field.modulus, &h).is_empty() {
+                    continue;
+                }
+                let mapped: Vec<Elt> = poly.iter().map(|e| map_element(&target, e, &h)).collect();
+                let value = mapped.iter().rev().fold(Vec::new(), |acc, c| target.add(&target.mul(&acc, &beta_element), c));
+                if !value.is_empty() {
+                    continue;
+                }
+                out.push(Extension { field: target, root: beta_element, alpha: h });
+            }
+        }
+        return out;
+    }
+    Vec::new()
+}
+
 fn descend(
     search: &mut Search<'_>,
     field: &Field,
@@ -829,6 +1013,7 @@ fn regular(
     let width = reduced.len().saturating_sub(1);
     // Roots of the indicial polynomial with multiplicities.
     let mut roots: Vec<(Field, Elt, usize)> = Vec::new();
+    let mut towers: Vec<Extension> = Vec::new();
     if zeros > 0 {
         roots.push((field.clone(), Vec::new(), zeros));
     }
@@ -849,6 +1034,24 @@ fn regular(
             for rho in roots_in_field(field, &reduced) {
                 roots.push((field.clone(), rho, 1));
             }
+            for extension in tower_roots(field, &reduced) {
+                towers.push(extension);
+            }
+        }
+    }
+    for extension in towers {
+        let mapped = op.map_field(field, &extension.field, &extension.alpha);
+        let mapped_exponent: Vec<(i64, Elt)> =
+            exponent.iter().map(|(t, k)| (*t, map_element(&extension.field, k, &extension.alpha))).collect();
+        if let Some((coefficients, log_terms)) = log_series(&extension.field, &mapped, j0, &extension.root, 0, search.terms) {
+            search.out.push(FormalSolution {
+                field: extension.field.clone(),
+                ramification,
+                exponent: mapped_exponent,
+                rho: extension.root.clone(),
+                coefficients,
+                log_terms,
+            });
         }
     }
     for (f, rho, multiplicity) in roots {
@@ -1135,6 +1338,18 @@ mod tests {
         }
         // For nu = 1/2: J = sin(x)/sqrt(x), so the series terminates (c_k = 0 for k >= 1).
         assert!(solutions[0].coefficients.iter().skip(1).all(Vec::is_empty), "{:?}", solutions[0].coefficients);
+    }
+
+    #[test]
+    fn tower_when_the_second_level_does_not_split() {
+        // x y'''' + (1 - 4x) y'' + 4x y = 0, i.e. x ((D^2 - 2)^2 + D^2 / x) y = 0: the
+        // exponential part exp(κ x), κ = ±sqrt 2 (a double root of (κ^2 - 2)^2), is refined
+        // by exp(ψ), 4 ψ^2 x + 1 = 0: its roots lie in Q(sqrt 2, i), a proper
+        // extension of Q(sqrt 2).
+        let operator = vec![qs(&[0, 4]), qs(&[]), qs(&[1, -4]), qs(&[]), qs(&[0, 1])];
+        let solutions = formal_solutions(&operator, &Point::Infinity, 4);
+        eprintln!("{solutions:?}");
+        assert!(solutions.iter().any(|s| s.field.degree() == 4 && s.ramification == 2), "{solutions:?}");
     }
 
     #[test]

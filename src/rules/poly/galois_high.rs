@@ -406,7 +406,7 @@ pub(crate) fn solve_system(
 
 /// The rational with small denominator within `2^-300` of the real
 /// fixed-point number `re`, by continued fractions.
-fn rationalize(z: &Fx) -> Option<BigRational> {
+pub(crate) fn rationalize(z: &Fx) -> Option<BigRational> {
     if z.im.abs() > BigInt::one() << (BITS - 200) {
         return None;
     }
@@ -925,6 +925,23 @@ pub enum Lagrange {
         /// `t_0 = Σ z_k`.
         trace: BigInt,
     },
+    /// Exactly one real root and a resolvent field that is small in the
+    /// invariants `u_j = t_j t_{-j}`: the `u_j` (`j = 1, 2, 3`) are the roots of
+    /// the integer cubic `u_poly`, `R_j + R_{-j} = s(u_j)` with `s` a rational
+    /// polynomial of degree at most two, and `R_j R_{-j} = u_j^7`. So `R_j,
+    /// R_{-j}` are the roots of `w² - s w + u_j^7`, and `z_0` is as in
+    /// [`Lagrange::OneReal`]. All numbers involved stay small even where `Φ`
+    /// has coefficients and roots of wildly different sizes.
+    Paired {
+        /// The monic integer cubic of the `u_j`.
+        u_poly: Vec<BigInt>,
+        /// `s` as a polynomial in `u`.
+        s_poly: Vec<BigRational>,
+        /// For `j = 1, 2, 3`: `(u_j, R_j, R_{7-j})` as floating-point values.
+        terms: Vec<(f64, f64, f64)>,
+        /// `t_0 = Σ z_k`.
+        trace: BigInt,
+    },
     /// All roots real: `R_{-j} = conj R_j`. With `s_j = R_j + R_{-j}` (the
     /// roots of the cubic `s_poly`) and `n_j = |R_j|² = c_0 + c_1 s_j +
     /// c_2 s_j²`, writing `R_j = ρ_j e^{iφ_j}` (`j` with positive imaginary
@@ -950,6 +967,37 @@ fn fx_pow7(z: &Fx) -> Fx {
 
 fn fx_to_f64(v: &BigInt) -> Option<f64> {
     BigRational::new(v.clone(), one()).to_f64()
+}
+
+/// The `Paired` form, when the three invariants `u_j = t_j t_{-j}` are distinct.
+fn paired_form(
+    t: &[Fx],
+    r: &[Fx],
+    trace: &BigInt,
+    integer_poly: &dyn Fn(&[Fx]) -> Option<Vec<BigInt>>,
+) -> Option<Lagrange> {
+    let u: Vec<Fx> = (1..=3).map(|j| t.get(j).and_then(|a| t.get(7 - j).map(|b| a.mul(b)))).collect::<Option<_>>()?;
+    let gap = BigInt::one() << (BITS - 100);
+    for (a, b) in [(0, 1), (0, 2), (1, 2)] {
+        let d = u.get(a)?.sub(u.get(b)?);
+        if d.re.abs() < gap {
+            return None;
+        }
+    }
+    let u_poly = integer_poly(&u)?;
+    let vandermonde: Vec<Vec<Fx>> = u.iter().map(|v| vec![Fx::integer(&BigInt::one()), v.clone(), v.mul(v)]).collect();
+    let rhs: Vec<Vec<Fx>> = (1..=3).map(|j| Some(vec![r.get(j)?.add(r.get(7 - j)?)])).collect::<Option<_>>()?;
+    let solution = solve_system(vandermonde, rhs)?;
+    let s_poly: Vec<BigRational> = solution.iter().map(|row| row.first().and_then(rationalize)).collect::<Option<_>>()?;
+    let mut terms = Vec::new();
+    for (index, j) in (1..=3_usize).enumerate() {
+        terms.push((
+            fx_to_f64(&u.get(index)?.re)?,
+            fx_to_f64(&r.get(j)?.re)?,
+            fx_to_f64(&r.get(7 - j)?.re)?,
+        ));
+    }
+    Some(Lagrange::Paired { u_poly, s_poly, terms, trace: trace.clone() })
 }
 
 /// The Lagrange-resolvent data of a septic with group `D7`, `F21` or `F42`.
@@ -1011,6 +1059,9 @@ pub fn lagrange(analysis: &Analysis) -> Option<Lagrange> {
         poly.iter().map(round_integer).collect()
     };
     if !all_real {
+        if let Some(paired) = paired_form(&t, &r, &trace, &integer_poly) {
+            return Some(paired);
+        }
         let values: Vec<Fx> = r.iter().skip(1).cloned().collect();
         let phi = integer_poly(&values)?;
         let resolvents: Vec<f64> = values.iter().map(|v| fx_to_f64(&v.re)).collect::<Option<_>>()?;

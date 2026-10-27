@@ -191,6 +191,61 @@ fn contains_op(
     graph.op(node) == op || graph.children(node).iter().any(|&c| contains_op(graph, c, op))
 }
 
+/// `R_1 … R_6` (in this order) as closed forms for the `Paired` Lagrange data:
+/// `u_j` from the cubic, `R_j, R_{-j}` the roots of `w² - s(u_j) w + u_j^7`,
+/// the larger one by the formula without cancellation and the smaller one as
+/// `u_j^7` divided by it.
+fn paired_resolvents(
+    graph: &mut Graph,
+    u_poly: &[BigInt],
+    s_poly: &[BigRational],
+    terms: &[(f64, f64, f64)],
+) -> Option<Vec<NodeId>> {
+    let targets: Vec<f64> = terms.iter().map(|t| t.0).collect();
+    let u_nodes = matched_roots(graph, u_poly, &targets)?;
+    let half = graph.num(Number::fraction(1, 2)?);
+    let minus_one = graph.int(-1);
+    let mut first: Vec<NodeId> = Vec::new();
+    let mut second: Vec<NodeId> = Vec::new();
+    for (u, (_, rj, rmj)) in u_nodes.iter().zip(terms) {
+        let mut s_terms = Vec::new();
+        for (power, c) in s_poly.iter().enumerate() {
+            let coefficient = rational_node(graph, c);
+            let exponent = graph.int(i64::try_from(power).ok()?);
+            let p = if power == 0 { graph.int(1) } else { graph.node(core::POW, &[*u, exponent]) };
+            s_terms.push(mul(graph, &[coefficient, p]));
+        }
+        let s_node = graph.node(core::ADD, &s_terms);
+        let seven = graph.int(7);
+        let u7 = graph.node(core::POW, &[*u, seven]);
+        let two = graph.int(2);
+        let s_squared = graph.node(core::POW, &[s_node, two]);
+        let four = graph.int(4);
+        let four_u7 = mul(graph, &[four, u7]);
+        let neg = mul(graph, &[minus_one, four_u7]);
+        let discriminant = graph.node(core::ADD, &[s_squared, neg]);
+        let root = graph.node(core::POW, &[discriminant, half]);
+        let s_value = rj + rmj;
+        let signed_root = if s_value >= 0.0 { root } else { mul(graph, &[minus_one, root]) };
+        let big_sum = graph.node(core::ADD, &[s_node, signed_root]);
+        let big = mul(graph, &[half, big_sum]);
+        let inverse = graph.node(core::POW, &[big, minus_one]);
+        let small = mul(graph, &[u7, inverse]);
+        // `big` is the one of larger magnitude.
+        if rj.abs() >= rmj.abs() {
+            first.push(big);
+            second.push(small);
+        } else {
+            first.push(small);
+            second.push(big);
+        }
+    }
+    // R_1, R_2, R_3, then R_6, R_5, R_4.
+    second.reverse();
+    first.extend(second);
+    Some(first)
+}
+
 fn matched_roots(
     graph: &mut Graph,
     polynomial: &[BigInt],
@@ -238,6 +293,17 @@ fn lagrange_roots(
                 terms.push(super::symbolic::real_root(graph, node, 7)?);
             }
             let sum = graph.node(core::ADD, &terms);
+            let factor_node = graph.num(seventh);
+            let z = mul(graph, &[factor_node, sum]);
+            candidates.push(original_variable(graph, analysis, z));
+        },
+        | Lagrange::Paired { u_poly, s_poly, terms, trace } => {
+            let resolvents = paired_resolvents(graph, &u_poly, &s_poly, &terms)?;
+            let mut sum_terms = vec![graph.num(Number::Int(trace))];
+            for node in resolvents {
+                sum_terms.push(super::symbolic::real_root(graph, node, 7)?);
+            }
+            let sum = graph.node(core::ADD, &sum_terms);
             let factor_node = graph.num(seventh);
             let z = mul(graph, &[factor_node, sum]);
             candidates.push(original_variable(graph, analysis, z));
@@ -343,8 +409,11 @@ pub(super) fn complex_roots(
             candidates.push(original_variable(graph, &analysis, z));
         }
     } else if degree == 7 {
-        let Some(Lagrange::OneReal { phi, resolvents, trace }) = lagrange(&analysis) else { return None };
-        let nodes = matched_roots(graph, &phi, &resolvents)?;
+        let (nodes, trace) = match lagrange(&analysis)? {
+            | Lagrange::OneReal { phi, resolvents, trace } => (matched_roots(graph, &phi, &resolvents)?, trace),
+            | Lagrange::Paired { u_poly, s_poly, terms, trace } => (paired_resolvents(graph, &u_poly, &s_poly, &terms)?, trace),
+            | Lagrange::AllReal { .. } => return None,
+        };
         let mut roots7 = Vec::new();
         for node in nodes {
             roots7.push(super::symbolic::real_root(graph, node, 7)?);

@@ -2649,6 +2649,17 @@ mod tests {
     }
 
     #[test]
+    fn kovacic_case_two_with_irrational_exponent_differences() {
+        let rules = crate::rules::standard();
+        // 4 x (x - 1) y'' + 2 (2x - 1) y' - 5 y = 0: dihedral monodromy with the irrational
+        // exponent difference sqrt 5, y = (sqrt x + sqrt(x - 1))^(± sqrt 5). The product of the
+        // two solutions is constant, a hyperexponential solution of the symmetric square.
+        let answer = simplify(&rules, "dsolve(4*x*(x - 1)*diff(diff(y(x), x), x) + 2*(2*x - 1)*diff(y(x), x) - 5*y(x), y(x))");
+        assert!(answer.contains("C1") && answer.contains("C2"), "{answer}");
+        check_second_order(&rules, &answer, |x| (4.0 * x * (x - 1.0), 2.0 * (2.0 * x - 1.0), -5.0), &[1.5, 2.2, 3.1], 1e-3);
+    }
+
+    #[test]
     fn kovacic_case_three_tetrahedral() {
         let rules = crate::rules::standard();
         // Exponent differences (1/2, 1/3, 1/3) at 0, 1, oo: tetrahedral
