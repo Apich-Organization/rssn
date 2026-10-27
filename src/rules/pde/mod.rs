@@ -194,6 +194,7 @@ mod diffusion;
 mod elliptic;
 mod frameworks;
 mod green;
+mod hill;
 mod modal;
 mod modes;
 mod nonlinear;
@@ -296,6 +297,7 @@ enum Request {
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     numeric::install(i)?;
     sl::install(i)?;
+    hill::install(i)?;
     let heavy = |name: &str, arity: Arity| OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100);
     let at = i.op(heavy("at", Arity::Fixed(3)).flags(OpFlags::OPAQUE_ON_APPLY))?;
     let symmetries = i.op(heavy("pde_symmetries", Arity::Fixed(2)))?;

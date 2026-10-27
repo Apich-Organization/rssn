@@ -918,3 +918,38 @@ fn riemann_problem_with_a_non_convex_flux() {
     close(value(&rhs(&s), &[("x", 1.5), ("t", 1.0)]), -0.5_f64.sqrt(), 1e-9, &s);
     close(value(&rhs(&s), &[("x", 4.0), ("t", 1.0)]), -1.0, 1e-9, &s);
 }
+
+#[test]
+fn mathieu_problems_by_hills_method() {
+    use super::hill::hill_eigen;
+    use super::hill::hill_mode;
+    // Characteristic values of Mathieu's equation for q = 1 on a period 2π (Abramowitz–Stegun 20.1):
+    // a₀, b₁, b₂ ... in ascending order: -0.4551386, -0.1102488, 1.8591081, 3.9170248, 4.3713010.
+    let m = 256_usize;
+    let mut args = vec![2.0 * PI, 24.0];
+    args.extend((0..m).map(|j| 2.0 * (2.0 * 2.0 * PI * j as f64 / m as f64).cos()));
+    let want = [-0.455_138_60, -0.110_248_82, 1.859_108_07, 3.917_024_77, 4.371_300_98];
+    for (k, w) in want.iter().enumerate() {
+        let mut call = vec![(k + 1) as f64];
+        call.extend_from_slice(&args);
+        close(hill_eigen(&call), *w, 1e-6, "Mathieu characteristic value");
+    }
+    // The eigenfunctions are orthonormal on the period.
+    let mode = |index: f64, x: f64| {
+        let mut call = vec![index, x];
+        call.extend_from_slice(&args);
+        hill_mode(&call)
+    };
+    close(simpson(&|x| mode(1.0, x) * mode(1.0, x), 0.0, 2.0 * PI), 1.0, 1e-8, "norm");
+    close(simpson(&|x| mode(1.0, x) * mode(2.0, x), 0.0, 2.0 * PI), 0.0, 1e-8, "orthogonality");
+    // The heat equation u_t = u_xx - 2 cos(2x) u on a periodic interval: each term solves it (residual).
+    let eq = "diff(u(x, t), t) = diff(diff(u(x, t), x), x) - 2*cos(2*x)*u(x, t)";
+    let s = any(&format!("pdsolve({eq}, u(x, t), list(u(0, t) = u(2*pi, t), u(x, 0) = 1 + sin(x)))"));
+    assert!(s.contains("hill_mode") && s.contains("hill_eigen"), "{s}");
+    let text = expand_integrals(&expand_sums(&rhs(&s), 10), 130);
+    let u = |x: f64, t: f64| value(&text, &[("x", x), ("t", t)]);
+    let (x0, t0, h) = (1.0_f64, 0.5_f64, 2e-3_f64);
+    let residual = (u(x0, t0 + h) - u(x0, t0 - h)) / (2.0 * h) - (u(x0 + h, t0) - 2.0 * u(x0, t0) + u(x0 - h, t0)) / (h * h) + 2.0 * (2.0 * x0).cos() * u(x0, t0);
+    close(residual, 0.0, 2e-3, "residual");
+    close(u(0.3, t0), u(0.3 + 2.0 * PI, t0), 1e-6, "periodic");
+}
