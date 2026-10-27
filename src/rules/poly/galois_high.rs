@@ -294,7 +294,7 @@ pub fn analyse(c: &[BigRational]) -> Option<Analysis> {
         })
         .collect();
     let permutations = all_permutations(n);
-    let magnitude_limit = u64::try_from(BITS).unwrap_or(0) + 120;
+    let magnitude_limit = u64::try_from(BITS).unwrap_or(0) + 300;
     for group in groups {
         let elements = group.elements();
         // Coset representatives: sigma minimal in its coset sigma.H.
@@ -362,6 +362,10 @@ pub(crate) fn solve_system(
     mut b: Vec<Vec<Fx>>,
 ) -> Option<Vec<Vec<Fx>>> {
     let n = a.len();
+    // A pivot below 2^-300 of the largest entry is a rounding residue of a
+    // singular system.
+    let largest = a.iter().flatten().map(|v| v.re.abs() + v.im.abs()).max().unwrap_or_else(BigInt::zero);
+    let negligible = largest >> 300_u32;
     for k in 0..n {
         let pivot = (k..n).max_by_key(|&r| {
             a.get(r).and_then(|row| row.get(k)).map_or_else(BigInt::zero, |v| v.re.abs() + v.im.abs())
@@ -369,6 +373,9 @@ pub(crate) fn solve_system(
         a.swap(k, pivot);
         b.swap(k, pivot);
         let pivot_value = a.get(k)?.get(k)?.clone();
+        if pivot_value.re.abs() + pivot_value.im.abs() <= negligible {
+            return None;
+        }
         for i in k + 1..n {
             let factor = a.get(i)?.get(k)?.div(&pivot_value)?;
             for j in k..n {
@@ -1009,21 +1016,40 @@ pub fn lagrange(analysis: &Analysis) -> Option<Lagrange> {
         let resolvents: Vec<f64> = values.iter().map(|v| fx_to_f64(&v.re)).collect::<Option<_>>()?;
         return Some(Lagrange::OneReal { phi, resolvents, trace });
     }
-    // All real: pair R_j with R_{7-j}.
-    let s: Vec<Fx> = (1..=3).map(|j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.add(b)))).collect::<Option<_>>()?;
-    let n: Vec<Fx> = (1..=3).map(|j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.mul(b)))).collect::<Option<_>>()?;
+    // All real: pair R_j with R_{7-j}. Pairs with R_j = 0 (the Dickson case has
+    // only j = ±1) are dropped; one or three pairs remain.
+    let negligible = BigInt::one() << (BITS - 300);
+    let pairs: Vec<usize> = (1..=3)
+        .filter(|&j| r.get(j).is_some_and(|a| a.re.abs() > negligible || a.im.abs() > negligible))
+        .collect();
+    if pairs.len() != 1 && pairs.len() != 3 {
+        return None;
+    }
+    let s: Vec<Fx> = pairs.iter().map(|&j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.add(b)))).collect::<Option<_>>()?;
+    let n: Vec<Fx> = pairs.iter().map(|&j| r.get(j).and_then(|a| r.get(7 - j).map(|b| a.mul(b)))).collect::<Option<_>>()?;
     let s_poly = integer_poly(&s)?;
-    // n_j = c0 + c1 s_j + c2 s_j^2.
-    let vandermonde: Vec<Vec<Fx>> = s.iter().map(|v| vec![Fx::integer(&BigInt::one()), v.clone(), v.mul(v)]).collect();
+    // n_j = c0 + c1 s_j + c2 s_j^2 (constant when there is one pair).
+    let size = pairs.len();
+    let vandermonde: Vec<Vec<Fx>> = s
+        .iter()
+        .map(|v| {
+            let mut row = vec![Fx::integer(&BigInt::one())];
+            for _ in 1..size {
+                let next = row.last().map_or_else(Fx::zero, |l| l.mul(v));
+                row.push(next);
+            }
+            row
+        })
+        .collect();
     let rhs: Vec<Vec<Fx>> = n.iter().map(|v| vec![v.clone()]).collect();
     let solution = solve_system(vandermonde, rhs)?;
     let n_poly: Vec<BigRational> = solution.iter().map(|row| row.first().and_then(rationalize)).collect::<Option<_>>()?;
     let mut terms = Vec::new();
-    for j in 1..=3_usize {
+    for (index, &j) in pairs.iter().enumerate() {
         let rj = r.get(j)?;
         let (representative, value) = if rj.im.is_positive() { (j, rj.clone()) } else { (7 - j, r.get(7 - j)?.clone()) };
-        let s_value = fx_to_f64(&s.get(j - 1)?.re)?;
-        let rho = (fx_to_f64(&n.get(j - 1)?.re)?).sqrt();
+        let s_value = fx_to_f64(&s.get(index)?.re)?;
+        let rho = (fx_to_f64(&n.get(index)?.re)?).sqrt();
         let phi = (s_value / (2.0 * rho)).clamp(-1.0, 1.0).acos();
         let tj = t.get(representative)?;
         let angle = fx_to_f64(&tj.im)?.atan2(fx_to_f64(&tj.re)?);
@@ -1150,12 +1176,5 @@ mod tests {
         let cyclo = cyclotomic(&a).expect("periods");
         assert_eq!(cyclo.conductor, 29);
         assert_eq!(cyclo.roots.len(), 7);
-    }
-
-    #[test]
-    fn debug_lagrange() {
-        let a = analyse(&poly(&[-3, -7, 0, 14, 0, -7, 0, 1])).expect("group");
-        eprintln!("DBG label {}", a.group.label);
-        eprintln!("DBG lagrange {:?}", lagrange(&a));
     }
 }

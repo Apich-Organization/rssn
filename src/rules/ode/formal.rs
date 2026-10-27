@@ -619,16 +619,13 @@ fn expand(
 ) {
     let support = op.support();
     // The regular part: the row of lowest `j`, whose polynomial in `θ` is the
-    // indicial polynomial. Roots at 0 coming from `θ^{i0}` count only when no
-    // support point lies to the left of the row (else they belong to the
-    // part of the polygon with negative slopes: solutions analytic there).
+    // indicial polynomial; all its roots, those at 0 included, are exponents
+    // (the part of the polygon with negative slopes describes the same
+    // solutions).
     if selection.accepts(&Q::zero())
         && let Some(j_min) = support.iter().map(|&(_, j)| j).min()
-        && let Some(row) = op.terms.get(&j_min)
     {
-        let i_row = row.iter().position(|c| !c.is_empty()).unwrap_or(0);
-        let has_left = support.iter().any(|&(i, _)| i < i64::try_from(i_row).unwrap_or(0));
-        regular(search, field, op, j_min, if has_left { i_row } else { 0 }, ramification, exponent);
+        regular(search, field, op, j_min, 0, ramification, exponent);
     }
     let hull = lower_hull(&support);
     for segment in hull {

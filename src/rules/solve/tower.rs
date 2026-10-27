@@ -194,16 +194,11 @@ fn matched_roots(
     for node in nodes {
         valued.push((value_of(graph, node)?, node));
     }
+    // A repeated root of the polynomial (zero, in the Dickson case) is one
+    // node matched by several targets.
     let mut out = Vec::new();
-    let mut used = vec![false; valued.len()];
     for &target in targets {
-        let slot = valued
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| !used.get(*i).copied().unwrap_or(true))
-            .find(|(_, (v, _))| (v - target).abs() <= 1e-7 * (1.0 + target.abs()))
-            .map(|(i, _)| i)?;
-        *used.get_mut(slot)? = true;
+        let slot = valued.iter().position(|(v, _)| (v - target).abs() <= 1e-7 * (1.0 + target.abs()))?;
         out.push(valued.get(slot)?.1);
     }
     Some(out)

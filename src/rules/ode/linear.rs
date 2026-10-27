@@ -657,25 +657,61 @@ pub(super) fn high_order(
     }
     // Hyperexponential solution and reduction of order.
     let found = hyperexponential_solutions(&op);
-    let hyper = found.first()?;
+    let Some(hyper) = found.first() else {
+        return left_factor(cx, problem, &op, depth);
+    };
     let y1 = hyper_node(cx, x, hyper)?;
     let omega = hyper.log_derivative()?;
     let quotient = right_quotient(&op, &omega)?;
-    // Clear denominators of M.
+    let polynomials = clear_denominators(&quotient)?;
+    let basis = reduced_basis(cx, x, &polynomials, depth)?;
+    let c1 = problem.constant(cx.graph);
+    let mut total = vec![mul(cx.graph, &[c1, y1])];
+    for z_j in basis {
+        let integrand = super::div(cx.graph, z_j, y1);
+        let integrand = cx.simplify(integrand);
+        let inner = match integrate(cx, integrand, x) {
+            | Some(found) => found,
+            | None => {
+                let op = cx.graph.ops().lookup("integral")?;
+                cx.graph.node(op, &[integrand, x])
+            },
+        };
+        let c = problem.constant(cx.graph);
+        total.push(mul(cx.graph, &[c, y1, inner]));
+    }
+    let solution = add(cx.graph, &total);
+    Some(explicit(cx, problem, solution))
+}
+
+/// Polynomial coefficients of an operator with rational-function
+/// coefficients, multiplied through by the common denominator.
+fn clear_denominators(operator: &[Rat]) -> Option<Vec<Vec<Q>>> {
     let mut common = vec![Q::one()];
-    for m in &quotient {
+    for m in operator {
         let g = univariate::gcd(&common, &m.den);
         common = univariate::divrem(&univariate::mul(&common, &m.den), &g)?.0;
     }
-    let polynomials: Vec<Vec<Q>> = quotient
+    operator
         .iter()
         .map(|m| {
             let (factor, _) = univariate::divrem(&common, &m.den)?;
             Some(trim(univariate::mul(&m.num, &factor)))
         })
-        .collect::<Option<_>>()?;
+        .collect()
+}
+
+/// A basis of the solutions of the homogeneous equation with polynomial
+/// coefficients `polynomials` (order `len - 1`), by the full solver.
+fn reduced_basis(
+    cx: &mut Cx<'_>,
+    x: NodeId,
+    polynomials: &[Vec<Q>],
+    depth: u32,
+) -> Option<Vec<NodeId>> {
+    let order = polynomials.len().checked_sub(1)?;
     let z = fresh_function(cx.graph, "z", x);
-    let derivatives = chain(cx.graph, z, x, order - 1)?;
+    let derivatives = chain(cx.graph, z, x, order)?;
     let mut terms = Vec::new();
     for (coefficient, derivative) in polynomials.iter().zip(&derivatives) {
         if coefficient.is_empty() {
@@ -704,25 +740,92 @@ pub(super) fn high_order(
             basis.push(value);
         }
     }
-    if basis.len() + 1 != order {
+    (basis.len() == order).then_some(basis)
+}
+
+/// The adjoint operator `L* y = Σ_i (-1)^i D^i (a_i y)` as polynomial
+/// coefficients.
+fn adjoint(op: &[Vec<Q>]) -> Vec<Vec<Q>> {
+    let n = op.len().saturating_sub(1);
+    let mut out: Vec<Vec<Q>> = vec![Vec::new(); n + 1];
+    for (i, a) in op.iter().enumerate() {
+        // D^i (a y) = Σ_k C(i, k) a^(k) y^(i-k).
+        let mut derivative = a.clone();
+        let mut binomial = BigInt::one();
+        for k in 0..=i {
+            let sign = if i % 2 == 0 { Q::one() } else { -Q::one() };
+            let term: Vec<Q> = derivative.iter().map(|c| c * &sign * Q::from_integer(binomial.clone())).collect();
+            if let Some(slot) = out.get_mut(i - k) {
+                *slot = trim(univariate::add(slot, &term));
+            }
+            derivative = univariate::derivative(&derivative);
+            binomial = binomial * BigInt::from(i - k) / BigInt::from(k + 1);
+        }
+    }
+    out
+}
+
+/// The adjoint of an operator with rational-function coefficients.
+fn adjoint_rational(op: &[Rat]) -> Option<Vec<Rat>> {
+    let n = op.len().checked_sub(1)?;
+    let mut out: Vec<Rat> = vec![zero_rat()?; n + 1];
+    for (i, a) in op.iter().enumerate() {
+        let mut derivative = a.clone();
+        let mut binomial = BigInt::one();
+        for k in 0..=i {
+            let sign = if i % 2 == 0 { Q::one() } else { -Q::one() };
+            let term = derivative.scale(&(sign * Q::from_integer(binomial.clone())))?;
+            let slot = out.get_mut(i - k)?;
+            *slot = slot.add(&term)?;
+            derivative = derivative.derivative()?;
+            binomial = binomial * BigInt::from(i - k) / BigInt::from(k + 1);
+        }
+    }
+    Some(out)
+}
+
+/// Reduction through a first-order *left* factor: `L = (D + ω*) N` when the
+/// adjoint `L*` has a hyperexponential solution `y*` (`ω* = y*'/y*`,
+/// `L* = M* (D - ω*)`, `N = (M*)*`). Then `L y = 0` means `N y = c / y*`: the
+/// solutions of `N y = 0` (found by the full solver) and a particular
+/// solution of `N y = 1 / y*` by variation of parameters.
+fn left_factor(
+    cx: &mut Cx<'_>,
+    problem: &mut Problem,
+    op: &[Vec<Q>],
+    depth: u32,
+) -> Option<NodeId> {
+    let x = problem.x;
+    let order = op.len().checked_sub(1)?;
+    let star = adjoint(op);
+    let found = hyperexponential_solutions(&star);
+    let hyper = found.first()?;
+    let omega = hyper.log_derivative()?;
+    let quotient = right_quotient(&star, &omega)?;
+    let n_operator = adjoint_rational(&quotient)?;
+    let polynomials = clear_denominators(&n_operator)?;
+    // N_poly = d N with d the common denominator: N y = 1/y* becomes N_poly y = d / y*.
+    let mut common = vec![Q::one()];
+    for m in &n_operator {
+        let g = univariate::gcd(&common, &m.den);
+        common = univariate::divrem(&univariate::mul(&common, &m.den), &g)?.0;
+    }
+    let basis = reduced_basis(cx, x, &polynomials, depth)?;
+    let y_star = hyper_node(cx, x, hyper)?;
+    let d_node = polynomial_node(cx, x, &common);
+    let forcing = super::div(cx.graph, d_node, y_star);
+    let forcing = cx.simplify(forcing);
+    let leading = polynomial_node(cx, x, polynomials.last()?);
+    let particular = super::variation_of_parameters_inert(cx, &basis, leading, forcing, x)?;
+    let mut terms = Vec::new();
+    for y in basis.iter().chain(std::iter::once(&particular)) {
+        let c = problem.constant(cx.graph);
+        terms.push(mul(cx.graph, &[c, *y]));
+    }
+    if terms.len() != order {
         return None;
     }
-    let c1 = problem.constant(cx.graph);
-    let mut total = vec![mul(cx.graph, &[c1, y1])];
-    for z_j in basis {
-        let integrand = super::div(cx.graph, z_j, y1);
-        let integrand = cx.simplify(integrand);
-        let inner = match integrate(cx, integrand, x) {
-            | Some(found) => found,
-            | None => {
-                let op = cx.graph.ops().lookup("integral")?;
-                cx.graph.node(op, &[integrand, x])
-            },
-        };
-        let c = problem.constant(cx.graph);
-        total.push(mul(cx.graph, &[c, y1, inner]));
-    }
-    let solution = add(cx.graph, &total);
+    let solution = add(cx.graph, &terms);
     Some(explicit(cx, problem, solution))
 }
 
@@ -847,5 +950,22 @@ mod tests {
             // Each is c x^m.
             assert_eq!(h.exponent.num.len(), 0);
         }
+    }
+
+    #[test]
+    fn adjoint_of_the_adjoint_is_the_operator_and_left_factors_reduce() {
+        // L = (D - 1)(D^2 - x) = D^3 - D^2 ... : adjoint twice gives L back.
+        let op = vec![qs(&[0, 1]), qs(&[0, -1]), qs(&[-1]), qs(&[1])];
+        assert_eq!(adjoint(&adjoint(&op)), op.iter().map(|c| trim(c.clone())).collect::<Vec<_>>());
+        // (D - 1)(D^2 - x) = D^3 - D^2 - x D + (1 - 1)... has the left factor D - 1, so its
+        // adjoint has the hyperexponential solution exp(-x).
+        let left = {
+            // D^3 - x D - 1 - D^2 + x with the order of composition reversed: (D - 1)(D^2 - x)
+            // = D^3 - D x - D^2 + x = D^3 - D^2 - x D - 1 + x.
+            vec![qs(&[-1, 1]), qs(&[0, -1]), qs(&[-1]), qs(&[1])]
+        };
+        let star = adjoint(&left);
+        let found = hyperexponential_solutions(&star);
+        assert!(found.iter().any(|h| h.exponent.num == qs(&[0, -1]) && h.poly == qs(&[1])), "exp(-x) not a solution of the adjoint");
     }
 }

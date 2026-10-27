@@ -1328,13 +1328,53 @@ fn variation_of_parameters(
     forcing: NodeId,
     x: NodeId,
 ) -> Option<NodeId> {
+    variation_core(cx, basis, leading, forcing, x, false)
+}
+
+/// [`variation_of_parameters`] where an integral without a closed form stays
+/// as an inert `integral(…)`.
+fn variation_of_parameters_inert(
+    cx: &mut Cx<'_>,
+    basis: &[NodeId],
+    leading: NodeId,
+    forcing: NodeId,
+    x: NodeId,
+) -> Option<NodeId> {
+    variation_core(cx, basis, leading, forcing, x, true)
+}
+
+/// The antiderivative of `f`, or (when `inert`) the unevaluated `integral(f, x)`.
+fn integral_of(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    x: NodeId,
+    inert: bool,
+) -> Option<NodeId> {
+    match integrate(cx, f, x) {
+        | Some(found) => Some(found),
+        | None if inert => {
+            let op = cx.graph.ops().lookup("integral")?;
+            Some(cx.graph.node(op, &[f, x]))
+        },
+        | None => None,
+    }
+}
+
+fn variation_core(
+    cx: &mut Cx<'_>,
+    basis: &[NodeId],
+    leading: NodeId,
+    forcing: NodeId,
+    x: NodeId,
+    inert: bool,
+) -> Option<NodeId> {
     let normalised = div(cx.graph, forcing, leading);
     match *basis {
         | [y1] => {
             // y_p = y1 ∫ r / y1
             let integrand = div(cx.graph, normalised, y1);
             let integrand = cx.simplify(integrand);
-            let integral = integrate(cx, integrand, x)?;
+            let integral = integral_of(cx, integrand, x, inert)?;
             Some(mul(cx.graph, &[y1, integral]))
         },
         | [y1, y2] => {
@@ -1349,7 +1389,7 @@ fn variation_of_parameters(
             let u1 = cx.simplify(u1);
             let u2 = mul(cx.graph, &[y1, normalised, inverse]);
             let u2 = cx.simplify(u2);
-            let (i1, i2) = (integrate(cx, u1, x)?, integrate(cx, u2, x)?);
+            let (i1, i2) = (integral_of(cx, u1, x, inert)?, integral_of(cx, u2, x, inert)?);
             let left = mul(cx.graph, &[y1, i1]);
             let left = neg(cx.graph, left);
             let right = mul(cx.graph, &[y2, i2]);
@@ -1387,7 +1427,7 @@ fn variation_of_parameters(
                 let ui = cx.simplify(ui);
                 let ui = crate::rules::poly::expand_form(cx.graph, ui).unwrap_or(ui);
                 let ui = cx.simplify(ui);
-                let integral = integrate(cx, ui, x)?;
+                let integral = integral_of(cx, ui, x, inert)?;
                 terms.push(mul(cx.graph, &[yi, integral]));
             }
             Some(add(cx.graph, &terms))
@@ -2563,6 +2603,13 @@ mod tests {
         let rhs = answer.strip_prefix("y(x) = ").unwrap_or(&answer);
         let first = solution_value(&rules, rhs.split(" + ").find(|t| t.contains("C1")).unwrap_or(rhs), 0.7, (1.0, 0.0));
         assert!((first - 0.7_f64.exp()).abs() < 1e-9, "{answer}");
+        // (D - 1)(D^2 - x): no hyperexponential solution, but the left factor D - 1
+        // reduces the order; the quotient is Airy's equation.
+        let left = simplify(
+            &rules,
+            "dsolve(diff(diff(diff(y(x), x), x), x) - diff(diff(y(x), x), x) - x*diff(y(x), x) + (x - 1)*y(x), y(x))",
+        );
+        assert!(left.contains("airyai") && left.contains("airybi"), "{left}");
         // A hypergeometric operator of order three: 3F2.
         let hyper = simplify(
             &rules,

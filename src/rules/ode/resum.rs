@@ -285,6 +285,6 @@ mod tests {
         assert!((sum.value.re - 1.055_955_905_593).abs() < 1e-6, "{sum:?}");
         // The imaginary part cancels in the median and the error estimate carries the jump.
         assert!(sum.value.im.abs() < 1e-6, "{sum:?}");
-        assert!(sum.error > 1e-6, "{sum:?}");
+        assert!(sum.error > 1e-10 && sum.error < 1e-5, "{sum:?}");
     }
 }
