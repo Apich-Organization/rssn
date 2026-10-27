@@ -103,8 +103,8 @@
 //! | non-convex scalar conservation laws | line | 1 | convex-hull construction (rarefaction, shock and contact segments) for step data |
 //! | NLS `i u_t + u_xx + 2 abs(u)² u = 0` | line | 1 | bright soliton family (`pde_nls_soliton`) |
 //! | autonomous scalar evolution equations with polynomial nonlinearity (`KdV`, mKdV, Burgers, Allen–Cahn, Fisher) | line | 1 | tanh method `Σ a_j tanh^j(μ(x - ct))`, residual solved by Levenberg–Marquardt, fractions recovered |
-//! | `pde_kdv_reflectionless(N, κ)` | line | 1 | KdV with the datum `-N(N+1)κ² sech²(κx)` (`N ≤ 4`): eigenvalues `nκ`, Pöschl–Teller norming constants in the determinant formula |
-//! | `pde_darboux_kdv(u, ψ)` | line | 1 | one Darboux step `ũ = u - 2 ∂²_x ln ψ` of a KdV solution with a Lax eigenfunction |
+//! | `pde_kdv_reflectionless(N, κ)` | line | 1 | `KdV` with the datum `-N(N+1)κ² sech²(κx)` (`N ≤ 4`): eigenvalues `nκ`, Pöschl–Teller norming constants in the determinant formula |
+//! | `pde_darboux_kdv(u, ψ)` | line | 1 | one Darboux step `ũ = u - 2 ∂²_x ln ψ` of a `KdV` solution with a Lax eigenfunction |
 //! | sech ansatz | line | 1 | `Σ a_j sech^j(μ(x - ct))` (focusing mKdV, …) in the same solver as the tanh method, tanh degrees up to 5, sech up to 4 |
 //!
 //! Limitations (what is still not covered):
@@ -132,7 +132,7 @@
 //! * Nonlinear equations: Hopf-Cole for constant-coefficient Burgers; Riemann
 //!   problems for a single step; the soliton operators cover `KdV`
 //!   (`N <= 4`), sine-Gordon (`N <= 3`) and bright NLS; the tanh/sech
-//!   ansatz needs a travelling wave; Darboux is a single KdV step, inverse
+//!   ansatz needs a travelling wave; Darboux is a single `KdV` step, inverse
 //!   scattering covers reflectionless data only. Not covered: shock
 //!   interactions, hodograph transformations, general GLM scattering data.
 //! * Annuli: the Neumann constant is treated separately; modes with a
