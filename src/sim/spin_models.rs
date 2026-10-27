@@ -9,8 +9,8 @@
 //! |---|---|---|---|
 //! | Metropolis | yes | yes (random-walk proposal) | yes |
 //! | Heat bath | yes | yes (exact: von Mises for XY, inverse-CDF `exp(a cos theta)` for Heisenberg, Wood's von Mises-Fisher algorithm for `N >= 4`; field included) | yes |
-//! | Wolff cluster (embedded Ising for O(N)), `h = 0`, `J > 0` | yes | yes | yes |
-//! | Swendsen-Wang (embedded) | yes | yes | yes |
+//! | Wolff cluster (embedded Ising for O(N)), `J > 0`, field through a ghost spin | yes | yes | yes |
+//! | Swendsen-Wang (embedded; field through a ghost spin) | yes | yes | yes |
 //! | Over-relaxation (micro-canonical) | - | yes | - |
 //!
 //! Further tools: [`ParallelTempering`] (replica exchange for O(N) models),
@@ -29,8 +29,8 @@
 //! supplied spin arrays via the public `spins` field.
 //!
 //! Limitations: only nearest-neighbour hypercubic lattices; the field `h`
-//! couples to component 0 and is incompatible with cluster updates; the quantum (XXZ / worm /
-//! loop) algorithms are not implemented; single-walker Wang-Landau for continuous spins
+//! couples to component 0 (cluster updates include it through a ghost spin); the quantum spin-1/2 XXZ
+//! model (SSE with directed loops) lives in [`crate::sim::sse`]; single-walker Wang-Landau for continuous spins
 //! ([`wang_landau_on`]) is restricted to a user-supplied energy window (moves leaving it are
 //! rejected) and uses single-spin moves ([`replica_exchange_wang_landau`] adds windows and
 //! walkers).
@@ -503,9 +503,6 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
     }
 
     fn cluster_ready(&self) -> Result<(), String> {
-        if self.field != 0.0 {
-            return Err("cluster updates require zero field".into());
-        }
         if self.j <= 0.0 {
             return Err("cluster updates require a ferromagnetic coupling".into());
         }
@@ -514,8 +511,13 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
 
     /// Grows and flips one Wolff cluster; returns its size.
     ///
+    /// A non-zero field `h` is handled by the **ghost-spin** construction: the field couples every
+    /// site to an extra ghost spin `sign(h) e_0` with strength `|h|`, the cluster may absorb the
+    /// ghost, and when it does the cluster's complement is flipped instead (the global symmetry of the
+    /// extended system), which keeps detailed balance.
+    ///
     /// # Errors
-    /// Fails for non-zero field or `J <= 0`.
+    /// Fails for `J <= 0`.
     pub fn wolff_step(&mut self) -> Result<usize, String> {
         self.cluster_ready()?;
         let r = random_unit::<N>(&mut self.rng);
@@ -525,8 +527,25 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
         let mut stack = vec![seed];
         in_cluster[seed] = true;
         let mut size = 0;
+        let hh = self.field.abs();
+        let g0 = r[0] * self.field.signum();
+        let mut ghost_in = false;
         while let Some(i) = stack.pop() {
             let pi = dot(&self.spins[i], &r);
+            // ghost bond: the cluster absorbs the ghost, which then bonds to every other site
+            if !ghost_in && hh > 0.0 && pi * g0 > 0.0 && self.rng.uniform() < 1.0 - (-2.0 * self.beta * hh * pi * g0).exp() {
+                ghost_in = true;
+                for j in 0..n {
+                    if in_cluster[j] || j == i {
+                        continue;
+                    }
+                    let pj = dot(&self.spins[j], &r);
+                    if pj * g0 > 0.0 && self.rng.uniform() < 1.0 - (-2.0 * self.beta * hh * pj * g0).exp() {
+                        in_cluster[j] = true;
+                        stack.push(j);
+                    }
+                }
+            }
             // flip i
             for k in 0..N {
                 self.spins[i][k] -= 2.0 * pi * r[k];
@@ -546,20 +565,43 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
                 }
             }
         }
+        if ghost_in {
+            // the cluster contained the ghost: reflecting everything undoes the cluster flip and
+            // reflects its complement
+            for sp in &mut self.spins {
+                let p = dot(sp, &r);
+                for k in 0..N {
+                    sp[k] -= 2.0 * p * r[k];
+                }
+            }
+        }
         Ok(size)
     }
 
     /// One Swendsen-Wang sweep with a random embedding direction; returns the number of clusters.
     ///
+    /// A non-zero field is included through the ghost spin `sign(h) e_0`: the cluster attached to
+    /// the ghost is never flipped.
+    ///
     /// # Errors
-    /// Fails for non-zero field or `J <= 0`.
+    /// Fails for `J <= 0`.
     pub fn swendsen_wang_step(&mut self) -> Result<usize, String> {
         self.cluster_ready()?;
         let r = random_unit::<N>(&mut self.rng);
         let n = self.lattice.sites();
         let proj: Vec<f64> = self.spins.iter().map(|s| dot(s, &r)).collect();
-        let mut uf = UnionFind::new(n);
+        let mut uf = UnionFind::new(n + 1);
         let (beta, jj) = (self.beta, self.j);
+        let hh = self.field.abs();
+        let g0 = r[0] * self.field.signum();
+        if hh > 0.0 {
+            for i in 0..n {
+                let prod = proj[i] * g0;
+                if prod > 0.0 && self.rng.uniform() < 1.0 - (-2.0 * beta * hh * prod).exp() {
+                    uf.union(i, n);
+                }
+            }
+        }
         let mut links = Vec::new();
         self.lattice.for_each_bond(|i, j| links.push((i, j)));
         for (i, j) in links {
@@ -568,7 +610,9 @@ impl<const D: usize, const N: usize> OnModel<D, N> {
                 uf.union(i, j);
             }
         }
-        let mut flip = vec![None; n];
+        let mut flip = vec![None; n + 1];
+        let ghost_root = uf.find(n);
+        flip[ghost_root] = Some(false);
         let mut clusters = 0;
         for i in 0..n {
             let root = uf.find(i);

@@ -990,3 +990,102 @@ fn sllod_shear_viscosity_of_a_lj_fluid_is_positive_and_shear_thins_weakly() {
     }
     assert!(stress[1] > stress[0], "stress must grow with the rate: {stress:?}");
 }
+
+#[test]
+fn sliding_brick_lees_edwards_with_a_flexible_cell_follows_the_sllod_equations() {
+    let rate = 0.4;
+    let l = 4.0;
+    let mut sim = ideal_gas(30, l, 5);
+    sim.sys.bx.shear_rate = rate;
+    let n = sim.sys.n();
+    let u0: Vec<[f64; 3]> = sim.sys.vel.clone();
+    for i in 0..n {
+        sim.sys.vel[i][0] += rate * (sim.sys.pos[i][1] - 0.5 * l);
+    }
+    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 1e12, CellMode::Orthorhombic));
+    let steps = 300;
+    sim.run(steps).unwrap();
+    let t = steps as f64 * sim.dt;
+    let ly = sim.sys.bx.len[1];
+    for i in 0..n {
+        let u = [sim.sys.vel[i][0] - rate * (sim.sys.pos[i][1] - 0.5 * ly), sim.sys.vel[i][1], sim.sys.vel[i][2]];
+        assert!((u[0] - (u0[i][0] - rate * u0[i][1] * t)).abs() < 1e-7, "u_x {} vs {}", u[0], u0[i][0] - rate * u0[i][1] * t);
+        assert!((u[1] - u0[i][1]).abs() < 1e-7 && (u[2] - u0[i][2]).abs() < 1e-7);
+        assert!(sim.sys.pos[i][1] >= 0.0 && sim.sys.pos[i][1] < ly + 1e-9);
+    }
+    // the box stays rectangular and the offset advanced by rate * L * t (modulo L)
+    let expected = (rate * l * t) % l;
+    assert!((sim.sys.bx.offset - expected).abs() < 1e-6 || (sim.sys.bx.offset - expected).abs() > l - 1e-6, "offset {} vs {expected}", sim.sys.bx.offset);
+    assert!(sim.sys.bx.cell.is_none());
+    // unsupported combinations are errors
+    let mut bad = ideal_gas(10, l, 6);
+    bad.sys.bx.shear_rate = rate;
+    bad.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 10.0, CellMode::Full));
+    assert!(bad.step().is_err());
+}
+
+#[test]
+fn sliding_brick_and_deforming_cell_give_the_same_lj_shear_stress() {
+    let rate = 0.6;
+    let eta_of = |sllod: bool| -> f64 {
+        let mut sim = lj_fluid_3d(3, 0.8442, 1.0, 0.004, 401);
+        let dof = sim.dof();
+        sim.thermostat = Thermostat::NoseHooverChain(NoseHooverChain::new(1.0, 0.2, 3, dof));
+        if sllod {
+            sim.barostat = Barostat::Flexible(FlexibleBarostat::shear_flow(3, rate));
+        } else {
+            let l = sim.sys.bx.len[1];
+            sim.sys.bx.shear_rate = rate;
+            for i in 0..sim.sys.n() {
+                sim.sys.vel[i][0] += rate * (sim.sys.pos[i][1] - 0.5 * l);
+            }
+            // frozen cell: the point is the sliding-brick boundary, not the barostat
+            sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 1.0, 1e12, CellMode::Orthorhombic));
+        }
+        sim.run(800).unwrap();
+        let mut pxy = 0.0;
+        let ns = 2500;
+        for _ in 0..ns {
+            sim.step().unwrap();
+            let p = sim.pressure_tensor();
+            // the kinetic part of the sliding-brick run contains the streaming profile: use the
+            // peculiar-velocity pressure for both
+            let mut kin = 0.0;
+            if !sllod {
+                let l = sim.sys.bx.len[1];
+                for i in 0..sim.sys.n() {
+                    let u0 = sim.sys.vel[i][0] - rate * (sim.sys.pos[i][1] - 0.5 * l);
+                    kin += sim.sys.mass[i] * (u0 - sim.sys.vel[i][0]) * sim.sys.vel[i][1];
+                }
+                kin /= sim.sys.bx.volume();
+            }
+            pxy += p[0][1] + kin;
+        }
+        -pxy / ns as f64 / rate
+    };
+    let (eta_a, eta_b) = (eta_of(true), eta_of(false));
+    assert!(eta_a > 1.0 && eta_b > 1.0, "{eta_a} {eta_b}");
+    assert!((eta_a - eta_b).abs() < 0.2 * eta_a, "viscosity: SLLOD {eta_a} vs sliding brick {eta_b}");
+}
+
+#[test]
+fn constrained_dimers_stay_rigid_under_sliding_brick_shear_with_a_langevin_piston() {
+    let d = 0.7;
+    let mut sim = dimer_system(32, 7.0, d, 131);
+    let l = sim.sys.bx.len[1];
+    sim.sys.bx.shear_rate = 0.3;
+    for i in 0..sim.sys.n() {
+        sim.sys.vel[i][0] += 0.3 * (sim.sys.pos[i][1] - 0.5 * l);
+    }
+    sim.thermostat = Thermostat::Langevin { t0: 1.0, gamma: 2.0 };
+    sim.barostat = Barostat::Flexible(FlexibleBarostat::hydrostatic(3, 0.5, 30.0, CellMode::Isotropic).with_langevin_cell(1.0));
+    sim.run(300).unwrap();
+    let mut worst = 0.0_f64;
+    for _ in 0..1500 {
+        sim.step().unwrap();
+        worst = worst.max(max_bond_error(&sim));
+    }
+    assert!(worst < 1e-9, "bond drift {worst}");
+    let tr: f64 = (0..3).map(|a| sim.constraint_virial[a][a]).sum();
+    assert!(tr.is_finite());
+}

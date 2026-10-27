@@ -186,3 +186,118 @@ fn escaping_rays_report_a_celestial_direction() {
     }
     assert_eq!(trace_ray(1.0, 0.0, std::f64::consts::FRAC_PI_2, 1e4, (4.0, 0.0), true).unwrap(), RayOutcome::Captured);
 }
+
+fn wrap(a: f64) -> f64 {
+    let mut d = a % (2.0 * std::f64::consts::PI);
+    if d > std::f64::consts::PI {
+        d -= 2.0 * std::f64::consts::PI;
+    }
+    if d < -std::f64::consts::PI {
+        d += 2.0 * std::f64::consts::PI;
+    }
+    d
+}
+
+#[test]
+fn kerr_schild_integration_reproduces_the_exact_mino_orbit() {
+    for &(a, zm, prograde) in &[(0.9, 0.0, true), (0.7, 0.55, true)] {
+        let o = KerrOrbit::from_apsides(1.0, a, (9.0, 24.0), zm, prograde).unwrap();
+        let lam_r = o.radial_period();
+        let theta0 = std::f64::consts::FRAC_PI_2;
+        let mut g = KerrSchildGeodesic::from_constants(1.0, a, (o.energy, o.lz, o.carter), (o.roots[1], theta0, 0.0), 1.0, (true, true)).unwrap();
+        assert!((g.hamiltonian() + 0.5).abs() < 1e-10, "mass shell {}", g.hamiltonian());
+        let sigma = |lam: f64| {
+            let r = o.radius(lam);
+            let c = o.cos_theta(lam);
+            r * r + a * a * c * c
+        };
+        let tau_of = |lam: f64| {
+            let n = 4000;
+            let h = lam / n as f64;
+            let mut s = sigma(0.0) + sigma(lam);
+            for k in 1..n {
+                s += if k % 2 == 1 { 4.0 } else { 2.0 } * sigma(k as f64 * h);
+            }
+            s * h / 3.0
+        };
+        let mut tau_prev = 0.0;
+        for k in 1..=5 {
+            let lam = 0.45 * k as f64 * lam_r;
+            let tau = tau_of(lam);
+            assert!(g.advance(tau - tau_prev, 1e-12, 1.0));
+            tau_prev = tau;
+            let (r, th, ph) = g.boyer_lindquist();
+            let (_, r_ex, th_ex, ph_ex) = o.state(lam);
+            assert!((r - r_ex).abs() < 2e-7 * r_ex, "a={a} k={k}: r {r} vs {r_ex}");
+            assert!((th.cos() - th_ex.cos()).abs() < 2e-7, "a={a} k={k}: cos theta {} vs {}", th.cos(), th_ex.cos());
+            assert!(wrap(ph - ph_ex).abs() < 2e-6, "a={a} k={k}: phi {ph} vs {ph_ex}");
+        }
+        assert!((g.energy() - o.energy).abs() < 1e-9 && (g.angular_momentum() - o.lz).abs() < 1e-8);
+    }
+}
+
+#[test]
+fn radial_plunge_crosses_the_schwarzschild_horizon_with_the_cycloid_proper_time() {
+    // fall from rest at r0 = 10 M: r = (r0/2)(1 + cos eta), tau = (r0/2) sqrt(r0/2M) (eta + sin eta)
+    let r0: f64 = 10.0;
+    let e = (1.0 - 2.0 / r0).sqrt();
+    let mut g = KerrSchildGeodesic::from_constants(1.0, 0.0, (e, 0.0, 0.0), (r0, std::f64::consts::FRAC_PI_2, 0.0), 1.0, (false, true)).unwrap();
+    for &r_target in &[4.0_f64, 2.0, 1.0, 0.5] {
+        let eta = (2.0 * r_target / r0 - 1.0).acos();
+        let tau = 0.5 * r0 * (r0 / 2.0).sqrt() * (eta + eta.sin());
+        let dtau = tau - g.tau;
+        assert!(g.advance(dtau, 1e-12, 0.1));
+        assert!((g.radius() - r_target).abs() < 2e-8, "r = {} vs {r_target}", g.radius());
+        assert!((g.energy() - e).abs() < 1e-10);
+        assert!((g.hamiltonian() + 0.5).abs() < 1e-9);
+    }
+}
+
+#[test]
+fn kerr_plunge_conserves_energy_angular_momentum_and_carter_constant_across_the_horizon() {
+    let a: f64 = 0.9;
+    let (e, l, q) = (0.95, 0.8, 1.0);
+    let mut g = KerrSchildGeodesic::from_constants(1.0, a, (e, l, q), (8.0, 1.2, 0.3), 1.0, (false, true)).unwrap();
+    let rh = 1.0 + (1.0 - a * a).sqrt();
+    let mut crossed = false;
+    for _ in 0..400 {
+        if !g.advance(0.05, 1e-12, 0.9) {
+            break;
+        }
+        if g.radius() < rh {
+            crossed = true;
+        }
+        assert!((g.energy() - e).abs() < 1e-9);
+        assert!((g.angular_momentum() - l).abs() < 1e-8, "Lz {}", g.angular_momentum());
+        assert!((g.hamiltonian() + 0.5).abs() < 1e-9);
+        assert!((g.carter_constant() - q).abs() < 1e-6, "Q {} at r = {}", g.carter_constant(), g.radius());
+    }
+    assert!(crossed, "the geodesic must cross the horizon");
+}
+
+#[test]
+fn polar_geodesic_passes_through_the_axis_without_coordinate_trouble() {
+    // Schwarzschild, L_z = 0: the orbit lies in a plane containing the axis and crosses it
+    let (e, q) = (0.98, 20.0);
+    let mut g = KerrSchildGeodesic::from_constants(1.0, 0.0, (e, 0.0, q), (12.0, 1.0, 0.0), 1.0, (false, true)).unwrap();
+    let j0 = (q).sqrt();
+    let (mut crossings, mut last_sign) = (0, g.x[1].signum());
+    let mut worst_y = 0.0_f64;
+    for _ in 0..4000 {
+        assert!(g.advance(0.25, 1e-12, 2.5));
+        worst_y = worst_y.max(g.x[2].abs());
+        let s = g.x[1].signum();
+        if s != last_sign {
+            crossings += 1;
+            last_sign = s;
+        }
+        // total angular momentum |x cross p|
+        let (x, p) = (&g.x, &g.p);
+        let lv = [x[2] * p[3] - x[3] * p[2], x[3] * p[1] - x[1] * p[3], x[1] * p[2] - x[2] * p[1]];
+        let jt = (lv[0] * lv[0] + lv[1] * lv[1] + lv[2] * lv[2]).sqrt();
+        assert!((jt - j0).abs() < 1e-8, "J = {jt}");
+        assert!((g.energy() - e).abs() < 1e-9);
+    }
+    assert!(worst_y < 1e-9, "orbit left its plane: {worst_y}");
+    assert!(crossings >= 4, "the orbit must cross the axis repeatedly: {crossings}");
+}

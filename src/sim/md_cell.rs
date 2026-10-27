@@ -18,7 +18,9 @@
 //! NPT distribution `p(V) ~ V^N exp(-PV/T)`), **SLLOD shear** on a deforming cell
 //! ([`FlexibleBarostat::shear_flow`]: imposed velocity gradient, particle equations
 //! `dr/dt = v + G r`, `dv/dt = F/m - G v` integrated exactly for the flow, lattice-equivalent
-//! reduction of the sheared cell), and the constraint virial from the exact acceleration-level
+//! reduction of the sheared cell), **sliding-brick Lees-Edwards** boundaries combined with the
+//! orthorhombic / isotropic cell (peculiar-velocity dynamics with the total velocity gradient
+//! `G_cell + gamma e_x e_y^T`, offset advanced and scaled with the cell), and the constraint virial from the exact acceleration-level
 //! constraint forces (including the flexible-cell flow terms) instead of the SHAKE impulse.
 
 use super::{Barostat, MdSimulation, NoseHooverChain, Thermostat};
@@ -501,7 +503,7 @@ impl<const D: usize> MdSimulation<D> {
             return;
         }
         let nf = self.constrained_dof();
-        let vg: Mat<D> = b.velocity_gradient();
+        let vg: Mat<D> = self.total_gradient(b);
         let alpha = (0..D).map(|a| vg[a][a]).sum::<f64>() / nf;
         let mut vgd = [[0.0; D]; D];
         for _ in 0..if b.prescribed.is_some() { 1 } else { 4 } {
@@ -604,7 +606,7 @@ impl<const D: usize> MdSimulation<D> {
                 self.cell_ou(b, t0, 0.5 * h);
             }
             if !self.constraints.is_empty() {
-                let vg: Mat<D> = b.velocity_gradient();
+                let vg: Mat<D> = self.total_gradient(b);
                 self.rattle_velocities(Some(&vg));
             }
         }
@@ -631,8 +633,12 @@ impl<const D: usize> MdSimulation<D> {
         if b.d != D {
             return Err("flexible barostat built for a different dimension".into());
         }
-        if self.sys.bx.shear_rate != 0.0 || self.sys.bx.bc.iter().any(|c| *c != super::Boundary::Periodic) {
-            return Err("the flexible-cell barostat needs a fully periodic box without Lees-Edwards shear".into());
+        if self.sys.bx.bc.iter().any(|c| *c != super::Boundary::Periodic) {
+            return Err("the flexible-cell barostat needs a fully periodic box".into());
+        }
+        let shear = self.sys.bx.shear_rate;
+        if shear != 0.0 && (D < 2 || b.mode == CellMode::Full || b.prescribed.is_some() || self.sys.bx.cell.is_some()) {
+            return Err("sliding-brick Lees-Edwards needs an orthorhombic box and the Orthorhombic or Isotropic cell mode (use FlexibleBarostat::shear_flow for a deforming triclinic cell)".into());
         }
         if b.mode == CellMode::Full && self.sys.bx.cell.is_none() {
             let h0 = self.sys.bx.matrix();
@@ -640,6 +646,9 @@ impl<const D: usize> MdSimulation<D> {
         }
         let h = self.dt;
         let nf = self.constrained_dof();
+        if shear != 0.0 {
+            self.shear_profile_shift(-1.0);
+        }
         if !self.constraints.is_empty() && self.constraint_virial.iter().flatten().all(|x| *x == 0.0) {
             self.refresh_constraint_virial_flow(b);
         }
@@ -648,7 +657,7 @@ impl<const D: usize> MdSimulation<D> {
         self.cell_kick(b, 0.5 * h);
         // 2. particle half kick with cell damping
         let damp = |s: &mut Self, b: &FlexibleBarostat, t: f64| {
-            let vg: Mat<D> = b.velocity_gradient();
+            let vg: Mat<D> = s.total_gradient(b);
             let alpha = (0..D).map(|a| vg[a][a]).sum::<f64>() / nf;
             let mut a_mat = vg;
             for a in 0..D {
@@ -667,8 +676,8 @@ impl<const D: usize> MdSimulation<D> {
         damp(self, b, 0.25 * h);
         self.half_kick(h);
         damp(self, b, 0.25 * h);
-        // 3. drift with the cell flow
-        let vg: Mat<D> = b.velocity_gradient();
+        // 3. drift with the cell flow (plus the shear flow of a sliding-brick box)
+        let vg: Mat<D> = self.total_gradient(b);
         let mut hv = vg;
         for r in &mut hv {
             for c in r.iter_mut() {
@@ -684,6 +693,12 @@ impl<const D: usize> MdSimulation<D> {
             for a in 0..D {
                 self.sys.pos[i][a] = p[a] + h * drift[a];
                 self.sys.unwrapped[i][a] = u[a] + h * drift[a];
+            }
+            if shear != 0.0 {
+                // the velocity profile is gamma (y - L_y/2): remove the uniform part of the shear drift
+                let dx = 0.5 * shear * self.sys.bx.len[1] * h;
+                self.sys.pos[i][0] -= dx;
+                self.sys.unwrapped[i][0] -= dx;
             }
         }
         if let Some(cell) = self.sys.bx.cell {
@@ -701,17 +716,22 @@ impl<const D: usize> MdSimulation<D> {
         if b.prescribed.is_some() {
             self.reduce_cell()?;
         }
+        if shear != 0.0 {
+            let lx = self.sys.bx.len[0];
+            let off = self.sys.bx.offset * e[0][0] + shear * self.sys.bx.len[1] * h;
+            self.sys.bx.offset = off - lx * (off / lx).floor();
+        }
         if !self.constraints.is_empty() {
             self.shake(&old, h);
         }
-        self.sys.apply_boundaries(&mut self.rng);
+        self.wrap_peculiar(shear);
         // 4. forces, second half kick
         self.recompute()?;
         damp(self, b, 0.25 * h);
         self.half_kick(h);
         damp(self, b, 0.25 * h);
         if !self.constraints.is_empty() {
-            let vg: Mat<D> = b.velocity_gradient();
+            let vg: Mat<D> = self.total_gradient(b);
             self.rattle_velocities(Some(&vg));
         }
         self.refresh_constraint_virial_flow(b);
@@ -724,7 +744,51 @@ impl<const D: usize> MdSimulation<D> {
                 self.scale_velocities(lam);
             }
         }
+        if shear != 0.0 {
+            self.shear_profile_shift(1.0);
+        }
         self.sys.time += h;
         Ok(())
+    }
+
+    /// Velocity gradient of the cell flow plus the Lees-Edwards shear (`du_x/dy`) of a sliding-brick box.
+    fn total_gradient(
+        &self,
+        b: &FlexibleBarostat,
+    ) -> Mat<D> {
+        let mut g: Mat<D> = b.velocity_gradient();
+        if D >= 2 {
+            g[0][1] += self.sys.bx.shear_rate;
+        }
+        g
+    }
+
+    /// Converts between laboratory velocities of the sliding-brick convention
+    /// `v_x = u_x + gamma (y - L_y/2)` and peculiar velocities `u` (`sign = -1`: lab to peculiar).
+    fn shear_profile_shift(
+        &mut self,
+        sign: f64,
+    ) {
+        let (gamma, ly) = (self.sys.bx.shear_rate, self.sys.bx.len[1]);
+        for i in 0..self.sys.n() {
+            self.sys.vel[i][0] += sign * gamma * (self.sys.pos[i][1] - 0.5 * ly);
+        }
+    }
+
+    /// Applies the periodic wrapping; for a sheared box the velocity jumps of the sliding-brick
+    /// boundary are not applied because the velocities are peculiar (continuous) in the flexible step.
+    fn wrap_peculiar(
+        &mut self,
+        shear: f64,
+    ) {
+        if shear == 0.0 {
+            self.sys.apply_boundaries(&mut self.rng);
+            return;
+        }
+        let vx: Vec<f64> = self.sys.vel.iter().map(|v| v[0]).collect();
+        self.sys.apply_boundaries(&mut self.rng);
+        for (v, x) in self.sys.vel.iter_mut().zip(vx) {
+            v[0] = x;
+        }
     }
 }
