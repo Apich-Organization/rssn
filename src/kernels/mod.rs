@@ -86,6 +86,8 @@ pub mod eigs_ext;
 pub mod hypergeometric;
 /// Double-double real and complex arithmetic.
 pub mod dd;
+/// Smale alpha-theory certificates for homotopy endpoints.
+pub mod homotopy_cert;
 /// Algebraic multigrid for non-symmetric systems (Ruge-Stueben, Petrov-Galerkin aggregation).
 pub mod amg_general;
 /// Multilevel nested dissection (heavy-edge coarsening, FM refinement, vertex-cover separators).

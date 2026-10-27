@@ -227,8 +227,9 @@ fn zeta2_tail(p: usize) -> f64 {
     }
 }
 
-/// Samples the iterated Ito integrals `I_jl` of one step of length `h` for the
-/// increments `dw`, conditionally on `dw`, by the Fourier expansion of the
+/// Samples the iterated Ito integrals `I_jl` of one step of length `h`.
+///
+/// The integrals are drawn conditionally on the increments `dw` by the Fourier expansion of the
 /// Brownian bridge (Kloeden, Platen and Wright) with the Gaussian
 /// approximation of the truncated tail that reproduces its full conditional
 /// covariance (Wiktorsson's improvement): with `xi = dw / sqrt(h)`,
@@ -280,8 +281,9 @@ pub fn sample_noise(rng: &mut Rng, m: usize, steps: usize, h: f64, terms: usize)
     NoiseSample { dws, areas }
 }
 
-/// Merges groups of `group` consecutive steps: the increments add up and the
-/// iterated integrals combine exactly as
+/// Merges groups of `group` consecutive steps.
+///
+/// The increments add up and the iterated integrals combine exactly as
 /// `I_jl = sum_k I_jl^k + sum_{k<k'} dW_j^k dW_l^{k'}`. Used to compare a
 /// coarse scheme with a fine reference on the same Brownian path.
 #[must_use]
@@ -308,8 +310,9 @@ pub fn aggregate_noise(sample: &NoiseSample, group: usize, m: usize) -> NoiseSam
     NoiseSample { dws, areas }
 }
 
-/// Milstein scheme (strong order 1) for **non-commutative** noise: the
-/// correction uses the sampled iterated integrals of `noise` instead of the
+/// Milstein scheme (strong order 1) for **non-commutative** noise.
+///
+/// The correction uses the sampled iterated integrals of `noise` instead of the
 /// symmetric products `(dW_j dW_k - delta_jk h) / 2`. For commutative noise it
 /// is equivalent to [`milstein`] in law.
 ///
