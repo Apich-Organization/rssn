@@ -255,6 +255,19 @@ where
     IterResult { x, residual: res, iterations: it, converged: res.is_finite() && res < 1.0 }
 }
 
+/// Parameters of [`idr_s_with`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct IdrOptions {
+    /// Dimension `s` of the shadow space.
+    pub s: usize,
+    /// Relative residual tolerance.
+    pub tol: f64,
+    /// Maximal number of matrix-vector products.
+    pub max_iter: usize,
+    /// Seed of the pseudo-random shadow vectors.
+    pub seed: u64,
+}
+
 /// IDR(`s`) with right preconditioning.
 ///
 /// The shadow space is `s` fixed pseudo-random orthonormal vectors
@@ -262,21 +275,18 @@ where
 /// and `s + 4` vectors of storage, and approaches the speed of full GMRES
 /// for moderate `s` on nonsymmetric systems. `iterations` counts
 /// matrix-vector products.
-#[allow(clippy::too_many_arguments)] // public solver signature (apply, precond, s, b, x0, tol, max_iter, seed) is kept for API compatibility
-pub fn idr_s<A, M>(
+pub fn idr_s_with<A, M>(
     apply: A,
     precond: M,
-    s: usize,
     b: &[f64],
     x0: Option<&[f64]>,
-    tol: f64,
-    max_iter: usize,
-    seed: u64,
+    opts: &IdrOptions,
 ) -> IterResult
 where
     A: Fn(&[f64], &mut [f64]),
     M: Fn(&[f64], &mut [f64]),
 {
+    let IdrOptions { s, tol, max_iter, seed } = *opts;
     let n = b.len();
     let s = s.clamp(1, n.max(1));
     let bn = nrm(b).max(f64::MIN_POSITIVE);
@@ -385,6 +395,26 @@ where
     }
     let res = nrm(&residual(&apply, b, &x)) / bn;
     IterResult { x, residual: res, iterations: mv, converged: res <= 10.0 * tol.max(1e-15) }
+}
+
+/// [`idr_s_with`] with the options passed as separate arguments.
+#[deprecated(note = "use `idr_s_with` with `IdrOptions`")]
+#[allow(clippy::too_many_arguments)] // legacy signature kept as a thin wrapper
+pub fn idr_s<A, M>(
+    apply: A,
+    precond: M,
+    s: usize,
+    b: &[f64],
+    x0: Option<&[f64]>,
+    tol: f64,
+    max_iter: usize,
+    seed: u64,
+) -> IterResult
+where
+    A: Fn(&[f64], &mut [f64]),
+    M: Fn(&[f64], &mut [f64]),
+{
+    idr_s_with(apply, precond, b, x0, &IdrOptions { s, tol, max_iter, seed })
 }
 
 /// Flexible GMRES(`restart`) with a variable right preconditioner.

@@ -7,6 +7,9 @@
 //! period reduction.
 //!
 //! Elliptic integrals use the *parameter* `m = k^2`.
+//!
+//! Complex parameters and `pFq`, Kummer `M` and Tricomi `U` live in
+//! [`crate::kernels::hypergeometric`].
 
 use std::f64::consts::PI;
 

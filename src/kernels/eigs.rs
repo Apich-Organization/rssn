@@ -16,6 +16,9 @@
 //! * [`arnoldi`]: the plain Arnoldi factorisation `A V = V H + f e_m^T`.
 //!
 //! The operator closure writes `A x` into its second argument.
+//!
+//! See [`crate::kernels::eigs_ext`] for Krylov-Schur on non-symmetric
+//! operators, block Lanczos, Jacobi-Davidson and generalised problems.
 
 use num_complex::Complex64;
 
@@ -171,7 +174,7 @@ pub fn arnoldi<A: Fn(&[f64], &mut [f64])>(
     (v, h, beta)
 }
 
-fn key_of(which: Which, v: (f64, f64)) -> f64 {
+pub(crate) fn key_of(which: Which, v: (f64, f64)) -> f64 {
     // smaller key = more wanted
     match which {
         Which::LargestMagnitude => -v.0.hypot(v.1),

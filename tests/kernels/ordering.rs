@@ -2,6 +2,9 @@
 
 use rssn::kernels::krylov::{Csr, SparseOrdering};
 use rssn::kernels::ordering::{amd_order, cholesky_fill, nested_dissection_order};
+use rssn::kernels::ordering_ml::{
+    hybrid_nested_dissection_order, multilevel_nested_dissection_order, vertex_separator_bisection, NdOptions,
+};
 
 fn grid_adj(nx: usize, ny: usize) -> Vec<Vec<usize>> {
     let mut adj = vec![Vec::new(); nx * ny];
@@ -154,4 +157,97 @@ fn sparse_lu_with_new_orderings() {
         nnz.push(lu.nnz());
     }
     assert!(nnz[1] < nnz[0] && nnz[2] < nnz[0], "{nnz:?}");
+}
+
+fn grid3_adj(n: usize) -> Vec<Vec<usize>> {
+    let idx = |i: usize, j: usize, k: usize| (k * n + j) * n + i;
+    let mut adj = vec![Vec::new(); n * n * n];
+    for k in 0..n {
+        for j in 0..n {
+            for i in 0..n {
+                let v = idx(i, j, k);
+                for (di, dj, dk) in [(1, 0, 0), (0, 1, 0), (0, 0, 1)] {
+                    let (a, b, c) = (i + di, j + dj, k + dk);
+                    if a < n && b < n && c < n {
+                        let u = idx(a, b, c);
+                        adj[v].push(u);
+                        adj[u].push(v);
+                    }
+                }
+            }
+        }
+    }
+    adj
+}
+
+#[test]
+fn multilevel_nd_fill_matches_amd_on_grids() {
+    let adj = grid_adj(150, 150);
+    let n = adj.len();
+    let ml = multilevel_nested_dissection_order(&adj);
+    assert!(is_perm(&ml, n));
+    let f_ml = cholesky_fill(&adj, &ml);
+    let f_amd = cholesky_fill(&adj, &amd_order(&adj));
+    let f_nd = cholesky_fill(&adj, &nested_dissection_order(&adj));
+    eprintln!("2D 150x150: multilevel {f_ml}, amd {f_amd}, level-structure nd {f_nd}");
+    assert!((f_ml as f64) < 1.15 * f_amd as f64, "multilevel {f_ml} vs amd {f_amd}");
+    assert!(f_ml * 2 < f_nd, "multilevel {f_ml} vs level-structure {f_nd}");
+    let f_h = cholesky_fill(&adj, &hybrid_nested_dissection_order(&adj));
+    assert!(f_h <= f_amd);
+    // optimal top-level separator of a k x k mesh
+    let (l, r, sp) = vertex_separator_bisection(&adj, &NdOptions::default());
+    assert_eq!(sp.len(), 150, "separator");
+    assert!(l.len().abs_diff(r.len()) < 1500);
+
+    let adj = grid3_adj(22);
+    let n = adj.len();
+    let ml = multilevel_nested_dissection_order(&adj);
+    assert!(is_perm(&ml, n));
+    let f_ml = cholesky_fill(&adj, &ml);
+    let f_amd = cholesky_fill(&adj, &amd_order(&adj));
+    eprintln!("3D 22^3: multilevel {f_ml}, amd {f_amd}");
+    assert!((f_ml as f64) < 1.15 * f_amd as f64, "multilevel {f_ml} vs amd {f_amd}");
+    let f_h = cholesky_fill(&adj, &hybrid_nested_dissection_order(&adj));
+    assert!(f_h <= f_amd);
+    let (_, _, sp) = vertex_separator_bisection(&adj, &NdOptions::default());
+    assert_eq!(sp.len(), 22 * 22, "separator");
+}
+
+#[test]
+fn multilevel_nd_handles_irregular_graphs() {
+    // disconnected union of a grid, a path and isolated vertices
+    let g = grid_adj(30, 30);
+    let n0 = g.len();
+    let mut adj = g;
+    let path = 200;
+    for i in 0..path {
+        adj.push(Vec::new());
+        let v = n0 + i;
+        if i > 0 {
+            adj[v].push(v - 1);
+            adj[v - 1].push(v);
+        }
+    }
+    for _ in 0..7 {
+        adj.push(Vec::new());
+    }
+    let n = adj.len();
+    let p = multilevel_nested_dissection_order(&adj);
+    assert!(is_perm(&p, n));
+    let f = cholesky_fill(&adj, &p);
+    let f_nat = cholesky_fill(&adj, &(0..n).collect::<Vec<_>>());
+    assert!(f < f_nat);
+    // tiny and empty inputs
+    assert!(multilevel_nested_dissection_order(&[]).is_empty());
+    assert_eq!(multilevel_nested_dissection_order(&[Vec::new()]), vec![0]);
+    // a star (hub must be last)
+    let m = 500;
+    let mut star = vec![Vec::new(); m];
+    for i in 1..m {
+        star[0].push(i);
+        star[i].push(0);
+    }
+    let p = multilevel_nested_dissection_order(&star);
+    assert!(is_perm(&p, m));
+    assert_eq!(cholesky_fill(&star, &p), 2 * m - 1);
 }

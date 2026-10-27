@@ -17,8 +17,12 @@
 //! | linear Schrödinger | yes | yes | yes | periodic | Strang, Yoshida4, imaginary time |
 //! | GPE (cubic nonlinearity) | yes | yes | yes | periodic | same |
 //!
-//! Limitations: periodic boundaries only (use a large box or an absorbing
-//! potential for scattering), no rotating frame, no dipolar interactions.
+//! A **complex absorbing potential** `-i W(x)` ([`SplitStep::evolve_absorbing`]) damps the
+//! wave function near the box edges, so outgoing waves in scattering and
+//! expansion problems are absorbed instead of wrapping around the periodic box.
+//!
+//! Limitations: periodic boundaries (use the absorbing potential for open
+//! problems), no rotating frame, no dipolar interactions.
 
 use crate::sim::spectral::SpectralGrid;
 use num_complex::Complex;
@@ -131,11 +135,15 @@ impl SplitStep {
         self.kinetic_energy(psi) + pot
     }
 
-    fn strang(&self, psi: &mut [Complex<f64>], vv: &[f64], g: f64, dt: f64, imaginary: bool, kin: &[Complex<f64>]) {
+    #[allow(clippy::too_many_arguments)] // state, potential, nonlinearity, step, mode, kinetic factors and the optional absorber
+    fn strang(&self, psi: &mut [Complex<f64>], vv: &[f64], g: f64, dt: f64, imaginary: bool, kin: &[Complex<f64>], damp: Option<&[f64]>) {
         let half = |psi: &mut [Complex<f64>]| {
             for (p, c) in psi.iter_mut().enumerate() {
                 let phase = f64::midpoint(vv[p], g * c.norm_sqr()) * dt;
                 *c *= if imaginary { Complex::new((-phase).exp(), 0.0) } else { Complex::new(0.0, -phase).exp() };
+                if let Some(w) = damp {
+                    *c *= (-0.5 * w[p] * dt).exp();
+                }
             }
         };
         half(psi);
@@ -182,7 +190,43 @@ impl SplitStep {
             let mut tt = t;
             for (w, kin) in weights.iter().zip(&kins) {
                 let vv: Vec<f64> = (0..psi.len()).map(|p| v(tt + 0.5 * w * dt, self.x(p))).collect();
-                self.strang(&mut psi, &vv, g, w * dt, false, kin);
+                self.strang(&mut psi, &vv, g, w * dt, false, kin, None);
+                tt += w * dt;
+            }
+            t += dt;
+        }
+        psi
+    }
+
+    /// Real-time evolution with a complex absorbing potential `-i W(x)` (`W >= 0`): after every
+    /// potential half step the amplitude is multiplied by `exp(-W dt / 2)`.
+    #[allow(clippy::too_many_arguments)] // same controls as `evolve` plus the absorber
+    pub fn evolve_absorbing(
+        &self,
+        psi0: &[Complex<f64>],
+        v: &dyn Fn(f64, [f64; 3]) -> f64,
+        absorber: &dyn Fn([f64; 3]) -> f64,
+        g: f64,
+        t0: f64,
+        dt: f64,
+        steps: usize,
+        order: SplitOrder,
+    ) -> Vec<Complex<f64>> {
+        let mut psi = psi0.to_vec();
+        let c3 = 2.0_f64.cbrt();
+        let (w1, w0) = (1.0 / (2.0 - c3), -c3 / (2.0 - c3));
+        let weights: Vec<f64> = match order {
+            SplitOrder::Strang => vec![1.0],
+            SplitOrder::Yoshida4 => vec![w1, w0, w1],
+        };
+        let kins: Vec<Vec<Complex<f64>>> = weights.iter().map(|w| self.kinetic_factors(w * dt, false)).collect();
+        let damp: Vec<f64> = (0..psi.len()).map(|p| absorber(self.x(p)).max(0.0)).collect();
+        let mut t = t0;
+        for _ in 0..steps {
+            let mut tt = t;
+            for (w, kin) in weights.iter().zip(&kins) {
+                let vv: Vec<f64> = (0..psi.len()).map(|p| v(tt + 0.5 * w * dt, self.x(p))).collect();
+                self.strang(&mut psi, &vv, g, w * dt, false, kin, Some(&damp));
                 tt += w * dt;
             }
             t += dt;
@@ -217,7 +261,7 @@ impl SplitStep {
         let mut steps = 0;
         let mut converged = false;
         while steps < max_steps {
-            self.strang(&mut psi, &vv, g, dt, true, &kin);
+            self.strang(&mut psi, &vv, g, dt, true, &kin, None);
             renorm(&mut psi);
             steps += 1;
             if steps % 10 == 0 {

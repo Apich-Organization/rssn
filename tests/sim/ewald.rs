@@ -270,3 +270,39 @@ fn triclinic_pme_matches_the_direct_sum_and_the_virial_is_the_strain_derivative(
     assert!(pme_reciprocal_cell(&pos, &q, &h, alpha, [4, 4, 4], 6, 1.0).is_err());
     assert!(ewald_reciprocal_cell(&pos, &q, &[[1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 1.0]], alpha, 4, 1.0).is_err());
 }
+
+#[test]
+fn p3m_with_the_optimal_influence_function_beats_pme_on_a_coarse_mesh() {
+    let h = triclinic_cell();
+    let (pos, q) = neutral_charges(&h);
+    let alpha = 0.9;
+    let direct = ewald_reciprocal_cell(&pos, &q, &h, alpha, 12, 1.0).unwrap();
+    let rms = |f: &[[f64; 3]]| -> f64 {
+        let s: f64 = f.iter().zip(&direct.forces).map(|(a, b)| (0..3).map(|c| (a[c] - b[c]).powi(2)).sum::<f64>()).sum();
+        (s / f.len() as f64).sqrt()
+    };
+    for (grid, order) in [([12usize, 12, 12], 4usize), ([16, 16, 16], 4), ([16, 16, 16], 6)] {
+        let pme = pme_reciprocal_cell(&pos, &q, &h, alpha, grid, order, 1.0).unwrap();
+        let p3m = p3m_reciprocal_cell(&pos, &q, &h, alpha, grid, order, 1.0).unwrap();
+        let (e_pme, e_p3m) = ((pme.energy - direct.energy).abs(), (p3m.energy - direct.energy).abs());
+        let (f_pme, f_p3m) = (rms(&pme.forces), rms(&p3m.forces));
+        assert!(f_p3m < f_pme, "grid {grid:?} order {order}: P3M force error {f_p3m} vs PME {f_pme}");
+        assert!(e_p3m < 3.0 * e_pme + 1e-8, "energy errors {e_p3m} vs {e_pme}");
+        assert!(f_p3m < 0.05, "P3M force error {f_p3m}");
+    }
+    // fine mesh: accurate forces, energy and virial
+    let p3m = p3m_reciprocal_cell(&pos, &q, &h, alpha, [32, 32, 32], 6, 1.0).unwrap();
+    assert!((p3m.energy - direct.energy).abs() < 1e-6 * direct.energy.abs().max(1.0));
+    for i in 0..pos.len() {
+        for a in 0..3 {
+            assert!((p3m.forces[i][a] - direct.forces[i][a]).abs() < 1e-3, "{} vs {}", p3m.forces[i][a], direct.forces[i][a]);
+        }
+    }
+    for a in 0..3 {
+        for b in 0..3 {
+            assert!((p3m.virial[a][b] - direct.virial[a][b]).abs() < 1e-3 * (1.0 + direct.virial[a][b].abs()));
+        }
+    }
+    assert!(p3m_reciprocal_cell(&pos, &q, &h, alpha, [4, 4, 4], 6, 1.0).is_err());
+    assert!(p3m_reciprocal_cell(&pos, &q, &h, alpha, [16, 16, 16], 5, 1.0).is_err());
+}

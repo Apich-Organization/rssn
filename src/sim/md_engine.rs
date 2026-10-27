@@ -24,9 +24,10 @@
 //!
 //! Limitations: the legacy isotropic [`Barostat::Mtk`] is NPH-type and excludes thermostats
 //! and constraints (use [`FlexibleBarostat`] with [`CellMode::Isotropic`] for those
-//! combinations); the flexible cell needs a fully periodic box and does not combine with the
-//! sliding-brick Lees-Edwards boundary (use the SLLOD deforming cell instead) or with Berendsen
-//! barostat coupling; the Langevin piston is available for the particle thermostat
+//! combinations); the flexible cell needs a fully periodic box; it combines with the sliding-brick
+//! Lees-Edwards boundary for the Orthorhombic and Isotropic cell modes only (the dynamics then runs on
+//! peculiar velocities, i.e. SLLOD with a sliding-brick box; use [`FlexibleBarostat::shear_flow`] for the
+//! deforming triclinic cell) and does not combine with Berendsen barostat coupling; the Langevin piston is available for the particle thermostat
 //! [`Thermostat::Langevin`] only (Nose-Hoover chains thermostat the cell through
 //! [`FlexibleBarostat::with_chain`]); the deforming SLLOD cell supports a constant velocity
 //! gradient with lower-triangular lattice reduction (flow along axis 0, gradient along axis 1);

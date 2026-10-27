@@ -417,38 +417,49 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
 // The symbolic solver
 // ----------------------------------------------------------------------
 
-/// The value of `node` at `x = value` (`None` when other symbols remain).
-fn at(
+/// The value of `node` with the space variables set to `point`.
+fn at_point(
     cx: &Cx<'_>,
     node: NodeId,
-    x: NodeId,
-    value: f64,
+    symbols: &[crate::graph::SymbolId],
+    point: &[f64],
 ) -> Option<f64> {
-    let symbol = cx.graph.symbol_of(x)?;
     let mut env = Env::numeric(0.0);
-    env.bind(symbol, value);
+    for (&symbol, &value) in symbols.iter().zip(point) {
+        env.bind(symbol, value);
+    }
     cx.graph.eval(node, &env).filter(|v| v.is_finite())
 }
 
-/// Separation of variables for `a(x) u_xx + b(x) u_x + c(x) u` with general
-/// smooth coefficients on an interval, by the numeric Sturm–Liouville
-/// operators.
+/// One axis of a (separable) problem: its interval, numbers and the
+/// coefficient nodes of `a u_xx + b u_x`.
+struct AxisData {
+    var: NodeId,
+    start: NodeId,
+    stop: NodeId,
+    ends: [NodeId; 4],
+    bounds: (f64, f64),
+    a: NodeId,
+    b: NodeId,
+}
+
+/// Separation of variables for `Σ_j [a_j(x_j) u_jj + b_j(x_j) u_j] + c(x) u`
+/// with general smooth coefficients on boxes (one to three space variables,
+/// `c` a sum of functions of single variables plus a constant), by the
+/// numeric Sturm–Liouville operators of each axis.
 #[allow(clippy::too_many_lines)]
 pub(super) fn solve(
     cx: &mut Cx<'_>,
     p: &Problem,
     conditions: &Conditions,
 ) -> Option<NodeId> {
-    if p.nonlinear || p.dimension() != 2 {
+    if p.nonlinear {
         return None;
     }
+    let n = p.dimension();
     let time_index = evolution_time(cx, p)?;
-    let j = 1 - time_index;
-    let x = p.vars[j];
-    let n = 2;
-    let (ca, cb) = (p.coefficient(cx.graph, &p.unit(j, 2)), p.coefficient(cx.graph, &p.unit(j, 1)));
-    let cc = p.coefficient(cx.graph, &vec![0; n]);
-    if cx.is_zero(ca) {
+    let space: Vec<usize> = (0..n).filter(|&j| j != time_index).collect();
+    if space.is_empty() || space.len() > 3 {
         return None;
     }
     let (a1, a2) = (p.coefficient(cx.graph, &p.unit(time_index, 1)), p.coefficient(cx.graph, &p.unit(time_index, 2)));
@@ -456,70 +467,138 @@ pub(super) fn solve(
         return None;
     }
     for (index, c) in &p.linear {
-        let known = *index == p.unit(j, 1) || *index == p.unit(j, 2) || *index == vec![0; n] || *index == p.unit(time_index, 1) || *index == p.unit(time_index, 2);
+        let known = *index == vec![0; n]
+            || *index == p.unit(time_index, 1)
+            || *index == p.unit(time_index, 2)
+            || space.iter().any(|&j| *index == p.unit(j, 1) || *index == p.unit(j, 2));
         if !known && !is_zero_number(cx.graph, *c) {
             return None;
         }
     }
-    // The interval, with homogeneous conditions at both ends.
-    let iv = interval(cx, p, conditions, j)?;
-    if iv.periodic || !cx.is_zero(iv.left.value) || !cx.is_zero(iv.right.value) {
-        return None;
-    }
     let value = |cx: &Cx<'_>, node: NodeId| super::modes::exact_value(cx, node);
-    let (start, stop) = (value(cx, iv.start)?, value(cx, iv.stop)?);
-    let ends = [value(cx, iv.left.p)?, value(cx, iv.left.q)?, value(cx, iv.right.p)?, value(cx, iv.right.q)?];
-    if stop <= start || start.is_nan() || ends.iter().any(|v| !v.is_finite()) {
-        return None;
-    }
-    // Samples of the coefficients at the Chebyshev points.
-    let (mid, half) = (f64::midpoint(start, stop), 0.5 * (stop - start));
-    let xs: Vec<f64> = (0..=SAMPLES).map(|k| mid + half * (PI * k as f64 / SAMPLES as f64).cos()).collect();
-    let kappa = if at(cx, ca, x, mid)? > 0.0 { 1.0 } else { -1.0 };
-    let a_hat = |cx: &Cx<'_>, x_value: f64| at(cx, ca, x, x_value).map(|v| kappa * v);
-    let b_hat = |cx: &Cx<'_>, x_value: f64| at(cx, cb, x, x_value).map(|v| kappa * v);
-    let c_hat = |cx: &Cx<'_>, x_value: f64| at(cx, cc, x, x_value).map(|v| kappa * v);
-    let mut ps = Vec::new();
-    let mut qs = Vec::new();
-    let mut ws = Vec::new();
-    for &xv in &xs {
-        let a_value = a_hat(cx, xv)?;
-        if a_value <= 0.0 {
+    let cc = p.coefficient(cx.graph, &vec![0; n]);
+    let mut data = Vec::new();
+    for &j in &space {
+        let ca = p.coefficient(cx.graph, &p.unit(j, 2));
+        let cb = p.coefficient(cx.graph, &p.unit(j, 1));
+        if cx.is_zero(ca) {
             return None;
         }
-        // ∫_{x₀}^{x} b̂/â by Simpson's rule.
-        let steps = 400_usize;
-        let h = (xv - start) / steps as f64;
-        let mut integral = 0.0;
-        if h > 0.0 {
-            for k in 0..=steps {
-                let s = start + h * k as f64;
-                let g = b_hat(cx, s)? / a_hat(cx, s)?;
-                let weight = if k == 0 || k == steps { 1.0 } else if k % 2 == 1 { 4.0 } else { 2.0 };
-                integral += weight * g;
+        // The coefficients depend on x_j alone.
+        for &k in &space {
+            if k == j {
+                continue;
             }
-            integral *= h / 3.0;
+            let other = cx.graph.symbol_of(p.vars[k])?;
+            if cx.graph.depends_on(cx.graph.find(ca), other) || cx.graph.depends_on(cx.graph.find(cb), other) {
+                return None;
+            }
         }
-        let p_value = integral.exp();
-        ps.push(p_value);
-        ws.push(p_value / a_value);
-        qs.push(-p_value * c_hat(cx, xv)? / a_value);
+        let iv = interval(cx, p, conditions, j)?;
+        if iv.periodic || !cx.is_zero(iv.left.value) || !cx.is_zero(iv.right.value) {
+            return None;
+        }
+        let (start, stop) = (value(cx, iv.start)?, value(cx, iv.stop)?);
+        let ends = [value(cx, iv.left.p)?, value(cx, iv.left.q)?, value(cx, iv.right.p)?, value(cx, iv.right.q)?];
+        if stop <= start || start.is_nan() || ends.iter().any(|v| !v.is_finite()) {
+            return None;
+        }
+        data.push(AxisData {
+            var: p.vars[j],
+            start: iv.start,
+            stop: iv.stop,
+            ends: [iv.left.p, iv.left.q, iv.right.p, iv.right.q],
+            bounds: (start, stop),
+            a: ca,
+            b: cb,
+        });
+    }
+    let symbols: Vec<crate::graph::SymbolId> = space.iter().map(|&j| cx.graph.symbol_of(p.vars[j])).collect::<Option<_>>()?;
+    let mids: Vec<f64> = data.iter().map(|d| f64::midpoint(d.bounds.0, d.bounds.1)).collect();
+    let dimension = space.len();
+    // The zero-order term: c = C + Σ_j g_j(x_j) with g_j(mid_j) = 0.
+    let base = at_point(cx, cc, &symbols, &mids)?;
+    let single = dimension == 1;
+    let leftover = if single { 0.0 } else { base };
+    if !single {
+        for trial in 0..3_u32 {
+            let point: Vec<f64> = data.iter().enumerate().map(|(k, d)| d.bounds.0 + (d.bounds.1 - d.bounds.0) * (0.17 + 0.29 * f64::from(trial) + 0.11 * k as f64) % 1.0).collect();
+            let mut predicted = base;
+            for k in 0..dimension {
+                let mut shifted = mids.clone();
+                shifted[k] = point[k];
+                predicted += at_point(cx, cc, &symbols, &shifted)? - base;
+            }
+            let actual = at_point(cx, cc, &symbols, &point)?;
+            if (predicted - actual).abs() > 1e-8 * (1.0 + actual.abs()) {
+                return None;
+            }
+        }
     }
     let number = |cx: &mut Cx<'_>, v: f64| cx.graph.num(Number::from(v));
-    let mut params = vec![iv.start, iv.stop, iv.left.p, iv.left.q, iv.right.p, iv.right.q, cx.graph.int(i64::try_from(SAMPLES).ok()?)];
-    for list in [&ps, &qs, &ws] {
-        for &v in list {
-            params.push(number(cx, v));
+    let mut axes = Vec::new();
+    let mut spatial: Vec<(Vec<u32>, NodeId)> = Vec::new();
+    for (pos, d) in data.iter().enumerate() {
+        let (start, stop) = d.bounds;
+        let (mid, half) = (f64::midpoint(start, stop), 0.5 * (stop - start));
+        let xs: Vec<f64> = (0..=SAMPLES).map(|k| mid + half * (PI * k as f64 / SAMPLES as f64).cos()).collect();
+        let along = |x_value: f64| -> Vec<f64> {
+            let mut point = mids.clone();
+            point[pos] = x_value;
+            point
+        };
+        let kappa = if at_point(cx, d.a, &symbols, &along(mid))? > 0.0 { 1.0 } else { -1.0 };
+        let a_hat = |cx: &Cx<'_>, x_value: f64| at_point(cx, d.a, &symbols, &along(x_value)).map(|v| kappa * v);
+        let b_hat = |cx: &Cx<'_>, x_value: f64| at_point(cx, d.b, &symbols, &along(x_value)).map(|v| kappa * v);
+        let c_hat = |cx: &Cx<'_>, x_value: f64| -> Option<f64> {
+            let full = at_point(cx, cc, &symbols, &along(x_value))?;
+            Some(kappa * if single { full } else { full - base })
+        };
+        let (mut ps, mut qs, mut ws) = (Vec::new(), Vec::new(), Vec::new());
+        for &xv in &xs {
+            let a_value = a_hat(cx, xv)?;
+            if a_value <= 0.0 {
+                return None;
+            }
+            // ∫_{x₀}^{x} b̂/â by Simpson's rule.
+            let steps = 400_usize;
+            let h = (xv - start) / steps as f64;
+            let mut integral = 0.0;
+            if h > 0.0 {
+                for k in 0..=steps {
+                    let s = start + h * k as f64;
+                    let g = b_hat(cx, s)? / a_hat(cx, s)?;
+                    let weight = if k == 0 || k == steps { 1.0 } else if k % 2 == 1 { 4.0 } else { 2.0 };
+                    integral += weight * g;
+                }
+                integral *= h / 3.0;
+            }
+            let p_value = integral.exp();
+            ps.push(p_value);
+            ws.push(p_value / a_value);
+            qs.push(-p_value * c_hat(cx, xv)? / a_value);
         }
+        let mut params = vec![d.start, d.stop, d.ends[0], d.ends[1], d.ends[2], d.ends[3], cx.graph.int(i64::try_from(SAMPLES).ok()?)];
+        for list in [&ps, &qs, &ws] {
+            for &v in list {
+                params.push(number(cx, v));
+            }
+        }
+        let kappa_node = cx.graph.int(if kappa > 0.0 { 1 } else { -1 });
+        let mut halves = vec![0; dimension];
+        halves[pos] = 1;
+        spatial.push((halves, kappa_node));
+        axes.push(Axis { var: d.var, shape: Shape::General { start: d.start, stop: d.stop, params } });
+    }
+    if leftover.abs() > 1e-14 {
+        spatial.push((vec![0; dimension], number(cx, leftover)));
     }
     let order = if is_zero_number(cx.graph, a2) { u32::from(!is_zero_number(cx.graph, a1)) } else { 2 };
     let time = Time { var: p.vars[time_index], order, a2, a1 };
-    let kappa_node = cx.graph.int(if kappa > 0.0 { 1 } else { -1 });
-    let axes = vec![Axis { var: x, shape: Shape::General { start: iv.start, stop: iv.stop, params } }];
     let mut items = time_items(cx, p, conditions, Some(time_index), order, n)?;
     if !p.homogeneous(cx.graph) {
         items.push(Item { role: Role::Source, h: p.source, special: None });
     }
-    let engine = Engine { axes, time: Some(time), symbol: Symbol::Cartesian(vec![(vec![1], kappa_node)]), face: None, exterior: None };
+    let engine = Engine { axes, time: Some(time), symbol: Symbol::Cartesian(spatial), face: None, exterior: None };
     finish(cx, p, conditions, &engine, &items, None, None)
 }

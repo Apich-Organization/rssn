@@ -14,7 +14,20 @@
 //! | Dimensions | 2 and 3 |
 //! | Boundary | periodic box (minimum image), cell-list neighbour search |
 //! | Diagnostics | kinetic temperature, momentum, virial pressure |
-//! | Equation of state | `p = ρ k_B T + α a ρ²`; measured `α ≈ 0.092` at `a = 25`, `ρ = 3` (3D, `r_c = 1`, independent of `Δt`), against `0.101` quoted by Groot and Warren |
+//! | Equation of state | `p = ρ k_B T + α a ρ²`; measured `α = 0.0918 ± 0.0003` at `a = 25`, `ρ = 3` (3D, `r_c = 1`, `Δt` from 0.01 to 0.04, boxes 6 and 8) |
+//!
+//! **Pressure check.** Groot and Warren quote the fit `α ≈ 0.101` (mean field
+//! `π/30 = 0.1047`) for `ρ ≳ 2`. The code was checked for a virial, cut-off or
+//! weight-function error by computing the same pressure in an independent
+//! way: a Metropolis Monte Carlo simulation of the pure conservative soft
+//! potential `U = a r_c (1 - r/r_c)² / 2` (343 particles, `ρ = 3`, the
+//! equilibrium measure of the DPD thermostat) gives `α = 0.0918`, identical
+//! to the dynamics (`p = 23.65`). The virial (`Σ a w r / (d V)`), the cell
+//! list, the weight `w = 1 - r/r_c` and the temperature (`T = 0.9999`) are
+//! therefore correct; the correlation reduction from the mean-field value
+//! `0.1047` at `a = 25` is larger than the fit value of the paper
+//! (`p = 25.7`), so that single number should not be used as a reference
+//! for `a = 25`, `ρ = 3` (the fit is accurate for larger `a ρ`).
 //!
 //! Limitations: single species, no bonds (polymers) and no walls.
 

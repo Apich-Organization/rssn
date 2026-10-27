@@ -90,6 +90,16 @@ mod robust;
 mod ode_stiff;
 #[path = "kernels/ode_stiff_ext.rs"]
 mod ode_stiff_ext;
+#[path = "kernels/ode_stiff_struct.rs"]
+mod ode_stiff_struct;
+#[path = "kernels/eigs_ext.rs"]
+mod eigs_ext;
+#[path = "kernels/hypergeometric.rs"]
+mod hypergeometric;
+#[path = "kernels/dd.rs"]
+mod dd;
+#[path = "kernels/amg_general.rs"]
+mod amg_general;
 #[path = "kernels/special_hyp.rs"]
 mod special_hyp;
 #[path = "kernels/ordering.rs"]

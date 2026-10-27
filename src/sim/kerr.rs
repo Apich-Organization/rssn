@@ -24,6 +24,7 @@
 //! | [`KerrOrbit::state`] | `(t, r, theta, phi)` at any Mino time |
 //! | [`KerrOrbit::frequencies`] | Mino frequencies `Upsilon_r, Upsilon_theta, Upsilon_phi`, `Gamma` and the coordinate-time frequencies |
 //! | [`shadow_boundary_analytic`] | Bardeen's critical curve of the shadow seen by a distant observer |
+//! | [`KerrSchildGeodesic`] | geodesics in ingoing Kerr-Schild Cartesian coordinates (Hamiltonian form, adaptive Dormand-Prince): regular across the horizon and through the poles/axis; checked against the exact Mino orbits, the Schwarzschild free-fall proper time and conserved `E`, `L_z`, `Q` across the horizon |
 //! | [`trace_shadow`] | backward ray tracing of null geodesics (Mino-time integration) to locate the shadow boundary numerically |
 //!
 //! Limitations: the closed form covers bound timelike orbits (`mu = 1`, `E < 1`) without
@@ -696,4 +697,311 @@ pub fn trace_shadow(
         out.push((rho * psi.cos(), rho * psi.sin()));
     }
     Ok(out)
+}
+
+// ---------------------------------------------------------------------------
+// Horizon-penetrating geodesics in ingoing Kerr-Schild coordinates
+// ---------------------------------------------------------------------------
+
+use crate::sim::hermite::{Dual, Scalar};
+
+/// Kerr radius `r(x, y, z)` of the oblate-spheroidal coordinates of the Kerr-Schild form.
+fn ks_radius<T: Scalar>(
+    a2: f64,
+    x: &[T; 3],
+) -> T {
+    let rr = x[0] * x[0] + x[1] * x[1] + x[2] * x[2] - T::from_f64(a2);
+    let disc = rr * rr + T::from_f64(4.0 * a2) * x[2] * x[2];
+    ((rr + disc.sqrt()) * T::from_f64(0.5)).sqrt()
+}
+
+/// Hamiltonian `1/2 g^{mu nu} p_mu p_nu = 1/2 [ -p_t^2 + p^2 - 2 H (-p_t + l . p)^2 ]` of the
+/// ingoing Kerr-Schild metric `g = eta + 2 H l l`, `H = M r^3/(r^4 + a^2 z^2)`.
+fn ks_hamiltonian<T: Scalar>(
+    m: f64,
+    a: f64,
+    x: &[T; 3],
+    p: &[T; 4],
+) -> T {
+    let a2 = a * a;
+    let r = ks_radius(a2, x);
+    let r2a2 = r * r + T::from_f64(a2);
+    let z = x[2];
+    let hh = T::from_f64(m) * r * r * r / (r * r * r * r + T::from_f64(a2) * z * z);
+    let lx = (r * x[0] + T::from_f64(a) * x[1]) / r2a2;
+    let ly = (r * x[1] - T::from_f64(a) * x[0]) / r2a2;
+    let lz = z / r;
+    let w = -p[0] + lx * p[1] + ly * p[2] + lz * p[3];
+    let p2 = p[1] * p[1] + p[2] * p[2] + p[3] * p[3];
+    (-p[0] * p[0] + p2 - T::from_f64(2.0) * hh * w * w) * T::from_f64(0.5)
+}
+
+/// Azimuthal shift `psi(r) = int a/Delta dr` between Boyer-Lindquist and ingoing Kerr azimuth
+/// (`phi~ = phi + psi`), valid outside the horizon.
+fn ks_azimuth_shift(
+    m: f64,
+    a: f64,
+    r: f64,
+) -> f64 {
+    let d = (m * m - a * a).sqrt();
+    if a == 0.0 || d <= 0.0 {
+        return 0.0;
+    }
+    let (rp, rm) = (m + d, m - d);
+    a / (rp - rm) * ((r - rp) / (r - rm)).ln()
+}
+
+/// Phase-space state of a geodesic in ingoing Kerr-Schild Cartesian coordinates `(t, x, y, z)`
+/// with covariant momenta `p_mu`; regular at the horizon, at the poles and on the axis.
+#[derive(Clone, Copy, Debug)]
+pub struct KerrSchildGeodesic {
+    /// Mass.
+    pub m: f64,
+    /// Spin parameter.
+    pub a: f64,
+    /// Coordinates `(t, x, y, z)` (`t` is the ingoing Kerr time).
+    pub x: [f64; 4],
+    /// Covariant momenta `(p_t, p_x, p_y, p_z)`.
+    pub p: [f64; 4],
+    /// Affine parameter.
+    pub tau: f64,
+}
+
+impl KerrSchildGeodesic {
+    /// Kerr radius of the current position.
+    #[must_use]
+    pub fn radius(&self) -> f64 {
+        ks_radius(self.a * self.a, &[self.x[1], self.x[2], self.x[3]])
+    }
+
+    /// Mass-shell value `1/2 g^{mu nu} p_mu p_nu` (equals `-mu^2/2`).
+    #[must_use]
+    pub fn hamiltonian(&self) -> f64 {
+        ks_hamiltonian(self.m, self.a, &[self.x[1], self.x[2], self.x[3]], &self.p)
+    }
+
+    /// Boyer-Lindquist `(r, theta, phi)` of the position (outside the horizon).
+    #[must_use]
+    pub fn boyer_lindquist(&self) -> (f64, f64, f64) {
+        let r = self.radius();
+        let phit = self.x[2].atan2(self.x[1]) - self.a.atan2(r);
+        let phi = phit - ks_azimuth_shift(self.m, self.a, r);
+        (r, (self.x[3] / r).clamp(-1.0, 1.0).acos(), phi)
+    }
+
+    /// Conserved energy `E = -p_t`.
+    #[must_use]
+    pub fn energy(&self) -> f64 {
+        -self.p[0]
+    }
+
+    /// Conserved axial angular momentum `L_z = x p_y - y p_x`.
+    #[must_use]
+    pub fn angular_momentum(&self) -> f64 {
+        self.x[1] * self.p[2] - self.x[2] * self.p[1]
+    }
+
+    fn derivative(
+        &self,
+        y: &[f64; 8],
+    ) -> [f64; 8] {
+        let (m, a) = (self.m, self.a);
+        let x = [y[1], y[2], y[3]];
+        let p = [y[4], y[5], y[6], y[7]];
+        let a2 = a * a;
+        let r = ks_radius(a2, &x);
+        let r2a2 = r * r + a2;
+        let hh = m * r * r * r / (r * r * r * r + a2 * x[2] * x[2]);
+        let l = [(r * x[0] + a * x[1]) / r2a2, (r * x[1] - a * x[0]) / r2a2, x[2] / r];
+        let w = -p[0] + l[0] * p[1] + l[1] * p[2] + l[2] * p[3];
+        let mut d = [0.0; 8];
+        d[0] = -p[0] + 2.0 * hh * w;
+        for i in 0..3 {
+            d[1 + i] = p[1 + i] - 2.0 * hh * l[i] * w;
+        }
+        for c in 0..3 {
+            let xd: [Dual; 3] = std::array::from_fn(|k| Dual { v: x[k], d: if k == c { 1.0 } else { 0.0 } });
+            let pd: [Dual; 4] = std::array::from_fn(|k| Dual { v: p[k], d: 0.0 });
+            d[5 + c] = -ks_hamiltonian(m, a, &xd, &pd).d;
+        }
+        d
+    }
+
+    /// Advances the geodesic by the affine parameter `dtau_total` with an adaptive
+    /// Dormand-Prince 5(4) integrator (relative tolerance `tol`). Returns `false` if the
+    /// radius fell below `r_stop` (the state is left at the last accepted step).
+    pub fn advance(
+        &mut self,
+        dtau_total: f64,
+        tol: f64,
+        r_stop: f64,
+    ) -> bool {
+        let a: [[f64; 6]; 6] = [
+            [1.0 / 5.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [3.0 / 40.0, 9.0 / 40.0, 0.0, 0.0, 0.0, 0.0],
+            [44.0 / 45.0, -56.0 / 15.0, 32.0 / 9.0, 0.0, 0.0, 0.0],
+            [19372.0 / 6561.0, -25360.0 / 2187.0, 64448.0 / 6561.0, -212.0 / 729.0, 0.0, 0.0],
+            [9017.0 / 3168.0, -355.0 / 33.0, 46732.0 / 5247.0, 49.0 / 176.0, -5103.0 / 18656.0, 0.0],
+            [35.0 / 384.0, 0.0, 500.0 / 1113.0, 125.0 / 192.0, -2187.0 / 6784.0, 11.0 / 84.0],
+        ];
+        let b5 = [35.0 / 384.0, 0.0, 500.0 / 1113.0, 125.0 / 192.0, -2187.0 / 6784.0, 11.0 / 84.0, 0.0];
+        let b4 = [5179.0 / 57600.0, 0.0, 7571.0 / 16695.0, 393.0 / 640.0, -92097.0 / 339200.0, 187.0 / 2100.0, 1.0 / 40.0];
+        let mut y: [f64; 8] = [self.x[0], self.x[1], self.x[2], self.x[3], self.p[0], self.p[1], self.p[2], self.p[3]];
+        let mut t = 0.0;
+        let mut h = dtau_total.signum() * 0.01_f64.min(dtau_total.abs());
+        let mut steps = 0usize;
+        while (dtau_total - t) * dtau_total.signum() > 1e-14 * dtau_total.abs() {
+            steps += 1;
+            if steps > 5_000_000 {
+                break;
+            }
+            if (t + h - dtau_total) * dtau_total.signum() > 0.0 {
+                h = dtau_total - t;
+            }
+            let mut k = [[0.0; 8]; 7];
+            k[0] = self.derivative(&y);
+            for s in 1..7 {
+                let mut ys = y;
+                for j in 0..s {
+                    let coef = if s < 6 { a[s - 1][j] } else { b5[j] };
+                    for c in 0..8 {
+                        ys[c] += h * coef * k[j][c];
+                    }
+                }
+                k[s] = self.derivative(&ys);
+            }
+            let mut y5 = y;
+            let mut err = 0.0_f64;
+            for c in 0..8 {
+                let (mut d5, mut d4) = (0.0, 0.0);
+                for j in 0..7 {
+                    d5 += b5[j] * k[j][c];
+                    d4 += b4[j] * k[j][c];
+                }
+                y5[c] += h * d5;
+                let sc = tol * (1.0 + y[c].abs().max(y5[c].abs()));
+                err = err.max((h * (d5 - d4)).abs() / sc);
+            }
+            if err <= 1.0 || h.abs() < 1e-12 {
+                y = y5;
+                t += h;
+                self.tau += h;
+                let rr = ks_radius(self.a * self.a, &[y[1], y[2], y[3]]);
+                if rr < r_stop {
+                    self.x = [y[0], y[1], y[2], y[3]];
+                    self.p = [y[4], y[5], y[6], y[7]];
+                    return false;
+                }
+            }
+            let fac = if err == 0.0 { 5.0 } else { (0.9 * err.powf(-0.2)).clamp(0.2, 5.0) };
+            h *= fac;
+        }
+        self.x = [y[0], y[1], y[2], y[3]];
+        self.p = [y[4], y[5], y[6], y[7]];
+        true
+    }
+
+    /// Starts a geodesic from Boyer-Lindquist data: position `(r, theta, phi)`, constants of
+    /// motion `(E, L, Q)`, mass-shell value `mu2` (1 timelike, 0 null) and the signs of `dr/d tau`
+    /// and `d theta / d tau`.
+    ///
+    /// # Errors
+    /// Fails if the position is inside the horizon, on the axis, or the motion is forbidden there.
+    pub fn from_constants(
+        m: f64,
+        a: f64,
+        (energy, lz, carter): (f64, f64, f64),
+        (r, theta, phi): (f64, f64, f64),
+        mu2: f64,
+        (radial_out, polar_down): (bool, bool),
+    ) -> Result<Self, String> {
+        let delta = r * r - 2.0 * m * r + a * a;
+        let (st, ct) = theta.sin_cos();
+        if delta <= 0.0 || st.abs() < 1e-9 {
+            return Err("start outside the horizon and away from the axis (use Cartesian data otherwise)".into());
+        }
+        let rpot = (energy * (r * r + a * a) - a * lz).powi(2) - delta * (mu2 * r * r + (lz - a * energy).powi(2) + carter);
+        let tpot = carter - ct * ct * (a * a * (mu2 - energy * energy) + lz * lz / (st * st));
+        let scale = (energy * (r * r + a * a)).powi(2).max(1.0);
+        if rpot < -1e-9 * scale || tpot < -1e-9 {
+            return Err("motion is forbidden at the requested position".into());
+        }
+        let pr = (if radial_out { 1.0 } else { -1.0 }) * (if rpot < 1e-13 * scale { 0.0 } else { rpot }).sqrt() / delta;
+        let pth = (if polar_down { 1.0 } else { -1.0 }) * tpot.max(0.0).sqrt();
+        let p_bl = [-energy, pr, pth, lz];
+        // BL -> ingoing KS Cartesian
+        let phit = phi + ks_azimuth_shift(m, a, r);
+        let (sp, cp) = phit.sin_cos();
+        let x = st * (r * cp - a * sp);
+        let y = st * (r * sp + a * cp);
+        let z = r * ct;
+        let jac = [
+            [1.0, 0.0, 0.0, 0.0],
+            [2.0 * m * r / delta, st * cp - y * a / delta, st * sp + x * a / delta, ct],
+            [0.0, ct * (r * cp - a * sp), ct * (r * sp + a * cp), -r * st],
+            [0.0, -y, x, 0.0],
+        ];
+        // p_bl[alpha] = sum_mu jac[alpha][mu] p_ks[mu]
+        let p_ks = solve4_lin(&jac, &p_bl).ok_or("singular coordinate transformation")?;
+        Ok(Self { m, a, x: [0.0, x, y, z], p: p_ks, tau: 0.0 })
+    }
+
+    /// Carter constant `Q = p_theta^2 + cos^2 theta [a^2 (mu^2 - E^2) + L^2/sin^2 theta]` of the
+    /// current state (off the axis).
+    #[must_use]
+    pub fn carter_constant(&self) -> f64 {
+        let (m, a) = (self.m, self.a);
+        let r = self.radius();
+        let (x, y, z) = (self.x[1], self.x[2], self.x[3]);
+        let ct = z / r;
+        let st = (1.0 - ct * ct).max(0.0).sqrt();
+        let delta = r * r - 2.0 * m * r + a * a;
+        // phi~ from x + i y = (r + i a) sin(theta) exp(i phi~)
+        let phit = y.atan2(x) - a.atan2(r);
+        let (sp, cp) = phit.sin_cos();
+        // d x^mu / d theta (BL) is the third row of the Jacobian
+        let jth = [0.0, ct * (r * cp - a * sp), ct * (r * sp + a * cp), -r * st];
+        let pth: f64 = (0..4).map(|k| jth[k] * self.p[k]).sum();
+        let e = self.energy();
+        let l = self.angular_momentum();
+        let mu2 = -2.0 * self.hamiltonian();
+        let _ = delta;
+        pth * pth + ct * ct * (a * a * (mu2 - e * e) + l * l / (st * st))
+    }
+}
+
+/// Solves `j^T x = b`-type system `sum_mu jac[alpha][mu] x[mu] = b[alpha]` by Gaussian elimination.
+fn solve4_lin(
+    jac: &[[f64; 4]; 4],
+    b: &[f64; 4],
+) -> Option<[f64; 4]> {
+    let mut a = *jac;
+    let mut x = *b;
+    for c in 0..4 {
+        let mut piv = c;
+        for r in c + 1..4 {
+            if a[r][c].abs() > a[piv][c].abs() {
+                piv = r;
+            }
+        }
+        if a[piv][c].abs() < 1e-300 {
+            return None;
+        }
+        a.swap(c, piv);
+        x.swap(c, piv);
+        for r in c + 1..4 {
+            let f = a[r][c] / a[c][c];
+            for k in c..4 {
+                a[r][k] -= f * a[c][k];
+            }
+            x[r] -= f * x[c];
+        }
+    }
+    for c in (0..4).rev() {
+        for k in c + 1..4 {
+            x[c] -= a[c][k] * x[k];
+        }
+        x[c] /= a[c][c];
+    }
+    Some(x)
 }

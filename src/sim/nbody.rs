@@ -18,7 +18,7 @@
 //! kernel as the near field, and [`crate::sim::fmm::periodic_fmm3d`] provides the periodic 3-D FMM
 //! (triclinic cells). Hermite integrators with block time steps, 1PN terms and KS binaries are in
 //! [`crate::sim::hermite`]. Limitations: Barnes-Hut and the 2-D FMM are open-boundary only;
-//! the periodic FMM treats the lattice beyond the near images with the unsoftened kernel.
+//! the periodic FMM softens the far lattice consistently (Plummer form factor).
 
 const NONE: u32 = u32::MAX;
 const MAX_DEPTH: usize = 48;
