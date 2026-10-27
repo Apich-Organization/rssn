@@ -45,6 +45,8 @@ use crate::kernels::krylov::gmres;
 use crate::kernels::random::Rng;
 
 type C = Complex64;
+type Schur = (Vec<Vec<C>>, Vec<Vec<C>>);
+type OpFn<'a> = dyn Fn(&[f64], &mut [f64]) + 'a;
 
 fn rdot(a: &[f64], b: &[f64]) -> f64 {
     a.iter().zip(b).map(|(x, y)| x * y).sum()
@@ -107,7 +109,7 @@ fn rot_cols(h: &mut [Vec<C>], k: usize, c: f64, s: C, r1: usize) {
 ///
 /// Returns `None` if the iteration does not converge.
 #[must_use]
-pub fn complex_schur(a: &[Vec<C>]) -> Option<(Vec<Vec<C>>, Vec<Vec<C>>)> {
+pub fn complex_schur(a: &[Vec<C>]) -> Option<Schur> {
     let n = a.len();
     let mut h: Vec<Vec<C>> = a.to_vec();
     let mut q: Vec<Vec<C>> =
@@ -135,13 +137,13 @@ pub fn complex_schur(a: &[Vec<C>]) -> Option<(Vec<Vec<C>>, Vec<Vec<C>>)> {
                 h[k + 1 + i][j] -= 2.0 * x[i] * s;
             }
         }
-        for row in h.iter_mut() {
+        for row in &mut h {
             let s: C = (0..x.len()).map(|i| row[k + 1 + i] * x[i]).sum();
             for i in 0..x.len() {
                 row[k + 1 + i] -= 2.0 * s * x[i].conj();
             }
         }
-        for row in q.iter_mut() {
+        for row in &mut q {
             let s: C = (0..x.len()).map(|i| row[k + 1 + i] * x[i]).sum();
             for i in 0..x.len() {
                 row[k + 1 + i] -= 2.0 * s * x[i].conj();
@@ -179,7 +181,7 @@ pub fn complex_schur(a: &[Vec<C>]) -> Option<(Vec<Vec<C>>, Vec<Vec<C>>)> {
         iter += 1;
         // Wilkinson shift from the trailing 2x2 block
         let (a11, a12, a21, a22) = (h[hi - 1][hi - 1], h[hi - 1][hi], h[hi][hi - 1], h[hi][hi]);
-        let mu = if iter % 10 == 0 {
+        let mu = if iter.is_multiple_of(10) {
             a22 + C::new(h[hi][hi - 1].norm(), 0.0)
         } else {
             let tr_half = (a11 + a22) * 0.5;
@@ -258,7 +260,7 @@ fn apply_complex<A: Fn(&[f64], &mut [f64])>(apply: &A, v: &[C], out: &mut [C], r
     if xi.iter().any(|e| *e != 0.0) {
         apply(&xi, im);
     } else {
-        im.iter_mut().for_each(|e| *e = 0.0);
+        im.fill(0.0);
     }
     for i in 0..n {
         out[i] = C::new(re[i], im[i]);
@@ -318,7 +320,9 @@ pub fn eigs_krylov_schur<A: Fn(&[f64], &mut [f64])>(
     let mut rng = Rng::new(opts.seed);
     let mut v0: Vec<C> = (0..n).map(|_| C::new(rng.normal(), 0.0)).collect();
     let s0 = cnrm(&v0);
-    v0.iter_mut().for_each(|e| *e /= s0);
+    for e in &mut v0 {
+            *e /= s0;
+        }
     let mut v: Vec<Vec<C>> = vec![v0];
     let mut b: Vec<Vec<C>> = vec![vec![zero; m]; m];
     let mut kept = 0usize;
@@ -473,7 +477,7 @@ struct BlockState {
 struct BlockEngine<'a> {
     n: usize,
     op: &'a dyn Fn(&[f64], &mut [f64]),
-    bmul: Option<&'a dyn Fn(&[f64], &mut [f64])>,
+    bmul: Option<&'a OpFn<'a>>,
     block: usize,
 }
 
@@ -523,7 +527,9 @@ impl BlockEngine<'_> {
                 let bw = self.b_apply(&c);
                 let after = rdot(&c, &bw).max(0.0).sqrt();
                 if after > 1e-9 * before.max(1e-300) && after > 1e-14 {
-                    c.iter_mut().for_each(|e| *e /= after);
+                    for e in &mut c {
+            *e /= after;
+        }
                     let bnew: Vec<f64> = bw.iter().map(|e| e / after).collect();
                     let mut a = vec![0.0; self.n];
                     (self.op)(&c, &mut a);
@@ -601,7 +607,7 @@ impl BlockEngine<'_> {
             }
             for i in 0..m {
                 for j in 0..i {
-                    let s = 0.5 * (t.at(i, j) + t.at(j, i));
+                    let s = f64::midpoint(t.at(i, j), t.at(j, i));
                     t.set(i, j, s);
                     t.set(j, i, s);
                 }
@@ -793,9 +799,11 @@ where
     Ok(r)
 }
 
-/// General generalised eigenproblem `A x = lambda B x` (`A` arbitrary real,
-/// `B` real and nonsingular): the `k` eigenvalues closest to `opts.sigma`
-/// by Krylov-Schur on `(A - sigma B)^{-1} B`. Eigenvalues may be complex.
+/// General generalised eigenproblem `A x = lambda B x`.
+///
+/// `A` is an arbitrary real matrix and `B` real and nonsingular: the `k`
+/// eigenvalues closest to `opts.sigma` by Krylov-Schur on
+/// `(A - sigma B)^{-1} B`. Eigenvalues may be complex.
 ///
 /// # Errors
 /// As [`eigs_krylov_schur`].
@@ -882,8 +890,12 @@ fn orthonormalise_pair(v: &mut Vec<Vec<f64>>, w: &mut Vec<Vec<f64>>) {
         }
         let nx = rnrm(&x);
         if nx > 1e-10 {
-            x.iter_mut().for_each(|e| *e /= nx);
-            y.iter_mut().for_each(|e| *e /= nx);
+            for e in &mut x {
+            *e /= nx;
+        }
+            for e in &mut y {
+            *e /= nx;
+        }
             keep_v.push(x);
             keep_w.push(y);
         }
@@ -914,7 +926,7 @@ pub fn eigs_jd_sym<A>(
     k: usize,
     target: f64,
     opts: &JdOptions,
-    precond: Option<&dyn Fn(&[f64], &mut [f64])>,
+    precond: Option<&OpFn<'_>>,
 ) -> Result<EigsResult, EigsError>
 where
     A: Fn(&[f64], &mut [f64]),
@@ -950,7 +962,9 @@ where
     let mut t0 = random_vec(n, &mut rng);
     project(&mut t0, &q);
     let tn = rnrm(&t0);
-    t0.iter_mut().for_each(|e| *e /= tn);
+    for e in &mut t0 {
+            *e /= tn;
+        }
     let mut wt = vec![0.0; n];
     shifted(&t0, &mut wt);
     matvecs += 1;
@@ -987,7 +1001,7 @@ where
                 let mut mm = Mat::zeros(m, m);
                 for j in 0..m {
                     // solve L y = H2[:, j]
-                    let mut y: Vec<f64> = (0..m).map(|i| 0.5 * (h2.at(i, j) + h2.at(j, i))).collect();
+                    let mut y: Vec<f64> = (0..m).map(|i| f64::midpoint(h2.at(i, j), h2.at(j, i))).collect();
                     for i in 0..m {
                         for c in 0..i {
                             y[i] -= l.at(i, c) * y[c];
@@ -1014,7 +1028,7 @@ where
                 }
                 for i in 0..m {
                     for j in 0..i {
-                        let s = 0.5 * (mt.at(i, j) + mt.at(j, i));
+                        let s = f64::midpoint(mt.at(i, j), mt.at(j, i));
                         mt.set(i, j, s);
                         mt.set(j, i, s);
                     }
@@ -1037,7 +1051,7 @@ where
             let mut hs = h2.clone();
             for i in 0..m {
                 for j in 0..i {
-                    let s = 0.5 * (hs.at(i, j) + hs.at(j, i));
+                    let s = f64::midpoint(hs.at(i, j), hs.at(j, i));
                     hs.set(i, j, s);
                     hs.set(j, i, s);
                 }
@@ -1059,8 +1073,12 @@ where
             }
         }
         let un = rnrm(&u);
-        u.iter_mut().for_each(|e| *e /= un);
-        wu.iter_mut().for_each(|e| *e /= un);
+        for e in &mut u {
+            *e /= un;
+        }
+        for e in &mut wu {
+            *e /= un;
+        }
         // A u = wu + target u; Rayleigh quotient
         let theta = target + rdot(&u, &wu);
         let r: Vec<f64> = wu.iter().zip(&u).map(|(a, b)| a - (theta - target) * b).collect();
@@ -1111,7 +1129,9 @@ where
                 let mut t = random_vec(n, &mut rng);
                 project(&mut t, &q);
                 let tn = rnrm(&t);
-                t.iter_mut().for_each(|e| *e /= tn);
+                for e in &mut t {
+            *e /= tn;
+        }
                 let mut wt = vec![0.0; n];
                 shifted(&t, &mut wt);
                 matvecs += 1;
@@ -1137,7 +1157,7 @@ where
             project(&mut ay, &qt);
             y.copy_from_slice(&ay);
         };
-        let (kinv_q, small): (Vec<Vec<f64>>, Option<Mat>) = if let Some(pc) = precond {
+        let (kinv_q, small): (Vec<Vec<f64>>, Option<Mat>) = precond.map_or_else(|| (Vec::new(), None), |pc| {
             let kq: Vec<Vec<f64>> = qt
                 .iter()
                 .map(|x| {
@@ -1154,11 +1174,9 @@ where
                 }
             }
             (kq, Some(sm))
-        } else {
-            (Vec::new(), None)
-        };
-        let precond_apply = |x: &[f64], y: &mut [f64]| match (precond, small.as_ref()) {
-            (Some(pc), Some(sm)) => {
+        });
+        let precond_apply = |x: &[f64], y: &mut [f64]| {
+            if let (Some(pc), Some(sm)) = (precond, small.as_ref()) {
                 let mut z = vec![0.0; n];
                 pc(x, &mut z);
                 let rhs: Vec<f64> = qt.iter().map(|p| rdot(p, &z)).collect();
@@ -1170,8 +1188,7 @@ where
                     }
                 }
                 y.copy_from_slice(&z);
-            }
-            _ => {
+            } else {
                 y.copy_from_slice(x);
                 project(y, &qt);
             }
@@ -1192,7 +1209,7 @@ where
             }
         }
         let mut tn = rnrm(&t);
-        if !(tn > 1e-12) || !tn.is_finite() {
+        if tn.is_nan() || tn <= 1e-12 || !tn.is_finite() {
             t = random_vec(n, &mut rng);
             project(&mut t, &q);
             for p in &v {
@@ -1203,7 +1220,9 @@ where
             }
             tn = rnrm(&t);
         }
-        t.iter_mut().for_each(|e| *e /= tn);
+        for e in &mut t {
+            *e /= tn;
+        }
         let mut wt = vec![0.0; n];
         shifted(&t, &mut wt);
         matvecs += 1;

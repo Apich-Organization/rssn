@@ -48,7 +48,7 @@ type C = Complex64;
 const ONE: C = C::new(1.0, 0.0);
 const ZERO: C = C::new(0.0, 0.0);
 
-fn nan() -> C {
+const fn nan() -> C {
     C::new(f64::NAN, f64::NAN)
 }
 
@@ -75,9 +75,11 @@ const LANCZOS: [f64; 9] = [
     1.505_632_735_149_311_6e-7,
 ];
 
-/// Logarithm of the complex gamma function (Lanczos approximation,
-/// relative accuracy about `1e-15`). For `Re z < 1/2` the reflection formula
-/// is used, so the imaginary part is determined only modulo `2 pi`.
+/// Logarithm of the complex gamma function.
+///
+/// Lanczos approximation with relative accuracy about `1e-15`. For
+/// `Re z < 1/2` the reflection formula is used, so the imaginary part is
+/// determined only modulo `2 pi`.
 #[must_use]
 pub fn ln_gamma_c(z: C) -> C {
     if z.re < 0.5 {
@@ -454,8 +456,9 @@ pub fn hyp2f1_cplx(a: C, b: C, c: C, z: C) -> C {
     hyp_pfq(&[a, b], &[c], z)
 }
 
-/// Kummer's confluent hypergeometric function `M(a, b, z) = 1F1(a; b; z)`
-/// for complex arguments. For `Re z < 0` Kummer's transformation
+/// Kummer's confluent hypergeometric function `M(a, b, z) = 1F1(a; b; z)`.
+///
+/// All arguments are complex. For `Re z < 0` Kummer's transformation
 /// `M(a, b, z) = e^z M(b - a, b, -z)` is applied so that the dominant
 /// solution is the one being continued.
 #[must_use]

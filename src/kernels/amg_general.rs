@@ -181,9 +181,7 @@ fn cf_splitting(s: &[Vec<usize>]) -> Vec<Pt> {
                 continue;
             }
             let shares = s[j].iter().any(|k| ci.contains(k));
-            if !shares && !ci.is_empty() {
-                state[j] = Pt::Coarse;
-            } else if !shares && ci.is_empty() {
+            if !shares {
                 state[j] = Pt::Coarse;
             }
         }

@@ -81,7 +81,7 @@ impl Dd {
 
     /// Whether both parts are finite.
     #[must_use]
-    pub fn is_finite(self) -> bool {
+    pub const fn is_finite(self) -> bool {
         self.hi.is_finite() && self.lo.is_finite()
     }
 }

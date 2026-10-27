@@ -56,7 +56,7 @@ struct WGraph {
 }
 
 impl WGraph {
-    fn n(&self) -> usize {
+    const fn n(&self) -> usize {
         self.vw.len()
     }
 
@@ -75,7 +75,7 @@ impl WGraph {
 struct Lcg(u64);
 
 impl Lcg {
-    fn next(&mut self) -> u64 {
+    const fn next(&mut self) -> u64 {
         self.0 = self.0.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
         self.0 >> 33
     }
@@ -180,7 +180,7 @@ fn edge_cut(g: &WGraph, part: &[u8]) -> i64 {
 fn fm_refine(g: &WGraph, part: &mut [u8], passes: usize, max_imbalance: f64) {
     let n = g.n();
     let total: i64 = g.vw.iter().sum();
-    let limit = (0.5 * (1.0 + max_imbalance) * total as f64).ceil() as i64;
+    let limit = (f64::midpoint(1.0, max_imbalance) * total as f64).ceil() as i64;
     let mut pw = [0i64; 2];
     for v in 0..n {
         pw[usize::from(part[v])] += g.vw[v];
@@ -240,7 +240,7 @@ fn fm_refine(g: &WGraph, part: &mut [u8], passes: usize, max_imbalance: f64) {
                 }
             }
             gain[v] = -gv;
-            for d in deferred.drain(..) {
+            for d in std::mem::take(&mut deferred) {
                 if !locked[d.1] && d.0 == gain[d.1] {
                     heap.push(d);
                 }
@@ -439,7 +439,7 @@ fn vertex_separator(g: &WGraph, part: &[u8]) -> Vec<usize> {
 fn refine_separator(g: &WGraph, st: &mut [u8], passes: usize, imbalance: f64) {
     let n = g.n();
     let total: i64 = g.vw.iter().sum();
-    let limit = (0.5 * (1.0 + imbalance) * total as f64).ceil() as i64;
+    let limit = (f64::midpoint(1.0, imbalance) * total as f64).ceil() as i64;
     let mut w = [0i64; 3];
     for v in 0..n {
         w[usize::from(st[v])] += g.vw[v];
@@ -625,7 +625,7 @@ fn order_piece(
     let g = WGraph::from_lists(&lists);
     let part = bisect(&g, rng, o);
     let sep0 = vertex_separator(&g, &part);
-    let mut st = part.clone();
+    let mut st = part;
     for &x in &sep0 {
         st[x] = 2;
     }
@@ -697,9 +697,10 @@ pub fn vertex_separator_bisection(adj: &[Vec<usize>], opts: &NdOptions) -> (Vec<
     (pick(0), pick(1), pick(2))
 }
 
-/// Best of approximate minimum degree and multilevel nested dissection (two
-/// leaf sizes), judged by the exact symbolic Cholesky fill
-/// ([`cholesky_fill`]); never worse than [`amd_order`] and, on large
+/// Best of approximate minimum degree and multilevel nested dissection.
+///
+/// Two leaf sizes are tried and judged by the exact symbolic Cholesky fill
+/// ([`cholesky_fill`]); the result is never worse than [`amd_order`] and, on large
 /// two- and three-dimensional meshes, usually better.
 #[must_use]
 pub fn hybrid_nested_dissection_order(adj: &[Vec<usize>]) -> Vec<usize> {

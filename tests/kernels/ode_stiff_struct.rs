@@ -246,16 +246,15 @@ fn radau_pendulum_index3() {
     // index-aware error control takes far fewer rejected steps than treating
     // all variables as index 1
     let plain = RadauOptions { mass: Some(&m), ..RadauOptions::default() };
-    match radau_with(&f, 0.0, 1.0, &y0, &opts, &plain) {
-        Ok(s) => assert!(
+    if let Ok(s) = radau_with(&f, 0.0, 1.0, &y0, &opts, &plain) {
+        assert!(
             s.rejected > sol.rejected || s.t.len() > sol.t.len(),
             "aware: {} steps/{} rej; plain: {} steps/{} rej",
             sol.t.len(),
             sol.rejected,
             s.t.len(),
             s.rejected
-        ),
-        Err(_) => {}
+        );
     }
 }
 

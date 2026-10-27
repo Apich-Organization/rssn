@@ -20,7 +20,7 @@ fn close(got: C, want: C, tol: f64, what: &str) {
 
 #[test]
 fn complex_gamma() {
-    close(gamma_c(c(1.0, 1.0)), c(0.498_015_668_118_356_0, -0.154_949_828_301_810_6), 1e-13, "Gamma(1+i)");
+    close(gamma_c(c(1.0, 1.0)), c(0.498_015_668_118_356, -0.154_949_828_301_810_6), 1e-13, "Gamma(1+i)");
     for y in [0.3, 1.7, 4.0] {
         let g = gamma_c(c(0.5, y));
         let want = std::f64::consts::PI / (std::f64::consts::PI * y).cosh();

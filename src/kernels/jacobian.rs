@@ -498,9 +498,10 @@ impl<'a> JacobianProvider<'a> {
         if let Some(sj) = self.sparse {
             return Jac::Sparse(sj(t, y));
         }
-        match (&self.pattern, &self.colors) {
-            (Some(pat), Some(col)) => {
-                if let Some(dj) = self.dense {
+        if let (Some(pat), Some(col)) = (&self.pattern, &self.colors) {
+            self.dense.map_or_else(
+                || Jac::Sparse(fd_jacobian_colored(f, t, y, f0, pat, col, nfev)),
+                |dj| {
                     let m = dj(t, y);
                     let mut c = pat.clone();
                     for i in 0..c.rows {
@@ -509,17 +510,13 @@ impl<'a> JacobianProvider<'a> {
                         }
                     }
                     Jac::Sparse(c)
-                } else {
-                    Jac::Sparse(fd_jacobian_colored(f, t, y, f0, pat, col, nfev))
-                }
-            }
-            _ => {
-                if let Some(dj) = self.dense {
-                    return Jac::Dense(dj(t, y));
-                }
-                *nfev += y.len();
-                Jac::Dense(fd_jacobian_dense(f, t, y, f0))
-            }
+                },
+            )
+        } else if let Some(dj) = self.dense {
+            Jac::Dense(dj(t, y))
+        } else {
+            *nfev += y.len();
+            Jac::Dense(fd_jacobian_dense(f, t, y, f0))
         }
     }
 }

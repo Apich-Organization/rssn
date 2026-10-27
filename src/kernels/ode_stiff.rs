@@ -306,8 +306,9 @@ impl Default for RadauConfig<'_> {
     }
 }
 
-/// Block sizes of the higher-index variables of a Hessenberg DAE
-/// `M y' = f(t, y)`. The variables are ordered by index: first the index-1
+/// Block sizes of the higher-index variables of a Hessenberg DAE.
+///
+/// The DAE is `M y' = f(t, y)`. The variables are ordered by index: first the index-1
 /// (differential and index-1 algebraic) variables, then `n2` index-2 variables
 /// and finally `n3` index-3 variables (the last `n3` components of `y`).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
