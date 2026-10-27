@@ -1137,7 +1137,7 @@ fn second_order_and_derivative_coupled_jordan_systems() {
     let (x, t) = (0.4_f64, 0.9_f64);
     let g = |z: f64| (-z * z).exp();
     let dg = |z: f64| -2.0 * z * (-z * z).exp();
-    close(numeric(&b, x, t), 0.5 * (g(x + t) + g(x - t)), 1e-8, &s);
+    close(numeric(&b, x, t), f64::midpoint(g(x + t), g(x - t)), 1e-8, &s);
     close(numeric(&a, x, t), t * (dg(x + t) - dg(x - t)) / 4.0, 1e-8, &s);
     // A derivative coupling on a bounded interval: u_t = u_xx + v_x, v_t = v_xx, Dirichlet ends, v(x, 0) = sin 2x.
     let s = any("pdsolve(list(diff(u(x, t), t) = diff(diff(u(x, t), x), x) + diff(v(x, t), x), diff(v(x, t), t) = diff(diff(v(x, t), x), x)), list(u(x, t), v(x, t)), list(u(x, 0) = 0, v(x, 0) = sin(2*x), u(0, t) = 0, u(pi, t) = 0, v(0, t) = 0, v(pi, t) = 0))");

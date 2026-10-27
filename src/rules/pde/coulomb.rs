@@ -50,7 +50,7 @@ fn factorial(n: usize) -> f64 {
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::float_cmp)]
 fn whole(v: f64) -> Option<usize> {
-    (v >= 0.0 && v <= 1e4 && v.fract() == 0.0).then_some(v as usize)
+    ((0.0..=1e4).contains(&v) && v.fract() == 0.0).then_some(v as usize)
 }
 
 /// Generalised Laguerre polynomial `L_k^{α}(ρ)` by the three-term recurrence.
@@ -278,7 +278,7 @@ pub(super) fn solve(
     let f_of = |cx: &Cx<'_>, r: f64| -> Option<f64> { Some(r * r * g(cx, r)?) };
     let (f1, f2, f3) = (f_of(cx, 1.0)?, f_of(cx, 2.0)?, f_of(cx, 3.0)?);
     // F(r) = e0 r² + β r + γ0.
-    let e0 = (f3 - 2.0 * f2 + f1) / 2.0;
+    let e0 = f64::midpoint(f3 - 2.0 * f2, f1);
     let beta = f2 - f1 - 3.0 * e0;
     let gamma0 = f1 - e0 - beta;
     for r in [0.7, 5.3] {
@@ -287,7 +287,7 @@ pub(super) fn solve(
             return None;
         }
     }
-    let l_real = (-1.0 + (1.0 - 4.0 * gamma0).sqrt()) / 2.0;
+    let l_real = f64::midpoint(-1.0, (1.0 - 4.0 * gamma0).sqrt());
     let l = whole((l_real + 1e-9).floor()).filter(|&l| (l_real - l as f64).abs() < 1e-9)?;
     let z = beta / 2.0;
     if z <= 0.0 {

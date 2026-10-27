@@ -106,35 +106,47 @@
 //! | `pde_kdv_reflectionless(N, κ)` | line | 1 | `KdV` with the datum `-N(N+1)κ² sech²(κx)` (`N ≤ 4`): eigenvalues `nκ`, Pöschl–Teller norming constants in the determinant formula |
 //! | `pde_darboux_kdv(u, ψ)` | line | 1 | one Darboux step `ũ = u - 2 ∂²_x ln ψ` of a `KdV` solution with a Lax eigenfunction |
 //! | sech ansatz | line | 1 | `Σ a_j sech^j(μ(x - ct))` (focusing mKdV, …) in the same solver as the tanh method, tanh degrees up to 5, sech up to 4 |
+//! | `a₂ u_tt + a₁ u_t + a₀ u + b u_xx = 0`, boundary signal `u(0, t) = g(t)` or `u_x(0, t) = g(t)`, quiet start | half-line | 1 | Laplace transform in `t`: `e^{-x√(s²+m²)/c}` inverted by the shift theorem and the Bessel kernels (`J₁`, `I₁`, `J₀`, `I₀`) as a retarded integral over `g` (wave, Klein–Gordon, telegraph) |
+//! | `pde_poisson_integral(g, R, d)` | disk, ball | 2, 3 | Poisson integrals of arbitrary boundary data `g(phi)` / `g(theta, phi)` (nested `defint`s) |
+//! | `pde_greens_ball(R, d)` | disk, ball and their exteriors | 2, 3 | Dirichlet Green's function by Kelvin images, `ln(ρ²/|x-s|²)/4π`, `1/(4π|x-s|) - 1/(4πρ)` |
+//! | `a u_t = b [u_rr + (e₀ + 2Z/r - ℓ(ℓ+1)/r²) u]` (also `u_tt`) | half-line, bound states | 1 | Coulomb/Whittaker eigenfunctions `r^{ℓ+1} e^{-Zr/n} L_{n-ℓ-1}^{2ℓ+1}(2Zr/n)`, `E_n = -Z²/n²` (`coulomb_eigen`, `coulomb_mode`); data are projected on the bound states and refused unless the projection reproduces them |
+//! | `spheroidal_eigen(m, n, γ)`, `spheroidal_mode(m, n, γ, x)` | `[-1, 1]` | 1 | prolate (`γ > 0`) and oblate (`γ < 0`) angular functions in the orthonormal associated Legendre basis |
+//! | Jordan systems, second order in time; bounded domains with derivative couplings, non-homogeneous boundary data | any domain of the scalar solvers | 1, 2, 3 | scalar solves with shifted coefficients `λ_α + ε_α`, `w_a = Σ_j [exp(Σ ν_α ∂_{ε_α})]_j S_{a+j}` at `ε = 0` (derivatives under `defint`/`sum`) |
+//! | heat / wave outside a ball without axial symmetry | exterior of a ball | 3 | Weber transforms per real spherical harmonic `P_l^m cos/sin mφ` (`l ≤ 5`) |
+//! | `pde_kdv_scattering(u0(x), x, t)` | line | 1 | numeric Gelfand–Levitan–Marchenko: Jost solutions, bound states, reflection coefficient, Nyström solution of the Marchenko equation (any decaying `u0`, `abs(t)` moderate) |
+//! | `pde_hodograph(λ(r, s), μ(r, s))` | `r_t + λ r_x = 0`, `s_t + μ s_x = 0` | 1 | the linear hodograph equation `(λ-μ) t_rs + λ_r t_s - μ_s t_r = 0` |
 //!
 //! Limitations (what is still not covered):
 //!
-//! * Systems: second-order Jordan systems; bounded domains with derivative
-//!   couplings or non-homogeneous boundary values for Jordan blocks (only
-//!   derivative-free couplings and zero boundary values are solved).
-//! * Exterior domains: three-dimensional exterior problems without axial
-//!   symmetry; exterior waves in 3D with angular dependence beyond the
-//!   Laplace/Helmholtz cases.
+//! * Systems: the Jordan solver needs scalar solutions that can be
+//!   differentiated in the shifted coefficients (closed forms, `defint` and
+//!   `sum` bodies); other cases are refused.
+//! * Exterior domains: non-axisymmetric problems are restricted to balls
+//!   (`l <= 5`) with homogeneous data on the sphere and no sources.
 //! * Numeric modal route: disks and balls only (cylinders with non-polynomial
 //!   data stay as `defint`s of numeric integrands).
 //! * Sturm-Liouville: smooth regular coefficients (numeric operators),
 //!   polynomial families, Legendre, Euler-Cauchy, Bessel, periodic Hill
-//!   problems and separable products. Not covered: Coulomb/Whittaker
-//!   singular endpoints, spheroidal problems, continuous spectra and
-//!   Weyl-Titchmarsh measures in general (only the Hankel instance), zero
-//!   order terms that are not a sum of single-variable functions.
+//!   problems, separable products and Coulomb bound states. Not covered:
+//!   the Coulomb continuum (data outside the bound-state span), spheroidal
+//!   PDE routing (the angular operators are provided), continuous spectra
+//!   and Weyl-Titchmarsh measures in general (only the Hankel and Weber
+//!   instances), zero order terms that are not a sum of single-variable
+//!   functions.
 //! * Transform methods: Fourier (with sources) is general; Hankel only for
-//!   radial whole-space evolution and Weber on the exterior disk; no
-//!   Laplace-in-time fallback. Table inversion of the Fourier solution
-//!   succeeds only when `inverse_fourier` closes the product.
-//! * Green's functions: no boundary data (Poisson kernels), no exterior or
-//!   curvilinear domains.
+//!   radial whole-space evolution and Weber on the exterior disk; the Laplace
+//!   route covers boundary signals on half-lines for hyperbolic equations
+//!   with a quiet start. Table inversion of the Fourier solution succeeds
+//!   only when `inverse_fourier` closes the product.
+//! * Green's functions: Dirichlet only on disks, balls and exteriors; no
+//!   Neumann/Robin or curvilinear boxes.
 //! * Nonlinear equations: Hopf-Cole for constant-coefficient Burgers; Riemann
 //!   problems for a single step; the soliton operators cover `KdV`
 //!   (`N <= 4`), sine-Gordon (`N <= 3`) and bright NLS; the tanh/sech
-//!   ansatz needs a travelling wave; Darboux is a single `KdV` step, inverse
-//!   scattering covers reflectionless data only. Not covered: shock
-//!   interactions, hodograph transformations, general GLM scattering data.
+//!   ansatz needs a travelling wave; Darboux is a single `KdV` step; the
+//!   GLM route is numeric point evaluation for `KdV`; the hodograph
+//!   operator returns the linear equation without solving it. Not covered:
+//!   shock interactions, symbolic solutions by hodograph.
 //! * Annuli: the Neumann constant is treated separately; modes with a
 //!   negative eigenvalue are found by a numeric scan (at most four); a
 //!   symbolic angular order that could hide a zero or negative mode is

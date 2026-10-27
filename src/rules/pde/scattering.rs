@@ -1,4 +1,4 @@
-//! Numeric inverse scattering for the KdV equation from general initial data.
+//! Numeric inverse scattering for the `KdV` equation from general initial data.
 //!
 //! `pde_kdv_scattering(u0(x), x, t)` evaluates the solution of
 //! `u_t - 6 u u_x + u_xxx = 0`, `u(x, 0) = u0(x)`, at the point `(x, t)` by the
@@ -9,8 +9,8 @@
 //!    and the reflection coefficient `R(k) = -conj(B)/A`;
 //! 2. the bound states `κ_n` are the roots of the growing coefficient of
 //!    `f(x, iκ)`, with norming constants `c_n² = 1/∫ f(x, iκ_n)² dx`;
-//! 3. the Marchenko kernel `F(s, t) = Σ c_n² e^{8 κ_n³ t - κ_n s}
-//!    + (1/π) ∫_0^∞ Re[R(k) e^{i(ks + 8k³t)}] dk` enters the integral
+//! 3. the Marchenko kernel `F(s, t)` is the sum of `c_n² e^{8 κ_n³ t - κ_n s}`
+//!    and `(1/π) ∫_0^∞ Re[R(k) e^{i(ks + 8k³t)}] dk`; it enters the integral
 //!    equation `K(x, y) + F(x + y) + ∫_x^∞ K(x, z) F(z + y) dz = 0`, solved
 //!    by Gauss–Legendre Nyström collocation, and `u = -2 d/dx K(x, x)`.
 //!
@@ -179,7 +179,7 @@ fn solve(
     Some(x)
 }
 
-/// The numeric solution `u(x, t)` of KdV for the initial datum `u0`.
+/// The numeric solution `u(x, t)` of `KdV` for the initial datum `u0`.
 pub(super) fn kdv_value(
     u0: &dyn Fn(f64) -> Option<f64>,
     x: f64,
