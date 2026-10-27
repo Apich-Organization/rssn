@@ -98,6 +98,8 @@ mod eigs_ext;
 mod hypergeometric;
 #[path = "kernels/dd.rs"]
 mod dd;
+#[path = "kernels/homotopy_cert.rs"]
+mod homotopy_cert;
 #[path = "kernels/amg_general.rs"]
 mod amg_general;
 #[path = "kernels/special_hyp.rs"]

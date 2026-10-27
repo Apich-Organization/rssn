@@ -29,7 +29,10 @@
 //!   and Newton-polished in double-double arithmetic ([`crate::kernels::dd`],
 //!   about 31 digits), which resolves tight clusters of roots whose spacing
 //!   makes the `f64` Jacobian numerically singular. The extra digits of the
-//!   endpoints are returned in [`PathEnd::x_lo`].
+//!   endpoints are returned in [`PathEnd::x_lo`];
+//! * **certification**: [`crate::kernels::homotopy_cert`] applies Smale's
+//!   alpha-theory to the endpoints (approximate-zero certificates, disjoint
+//!   zero balls, completeness against the Bezout number).
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
