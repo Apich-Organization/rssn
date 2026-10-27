@@ -96,6 +96,8 @@ mod ode_stiff_struct;
 mod eigs_ext;
 #[path = "kernels/hypergeometric.rs"]
 mod hypergeometric;
+#[path = "kernels/amg_general.rs"]
+mod amg_general;
 #[path = "kernels/special_hyp.rs"]
 mod special_hyp;
 #[path = "kernels/ordering.rs"]
