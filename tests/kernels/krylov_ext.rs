@@ -2,7 +2,7 @@
 
 use rssn::kernels::eigs::{EigsOptions, Which, arnoldi, eigs, eigs_shift_invert, eigs_sym, eigs_sym_shift_invert};
 use rssn::kernels::krylov::{Csr, SparseOrdering, gmres, identity_precond};
-use rssn::kernels::krylov_ext::{bicgstab_l, fgmres, idr_s, minres};
+use rssn::kernels::krylov_ext::{IdrOptions, bicgstab_l, fgmres, idr_s_with, minres};
 
 fn laplace2d(nx: usize, shift: f64) -> Csr {
     let n = nx * nx;
@@ -106,14 +106,14 @@ fn idr_s_variants() {
     let g = gmres(|x, y| a.matvec(x, y), identity_precond, &b, None, 200, 1e-10, 2000);
     assert!(g.converged);
     for s in [1usize, 2, 4, 8] {
-        let r = idr_s(|x, y| a.matvec(x, y), identity_precond, s, &b, None, 1e-10, 3000, 7);
+        let r = idr_s_with(|x, y| a.matvec(x, y), identity_precond, &b, None, &IdrOptions { s, tol: 1e-10, max_iter: 3000, seed: 7 });
         assert!(true_res(&a, &r.x, &b) < 1e-8, "s={s}: {}", true_res(&a, &r.x, &b));
         if s >= 4 {
             assert!(r.iterations < 3 * g.iterations + 50, "s={s}: {} vs gmres {}", r.iterations, g.iterations);
         }
     }
     let ilu = a.ilu0().unwrap();
-    let r = idr_s(|x, y| a.matvec(x, y), |r, z| ilu.apply(r, z), 4, &b, None, 1e-12, 500, 3);
+    let r = idr_s_with(|x, y| a.matvec(x, y), |r, z| ilu.apply(r, z), &b, None, &IdrOptions { s: 4, tol: 1e-12, max_iter: 500, seed: 3 });
     assert!(true_res(&a, &r.x, &b) < 1e-10);
 }
 

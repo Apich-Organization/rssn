@@ -1,7 +1,7 @@
 //! Tests for the SDE integrators.
 
 use rssn::kernels::random::Rng;
-use rssn::kernels::sde::{brownian_increments, euler_maruyama, heun_stratonovich, milstein, sde_adaptive, srk_platen};
+use rssn::kernels::sde::{brownian_increments, euler_maruyama, heun_stratonovich, milstein, sde_adaptive_with, srk_platen, SdeAdaptiveOptions};
 
 const MU: f64 = 0.8;
 const SIGMA: f64 = 0.6;
@@ -126,7 +126,7 @@ fn adaptive_steps_reproduce_ou_statistics() {
     let mut rejected = 0;
     let mut steps = 0;
     for p in 0..paths {
-        let r = sde_adaptive(a, g, 1, 0.0, tf, &[1.5], 1e-3, 1e-3, 1000 + p, 100_000).unwrap();
+        let r = sde_adaptive_with(a, g, 1, 0.0, tf, &[1.5], &SdeAdaptiveOptions { rtol: 1e-3, atol: 1e-3, seed: 1000 + p, max_steps: 100_000 }).unwrap();
         assert!((r.t.last().unwrap() - tf).abs() < 1e-12);
         let x = r.y.last().unwrap()[0];
         sum += x;
@@ -146,12 +146,12 @@ fn adaptive_steps_reproduce_ou_statistics() {
     let paths = 1500;
     let mut sum = 0.0;
     for p in 0..paths {
-        let r = sde_adaptive(gbm_a, gbm_g, 1, 0.0, 1.0, &[1.0], 1e-3, 1e-4, 77 + p, 100_000).unwrap();
+        let r = sde_adaptive_with(gbm_a, gbm_g, 1, 0.0, 1.0, &[1.0], &SdeAdaptiveOptions { rtol: 1e-3, atol: 1e-4, seed: 77 + p, max_steps: 100_000 }).unwrap();
         sum += r.y.last().unwrap()[0];
     }
     let mean = sum / paths as f64;
     let ex = (MU * 1.0f64).exp();
     let se = ex * ((SIGMA * SIGMA).exp() - 1.0).sqrt() / (paths as f64).sqrt();
     assert!((mean - ex).abs() < 5.0 * se, "{mean} vs {ex}");
-    assert!(sde_adaptive(gbm_a, gbm_g, 1, 1.0, 0.0, &[1.0], 1e-3, 1e-4, 1, 100).is_err());
+    assert!(sde_adaptive_with(gbm_a, gbm_g, 1, 1.0, 0.0, &[1.0], &SdeAdaptiveOptions { rtol: 1e-3, atol: 1e-4, seed: 1, max_steps: 100 }).is_err());
 }
