@@ -799,7 +799,7 @@ fn exterior_evolution(
     far: &Condition,
 ) -> Option<NodeId> {
     let t_index = time_index?;
-    if layout.phi.is_some() || !p.homogeneous(cx.graph) || !cx.is_zero(a0) || !cx.is_zero(far.value) {
+    if !p.homogeneous(cx.graph) || !cx.is_zero(a0) || !cx.is_zero(far.value) {
         return None;
     }
     let n = p.dimension();
@@ -813,7 +813,7 @@ fn exterior_evolution(
     };
     let (r, t) = (p.vars[layout.r], p.vars[t_index]);
     let radius = end.point;
-    if layout.sphere && order == 2 && end.kind != Kind::Dirichlet {
+    if layout.sphere && layout.theta.is_none() && order == 2 && end.kind != Kind::Dirichlet {
         // Waves outside a ball with a Neumann or Robin condition: v = r u on
         // the half-line with v' + (p/q - 1/R) v = 0.
         if !cx.is_zero(end.value) {
@@ -917,6 +917,64 @@ struct Harmonic {
     radial: NodeId,
 }
 
+/// The decomposition of `data(r, θ, φ)` into the real spherical harmonics
+/// `P_l^m(cos θ) cos mφ` and `P_l^m(cos θ) sin mφ` (`l ≤ 6`, the tail must
+/// vanish): the coefficient is the exact double integral divided by
+/// `2π(l+m)!/((2l+1)(l-m)!) · (1 or 1/2)`.
+fn spherical_harmonics(
+    cx: &mut Cx<'_>,
+    data: NodeId,
+    theta: NodeId,
+    phi: NodeId,
+) -> Option<Vec<Harmonic>> {
+    const TOP: i64 = 6;
+    let factorial = |n: i64| -> i64 { (1..=n).product() };
+    let pi = super::util::pi(cx)?;
+    let (zero, two) = (cx.graph.int(0), cx.graph.int(2));
+    let two_pi = mul(cx.graph, &[two, pi]);
+    let (c, s) = (call(cx, "cos", &[theta])?, call(cx, "sin", &[theta])?);
+    let mut out = Vec::new();
+    for l in 0..=TOP {
+        for m in 0..=l {
+            let kinds: &[&str] = if m == 0 { &["cos"] } else { &["cos", "sin"] };
+            for &name in kinds {
+                let m_node = cx.graph.int(m);
+                let m_phi = mul(cx.graph, &[m_node, phi]);
+                let wave = call(cx, name, &[m_phi])?;
+                let body = mul(cx.graph, &[data, wave]);
+                let around = defint(cx, body, phi, zero, two_pi)?;
+                let around = cx.simplify(around);
+                if super::util::contains_op(cx.graph, around, "defint") {
+                    return None;
+                }
+                if cx.is_zero(around) {
+                    continue;
+                }
+                let mode = super::modes::associated_mode(cx, theta, l, m)?;
+                let weighted = mul(cx.graph, &[around, mode]);
+                let integral = super::modes::legendre_integral(cx, weighted, c, Some(s), theta)?;
+                let phi_norm = if m == 0 { two_pi } else { pi };
+                let scale = cx.graph.num(Number::fraction((2 * l + 1) * factorial(l - m), 2 * factorial(l + m))?);
+                let scaled = mul(cx.graph, &[scale, integral]);
+                let coefficient = div(cx, scaled, phi_norm);
+                let coefficient = cx.simplify(coefficient);
+                if super::util::contains_op(cx.graph, coefficient, "defint") {
+                    return None;
+                }
+                if cx.is_zero(coefficient) {
+                    continue;
+                }
+                if l == TOP {
+                    return None;
+                }
+                let angular = mul(cx.graph, &[mode, wave]);
+                out.push(Harmonic { index: l, angular, radial: coefficient });
+            }
+        }
+    }
+    Some(out)
+}
+
 /// The angular decomposition of `data(r, θ)`: Fourier harmonics on a disk
 /// (up to 12, the tail must vanish) or Legendre polynomials on a ball
 /// (axisymmetric, up to degree 9).
@@ -924,6 +982,7 @@ fn harmonics(
     cx: &mut Cx<'_>,
     data: NodeId,
     theta: Option<NodeId>,
+    phi: Option<NodeId>,
     sphere: bool,
 ) -> Option<Vec<Harmonic>> {
     let Some(theta) = theta else {
@@ -932,6 +991,9 @@ fn harmonics(
     };
     let mut out = Vec::new();
     let pi = super::util::pi(cx)?;
+    if sphere && let Some(phi) = phi {
+        return spherical_harmonics(cx, data, theta, phi);
+    }
     if sphere {
         let (c, s) = (call(cx, "cos", &[theta])?, call(cx, "sin", &[theta])?);
         for l in 0..=10_i64 {
@@ -1033,7 +1095,7 @@ fn weber_exterior(
         if cx.is_zero(value) {
             continue;
         }
-        for harmonic in harmonics(cx, value, theta, layout.sphere)? {
+        for harmonic in harmonics(cx, value, theta, layout.phi.map(|j| p.vars[j]), layout.sphere)? {
             let nu = if layout.sphere {
                 cx.graph.num(Number::fraction(2 * harmonic.index + 1, 2)?)
             } else {

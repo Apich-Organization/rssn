@@ -1045,3 +1045,37 @@ pub(super) fn darboux_kdv(
     let result = sub(cx.graph, u, correction);
     Some(cx.simplify(result))
 }
+
+/// `pde_hodograph(λ(r, s), μ(r, s))`: the hodograph transformation of the
+/// diagonal quasilinear system `r_t + λ r_x = 0`, `s_t + μ s_x = 0`.
+/// Exchanging dependent and independent variables (`x(r, s)`, `t(r, s)`)
+/// gives the *linear* system `x_s = λ t_s`, `x_r = μ t_r`; eliminating `x`
+/// leaves the Euler–Poisson–Darboux type equation
+/// `(λ - μ) t_rs + λ_r t_s - μ_s t_r = 0` for `t(r, s)`, returned as an
+/// equation; `x` follows from `x_r = μ t_r`.
+pub(super) fn hodograph(
+    cx: &mut Cx<'_>,
+    lambda: NodeId,
+    mu: NodeId,
+) -> Option<NodeId> {
+    let (r, s) = (cx.graph.sym("r"), cx.graph.sym("s"));
+    let head = cx.graph.sym("t");
+    let unknown = cx.graph.node(crate::graph::op::core::APPLY, &[head, r, s]);
+    let vars = [r, s];
+    let t_rs = super::util::jet(cx, unknown, &vars, &[1, 1])?;
+    let t_r = super::util::jet(cx, unknown, &vars, &[1, 0])?;
+    let t_s = super::util::jet(cx, unknown, &vars, &[0, 1])?;
+    let lambda_r = derivative(cx.graph, lambda, r)?;
+    let mu_s = derivative(cx.graph, mu, s)?;
+    let gap = sub(cx.graph, lambda, mu);
+    let first = mul(cx.graph, &[gap, t_rs]);
+    let second = mul(cx.graph, &[lambda_r, t_s]);
+    let third = {
+        let product = mul(cx.graph, &[mu_s, t_r]);
+        neg(cx.graph, product)
+    };
+    let left = add(cx.graph, &[first, second, third]);
+    let left = cx.simplify(left);
+    let zero = cx.graph.int(0);
+    Some(cx.graph.node(crate::graph::op::core::EQ, &[left, zero]))
+}

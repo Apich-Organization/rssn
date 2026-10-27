@@ -190,16 +190,20 @@ use std::collections::HashMap;
 mod bochner;
 mod classical;
 mod conservation;
+mod coulomb;
 mod curvilinear;
 mod diffusion;
 mod elliptic;
 mod frameworks;
 mod green;
 mod hill;
+mod laplace;
 mod modal;
 mod modes;
+mod scattering;
 mod nonlinear;
 mod numeric;
+mod poisson;
 mod sl;
 mod spectral;
 mod sturm;
@@ -293,6 +297,10 @@ enum Request {
     KdvSoliton,
     SineGordonSoliton,
     NlsSoliton,
+    PoissonIntegral,
+    KdvScattering,
+    GreensBall,
+    Hodograph,
     KdvReflectionless,
     DarbouxKdv,
 }
@@ -301,6 +309,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     numeric::install(i)?;
     sl::install(i)?;
     hill::install(i)?;
+    coulomb::install(i)?;
     let heavy = |name: &str, arity: Arity| OpDescriptor::new(name, arity).flags(OpFlags::HEAVY).cost(100);
     let at = i.op(heavy("at", Arity::Fixed(3)).flags(OpFlags::OPAQUE_ON_APPLY))?;
     let symmetries = i.op(heavy("pde_symmetries", Arity::Fixed(2)))?;
@@ -351,6 +360,14 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("pde/pde_kdv_reflectionless", Tier::Reduce, Pde { op, request: Request::KdvReflectionless });
     let op = i.op(heavy("pde_darboux_kdv", Arity::Fixed(2)))?;
     i.kernel("pde/pde_darboux_kdv", Tier::Reduce, Pde { op, request: Request::DarbouxKdv });
+    let op = i.op(heavy("pde_poisson_integral", Arity::Fixed(3)))?;
+    i.kernel("pde/pde_poisson_integral", Tier::Reduce, Pde { op, request: Request::PoissonIntegral });
+    let op = i.op(heavy("pde_greens_ball", Arity::Fixed(2)))?;
+    i.kernel("pde/pde_greens_ball", Tier::Reduce, Pde { op, request: Request::GreensBall });
+    let op = i.op(heavy("pde_hodograph", Arity::Fixed(2)))?;
+    i.kernel("pde/pde_hodograph", Tier::Reduce, Pde { op, request: Request::Hodograph });
+    let op = i.op(heavy("pde_kdv_scattering", Arity::Fixed(3)))?;
+    i.kernel("pde/pde_kdv_scattering", Tier::Reduce, Pde { op, request: Request::KdvScattering });
     let op = i.op(heavy("pde_nls_soliton", Arity::Fixed(1)))?;
     i.kernel("pde/pde_nls_soliton", Tier::Reduce, Pde { op, request: Request::NlsSoliton });
     let op = i.op(heavy("pde_sine_gordon_soliton", Arity::Fixed(2)))?;
@@ -390,6 +407,38 @@ impl Kernel for Pde {
                 };
                 let found = if self.request == Request::KdvReflectionless { nonlinear::kdv_reflectionless(cx, first, second) } else { nonlinear::darboux_kdv(cx, first, second) };
                 found.map_or(Outcome::Pass, Outcome::Pinned)
+            },
+            | Request::Hodograph => {
+                let &[lambda, mu] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                nonlinear::hodograph(cx, lambda, mu).map_or(Outcome::Pass, Outcome::Pinned)
+            },
+            | Request::GreensBall => {
+                let &[radius, dimension] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                let Some(d) = modes::exact_value(cx, dimension) else {
+                    return Outcome::Pass;
+                };
+                #[allow(clippy::cast_possible_truncation)]
+                poisson::greens_ball(cx, radius, d.round() as i64).map_or(Outcome::Pass, Outcome::Pinned)
+            },
+            | Request::KdvScattering => {
+                let &[u0, x, t] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                scattering::kdv_scattering(cx, u0, x, t).map_or(Outcome::Pass, Outcome::Pinned)
+            },
+            | Request::PoissonIntegral => {
+                let &[g, radius, dimension] = args.as_slice() else {
+                    return Outcome::Pass;
+                };
+                let Some(d) = modes::exact_value(cx, dimension) else {
+                    return Outcome::Pass;
+                };
+                #[allow(clippy::cast_possible_truncation)]
+                poisson::poisson_integral(cx, g, radius, d.round() as i64).map_or(Outcome::Pass, Outcome::Pinned)
             },
             | Request::NlsSoliton => {
                 let &[list] = args.as_slice() else {
@@ -1353,6 +1402,10 @@ fn solve_classical(
     }
     if solution.is_none() && matches!(method, Any | Dalembert | Wave3 | SecondOrder | KleinGordon) {
         solution = waves::wave(cx, p, conditions);
+    }
+    if solution.is_none() && matches!(method, Any | Dalembert | KleinGordon | SecondOrder) {
+        // Laplace transform in time: boundary-driven signalling on a half-line.
+        solution = laplace::signalling(cx, p, conditions);
     }
     if solution.is_none() && method == Any {
         // The Fourier-symbol fallback: last resort on whole space.
