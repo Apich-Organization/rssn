@@ -2,7 +2,7 @@
 
 use rssn::kernels::dense::Mat;
 use rssn::kernels::ode_adaptive::OdeOptions;
-use rssn::kernels::ode_ext::{ImexScheme, SplitMethod, etdrk4, etdrk4_diag, exprb32, imex_rk, symplectic_split, variational_lobatto};
+use rssn::kernels::ode_ext::{ImexScheme, SplitMethod, etdrk4, etdrk4_diag, exprb32, imex_rk_with, symplectic_split, variational_lobatto_with, ImexOptions, VariationalOptions};
 
 fn order(e1: f64, e2: f64) -> f64 {
     (e1 / e2).log2()
@@ -99,11 +99,11 @@ fn imex_orders_and_stability() {
         o[0] = -3.0 * y[0] + y[1];
         o[1] = -y[1];
     };
-    let reference = imex_rk(fe, fi, None, 0.0, 1.0, &[1.0, 0.5], 4096, ImexScheme::Ars343).unwrap();
+    let reference = imex_rk_with(fe, fi, 0.0, 1.0, &[1.0, 0.5], &ImexOptions { jac_im: None, steps: 4096, scheme: ImexScheme::Ars343 }).unwrap();
     let r = reference.last().unwrap().clone();
     for (scheme, lo) in [(ImexScheme::Euler, 0.9), (ImexScheme::Ars222, 1.9), (ImexScheme::Ars343, 2.8)] {
         let err = |n: usize| {
-            let t = imex_rk(fe, fi, None, 0.0, 1.0, &[1.0, 0.5], n, scheme).unwrap();
+            let t = imex_rk_with(fe, fi, 0.0, 1.0, &[1.0, 0.5], &ImexOptions { jac_im: None, steps: n, scheme }).unwrap();
             let y = t.last().unwrap();
             ((y[0] - r[0]).powi(2) + (y[1] - r[1]).powi(2)).sqrt()
         };
@@ -114,11 +114,11 @@ fn imex_orders_and_stability() {
     let fe = |t: f64, _y: &[f64], o: &mut [f64]| o[0] = -t.sin();
     let fi = |t: f64, y: &[f64], o: &mut [f64]| o[0] = -1e5 * (y[0] - t.cos());
     for scheme in [ImexScheme::Euler, ImexScheme::Ars222, ImexScheme::Ars343] {
-        let t = imex_rk(fe, fi, None, 0.0, 2.0, &[1.0], 20, scheme).unwrap();
+        let t = imex_rk_with(fe, fi, 0.0, 2.0, &[1.0], &ImexOptions { jac_im: None, steps: 20, scheme }).unwrap();
         let tol = if scheme == ImexScheme::Euler { 0.2 } else { 5e-3 };
         assert!((t[20][0] - 2.0f64.cos()).abs() < tol, "{scheme:?}: {}", t[20][0]);
     }
-    assert!(imex_rk(fe, fi, None, 0.0, 1.0, &[], 4, ImexScheme::Euler).is_err());
+    assert!(imex_rk_with(fe, fi, 0.0, 1.0, &[], &ImexOptions { jac_im: None, steps: 4, scheme: ImexScheme::Euler }).is_err());
 }
 
 fn pendulum_accel(q: &[f64]) -> Vec<f64> {
@@ -167,7 +167,7 @@ fn variational_integrators_order_and_invariants() {
     let (q0, p0) = ([1.2], [0.0]);
     let (qr, pr) = symplectic_split(pendulum_accel, &q0, &p0, 0.0, 4.0, 400, SplitMethod::Yoshida8).unwrap();
     let err = |s: usize, n: usize| {
-        let (q, p) = variational_lobatto(&m, gv, &q0, &p0, 0.0, 4.0, n, s).unwrap();
+        let (q, p) = variational_lobatto_with(&m, gv, &q0, &p0, 0.0, 4.0, &VariationalOptions { steps: n, stages: s }).unwrap();
         ((q[0] - qr[0]).powi(2) + (p[0] - pr[0]).powi(2)).sqrt()
     };
     for (s, n1, lo) in [(2usize, 40usize, 1.9), (3, 10, 3.7), (4, 5, 5.4)] {
@@ -180,8 +180,8 @@ fn variational_integrators_order_and_invariants() {
         let r3 = (q[0] * q[0] + q[1] * q[1]).powf(1.5);
         vec![q[0] / r3, q[1] / r3]
     };
-    let (q, p) = variational_lobatto(&mass, kepler, &[1.0, 0.0], &[0.0, 0.8], 0.0, 20.0, 100, 3).unwrap();
+    let (q, p) = variational_lobatto_with(&mass, kepler, &[1.0, 0.0], &[0.0, 0.8], 0.0, 20.0, &VariationalOptions { steps: 100, stages: 3 }).unwrap();
     let l0 = 1.0 * 0.8;
     assert!((q[0] * p[1] - q[1] * p[0] - l0).abs() < 1e-10);
-    assert!(variational_lobatto(&mass, kepler, &[1.0, 0.0], &[0.0, 0.8], 0.0, 1.0, 10, 1).is_err());
+    assert!(variational_lobatto_with(&mass, kepler, &[1.0, 0.0], &[0.0, 0.8], 0.0, 1.0, &VariationalOptions { steps: 10, stages: 1 }).is_err());
 }

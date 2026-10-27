@@ -416,7 +416,7 @@ pub enum AmgError {
     BadMatrix,
 }
 
-fn transpose(a: &Csr) -> Csr {
+pub(crate) fn transpose(a: &Csr) -> Csr {
     let mut cnt = vec![0usize; a.cols + 1];
     for &c in &a.indices {
         cnt[c + 1] += 1;
@@ -438,7 +438,7 @@ fn transpose(a: &Csr) -> Csr {
     Csr { rows: a.cols, cols: a.rows, indptr: cnt, indices, values }
 }
 
-fn spgemm(a: &Csr, b: &Csr) -> Csr {
+pub(crate) fn spgemm(a: &Csr, b: &Csr) -> Csr {
     let mut indptr = vec![0usize; a.rows + 1];
     let mut indices: Vec<usize> = Vec::new();
     let mut values: Vec<f64> = Vec::new();
@@ -471,7 +471,7 @@ fn spgemm(a: &Csr, b: &Csr) -> Csr {
 
 /// Greedy aggregation on the strength graph; returns `(aggregate id per
 /// node, number of aggregates)`.
-fn aggregate(a: &Csr, theta: f64, diag: &[f64]) -> (Vec<usize>, usize) {
+pub(crate) fn aggregate(a: &Csr, theta: f64, diag: &[f64]) -> (Vec<usize>, usize) {
     let n = a.rows;
     let strong = |i: usize, k: usize| -> bool {
         let j = a.indices[k];
