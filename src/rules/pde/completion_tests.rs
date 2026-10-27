@@ -953,3 +953,43 @@ fn mathieu_problems_by_hills_method() {
     close(residual, 0.0, 2e-3, "residual");
     close(u(0.3, t0), u(0.3 + 2.0 * PI, t0), 1e-6, "periodic");
 }
+
+#[test]
+fn tanh_method_finds_travelling_waves() {
+    type Law = dyn Fn(f64, f64, f64, f64, f64) -> f64;
+    // (equation, residual from u, u_t, u_x, u_xx, u_xxx)
+    let cases: Vec<(&str, Box<Law>)> = vec![
+        ("diff(u(x, t), t) + 6*u(x, t)*diff(u(x, t), x) + diff(diff(diff(u(x, t), x), x), x) = 0", Box::new(|u, ut, ux, _, uxxx| ut + 6.0 * u * ux + uxxx)),
+        ("diff(u(x, t), t) = diff(diff(u(x, t), x), x) + u(x, t)*(1 - u(x, t))", Box::new(|u, ut, _, uxx, _| ut - uxx - u * (1.0 - u))),
+        ("diff(u(x, t), t) = diff(diff(u(x, t), x), x) + u(x, t) - u(x, t)^3", Box::new(|u, ut, _, uxx, _| ut - uxx - u + u * u * u)),
+        ("diff(u(x, t), t) + u(x, t)*diff(u(x, t), x) = 1/2*diff(diff(u(x, t), x), x)", Box::new(|u, ut, ux, uxx, _| ut + u * ux - 0.5 * uxx)),
+    ];
+    for (equation, law) in cases {
+        let s = any(&format!("pdsolve({equation}, u(x, t))"));
+        assert!(s.contains("tanh"), "{s}");
+        let text = rhs(&s);
+        let u = |x: f64, t: f64| value(&text, &[("x", x), ("t", t)]);
+        let (x, t, h) = (0.35_f64, 0.2_f64, 2e-3_f64);
+        let ut = (u(x, t + h) - u(x, t - h)) / (2.0 * h);
+        let ux = (u(x + h, t) - u(x - h, t)) / (2.0 * h);
+        let uxx = (u(x + h, t) - 2.0 * u(x, t) + u(x - h, t)) / (h * h);
+        let uxxx = (u(x + 2.0 * h, t) - 2.0 * u(x + h, t) + 2.0 * u(x - h, t) - u(x - 2.0 * h, t)) / (2.0 * h.powi(3));
+        close(law(u(x, t), ut, ux, uxx, uxxx), 0.0, 2e-3 * (1.0 + uxxx.abs()), &s);
+        // Non-trivial: the wave varies in space.
+        assert!((u(-3.0, t) - u(3.0, t)).abs() > 1e-3 || (u(0.0, t) - u(3.0, t)).abs() > 1e-3, "{s}");
+    }
+}
+
+#[test]
+fn separable_variable_coefficients_in_two_variables() {
+    // u_t = (1 + x)² u_xx + (1 + x) u_x + u_yy: an Euler mode times sin(y).
+    let eq = "diff(u(x, y, t), t) = (1 + x)^2*diff(diff(u(x, y, t), x), x) + (1 + x)*diff(u(x, y, t), x) + diff(diff(u(x, y, t), y), y)";
+    let l = 2.0_f64.ln();
+    let data = "sin(pi*ln(1 + x)/ln(2))*sin(y)";
+    let s = any(&format!("pdsolve({eq}, u(x, y, t), list(u(0, y, t) = 0, u(1, y, t) = 0, u(x, 0, t) = 0, u(x, pi, t) = 0, u(x, y, 0) = {data}))"));
+    assert!(s.contains("sl_mode"), "{s}");
+    let (x, y, t) = (0.45_f64, 1.1_f64, 0.01_f64);
+    let exact = (-((PI / l).powi(2) + 1.0) * t).exp() * (PI * x.ln_1p() / l).sin() * y.sin();
+    let text = expand_integrals(&expand_sums(&rhs(&s), 4), 120);
+    close(value(&text, &[("x", x), ("y", y), ("t", t)]), exact, 5e-4, &s);
+}
