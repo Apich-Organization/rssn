@@ -1079,3 +1079,59 @@ pub(super) fn hodograph(
     let zero = cx.graph.int(0);
     Some(cx.graph.node(crate::graph::op::core::EQ, &[left, zero]))
 }
+
+/// `pde_crum_kdv(u, list(ψ₁, …, ψ_n))`: the `n`-fold Darboux (Crum)
+/// transformation of a solution `u(x, t)` of `u_t - 6 u u_x + u_xxx = 0` by
+/// Lax eigenfunctions `ψ_j` (`-ψ_xx + u ψ = λ_j ψ` with the time part of the
+/// Lax pair): `ũ = u - 2 ∂²_x ln W(ψ₁, …, ψ_n)` with the Wronskian
+/// `W = det(∂_x^{i-1} ψ_j)`.
+pub(super) fn crum_kdv(
+    cx: &mut Cx<'_>,
+    u: NodeId,
+    psis: &[NodeId],
+) -> Option<NodeId> {
+    let n = psis.len();
+    if n == 0 || n > 5 {
+        return None;
+    }
+    let x = cx.graph.sym("x");
+    let mut matrix: Vec<Vec<NodeId>> = Vec::new();
+    let mut row: Vec<NodeId> = psis.to_vec();
+    for _ in 0..n {
+        matrix.push(row.clone());
+        let mut next = Vec::new();
+        for &entry in &row {
+            let d = derivative(cx.graph, entry, x)?;
+            next.push(cx.simplify(d));
+        }
+        row = next;
+    }
+    let w = determinant(cx, &matrix);
+    let w = cx.simplify(w);
+    let log = call(cx, "ln", &[w])?;
+    let first = derivative(cx.graph, log, x)?;
+    let second = derivative(cx.graph, first, x)?;
+    let two = cx.graph.int(2);
+    let correction = mul(cx.graph, &[two, second]);
+    let result = sub(cx.graph, u, correction);
+    Some(cx.simplify(result))
+}
+
+/// `pde_hodograph_solution(F(r), G(s))`: the solution of the hodograph
+/// equation for `λ = r`, `μ = s` (the decoupled Burgers pair
+/// `r_t + r r_x = 0`, `s_t + s s_x = 0`) with `x = r t + F(r) = s t + G(s)`:
+/// `list(x(r, s), t(r, s))`, `t = (G(s) - F(r))/(r - s)`.
+pub(super) fn hodograph_solution(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    g: NodeId,
+) -> NodeId {
+    let (r, s) = (cx.graph.sym("r"), cx.graph.sym("s"));
+    let numerator = sub(cx.graph, g, f);
+    let denominator = sub(cx.graph, r, s);
+    let t = div(cx, numerator, denominator);
+    let rt = mul(cx.graph, &[r, t]);
+    let x = add(cx.graph, &[rt, f]);
+    let (x, t) = (cx.simplify(x), cx.simplify(t));
+    cx.graph.node(crate::graph::op::core::LIST, &[x, t])
+}

@@ -14,6 +14,7 @@
 //! `a = x/c` and the convolution theorem give the solution as a
 //! retarded integral over the boundary datum.
 
+use super::Condition;
 use super::Conditions;
 use super::Problem;
 use super::dummy;
@@ -33,9 +34,163 @@ use crate::rules::complex::build::neg;
 use crate::rules::complex::build::powi;
 use crate::rules::complex::build::sub;
 
-/// The retarded solution of the half-line signalling problem.
-#[allow(clippy::too_many_lines)]
+/// The solution of the half-line signalling problem with a boundary signal
+/// and arbitrary initial data: the quiet-start response to the signal plus
+/// the solution of the homogeneous-boundary problem for the initial data
+/// (linearity).
 pub(super) fn signalling(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+) -> Option<NodeId> {
+    if p.nonlinear || p.dimension() != 2 || !p.homogeneous(cx.graph) {
+        return None;
+    }
+    let time = evolution_time(cx, p)?;
+    let space = 1 - time;
+    let on_boundary: Vec<&Condition> = conditions.0.iter().filter(|c| c.on == space).collect();
+    let [boundary] = on_boundary.as_slice() else {
+        return None;
+    };
+    if !is_zero_number(cx.graph, boundary.point) || cx.is_zero(boundary.value) {
+        return None;
+    }
+    let initial: Vec<&Condition> = conditions.0.iter().filter(|c| c.on == time).collect();
+    if initial.len() + 1 != conditions.0.len() {
+        return None;
+    }
+    let signal = quiet_signal(cx, p, &Conditions(vec![(*boundary).clone()]))?;
+    if initial.iter().all(|c| cx.is_zero(c.value)) {
+        return Some(signal);
+    }
+    // Homogeneous boundary value, the initial data kept.
+    let mut homogeneous = vec![Condition { value: cx.graph.int(0), ..(*boundary).clone() }];
+    homogeneous.extend(initial.iter().map(|c| (*c).clone()));
+    let found = super::solve(cx, p, &Conditions(homogeneous), super::Method::Any)?;
+    let &[_, response] = cx.graph.children(found) else {
+        return None;
+    };
+    let total = add(cx.graph, &[signal, response]);
+    Some(cx.simplify(total))
+}
+
+/// The parabolic response `a₁ u_t + a₀ u + b u_xx = 0`, `u_x + h u = g(t)`
+/// at `x = 0`, quiet start: with `D = -b/a₁`, `ρ = -a₀/a₁`, `u = e^{ρt} w`,
+/// `Ŵ = -Ĝ √D e^{-x√s/√D}/(√s + β)`, `β = -h√D`, and the inversion
+/// `L⁻¹[e^{-a√s}/(√s+β)] = e^{-a²/4t}/√(πt) - β e^{aβ+β²t} erfc(β√t + a/(2√t))`.
+/// The substitution `τ = t - σ²` removes the endpoint singularity.
+#[allow(clippy::too_many_lines)]
+fn parabolic_signal(
+    cx: &mut Cx<'_>,
+    p: &Problem,
+    conditions: &Conditions,
+    (time, space): (usize, usize),
+) -> Option<NodeId> {
+    let (x, t) = (p.vars[space], p.vars[time]);
+    let zero_index = vec![0; 2];
+    let (a1, a0, b) = (p.coefficient(cx.graph, &p.unit(time, 1)), p.coefficient(cx.graph, &zero_index), p.coefficient(cx.graph, &p.unit(space, 2)));
+    if cx.is_zero(a1) || cx.is_zero(b) || ![a1, a0, b].iter().all(|&c| p.constant(cx.graph, c)) {
+        return None;
+    }
+    if !p.only(cx.graph, &[p.unit(time, 1), zero_index.clone(), p.unit(space, 2)]) {
+        return None;
+    }
+    let mut boundary = None;
+    for c in &conditions.0 {
+        if c.on == space {
+            if !is_zero_number(cx.graph, c.point) || boundary.is_some() || c.derivative != p.unit(space, 1) {
+                return None;
+            }
+            boundary = Some(c);
+        } else if !(c.on == time && c.derivative == zero_index && is_zero_number(cx.graph, c.point) && cx.is_zero(c.value)) {
+            return None;
+        }
+    }
+    let boundary = boundary?;
+    let g = boundary.value;
+    let ratio = |cx: &mut Cx<'_>, num: NodeId, den: NodeId| {
+        let q = div(cx, num, den);
+        cx.simplify(q)
+    };
+    let diffusivity = {
+        let q = ratio(cx, b, a1);
+        let q = neg(cx.graph, q);
+        cx.simplify(q)
+    };
+    if cx.graph.facts(diffusivity).has(Facts::NEGATIVE) || sample(cx.graph, diffusivity, 0).is_none_or(|v| v <= 0.0) {
+        return None;
+    }
+    let rho = {
+        let q = ratio(cx, a0, a1);
+        let q = neg(cx.graph, q);
+        cx.simplify(q)
+    };
+    let root_d = sqrt(cx, diffusivity)?;
+    let (sigma, _) = dummy(cx, p, "sigma");
+    let sigma2 = powi(cx.graph, sigma, 2);
+    // `g(t - σ²) e^{ρσ²}`.
+    let shifted_time = sub(cx.graph, t, sigma2);
+    let datum = cx.graph.substitute(g, t, shifted_time);
+    let growth = if cx.is_zero(rho) {
+        datum
+    } else {
+        let e = mul(cx.graph, &[rho, sigma2]);
+        let e = call(cx, "exp", &[e])?;
+        mul(cx.graph, &[e, datum])
+    };
+    // a = x/√D and the Gaussian factor `e^{-a²/(4σ²)}`.
+    let a = div(cx, x, root_d);
+    let four = cx.graph.int(4);
+    let gauss = {
+        let a2 = powi(cx.graph, a, 2);
+        let denominator = mul(cx.graph, &[four, sigma2]);
+        let q = div(cx, a2, denominator);
+        let q = neg(cx.graph, q);
+        call(cx, "exp", &[q])?
+    };
+    let pi = super::util::pi(cx)?;
+    let root_pi = sqrt(cx, pi)?;
+    let two = cx.graph.int(2);
+    let first = {
+        let q = div(cx, two, root_pi);
+        mul(cx.graph, &[q, gauss])
+    };
+    let kernel = if let Some(h) = boundary.robin.filter(|&h| !cx.is_zero(h)) {
+        let beta = {
+            let hd = mul(cx.graph, &[h, root_d]);
+            neg(cx.graph, hd)
+        };
+        let exponent = {
+            let ab = mul(cx.graph, &[a, beta]);
+            let b2 = powi(cx.graph, beta, 2);
+            let b2s = mul(cx.graph, &[b2, sigma2]);
+            add(cx.graph, &[ab, b2s])
+        };
+        let growth_factor = call(cx, "exp", &[exponent])?;
+        let argument = {
+            let bs = mul(cx.graph, &[beta, sigma]);
+            let denominator = mul(cx.graph, &[two, sigma]);
+            let q = div(cx, a, denominator);
+            add(cx.graph, &[bs, q])
+        };
+        let erfc = call(cx, "erfc", &[argument])?;
+        let second = mul(cx.graph, &[two, sigma, beta, growth_factor, erfc]);
+        sub(cx.graph, first, second)
+    } else {
+        first
+    };
+    let body = mul(cx.graph, &[growth, kernel]);
+    let zero = cx.graph.int(0);
+    let upper = sqrt(cx, t)?;
+    let integral = defint(cx, body, sigma, zero, upper)?;
+    let scaled = mul(cx.graph, &[root_d, integral]);
+    let u = neg(cx.graph, scaled);
+    Some(cx.simplify(u))
+}
+
+/// The retarded solution of the half-line signalling problem with a quiet start.
+#[allow(clippy::too_many_lines)]
+fn quiet_signal(
     cx: &mut Cx<'_>,
     p: &Problem,
     conditions: &Conditions,
@@ -47,6 +202,10 @@ pub(super) fn signalling(
     let space = 1 - time;
     let (x, t) = (p.vars[space], p.vars[time]);
     let zero_index = vec![0; 2];
+    let second_in_time = p.coefficient(cx.graph, &p.unit(time, 2));
+    if cx.is_zero(second_in_time) {
+        return parabolic_signal(cx, p, conditions, (time, space));
+    }
     let (a2, a1, a0, b) = (
         p.coefficient(cx.graph, &p.unit(time, 2)),
         p.coefficient(cx.graph, &p.unit(time, 1)),

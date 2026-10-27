@@ -1102,9 +1102,9 @@ fn coulomb_bound_states_and_spheroidal_eigenvalues() {
     close(value(&rhs(&s), &[("r", r), ("t", t)]), r * r * (-r / 2.0).exp() * (0.25 * t).exp(), 1e-6, &s);
     let s = any(&format!("pdsolve(diff(diff(u(r, t), t), t) = diff(diff(u(r, t), r), r) + 2/r*u(r, t), u(r, t), list({bc}, u(r, 0) = 2*r*exp(-r), at(diff(u(r, t), t), t, 0) = 0))"));
     close(value(&rhs(&s), &[("r", r), ("t", t)]), 2.0 * r * (-r).exp() * t.cosh(), 1e-6, &s);
-    // Data outside the bound-state span (continuum content) are refused.
+    // Data outside the bound-state span need the scattering states (see the continuum test).
     let s = any(&format!("pdsolve(diff(u(r, t), t) = diff(diff(u(r, t), r), r) + 2/r*u(r, t), u(r, t), list({bc}, u(r, 0) = r*exp(-3*r)))"));
-    assert!(s.starts_with("pdsolve"), "{s}");
+    assert!(s.contains("coulomb_wave"), "{s}");
     // Spheroidal angular functions: gamma = 0 gives n(n+1); first-order perturbation theory.
     for n in 0..4 {
         close(spheroidal_eigen(&[0.0, f64::from(n), 0.0]), f64::from(n * (n + 1)), 1e-10, "Legendre limit");
@@ -1264,4 +1264,245 @@ fn waves_outside_a_ball_without_axial_symmetry() {
     let text = expand_integrals(&bounds(&rhs(&s)), 90);
     let reference = exterior_wave_reference(2.0, 2.0, &|q| (-2.0 * (q - 4.0) * (q - 4.0)).exp(), t, r) * th.sin() * ph.cos();
     close(value(&text, &[("r", r), ("th", th), ("ph", ph), ("t", t)]), reference, 6e-3, &s);
+}
+
+#[test]
+fn laplace_route_with_initial_data_and_parabolic_robin_signals() {
+    // Non-quiet start: the wave equation with a boundary signal and a pulse.
+    let s = any("pdsolve(diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x), u(x, t), list(u(0, t) = sin(t), u(x, 0) = exp(-(x - 3)^2), at(diff(u(x, t), t), t, 0) = 0))");
+    let (x, t) = (1.2_f64, 2.0_f64);
+    let odd = |z: f64| if z >= 0.0 { (-(z - 3.0) * (z - 3.0)).exp() } else { -(-(-z - 3.0) * (-z - 3.0)).exp() };
+    let want = f64::midpoint(odd(x + t), odd(x - t)) + if t > x { (t - x).sin() } else { 0.0 };
+    close(value(&rhs(&s), &[("x", x), ("t", t)]), want, 1e-9, &s);
+    // Robin signals for the heat equation: residual, boundary condition and initial value.
+    for (equation, reaction, h, datum, initial) in [
+        ("diff(u(x, t), t) = diff(diff(u(x, t), x), x)", 0.0_f64, 2.0_f64, "1", None),
+        ("diff(u(x, t), t) = diff(diff(u(x, t), x), x) - u(x, t)", -1.0, 1.0, "sin(t)", Some("exp(-x)")),
+    ] {
+        let mut conditions = format!("at(diff(u(x, t), x), x, 0) + {h}*u(0, t) = {datum}");
+        match initial {
+            | Some(f) => conditions = format!("{conditions}, u(x, 0) = {f}"),
+            | None => conditions.push_str(", u(x, 0) = 0"),
+        }
+        let s = any(&format!("pdsolve({equation}, u(x, t), list({conditions}))"));
+        let text = expand_integrals(&rhs(&s).replace(", s, 0, oo)", ", s, 0, 25)"), 400);
+        let u = |x: f64, t: f64| value(&text, &[("x", x), ("t", t)]);
+        let (x0, t0, d) = (0.8_f64, 0.5_f64, 1e-3_f64);
+        let residual = (u(x0, t0 + d) - u(x0, t0 - d)) / (2.0 * d) - (u(x0 + d, t0) - 2.0 * u(x0, t0) + u(x0 - d, t0)) / (d * d) - reaction * u(x0, t0);
+        close(residual, 0.0, 3e-3, &s);
+        let e = 0.03_f64;
+        let g = if datum == "1" { 1.0 } else { t0.sin() };
+        let slope = (-3.0 * u(0.0, t0) + 4.0 * u(e, t0) - u(2.0 * e, t0)) / (2.0 * e);
+        close(slope + h * u(0.0, t0), g, 3e-2, "Robin condition");
+    }
+}
+
+#[test]
+fn crum_determinants_and_hodograph_solutions() {
+    let v = |text: &str, x: f64, t: f64| value(text, &[("x", x), ("t", t)]);
+    // Two-fold Darboux transformation of the vacuum: a two-soliton.
+    let s = run("pde_crum_kdv(0, list(cosh(x - 4*t), sinh(2*x - 32*t)))");
+    let u = |x: f64, t: f64| v(&s, x, t);
+    let (x, t, h) = (0.35_f64, 0.05_f64, 2e-3_f64);
+    let u_t = (u(x, t + h) - u(x, t - h)) / (2.0 * h);
+    let u_x = (u(x + h, t) - u(x - h, t)) / (2.0 * h);
+    let u_xxx = (u(x + 2.0 * h, t) - 2.0 * u(x + h, t) + 2.0 * u(x - h, t) - u(x - 2.0 * h, t)) / (2.0 * h.powi(3));
+    close(u_t - 6.0 * u(x, t) * u_x + u_xxx, 0.0, 5e-3 * (1.0 + u_xxx.abs()), &s);
+    assert!(u(x, t) < -0.1, "{s}");
+    // One step agrees with the single Darboux transformation.
+    let one = run("pde_crum_kdv(0, list(cosh(x - 4*t)))");
+    close(v(&one, 0.8, 0.3), v(&run("pde_darboux_kdv(0, cosh(x - 4*t))"), 0.8, 0.3), 1e-12, &one);
+    // The hodograph solution satisfies x = r t + F(r) = s t + G(s) and the linear equation.
+    let s = run("pde_hodograph_solution(r^2, sin(s))");
+    let (xs, ts) = {
+        let inner = s.trim().strip_prefix("list(").and_then(|x| x.strip_suffix(')')).unwrap_or("");
+        let mut depth = 0_i32;
+        let mut split = 0;
+        for (i, c) in inner.char_indices() {
+            match c {
+                | '(' => depth += 1,
+                | ')' => depth -= 1,
+                | ',' if depth == 0 => split = i,
+                | _ => {},
+            }
+        }
+        (inner[..split].trim().to_owned(), inner[split + 1..].trim().to_owned())
+    };
+    let (r, sv) = (0.7_f64, -0.4_f64);
+    let (x_value, t_value) = (value(&xs, &[("r", r), ("s", sv)]), value(&ts, &[("r", r), ("s", sv)]));
+    close(x_value, r * (t_value + r), 1e-12, &s);
+    close(x_value, sv * t_value + sv.sin(), 1e-12, &s);
+}
+
+#[test]
+fn robin_and_neumann_greens_functions() {
+    let w = |text: &str, point: &[(&str, f64)]| value(text, point);
+    // Half-space z > 0, ∂_n u + h u = 0 with ∂_n = -∂_z: u_z = h u at z = 0.
+    for (d, names, source) in [(3, vec!["x", "y", "z"], vec![0.4, -0.3, 0.7]), (2, vec!["x", "y"], vec![0.4, 0.7])] {
+        for h in [0.0_f64, 1.5] {
+            let s = run(&format!("pde_greens_robin({d}, {h})"));
+            let text = expand_integrals(&s.replace(", w, 0, oo)", ", w, 0, 30)"), 600);
+            let at = |x: &[f64]| {
+                let mut bindings: Vec<(String, f64)> = Vec::new();
+                for (k, n) in names.iter().enumerate() {
+                    bindings.push(((*n).to_owned(), x[k]));
+                    bindings.push((format!("s_{n}"), source[k]));
+                }
+                let refs: Vec<(&str, f64)> = bindings.iter().map(|(a, b)| (a.as_str(), *b)).collect();
+                w(&text, &refs)
+            };
+            let last = names.len() - 1;
+            let mut base: Vec<f64> = if d == 3 { vec![-0.9, 0.8, 0.0] } else { vec![-0.9, 0.0] };
+            let e = 1e-4_f64;
+            let g0 = at(&base);
+            base[last] = e;
+            let g1 = at(&base);
+            close((g1 - g0) / e - h * g0, 0.0, 2e-3, &s);
+            // Harmonic away from the source.
+            let x: Vec<f64> = if d == 3 { vec![-0.9, 0.8, 0.6] } else { vec![-0.9, 0.6] };
+            let step = 1e-2_f64;
+            let mut laplacian = -2.0 * f64::from(d) * at(&x);
+            for k in 0..names.len() {
+                for sign in [-1.0, 1.0] {
+                    let mut moved = x.clone();
+                    moved[k] += sign * step;
+                    laplacian += at(&moved);
+                }
+            }
+            close(laplacian / (step * step), 0.0, 2e-2, "harmonic");
+        }
+    }
+    // The interior Robin Green's function of the ball of radius 2.
+    let s = run("pde_greens_ball_robin(2, 1)");
+    let text = expand_sums(&s, 70);
+    let source = [0.5_f64, -0.4, 0.3];
+    let at = |x: [f64; 3]| w(&text, &[("x", x[0]), ("y", x[1]), ("z", x[2]), ("s_x", source[0]), ("s_y", source[1]), ("s_z", source[2])]);
+    let n = [0.6_f64, 0.0, 0.8];
+    let delta = 1e-4_f64;
+    let (outer, inner) = (at([2.0 * n[0], 2.0 * n[1], 2.0 * n[2]]), at([(2.0 - delta) * n[0], (2.0 - delta) * n[1], (2.0 - delta) * n[2]]));
+    close((outer - inner) / delta + outer, 0.0, 2e-3, &s);
+    let x = [-0.6_f64, 0.7, 0.2];
+    let step = 1e-2_f64;
+    let mut laplacian = -6.0 * at(x);
+    for k in 0..3 {
+        for sign in [-1.0, 1.0] {
+            let mut moved = x;
+            moved[k] += sign * step;
+            laplacian += at(moved);
+        }
+    }
+    close(laplacian / (step * step), 0.0, 2e-2, "harmonic ball");
+    close(at(x), w(&text, &[("x", source[0]), ("y", source[1]), ("z", source[2]), ("s_x", x[0]), ("s_y", x[1]), ("s_z", x[2])]), 1e-9, "symmetry");
+}
+
+/// `v_t = v_rr + (2/r) v_r`-type radial problem `u_t = u_rr + (2Z/r - l(l+1)/r²) u` on `(0, 40)`
+/// with Dirichlet ends by Crank-Nicolson; the value at `at`.
+fn coulomb_heat_reference(
+    z: f64,
+    l: f64,
+    f: &dyn Fn(f64) -> f64,
+    t_end: f64,
+    at: f64,
+) -> f64 {
+    let (n, steps) = (4000_usize, 100_usize);
+    let h = 40.0 / n as f64;
+    let dt = t_end / steps as f64;
+    let mut u: Vec<f64> = (0..=n).map(|i| f(h * i as f64)).collect();
+    u[0] = 0.0;
+    u[n] = 0.0;
+    for _ in 0..steps {
+        let (mut lower, mut diag, mut upper, mut rhs_) = (vec![0.0; n + 1], vec![1.0; n + 1], vec![0.0; n + 1], vec![0.0; n + 1]);
+        for i in 1..n {
+            let r = h * i as f64;
+            let c = -2.0 / (h * h) + 2.0 * z / r - l * (l + 1.0) / (r * r);
+            let a = 1.0 / (h * h);
+            rhs_[i] = u[i] + 0.5 * dt * (a * u[i - 1] + c * u[i] + a * u[i + 1]);
+            lower[i] = -0.5 * dt * a;
+            diag[i] = 1.0 - 0.5 * dt * c;
+            upper[i] = -0.5 * dt * a;
+        }
+        for i in 1..=n {
+            let m = lower[i] / diag[i - 1];
+            diag[i] -= m * upper[i - 1];
+            rhs_[i] -= m * rhs_[i - 1];
+        }
+        u[n] = rhs_[n] / diag[n];
+        for i in (0..n).rev() {
+            u[i] = (rhs_[i] - upper[i] * u[i + 1]) / diag[i];
+        }
+    }
+    let position = at / h;
+    let i = position.floor() as usize;
+    let w = position - i as f64;
+    u[i] * (1.0 - w) + u[i + 1] * w
+}
+
+#[test]
+fn coulomb_continuum_completes_the_expansion() {
+    use super::coulomb::coulomb_wave_value;
+    // The scattering solution solves the radial equation and has the amplitude sqrt(2/pi).
+    let (z, l, k) = (1.0_f64, 1_usize, 0.8_f64);
+    let u = |r: f64| coulomb_wave_value(z, l, k, r);
+    let (r, h) = (7.0_f64, 1e-3_f64);
+    let second = (u(r + h) - 2.0 * u(r) + u(r - h)) / (h * h);
+    close(second, (2.0 / (r * r) - 2.0 * z / r - k * k) * u(r), 1e-4, "radial equation");
+    let r = 100.0_f64;
+    let slope = (u(r + h) - u(r - h)) / (2.0 * h);
+    let local = (k * k + 2.0 * z / r - 2.0 / (r * r)).sqrt();
+    let amplitude = (local * u(r).powi(2) + slope * slope / local) / k;
+    close(amplitude, 2.0 / PI, 2e-2, "amplitude");
+    // Data outside the span of the bound states: the heat equation with a Coulomb potential.
+    let s = any("pdsolve(diff(u(r, t), t) = diff(diff(u(r, t), r), r) + 2/r*u(r, t), u(r, t), list(u(0, t) = 0, u(r, 0) = r*exp(-3*r)))");
+    assert!(s.contains("coulomb_wave"), "{s}");
+    let (r, t) = (1.2_f64, 0.1_f64);
+    let text = expand_integrals(&rhs(&s), 110);
+    let reference = coulomb_heat_reference(1.0, 0.0, &|q| q * (-3.0 * q).exp(), t, r);
+    close(value(&text, &[("r", r), ("t", t)]), reference, 3e-2 * reference.abs().max(0.05), &s);
+}
+
+#[test]
+fn spheroidal_helmholtz_and_laplace_problems() {
+    let pro = "(xi^2 - 1)*diff(diff(u(xi, eta), xi), xi) + 2*xi*diff(u(xi, eta), xi) + (1 - eta^2)*diff(diff(u(xi, eta), eta), eta) - 2*eta*diff(u(xi, eta), eta)";
+    // Laplace inside a prolate spheroid: P₂(ξ) P₂(η)/P₂(ξ₀).
+    let s = any(&format!("pdsolve({pro} = 0, u(xi, eta), list(u(2, eta) = (3*eta^2 - 1)/2))"));
+    let p2 = |x: f64| (3.0 * x * x - 1.0) / 2.0;
+    let (xi, eta) = (1.4_f64, 0.3_f64);
+    close(value(&rhs(&s), &[("xi", xi), ("eta", eta)]), p2(xi) * p2(eta) / p2(2.0), 1e-5, &s);
+    // Helmholtz, γ = 4: the plane wave cos(2 ξ η) (z = ξ η d).
+    let s = any(&format!("pdsolve({pro} + 4*(xi^2 - eta^2)*u(xi, eta) = 0, u(xi, eta), list(u(3/2, eta) = cos(3*eta)))"));
+    let (xi, eta) = (1.2_f64, 0.4_f64);
+    close(value(&rhs(&s), &[("xi", xi), ("eta", eta)]), (2.0 * xi * eta).cos(), 1e-4, &s);
+    // Oblate coordinates: cos(2 ζ η) solves (ζ²+1) u_ζζ + … + 4 (ζ² + η²) u = 0.
+    let obl = "(zeta^2 + 1)*diff(diff(u(zeta, eta), zeta), zeta) + 2*zeta*diff(u(zeta, eta), zeta) + (1 - eta^2)*diff(diff(u(zeta, eta), eta), eta) - 2*eta*diff(u(zeta, eta), eta)";
+    let s = any(&format!("pdsolve({obl} + 4*(zeta^2 + eta^2)*u(zeta, eta) = 0, u(zeta, eta), list(u(1, eta) = cos(2*eta)))"));
+    let (zeta, eta) = (0.6_f64, -0.5_f64);
+    close(value(&rhs(&s), &[("zeta", zeta), ("eta", eta)]), (2.0 * zeta * eta).cos(), 1e-4, &s);
+    // Azimuthal dependence: u = sqrt((ξ² - 1)(1 - η²)) cos φ is harmonic.
+    let full = format!("{} + (xi^2 - eta^2)/((xi^2 - 1)*(1 - eta^2))*diff(diff(u(xi, eta, phi), phi), phi)", pro.replace("u(xi, eta)", "u(xi, eta, phi)"));
+    let s = any(&format!("pdsolve({full} = 0, u(xi, eta, phi), list(u(2, eta, phi) = sqrt(3)*sqrt(1 - eta^2)*cos(phi)))"));
+    let (xi, eta, phi) = (1.5_f64, 0.3_f64, 0.7_f64);
+    close(value(&rhs(&s), &[("xi", xi), ("eta", eta), ("phi", phi)]), ((xi * xi - 1.0) * (1.0 - eta * eta)).sqrt() * phi.cos(), 1e-4, &s);
+}
+
+#[test]
+fn sources_outside_a_disk_by_duhamel() {
+    let bounds = |text: &str| text.replace(", rho, 1, oo)", ", rho, 1, 9)").replace(", k, 0, oo)", ", k, 0, 8)");
+    let lap = "diff(diff(u(r, th, t), r), r) + diff(u(r, th, t), r)/r + diff(diff(u(r, th, t), th), th)/r^2";
+    // Zero start, steady forcing exp(-(r - 3)²) cos θ.
+    let s = any(&format!("pdsolve(diff(u(r, th, t), t) = {lap} + exp(-(r - 3)^2)*cos(th), u(r, th, t), list(u(1, th, t) = 0, u(oo, th, t) = 0, u(r, th, 0) = 0))"));
+    let (r, th, t) = (2.0_f64, 0.6_f64, 0.3_f64);
+    let text = expand_integrals(&bounds(&rhs(&s)), 90);
+    let forcing = |q: f64| (-(q - 3.0) * (q - 3.0)).exp();
+    // Duhamel: ∫_0^t U(t - τ)[forcing] dτ with U the homogeneous evolution (Simpson in τ).
+    let intervals = 12_usize;
+    let h = t / intervals as f64;
+    let mut reference = 0.0;
+    for j in 0..=intervals {
+        let weight = if j == 0 || j == intervals { 1.0 } else if j % 2 == 1 { 4.0 } else { 2.0 };
+        let elapsed = t - h * j as f64;
+        let value = if elapsed <= 0.0 { forcing(r) } else { exterior_heat_reference(1.0, 1.0, &forcing, elapsed, r) };
+        reference += weight * value;
+    }
+    reference *= h / 3.0 * th.cos();
+    close(value(&text, &[("r", r), ("th", th), ("t", t)]), reference, 4e-3 * reference.abs().max(0.02), &s);
 }
