@@ -1326,7 +1326,7 @@ mod tests {
     fn sextics_and_septics_by_galois_group() {
         let rules = crate::rules::standard();
         // (equation, ascending coefficients, number of real roots)
-        let cases: [(&str, Vec<f64>, usize); 7] = [
+        let cases: [(&str, Vec<f64>, usize); 9] = [
             // Cyclic septic (Gauss periods, conductor 29): seven real roots.
             ("solve(x^7 + x^6 - 12*x^5 - 7*x^4 + 28*x^3 + 14*x^2 - 9*x + 1, x)", vec![1.0, -9.0, 14.0, 28.0, -7.0, -12.0, 1.0, 1.0], 7),
             // 2 cos(2 pi / 13): cyclic sextic, six real roots.
@@ -1337,6 +1337,18 @@ mod tests {
             ("solve(x^7 - 7*x^5 + 14*x^3 - 7*x - 3, x)", vec![-3.0, -7.0, 0.0, 14.0, 0.0, -7.0, 0.0, 1.0], 1),
             // D7(x) - 1/4: group F21, seven real roots (trigonometric form).
             ("solve(4*x^7 - 28*x^5 + 56*x^3 - 28*x - 1, x)", vec![-1.0, -28.0, 0.0, 56.0, 0.0, -28.0, 0.0, 4.0], 7),
+            // x + x^2 + x^3 of a root of D7(x) - 3 (group F42): all six resolvents non-zero.
+            (
+                "solve(x^7 - 14*x^6 - 42*x^5 + 539*x^4 + 462*x^3 - 7105*x^2 - 4522*x - 921, x)",
+                vec![-921.0, -4522.0, -7105.0, 462.0, 539.0, -42.0, -14.0, 1.0],
+                1,
+            ),
+            // The same for D7(x) - 1/4 (group F21): three conjugate pairs, seven real roots.
+            (
+                "solve(64*x^7 - 896*x^6 - 2688*x^5 + 40656*x^4 + 60368*x^3 - 241276*x^2 - 198548*x - 6573, x)",
+                vec![-6573.0, -198_548.0, -241_276.0, 60368.0, 40656.0, -2688.0, -896.0, 64.0],
+                7,
+            ),
             // Sextic with group A4 on six points (block tower).
             ("solve(x^6 - 12*x^4 - 64*x^3 - 144*x^2 + 1728, x)", vec![1728.0, 0.0, -144.0, -64.0, -12.0, 0.0, 1.0], 0),
             // S4 on the six directed 4-cycles (block tower).
