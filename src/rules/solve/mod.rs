@@ -1331,7 +1331,7 @@ mod tests {
     fn sextics_and_septics_by_galois_group() {
         let rules = crate::rules::standard();
         // (equation, ascending coefficients, number of real roots)
-        let cases: [(&str, Vec<f64>, usize); 9] = [
+        let cases: [(&str, Vec<f64>, usize); 10] = [
             // Cyclic septic (Gauss periods, conductor 29): seven real roots.
             ("solve(x^7 + x^6 - 12*x^5 - 7*x^4 + 28*x^3 + 14*x^2 - 9*x + 1, x)", vec![1.0, -9.0, 14.0, 28.0, -7.0, -12.0, 1.0, 1.0], 7),
             // 2 cos(2 pi / 13): cyclic sextic, six real roots.
@@ -1340,6 +1340,9 @@ mod tests {
             ("solve(x^6 - x^5 - 14*x^4 + 9*x^3 + 35*x^2 - 16*x - 1, x)", vec![-1.0, -16.0, 35.0, 9.0, -14.0, -1.0, 1.0], 6),
             // D7(x) - 3: group F42, one real root through Lagrange resolvents.
             ("solve(x^7 - 7*x^5 + 14*x^3 - 7*x - 3, x)", vec![-3.0, -7.0, 0.0, 14.0, 0.0, -7.0, 0.0, 1.0], 1),
+            // Class-field septic of Q(sqrt(-71)): group D7, one real root, through the
+            // invariants t_j t_{-j} (the sextic resolvent itself is out of range).
+            ("solve(x^7 - x^6 - x^5 + x^4 - x^3 - x^2 + 2*x + 1, x)", vec![1.0, 2.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0], 1),
             // D7(x) - 1/4: group F21, seven real roots (trigonometric form).
             ("solve(4*x^7 - 28*x^5 + 56*x^3 - 28*x - 1, x)", vec![-1.0, -28.0, 0.0, 56.0, 0.0, -28.0, 0.0, 4.0], 7),
             // x + x^2 + x^3 of a root of D7(x) - 3 (group F42): all six resolvents non-zero.
@@ -1374,11 +1377,6 @@ mod tests {
                 assert!(residual.abs() < 1e-7 * (1.0 + x.abs().powi(7)), "{src}: {item} -> {x} gives {residual}");
             }
         }
-        // The class-field septic of Q(sqrt(-71)) has group D7 (verified in `poly::galois_high`),
-        // but its sextic resolvent has roots spanning 13 orders of magnitude, beyond the range
-        // of the group test: the root stays an exact `root_of` object, quickly.
-        let (text, reduced) = reduce_with(&rules, "solve(x^7 - x^6 - x^5 + x^4 - x^3 - x^2 + 2*x + 1, x)", &[]);
-        assert!(reduced && text.contains("root_of"), "{text}");
     }
 
     #[test]
