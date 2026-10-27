@@ -460,7 +460,7 @@ pub(super) fn solve_system(
         }
     }
     let mut jordan: Option<JordanData> = None;
-    if found.is_none() && order == 1 {
+    if found.is_none() {
         // No distinct eigenvalues: Jordan chains (polynomial factors in t).
         if let Some((p, p_inverse, diagonals, data)) = jordan_decouple(cx, &a_matrices, &candidates) {
             found = Some((p, p_inverse, diagonals));
@@ -473,30 +473,41 @@ pub(super) fn solve_system(
         | Some(list) => group_conditions(cx, &problems, list)?,
         | None => Vec::new(),
     };
-    if let Some(data) = &jordan {
-        // Derivatives of the solution do not preserve boundary conditions:
-        // bounded domains need couplings without derivatives and
-        // homogeneous boundary values (then `W = exp(t N) V` keeps them).
-        let bounded = shapes.iter().any(|shape| shape.on != time);
-        if bounded {
-            let plain = data.couplings.iter().flatten().flatten().all(|(index, _)| index.iter().all(|&d| d == 0));
-            let homogeneous = shapes.iter().filter(|shape| shape.on != time).all(|shape| shape.values.iter().all(|&v| cx.is_zero(v)));
-            if !plain || !homogeneous {
-                return None;
-            }
+    // Second-order systems and bounded domains with derivative couplings or
+    // boundary data go through the shifted scalar solves (see
+    // `jordan_epsilon`).
+    let epsilon = jordan.as_ref().is_some_and(|data| {
+        if order == 2 {
+            return true;
         }
-    }
+        let bounded = shapes.iter().any(|shape| shape.on != time);
+        let plain = data.couplings.iter().flatten().flatten().all(|(index, _)| index.iter().all(|&d| d == 0));
+        let homogeneous = shapes.iter().filter(|shape| shape.on != time).all(|shape| shape.values.iter().all(|&v| cx.is_zero(v)));
+        bounded && (!plain || !homogeneous)
+    });
+    let shifts: Vec<NodeId> = if epsilon {
+        (0..a_matrices.len())
+            .map(|_| {
+                let symbol = cx.graph.interner_mut().fresh_symbol("eps");
+                cx.graph.symbol_node(symbol)
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
     let source_w = apply(cx, &p_inverse, &source);
-    let ctx = Component { vars: &vars, time, order, a_matrices: &a_matrices, diagonals: &diagonals, p_inverse: &p_inverse, shapes: &shapes };
+    let ctx = Component { vars: &vars, time, order, a_matrices: &a_matrices, diagonals: &diagonals, p_inverse: &p_inverse, shapes: &shapes, shifts: &shifts };
     let mut solutions = Vec::new();
     for (i, &driven) in source_w.iter().enumerate() {
         // The chains of a Jordan system are driven through `exp(t N)`: the
         // source enters separately below.
-        let own_source = if jordan.is_some() { cx.graph.int(0) } else { driven };
+        let own_source = if jordan.is_some() && !epsilon { cx.graph.int(0) } else { driven };
         let found = solve_component(cx, &ctx, i, own_source, true)?;
         solutions.push(found);
     }
-    if let Some(data) = &jordan {
+    if let (Some(data), true) = (&jordan, epsilon) {
+        solutions = jordan_epsilon(cx, data, &a_matrices, &shifts, &solutions)?;
+    } else if let Some(data) = &jordan {
         let homogeneous = jordan_combine(cx, data, &vars, vars[time], &solutions)?;
         solutions = homogeneous;
         if source_w.iter().any(|&e| !cx.is_zero(e)) {
@@ -527,6 +538,8 @@ struct Component<'a> {
     diagonals: &'a [Vec<NodeId>],
     p_inverse: &'a Matrix,
     shapes: &'a [Shape],
+    /// Symbolic shifts `ε_α` added to the diagonals (empty: none).
+    shifts: &'a [NodeId],
 }
 
 /// The scalar problem `∂_t^o w = Σ d_i ∂^α w + source` of characteristic
@@ -550,12 +563,16 @@ fn solve_component(
     *unit.get_mut(ctx.time)? = ctx.order;
     let lhs = jet(cx, unknown, vars, &unit)?;
     let mut rhs_terms = Vec::new();
-    for ((index, _), diagonal) in ctx.a_matrices.iter().zip(ctx.diagonals) {
-        if cx.is_zero(diagonal[i]) {
+    for (position, ((index, _), diagonal)) in ctx.a_matrices.iter().zip(ctx.diagonals).enumerate() {
+        let coefficient = match ctx.shifts.get(position) {
+            | Some(&shift) => add(cx.graph, &[diagonal[i], shift]),
+            | None => diagonal[i],
+        };
+        if ctx.shifts.is_empty() && cx.is_zero(coefficient) {
             continue;
         }
         let j = jet(cx, unknown, vars, index)?;
-        rhs_terms.push(mul(cx.graph, &[diagonal[i], j]));
+        rhs_terms.push(mul(cx.graph, &[coefficient, j]));
     }
     rhs_terms.push(source);
     let rhs = add(cx.graph, &rhs_terms);
@@ -1136,4 +1153,150 @@ fn group_conditions(
         return None;
     }
     Some(shapes)
+}
+
+/// Jordan chains by shifted scalar solves. `S_i(ε)` solves the scalar problem
+/// of characteristic variable `i` with every diagonal `λ_α` replaced by
+/// `λ_α + ε_α`; since `A_α = λ_α + ν_α` with the nilpotent `ν_α = Σ_k μ_{α,k} N^k`,
+/// Taylor's formula in the nilpotent directions gives
+/// `w_a = Σ_j [exp(Σ_α ν_α ∂_{ε_α})]_j S_{a+j} |_{ε=0}`. The shifts are
+/// independent of the space variables, so boundary data and sources of the
+/// scalar solves are those of the system (the operators `q_j` carry a
+/// factor `∂_ε` for `j ≥ 1`), which makes second-order systems, derivative
+/// couplings on bounded domains and non-homogeneous boundary values
+/// accessible.
+fn jordan_epsilon(
+    cx: &mut Cx<'_>,
+    data: &JordanData,
+    a_matrices: &[(Index, Matrix)],
+    shifts: &[NodeId],
+    solutions: &[NodeId],
+) -> Option<Vec<NodeId>> {
+    let na = a_matrices.len();
+    let couplings: Vec<Vec<Vec<(Index, NodeId)>>> = data
+        .couplings
+        .iter()
+        .map(|block| {
+            block
+                .iter()
+                .map(|terms| {
+                    terms
+                        .iter()
+                        .filter_map(|(index, mu)| {
+                            let position = a_matrices.iter().position(|(i, _)| i == index)?;
+                            let mut unit = vec![0; na];
+                            unit[position] = 1;
+                            Some((unit, *mu))
+                        })
+                        .collect()
+                })
+                .collect()
+        })
+        .collect();
+    let eps_data = JordanData { blocks: data.blocks.clone(), couplings };
+    let one = cx.graph.int(1);
+    let zero = cx.graph.int(0);
+    let mut out = solutions.to_vec();
+    for (b, &(start, size, _)) in data.blocks.iter().enumerate() {
+        let q = jordan_operators(cx, &eps_data, b, na, one)?;
+        for a in 0..size {
+            let mut terms = Vec::new();
+            for j in 0..(size - a) {
+                let source = solutions[start + a + j];
+                for (index, c) in q.get(j)? {
+                    let d = differentiate_through(cx, source, shifts, index)?;
+                    terms.push(mul(cx.graph, &[*c, d]));
+                }
+            }
+            let mut value = add(cx.graph, &terms);
+            for &shift in shifts {
+                value = cx.graph.substitute(value, shift, zero);
+            }
+            out[start + a] = cx.simplify(value);
+        }
+    }
+    Some(out)
+}
+
+/// `∂^α f` in the shift parameters, differentiating under `defint` and
+/// `sum` (the limits must not depend on the parameter); `None` when an
+/// unevaluated derivative would remain.
+fn differentiate_through(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    shifts: &[NodeId],
+    index: &[u32],
+) -> Option<NodeId> {
+    let mut d = f;
+    for (k, &order) in index.iter().enumerate() {
+        for _ in 0..order {
+            d = total_derivative(cx, d, *shifts.get(k)?)?;
+        }
+    }
+    if super::util::contains_op(cx.graph, d, "diff") {
+        return None;
+    }
+    Some(d)
+}
+
+/// The maximal `defint`/`sum` subterms of `node` that depend on `symbol`.
+fn parametric_integrals(
+    cx: &Cx<'_>,
+    node: NodeId,
+    symbol: crate::graph::SymbolId,
+    found: &mut Vec<NodeId>,
+) {
+    if !cx.graph.depends_on(cx.graph.find(node), symbol) {
+        return;
+    }
+    let names = ["defint", "sum"];
+    let op = cx.graph.op(node);
+    if names.iter().any(|n| cx.graph.ops().lookup(n) == Some(op)) {
+        if !found.contains(&node) {
+            found.push(node);
+        }
+        return;
+    }
+    for &child in cx.graph.children(node) {
+        parametric_integrals(cx, child, symbol, found);
+    }
+}
+
+/// The total derivative with respect to the symbol `s`, through `defint`
+/// and `sum` whose limits do not depend on it.
+fn total_derivative(
+    cx: &mut Cx<'_>,
+    f: NodeId,
+    s: NodeId,
+) -> Option<NodeId> {
+    let symbol = cx.graph.symbol_of(s)?;
+    let mut found = Vec::new();
+    parametric_integrals(cx, f, symbol, &mut found);
+    let mut frozen = f;
+    let mut parts = Vec::new();
+    for &integral in &found {
+        let &[body, var, lo, hi] = cx.graph.children(integral) else {
+            return None;
+        };
+        if cx.graph.depends_on(cx.graph.find(lo), symbol) || cx.graph.depends_on(cx.graph.find(hi), symbol) {
+            return None;
+        }
+        let inner = total_derivative(cx, body, s)?;
+        let op = cx.graph.op(integral);
+        let rate = cx.graph.node(op, &[inner, var, lo, hi]);
+        let fresh = cx.graph.interner_mut().fresh_symbol("y");
+        let marker = cx.graph.symbol_node(fresh);
+        frozen = cx.graph.replace_subterm(frozen, integral, marker);
+        parts.push((integral, marker, rate));
+    }
+    let mut total = crate::rules::calculus::derivative(cx.graph, frozen, s)?;
+    for &(_, marker, rate) in &parts {
+        let partial = crate::rules::calculus::derivative(cx.graph, frozen, marker)?;
+        let term = mul(cx.graph, &[partial, rate]);
+        total = add(cx.graph, &[total, term]);
+    }
+    for &(integral, marker, _) in &parts {
+        total = cx.graph.substitute(total, marker, integral);
+    }
+    Some(cx.simplify(total))
 }

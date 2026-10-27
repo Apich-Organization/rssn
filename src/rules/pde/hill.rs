@@ -50,7 +50,7 @@ const SAMPLES: usize = 256;
 /// Eigenpairs of a symmetric matrix by cyclic Jacobi rotations, sorted
 /// ascending: `(values, vectors)` with `vectors[k]` the eigenvector of
 /// `values[k]`.
-fn jacobi(mut a: Vec<Vec<f64>>) -> (Vec<f64>, Vec<Vec<f64>>) {
+pub(super) fn jacobi(mut a: Vec<Vec<f64>>) -> (Vec<f64>, Vec<Vec<f64>>) {
     let n = a.len();
     let mut v: Vec<Vec<f64>> = (0..n).map(|i| (0..n).map(|j| if i == j { 1.0 } else { 0.0 }).collect()).collect();
     for _ in 0..60 {

@@ -1029,3 +1029,239 @@ fn reflectionless_darboux_and_sech_ansatz() {
     close(ut + 6.0 * u(x, t) * u(x, t) * ux + uxxx, 0.0, 2e-3 * (1.0 + uxxx.abs()), &s);
     assert!(u(0.0, t).abs() > 1e-3, "{s}");
 }
+
+#[test]
+fn laplace_in_time_signalling_on_a_half_line() {
+    let quiet = "u(x, 0) = 0, at(diff(u(x, t), t), t, 0) = 0";
+    // Pure wave, Dirichlet signal: u = g(t - x/c).
+    let s = any(&format!("pdsolve(diff(diff(u(x, t), t), t) = 4*diff(diff(u(x, t), x), x), u(x, t), list(u(0, t) = sin(t), {quiet}))"));
+    let text = rhs(&s);
+    close(value(&text, &[("x", 1.0), ("t", 2.0)]), (2.0_f64 - 0.5).sin(), 1e-9, &s);
+    close(value(&text, &[("x", 3.0), ("t", 1.0)]), 0.0, 1e-9, "ahead of the front");
+    // Neumann signal: u = -c ∫_0^{t-a} g.
+    let s = any(&format!("pdsolve(diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x), u(x, t), list(at(diff(u(x, t), x), x, 0) = cos(t), {quiet}))"));
+    close(value(&rhs(&s), &[("x", 1.0), ("t", 3.0)]), -(2.0_f64).sin(), 1e-9, &s);
+    // Klein–Gordon, telegraph with damping, Klein–Gordon with Neumann data: residuals of the retarded integrals.
+    let cases = [
+        ("diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x) - 4*u(x, t)", "u(0, t) = sin(t)", 1.0_f64, 0.0_f64, 4.0_f64),
+        ("diff(diff(u(x, t), t), t) + 2*diff(u(x, t), t) = diff(diff(u(x, t), x), x)", "u(0, t) = cos(t)", 1.0, 2.0, 0.0),
+        ("diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x) - 3*u(x, t)", "at(diff(u(x, t), x), x, 0) = sin(t)", 1.0, 0.0, 3.0),
+        ("diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x) + 2*u(x, t)", "u(0, t) = 1 + t", 1.0, 0.0, -2.0),
+    ];
+    for (equation, datum, c2, damping, mass) in cases {
+        let s = any(&format!("pdsolve({equation}, u(x, t), list({datum}, {quiet}))"));
+        let text = expand_integrals(&rhs(&s), 200);
+        let u = |x: f64, t: f64| value(&text, &[("x", x), ("t", t)]);
+        let (x0, t0, h) = (0.6_f64, 2.3_f64, 2e-3_f64);
+        let utt = (u(x0, t0 + h) - 2.0 * u(x0, t0) + u(x0, t0 - h)) / (h * h);
+        let ut = (u(x0, t0 + h) - u(x0, t0 - h)) / (2.0 * h);
+        let uxx = (u(x0 + h, t0) - 2.0 * u(x0, t0) + u(x0 - h, t0)) / (h * h);
+        close(utt + damping * ut + mass * u(x0, t0) - c2 * uxx, 0.0, 2e-2 * (1.0 + utt.abs()), &s);
+        assert!(u(x0, t0).abs() > 1e-3, "{s}");
+    }
+}
+
+#[test]
+fn poisson_integrals_on_disks_and_balls() {
+    // Disk: g = cos² φ extends to 1/2 + (r/R)² cos(2θ)/2.
+    let s = run("pde_poisson_integral(cos(phi)^2, 2, 2)");
+    let text = expand_integrals(&s, 80);
+    let (r, theta) = (1.1_f64, 0.7_f64);
+    close(value(&text, &[("r", r), ("theta", theta)]), 0.5 + (r / 2.0).powi(2) * (2.0 * theta).cos() / 2.0, 1e-8, &s);
+    // Ball: g = cos² θ extends to 1/3 + (2/3)(r/R)² P₂(cos θ).
+    let s = run("pde_poisson_integral(cos(theta)^2, 2, 3)");
+    let text = expand_integrals(&s, 64);
+    let (r, theta, phi) = (0.9_f64, 0.8_f64, 0.3_f64);
+    let p2 = 0.5 * (3.0 * theta.cos().powi(2) - 1.0);
+    close(value(&text, &[("r", r), ("theta", theta), ("phi", phi)]), 1.0 / 3.0 + 2.0 / 3.0 * (r / 2.0).powi(2) * p2, 3e-4, &s);
+}
+
+#[test]
+fn coulomb_bound_states_and_spheroidal_eigenvalues() {
+    use super::coulomb::{coulomb_eigen, coulomb_mode, spheroidal_eigen, spheroidal_mode};
+    // Hydrogen-like spectrum and orthonormality.
+    close(coulomb_eigen(&[2.0, 1.0, 3.0]), -4.0 / 9.0, 1e-14, "eigenvalue");
+    for (l, n, m) in [(0.0, 1.0, 1.0), (0.0, 2.0, 2.0), (1.0, 2.0, 3.0), (1.0, 3.0, 3.0), (0.0, 3.0, 1.0)] {
+        let inner = simpson(&|r| coulomb_mode(&[1.5, l, n, r]) * coulomb_mode(&[1.5, l, m, r]), 0.0, 90.0);
+        let want = if (n - m).abs() < 1e-12 { 1.0 } else { 0.0 };
+        close(inner, want, 3e-5, "orthonormality");
+    }
+    // The radial equation -u'' + (l(l+1)/r² - 2Z/r) u = E u.
+    let (z, l, n, r, h) = (1.5_f64, 2.0_f64, 4.0_f64, 3.1_f64, 1e-4_f64);
+    let u = |r: f64| coulomb_mode(&[z, l, n, r]);
+    let second = (u(r + h) - 2.0 * u(r) + u(r - h)) / (h * h);
+    close(-second + (l * (l + 1.0) / (r * r) - 2.0 * z / r) * u(r), coulomb_eigen(&[z, l, n]) * u(r), 1e-5, "Coulomb equation");
+    // Evolution problems: data in the span of bound states.
+    let bc = "u(0, t) = 0";
+    let data = "2*r*exp(-r) + 0.5*r*(2 - r)*exp(-r/2)/sqrt(8)";
+    let s = any(&format!("pdsolve(diff(u(r, t), t) = diff(diff(u(r, t), r), r) + 2/r*u(r, t), u(r, t), list({bc}, u(r, 0) = {data}))"));
+    let (r, t) = (1.7_f64, 0.3_f64);
+    let exact = 2.0 * r * (-r).exp() * t.exp() + 0.5 * (0.25 * t).exp() * r * (2.0 - r) * (-r / 2.0).exp() / 8.0_f64.sqrt();
+    close(value(&rhs(&s), &[("r", r), ("t", t)]), exact, 1e-6, &s);
+    let s = any(&format!("pdsolve(diff(u(r, t), t) = diff(diff(u(r, t), r), r) + (2/r - 2/r^2)*u(r, t), u(r, t), list({bc}, u(r, 0) = r^2*exp(-r/2)))"));
+    close(value(&rhs(&s), &[("r", r), ("t", t)]), r * r * (-r / 2.0).exp() * (0.25 * t).exp(), 1e-6, &s);
+    let s = any(&format!("pdsolve(diff(diff(u(r, t), t), t) = diff(diff(u(r, t), r), r) + 2/r*u(r, t), u(r, t), list({bc}, u(r, 0) = 2*r*exp(-r), at(diff(u(r, t), t), t, 0) = 0))"));
+    close(value(&rhs(&s), &[("r", r), ("t", t)]), 2.0 * r * (-r).exp() * t.cosh(), 1e-6, &s);
+    // Data outside the bound-state span (continuum content) are refused.
+    let s = any(&format!("pdsolve(diff(u(r, t), t) = diff(diff(u(r, t), r), r) + 2/r*u(r, t), u(r, t), list({bc}, u(r, 0) = r*exp(-3*r)))"));
+    assert!(s.starts_with("pdsolve"), "{s}");
+    // Spheroidal angular functions: gamma = 0 gives n(n+1); first-order perturbation theory.
+    for n in 0..4 {
+        close(spheroidal_eigen(&[0.0, f64::from(n), 0.0]), f64::from(n * (n + 1)), 1e-10, "Legendre limit");
+    }
+    let gamma = 1e-3_f64;
+    for n in 0..4 {
+        let nf = f64::from(n);
+        let first = gamma * (2.0 * nf * (nf + 1.0) - 1.0) / ((2.0 * nf - 1.0) * (2.0 * nf + 3.0));
+        close(spheroidal_eigen(&[0.0, nf, gamma]) - nf * (nf + 1.0), first, 5e-6, "prolate perturbation");
+    }
+    // The mode solves (1 - x²) y'' - 2 x y' + (λ - γ x² - m²/(1 - x²)) y = 0 and is normalised.
+    let (m, n, gamma) = (1.0_f64, 3.0_f64, 2.0_f64);
+    let lambda = spheroidal_eigen(&[m, n, gamma]);
+    let y = |x: f64| spheroidal_mode(&[m, n, gamma, x]);
+    let (x, h) = (0.3_f64, 1e-4_f64);
+    let y2 = (y(x + h) - 2.0 * y(x) + y(x - h)) / (h * h);
+    let y1 = (y(x + h) - y(x - h)) / (2.0 * h);
+    close((1.0 - x * x) * y2 - 2.0 * x * y1 + (lambda - gamma * x * x - m * m / (1.0 - x * x)) * y(x), 0.0, 5e-4, "spheroidal equation");
+    close(simpson(&|x| y(x) * y(x), -1.0, 1.0), 1.0, 1e-5, "spheroidal norm");
+    // Oblate case: negative gamma lowers the eigenvalues.
+    assert!(spheroidal_eigen(&[0.0, 2.0, -3.0]) < 6.0);
+}
+
+#[test]
+fn second_order_and_derivative_coupled_jordan_systems() {
+    let numeric = |text: &str, x: f64, t: f64| crate::rules::testing::numeric(&crate::rules::standard(), text, &[("x", x), ("t", t)], 1e-9).0;
+    // u_tt = u_xx + v_xx, v_tt = v_xx on the line: v = (g(x+t) + g(x-t))/2, u = t (g'(x+t) - g'(x-t))/4.
+    let s = any("pdsolve(list(diff(diff(u(x, t), t), t) = diff(diff(u(x, t), x), x) + diff(diff(v(x, t), x), x), diff(diff(v(x, t), t), t) = diff(diff(v(x, t), x), x)), list(u(x, t), v(x, t)), list(u(x, 0) = 0, at(diff(u(x, t), t), t, 0) = 0, v(x, 0) = exp(-x^2), at(diff(v(x, t), t), t, 0) = 0))");
+    let (a, b) = pair(&s);
+    let (x, t) = (0.4_f64, 0.9_f64);
+    let g = |z: f64| (-z * z).exp();
+    let dg = |z: f64| -2.0 * z * (-z * z).exp();
+    close(numeric(&b, x, t), f64::midpoint(g(x + t), g(x - t)), 1e-8, &s);
+    close(numeric(&a, x, t), t * (dg(x + t) - dg(x - t)) / 4.0, 1e-8, &s);
+    // A derivative coupling on a bounded interval: u_t = u_xx + v_x, v_t = v_xx, Dirichlet ends, v(x, 0) = sin 2x.
+    let s = any("pdsolve(list(diff(u(x, t), t) = diff(diff(u(x, t), x), x) + diff(v(x, t), x), diff(v(x, t), t) = diff(diff(v(x, t), x), x)), list(u(x, t), v(x, t)), list(u(x, 0) = 0, v(x, 0) = sin(2*x), u(0, t) = 0, u(pi, t) = 0, v(0, t) = 0, v(pi, t) = 0))");
+    let (a, b) = pair(&s);
+    let (x, t) = (1.1_f64, 0.3_f64);
+    close(numeric(&b, x, t), (-4.0 * t).exp() * (2.0 * x).sin(), 1e-8, &s);
+    let reference: f64 = (1..=400)
+        .filter(|&n| n != 2)
+        .map(|n| {
+            let nf = f64::from(n);
+            let c = 2.0 / PI * simpson(&|y| 2.0 * (2.0 * y).cos() * (nf * y).sin(), 0.0, PI);
+            c * ((-4.0 * t).exp() - (-nf * nf * t).exp()) / (nf * nf - 4.0) * (nf * x).sin()
+        })
+        .sum();
+    let text = expand_integrals(&expand_sums(&a, 150), 60);
+    close(value(&text, &[("x", x), ("t", t)]), reference, 2e-4, &s);
+}
+
+#[test]
+fn numeric_gelfand_levitan_marchenko_for_general_data() {
+    let evaluate = |datum: &str, x: f64, t: f64| value(&run(&format!("pde_kdv_scattering({datum}, {x}, {t})")), &[]);
+    // Reflectionless data: one soliton, u = -2 sech²(x - 4t).
+    let (x, t) = (0.3_f64, 0.1_f64);
+    close(evaluate("-2/cosh(x)^2", x, t), -2.0 / (x - 4.0 * t).cosh().powi(2), 2e-5, "one soliton");
+    // Two solitons against the closed determinant formula.
+    let closed = run("pde_kdv_reflectionless(2, 1)");
+    close(evaluate("-6/cosh(x)^2", x, 0.05), value(&closed, &[("x", x), ("t", 0.05)]), 2e-4, "two solitons");
+    // Data with a continuous spectrum: the datum is reproduced at t = 0 ...
+    let gaussian = "-3*exp(-x^2)";
+    for x in [-0.8_f64, 0.4, 1.3] {
+        close(evaluate(gaussian, x, 0.0), -3.0 * (-x * x).exp(), 2e-4, "initial datum");
+    }
+    // An off-centre datum (the reflection coefficient carries the phase of the shift).
+    for x in [-0.5_f64, 1.2] {
+        close(evaluate("-3*exp(-(x - 0.7)^2)", x, 0.0), -3.0 * (-(x - 0.7) * (x - 0.7)).exp(), 2e-4, "shifted datum");
+    }
+    // ... and the evolved field solves u_t - 6 u u_x + u_xxx = 0.
+    let (x, t, h) = (0.2_f64, 0.05_f64, 0.05_f64);
+    let u = |x: f64, t: f64| evaluate(gaussian, x, t);
+    let u_t = (u(x, t + 0.02) - u(x, t - 0.02)) / 0.04;
+    let u_x = (u(x + h, t) - u(x - h, t)) / (2.0 * h);
+    let u_xxx = (u(x + 2.0 * h, t) - 2.0 * u(x + h, t) + 2.0 * u(x - h, t) - u(x - 2.0 * h, t)) / (2.0 * h.powi(3));
+    let residual = u_t - 6.0 * u(x, t) * u_x + u_xxx;
+    // The third difference carries an O(h²) error, so the tolerance is loose.
+    close(residual, 0.0, 0.1 * (1.0 + u_xxx.abs()), "KdV residual");
+}
+
+#[test]
+fn heat_outside_a_ball_without_axial_symmetry() {
+    let bounds = |text: &str| text.replace(", rho, 1, oo)", ", rho, 1, 9)").replace(", k, 0, oo)", ", k, 0, 8)");
+    let lap = "diff(diff(u(r, th, ph, t), r), r) + 2*diff(u(r, th, ph, t), r)/r + diff(diff(u(r, th, ph, t), th), th)/r^2 + cos(th)/sin(th)*diff(u(r, th, ph, t), th)/r^2 + diff(diff(u(r, th, ph, t), ph), ph)/(r^2*sin(th)^2)";
+    let radial = |q: f64| (-(q - 4.0) * (q - 4.0)).exp();
+    let (r, th, ph, t) = (2.0_f64, 0.9_f64, 0.7_f64, 0.4_f64);
+    // l = 1, m = 1: sin θ cos φ.
+    let s = any(&format!("pdsolve(diff(u(r, th, ph, t), t) = {lap}, u(r, th, ph, t), list(u(1, th, ph, t) = 0, u(oo, th, ph, t) = 0, u(r, th, ph, 0) = exp(-(r - 4)^2)*sin(th)*cos(ph)))"));
+    let text = expand_integrals(&bounds(&rhs(&s)), 90);
+    let reference = exterior_heat_reference(2.0, 2.0, &radial, t, r) * th.sin() * ph.cos();
+    close(value(&text, &[("r", r), ("th", th), ("ph", ph), ("t", t)]), reference, 4e-3, &s);
+    // l = 2, m = 2: sin² θ sin 2φ.
+    let s = any(&format!("pdsolve(diff(u(r, th, ph, t), t) = {lap}, u(r, th, ph, t), list(u(1, th, ph, t) = 0, u(oo, th, ph, t) = 0, u(r, th, ph, 0) = exp(-(r - 4)^2)*sin(th)^2*sin(2*ph)))"));
+    let text = expand_integrals(&bounds(&rhs(&s)), 90);
+    let reference = exterior_heat_reference(2.0, 6.0, &radial, t, r) * th.sin().powi(2) * (2.0 * ph).sin();
+    close(value(&text, &[("r", r), ("th", th), ("ph", ph), ("t", t)]), reference, 4e-3, &s);
+}
+
+#[test]
+fn dirichlet_greens_functions_of_disks_and_balls() {
+    let w = |text: &str, point: &[(&str, f64)]| value(text, point);
+    for (d, names) in [(2, vec!["x", "y"]), (3, vec!["x", "y", "z"])] {
+        let s = run(&format!("pde_greens_ball(2, {d})"));
+        let at = |x: &[f64], y: &[f64]| {
+            let mut bindings: Vec<(String, f64)> = Vec::new();
+            for (k, n) in names.iter().enumerate() {
+                bindings.push(((*n).to_owned(), x[k]));
+                bindings.push((format!("s_{n}"), y[k]));
+            }
+            let refs: Vec<(&str, f64)> = bindings.iter().map(|(a, b)| (a.as_str(), *b)).collect();
+            w(&s, &refs)
+        };
+        let source: Vec<f64> = if d == 2 { vec![0.7, -0.4] } else { vec![0.7, -0.4, 0.5] };
+        // Zero on the boundary |x| = R = 2.
+        for angle in [0.3_f64, 1.9, 4.0] {
+            let boundary: Vec<f64> = if d == 2 { vec![2.0 * angle.cos(), 2.0 * angle.sin()] } else { vec![2.0 * angle.cos() * 0.6, 2.0 * angle.sin() * 0.6, 2.0 * 0.8] };
+            close(at(&boundary, &source), 0.0, 1e-12, &s);
+        }
+        // Symmetric, and harmonic away from the source.
+        let x: Vec<f64> = if d == 2 { vec![-0.9, 0.8] } else { vec![-0.9, 0.8, -0.3] };
+        close(at(&x, &source), at(&source, &x), 1e-12, "symmetry");
+        let h = 1e-3_f64;
+        let mut laplacian = -2.0 * f64::from(d) * at(&x, &source);
+        for k in 0..usize::try_from(d).unwrap_or(2) {
+            for sign in [-1.0, 1.0] {
+                let mut moved = x.clone();
+                moved[k] += sign * h;
+                laplacian += at(&moved, &source);
+            }
+        }
+        close(laplacian / (h * h), 0.0, 2e-3, "harmonic");
+    }
+    // Exterior points (|x|, |y| > R) vanish on the sphere as well.
+    let s = run("pde_greens_ball(1, 3)");
+    close(w(&s, &[("x", 1.0), ("y", 0.0), ("z", 0.0), ("s_x", 3.0), ("s_y", 1.0), ("s_z", -2.0)]), 0.0, 1e-12, &s);
+}
+
+#[test]
+fn hodograph_linearises_diagonal_quasilinear_systems() {
+    // r_t + r r_x = 0, s_t + s s_x = 0: x = r t + F(r) = s t + G(s), so t = (G(s) - F(r))/(r - s).
+    let s = run("pde_hodograph(r, s)");
+    let (equation, _) = s.split_once(" = 0").unwrap_or((&s, ""));
+    let explicit = "((sin(s) - r^2)/(r - s))";
+    let text = run(&equation.replace("t(r, s)", explicit));
+    close(value(&text, &[("r", 0.7), ("s", -0.4)]), 0.0, 1e-9, &text);
+    // A non-trivial pair is returned as an equation in the derivatives of t.
+    let s = run("pde_hodograph(r + s, r*s)");
+    assert!(s.contains("diff") && s.contains("= 0"), "{s}");
+}
+
+#[test]
+fn waves_outside_a_ball_without_axial_symmetry() {
+    let bounds = |text: &str| text.replace(", rho, 1, oo)", ", rho, 1, 9)").replace(", k, 0, oo)", ", k, 0, 8)");
+    let lap = "diff(diff(u(r, th, ph, t), r), r) + 2*diff(u(r, th, ph, t), r)/r + diff(diff(u(r, th, ph, t), th), th)/r^2 + cos(th)/sin(th)*diff(u(r, th, ph, t), th)/r^2 + diff(diff(u(r, th, ph, t), ph), ph)/(r^2*sin(th)^2)";
+    let (r, th, ph, t) = (3.0_f64, 0.9_f64, 0.7_f64, 1.0_f64);
+    let s = any(&format!("pdsolve(diff(diff(u(r, th, ph, t), t), t) = {lap}, u(r, th, ph, t), list(u(1, th, ph, t) = 0, u(oo, th, ph, t) = 0, u(r, th, ph, 0) = exp(-2*(r - 4)^2)*sin(th)*cos(ph), at(diff(u(r, th, ph, t), t), t, 0) = 0))"));
+    let text = expand_integrals(&bounds(&rhs(&s)), 90);
+    let reference = exterior_wave_reference(2.0, 2.0, &|q| (-2.0 * (q - 4.0) * (q - 4.0)).exp(), t, r) * th.sin() * ph.cos();
+    close(value(&text, &[("r", r), ("th", th), ("ph", ph), ("t", t)]), reference, 6e-3, &s);
+}
