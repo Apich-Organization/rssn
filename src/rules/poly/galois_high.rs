@@ -406,7 +406,7 @@ pub(crate) fn solve_system(
 
 /// The rational with small denominator within `2^-300` of the real
 /// fixed-point number `re`, by continued fractions.
-fn rationalize(z: &Fx) -> Option<BigRational> {
+pub(crate) fn rationalize(z: &Fx) -> Option<BigRational> {
     if z.im.abs() > BigInt::one() << (BITS - 200) {
         return None;
     }
