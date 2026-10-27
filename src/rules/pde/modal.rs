@@ -61,8 +61,6 @@ struct RadialMode {
     kappa: f64,
     values: Vec<f64>,
     node: NodeId,
-    /// The factor that turns the Bessel function into the radial function.
-    scale: f64,
 }
 
 /// The kind of the condition at the boundary.
@@ -175,10 +173,10 @@ pub(super) fn solve(
         let theta_nodes = if geometry.theta.is_some() { 24 } else { 1 };
         let a: Vec<(f64, f64, f64)> = if geometry.theta.is_some() { gauss_legendre(theta_nodes).into_iter().map(|(x, w)| (x, w, x.acos())).collect() } else { vec![(0.0, 2.0, 0.0)] };
         let m = if geometry.phi.is_some() { 32 } else { 1 };
-        (a, (0..m).map(|k| 2.0 * PI * k as f64 / m as f64).collect())
+        (a, (0..m).map(|k| 2.0 * PI * f64::from(k) / f64::from(m)).collect())
     } else {
         let m = if geometry.theta.is_some() { 48 } else { 1 };
-        ((0..m).map(|k| (0.0, 2.0 * PI / m as f64, 2.0 * PI * k as f64 / m as f64)).collect(), vec![0.0])
+        ((0..m).map(|k| (0.0, 2.0 * PI / f64::from(m), 2.0 * PI * f64::from(k) / f64::from(m))).collect(), vec![0.0])
     };
     // Tables of the data on the grid: [datum][radius][angle][azimuth].
     let mut tables: Vec<Vec<Vec<Vec<f64>>>> = Vec::new();
@@ -259,7 +257,7 @@ pub(super) fn solve(
             if kappa.abs() < 1e-14 {
                 let values = vec![1.0; radial.len()];
                 let node = cx.graph.int(1);
-                modes.push(RadialMode { kappa, values, node, scale: 1.0 });
+                modes.push(RadialMode { kappa, values, node });
                 continue;
             }
             let scale = if ball { (PI / (2.0 * kappa)).sqrt() } else { 1.0 };
@@ -278,7 +276,7 @@ pub(super) fn solve(
             } else {
                 bessel
             };
-            modes.push(RadialMode { kappa, values, node, scale });
+            modes.push(RadialMode { kappa, values, node });
         }
         Some(modes)
     };
@@ -318,7 +316,7 @@ pub(super) fn solve(
                     | None => vec![(cx.graph.int(1), true)],
                 };
                 for (phi_node, is_cos) in phi_nodes {
-                    let norm_phi = if geometry.phi.is_none() { 2.0 * PI } else if m == 0 { 2.0 * PI } else { PI };
+                    let norm_phi = if geometry.phi.is_none() || m == 0 { 2.0 * PI } else { PI };
                     let norm_ang = norm_theta * norm_phi;
                     for mode in &modes {
                         let norm_r: f64 = mode.values.iter().enumerate().map(|(i, v)| radial_weight(i) * v * v).sum();

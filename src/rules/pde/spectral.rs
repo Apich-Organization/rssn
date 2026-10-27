@@ -203,11 +203,10 @@ impl Axis {
         cx: &mut Cx<'_>,
     ) -> Option<NodeId> {
         Some(match &self.shape {
-            | Shape::Interval(_) | Shape::Angle | Shape::Legendre => cx.graph.int(1),
+            | Shape::Interval(_) | Shape::Angle | Shape::Legendre | Shape::Hill { .. } => cx.graph.int(1),
             | Shape::Polar { .. } => call(cx, "sin", &[self.var])?,
             | Shape::Radial { sphere, .. } => powi(cx.graph, self.var, if *sphere { 2 } else { 1 }),
             | Shape::Orthogonal { weight, .. } => *weight,
-            | Shape::Hill { .. } => cx.graph.int(1),
             | Shape::General { params, .. } => {
                 let mut args = vec![self.var];
                 args.extend(params);

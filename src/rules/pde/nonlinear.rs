@@ -588,7 +588,7 @@ fn hull_riemann(
                 a = m1;
             }
         }
-        Some(0.5 * (a + b))
+        Some(f64::midpoint(a, b))
     };
     // Chord ends: refine against a fixed outer state.
     for wave in &mut waves {
@@ -599,10 +599,11 @@ fn hull_riemann(
                 if let Some(r) = refine(cx, *from, *to) {
                     *to = r;
                 }
-            } else if to_fixed && !from_fixed {
-                if let Some(r) = refine(cx, *to, *from) {
-                    *from = r;
-                }
+            } else if to_fixed
+                && !from_fixed
+                && let Some(r) = refine(cx, *to, *from)
+            {
+                *from = r;
             }
             let (ff, ft) = (at(cx, flux, *from)?, at(cx, flux, *to)?);
             *speed = (ft - ff) / (*to - *from);
@@ -644,7 +645,7 @@ fn hull_riemann(
                 let marker = cx.graph.sym("xi_fan");
                 let equation = sub(cx.graph, speed_w, marker);
                 let roots = solve_for(cx.graph, equation, w, 0)?;
-                let middle = 0.5 * (from + to);
+                let middle = f64::midpoint(from, to);
                 let speed_middle = at(cx, speed_w, middle)?;
                 let marker_symbol = cx.graph.symbol_of(marker)?;
                 let mut best: Option<(f64, NodeId)> = None;
@@ -741,14 +742,14 @@ fn solve_linear(
 
 /// Travelling-wave solutions `u = Σ_{j=0}^{m} a_j tanh^j(μ (x - c t))` of a
 /// scalar evolution equation whose residual is a polynomial in the
-/// derivatives of `u` (KdV, mKdV, Burgers, Allen–Cahn, Fisher, …). The
+/// derivatives of `u` (`KdV`, `mKdV`, Burgers, Allen–Cahn, Fisher, …). The
 /// unknowns `a_j, μ, c` make the residual, a polynomial in `T = tanh`,
 /// vanish; the polynomial system is solved by Levenberg–Marquardt from
 /// several starts on the residual sampled at points of `(-1, 1)`, the
 /// solution is rounded to small fractions when that keeps the residual
 /// zero, and the first non-trivial solution (`a_m ≠ 0`, `μ ≠ 0`) of the
 /// smallest degree `m ≤ 3` is returned. Equations that have a family of
-/// solutions (KdV: any speed) yield one member.
+/// solutions (`KdV`: any speed) yield one member.
 #[allow(clippy::too_many_lines)]
 fn tanh_method(
     cx: &mut Cx<'_>,
@@ -903,7 +904,7 @@ fn tanh_method(
             let rounded: Vec<f64> = z.iter().map(|&v| snap(v)).collect();
             let chosen = match evaluate(cx, &rounded, degree) {
                 | Some(rr) if rr.iter().all(|v| v.abs() < 1e-8) => rounded,
-                | _ => z.clone(),
+                | _ => z,
             };
             // Assemble Σ a_j tanh(μ (x - c t))^j.
             let number = |cx: &mut Cx<'_>, v: f64| -> Option<NodeId> {
