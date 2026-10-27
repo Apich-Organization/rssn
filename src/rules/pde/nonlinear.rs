@@ -740,6 +740,43 @@ fn solve_linear(
     Some(x)
 }
 
+/// Polynomials `Σ c S^i T^j` (`j ∈ {0, 1}`, `S = sech`, `T = tanh`, `T² = 1 - S²`).
+type SechPoly = std::collections::BTreeMap<(usize, usize), f64>;
+
+/// `d/dξ` of `P(S, T)` for `ξ = μ (x - c t)`: `S' = -μ S T`, `T' = μ S²`.
+fn sech_x_derivative(
+    p: &SechPoly,
+    mu: f64,
+) -> SechPoly {
+    let mut out = SechPoly::new();
+    let mut add_term = |key: (usize, usize), v: f64| {
+        *out.entry(key).or_insert(0.0) += v;
+    };
+    for (&(i, j), &c) in p {
+        if i > 0 {
+            let w = -(i as f64) * mu * c;
+            if j == 0 {
+                add_term((i, 1), w);
+            } else {
+                add_term((i, 0), w);
+                add_term((i + 2, 0), -w);
+            }
+        }
+        if j == 1 {
+            add_term((i + 2, 0), mu * c);
+        }
+    }
+    out
+}
+
+fn sech_eval(
+    p: &SechPoly,
+    t: f64,
+) -> f64 {
+    let s = (1.0 - t * t).max(0.0).sqrt();
+    p.iter().map(|(&(i, j), &c)| c * s.powi(i32::try_from(i).unwrap_or(0)) * t.powi(i32::try_from(j).unwrap_or(0))).sum()
+}
+
 /// Travelling-wave solutions `u = Σ_{j=0}^{m} a_j tanh^j(μ (x - c t))` of a
 /// scalar evolution equation whose residual is a polynomial in the
 /// derivatives of `u` (`KdV`, `mKdV`, Burgers, Allen–Cahn, Fisher, …). The
@@ -783,22 +820,30 @@ fn tanh_method(
     let samples: Vec<f64> = (0..28).map(|k| -0.93 + 1.86 * f64::from(k) / 27.0).collect();
     let unknown_index = p.unit(space, 1);
     let _ = unknown_index;
-    let evaluate = |cx: &Cx<'_>, z: &[f64], degree: usize| -> Option<Vec<f64>> {
+    let evaluate = |cx: &Cx<'_>, z: &[f64], degree: usize, sech: bool| -> Option<Vec<f64>> {
         let (a, mu, c) = (&z[..=degree], z[degree + 1], z[degree + 2]);
         // Derivatives in x: P, D P, D² P, …
         let mut by_order: Vec<Vec<f64>> = vec![a.to_vec()];
+        let mut by_order_sech: Vec<SechPoly> = vec![a.iter().enumerate().map(|(k, &v)| ((k, 0), v)).collect()];
         for _ in 0..4 {
-            let last = by_order.last()?.clone();
-            by_order.push(poly_x_derivative(&last, mu));
+            if sech {
+                let last = by_order_sech.last()?;
+                let next = sech_x_derivative(last, mu);
+                by_order_sech.push(next);
+            } else {
+                let last = by_order.last()?.clone();
+                by_order.push(poly_x_derivative(&last, mu));
+            }
         }
         let mut out = Vec::new();
         for &tv in &samples {
             let mut env = crate::graph::Env::numeric(0.0);
-            env.bind(u_symbol, poly_eval(a, tv));
+            let evaluated = |order: usize| -> Option<f64> { if sech { Some(sech_eval(by_order_sech.get(order)?, tv)) } else { Some(poly_eval(by_order.get(order)?, tv)) } };
+            env.bind(u_symbol, evaluated(0)?);
             for (symbol, index) in &bindings {
                 let (nx, nt) = (index[space] as usize, index[time] as usize);
                 let order = nx + nt;
-                let value = (-c).powi(i32::try_from(nt).ok()?) * poly_eval(by_order.get(order)?, tv);
+                let value = (-c).powi(i32::try_from(nt).ok()?) * evaluated(order)?;
                 env.bind(*symbol, value);
             }
             out.push(cx.graph.eval(residual, &env).filter(|v| v.is_finite())?);
@@ -812,12 +857,12 @@ fn tanh_method(
         seed ^= seed << 17;
         (seed >> 11) as f64 / (1_u64 << 53) as f64 * 4.0 - 2.0
     };
-    for degree in 1..=3_usize {
+    for (sech, degree) in [(false, 1_usize), (true, 1), (false, 2), (true, 2), (false, 3), (true, 3), (false, 4), (true, 4), (false, 5)] {
         let dimension = degree + 3;
         for _start in 0..80 {
             let mut z: Vec<f64> = (0..dimension).map(|_| random()).collect();
             let mut lambda = 1e-2;
-            let mut current = evaluate(cx, &z, degree);
+            let mut current = evaluate(cx, &z, degree, sech);
             for _ in 0..120 {
                 let Some(r) = current.clone() else {
                     break;
@@ -833,7 +878,7 @@ fn tanh_method(
                     let mut zp = z.clone();
                     let h = 1e-7 * z[k].abs().max(1.0);
                     zp[k] += h;
-                    match evaluate(cx, &zp, degree) {
+                    match evaluate(cx, &zp, degree, sech) {
                         | Some(rp) => {
                             for (row, (a, b)) in jacobian.iter_mut().zip(rp.iter().zip(&r)) {
                                 row[k] = (a - b) / h;
@@ -863,7 +908,7 @@ fn tanh_method(
                     }
                     if let Some(step) = solve_linear(damped, gradient.clone()) {
                         let candidate: Vec<f64> = z.iter().zip(&step).map(|(a, b)| a + b).collect();
-                        if let Some(rc) = evaluate(cx, &candidate, degree) {
+                        if let Some(rc) = evaluate(cx, &candidate, degree, sech) {
                             let candidate_norm: f64 = rc.iter().map(|v| v * v).sum();
                             if candidate_norm < norm {
                                 z = candidate;
@@ -902,7 +947,7 @@ fn tanh_method(
                 v
             };
             let rounded: Vec<f64> = z.iter().map(|&v| snap(v)).collect();
-            let chosen = match evaluate(cx, &rounded, degree) {
+            let chosen = match evaluate(cx, &rounded, degree, sech) {
                 | Some(rr) if rr.iter().all(|v| v.abs() < 1e-8) => rounded,
                 | _ => z,
             };
@@ -923,7 +968,13 @@ fn tanh_method(
             let ct = mul(cx.graph, &[c_node, t]);
             let xi = sub(cx.graph, x, ct);
             let argument = mul(cx.graph, &[mu_node, xi]);
-            let tanh = call(cx, "tanh", &[argument])?;
+            let tanh = if sech {
+                let cosh = call(cx, "cosh", &[argument])?;
+                let one = cx.graph.int(1);
+                div(cx, one, cosh)
+            } else {
+                call(cx, "tanh", &[argument])?
+            };
             let mut terms = Vec::new();
             for (j, &a) in chosen.iter().take(degree + 1).enumerate() {
                 if a.abs() < 1e-12 {
@@ -938,4 +989,59 @@ fn tanh_method(
         }
     }
     None
+}
+
+/// `pde_kdv_reflectionless(N, κ)`: the solution of `u_t - 6 u u_x + u_xxx = 0`
+/// with the reflectionless datum `u(x, 0) = -N (N + 1) κ² sech²(κ x)`. The
+/// scattering data of that potential are the eigenvalues `κ_n = n κ`
+/// (`n = 1..N`) with the norming constants of the Pöschl–Teller well,
+/// `c_n² = 2 κ_n Π_{m≠n} (n + m)/|n - m|`, i.e. the shifts below in the
+/// determinant formula of [`kdv_soliton`].
+pub(super) fn kdv_reflectionless(
+    cx: &mut Cx<'_>,
+    n: NodeId,
+    kappa: NodeId,
+) -> Option<NodeId> {
+    let count = usize::try_from(exact_value(cx, n)?.round() as i64).ok()?;
+    if count == 0 || count > 4 {
+        return None;
+    }
+    let mut kappas = Vec::new();
+    let mut shifts = Vec::new();
+    for k in 1..=count {
+        let order = cx.graph.int(i64::try_from(k).ok()?);
+        kappas.push(mul(cx.graph, &[order, kappa]));
+        let mut logs = Vec::new();
+        for m in 1..=count {
+            if m != k {
+                let ratio = cx.graph.num(crate::graph::Number::fraction(i64::try_from(k + m).ok()?, i64::try_from(k.abs_diff(m)).ok()?)?);
+                logs.push(call(cx, "ln", &[ratio])?);
+            }
+        }
+        let total = add(cx.graph, &logs);
+        let denominator = cx.graph.num(crate::graph::Number::fraction(1, i64::try_from(2 * k).ok()?)?);
+        let scaled = mul(cx.graph, &[denominator, total]);
+        let inverse = div(cx, scaled, kappa);
+        shifts.push(inverse);
+    }
+    kdv_soliton(cx, &kappas, &shifts)
+}
+
+/// `pde_darboux_kdv(u, ψ)`: one Darboux transformation of a solution `u(x, t)`
+/// of `u_t - 6 u u_x + u_xxx = 0` with an eigenfunction `ψ` of the Lax pair
+/// (`-ψ_xx + u ψ = λ ψ`, `ψ_t = 4 ψ_xxx - 6 u ψ_x - 3 u_x ψ`):
+/// `ũ = u - 2 ∂²_x ln ψ`.
+pub(super) fn darboux_kdv(
+    cx: &mut Cx<'_>,
+    u: NodeId,
+    psi: NodeId,
+) -> Option<NodeId> {
+    let x = cx.graph.sym("x");
+    let log = call(cx, "ln", &[psi])?;
+    let first = derivative(cx.graph, log, x)?;
+    let second = derivative(cx.graph, first, x)?;
+    let two = cx.graph.int(2);
+    let correction = mul(cx.graph, &[two, second]);
+    let result = sub(cx.graph, u, correction);
+    Some(cx.simplify(result))
 }

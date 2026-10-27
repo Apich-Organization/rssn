@@ -993,3 +993,39 @@ fn separable_variable_coefficients_in_two_variables() {
     let text = expand_integrals(&expand_sums(&rhs(&s), 4), 120);
     close(value(&text, &[("x", x), ("y", y), ("t", t)]), exact, 5e-4, &s);
 }
+
+#[test]
+fn reflectionless_darboux_and_sech_ansatz() {
+    let v = |text: &str, x: f64, t: f64| value(text, &[("x", x), ("t", t)]);
+    // Reflectionless data -N (N + 1) κ² sech²(κ x) at t = 0.
+    for (n, kappa) in [(1_i32, 1.0_f64), (2, 1.0), (2, 0.7), (3, 1.0)] {
+        let s = run(&format!("pde_kdv_reflectionless({n}, {kappa})"));
+        for x in [-1.3_f64, 0.0, 0.4, 1.9] {
+            let want = -f64::from(n * (n + 1)) * kappa * kappa / (kappa * x).cosh().powi(2);
+            close(v(&s, x, 0.0), want, 1e-9, &s);
+        }
+    }
+    // The N = 2 solution solves KdV.
+    let s = run("pde_kdv_reflectionless(2, 1)");
+    let u = |x: f64, t: f64| v(&s, x, t);
+    let (x, t, h) = (0.35_f64, 0.05_f64, 2e-3_f64);
+    let u_t = (u(x, t + h) - u(x, t - h)) / (2.0 * h);
+    let u_x = (u(x + h, t) - u(x - h, t)) / (2.0 * h);
+    let u_xxx = (u(x + 2.0 * h, t) - 2.0 * u(x + h, t) + 2.0 * u(x - h, t) - u(x - 2.0 * h, t)) / (2.0 * h.powi(3));
+    close(u_t - 6.0 * u(x, t) * u_x + u_xxx, 0.0, 5e-3 * (1.0 + u_xxx.abs()), &s);
+    // Darboux: the vacuum with psi = cosh(k x - 4 k^3 t) gives the one-soliton.
+    let s = run("pde_darboux_kdv(0, cosh(x - 4*t))");
+    let (x, t) = (0.8_f64, 0.3_f64);
+    close(v(&s, x, t), -2.0 / (x - 4.0 * t).cosh().powi(2), 1e-9, &s);
+    // Sech ansatz: the focusing mKdV soliton k sech(k (x - k² t)).
+    let s = any("pdsolve(diff(u(x, t), t) + 6*u(x, t)^2*diff(u(x, t), x) + diff(diff(diff(u(x, t), x), x), x) = 0, u(x, t))");
+    assert!(s.contains("cosh"), "{s}");
+    let text = rhs(&s);
+    let u = |x: f64, t: f64| value(&text, &[("x", x), ("t", t)]);
+    let (x, t, h) = (0.35_f64, 0.2_f64, 2e-3_f64);
+    let ut = (u(x, t + h) - u(x, t - h)) / (2.0 * h);
+    let ux = (u(x + h, t) - u(x - h, t)) / (2.0 * h);
+    let uxxx = (u(x + 2.0 * h, t) - 2.0 * u(x + h, t) + 2.0 * u(x - h, t) - u(x - 2.0 * h, t)) / (2.0 * h.powi(3));
+    close(ut + 6.0 * u(x, t) * u(x, t) * ux + uxxx, 0.0, 2e-3 * (1.0 + uxxx.abs()), &s);
+    assert!(u(0.0, t).abs() > 1e-3, "{s}");
+}
