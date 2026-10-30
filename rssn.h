@@ -70,6 +70,10 @@ typedef enum RssnStatus {
      * rssn panicked; this is a bug.
      */
     RSSN_STATUS_PANIC = 11,
+    /**
+     * A dimension conflict in strict mode.
+     */
+    RSSN_STATUS_DIMENSION = 12,
 } RssnStatus;
 
 /**
