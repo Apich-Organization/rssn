@@ -1113,14 +1113,12 @@ fn log_both_sides(
     let sign_of = |graph: &Graph, t: NodeId| -> f64 {
         match graph.number_of(t) {
             | Some(n) => n.to_f64(),
-            | None if graph.op(t) == core::MUL => {
-                graph
-                    .children(t)
-                    .iter()
-                    .filter_map(|&c| graph.number_of(c))
-                    .map(Number::to_f64)
-                    .product()
-            },
+            | None if graph.op(t) == core::MUL => graph
+                .children(t)
+                .iter()
+                .filter_map(|&c| graph.number_of(c))
+                .map(Number::to_f64)
+                .product(),
             | None => 1.0,
         }
     };
@@ -1132,11 +1130,9 @@ fn log_both_sides(
         let kids = graph.children(t).to_vec();
         let magnitude: Vec<NodeId> = kids
             .iter()
-            .map(|&c| {
-                match graph.number_of(c) {
-                    | Some(n) if n.to_f64() < 0.0 => graph.num(n.neg()),
-                    | _ => c,
-                }
+            .map(|&c| match graph.number_of(c) {
+                | Some(n) if n.to_f64() < 0.0 => graph.num(n.neg()),
+                | _ => c,
             })
             .collect();
         graph.node(core::MUL, &magnitude)

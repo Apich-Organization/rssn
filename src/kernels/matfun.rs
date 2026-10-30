@@ -21,9 +21,7 @@
 
 use crate::kernels::dense::DenseError;
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::{
-    self,
-};
+use crate::kernels::dense::{self};
 use crate::kernels::krylov::Csr;
 
 fn mm(

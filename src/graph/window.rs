@@ -716,16 +716,14 @@ impl TreeWindow {
         found: &WindowMatch,
     ) -> Option<CellId> {
         match pat {
-            | Pat::Var(v) => {
-                match found.subst.get(*v as usize)?.as_slice() {
-                    | [] => None,
-                    | [only] => Some(self.clone_subtree(*only)),
-                    | several => {
-                        let copies: Vec<CellId> =
-                            several.iter().map(|&c| self.clone_subtree(c)).collect();
-                        Some(self.new_node(*found.ops.get(*v as usize)?, &copies))
-                    },
-                }
+            | Pat::Var(v) => match found.subst.get(*v as usize)?.as_slice() {
+                | [] => None,
+                | [only] => Some(self.clone_subtree(*only)),
+                | several => {
+                    let copies: Vec<CellId> =
+                        several.iter().map(|&c| self.clone_subtree(c)).collect();
+                    Some(self.new_node(*found.ops.get(*v as usize)?, &copies))
+                },
             },
             | Pat::Num(n) => {
                 let node = graph.num(n.clone());
@@ -1142,11 +1140,9 @@ mod tests {
         program
             .rules
             .into_iter()
-            .filter_map(|r| {
-                match r.action {
-                    | Action::Rewrite(rw) => Some(rw),
-                    | Action::Kernel(_) => None,
-                }
+            .filter_map(|r| match r.action {
+                | Action::Rewrite(rw) => Some(rw),
+                | Action::Kernel(_) => None,
             })
             .collect()
     }

@@ -873,11 +873,9 @@ pub fn rational_roots(p: &[BigRational]) -> Vec<BigRational> {
     let mut roots: Vec<BigRational> = factor(p)
         .1
         .into_iter()
-        .filter_map(|(f, _)| {
-            match f.as_slice() {
-                | [c0, c1] => Some(BigRational::new(-c0.clone(), c1.clone())),
-                | _ => None,
-            }
+        .filter_map(|(f, _)| match f.as_slice() {
+            | [c0, c1] => Some(BigRational::new(-c0.clone(), c1.clone())),
+            | _ => None,
         })
         .collect();
     roots.sort();

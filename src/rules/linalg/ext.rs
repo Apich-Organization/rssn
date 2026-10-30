@@ -784,11 +784,9 @@ fn integer_matrix(
     m.iter()
         .map(|row| {
             row.iter()
-                .map(|&e| {
-                    match graph.number_of(e)? {
-                        | Number::Int(v) => Some(v.clone()),
-                        | _ => None,
-                    }
+                .map(|&e| match graph.number_of(e)? {
+                    | Number::Int(v) => Some(v.clone()),
+                    | _ => None,
                 })
                 .collect()
         })

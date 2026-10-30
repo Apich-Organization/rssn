@@ -492,11 +492,9 @@ impl LinearSystem {
             return Ok(lu.solve(b));
         }
         let apply = |x: &[f64], y: &mut [f64]| self.a.matvec(x, y);
-        let pre = |r: &[f64], z: &mut [f64]| {
-            match &self.ilu {
-                | Some(m) => m.apply(r, z),
-                | None => identity_precond(r, z),
-            }
+        let pre = |r: &[f64], z: &mut [f64]| match &self.ilu {
+            | Some(m) => m.apply(r, z),
+            | None => identity_precond(r, z),
         };
         let res = if self.gmres {
             gmres(apply, pre, b, x0, 30, self.tol, 20 * b.len().max(100))

@@ -19,11 +19,13 @@
 //! | `zeilberger(F, k, n)` | `list(list(p_0, …, p_J), G/F)`: Zeilberger's recurrence `Σ_j p_j(n) S(n+j) = 0` for `S(n) = Σ_k F(n, k)` and the telescoping certificate |
 //! | `definite_sum(F, k, n)` | the closed form of `Σ_{k=-oo}^{oo} F(n, k)` from the first-order Zeilberger recurrence |
 
+mod algebraic;
 mod diff;
 mod gosper;
 pub mod indefinite;
 mod integrate;
 mod limits;
+mod multiseries;
 mod powerseries;
 mod recurrence;
 pub(crate) use powerseries::laurent_expansion;
@@ -77,19 +79,19 @@ pub(crate) fn at_infinity(
     plus: Option<&str>,
     minus: Option<&str>,
 ) -> Result<(), RuleError> {
-    let op = i.graph().ops().lookup(name).ok_or_else(|| {
-        RuleError::Invalid {
+    let op = i
+        .graph()
+        .ops()
+        .lookup(name)
+        .ok_or_else(|| RuleError::Invalid {
             rule: format!("limits of {name}"),
             reason: "unknown operator",
-        }
-    })?;
+        })?;
     let mut parse = |text: Option<&str>| -> Result<Option<Pat>, RuleError> {
         text.map(|t| {
-            Pat::parse(t, i.graph(), &mut VarNames::default()).map_err(|error| {
-                RuleError::Parse {
-                    rule: format!("limits of {name}: {t}"),
-                    error,
-                }
+            Pat::parse(t, i.graph(), &mut VarNames::default()).map_err(|error| RuleError::Parse {
+                rule: format!("limits of {name}: {t}"),
+                error,
             })
         })
         .transpose()
@@ -138,11 +140,9 @@ pub(crate) fn partials(
     name: &str,
     texts: &[&str],
 ) -> Result<(), RuleError> {
-    let invalid = |reason: &'static str| {
-        RuleError::Invalid {
-            rule: format!("d/{name}"),
-            reason,
-        }
+    let invalid = |reason: &'static str| RuleError::Invalid {
+        rule: format!("d/{name}"),
+        reason,
     };
     let op = i
         .graph()
@@ -159,11 +159,9 @@ pub(crate) fn partials(
         for v in ["a", "b", "c", "d"] {
             vars.index(v);
         }
-        let pat = Pat::parse(text, i.graph(), &mut vars).map_err(|error| {
-            RuleError::Parse {
-                rule: format!("d/{name}: {text}"),
-                error,
-            }
+        let pat = Pat::parse(text, i.graph(), &mut vars).map_err(|error| RuleError::Parse {
+            rule: format!("d/{name}: {text}"),
+            error,
         })?;
         if vars.len() > 4 {
             return Err(invalid("partial derivatives may only use ?a, ?b, ?c, ?d"));
@@ -245,12 +243,13 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         .ops_mut()
         .set_attr(infinity, OnReals(Facts::POSITIVE));
     let lookup = |i: &mut Installer<'_>, name: &'static str| {
-        i.graph().ops().lookup(name).ok_or_else(|| {
-            RuleError::Invalid {
+        i.graph()
+            .ops()
+            .lookup(name)
+            .ok_or_else(|| RuleError::Invalid {
                 rule: format!("calculus needs `{name}`"),
                 reason: "operator of the elementary rule set is missing",
-            }
-        })
+            })
     };
     let functions = integrate::Functions {
         diff: diff_op,
@@ -381,6 +380,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             "calculus/defint-empty: defint(?f, ?x, ?a, ?a) => 0",
         ],
     )?;
+    algebraic::install(i)?;
+    multiseries::install(i)?;
     i.define(&["asymptotic(f, x, n) := laurent(f, x, oo, n)"])?;
     Ok(())
 }

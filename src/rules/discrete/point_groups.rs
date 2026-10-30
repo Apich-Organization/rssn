@@ -512,11 +512,9 @@ impl Geo {
             Some(axes[0])
         } else {
             // several C2 axes: D2d has an S4 axis, D2 and D2h have none
-            kinds.iter().find_map(|k| {
-                match k {
-                    | Kind::Imp { axis, n: 4, .. } => Some(*axis),
-                    | _ => None,
-                }
+            kinds.iter().find_map(|k| match k {
+                | Kind::Imp { axis, n: 4, .. } => Some(*axis),
+                | _ => None,
             })
         };
         Self {
@@ -654,12 +652,10 @@ impl PointGroup {
         let class_has =
             |c: usize, pred: &dyn Fn(&Kind) -> bool| ct.classes[c].iter().any(|&e| pred(&kinds[e]));
         let contains_axis = |c: usize, ax: [f64; 3]| {
-            class_has(c, &|k| {
-                match k {
-                    | Kind::Rot { axis, .. } => parallel(*axis, ax),
-                    | Kind::Mirror { normal } => parallel(*normal, ax),
-                    | _ => false,
-                }
+            class_has(c, &|k| match k {
+                | Kind::Rot { axis, .. } => parallel(*axis, ax),
+                | Kind::Mirror { normal } => parallel(*normal, ax),
+                | _ => false,
             })
         };
 
@@ -778,32 +774,24 @@ impl PointGroup {
         }
 
         // Display order of the classes.
-        let rank = |c: usize| {
-            match rep_kind[c] {
-                | Kind::E => 0,
-                | Kind::Rot { .. } => 1,
-                | Kind::Inv => 2,
-                | Kind::Imp { .. } => 3,
-                | Kind::Mirror { .. } => 4,
-            }
+        let rank = |c: usize| match rep_kind[c] {
+            | Kind::E => 0,
+            | Kind::Rot { .. } => 1,
+            | Kind::Inv => 2,
+            | Kind::Imp { .. } => 3,
+            | Kind::Mirror { .. } => 4,
         };
-        let sort_n = |c: usize| {
-            match rep_kind[c] {
-                | Kind::Rot { n, .. } | Kind::Imp { n, .. } => *n,
-                | _ => 0,
-            }
+        let sort_n = |c: usize| match rep_kind[c] {
+            | Kind::Rot { n, .. } | Kind::Imp { n, .. } => *n,
+            | _ => 0,
         };
-        let sort_k = |c: usize| {
-            match rep_kind[c] {
-                | Kind::Rot { k, .. } | Kind::Imp { k, .. } => *k,
-                | _ => 0,
-            }
+        let sort_k = |c: usize| match rep_kind[c] {
+            | Kind::Rot { k, .. } | Kind::Imp { k, .. } => *k,
+            | _ => 0,
         };
-        let perp = |c: usize| {
-            match rep_kind[c] {
-                | Kind::Rot { axis, .. } => !geo.along(*axis),
-                | _ => false,
-            }
+        let perp = |c: usize| match rep_kind[c] {
+            | Kind::Rot { axis, .. } => !geo.along(*axis),
+            | _ => false,
         };
         let mut order: Vec<usize> = (0..nclass).collect();
         order.sort_by(|&a, &b| {
@@ -845,16 +833,14 @@ impl PointGroup {
         // the smallest proper rotation.
         let s2n_gen = has_s2n && geo.nmax.is_multiple_of(2);
         let gen_class = geo.principal.and_then(|p| {
-            (0..nclass).find(|&c| {
-                match rep_kind[c] {
-                    | Kind::Imp { axis, n, k } if s2n_gen => {
-                        parallel(*axis, p) && *n == 2 * geo.nmax && *k == 1
-                    },
-                    | Kind::Rot { axis, n, k } if !s2n_gen => {
-                        parallel(*axis, p) && *n == geo.nmax && *k == 1
-                    },
-                    | _ => false,
-                }
+            (0..nclass).find(|&c| match rep_kind[c] {
+                | Kind::Imp { axis, n, k } if s2n_gen => {
+                    parallel(*axis, p) && *n == 2 * geo.nmax && *k == 1
+                },
+                | Kind::Rot { axis, n, k } if !s2n_gen => {
+                    parallel(*axis, p) && *n == geo.nmax && *k == 1
+                },
+                | _ => false,
             })
         });
         let gen_order = if s2n_gen {
@@ -891,11 +877,9 @@ impl PointGroup {
         let d2_classes: Vec<(usize, &str)> =
             if geo.principal.is_none() && !geo.polyhedral && geo.nmax == 2 {
                 (0..nclass)
-                    .filter_map(|c| {
-                        match rep_kind[c] {
-                            | Kind::Rot { axis, n: 2, .. } => axis_name(*axis).map(|a| (c, a)),
-                            | _ => None,
-                        }
+                    .filter_map(|c| match rep_kind[c] {
+                        | Kind::Rot { axis, n: 2, .. } => axis_name(*axis).map(|a| (c, a)),
+                        | _ => None,
                     })
                     .collect()
             } else {
@@ -976,12 +960,10 @@ impl PointGroup {
                         d2_classes
                             .iter()
                             .find(|&&(c, _)| p.chi[c] > 0.0)
-                            .map(|&(_, a)| {
-                                match a {
-                                    | "z" => 1,
-                                    | "y" => 2,
-                                    | _ => 3,
-                                }
+                            .map(|&(_, a)| match a {
+                                | "z" => 1,
+                                | "y" => 2,
+                                | _ => 3,
                             })
                     } else {
                         ref_class.map(|r| if p.chi[r] > 0.0 { 1 } else { 2 })

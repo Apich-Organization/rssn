@@ -208,11 +208,9 @@ impl Number {
     ) -> Self {
         match (self, other) {
             | (Self::Int(a), Self::Int(b)) => Self::Int(int(a, b)),
-            | _ => {
-                match (self.to_rational(), other.to_rational()) {
-                    | (Some(a), Some(b)) => Self::rat(rat(a, b)),
-                    | _ => Self::Float(float(self.to_f64(), other.to_f64())),
-                }
+            | _ => match (self.to_rational(), other.to_rational()) {
+                | (Some(a), Some(b)) => Self::rat(rat(a, b)),
+                | _ => Self::Float(float(self.to_f64(), other.to_f64())),
             },
         }
     }
@@ -303,11 +301,10 @@ impl Number {
     ) -> Ordering {
         match (self.to_rational(), other.to_rational()) {
             | (Some(a), Some(b)) => a.cmp(&b),
-            | _ => {
-                self.to_f64()
-                    .total_cmp(&other.to_f64())
-                    .then_with(|| other.is_exact().cmp(&self.is_exact()))
-            },
+            | _ => self
+                .to_f64()
+                .total_cmp(&other.to_f64())
+                .then_with(|| other.is_exact().cmp(&self.is_exact())),
         }
     }
 }

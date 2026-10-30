@@ -2,9 +2,7 @@
 
 use num_complex::Complex64;
 use rssn::kernels::dense::Mat;
-use rssn::kernels::dense::{
-    self,
-};
+use rssn::kernels::dense::{self};
 use rssn::kernels::eigs::EigsOptions;
 use rssn::kernels::eigs::Which;
 use rssn::kernels::eigs_ext::GenEigsOptions;

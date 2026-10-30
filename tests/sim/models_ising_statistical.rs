@@ -122,7 +122,6 @@ proptest! {
     }
 }
 
-
 #[test]
 fn lattice_simulation_covers_any_dimension_and_every_model() {
     // 1-D Ising ring: e = -tanh(beta) per site

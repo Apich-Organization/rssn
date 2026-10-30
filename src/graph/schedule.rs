@@ -520,11 +520,9 @@ impl Engine {
             .rules
             .iter()
             .filter(|r| r.tier == tier)
-            .filter_map(|r| {
-                match &r.action {
-                    | Action::Rewrite(rw) => Some(rw),
-                    | Action::Kernel(_) => None,
-                }
+            .filter_map(|r| match &r.action {
+                | Action::Rewrite(rw) => Some(rw),
+                | Action::Kernel(_) => None,
             })
             .collect()
     }
@@ -717,17 +715,15 @@ impl Engine {
                         for ((node, done, _), result) in staged.into_iter().zip(results) {
                             let outcome = match (done, result) {
                                 | (Some(outcome), _) => outcome,
-                                | (None, Some(result)) => {
-                                    kernel.commit(
-                                        &mut Cx {
-                                            graph,
-                                            env,
-                                            engine: self,
-                                        },
-                                        node,
-                                        result,
-                                    )
-                                },
+                                | (None, Some(result)) => kernel.commit(
+                                    &mut Cx {
+                                        graph,
+                                        env,
+                                        engine: self,
+                                    },
+                                    node,
+                                    result,
+                                ),
                                 | (None, None) => Outcome::Pass,
                             };
                             if apply_outcome(graph, node, outcome) {

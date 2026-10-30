@@ -271,7 +271,6 @@ fn nested_requests() {
     assert!((value - 0.125).abs() < 1e-9, "{value}");
 }
 
-
 /// A limit in both phases.
 fn check_limit(
     request: &str,
@@ -471,7 +470,6 @@ fn fourier_series_of_simple_functions() {
     let got = eval(&[calculus()], &series, &[("x", at)]);
     assert!((got - want).abs() < 1e-9, "{series}: {got} vs {want}");
 }
-
 
 #[test]
 fn improper_integrals() {
@@ -887,7 +885,6 @@ fn real_integrals_use_absolute_values() {
     }
 }
 
-
 // ---------------------------------------------------------------------
 // Zeilberger's creative telescoping
 // ---------------------------------------------------------------------
@@ -1233,7 +1230,6 @@ fn limits_with_parameters_stay_symbolic() {
     assert_eq!(run("limit((a*x + 1)/(x + 1), x, oo)"), "a");
     assert_eq!(run("limit(exp(x - a), x, oo)"), "oo");
 }
-
 
 /// The antiderivative of a Bessel-family integrand: found in closed form and
 /// differentiating back to the integrand (central differences).

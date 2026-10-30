@@ -23,9 +23,7 @@
 use num_complex::Complex64;
 
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::{
-    self,
-};
+use crate::kernels::dense::{self};
 use crate::kernels::random::Rng;
 
 /// Which part of the spectrum is wanted.

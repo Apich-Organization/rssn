@@ -750,11 +750,9 @@ fn kkt(
             });
         }
     }
-    found.sort_by(|a, b| {
-        match (a.numeric, b.numeric) {
-            | (Some(x), Some(y)) => x.total_cmp(&y),
-            | _ => std::cmp::Ordering::Equal,
-        }
+    found.sort_by(|a, b| match (a.numeric, b.numeric) {
+        | (Some(x), Some(y)) => x.total_cmp(&y),
+        | _ => std::cmp::Ordering::Equal,
     });
     Some(found)
 }

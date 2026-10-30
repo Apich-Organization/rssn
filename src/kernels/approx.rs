@@ -14,9 +14,7 @@
 use std::f64::consts::PI;
 
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::{
-    self,
-};
+use crate::kernels::dense::{self};
 
 /// Errors of the approximation routines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

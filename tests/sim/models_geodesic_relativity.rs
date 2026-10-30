@@ -119,7 +119,6 @@ fn black_hole_scenario_writes_one_csv_per_orbit() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-
 #[test]
 fn schwarzschild_engine_path_agrees_with_the_adaptive_rk45_reference() {
     let p = params(1.0, [12.0, 0.0, 0.0, 0.03], 150.0);

@@ -554,12 +554,12 @@ fn mode(
     let mut winners = groups.iter().filter(|g| g.1 == top).map(|g| g.0);
     let first = winners.next()?;
     // Among equally frequent numbers the smallest one.
-    Some(winners.fold(first, |best, x| {
-        match (g.number_of(x), g.number_of(best)) {
+    Some(
+        winners.fold(first, |best, x| match (g.number_of(x), g.number_of(best)) {
             | (Some(a), Some(b)) if a.total_cmp(b).is_lt() => x,
             | _ => best,
-        }
-    }))
+        }),
+    )
 }
 
 fn covariance(
@@ -1014,11 +1014,9 @@ fn admissible(
     let probability = |i: usize| p(i).is_none_or(|v| (0.0..=1.0).contains(&v));
     match family.name {
         | "normal" => positive(1),
-        | "uniform" => {
-            match (p(0), p(1)) {
-                | (Some(a), Some(b)) => a < b,
-                | _ => true,
-            }
+        | "uniform" => match (p(0), p(1)) {
+            | (Some(a), Some(b)) => a < b,
+            | _ => true,
         },
         | "exponential" | "poisson" | "student_t" | "chi_squared" => positive(0),
         | "bernoulli" => probability(0),

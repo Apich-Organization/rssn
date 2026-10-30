@@ -76,18 +76,22 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             .flags(OpFlags::HEAVY)
             .cost(100)
     };
-    let diff = i.graph().ops().lookup("diff").ok_or_else(|| {
-        RuleError::Invalid {
+    let diff = i
+        .graph()
+        .ops()
+        .lookup("diff")
+        .ok_or_else(|| RuleError::Invalid {
             rule: "variational".to_owned(),
             reason: "needs the calculus rule set",
-        }
-    })?;
-    let defint = i.graph().ops().lookup("defint").ok_or_else(|| {
-        RuleError::Invalid {
+        })?;
+    let defint = i
+        .graph()
+        .ops()
+        .lookup("defint")
+        .ok_or_else(|| RuleError::Invalid {
             rule: "variational".to_owned(),
             reason: "needs the calculus rule set",
-        }
-    })?;
+        })?;
     for (name, arity, request) in [
         ("euler_lagrange", 3, Request::EulerLagrange),
         ("action", 6, Request::Action),

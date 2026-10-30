@@ -1091,12 +1091,10 @@ fn read_image(
     let pixel = |c: NodeId| -> Option<bool> {
         match g.number_of(c) {
             | Some(v) => Some(!v.is_zero()),
-            | None => {
-                match &*g.display(c) {
-                    | "true" | "true()" => Some(true),
-                    | "false" | "false()" => Some(false),
-                    | _ => None,
-                }
+            | None => match &*g.display(c) {
+                | "true" | "true()" => Some(true),
+                | "false" | "false()" => Some(false),
+                | _ => None,
             },
         }
     };
@@ -1119,12 +1117,10 @@ fn connectivity(
     let image = read_image(cx.graph, *a.first()?)?;
     match a {
         | [_] => Some((image, true)),
-        | [_, c] => {
-            match super::small(cx.graph, *c)? {
-                | 8 => Some((image, true)),
-                | 4 => Some((image, false)),
-                | _ => None,
-            }
+        | [_, c] => match super::small(cx.graph, *c)? {
+            | 8 => Some((image, true)),
+            | 4 => Some((image, false)),
+            | _ => None,
         },
         | _ => None,
     }

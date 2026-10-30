@@ -15,9 +15,7 @@
 //!   steps with Hermite history interpolation.
 
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::{
-    self,
-};
+use crate::kernels::dense::{self};
 use crate::kernels::rootfind;
 
 /// Errors of the ODE kernels.

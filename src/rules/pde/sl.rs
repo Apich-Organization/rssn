@@ -142,15 +142,13 @@ fn parse(args: &[f64]) -> Option<Sl> {
     let (p, rest) = rest.split_at(count);
     let (q, w) = rest.split_at(count);
     let positive = p.iter().all(|&v| v > 0.0) && w.iter().all(|&v| v > 0.0);
-    positive.then(|| {
-        Sl {
-            a,
-            b,
-            ends,
-            p: Chebyshev::new(a, b, p.to_vec()),
-            q: Chebyshev::new(a, b, q.to_vec()),
-            w: Chebyshev::new(a, b, w.to_vec()),
-        }
+    positive.then(|| Sl {
+        a,
+        b,
+        ends,
+        p: Chebyshev::new(a, b, p.to_vec()),
+        q: Chebyshev::new(a, b, q.to_vec()),
+        w: Chebyshev::new(a, b, w.to_vec()),
     })
 }
 

@@ -44,7 +44,6 @@
 //!
 //! See the documentation of each module for the exact term formats.
 
-
 pub mod coding;
 pub mod crypto;
 pub mod finite_field;

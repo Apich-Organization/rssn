@@ -149,11 +149,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     ] {
         i.op(plain(name, arity))?;
     }
-    let algebra = op_algebra(i.graph()).ok_or_else(|| {
-        RuleError::Invalid {
-            rule: "functional".to_owned(),
-            reason: "needs the linear algebra and calculus rule sets",
-        }
+    let algebra = op_algebra(i.graph()).ok_or_else(|| RuleError::Invalid {
+        rule: "functional".to_owned(),
+        reason: "needs the linear algebra and calculus rule sets",
     })?;
     let heavy = |name: &str, arity: u8| {
         OpDescriptor::new(name, Arity::Fixed(arity))

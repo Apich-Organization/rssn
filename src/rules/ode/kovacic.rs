@@ -1340,12 +1340,10 @@ impl Quad {
 
     fn inverse(&self) -> Option<Self> {
         let norm = &self.a * &self.a - &self.b * &self.b * &self.d;
-        (!norm.is_zero()).then(|| {
-            Self {
-                d: self.d.clone(),
-                a: &self.a / &norm,
-                b: -(&self.b / &norm),
-            }
+        (!norm.is_zero()).then(|| Self {
+            d: self.d.clone(),
+            a: &self.a / &norm,
+            b: -(&self.b / &norm),
         })
     }
 
@@ -2086,7 +2084,6 @@ fn case_two_field(
     }
     None
 }
-
 
 // ---------------------------------------------------------------------
 // Case 3: finite primitive monodromy (tetrahedral n = 4, octahedral n = 6,

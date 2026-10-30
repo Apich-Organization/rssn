@@ -47,17 +47,13 @@ fn run(
     src: &str,
 ) -> Result<NodeId, Report> {
     let rules = crate::rules::standard();
-    let engine = Engine::install(graph, &rules).map_err(|e| {
-        Report {
-            status: format!("install {e}"),
-            text: String::new(),
-        }
+    let engine = Engine::install(graph, &rules).map_err(|e| Report {
+        status: format!("install {e}"),
+        text: String::new(),
     })?;
-    let root = graph.parse(src).map_err(|e| {
-        Report {
-            status: format!("parse {e}"),
-            text: src.into(),
-        }
+    let root = graph.parse(src).map_err(|e| Report {
+        status: format!("parse {e}"),
+        text: src.into(),
     })?;
     engine.run(
         graph,
@@ -69,12 +65,10 @@ fn run(
     let answer = Extractor::new(graph, &[root], &ClosedForm).build(graph, root);
     match answer {
         | Some(a) if &*graph.ops().get(graph.op(a)).name != "dsolve" => Ok(a),
-        | _ => {
-            Err(Report {
-                status: "UNSOLVED".into(),
-                text: String::new(),
-            })
-        },
+        | _ => Err(Report {
+            status: "UNSOLVED".into(),
+            text: String::new(),
+        }),
     }
 }
 
@@ -529,11 +523,9 @@ mod tests {
                 });
             let report = rx
                 .recv_timeout(std::time::Duration::from_secs(20))
-                .unwrap_or_else(|_| {
-                    Report {
-                        status: "TIMEOUT".into(),
-                        text: String::new(),
-                    }
+                .unwrap_or_else(|_| Report {
+                    status: "TIMEOUT".into(),
+                    text: String::new(),
                 });
             let ok = report.status == "ok";
             if ok {

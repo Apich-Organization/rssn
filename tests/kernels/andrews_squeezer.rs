@@ -49,9 +49,7 @@
 //! the `h^2` error weighting of the index-3 Hessenberg form.
 
 use rssn::kernels::dense::Mat;
-use rssn::kernels::dense::{
-    self,
-};
+use rssn::kernels::dense::{self};
 use rssn::kernels::jacobian::fd_jacobian_dense;
 use rssn::kernels::ode_adaptive::OdeOptions;
 use rssn::kernels::ode_adaptive::OdeSolution;

@@ -39,7 +39,6 @@
 //! output is owned by one task and accumulated in traversal order, so the result is bit-identical
 //! to the serial sweep (M2M/L2L are level-sequential).
 
-
 /// Parameters of an FMM evaluation.
 #[derive(Clone, Copy, Debug)]
 pub struct FmmOptions {

@@ -2045,13 +2045,11 @@ fn polynomial_frac(
     let mut out = Vec::new();
     for coefficient in poly.coefficients_in(gn) {
         let q: QPoly = match gg {
-            | Some(gg) => {
-                coefficient
-                    .univariate_in(gg)?
-                    .iter()
-                    .map(Number::to_rational)
-                    .collect::<Option<QPoly>>()?
-            },
+            | Some(gg) => coefficient
+                .univariate_in(gg)?
+                .iter()
+                .map(Number::to_rational)
+                .collect::<Option<QPoly>>()?,
             | None => vec![coefficient.as_constant()?.to_rational()?],
         };
         out.push(Frac::poly(q));

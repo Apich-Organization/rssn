@@ -17,7 +17,6 @@
 //! [`crate::sim::symplectic::ttl_step_composed`] provides composition schemes of order 4, 6, 8
 //! for the time-transformed leapfrog.
 
-
 use crate::sim::symplectic::TtlState;
 use crate::sim::symplectic::ttl_step;
 

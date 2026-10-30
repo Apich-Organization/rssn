@@ -371,14 +371,13 @@ fn exp_of(
         | _ => None,
     };
     let terms: Vec<NodeId> = match (cx.graph.op(e), pair) {
-        | (op, Some((c, sum))) if op == core::MUL && cx.graph.op(sum) == core::ADD => {
-            cx.graph
-                .children(sum)
-                .to_vec()
-                .iter()
-                .map(|&t| mul(cx.graph, &[c, t]))
-                .collect()
-        },
+        | (op, Some((c, sum))) if op == core::MUL && cx.graph.op(sum) == core::ADD => cx
+            .graph
+            .children(sum)
+            .to_vec()
+            .iter()
+            .map(|&t| mul(cx.graph, &[c, t]))
+            .collect(),
         | (op, _) if op == core::ADD => cx.graph.children(e).to_vec(),
         | _ => vec![e],
     };
@@ -1000,11 +999,10 @@ fn riccati(
             };
             candidates = Some(match candidates {
                 | None => roots,
-                | Some(old) => {
-                    old.into_iter()
-                        .filter(|r| roots.iter().any(|s| cx.graph.same(*r, *s) || r == s))
-                        .collect()
-                },
+                | Some(old) => old
+                    .into_iter()
+                    .filter(|r| roots.iter().any(|s| cx.graph.same(*r, *s) || r == s))
+                    .collect(),
             });
         }
         if let Some(&value) = candidates.as_ref().and_then(|c| c.first()) {
@@ -1188,11 +1186,9 @@ fn constant_coefficient_basis(
     // Real roots in ascending order first, so that C1 goes with the
     // smallest rate.
     factors.sort_by(|(a, _), (b, _)| {
-        let root = |f: &[BigInt]| {
-            match f {
-                | [c0, c1] => Number::rat(BigRational::new(-c0.clone(), c1.clone())).to_f64(),
-                | _ => f64::INFINITY,
-            }
+        let root = |f: &[BigInt]| match f {
+            | [c0, c1] => Number::rat(BigRational::new(-c0.clone(), c1.clone())).to_f64(),
+            | _ => f64::INFINITY,
         };
         root(a).total_cmp(&root(b))
     });
@@ -1987,10 +1983,8 @@ impl Kernel for Asymptotic {
         node: NodeId,
     ) -> Outcome {
         match *cx.graph.children(node) {
-            | [e, u, x0, n, x1, k] => {
-                frobenius::asymptotic(cx, e, u, x0, n, (x1, k, self.borel))
-                    .map_or(Outcome::Pass, Outcome::Pinned)
-            },
+            | [e, u, x0, n, x1, k] => frobenius::asymptotic(cx, e, u, x0, n, (x1, k, self.borel))
+                .map_or(Outcome::Pass, Outcome::Pinned),
             | _ => Outcome::Pass,
         }
     }
@@ -2029,10 +2023,8 @@ impl Kernel for Dsolve {
         };
         match conditions {
             | None => Outcome::Pinned(answer),
-            | Some(conditions) => {
-                apply_conditions(cx, &problem, answer, conditions)
-                    .map_or(Outcome::Pass, Outcome::Pinned)
-            },
+            | Some(conditions) => apply_conditions(cx, &problem, answer, conditions)
+                .map_or(Outcome::Pass, Outcome::Pinned),
         }
     }
 }

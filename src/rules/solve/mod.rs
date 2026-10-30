@@ -226,6 +226,7 @@ mod heuristics;
 mod inequality;
 mod normalize;
 mod numeric;
+pub(crate) mod qe;
 mod quintic;
 mod symbolic;
 mod system;
@@ -266,11 +267,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         ("abs", &["?a", "-?a"]),
     ];
     for (name, branches) in inverses {
-        let invalid = |reason: &'static str| {
-            RuleError::Invalid {
-                rule: format!("inverse/{name}"),
-                reason,
-            }
+        let invalid = |reason: &'static str| RuleError::Invalid {
+            rule: format!("inverse/{name}"),
+            reason,
         };
         let op = i
             .graph()
@@ -281,11 +280,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         for text in branches {
             let mut vars = VarNames::default();
             vars.index("a");
-            let pat = Pat::parse(text, i.graph(), &mut vars).map_err(|error| {
-                RuleError::Parse {
-                    rule: format!("inverse/{name}: {text}"),
-                    error,
-                }
+            let pat = Pat::parse(text, i.graph(), &mut vars).map_err(|error| RuleError::Parse {
+                rule: format!("inverse/{name}: {text}"),
+                error,
             })?;
             patterns.push(pat);
         }
@@ -346,6 +343,7 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             nsolve: nsolve_op,
         },
     );
+    qe::install(i)?;
     Ok(())
 }
 

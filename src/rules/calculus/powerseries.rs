@@ -356,18 +356,14 @@ impl Expander<'_, '_> {
                         };
                         frac(BigInt::from(sign), factorial(k))
                     },
-                    | Weights::Log1p if k > 0 => {
-                        frac(
-                            BigInt::from(if k % 2 == 1 { 1 } else { -1 }),
-                            BigInt::from(k),
-                        )
-                    },
-                    | Weights::Atan if k % 2 == 1 => {
-                        frac(
-                            BigInt::from(if (k / 2) % 2 == 0 { 1 } else { -1 }),
-                            BigInt::from(k),
-                        )
-                    },
+                    | Weights::Log1p if k > 0 => frac(
+                        BigInt::from(if k % 2 == 1 { 1 } else { -1 }),
+                        BigInt::from(k),
+                    ),
+                    | Weights::Atan if k % 2 == 1 => frac(
+                        BigInt::from(if (k / 2) % 2 == 0 { 1 } else { -1 }),
+                        BigInt::from(k),
+                    ),
                     | Weights::Asin if k % 2 == 1 => {
                         let m = k / 2;
                         let top = factorial(2 * m);

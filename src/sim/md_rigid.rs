@@ -12,7 +12,6 @@
 //! particles are supported (zero principal moments are treated as non-rotating axes).
 //! Pressure uses the molecular virial.
 
-
 use crate::kernels::random::Rng;
 use crate::sim::md_engine::ForceField;
 use crate::sim::md_engine::Forces;

@@ -163,11 +163,11 @@ fn dpd_2d_and_input_checks() {
         t_sum += d.temperature();
     }
     assert!((t_sum / 200.0 - 1.0).abs() < 0.04);
-    assert!(
-        d.pos
-            .iter()
-            .all(|p| p[2] == 0.0 && p[0] >= 0.0 && p[0] < l && p[1] >= 0.0 && p[1] < l)
-    );
+    assert!(d.pos.iter().all(|p| p[2] == 0.0
+        && p[0] >= 0.0
+        && p[0] < l
+        && p[1] >= 0.0
+        && p[1] < l));
     assert!(Dpd::new(10, gw_params(4, l), 1).is_err());
     assert!(Dpd::new(10, gw_params(3, 2.0), 1).is_err());
 }

@@ -131,11 +131,9 @@ impl Guard {
     ) -> bool {
         let get = |v: u32| subst.get(v as usize).copied().filter(|n| !n.is_none());
         match self {
-            | Self::FreeOf(a, x) => {
-                match (get(*a), get(*x).and_then(|x| graph.symbol_of(x))) {
-                    | (Some(a), Some(x)) => !graph.depends_on(graph.find(a), x),
-                    | _ => false,
-                }
+            | Self::FreeOf(a, x) => match (get(*a), get(*x).and_then(|x| graph.symbol_of(x))) {
+                | (Some(a), Some(x)) => !graph.depends_on(graph.find(a), x),
+                | _ => false,
             },
             | Self::IsNumber(a) => get(*a).is_some_and(|a| graph.number_of(a).is_some()),
             | Self::IsInteger(a) => get(*a).is_some_and(|a| graph.facts(a).has(Facts::INTEGER)),
@@ -147,11 +145,9 @@ impl Guard {
                 get(*a).is_some_and(|a| graph.facts(a).has(Facts::NONNEGATIVE))
             },
             | Self::Real(a) => get(*a).is_some_and(|a| graph.facts(a).has(Facts::REAL)),
-            | Self::Same(a, b) => {
-                match (get(*a), get(*b)) {
-                    | (Some(a), Some(b)) => graph.same(a, b),
-                    | _ => false,
-                }
+            | Self::Same(a, b) => match (get(*a), get(*b)) {
+                | (Some(a), Some(b)) => graph.same(a, b),
+                | _ => false,
             },
             | Self::Not(inner) => !inner.holds(graph, subst),
             | Self::Custom(f) => f(graph, subst),
@@ -603,17 +599,13 @@ impl<'g> Installer<'g> {
         tier: Tier,
         text: &str,
     ) -> Result<(), RuleError> {
-        let parse_err = |error: ParseError| {
-            RuleError::Parse {
-                rule: text.to_owned(),
-                error,
-            }
+        let parse_err = |error: ParseError| RuleError::Parse {
+            rule: text.to_owned(),
+            error,
         };
-        let invalid = |reason: &'static str| {
-            RuleError::Invalid {
-                rule: text.to_owned(),
-                reason,
-            }
+        let invalid = |reason: &'static str| RuleError::Invalid {
+            rule: text.to_owned(),
+            reason,
         };
         let (name, body) = text
             .split_once(':')
@@ -715,11 +707,9 @@ impl<'g> Installer<'g> {
         &mut self,
         text: &str,
     ) -> Result<(), RuleError> {
-        let invalid = |reason: &'static str| {
-            RuleError::Invalid {
-                rule: text.to_owned(),
-                reason,
-            }
+        let invalid = |reason: &'static str| RuleError::Invalid {
+            rule: text.to_owned(),
+            reason,
         };
         let (head, body) = text
             .split_once(":=")
@@ -759,11 +749,9 @@ impl<'g> Installer<'g> {
         }
         let marked = mark_parameters(body, &params);
         let mut parser = Parser::new(&marked, self.graph, &mut vars, false);
-        let parse_err = |error: ParseError| {
-            RuleError::Parse {
-                rule: text.to_owned(),
-                error,
-            }
+        let parse_err = |error: ParseError| RuleError::Parse {
+            rule: text.to_owned(),
+            error,
         };
         let pat = parser.expr().map_err(parse_err)?;
         if !parser.at_end() {
@@ -867,11 +855,9 @@ impl Kernel for Definition {
 }
 
 fn parse_guard(parser: &mut Parser<'_>) -> Result<Guard, ParseError> {
-    let fail = |parser: &Parser<'_>, message: &str| {
-        ParseError {
-            message: message.to_owned(),
-            offset: parser.offset(),
-        }
+    let fail = |parser: &Parser<'_>, message: &str| ParseError {
+        message: message.to_owned(),
+        offset: parser.offset(),
     };
     if parser.eat("!") {
         return Ok(Guard::Not(Box::new(parse_guard(parser)?)));

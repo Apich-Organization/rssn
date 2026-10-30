@@ -63,6 +63,8 @@ pub mod lie_structure;
 /// Matrix functions: expm, sqrtm, logm, phi functions and exp(tA)v.
 pub mod matfun;
 pub mod matrix;
+/// Meijer G-function by Slater's theorem and numerical Mellin-Barnes integration.
+pub mod meijer;
 /// Geometric multigrid (V/W/FMG) and smoothed-aggregation algebraic multigrid.
 pub mod multigrid;
 pub mod number_theory;
@@ -86,6 +88,8 @@ pub mod pde;
 pub mod polynomial;
 /// Exact linear algebra over the rationals.
 pub mod qlinalg;
+/// The quadratic sieve and its self-initialising variant for integer factorisation.
+pub mod quadratic_sieve;
 /// Adaptive Gauss-Kronrod, double-exponential, Clenshaw-Curtis, Filon and multi-dimensional quadrature.
 pub mod quadrature;
 /// Seeded deterministic random number generation.

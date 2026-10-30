@@ -506,11 +506,9 @@ impl Kernel for NsolveCertified {
             let radius = 1e-3;
             let x: Vec<Interval> = point
                 .iter()
-                .map(|&g| {
-                    Interval {
-                        lo: g - radius,
-                        hi: g + radius,
-                    }
+                .map(|&g| Interval {
+                    lo: g - radius,
+                    hi: g + radius,
                 })
                 .collect();
             let Some(k) = krawczyk(&system, &x) else {
@@ -587,11 +585,9 @@ impl Kernel for SolveBox {
             });
             let items: Vec<NodeId> = sorted
                 .into_iter()
-                .map(|b| {
-                    match (scalar, b.first()) {
-                        | (true, Some(&i)) => pair(graph, i),
-                        | _ => box_node(graph, b),
-                    }
+                .map(|b| match (scalar, b.first()) {
+                    | (true, Some(&i)) => pair(graph, i),
+                    | _ => box_node(graph, b),
                 })
                 .collect();
             graph.node(core::LIST, &items)

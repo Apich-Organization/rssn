@@ -1158,12 +1158,10 @@ impl Expansion {
     ) -> Vec<BigInt> {
         match self {
             | Self::Finite(q) => q.iter().take(count).cloned().collect(),
-            | Self::Surd(a0, period) => {
-                std::iter::once(a0.clone())
-                    .chain(period.iter().cycle().cloned())
-                    .take(count)
-                    .collect()
-            },
+            | Self::Surd(a0, period) => std::iter::once(a0.clone())
+                .chain(period.iter().cycle().cloned())
+                .take(count)
+                .collect(),
         }
     }
 }
@@ -1480,61 +1478,52 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         i,
         set,
         binary("gcd").flags(commutative).eval(gcd_eval),
-        |a| {
-            match a {
-                | [x, y] => Some(Value::Int(gcd(x, y))),
-                | _ => None,
-            }
+        |a| match a {
+            | [x, y] => Some(Value::Int(gcd(x, y))),
+            | _ => None,
         },
     )?;
     exact(
         i,
         set,
         binary("lcm").flags(commutative).eval(lcm_eval),
-        |a| {
-            match a {
-                | [x, y] => {
-                    let g = gcd(x, y);
-                    if g.is_zero() {
-                        return Some(Value::Int(g));
-                    }
-                    Some(Value::Int((x / g * y).abs()))
-                },
-                | _ => None,
-            }
+        |a| match a {
+            | [x, y] => {
+                let g = gcd(x, y);
+                if g.is_zero() {
+                    return Some(Value::Int(g));
+                }
+                Some(Value::Int((x / g * y).abs()))
+            },
+            | _ => None,
         },
     )?;
-    exact(i, set, binary("mod").eval(mod_eval), |a| {
-        match a {
-            | [x, m] => modulo(x, m).map(Value::Int),
-            | _ => None,
-        }
+    exact(i, set, binary("mod").eval(mod_eval), |a| match a {
+        | [x, m] => modulo(x, m).map(Value::Int),
+        | _ => None,
     })?;
-    exact(i, set, OpDescriptor::new("powmod", Arity::Fixed(3)), |a| {
-        match a {
+    exact(
+        i,
+        set,
+        OpDescriptor::new("powmod", Arity::Fixed(3)),
+        |a| match a {
             | [b, e, m] if !e.is_negative() && m.is_positive() => {
                 Some(Value::Int(modulo(b, m)?.modpow(e, m)))
             },
             | _ => None,
-        }
+        },
+    )?;
+    exact(i, set, binary("invmod"), |a| match a {
+        | [x, m] => invmod(x, m).map(Value::Int),
+        | _ => None,
     })?;
-    exact(i, set, binary("invmod"), |a| {
-        match a {
-            | [x, m] => invmod(x, m).map(Value::Int),
-            | _ => None,
-        }
+    exact(i, set, unary("isprime"), |a| match a {
+        | [n] => Some(Value::Bool(is_prime(n))),
+        | _ => None,
     })?;
-    exact(i, set, unary("isprime"), |a| {
-        match a {
-            | [n] => Some(Value::Bool(is_prime(n))),
-            | _ => None,
-        }
-    })?;
-    exact(i, set, unary("nextprime"), |a| {
-        match a {
-            | [n] => next_prime(n).map(Value::Int),
-            | _ => None,
-        }
+    exact(i, set, unary("nextprime"), |a| match a {
+        | [n] => next_prime(n).map(Value::Int),
+        | _ => None,
     })?;
     exact(i, set, unary("totient"), |a| {
         let [n] = a else {
@@ -1576,42 +1565,32 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
             .collect();
         Some(Value::Nested(rows))
     })?;
-    exact(i, set, binary("jacobi"), |a| {
-        match a {
-            | [x, n] => jacobi(x, n).map(|j| Value::Int(BigInt::from(j))),
-            | _ => None,
-        }
+    exact(i, set, binary("jacobi"), |a| match a {
+        | [x, n] => jacobi(x, n).map(|j| Value::Int(BigInt::from(j))),
+        | _ => None,
     })?;
-    exact(i, set, binary("egcd"), |a| {
-        match a {
-            | [x, y] => {
-                let (g, s, t) = egcd(x, y);
-                Some(Value::Flat(vec![g, s, t]))
-            },
-            | _ => None,
-        }
+    exact(i, set, binary("egcd"), |a| match a {
+        | [x, y] => {
+            let (g, s, t) = egcd(x, y);
+            Some(Value::Flat(vec![g, s, t]))
+        },
+        | _ => None,
     })?;
     exact_lists(i, set, binary("crt"), crt)?;
-    exact(i, set, unary("pell"), |a| {
-        match a {
-            | [n] => {
-                match pell_solution(n, false)? {
-                    | Pell::Solved(x, y) => Some(Value::Flat(vec![x, y])),
-                    | Pell::Unsolvable => None,
-                }
-            },
-            | _ => None,
-        }
+    exact(i, set, unary("pell"), |a| match a {
+        | [n] => match pell_solution(n, false)? {
+            | Pell::Solved(x, y) => Some(Value::Flat(vec![x, y])),
+            | Pell::Unsolvable => None,
+        },
+        | _ => None,
     })?;
-    exact(i, set, unary("primes"), |a| {
-        match a {
-            | [n] => {
-                let limit = usize::try_from(n.to_u64().filter(|&v| v <= MAX_SIEVE)?).ok()?;
-                let primes = crate::kernels::number_theory::primes_sieve(limit);
-                Some(Value::Flat(primes.into_iter().map(BigInt::from).collect()))
-            },
-            | _ => None,
-        }
+    exact(i, set, unary("primes"), |a| match a {
+        | [n] => {
+            let limit = usize::try_from(n.to_u64().filter(|&v| v <= MAX_SIEVE)?).ok()?;
+            let primes = crate::kernels::number_theory::primes_sieve(limit);
+            Some(Value::Flat(primes.into_iter().map(BigInt::from).collect()))
+        },
+        | _ => None,
     })?;
     procedure(i, set, unary("cfrac"), Tier::Normalize, cfrac)?;
     procedure(i, set, binary("convergents"), Tier::Normalize, convergents)?;

@@ -295,12 +295,10 @@ impl<const D: usize> Sph<D> {
         reach: f64,
     ) -> Vec<Ghost<D>> {
         let mut all: Vec<Ghost<D>> = (0..self.pos.len())
-            .map(|i| {
-                Ghost {
-                    src: i,
-                    pos: self.pos[i],
-                    flip: [1.0; D],
-                }
+            .map(|i| Ghost {
+                src: i,
+                pos: self.pos[i],
+                flip: [1.0; D],
             })
             .collect();
         for a in 0..D {

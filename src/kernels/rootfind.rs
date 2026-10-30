@@ -16,9 +16,7 @@
 //!   ([`polynomial_roots_jenkins_traub`]).
 
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::{
-    self,
-};
+use crate::kernels::dense::{self};
 
 /// Failure modes of the iterative solvers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1151,12 +1149,10 @@ fn track_path(
     let mut x = start.to_vec();
     let mut t = 0.0_f64;
     let mut dt = 0.01_f64;
-    let fail = |x: &[Cx]| {
-        PathResult {
-            x: x.iter().map(|c| (c.re, c.im)).collect(),
-            residual: f64::INFINITY,
-            finite: false,
-        }
+    let fail = |x: &[Cx]| PathResult {
+        x: x.iter().map(|c| (c.re, c.im)).collect(),
+        residual: f64::INFINITY,
+        finite: false,
     };
     let mut guard = 0usize;
     while t < 1.0 {

@@ -327,18 +327,16 @@ impl<'a> Parser<'a> {
             // Rule patterns are left exactly as written.
             let identity = Number::from(i64::from(op == core::MUL));
             let mut literal = identity.clone();
-            flat.retain(|child| {
-                match child {
-                    | Pat::Num(n) => {
-                        literal = if op == core::ADD {
-                            literal.add(n)
-                        } else {
-                            literal.mul(n)
-                        };
-                        false
-                    },
-                    | _ => true,
-                }
+            flat.retain(|child| match child {
+                | Pat::Num(n) => {
+                    literal = if op == core::ADD {
+                        literal.add(n)
+                    } else {
+                        literal.mul(n)
+                    };
+                    false
+                },
+                | _ => true,
             });
             if literal != identity || flat.is_empty() {
                 flat.insert(0, Pat::Num(literal));
@@ -493,12 +491,10 @@ impl<'a> Parser<'a> {
                 children.extend(args);
                 Ok(Pat::Node(core::APPLY, children))
             },
-            | None => {
-                Err(ParseError {
-                    message: format!("unknown operator `{name}`"),
-                    offset: start,
-                })
-            },
+            | None => Err(ParseError {
+                message: format!("unknown operator `{name}`"),
+                offset: start,
+            }),
         }
     }
 }
@@ -935,11 +931,9 @@ impl Graph {
                 offset: 0,
             });
         }
-        pat.instantiate(self, &[]).ok_or_else(|| {
-            ParseError {
-                message: "term could not be built".to_owned(),
-                offset: 0,
-            }
+        pat.instantiate(self, &[]).ok_or_else(|| ParseError {
+            message: "term could not be built".to_owned(),
+            offset: 0,
         })
     }
 }

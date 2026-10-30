@@ -1222,15 +1222,13 @@ pub fn solve_amr(
         .levels
         .iter()
         .enumerate()
-        .map(|(level, lv)| {
-            AmrLevelData {
-                level,
-                patches: lv
-                    .patches
-                    .iter()
-                    .map(|p| (p.lo, p.n, p.q.clone()))
-                    .collect(),
-            }
+        .map(|(level, lv)| AmrLevelData {
+            level,
+            patches: lv
+                .patches
+                .iter()
+                .map(|p| (p.lo, p.n, p.q.clone()))
+                .collect(),
         })
         .collect();
     Ok(AmrSolution {

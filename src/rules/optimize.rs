@@ -335,11 +335,9 @@ fn constrained(
     let vars = list_items(cx.graph, vars)?;
     let constraints: Vec<NodeId> = list_items(cx.graph, constraints)?
         .into_iter()
-        .map(|g| {
-            match *cx.graph.children(g) {
-                | [lhs, rhs] if cx.graph.op(g) == core::EQ => sub(cx.graph, lhs, rhs),
-                | _ => g,
-            }
+        .map(|g| match *cx.graph.children(g) {
+            | [lhs, rhs] if cx.graph.op(g) == core::EQ => sub(cx.graph, lhs, rhs),
+            | _ => g,
         })
         .collect();
     if vars.iter().any(|&v| cx.graph.symbol_of(v).is_none()) || constraints.is_empty() {

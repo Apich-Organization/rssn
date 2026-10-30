@@ -185,13 +185,13 @@ struct Ops {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let dirac = i.op(OpDescriptor::new("dirac", Arity::Fixed(1)))?;
-    let kronecker = i.op(OpDescriptor::new("kronecker", Arity::Fixed(1)).eval(|a| {
-        match a {
+    let kronecker = i.op(
+        OpDescriptor::new("kronecker", Arity::Fixed(1)).eval(|a| match a {
             | [n] if *n == 0.0 => 1.0,
             | [n] if n.is_finite() => 0.0,
             | _ => f64::NAN,
-        }
-    }))?;
+        }),
+    )?;
     i.rewrites(
         Tier::Normalize,
         &["transforms/kronecker: kronecker(?n) => 0 if integer(?n), nonzero(?n)"],
@@ -250,12 +250,13 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         registered.push((i.op(request(name, arity, binder))?, kind));
     }
     let get = |i: &mut Installer<'_>, name: &str| {
-        i.graph().ops().lookup(name).ok_or_else(|| {
-            RuleError::Invalid {
+        i.graph()
+            .ops()
+            .lookup(name)
+            .ok_or_else(|| RuleError::Invalid {
                 rule: format!("transforms/{name}"),
                 reason: "missing operator",
-            }
-        })
+            })
     };
     let ops = Ops {
         laplace: registered[0].0,
@@ -351,17 +352,15 @@ impl Kernel for Transform {
         };
         let result = match self.request {
             | Request::Laplace => t.laplace(f).filter(|&r| t.check_laplace(f, r)),
-            | Request::InverseLaplace => {
-                t.inverse_laplace(f)
-                    .filter(|&r| t.check_inverse_laplace(f, r))
-            },
+            | Request::InverseLaplace => t
+                .inverse_laplace(f)
+                .filter(|&r| t.check_inverse_laplace(f, r)),
             | Request::Fourier => t.fourier(f).filter(|&r| t.check_fourier(f, r)),
             | Request::InverseFourier => t.inverse_fourier(f),
-            | Request::Z => {
-                t.ztransform(f)
-                    .filter(|&r| t.check_z(f, r))
-                    .map(|r| t.normal(r))
-            },
+            | Request::Z => t
+                .ztransform(f)
+                .filter(|&r| t.check_z(f, r))
+                .map(|r| t.normal(r)),
             | Request::InverseZ => t.inverse_z(f).filter(|&r| t.check_inverse_z(f, r)),
             | _ => None,
         };
@@ -2382,21 +2381,19 @@ impl Tx<'_, '_> {
                 self.cx.graph.op(g),
                 self.cx.graph.children(g).to_vec().as_slice(),
             ) {
-                | (core::POW, &[base, exponent]) if self.free(base) && !self.free(exponent) => {
-                    self.linear(exponent)
-                        .filter(|&(a, _)| !self.is_zero(a))
-                        .map(|(a, b)| (pow(self.cx.graph, base, a), pow(self.cx.graph, base, b)))
-                },
-                | (op, &[argument]) if op == self.ops.exp && !self.free(argument) => {
-                    self.linear(argument)
-                        .filter(|&(c, _)| !self.is_zero(c))
-                        .map(|(c, d)| {
-                            (
-                                call(self.cx.graph, self.ops.exp, &[c]),
-                                call(self.cx.graph, self.ops.exp, &[d]),
-                            )
-                        })
-                },
+                | (core::POW, &[base, exponent]) if self.free(base) && !self.free(exponent) => self
+                    .linear(exponent)
+                    .filter(|&(a, _)| !self.is_zero(a))
+                    .map(|(a, b)| (pow(self.cx.graph, base, a), pow(self.cx.graph, base, b))),
+                | (op, &[argument]) if op == self.ops.exp && !self.free(argument) => self
+                    .linear(argument)
+                    .filter(|&(c, _)| !self.is_zero(c))
+                    .map(|(c, d)| {
+                        (
+                            call(self.cx.graph, self.ops.exp, &[c]),
+                            call(self.cx.graph, self.ops.exp, &[d]),
+                        )
+                    }),
                 | _ => None,
             };
             if let Some((base, scale)) = base {

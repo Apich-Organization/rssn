@@ -54,9 +54,7 @@
 use num_complex::Complex64;
 
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::{
-    self,
-};
+use crate::kernels::dense::{self};
 use crate::kernels::eigs::EigsError;
 use crate::kernels::eigs::EigsOptions;
 use crate::kernels::eigs::EigsResult;

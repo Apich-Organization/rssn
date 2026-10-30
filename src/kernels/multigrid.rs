@@ -18,9 +18,7 @@
 
 use crate::kernels::dense::Lu;
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::{
-    self,
-};
+use crate::kernels::dense::{self};
 use crate::kernels::krylov::Csr;
 
 /// Multigrid cycle shape.

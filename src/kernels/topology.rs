@@ -592,11 +592,9 @@ pub fn persistent_homology(
     let mut paired = vec![false; m];
     let mut cleared = vec![false; m];
     let mut diagrams: Vec<PersistenceDiagram> = (0..=max_dim)
-        .map(|d| {
-            PersistenceDiagram {
-                dimension: d,
-                intervals: Vec::new(),
-            }
+        .map(|d| PersistenceDiagram {
+            dimension: d,
+            intervals: Vec::new(),
         })
         .collect();
 
@@ -687,11 +685,9 @@ pub fn compute_persistence(
         persistent_homology_rips(points, max_epsilon, max_dim, DEFAULT_SIMPLEX_LIMIT)
             .unwrap_or_else(|_| {
                 (0..=max_dim)
-                    .map(|d| {
-                        PersistenceDiagram {
-                            dimension: d,
-                            intervals: Vec::new(),
-                        }
+                    .map(|d| PersistenceDiagram {
+                        dimension: d,
+                        intervals: Vec::new(),
                     })
                     .collect()
             });

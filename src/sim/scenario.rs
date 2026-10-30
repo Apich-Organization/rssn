@@ -230,16 +230,14 @@ pub fn run(
                 schrodinger_quantum::run_schrodinger_simulation(&r.params, &mut r.initial_psi)?;
             json!({ "frames": encode(&frames)? })
         },
-        | other => {
-            match super::scenario_engines::run(other, params) {
-                | Some(result) => result?,
-                | None => {
-                    return Err(format!(
-                        "unknown scenario `{name}`; known: {}",
-                        SCENARIOS.join(", ")
-                    ));
-                },
-            }
+        | other => match super::scenario_engines::run(other, params) {
+            | Some(result) => result?,
+            | None => {
+                return Err(format!(
+                    "unknown scenario `{name}`; known: {}",
+                    SCENARIOS.join(", ")
+                ));
+            },
         },
     };
     serde_json::to_string(&value).map_err(|e| e.to_string())

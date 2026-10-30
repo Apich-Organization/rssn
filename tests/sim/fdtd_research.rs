@@ -344,15 +344,13 @@ fn tfsf_on_a_rotated_box_confines_the_incident_wave() {
     );
     // invalid rotations
     let mut y = Yee::new(YeeConfig::new(&[16, 16], &[0.1, 0.1]).unwrap()).unwrap();
-    let mk = || {
-        ObliquePlaneWave {
-            lo: [0.3, 0.3, 0.0],
-            hi: [1.2, 1.2, 0.0],
-            direction: [1.0, 0.0, 0.0],
-            polarization: [0.0, 0.0, 1.0],
-            origin: [0.0; 3],
-            waveform: Box::new(|t| t),
-        }
+    let mk = || ObliquePlaneWave {
+        lo: [0.3, 0.3, 0.0],
+        hi: [1.2, 1.2, 0.0],
+        direction: [1.0, 0.0, 0.0],
+        polarization: [0.0, 0.0, 1.0],
+        origin: [0.0; 3],
+        waveform: Box::new(|t| t),
     };
     assert!(
         y.set_oblique_plane_wave_rotated(mk(), [[2.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])

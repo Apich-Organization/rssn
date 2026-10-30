@@ -361,29 +361,21 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         }
         Some(Value::Int(binom(n, k) * binom(n, k - 1) / n))
     })?;
-    exact(i, SET, unary("motzkin"), |a| {
-        match a {
-            | [n] => Some(Value::Int(motzkin(nat(n, MAX_N)?))),
-            | _ => None,
-        }
+    exact(i, SET, unary("motzkin"), |a| match a {
+        | [n] => Some(Value::Int(motzkin(nat(n, MAX_N)?))),
+        | _ => None,
     })?;
-    exact(i, SET, unary("schroeder"), |a| {
-        match a {
-            | [n] => Some(Value::Int(schroeder(nat(n, MAX_N)?))),
-            | _ => None,
-        }
+    exact(i, SET, unary("schroeder"), |a| match a {
+        | [n] => Some(Value::Int(schroeder(nat(n, MAX_N)?))),
+        | _ => None,
     })?;
-    exact(i, SET, unary("fubini"), |a| {
-        match a {
-            | [n] => Some(Value::Int(fubini(nat(n, 400)?))),
-            | _ => None,
-        }
+    exact(i, SET, unary("fubini"), |a| match a {
+        | [n] => Some(Value::Int(fubini(nat(n, 400)?))),
+        | _ => None,
     })?;
-    exact(i, SET, unary("central_binomial"), |a| {
-        match a {
-            | [n] => Some(Value::Int(binom(2 * nat(n, MAX_N)?, nat(n, MAX_N)?))),
-            | _ => None,
-        }
+    exact(i, SET, unary("central_binomial"), |a| match a {
+        | [n] => Some(Value::Int(binom(2 * nat(n, MAX_N)?, nat(n, MAX_N)?))),
+        | _ => None,
     })?;
     exact(i, SET, binary("ballot"), |a| {
         let [up, down] = a else { return None };
@@ -443,21 +435,15 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let total: BigInt = (0..=k).map(|j| partitions_exact(n, j)).sum();
         Some(Value::Int(total))
     })?;
-    exact(i, SET, unary("partitions_distinct"), |a| {
-        match a {
-            | [n] => {
-                Some(Value::Int(partitions_distinct(
-                    usize::try_from(nat(n, 2000)?).ok()?,
-                )))
-            },
-            | _ => None,
-        }
+    exact(i, SET, unary("partitions_distinct"), |a| match a {
+        | [n] => Some(Value::Int(partitions_distinct(
+            usize::try_from(nat(n, 2000)?).ok()?,
+        ))),
+        | _ => None,
     })?;
-    exact(i, SET, unary("partition_list"), |a| {
-        match a {
-            | [n] => Some(Value::Nested(partition_list(nat(n, 40)?))),
-            | _ => None,
-        }
+    exact(i, SET, unary("partition_list"), |a| match a {
+        | [n] => Some(Value::Nested(partition_list(nat(n, 40)?))),
+        | _ => None,
     })?;
     exact(i, SET, binary("compositions"), |a| {
         let [n, k] = a else { return None };

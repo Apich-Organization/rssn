@@ -175,18 +175,16 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.graph()
         .ops_mut()
         .set_attr(euler, OnReals(Facts::POSITIVE));
-    i.op(OpDescriptor::new("atan2", Arity::Fixed(2)).eval(|a| {
-        match a {
+    i.op(
+        OpDescriptor::new("atan2", Arity::Fixed(2)).eval(|a| match a {
             | [y, x] => y.atan2(*x),
             | _ => f64::NAN,
-        }
-    }))?;
+        }),
+    )?;
     // log(b, x): the logarithm of x to base b.
-    let log = i.op(OpDescriptor::new("log", Arity::Fixed(2)).eval(|a| {
-        match a {
-            | [b, x] => x.ln() / b.ln(),
-            | _ => f64::NAN,
-        }
+    let log = i.op(OpDescriptor::new("log", Arity::Fixed(2)).eval(|a| match a {
+        | [b, x] => x.ln() / b.ln(),
+        | _ => f64::NAN,
     }))?;
     i.kernel("elementary/exact-log", Tier::Normalize, ExactLog { log });
     if let (Some(sin), Some(cos), Some(sinh), Some(cosh)) = (

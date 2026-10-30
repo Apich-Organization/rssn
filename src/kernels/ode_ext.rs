@@ -23,9 +23,7 @@
 use num_complex::Complex64;
 
 use crate::kernels::dense::Mat;
-use crate::kernels::dense::{
-    self,
-};
+use crate::kernels::dense::{self};
 use crate::kernels::matfun::expm;
 use crate::kernels::matfun::phi_matrices;
 use crate::kernels::ode_adaptive::OdeError;
@@ -379,14 +377,12 @@ struct ImexTableau {
 
 fn imex_tableau(s: ImexScheme) -> ImexTableau {
     match s {
-        | ImexScheme::Euler => {
-            ImexTableau {
-                ae: vec![vec![0.0, 0.0], vec![1.0, 0.0]],
-                ai: vec![vec![0.0, 0.0], vec![0.0, 1.0]],
-                be: vec![1.0, 0.0],
-                bi: vec![0.0, 1.0],
-                c: vec![0.0, 1.0],
-            }
+        | ImexScheme::Euler => ImexTableau {
+            ae: vec![vec![0.0, 0.0], vec![1.0, 0.0]],
+            ai: vec![vec![0.0, 0.0], vec![0.0, 1.0]],
+            be: vec![1.0, 0.0],
+            bi: vec![0.0, 1.0],
+            c: vec![0.0, 1.0],
         },
         | ImexScheme::Ars222 => {
             let g = 1.0 - 1.0 / 2f64.sqrt();

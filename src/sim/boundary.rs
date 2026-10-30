@@ -15,7 +15,6 @@
 //!
 //! `∂/∂n` is always the derivative along the **outward** unit normal.
 
-
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -244,19 +243,15 @@ impl FaceBcs {
     pub fn homogeneous(&self) -> Self {
         let z = || BcValue::constant(0.0);
         Self {
-            faces: std::array::from_fn(|i| {
-                match &self.faces[i] {
-                    | BoundaryCondition::Dirichlet(_) => BoundaryCondition::Dirichlet(z()),
-                    | BoundaryCondition::Neumann(_) => BoundaryCondition::Neumann(z()),
-                    | BoundaryCondition::Robin { alpha, beta, .. } => {
-                        BoundaryCondition::Robin {
-                            alpha: *alpha,
-                            beta: *beta,
-                            g: z(),
-                        }
-                    },
-                    | other => other.clone(),
-                }
+            faces: std::array::from_fn(|i| match &self.faces[i] {
+                | BoundaryCondition::Dirichlet(_) => BoundaryCondition::Dirichlet(z()),
+                | BoundaryCondition::Neumann(_) => BoundaryCondition::Neumann(z()),
+                | BoundaryCondition::Robin { alpha, beta, .. } => BoundaryCondition::Robin {
+                    alpha: *alpha,
+                    beta: *beta,
+                    g: z(),
+                },
+                | other => other.clone(),
             }),
         }
     }

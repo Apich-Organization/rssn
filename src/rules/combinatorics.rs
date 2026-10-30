@@ -1069,125 +1069,107 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let binary = |name: &str| OpDescriptor::new(name, Arity::Fixed(2));
     let set = "combinatorics";
 
-    exact(i, set, unary("factorial").eval(factorial_eval), |a| {
-        match a {
+    exact(
+        i,
+        set,
+        unary("factorial").eval(factorial_eval),
+        |a| match a {
             | [n] => Some(Value::Int(factorial(nat(n, MAX_FACTORIAL)?))),
             | _ => None,
-        }
+        },
+    )?;
+    exact(i, set, unary("double_factorial"), |a| match a {
+        | [n] => Some(Value::Int(double_factorial(nat(n, 2 * MAX_FACTORIAL)?))),
+        | _ => None,
     })?;
-    exact(i, set, unary("double_factorial"), |a| {
-        match a {
-            | [n] => Some(Value::Int(double_factorial(nat(n, 2 * MAX_FACTORIAL)?))),
-            | _ => None,
-        }
-    })?;
-    exact(i, set, binary("binomial").eval(binomial_eval), |a| {
-        match a {
+    exact(
+        i,
+        set,
+        binary("binomial").eval(binomial_eval),
+        |a| match a {
             | [n, k] => binomial(n, k).map(Value::Int),
             | _ => None,
-        }
-    })?;
+        },
+    )?;
     exact_lists(i, set, unary("multinomial"), multinomial)?;
     ext::install(i)?;
     exact(
         i,
         set,
         binary("permutations").eval(permutations_eval),
-        |a| {
-            match a {
-                | [n, k] if !n.is_negative() && !k.is_negative() => {
-                    if k > n {
-                        Some(Value::Int(BigInt::zero()))
-                    } else {
-                        product_run(n, k, -1).map(Value::Int)
-                    }
-                },
-                | _ => None,
-            }
+        |a| match a {
+            | [n, k] if !n.is_negative() && !k.is_negative() => {
+                if k > n {
+                    Some(Value::Int(BigInt::zero()))
+                } else {
+                    product_run(n, k, -1).map(Value::Int)
+                }
+            },
+            | _ => None,
         },
     )?;
-    exact(i, set, binary("rising"), |a| {
-        match a {
-            | [x, k] => product_run(x, k, 1).map(Value::Int),
-            | _ => None,
-        }
+    exact(i, set, binary("rising"), |a| match a {
+        | [x, k] => product_run(x, k, 1).map(Value::Int),
+        | _ => None,
     })?;
-    exact(i, set, binary("falling"), |a| {
-        match a {
-            | [x, k] => product_run(x, k, -1).map(Value::Int),
-            | _ => None,
-        }
+    exact(i, set, binary("falling"), |a| match a {
+        | [x, k] => product_run(x, k, -1).map(Value::Int),
+        | _ => None,
     })?;
-    exact(i, set, unary("catalan"), |a| {
-        match a {
-            | [n] => {
-                let n = nat(n, MAX_FACTORIAL / 2)?;
-                let c = choose(&BigInt::from(2 * n), n)?;
-                Some(Value::Int(c / (n + 1)))
-            },
-            | _ => None,
-        }
+    exact(i, set, unary("catalan"), |a| match a {
+        | [n] => {
+            let n = nat(n, MAX_FACTORIAL / 2)?;
+            let c = choose(&BigInt::from(2 * n), n)?;
+            Some(Value::Int(c / (n + 1)))
+        },
+        | _ => None,
     })?;
-    exact(i, set, unary("fibonacci"), |a| {
-        match a {
-            | [n] => Some(Value::Int(fibonacci_pair(nat(n, 100_000)?).0)),
-            | _ => None,
-        }
+    exact(i, set, unary("fibonacci"), |a| match a {
+        | [n] => Some(Value::Int(fibonacci_pair(nat(n, 100_000)?).0)),
+        | _ => None,
     })?;
-    exact(i, set, unary("lucas"), |a| {
-        match a {
-            | [n] => {
-                let (f, next) = fibonacci_pair(nat(n, 100_000)?);
-                Some(Value::Int(next * 2 - f))
-            },
-            | _ => None,
-        }
+    exact(i, set, unary("lucas"), |a| match a {
+        | [n] => {
+            let (f, next) = fibonacci_pair(nat(n, 100_000)?);
+            Some(Value::Int(next * 2 - f))
+        },
+        | _ => None,
     })?;
-    exact(i, set, unary("bell"), |a| {
-        match a {
-            | [n] => Some(Value::Int(bell(nat(n, 1000)?))),
-            | _ => None,
-        }
+    exact(i, set, unary("bell"), |a| match a {
+        | [n] => Some(Value::Int(bell(nat(n, 1000)?))),
+        | _ => None,
     })?;
-    exact(i, set, binary("stirling1"), |a| {
-        match a {
-            | [n, k] => {
-                let (n, k) = (nat(n, 1000)?, k.to_u64()?);
-                let row = stirling_row(n, |m, _| m - 1);
-                Some(Value::Int(
-                    row.get(usize::try_from(k).ok()?)
-                        .cloned()
-                        .unwrap_or_default(),
-                ))
-            },
-            | _ => None,
-        }
+    exact(i, set, binary("stirling1"), |a| match a {
+        | [n, k] => {
+            let (n, k) = (nat(n, 1000)?, k.to_u64()?);
+            let row = stirling_row(n, |m, _| m - 1);
+            Some(Value::Int(
+                row.get(usize::try_from(k).ok()?)
+                    .cloned()
+                    .unwrap_or_default(),
+            ))
+        },
+        | _ => None,
     })?;
-    exact(i, set, binary("stirling2"), |a| {
-        match a {
-            | [n, k] => {
-                let (n, k) = (nat(n, 1000)?, k.to_u64()?);
-                let row = stirling_row(n, |_, j| j);
-                Some(Value::Int(
-                    row.get(usize::try_from(k).ok()?)
-                        .cloned()
-                        .unwrap_or_default(),
-                ))
-            },
-            | _ => None,
-        }
+    exact(i, set, binary("stirling2"), |a| match a {
+        | [n, k] => {
+            let (n, k) = (nat(n, 1000)?, k.to_u64()?);
+            let row = stirling_row(n, |_, j| j);
+            Some(Value::Int(
+                row.get(usize::try_from(k).ok()?)
+                    .cloned()
+                    .unwrap_or_default(),
+            ))
+        },
+        | _ => None,
     })?;
-    exact(i, set, unary("partitions"), |a| {
-        match a {
-            | [n] => Some(Value::Int(partitions(usize::try_from(nat(n, 5000)?).ok()?))),
-            | _ => None,
-        }
+    exact(i, set, unary("partitions"), |a| match a {
+        | [n] => Some(Value::Int(partitions(usize::try_from(nat(n, 5000)?).ok()?))),
+        | _ => None,
     })?;
-    exact(i, set, unary("derangements"), |a| {
-        match a {
-            | [n] => Some(Value::Int(derangements(nat(n, MAX_FACTORIAL)?))),
-            | _ => None,
-        }
+    exact(i, set, unary("derangements"), |a| match a {
+        | [n] => Some(Value::Int(derangements(nat(n, MAX_FACTORIAL)?))),
+        | _ => None,
     })?;
     exact(
         i,
@@ -1202,11 +1184,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
                 | _ => f64::NAN,
             }
         }),
-        |a| {
-            match a {
-                | [n] => Some(Value::Rat(harmonic(nat(n, 1000)?))),
-                | _ => None,
-            }
+        |a| match a {
+            | [n] => Some(Value::Rat(harmonic(nat(n, 1000)?))),
+            | _ => None,
         },
     )?;
 

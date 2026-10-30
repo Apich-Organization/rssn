@@ -858,18 +858,16 @@ mod tests {
 
     fn coefficients(tree: &Tree) -> Vec<i64> {
         match tree {
-            | Tree::List(items) => {
-                items
-                    .iter()
-                    .map(|t| {
-                        if let Tree::Num(n) = t {
-                            *n
-                        } else {
-                            panic!("nested")
-                        }
-                    })
-                    .collect()
-            },
+            | Tree::List(items) => items
+                .iter()
+                .map(|t| {
+                    if let Tree::Num(n) = t {
+                        *n
+                    } else {
+                        panic!("nested")
+                    }
+                })
+                .collect(),
             | Tree::Num(_) => panic!("not a polynomial"),
         }
     }

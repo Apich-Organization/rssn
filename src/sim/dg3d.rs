@@ -531,12 +531,10 @@ impl Ctx<'_> {
                     }
                 }
                 // index of the line node `s` for transverse indices (t1, t2)
-                let idx = |s: usize, t1: usize, t2: usize| {
-                    match a {
-                        | 0 => node(s, t1, t2),
-                        | 1 => node(t1, s, t2),
-                        | _ => node(t1, t2, s),
-                    }
+                let idx = |s: usize, t1: usize, t2: usize| match a {
+                    | 0 => node(s, t1, t2),
+                    | 1 => node(t1, s, t2),
+                    | _ => node(t1, t2, s),
                 };
                 for t2 in 0..n1 {
                     for t1 in 0..n1 {
@@ -565,30 +563,28 @@ impl Ctx<'_> {
                                 | Some(en) => {
                                     qo.copy_from_slice(at(en, idx(n1 - 1 - edge, t1, t2)));
                                 },
-                                | None => {
-                                    match &self.bcs[2 * a + usize::from(max)] {
-                                        | Dg3Bc::Fixed(f) => {
-                                            let ex = [
-                                                e % m.ne[0],
-                                                (e / m.ne[0]) % m.ne[1],
-                                                e / (m.ne[0] * m.ne[1]),
-                                            ];
-                                            let ij = match a {
-                                                | 0 => [edge, t1, t2],
-                                                | 1 => [t1, edge, t2],
-                                                | _ => [t1, t2, edge],
-                                            };
-                                            let x: [f64; 3] = std::array::from_fn(|b| {
-                                                m.lo[b]
-                                                    + (ex[b] as f64
-                                                        + f64::midpoint(1.0, self.xi[ij[b]]))
-                                                        * m.h(b)
-                                            });
-                                            qo.copy_from_slice(&f(t, x));
-                                        },
-                                        | Dg3Bc::Wall => self.law.wall_state(qi, a, &mut qo),
-                                        | _ => qo.copy_from_slice(qi),
-                                    }
+                                | None => match &self.bcs[2 * a + usize::from(max)] {
+                                    | Dg3Bc::Fixed(f) => {
+                                        let ex = [
+                                            e % m.ne[0],
+                                            (e / m.ne[0]) % m.ne[1],
+                                            e / (m.ne[0] * m.ne[1]),
+                                        ];
+                                        let ij = match a {
+                                            | 0 => [edge, t1, t2],
+                                            | 1 => [t1, edge, t2],
+                                            | _ => [t1, t2, edge],
+                                        };
+                                        let x: [f64; 3] = std::array::from_fn(|b| {
+                                            m.lo[b]
+                                                + (ex[b] as f64
+                                                    + f64::midpoint(1.0, self.xi[ij[b]]))
+                                                    * m.h(b)
+                                        });
+                                        qo.copy_from_slice(&f(t, x));
+                                    },
+                                    | Dg3Bc::Wall => self.law.wall_state(qi, a, &mut qo),
+                                    | _ => qo.copy_from_slice(qi),
                                 },
                             }
                             let mut fstar = vec![0.0; nv];
@@ -1046,11 +1042,9 @@ impl Ctx<'_> {
                                 let fetch = |max: bool, v: usize| -> f64 {
                                     match self.neighbour(e, axis, max) {
                                         | Some(en) => old[(en * nv + v) * np + lidx],
-                                        | None => {
-                                            ghosts
-                                                .get(&(e, axis, max))
-                                                .map_or(0.0, |g| g[v * np + lidx])
-                                        },
+                                        | None => ghosts
+                                            .get(&(e, axis, max))
+                                            .map_or(0.0, |g| g[v * np + lidx]),
                                     }
                                 };
                                 for v in 0..nv {

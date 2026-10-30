@@ -910,11 +910,9 @@ impl KerrSchildGeodesic {
             d[1 + i] = p[1 + i] - 2.0 * hh * l[i] * w;
         }
         for c in 0..3 {
-            let xd: [Dual; 3] = std::array::from_fn(|k| {
-                Dual {
-                    v: x[k],
-                    d: if k == c { 1.0 } else { 0.0 },
-                }
+            let xd: [Dual; 3] = std::array::from_fn(|k| Dual {
+                v: x[k],
+                d: if k == c { 1.0 } else { 0.0 },
             });
             let pd: [Dual; 4] = std::array::from_fn(|k| Dual { v: p[k], d: 0.0 });
             d[5 + c] = -ks_hamiltonian(m, a, &xd, &pd).d;

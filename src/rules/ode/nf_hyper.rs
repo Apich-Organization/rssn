@@ -639,16 +639,14 @@ fn try_combination(
     Some(
         solutions
             .into_iter()
-            .map(|poly| {
-                HyperK {
-                    field: field.clone(),
-                    poly,
-                    factors: selected
-                        .iter()
-                        .map(|l| (l.f.clone(), l.rho.clone()))
-                        .collect(),
-                    exponent: (en.clone(), ed.clone()),
-                }
+            .map(|poly| HyperK {
+                field: field.clone(),
+                poly,
+                factors: selected
+                    .iter()
+                    .map(|l| (l.f.clone(), l.rho.clone()))
+                    .collect(),
+                exponent: (en.clone(), ed.clone()),
             })
             .collect(),
     )

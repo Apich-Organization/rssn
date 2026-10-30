@@ -489,11 +489,9 @@ impl Kernel for Cse {
             .results
             .iter()
             .zip(&lhs)
-            .map(|(&r, l)| {
-                match l {
-                    | Some(l) => g.node(core::EQ, &[*l, r]),
-                    | None => r,
-                }
+            .map(|(&r, l)| match l {
+                | Some(l) => g.node(core::EQ, &[*l, r]),
+                | None => r,
             })
             .collect();
         let definitions = g.node(core::LIST, &definitions);

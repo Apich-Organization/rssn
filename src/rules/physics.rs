@@ -140,7 +140,6 @@ enum Request {
     PartitionFunction,
 }
 
-
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, eval) in constant_eval!(
         "c_0",
@@ -161,11 +160,9 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let op = i.op(OpDescriptor::new(name, Arity::Fixed(0)).eval(eval))?;
         i.graph().ops_mut().set_attr(op, OnReals(Facts::POSITIVE));
     }
-    let algebra = op_algebra(i.graph()).ok_or_else(|| {
-        RuleError::Invalid {
-            rule: "physics".to_owned(),
-            reason: "needs the functional analysis rule set",
-        }
+    let algebra = op_algebra(i.graph()).ok_or_else(|| RuleError::Invalid {
+        rule: "physics".to_owned(),
+        reason: "needs the functional analysis rule set",
     })?;
     let heavy = |name: &str, arity: u8| {
         OpDescriptor::new(name, Arity::Fixed(arity))
@@ -367,11 +364,9 @@ impl Kernel for Physics {
             },
             | Request::DiracEquation => dirac_equation(cx, &args),
             | Request::KleinGordon => klein_gordon(cx, &args),
-            | Request::Slash => {
-                vector(cx.graph, args[0])
-                    .and_then(|p| slash(cx.graph, &p))
-                    .map(|m| matrix_term(cx.graph, &m))
-            },
+            | Request::Slash => vector(cx.graph, args[0])
+                .and_then(|p| slash(cx.graph, &p))
+                .map(|m| matrix_term(cx.graph, &m)),
             | Request::DiracAdjoint => dirac_adjoint(cx, args[0]),
             | Request::MinkowskiDot => minkowski_dot(cx.graph, args[0], args[1]),
             | Request::ScalarLagrangian => scalar_lagrangian(cx, &args),
@@ -421,7 +416,6 @@ fn matrix_term(
     let rows: Vec<NodeId> = rows.iter().map(|r| list(graph, r)).collect();
     list(graph, &rows)
 }
-
 
 // ----------------------------------------------------------------------
 // Quantum operators

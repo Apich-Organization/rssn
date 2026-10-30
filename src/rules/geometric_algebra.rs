@@ -618,12 +618,10 @@ impl Kernel for Ga {
     ) -> Outcome {
         let args = cx.graph.children(node).to_vec();
         match self.compute(cx, &args) {
-            | Some(m) => {
-                Outcome::Equal(match m {
-                    | Out::Mv(m) => mv_term(cx, self.mv, &m),
-                    | Out::Term(t) => t,
-                })
-            },
+            | Some(m) => Outcome::Equal(match m {
+                | Out::Mv(m) => mv_term(cx, self.mv, &m),
+                | Out::Term(t) => t,
+            }),
             | None => Outcome::Pass,
         }
     }
@@ -812,11 +810,9 @@ impl Ga {
                     | Product::Right => {
                         product(cx, &a, &b, |ga, gb, gr| ga >= gb && gr == ga - gb)?
                     },
-                    | Product::Inner => {
-                        product(cx, &a, &b, |ga, gb, gr| {
-                            ga > 0 && gb > 0 && gr == ga.abs_diff(gb)
-                        })?
-                    },
+                    | Product::Inner => product(cx, &a, &b, |ga, gb, gr| {
+                        ga > 0 && gb > 0 && gr == ga.abs_diff(gb)
+                    })?,
                     | Product::Scalar => product(cx, &a, &b, |_, _, gr| gr == 0)?,
                     | Product::Commutator => {
                         let ab = gp(cx, &a, &b)?;

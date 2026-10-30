@@ -10,6 +10,8 @@
 
 pub mod algebra;
 pub mod apart;
+mod f4;
+mod f5;
 pub mod galois;
 pub mod galois_high;
 pub mod groebner;
@@ -123,6 +125,8 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.kernel("poly/collapse", Tier::Normalize, Collapse);
     algebra::install(i)?;
     rootof::install(i)?;
+    f4::install(i)?;
+    f5::install(i)?;
     Ok(())
 }
 
@@ -358,13 +362,11 @@ fn groebner_order(
 ) -> Option<Order> {
     match args {
         | [_, _] => Some(Order::Lex),
-        | [_, _, order] => {
-            match graph.interner().symbol_name(graph.symbol_of(*order)?) {
-                | "lex" => Some(Order::Lex),
-                | "grlex" => Some(Order::GradedLex),
-                | "grevlex" => Some(Order::GradedRevLex),
-                | _ => None,
-            }
+        | [_, _, order] => match graph.interner().symbol_name(graph.symbol_of(*order)?) {
+            | "lex" => Some(Order::Lex),
+            | "grlex" => Some(Order::GradedLex),
+            | "grevlex" => Some(Order::GradedRevLex),
+            | _ => None,
         },
         | _ => None,
     }
@@ -399,13 +401,11 @@ impl Kernel for PolyKernel {
             return pass;
         };
         match to_groebner(cx.graph, polys, vars, order) {
-            | Some((generators, gens)) => {
-                Prepared::Work(Box::new(GroebnerWork {
-                    generators,
-                    order,
-                    gens,
-                }))
-            },
+            | Some((generators, gens)) => Prepared::Work(Box::new(GroebnerWork {
+                generators,
+                order,
+                gens,
+            })),
             | None => pass,
         }
     }
@@ -442,16 +442,14 @@ impl Kernel for PolyKernel {
         // raw form is tried first because simplification may hide structure
         // (exp(t)^2 - 1 becomes exp(2*t) - 1).
         if let Some((&first, rest)) = args.split_first() {
-            let form = |graph: &mut Graph, e: NodeId| {
-                match (self.request, rest) {
-                    | (Request::Expand, &[]) => expand(graph, e),
-                    | (Request::Collect, &[x]) => collect(graph, e, x),
-                    | (Request::Factor, &[]) => factor(graph, e),
-                    | (Request::Together, &[]) => together(graph, e, false),
-                    | (Request::Cancel, &[]) => together(graph, e, true),
-                    | (Request::Apart, &[x]) => apart_term(graph, e, x),
-                    | _ => None,
-                }
+            let form = |graph: &mut Graph, e: NodeId| match (self.request, rest) {
+                | (Request::Expand, &[]) => expand(graph, e),
+                | (Request::Collect, &[x]) => collect(graph, e, x),
+                | (Request::Factor, &[]) => factor(graph, e),
+                | (Request::Together, &[]) => together(graph, e, false),
+                | (Request::Cancel, &[]) => together(graph, e, true),
+                | (Request::Apart, &[x]) => apart_term(graph, e, x),
+                | _ => None,
             };
             if matches!(
                 self.request,
@@ -488,20 +486,16 @@ impl Kernel for PolyKernel {
             | (Request::Groebner, &[polys, vars]) => {
                 groebner_basis(graph, polys, vars, Order::Lex).map(Outcome::Pinned)
             },
-            | (Request::Groebner, &[polys, vars, order]) => {
-                graph
-                    .symbol_of(order)
-                    .and_then(|s| {
-                        match graph.interner().symbol_name(s) {
-                            | "lex" => Some(Order::Lex),
-                            | "grlex" => Some(Order::GradedLex),
-                            | "grevlex" => Some(Order::GradedRevLex),
-                            | _ => None,
-                        }
-                    })
-                    .and_then(|order| groebner_basis(graph, polys, vars, order))
-                    .map(Outcome::Pinned)
-            },
+            | (Request::Groebner, &[polys, vars, order]) => graph
+                .symbol_of(order)
+                .and_then(|s| match graph.interner().symbol_name(s) {
+                    | "lex" => Some(Order::Lex),
+                    | "grlex" => Some(Order::GradedLex),
+                    | "grevlex" => Some(Order::GradedRevLex),
+                    | _ => None,
+                })
+                .and_then(|order| groebner_basis(graph, polys, vars, order))
+                .map(Outcome::Pinned),
             | _ => None,
         };
         result.unwrap_or(Outcome::Pass)
@@ -817,15 +811,14 @@ fn factor(
         content = rational_gcd(&content, &c);
         common = Some(match common {
             | None => mono.clone(),
-            | Some(old) => {
-                old.iter()
-                    .filter_map(|&(g, e)| {
-                        mono.iter()
-                            .find(|&&(h, _)| h == g)
-                            .map(|&(_, f)| (g, e.min(f)))
-                    })
-                    .collect()
-            },
+            | Some(old) => old
+                .iter()
+                .filter_map(|&(g, e)| {
+                    mono.iter()
+                        .find(|&&(h, _)| h == g)
+                        .map(|&(_, f)| (g, e.min(f)))
+                })
+                .collect(),
         });
     }
     let common = common.unwrap_or_default();

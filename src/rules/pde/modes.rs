@@ -694,14 +694,12 @@ pub(super) fn annulus_families(
             cx.simplify(p)
         };
         let (pa, pb) = (shift(cx, end_a, a), shift(cx, end_b, b));
-        let make = |cx: &mut Cx<'_>, end: &End, point: NodeId, p: NodeId| {
-            End {
-                kind: kind_of(cx, p, end.q),
-                point,
-                p,
-                q: end.q,
-                value: zero,
-            }
+        let make = |cx: &mut Cx<'_>, end: &End, point: NodeId, p: NodeId| End {
+            kind: kind_of(cx, p, end.q),
+            point,
+            p,
+            q: end.q,
+            value: zero,
         };
         let left = make(cx, end_a, a, pa);
         let right = make(cx, end_b, b, pb);

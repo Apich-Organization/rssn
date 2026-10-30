@@ -301,11 +301,9 @@ impl OpTable {
             OpDescriptor::new("pow", Arity::Fixed(2))
                 .flags(OpFlags::TRANSPARENT)
                 .cost(1)
-                .eval(|a| {
-                    match a {
-                        | [b, e] => b.powf(*e),
-                        | _ => f64::NAN,
-                    }
+                .eval(|a| match a {
+                    | [b, e] => b.powf(*e),
+                    | _ => f64::NAN,
                 }),
             OpDescriptor::new("apply", Arity::Variadic).cost(2),
             OpDescriptor::new("list", Arity::Variadic).cost(1),

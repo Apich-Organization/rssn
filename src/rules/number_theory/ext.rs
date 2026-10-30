@@ -391,27 +391,21 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let binary = |name: &str| OpDescriptor::new(name, Arity::Fixed(2));
     let ternary = |name: &str| OpDescriptor::new(name, Arity::Fixed(3));
 
-    exact(i, SET, binary("legendre_symbol"), |a| {
-        match a {
-            | [x, p] if *p > big(2) && is_prime(p) => jacobi(x, p).and_then(int),
-            | _ => None,
-        }
+    exact(i, SET, binary("legendre_symbol"), |a| match a {
+        | [x, p] if *p > big(2) && is_prime(p) => jacobi(x, p).and_then(int),
+        | _ => None,
     })?;
-    exact(i, SET, binary("kronecker_symbol"), |a| {
-        match a {
-            | [x, n] => kronecker(x, n).and_then(int),
-            | _ => None,
-        }
+    exact(i, SET, binary("kronecker_symbol"), |a| match a {
+        | [x, n] => kronecker(x, n).and_then(int),
+        | _ => None,
     })?;
-    exact(i, SET, binary("sqrtmod"), |a| {
-        match a {
-            | [x, p] if is_prime(p) => {
-                let p = p.to_u64()?;
-                let x = modulo(x, &big(p))?.to_u64()?;
-                tonelli_shanks(x, p).and_then(int)
-            },
-            | _ => None,
-        }
+    exact(i, SET, binary("sqrtmod"), |a| match a {
+        | [x, p] if is_prime(p) => {
+            let p = p.to_u64()?;
+            let x = modulo(x, &big(p))?.to_u64()?;
+            tonelli_shanks(x, p).and_then(int)
+        },
+        | _ => None,
     })?;
     exact(i, SET, unary("quadratic_residues"), |a| {
         let [n] = a else { return None };
@@ -421,29 +415,21 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         seen.dedup();
         Some(Value::Flat(seen.into_iter().map(BigInt::from).collect()))
     })?;
-    exact(i, SET, binary("mult_order"), |a| {
-        match a {
-            | [x, n] => mult_order(x, n).map(Value::Int),
-            | _ => None,
-        }
+    exact(i, SET, binary("mult_order"), |a| match a {
+        | [x, n] => mult_order(x, n).map(Value::Int),
+        | _ => None,
     })?;
-    exact(i, SET, unary("carmichael"), |a| {
-        match a {
-            | [n] => carmichael(n).map(Value::Int),
-            | _ => None,
-        }
+    exact(i, SET, unary("carmichael"), |a| match a {
+        | [n] => carmichael(n).map(Value::Int),
+        | _ => None,
     })?;
-    exact(i, SET, unary("primitive_root"), |a| {
-        match a {
-            | [n] => primitive_root(n).map(Value::Int),
-            | _ => None,
-        }
+    exact(i, SET, unary("primitive_root"), |a| match a {
+        | [n] => primitive_root(n).map(Value::Int),
+        | _ => None,
     })?;
-    exact(i, SET, ternary("dlog"), |a| {
-        match a {
-            | [g, h, n] => dlog(g, h, n).map(Value::Int),
-            | _ => None,
-        }
+    exact(i, SET, ternary("dlog"), |a| match a {
+        | [g, h, n] => dlog(g, h, n).map(Value::Int),
+        | _ => None,
     })?;
     exact(i, SET, unary("mobius"), |a| {
         let [n] = a else { return None };
@@ -510,19 +496,15 @@ pub(super) fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         let r = n.sqrt();
         Some(Value::Bool(&r * &r == *n))
     })?;
-    exact(i, SET, unary("isqrt"), |a| {
-        match a {
-            | [n] if !n.is_negative() => int(n.sqrt()),
-            | _ => None,
-        }
+    exact(i, SET, unary("isqrt"), |a| match a {
+        | [n] if !n.is_negative() => int(n.sqrt()),
+        | _ => None,
     })?;
-    exact(i, SET, binary("iroot"), |a| {
-        match a {
-            | [n, k] if !n.is_negative() && k.is_positive() => {
-                int(n.nth_root(k.to_u32().filter(|&k| k <= 4096)?))
-            },
-            | _ => None,
-        }
+    exact(i, SET, binary("iroot"), |a| match a {
+        | [n, k] if !n.is_negative() && k.is_positive() => {
+            int(n.nth_root(k.to_u32().filter(|&k| k <= 4096)?))
+        },
+        | _ => None,
     })?;
     exact(i, SET, unary("perfect_power"), |a| {
         let [n] = a else { return None };

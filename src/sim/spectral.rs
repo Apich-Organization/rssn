@@ -661,11 +661,9 @@ impl ChebGrid {
             .sparse_lu(SparseOrdering::MinDegree)
             .map_err(|e| format!("LU failed: {e:?}"))?;
         let b: Vec<f64> = (0..self.size())
-            .map(|p| {
-                match &op.boundary[p] {
-                    | Some((g, x)) => g.eval(0.0, *x),
-                    | None => f(self.coord(p)),
-                }
+            .map(|p| match &op.boundary[p] {
+                | Some((g, x)) => g.eval(0.0, *x),
+                | None => f(self.coord(p)),
             })
             .collect();
         Ok(lu.solve(&b))

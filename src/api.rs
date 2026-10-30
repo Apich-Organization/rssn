@@ -591,11 +591,9 @@ fn run_job(
         let reduced = closed.is_some();
         let best = match closed {
             | Some(node) => node,
-            | None => {
-                Extractor::new(&graph, &roots, &SizeCost)
-                    .build(&mut graph, root)
-                    .unwrap_or(root)
-            },
+            | None => Extractor::new(&graph, &roots, &SizeCost)
+                .build(&mut graph, root)
+                .unwrap_or(root),
         };
         (best, reduced)
     };

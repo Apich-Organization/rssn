@@ -409,22 +409,18 @@ impl JitFunction {
             for inst in &tape.insts {
                 let v = match *inst {
                     | Inst::Const(c) => b.ins().f64const(c),
-                    | Inst::Input(i) => {
-                        b.ins().load(
-                            types::F64,
-                            flags,
-                            in_ptr,
-                            i32::try_from(i).map_err(error)?.saturating_mul(8),
-                        )
-                    },
-                    | Inst::Param(i) => {
-                        b.ins().load(
-                            types::F64,
-                            flags,
-                            par_ptr,
-                            i32::try_from(i).map_err(error)?.saturating_mul(8),
-                        )
-                    },
+                    | Inst::Input(i) => b.ins().load(
+                        types::F64,
+                        flags,
+                        in_ptr,
+                        i32::try_from(i).map_err(error)?.saturating_mul(8),
+                    ),
+                    | Inst::Param(i) => b.ins().load(
+                        types::F64,
+                        flags,
+                        par_ptr,
+                        i32::try_from(i).map_err(error)?.saturating_mul(8),
+                    ),
                     | Inst::Add(x, y) => {
                         let (x, y) = (get(&values, x)?, get(&values, y)?);
                         b.ins().fadd(x, y)
