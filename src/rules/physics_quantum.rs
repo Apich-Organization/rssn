@@ -35,6 +35,10 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 
@@ -42,6 +46,102 @@ use crate::graph::rule::Installer;
 #[must_use]
 pub fn physics_quantum() -> RuleSet {
     RuleSet::new("physics_quantum", install).needs(super::physics::physics())
+}
+
+/// The dimension of argument `index`, or `Any` when it is missing.
+fn dim_arg(
+    args: &[DimTerm],
+    index: usize,
+) -> DimTerm {
+    args.get(index).cloned().unwrap_or_else(DimTerm::any)
+}
+
+/// A product of SI base dimensions with integer powers.
+fn dim_bases(
+    ctx: &DimCtx<'_>,
+    factors: &[(&str, i64)],
+) -> DimTerm {
+    let mut out = DimTerm::dimensionless();
+    for &(name, power) in factors {
+        let exponent = BigRational::from_integer(BigInt::from(power));
+        let Some(base) = ctx.base(name, exponent) else {
+            return DimTerm::any();
+        };
+        out = out.mul(&base);
+    }
+    out
+}
+
+/// Attaches dimension rules to operators registered earlier by this rule set.
+fn attach_dim_rules(
+    i: &mut Installer<'_>,
+    rules: &[(&str, DimRule)],
+) {
+    for &(name, rule) in rules {
+        let op = i.graph().ops().lookup(name);
+        if let Some(op) = op {
+            i.dim(op, rule);
+        }
+    }
+}
+
+/// The energy dimension `Mass * Length^2 / Time^2` in SI base dimensions.
+fn energy_dimension(ctx: &DimCtx<'_>) -> DimTerm {
+    dim_bases(ctx, &[("Mass", 1), ("Length", 2), ("Time", -2)])
+}
+
+/// The radial factor of a normalised three-dimensional wave function,
+/// `R_nl(r)`, scales like `r^(-3/2)`; the angular factor `Y_l^m` is
+/// dimensionless.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_radial(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 2).pow(&BigRational::new(BigInt::from(-3), BigInt::from(2))))
+}
+
+/// `hydrogen_radial(n, l, r) * spherical_harmonic(l, m, theta, phi)`; `r`
+/// is argument 3 here.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_wavefunction(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 3).pow(&BigRational::new(BigInt::from(-3), BigInt::from(2))))
+}
+
+/// `-ħ²/(2 m_e a_0² n²)` is an energy.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_hydrogen_energy(
+    ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(energy_dimension(ctx))
+}
+
+/// A Bohr–Sommerfeld level `E` of `V = c |x|^ν` is an energy; the closed
+/// form in `c`, `ν` and `m` is dimensionally consistent with that when `c`
+/// is a potential coefficient.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_wkb_energy(
+    ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(energy_dimension(ctx))
+}
+
+/// `Σ_(m≠n) |⟨m|V|n⟩|² / (E_n - E_m)`: the matrix element of `V` has the
+/// dimension of `V` (normalised states), so the correction scales like
+/// `dim(V)^2 / dim(E)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_second_order(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 0)
+        .pow(&BigRational::from_integer(BigInt::from(2)))
+        .mul(&dim_arg(args, 2).inverse()))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -78,6 +178,31 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "hydrogen_wavefunction(n, l, m, r, theta, phi) := hydrogen_radial(n, l, r) * spherical_harmonic(l, m, theta, phi)",
         "hydrogen_energy(n) := -hbar^2/(2*m_e*a_0^2*n^2)",
     ])?;
+    attach_dim_rules(
+        i,
+        &[
+            // Angular-momentum coefficients and spherical harmonics are
+            // dimensionless quantum numbers.
+            ("clebsch_gordan", DimRule::Dimensionless),
+            ("wigner_3j", DimRule::Dimensionless),
+            ("spherical_harmonic", DimRule::Dimensionless),
+            // A normalised radial function in three dimensions scales like
+            // `r^(-3/2)`.
+            ("hydrogen_radial", DimRule::Custom(dim_radial)),
+            ("hydrogen_wavefunction", DimRule::Custom(dim_wavefunction)),
+            // Energies (the closed forms are dimensionally energies).
+            ("hydrogen_energy", DimRule::Custom(dim_hydrogen_energy)),
+            ("wkb_energy", DimRule::Custom(dim_wkb_energy)),
+            // `|⟨m|V|n⟩|² / (E_n - E_m)`.
+            (
+                "second_order_energy_correction",
+                DimRule::Custom(dim_second_order),
+            ),
+            // The Rayleigh–Ritz result is the energy expectation value of
+            // the Hamiltonian, which is argument 0.
+            ("variational_ground_state", DimRule::Same(0)),
+        ],
+    );
     Ok(())
 }
 

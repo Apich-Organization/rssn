@@ -43,6 +43,9 @@
 //! theory uses natural units. The Schwarzschild metric uses the signature
 //! `(-, +, +, +)` and coordinates `list(t, r, theta, phi)`.
 
+use num_bigint::BigInt;
+use num_rational::BigRational;
+
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Facts;
@@ -57,6 +60,10 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::complex::build::add;
@@ -140,6 +147,516 @@ enum Request {
     PartitionFunction,
 }
 
+// ----------------------------------------------------------------------
+// Dimension rules
+// ----------------------------------------------------------------------
+
+/// The dimension of argument `index`, or `Any` when it is missing.
+fn dim_arg(
+    args: &[DimTerm],
+    index: usize,
+) -> DimTerm {
+    args.get(index).cloned().unwrap_or_else(DimTerm::any)
+}
+
+/// An exact rational exponent.
+fn rational(
+    numerator: i64,
+    denominator: i64,
+) -> BigRational {
+    BigRational::new(BigInt::from(numerator), BigInt::from(denominator))
+}
+
+/// A product of SI base dimensions with integer powers.
+fn dim_bases(
+    ctx: &DimCtx<'_>,
+    factors: &[(&str, i64)],
+) -> DimTerm {
+    let mut out = DimTerm::dimensionless();
+    for &(name, power) in factors {
+        let Some(base) = ctx.base(name, rational(power, 1)) else {
+            return DimTerm::any();
+        };
+        out = out.mul(&base);
+    }
+    out
+}
+
+/// The product `Π dim(argument_i)^power_i`.
+fn dim_powers(
+    args: &[DimTerm],
+    factors: &[(usize, i64)],
+) -> DimTerm {
+    let mut out = DimTerm::dimensionless();
+    for &(index, power) in factors {
+        let value = dim_arg(args, index);
+        let value = if power == 1 {
+            value
+        } else {
+            value.pow(&rational(power, 1))
+        };
+        out = out.mul(&value);
+    }
+    out
+}
+
+/// The dimension of a physical constant, by operator name, in SI bases.
+///
+/// The definitions are the SI ones:
+///
+/// * `c_0` — speed of light: `Length/Time`;
+/// * `hbar`, `h_planck` — action `J s = Length^2*Mass/Time`;
+/// * `k_B` — `J/K = Length^2*Mass/(Time^2*Temperature)`;
+/// * `epsilon_0` — `F/m = Current^2*Time^4/(Mass*Length^3)`;
+/// * `mu_0` — `N/A^2 = Mass*Length/(Time^2*Current^2)`;
+/// * `G_N` — `m^3/(kg s^2) = Length^3/(Mass*Time^2)`;
+/// * `q_e` — charge `C = Current*Time`;
+/// * `m_e`, `m_p` — `Mass`;
+/// * `N_A` — `1/Amount`;
+/// * `R_gas` — `J/(mol K) = Length^2*Mass/(Time^2*Temperature*Amount)`;
+/// * `sigma_SB` — `W/(m^2 K^4) = Mass/(Time^3*Temperature^4)`;
+/// * `a_0` — `Length`.
+fn constant_dimension(
+    ctx: &DimCtx<'_>,
+    name: &str,
+) -> DimTerm {
+    let factors: &[(&str, i64)] = match name {
+        | "c_0" => &[("Length", 1), ("Time", -1)],
+        | "hbar" | "h_planck" => &[("Length", 2), ("Mass", 1), ("Time", -1)],
+        | "k_B" => &[
+            ("Length", 2),
+            ("Mass", 1),
+            ("Time", -2),
+            ("Temperature", -1),
+        ],
+        | "epsilon_0" => &[("Current", 2), ("Time", 4), ("Mass", -1), ("Length", -3)],
+        | "mu_0" => &[("Mass", 1), ("Length", 1), ("Time", -2), ("Current", -2)],
+        | "G_N" => &[("Length", 3), ("Mass", -1), ("Time", -2)],
+        | "q_e" => &[("Current", 1), ("Time", 1)],
+        | "m_e" | "m_p" => &[("Mass", 1)],
+        | "N_A" => &[("Amount", -1)],
+        | "R_gas" => &[
+            ("Length", 2),
+            ("Mass", 1),
+            ("Time", -2),
+            ("Temperature", -1),
+            ("Amount", -1),
+        ],
+        | "sigma_SB" => &[("Mass", 1), ("Time", -3), ("Temperature", -4)],
+        | "a_0" => &[("Length", 1)],
+        | _ => return DimTerm::any(),
+    };
+    dim_bases(ctx, factors)
+}
+
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn constant_dimension_rule(
+    ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let op = ctx.graph.op(ctx.node);
+    let name = ctx.graph.ops().get(op).name.to_string();
+    Ok(constant_dimension(ctx, &name))
+}
+
+/// Defines a `DimRule::Custom` rule for the dimension `Π arg_i^power_i`.
+macro_rules! dim_powers_rule {
+    ($name:ident, $($index:literal : $power:expr),* $(,)?) => {
+        fn $name(
+            _ctx: &DimCtx<'_>,
+            args: &[DimTerm],
+        ) -> Result<DimTerm, DimError> {
+            Ok(dim_powers(args, &[$(($index, $power)),*]))
+        }
+    };
+}
+
+/// Defines a `DimRule::Custom` rule from a dimension expression over `d(i)`,
+/// the dimension of argument `i`.
+macro_rules! dim_rule {
+    ($name:ident, |$d:ident| $body:expr) => {
+        fn $name(
+            _ctx: &DimCtx<'_>,
+            args: &[DimTerm],
+        ) -> Result<DimTerm, DimError> {
+            let $d = |index: usize| dim_arg(args, index);
+            let _ = &$d;
+            Ok($body)
+        }
+    };
+}
+
+/// Attaches dimension rules to operators registered earlier by this rule set.
+fn attach_dim_rules(
+    i: &mut Installer<'_>,
+    rules: &[(&str, DimRule)],
+) {
+    for &(name, rule) in rules {
+        let op = i.graph().ops().lookup(name);
+        if let Some(op) = op {
+            i.dim(op, rule);
+        }
+    }
+}
+
+/// A dimensionless result (probabilities, efficiencies, partition sums).
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+#[allow(clippy::missing_const_for_fn)]
+fn dim_dimensionless(
+    _ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(DimTerm::dimensionless())
+}
+
+/// `∇V` for `(V, A, vars, t)`: `vars` is argument 2.
+dim_powers_rule!(dim_gradient_of_potential_at_2, 0: 1, 2: -1);
+/// A product of three arguments (`⟨phi|psi⟩ dx`, `[A, B] psi`).
+dim_powers_rule!(dim_triple_product, 0: 1, 1: 1, 2: 1);
+/// A product of four arguments (`|M|²/flux dphi`, bra-ket amplitudes).
+dim_powers_rule!(dim_quad_product, 0: 1, 1: 1, 2: 1, 3: 1);
+/// `{f, g} = Σ ∂f/∂q ∂g/∂p - ...`.
+dim_powers_rule!(dim_poisson_bracket, 0: 1, 1: 1, 2: -1, 3: -1);
+/// `-Γ^k_ij u^i u^j`.
+dim_powers_rule!(dim_geodesic_acceleration, 0: 1, 1: 2);
+/// `½ ∂φ∂φ - ½ m²φ²`.
+dim_powers_rule!(dim_scalar_lagrangian, 0: 2, 1: 2);
+/// `psibar (... - m) psi`.
+dim_powers_rule!(dim_lagrangian_density, 0: 1, 1: 1, 3: 1);
+/// `n e² τ / m`.
+dim_powers_rule!(dim_drude_conductivity, 0: 1, 1: 2, 2: 1, 3: -1);
+/// `1/(n q)`.
+dim_powers_rule!(dim_hall_coefficient, 0: -1, 1: -1);
+/// `H psi` (both the Schrödinger residuals and the state they produce).
+dim_powers_rule!(dim_operator_state, 0: 1, 1: 1);
+/// `∂_i E` (Maxwell's equations are residuals of field gradients).
+dim_powers_rule!(dim_field_gradient, 0: 1, 4: -1);
+/// `(H, q, p) -> ∂H/∂p`, the dimension of the equations of motion.
+dim_powers_rule!(dim_equation_of_motion, 0: 1, 2: -1);
+/// `φ / x²` (the Klein–Gordon residual; `c` and `hbar` cancel).
+dim_powers_rule!(dim_klein_gordon, 0: 1, 2: -2);
+/// `psi / sqrt(⟨psi|psi⟩ dx)`: the one-dimensional wave-function
+/// normalisation `dim(x)^(-1/2)`.
+dim_rule!(dim_normalize_wavefunction, |d| d(1).pow(&rational(-1, 2)));
+/// `E0 + hbar² k²/(2m)`: the band edge `E0` (argument 2) fixes the
+/// dimension; the kinetic term must agree with it.
+dim_rule!(dim_energy_band, |d| d(2));
+/// `P V` (the ideal-gas law is a residual, so its dimension is the product
+/// of the two sides).
+dim_powers_rule!(dim_pressure_times_volume, 0: 1, 1: 1);
+
+// Classical mechanics.
+
+/// `½ m v²`, `½ k x²`, `m r²`, `I ω²/2`.
+dim_powers_rule!(dim_mass_times_square, 0: 1, 1: 2);
+/// `G m1 m2 / r` with the gravitational constant as argument 3.
+dim_powers_rule!(dim_gravitational_pe, 0: 1, 1: 1, 3: 1, 2: -1);
+/// `∫ F · dr`.
+dim_powers_rule!(dim_work_line_integral, 0: 1, 1: 1);
+/// `v²/r`.
+dim_powers_rule!(dim_centripetal_acceleration, 0: 2, 1: -1);
+/// `G_N m1 m2 / r²`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_gravitational_force(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(constant_dimension(ctx, "G_N").mul(&dim_powers(args, &[(0, 1), (1, 1), (2, -2)])))
+}
+/// `(k/m)^(1/2)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_harmonic_frequency(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 0)
+        .pow(&rational(1, 2))
+        .mul(&dim_arg(args, 1).pow(&rational(-1, 2))))
+}
+
+// Electromagnetism.
+
+/// `q (E + v × B)`.
+dim_powers_rule!(dim_lorentz_force, 0: 1, 1: 1);
+/// `∇V` or `∂A/∂t`: potential over length.
+dim_powers_rule!(dim_gradient_of_potential, 0: 1, 1: -1);
+/// `E × B / mu_0`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_poynting_vector(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 0)
+        .mul(&dim_arg(args, 1))
+        .mul(&constant_dimension(ctx, "mu_0").inverse()))
+}
+/// `½ (epsilon_0 E² + B²/mu_0)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_em_energy_density(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(constant_dimension(ctx, "epsilon_0").mul(&dim_arg(args, 0).pow(&rational(2, 1))))
+}
+/// `q r / (4 pi epsilon_0 |r|³)`: `q/(epsilon_0 r²)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_coulombs_law(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 0)
+        .mul(&constant_dimension(ctx, "epsilon_0").inverse())
+        .mul(&dim_arg(args, 1).pow(&rational(-2, 1))))
+}
+/// `q1 q2 / (4 pi epsilon_0 r²)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_coulomb_force(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 0)
+        .mul(&dim_arg(args, 1))
+        .mul(&constant_dimension(ctx, "epsilon_0").inverse())
+        .mul(&dim_arg(args, 2).pow(&rational(-2, 1))))
+}
+/// `q / (4 pi epsilon_0 r)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_point_charge_potential(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 0)
+        .mul(&constant_dimension(ctx, "epsilon_0").inverse())
+        .mul(&dim_arg(args, 1).inverse()))
+}
+
+// Relativity.
+
+/// `m c_0²`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_mass_energy(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let c = constant_dimension(ctx, "c_0");
+    Ok(dim_arg(args, 0).mul(&c).mul(&c))
+}
+/// `2 G_N M / c_0²`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_schwarzschild_radius(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let c = constant_dimension(ctx, "c_0");
+    Ok(constant_dimension(ctx, "G_N")
+        .mul(&dim_arg(args, 0))
+        .mul(&c.inverse())
+        .mul(&c.inverse()))
+}
+
+// Quantum mechanics.
+
+/// `-i hbar d/dx`: an operator has the dimension of `hbar/x`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_momentum_operator(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(constant_dimension(ctx, "hbar").mul(&dim_arg(args, 0).inverse()))
+}
+/// `-hbar²/(2m) d²/dx²`: `hbar²/(m x²)`; arguments `(m, x)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_kinetic_operator(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let hbar = constant_dimension(ctx, "hbar");
+    Ok(hbar
+        .mul(&hbar)
+        .mul(&dim_arg(args, 0).inverse())
+        .mul(&dim_arg(args, 1).pow(&rational(-2, 1))))
+}
+/// `-hbar²/(2m) ∇² + V`: the kinetic dimension; `(m, V, x)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_hamiltonian_operator(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let hbar = constant_dimension(ctx, "hbar");
+    Ok(hbar
+        .mul(&hbar)
+        .mul(&dim_arg(args, 0).inverse())
+        .mul(&dim_arg(args, 2).pow(&rational(-2, 1))))
+}
+/// `m w² x²/2`.
+dim_powers_rule!(dim_oscillator_energy, 0: 1, 1: 2, 2: 2);
+/// `m c psi`: the dimension of the Dirac residual (the `i hbar ∂` and mass
+/// terms agree for a consistent spinor).
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_dirac_residual(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(constant_dimension(ctx, "c_0")
+        .mul(&dim_arg(args, 0))
+        .mul(&dim_arg(args, 1)))
+}
+
+/// `hbar sigma / 2`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_spin_operator(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(constant_dimension(ctx, "hbar").mul(&dim_arg(args, 0)))
+}
+
+// Field theory.
+
+/// `1/(p² - m²)`.
+dim_powers_rule!(dim_propagator, 0: -2);
+/// `|M|² dphi / flux`.
+dim_powers_rule!(dim_cross_section, 0: 2, 1: -1, 2: 1);
+
+// Solid state.
+
+/// `(2m/hbar²)^(3/2) E^(1/2) V`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_density_of_states(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 2)
+        .mul(&dim_arg(args, 1).pow(&rational(3, 2)))
+        .mul(&constant_dimension(ctx, "hbar").pow(&rational(-3, 1)))
+        .mul(&dim_arg(args, 0).pow(&rational(1, 2))))
+}
+/// `hbar² n^(2/3) / (2m)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_fermi_energy(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let hbar = constant_dimension(ctx, "hbar");
+    Ok(hbar
+        .mul(&hbar)
+        .mul(&dim_arg(args, 0).pow(&rational(2, 3)))
+        .mul(&dim_arg(args, 1).inverse()))
+}
+/// `v (6 pi² n)^(1/3)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_debye_frequency(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 0).mul(&dim_arg(args, 1).pow(&rational(1, 3))))
+}
+/// `N k_B` (the heat-capacity factors are dimensionless ratios).
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_lattice_heat_capacity(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(constant_dimension(ctx, "k_B").mul(&dim_arg(args, 0)))
+}
+/// `(n e²/(epsilon m))^(1/2)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_plasma_frequency(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 0)
+        .pow(&rational(1, 2))
+        .mul(&dim_arg(args, 1))
+        .mul(&dim_arg(args, 2).pow(&rational(-1, 2)))
+        .mul(&dim_arg(args, 3).pow(&rational(-1, 2))))
+}
+/// `(m/(mu n_s q²))^(1/2)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_london_depth(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 0)
+        .pow(&rational(1, 2))
+        .mul(&dim_arg(args, 1).pow(&rational(-1, 2)))
+        .mul(&dim_arg(args, 2).pow(&rational(-1, 2)))
+        .mul(&dim_arg(args, 3).inverse()))
+}
+/// `(3 pi² n)^(1/3)`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_fermi_wavevector(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 0).pow(&rational(1, 3)))
+}
+
+// Thermodynamics.
+
+/// `k_B ln(Omega)` — an entropy.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_boltzmann_entropy(
+    ctx: &DimCtx<'_>,
+    _args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(constant_dimension(ctx, "k_B"))
+}
+/// `n R T ln(V2/V1)`.
+dim_powers_rule!(dim_isothermal_work, 0: 1, 1: 1, 2: 1);
+/// `∂²A/(∂T ∂V)`.
+dim_powers_rule!(dim_maxwell_relation, 0: 1, 1: -1, 2: -1);
+/// `-k_B T ln(Z)` and `k_B T² ∂ ln(Z)/∂T`: a free energy of `k_B T`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_kbt(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(constant_dimension(ctx, "k_B").mul(&dim_arg(args, 1)))
+}
+/// A derivative `∂A/∂T` or `∂A/∂V`.
+dim_powers_rule!(dim_derivative_quotient, 0: 1, 1: -1);
+/// `2 h nu³/c_0²`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_planck_law(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let c = constant_dimension(ctx, "c_0");
+    Ok(constant_dimension(ctx, "h_planck")
+        .mul(&dim_arg(args, 0).pow(&rational(3, 1)))
+        .mul(&c.inverse())
+        .mul(&c.inverse()))
+}
+/// `sigma_SB T⁴`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_stefan_boltzmann(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(constant_dimension(ctx, "sigma_SB").mul(&dim_arg(args, 0).pow(&rational(4, 1))))
+}
+/// Wien's displacement law: `b/T` with `b = 2.897771955e-3 m K`, so the
+/// result is `Length*Temperature / Temperature = Length`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_wien_wavelength(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_bases(ctx, &[("Length", 1), ("Temperature", 1)]).mul(&dim_arg(args, 0).inverse()))
+}
+/// `n R_gas T / V`.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_ideal_gas_pressure(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 0)
+        .mul(&constant_dimension(ctx, "R_gas"))
+        .mul(&dim_arg(args, 1))
+        .mul(&dim_arg(args, 2).inverse()))
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     for (name, eval) in constant_eval!(
         "c_0",
@@ -197,7 +714,343 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     i.define(&QUANTUM)?;
     i.define(&FIELD_THEORY)?;
     i.define(&SOLID_STATE)?;
-    i.define(&THERMODYNAMICS)
+    i.define(&THERMODYNAMICS)?;
+    attach_dim_rules(
+        i,
+        &[
+            // ----------------------------------------------------------
+            // Physical constants (SI definitions in `constant_dimension`)
+            // ----------------------------------------------------------
+            ("c_0", DimRule::Custom(constant_dimension_rule)),
+            ("hbar", DimRule::Custom(constant_dimension_rule)),
+            ("h_planck", DimRule::Custom(constant_dimension_rule)),
+            ("k_B", DimRule::Custom(constant_dimension_rule)),
+            ("epsilon_0", DimRule::Custom(constant_dimension_rule)),
+            ("mu_0", DimRule::Custom(constant_dimension_rule)),
+            ("G_N", DimRule::Custom(constant_dimension_rule)),
+            ("q_e", DimRule::Custom(constant_dimension_rule)),
+            ("m_e", DimRule::Custom(constant_dimension_rule)),
+            ("m_p", DimRule::Custom(constant_dimension_rule)),
+            ("N_A", DimRule::Custom(constant_dimension_rule)),
+            ("R_gas", DimRule::Custom(constant_dimension_rule)),
+            ("sigma_SB", DimRule::Custom(constant_dimension_rule)),
+            ("a_0", DimRule::Custom(constant_dimension_rule)),
+            // ----------------------------------------------------------
+            // Kernels
+            // ----------------------------------------------------------
+            // `E` in `H psi = E psi` has the dimension of `H`.
+            ("energy_eigenvalue", DimRule::Same(0)),
+            ("poisson_bracket", DimRule::Custom(dim_poisson_bracket)),
+            (
+                "geodesic_acceleration",
+                DimRule::Custom(dim_geodesic_acceleration),
+            ),
+            // A metric tensor with components of different dimensions.
+            ("schwarzschild_metric", DimRule::NonMetric),
+            // Numeric Dirac matrices: the index argument is a label.
+            ("dirac_gamma", DimRule::Dimensionless),
+            // Residual expressions of the wave equations; the operators
+            // reduce into their own e-class, so these rules give the
+            // residual's dimension rather than a non-metric tag.
+            ("dirac_equation", DimRule::Custom(dim_dirac_residual)),
+            ("klein_gordon_equation", DimRule::Custom(dim_klein_gordon)),
+            // The matrix `gamma·p` has the dimension of the four-momentum.
+            ("feynman_slash", DimRule::Same(0)),
+            // `i(p̸ + m)/(p² - m²)`: `1/dim(p)`.
+            ("fermion_propagator", DimRule::Inverse),
+            // `psibar` has the dimension of `psi`.
+            ("dirac_adjoint", DimRule::Same(0)),
+            ("minkowski_dot", DimRule::Product),
+            // `½ ∂φ∂φ - ½ m²φ²`.
+            (
+                "scalar_field_lagrangian",
+                DimRule::Custom(dim_scalar_lagrangian),
+            ),
+            // A partition sum of exponentials is dimensionless.
+            ("partition_function", DimRule::Custom(dim_dimensionless)),
+            // ----------------------------------------------------------
+            // Classical mechanics
+            // ----------------------------------------------------------
+            // `list(r, r', r'')`: a heterogeneous tuple.
+            ("kinematics", DimRule::NonMetric),
+            ("newtons_second_law", DimRule::Product),
+            ("momentum", DimRule::Product),
+            ("kinetic_energy", DimRule::Custom(dim_mass_times_square)),
+            ("potential_energy_gravity_uniform", DimRule::Product),
+            (
+                "potential_energy_gravity_universal",
+                DimRule::Custom(dim_gravitational_pe),
+            ),
+            (
+                "potential_energy_spring",
+                DimRule::Custom(dim_mass_times_square),
+            ),
+            ("work_constant_force", DimRule::Product),
+            (
+                "work_line_integral",
+                DimRule::Custom(dim_work_line_integral),
+            ),
+            ("power", DimRule::Product),
+            ("torque", DimRule::Product),
+            ("angular_momentum", DimRule::Product),
+            (
+                "centripetal_acceleration",
+                DimRule::Custom(dim_centripetal_acceleration),
+            ),
+            (
+                "moment_of_inertia_point_mass",
+                DimRule::Custom(dim_mass_times_square),
+            ),
+            (
+                "rotational_kinetic_energy",
+                DimRule::Custom(dim_mass_times_square),
+            ),
+            ("lagrangian", DimRule::Sum),
+            ("hamiltonian", DimRule::Sum),
+            // `euler_lagrange(L, q, t)` returns the residual expression.
+            (
+                "euler_lagrange_equation",
+                DimRule::Custom(dim_derivative_quotient),
+            ),
+            // `list(∂H/∂p, -∂H/∂q)`: both equations of motion have the
+            // dimension of the velocity `∂H/∂p`.
+            (
+                "hamilton_equations",
+                DimRule::Custom(dim_equation_of_motion),
+            ),
+            (
+                "gravitational_force",
+                DimRule::Custom(dim_gravitational_force),
+            ),
+            (
+                "harmonic_oscillator_frequency",
+                DimRule::Custom(dim_harmonic_frequency),
+            ),
+            // ----------------------------------------------------------
+            // Electromagnetism
+            // ----------------------------------------------------------
+            // `list(...)` of residual field equations: each is a field
+            // gradient `E/x`.
+            ("maxwell_equations", DimRule::Custom(dim_field_gradient)),
+            ("lorentz_force", DimRule::Custom(dim_lorentz_force)),
+            (
+                "electric_field_from_potentials",
+                DimRule::Custom(dim_gradient_of_potential_at_2),
+            ),
+            (
+                "electric_field_from_potential",
+                DimRule::Custom(dim_gradient_of_potential),
+            ),
+            (
+                "magnetic_field_from_vector_potential",
+                DimRule::Custom(dim_gradient_of_potential),
+            ),
+            ("poynting_vector", DimRule::Custom(dim_poynting_vector)),
+            ("em_energy_density", DimRule::Custom(dim_em_energy_density)),
+            ("coulombs_law", DimRule::Custom(dim_coulombs_law)),
+            ("coulomb_force", DimRule::Custom(dim_coulomb_force)),
+            (
+                "point_charge_potential",
+                DimRule::Custom(dim_point_charge_potential),
+            ),
+            // ----------------------------------------------------------
+            // Relativity
+            // ----------------------------------------------------------
+            ("lorentz_factor", DimRule::Custom(dim_dimensionless)),
+            // `list(x', t')`: a heterogeneous tuple.
+            ("lorentz_transformation_x", DimRule::NonMetric),
+            // Velocities have a dimension but the result is a ratio.
+            ("velocity_addition", DimRule::Custom(dim_dimensionless)),
+            ("mass_energy_equivalence", DimRule::Custom(dim_mass_energy)),
+            ("relativistic_momentum", DimRule::Product),
+            ("relativistic_energy", DimRule::Custom(dim_mass_energy)),
+            // `f` times a dimensionless factor.
+            ("doppler_effect", DimRule::Same(0)),
+            // `t` times a dimensionless factor.
+            ("gravitational_time_dilation", DimRule::Same(0)),
+            (
+                "schwarzschild_radius",
+                DimRule::Custom(dim_schwarzschild_radius),
+            ),
+            // Tensors keep the dimension of the Ricci tensor.
+            ("einstein_tensor_from", DimRule::Same(0)),
+            ("einstein_field_equations", DimRule::Same(0)),
+            ("minkowski_metric", DimRule::Dimensionless),
+            // ----------------------------------------------------------
+            // Quantum mechanics
+            // ----------------------------------------------------------
+            // `A psi` multiplies the operator dimension by `dim(psi)`.
+            ("qm_apply", DimRule::Product),
+            // `op_mul(x)` carries the position dimension.
+            ("position_operator", DimRule::Same(0)),
+            ("momentum_operator", DimRule::Custom(dim_momentum_operator)),
+            ("kinetic_operator", DimRule::Custom(dim_kinetic_operator)),
+            (
+                "hamiltonian_free_particle",
+                DimRule::Custom(dim_kinetic_operator),
+            ),
+            (
+                "hamiltonian_operator",
+                DimRule::Custom(dim_hamiltonian_operator),
+            ),
+            ("hamiltonian_3d", DimRule::Custom(dim_hamiltonian_operator)),
+            (
+                "hamiltonian_harmonic_oscillator",
+                DimRule::Custom(dim_oscillator_energy),
+            ),
+            ("angular_momentum_z", DimRule::Custom(dim_momentum_operator)),
+            // `[A, B] psi`: the two terms have the same dimension.
+            ("commutator", DimRule::Custom(dim_triple_product)),
+            ("matrix_commutator", DimRule::Product),
+            ("matrix_anticommutator", DimRule::Product),
+            // `∫ conj(phi) psi dx`.
+            ("braket", DimRule::Custom(dim_triple_product)),
+            ("braket_on", DimRule::Custom(dim_triple_product)),
+            // `⟨A⟩ = ⟨psi|A psi⟩ / ⟨psi|psi⟩` has the observable dimension.
+            ("expectation_value", DimRule::Same(0)),
+            ("first_order_energy_correction", DimRule::Same(0)),
+            ("uncertainty", DimRule::Same(0)),
+            ("probability_density", DimRule::Square),
+            // One-dimensional normalisation: `dim(x)^(-1/2)`.
+            (
+                "normalize_wavefunction",
+                DimRule::Custom(dim_normalize_wavefunction),
+            ),
+            // `I hbar ∂ψ/∂t - Hψ` and `Hψ - Eψ`: residuals with the
+            // dimension of `Hψ` (argument 0 times argument 1).
+            (
+                "time_dependent_schrodinger_equation",
+                DimRule::Custom(dim_operator_state),
+            ),
+            (
+                "time_independent_schrodinger_equation",
+                DimRule::Custom(dim_operator_state),
+            ),
+            // A list of the eigenvalues and the eigenstates themselves.
+            ("solve_time_independent_schrodinger", DimRule::NonMetric),
+            // `⟨psi_f| V |psi_i⟩ dx` including the bra-ket measure.
+            ("scattering_amplitude", DimRule::Custom(dim_quad_product)),
+            // Numeric matrices.
+            ("pauli_x", DimRule::Dimensionless),
+            ("pauli_y", DimRule::Dimensionless),
+            ("pauli_z", DimRule::Dimensionless),
+            ("pauli_matrices", DimRule::Dimensionless),
+            // `hbar sigma/2`.
+            ("spin_operator", DimRule::Custom(dim_spin_operator)),
+            // ----------------------------------------------------------
+            // Field theory
+            // ----------------------------------------------------------
+            ("qed_lagrangian", DimRule::Custom(dim_lagrangian_density)),
+            ("qcd_lagrangian", DimRule::Custom(dim_lagrangian_density)),
+            // `1/(p² - m²)`.
+            ("propagator", DimRule::Custom(dim_propagator)),
+            // `|M|² dphi / flux`.
+            (
+                "scattering_cross_section",
+                DimRule::Custom(dim_cross_section),
+            ),
+            // `∫ dp/(p² - m²) e^{-ip(x-y)}`: in the one-dimensional
+            // integral this module evaluates, the result is `1/x`.
+            ("feynman_propagator_position_space", DimRule::Inverse),
+            // ----------------------------------------------------------
+            // Solid state
+            // ----------------------------------------------------------
+            ("lattice_volume", DimRule::Product),
+            // `cross(a2, a3)/V` is `1/a1`.
+            ("reciprocal_lattice_vectors", DimRule::Inverse),
+            // `exp(i k·r) u` is dimensionless times `u`.
+            ("bloch_wave", DimRule::Same(2)),
+            // `E0 + hbar² k²/(2m)`.
+            ("energy_band", DimRule::Custom(dim_energy_band)),
+            (
+                "density_of_states_3d",
+                DimRule::Custom(dim_density_of_states),
+            ),
+            ("fermi_energy_3d", DimRule::Custom(dim_fermi_energy)),
+            (
+                "drude_conductivity",
+                DimRule::Custom(dim_drude_conductivity),
+            ),
+            ("hall_coefficient", DimRule::Custom(dim_hall_coefficient)),
+            ("debye_frequency", DimRule::Custom(dim_debye_frequency)),
+            (
+                "einstein_heat_capacity",
+                DimRule::Custom(dim_lattice_heat_capacity),
+            ),
+            (
+                "debye_heat_capacity",
+                DimRule::Custom(dim_lattice_heat_capacity),
+            ),
+            ("plasma_frequency", DimRule::Custom(dim_plasma_frequency)),
+            (
+                "london_penetration_depth",
+                DimRule::Custom(dim_london_depth),
+            ),
+            ("fermi_wavevector_3d", DimRule::Custom(dim_fermi_wavevector)),
+            // ----------------------------------------------------------
+            // Thermodynamics
+            // ----------------------------------------------------------
+            ("first_law_thermodynamics", DimRule::Sum),
+            // `P V - n R T`: the ideal-gas residual is a pressure times a
+            // volume (the two sides agree for a consistent input).
+            ("ideal_gas_law", DimRule::Custom(dim_pressure_times_volume)),
+            // `U + P V`, `U - T S` and `H - T S` all keep the dimension of
+            // their first (energy) argument; the other terms must agree.
+            ("enthalpy", DimRule::Same(0)),
+            ("helmholtz_free_energy", DimRule::Same(0)),
+            ("gibbs_free_energy", DimRule::Same(0)),
+            // `k_B ln(Omega)`.
+            ("boltzmann_entropy", DimRule::Custom(dim_boltzmann_entropy)),
+            // Efficiencies, occupation numbers and partition sums.
+            ("carnot_efficiency", DimRule::Custom(dim_dimensionless)),
+            ("boltzmann_distribution", DimRule::Custom(dim_dimensionless)),
+            (
+                "fermi_dirac_distribution",
+                DimRule::Custom(dim_dimensionless),
+            ),
+            (
+                "bose_einstein_distribution",
+                DimRule::Custom(dim_dimensionless),
+            ),
+            // `n R T ln(V2/V1)`.
+            (
+                "work_isothermal_expansion",
+                DimRule::Custom(dim_isothermal_work),
+            ),
+            (
+                "verify_maxwell_relation_helmholtz",
+                DimRule::Custom(dim_maxwell_relation),
+            ),
+            // `-k_B T ln(Z)` and `k_B T² ∂ ln(Z)/∂T`.
+            ("helmholtz_from_partition", DimRule::Custom(dim_kbt)),
+            ("internal_energy_from_partition", DimRule::Custom(dim_kbt)),
+            // `∂A/∂T`, `∂A/∂V` and `∂U/∂T`.
+            (
+                "entropy_from_helmholtz",
+                DimRule::Custom(dim_derivative_quotient),
+            ),
+            (
+                "pressure_from_helmholtz",
+                DimRule::Custom(dim_derivative_quotient),
+            ),
+            ("heat_capacity", DimRule::Custom(dim_derivative_quotient)),
+            // `2 h nu³/c_0²`.
+            ("planck_law", DimRule::Custom(dim_planck_law)),
+            // `sigma_SB T⁴`.
+            (
+                "stefan_boltzmann_law",
+                DimRule::Custom(dim_stefan_boltzmann),
+            ),
+            // Wien's law returns a length.
+            ("wien_peak_wavelength", DimRule::Custom(dim_wien_wavelength)),
+            // `n R_gas T / V`.
+            (
+                "ideal_gas_pressure",
+                DimRule::Custom(dim_ideal_gas_pressure),
+            ),
+        ],
+    );
+    Ok(())
 }
 
 const CLASSICAL: [&str; 21] = [

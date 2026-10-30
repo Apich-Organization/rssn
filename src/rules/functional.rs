@@ -45,6 +45,10 @@
 
 mod ext;
 
+use num_bigint::BigInt;
+use num_rational::BigRational;
+use num_traits::Zero;
+
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -58,6 +62,10 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::complex::build::add;
@@ -134,6 +142,124 @@ enum Request {
     VolterraSolve,
 }
 
+/// The dimension of argument `index`, or `Any` when it is missing.
+fn dim_arg(
+    args: &[DimTerm],
+    index: usize,
+) -> DimTerm {
+    args.get(index).cloned().unwrap_or_else(DimTerm::any)
+}
+
+/// An exact rational exponent.
+fn rational(
+    numerator: i64,
+    denominator: i64,
+) -> BigRational {
+    BigRational::new(BigInt::from(numerator), BigInt::from(denominator))
+}
+
+/// The product `Π dim(argument_i)^power_i`.
+fn dim_powers(
+    args: &[DimTerm],
+    factors: &[(usize, i64)],
+) -> DimTerm {
+    let mut out = DimTerm::dimensionless();
+    for &(index, power) in factors {
+        let value = dim_arg(args, index);
+        let value = if power == 1 {
+            value
+        } else {
+            value.pow(&rational(power, 1))
+        };
+        out = out.mul(&value);
+    }
+    out
+}
+
+/// Defines a `DimRule::Custom` rule for the dimension `Π arg_i^power_i`.
+macro_rules! dim_powers_rule {
+    ($name:ident, $($index:literal : $power:expr),* $(,)?) => {
+        fn $name(
+            _ctx: &DimCtx<'_>,
+            args: &[DimTerm],
+        ) -> Result<DimTerm, DimError> {
+            Ok(dim_powers(args, &[$(($index, $power)),*]))
+        }
+    };
+}
+
+/// Defines a `DimRule::Custom` rule from a dimension expression.
+macro_rules! dim_rule {
+    ($name:ident, |$d:ident| $body:expr) => {
+        fn $name(
+            _ctx: &DimCtx<'_>,
+            args: &[DimTerm],
+        ) -> Result<DimTerm, DimError> {
+            let $d = |index: usize| dim_arg(args, index);
+            let _ = &$d;
+            Ok($body)
+        }
+    };
+}
+
+/// Attaches dimension rules to operators registered earlier by this rule set.
+fn attach_dim_rules(
+    i: &mut Installer<'_>,
+    rules: &[(&str, DimRule)],
+) {
+    for &(name, rule) in rules {
+        let op = i.graph().ops().lookup(name);
+        if let Some(op) = op {
+            i.dim(op, rule);
+        }
+    }
+}
+
+// The operator algebra carries the dimension each constructor contributes
+// when applied: `op_apply(A, f)` then has dimension `dim(A) * dim(f)`, so
+// `op_d(x)` is `1/dim(x)`, `op_int(a, x)` is `dim(x)` (the `dx`), and
+// `op_mul(g)` is `dim(g)`. This is what makes `position_operator` have its
+// position dimension and `momentum_operator` the momentum one.
+dim_rule!(dim_laplacian, |d| d(0).pow(&rational(-2, 1)));
+dim_rule!(dim_gram_schmidt_orthonormal, |d| {
+    d(1).pow(&rational(-1, 2))
+});
+dim_powers_rule!(dim_inner_product, 0: 1, 1: 1, 2: 1);
+dim_rule!(dim_l2_norm, |d| d(0).mul(&d(1).pow(&rational(1, 2))));
+dim_rule!(dim_l2_distance, |d| d(0).mul(&d(2).pow(&rational(1, 2))));
+dim_rule!(dim_sobolev_h1, |d| d(0).mul(&d(1).pow(&rational(1, 2))));
+dim_powers_rule!(dim_gram_matrix, 0: 2, 1: 1);
+dim_powers_rule!(dim_fredholm_eigenvalues, 0: 1, 1: 1, 2: 1);
+
+/// `lp_norm(f, p, x, a, b) = (∫ |f|^p dx)^(1/p)`: `dim(f) * dim(x)^(1/p)`.
+///
+/// The norm order is taken from the graph when it is an exact rational;
+/// a symbolic order has no exponent representable in the dimension algebra
+/// here, so the result is reported as unknown rather than guessed.
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_lp_norm(
+    ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    let function = dim_arg(args, 0);
+    let variable = dim_arg(args, 2);
+    let Some(child) = ctx.graph.children(ctx.node).get(1).copied() else {
+        return Ok(DimTerm::any());
+    };
+    let Some(order) = ctx
+        .graph
+        .as_number(child)
+        .and_then(crate::graph::dim::exact_exponent)
+    else {
+        return Ok(DimTerm::any());
+    };
+    if order.is_zero() {
+        return Ok(DimTerm::any());
+    }
+    let inverse = BigRational::new(order.denom().clone(), order.numer().clone());
+    Ok(function.mul(&variable.pow(&inverse)))
+}
+
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let plain = |name: &str, arity: Arity| OpDescriptor::new(name, arity);
     for (name, arity) in [
@@ -188,7 +314,63 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "project_onto(f, g, x, a, b) := inner_product(g, f, x, a, b) / inner_product(g, g, x, a, b) * g",
         "airfoil_equation(f, x, t) := -1/(pi*(1 - x^2)^(1/2)) * defint((1 - t^2)^(1/2) * f/(t - x), t, -1, 1) + C/(1 - x^2)^(1/2)",
     ])?;
-    ext::install(i)
+    ext::install(i)?;
+    attach_dim_rules(
+        i,
+        &[
+            // Operator algebra (see the comment above): each constructor
+            // contributes the factor it multiplies an operand by.
+            ("op_mul", DimRule::Same(0)),
+            ("op_d", DimRule::Inverse),
+            ("op_int", DimRule::Same(1)),
+            ("op_laplacian", DimRule::Custom(dim_laplacian)),
+            ("op_identity", DimRule::Dimensionless),
+            ("op_add", DimRule::Sum),
+            ("op_scale", DimRule::Product),
+            ("op_compose", DimRule::Product),
+            ("op_power", DimRule::Power),
+            ("op_apply", DimRule::Product),
+            ("op_commutator", DimRule::Product),
+            // Predicates and differential-equation objects.
+            ("are_orthogonal", DimRule::NonMetric),
+            ("volterra_to_ode", DimRule::NonMetric),
+            // Functions keep the dimension of the trial function.
+            ("gram_schmidt", DimRule::Same(0)),
+            ("fredholm_neumann", DimRule::Same(0)),
+            ("fredholm_separable", DimRule::Same(0)),
+            ("fredholm_solve", DimRule::Same(0)),
+            ("volterra_successive", DimRule::Same(0)),
+            ("volterra_solve", DimRule::Same(0)),
+            ("project_onto", DimRule::Same(0)),
+            ("airfoil_equation", DimRule::Same(0)),
+            ("best_approximation", DimRule::Same(0)),
+            ("operator_adjoint", DimRule::Same(0)),
+            ("orthogonal_coefficients", DimRule::Same(0)),
+            // An orthonormal basis is normalised to unit L² norm, so its
+            // members scale like `1/sqrt(dim(x))` — the one-dimensional
+            // wave-function normalisation.
+            (
+                "gram_schmidt_orthonormal",
+                DimRule::Custom(dim_gram_schmidt_orthonormal),
+            ),
+            // `⟨f, g⟩ = ∫ conj(f) g dx`.
+            ("inner_product", DimRule::Custom(dim_inner_product)),
+            // `‖f‖₂ = (∫ |f|² dx)^(1/2)`.
+            ("l2_norm", DimRule::Custom(dim_l2_norm)),
+            ("lp_norm", DimRule::Custom(dim_lp_norm)),
+            ("l2_distance", DimRule::Custom(dim_l2_distance)),
+            // `‖f‖₂² + ‖f'‖₂²` under a square root.
+            ("sobolev_h1", DimRule::Custom(dim_sobolev_h1)),
+            // Matrix of inner products.
+            ("gram_matrix", DimRule::Custom(dim_gram_matrix)),
+            // `∫ v(u(t)) u(x) dt` entries, hence the eigenvalues.
+            (
+                "fredholm_eigenvalues",
+                DimRule::Custom(dim_fredholm_eigenvalues),
+            ),
+        ],
+    );
+    Ok(())
 }
 
 struct Functional {

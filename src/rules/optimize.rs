@@ -39,6 +39,10 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::complex::build::mul;
@@ -48,6 +52,37 @@ use crate::rules::poly::best;
 use super::calculus::derivative;
 use super::linalg::linalg;
 use super::logic::logic;
+
+/// The dimension of argument `index`, or `Any` when it is missing.
+fn dim_arg(
+    args: &[DimTerm],
+    index: usize,
+) -> DimTerm {
+    args.get(index).cloned().unwrap_or_else(DimTerm::any)
+}
+
+/// Attaches dimension rules to operators registered earlier by this rule set.
+fn attach_dim_rules(
+    i: &mut Installer<'_>,
+    rules: &[(&str, DimRule)],
+) {
+    for &(name, rule) in rules {
+        let op = i.graph().ops().lookup(name);
+        if let Some(op) = op {
+            i.dim(op, rule);
+        }
+    }
+}
+
+/// `p * x - f`: the Legendre transform scales like `p * x` (which equals
+/// `f` along the transform).
+#[allow(clippy::unnecessary_wraps)] // DimRule::Custom signature
+fn dim_legendre_transform(
+    _ctx: &DimCtx<'_>,
+    args: &[DimTerm],
+) -> Result<DimTerm, DimError> {
+    Ok(dim_arg(args, 1).mul(&dim_arg(args, 2)))
+}
 
 /// The optimisation rule set.
 #[must_use]
@@ -83,6 +118,41 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     );
     ext::install(i)?;
     numeric::install(i)?;
+    attach_dim_rules(
+        i,
+        &[
+            // A minimum (respectively maximum) is reported together with
+            // the point where it is attained; its dimension is the
+            // dimension of the objective, argument 0.
+            ("find_extrema", DimRule::Same(0)),
+            ("find_constrained_extrema", DimRule::Same(0)),
+            ("nminimize", DimRule::Same(0)),
+            ("nmaximize", DimRule::Same(0)),
+            ("nminimize_global", DimRule::Same(0)),
+            ("nmaximize_global", DimRule::Same(0)),
+            ("kkt_minimum", DimRule::Same(0)),
+            // Tables of points, multipliers and values, or labels, are
+            // structured results rather than scalar quantities.
+            ("linprog", DimRule::NonMetric),
+            ("linprog_max", DimRule::NonMetric),
+            ("linprog_eq", DimRule::NonMetric),
+            ("kkt_points", DimRule::NonMetric),
+            ("qp_eq", DimRule::NonMetric),
+            // Predicates and classification labels. A predicate that
+            // reduces to `true`/`false` is `NonMetric`; a *label* symbol
+            // (`positive_definite`, ...) carries no dimension at all, and
+            // `NonMetric` would conflict with the label's unknown
+            // dimension, so the label result is an explicit `Any`.
+            ("is_convex", DimRule::NonMetric),
+            ("is_concave", DimRule::NonMetric),
+            ("hessian_definiteness", DimRule::Any),
+            // `legendre_transform(f, x, p) = p x - f`.
+            (
+                "legendre_transform",
+                DimRule::Custom(dim_legendre_transform),
+            ),
+        ],
+    );
     Ok(())
 }
 

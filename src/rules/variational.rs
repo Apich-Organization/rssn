@@ -29,6 +29,9 @@
 //! undetermined function, so the chain rule produces `y''` and higher
 //! derivatives on its own.
 
+use num_bigint::BigInt;
+use num_rational::BigRational;
+
 use crate::graph::Arity;
 use crate::graph::Cx;
 use crate::graph::Graph;
@@ -41,6 +44,10 @@ use crate::graph::Outcome;
 use crate::graph::RuleError;
 use crate::graph::RuleSet;
 use crate::graph::Tier;
+use crate::graph::dim::DimCtx;
+use crate::graph::dim::DimError;
+use crate::graph::dim::DimRule;
+use crate::graph::dim::DimTerm;
 use crate::graph::op::core;
 use crate::graph::rule::Installer;
 use crate::rules::complex::build::add;
@@ -69,6 +76,69 @@ enum Request {
     Jacobi,
     Weierstrass,
 }
+
+/// The dimension of argument `index`, or `Any` when it is missing.
+fn dim_arg(
+    args: &[DimTerm],
+    index: usize,
+) -> DimTerm {
+    args.get(index).cloned().unwrap_or_else(DimTerm::any)
+}
+
+/// The product `Π dim(argument_i)^power_i`.
+fn dim_powers(
+    args: &[DimTerm],
+    factors: &[(usize, i64)],
+) -> DimTerm {
+    let mut out = DimTerm::dimensionless();
+    for &(index, power) in factors {
+        let value = dim_arg(args, index);
+        let value = if power == 1 {
+            value
+        } else {
+            value.pow(&BigRational::from_integer(BigInt::from(power)))
+        };
+        out = out.mul(&value);
+    }
+    out
+}
+
+/// Defines a `DimRule::Custom` rule for the dimension `Π arg_i^power_i`.
+macro_rules! dim_powers_rule {
+    ($name:ident, $($index:literal : $power:expr),* $(,)?) => {
+        fn $name(
+            _ctx: &DimCtx<'_>,
+            args: &[DimTerm],
+        ) -> Result<DimTerm, DimError> {
+            Ok(dim_powers(args, &[$(($index, $power)),*]))
+        }
+    };
+}
+
+/// Attaches dimension rules to operators registered earlier by this rule set.
+fn attach_dim_rules(
+    i: &mut Installer<'_>,
+    rules: &[(&str, DimRule)],
+) {
+    for &(name, rule) in rules {
+        let op = i.graph().ops().lookup(name);
+        if let Some(op) = op {
+            i.dim(op, rule);
+        }
+    }
+}
+
+// The Euler–Lagrange equation `∂L/∂y - d/dx ∂L/∂y'` is returned by this
+// rule set as a *residual expression*, not as an equation node. The engine
+// unions an operator's e-class with its reduced form, so the rule must give
+// the dimension of that expression: every term has the dimension of
+// `∂L/∂y`, i.e. `dim(L) / dim(y)`. (Operators that really return an `eq`
+// node, such as `solve_euler_lagrange`, stay `NonMetric`.)
+dim_powers_rule!(dim_euler_lagrange, 0: 1, 1: -1);
+dim_powers_rule!(dim_isoperimetric, 0: 1, 2: -1);
+dim_powers_rule!(dim_canonical_momentum, 0: 1, 2: 1, 1: -1);
+dim_powers_rule!(dim_legendre_condition, 0: 1, 2: 2, 1: -2);
+dim_powers_rule!(dim_jacobi_equation, 0: 1, 3: 1, 1: -2);
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let heavy = |name: &str, arity: u8| {
@@ -119,7 +189,44 @@ fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
         "hamiltons_principle(L, q, t) := euler_lagrange(L, q, t)",
         "isoperimetric(L, G, y, x, lam) := euler_lagrange(L + lam * G, y, x)",
         "natural_boundary(L, y, x) := canonical_momentum(L, y, x)",
-    ])
+    ])?;
+    attach_dim_rules(
+        i,
+        &[
+            // Placed in the same e-class as the expression it returns, so
+            // the rule is the dimension of the residual.
+            ("euler_lagrange", DimRule::Custom(dim_euler_lagrange)),
+            ("hamiltons_principle", DimRule::Custom(dim_euler_lagrange)),
+            ("isoperimetric", DimRule::Custom(dim_isoperimetric)),
+            // An equation object (`y(x) = C1 + C2 x`).
+            ("solve_euler_lagrange", DimRule::NonMetric),
+            // The action is the integral of the Lagrangian over the
+            // parameter `x` (argument 3).
+            ("action", DimRule::Integral { f: 0, x: 3 }),
+            // Beltrami's first integral and the Hamiltonian are built from
+            // terms with the dimension of the Lagrangian.
+            ("first_integral", DimRule::Same(0)),
+            ("hamiltonian_of", DimRule::Same(0)),
+            // The Weierstrass excess function is `L` minus `(p - y') L_y'`,
+            // and both terms have the dimension of `L`.
+            ("weierstrass_e", DimRule::Same(0)),
+            // The canonical momentum is `∂L/∂y'`: dim(L) * dim(x) / dim(y).
+            (
+                "canonical_momentum",
+                DimRule::Custom(dim_canonical_momentum),
+            ),
+            ("natural_boundary", DimRule::Custom(dim_canonical_momentum)),
+            // `∂²L/∂y'²`: dim(L) * dim(x)^2 / dim(y)^2.
+            (
+                "legendre_condition",
+                DimRule::Custom(dim_legendre_condition),
+            ),
+            // `(P h')' - Q h` with `P = L_y'y'` and `Q` of dimension
+            // `L/y²`: the result scales like `dim(L) * dim(h) / dim(y)^2`.
+            ("jacobi_equation", DimRule::Custom(dim_jacobi_equation)),
+        ],
+    );
+    Ok(())
 }
 
 struct Variational {
