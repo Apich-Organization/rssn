@@ -11,6 +11,7 @@
 //! in the [`OpTable`] and rules grouped into rule sets.
 
 pub mod eval;
+pub mod dim;
 pub mod extract;
 pub mod facts;
 pub mod id;
@@ -29,6 +30,17 @@ pub mod subst;
 pub mod window;
 
 pub use eval::ComplexEval;
+pub use dim::BaseId;
+pub use dim::DimError;
+pub use dim::DimOutcome;
+pub use dim::DimRule;
+pub use dim::DimTerm;
+pub use dim::DimVarId;
+pub use dim::Dimension;
+pub use dim::DimensionMode;
+pub use dim::UnitInfo;
+pub use dim::UnitResolver;
+pub use dim::UnitTextResolver;
 pub use extract::ClosedForm;
 pub use extract::CostModel;
 pub use extract::Extractor;

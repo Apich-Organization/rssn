@@ -568,7 +568,27 @@ impl<'g> Installer<'g> {
         &mut self,
         desc: OpDescriptor,
     ) -> Result<OpId, RuleError> {
-        Ok(self.graph.ops_mut().register(desc)?)
+        let name = desc.name.to_string();
+        let op = self.graph.ops_mut().register(desc)?;
+        if self
+            .graph
+            .ops()
+            .attr::<crate::graph::dim::DimRule>(op)
+            .is_none()
+            && let Some(rule) = crate::graph::dim::default_rule(&name)
+        {
+            self.graph.ops_mut().set_attr(op, rule);
+        }
+        Ok(op)
+    }
+
+    /// Attaches a dimension rule to an operator (see `docs/DIMENSIONS.md`).
+    pub fn dim(
+        &mut self,
+        op: OpId,
+        rule: crate::graph::dim::DimRule,
+    ) {
+        self.graph.ops_mut().set_attr(op, rule);
     }
 
     /// Adds rewrites written as text, one per entry:

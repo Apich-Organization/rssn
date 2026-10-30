@@ -52,6 +52,7 @@ use num_traits::Zero;
 
 use crate::graph::Arity;
 use crate::graph::Cx;
+use crate::graph::Graph;
 use crate::graph::Kernel;
 use crate::graph::NodeId;
 use crate::graph::Number;
@@ -164,6 +165,11 @@ impl Scale {
         other: &Self,
     ) -> Self {
         self.times(&other.powi(-1))
+    }
+
+    fn to_f64(&self) -> Option<f64> {
+        let value = self.rat.to_f64()?;
+        Some(value * std::f64::consts::PI.powi(self.pi))
     }
 }
 
@@ -428,16 +434,122 @@ fn resolve_map(map: &UnitMap) -> Option<Resolved> {
     Some(Resolved { dim, scale, offset })
 }
 
+/// Maps a resolved unit to the dimension layer's term.
+fn dimension_term(
+    dim: &Dim,
+    arena: &crate::graph::dim::DimArena,
+) -> Option<crate::graph::dim::DimTerm> {
+    let mut term = crate::graph::dim::DimTerm::dimensionless();
+    for (index, exponent) in dim.0.iter().enumerate() {
+        if exponent.is_zero() {
+            continue;
+        }
+        let name = DIMENSIONS.get(index)?;
+        let base = arena.base_id(name)?;
+        let rational = BigRational::new(
+            BigInt::from(*exponent.numer()),
+            BigInt::from(*exponent.denom()),
+        );
+        term = term.mul(&crate::graph::dim::DimTerm::base(base, rational));
+    }
+    Some(term)
+}
+
+fn unit_info(
+    resolved: &Resolved,
+    arena: &crate::graph::dim::DimArena,
+) -> Option<crate::graph::dim::UnitInfo> {
+    Some(crate::graph::dim::UnitInfo {
+        dimension: dimension_term(&resolved.dim, arena)?,
+        scale: resolved.scale.to_f64()?,
+        affine: resolved.offset.is_some(),
+    })
+}
+
+/// Resolves the unit term of `quantity(value, unit)` for the dimension layer.
+pub(crate) fn resolve_unit_node(
+    graph: &Graph,
+    node: NodeId,
+    arena: &crate::graph::dim::DimArena,
+) -> Option<crate::graph::dim::UnitInfo> {
+    let children = graph.children(node);
+    let unit = *children.get(1)?;
+    let unit = parse_unit(graph, unit, 0)?;
+    let resolved = resolve_map(&unit)?;
+    unit_info(&resolved, arena)
+}
+
+/// Resolves a unit written as text (`"m/s"`, `"km/h"`).
+fn resolve_unit_text(
+    _graph: &Graph,
+    text: &str,
+    arena: &crate::graph::dim::DimArena,
+) -> Option<crate::graph::dim::UnitInfo> {
+    let unit = parse_unit_text(text)?;
+    let resolved = resolve_map(&unit)?;
+    unit_info(&resolved, arena)
+}
+
+/// Parses a unit product written as text.
+fn parse_unit_text(text: &str) -> Option<UnitMap> {
+    let text = text.trim();
+    if text.is_empty() {
+        return None;
+    }
+    let (numerator, denominator) = text.split_once('/').map_or((text, ""), |(a, b)| (a, b));
+    let mut map = UnitMap::new();
+    for (part, sign) in [(numerator, 1_i32), (denominator, -1_i32)] {
+        let part = part.trim();
+        if part.is_empty() {
+            if sign > 0 {
+                return None;
+            }
+            continue;
+        }
+        if part == "1" {
+            continue;
+        }
+        for factor in part.split('*') {
+            let factor = factor.trim();
+            let (name, exponent) = match factor.split_once('^') {
+                | Some((name, exponent)) => (name.trim(), parse_unit_exponent(exponent)?),
+                | None => (factor, Exp::new(1, 1)),
+            };
+            if name.is_empty() {
+                return None;
+            }
+            let value = exponent * Exp::new(sign, 1);
+            *map.entry(name.to_string()).or_insert_with(|| Exp::new(0, 1)) += value;
+        }
+    }
+    if map.is_empty() {
+        return None;
+    }
+    Some(clean(map))
+}
+
+fn parse_unit_exponent(text: &str) -> Option<Exp> {
+    let text = text.trim();
+    let text = text
+        .strip_prefix('(')
+        .and_then(|rest| rest.strip_suffix(')'))
+        .unwrap_or(text);
+    let value = dec(text);
+    Some(Exp::new(
+        value.numer().to_i32()?,
+        value.denom().to_i32()?,
+    ))
+}
+
 /// The unit product a term denotes.
 fn parse_unit(
-    cx: &Cx<'_>,
+    graph: &Graph,
     node: NodeId,
     depth: usize,
 ) -> Option<UnitMap> {
     if depth > 16 {
         return None;
     }
-    let graph = &*cx.graph;
     if let Some(n) = graph.number_of(node) {
         return n.is_one().then(UnitMap::new);
     }
@@ -453,7 +565,7 @@ fn parse_unit(
             | core::MUL => {
                 let mut map = UnitMap::new();
                 for c in children {
-                    for (name, k) in parse_unit(cx, c, depth + 1)? {
+                    for (name, k) in parse_unit(graph, c, depth + 1)? {
                         *map.entry(name).or_insert_with(Exp::zero) += k;
                     }
                 }
@@ -465,7 +577,7 @@ fn parse_unit(
                 };
                 let r = graph.number_of(exponent)?.to_rational()?;
                 let e = Exp::new(r.numer().to_i32()?, r.denom().to_i32()?);
-                let map = parse_unit(cx, base, depth + 1)?;
+                let map = parse_unit(graph, base, depth + 1)?;
                 Some(clean(map.into_iter().map(|(n, k)| (n, k * e)).collect()))
             },
             | _ => None,
@@ -584,7 +696,7 @@ impl Units<'_, '_> {
         let &[value, unit] = self.cx.graph.children(term) else {
             return None;
         };
-        let unit = parse_unit(self.cx, unit, 0)?;
+        let unit = parse_unit(self.cx.graph, unit, 0)?;
         let resolved = resolve_map(&unit)?;
         let Val::Scalar(value) = self.eval(value, 0)? else {
             return None;
@@ -793,7 +905,7 @@ impl Units<'_, '_> {
         let Val::Quant { value, unit } = val else {
             return None;
         };
-        let target_unit = parse_unit(self.cx, target, 0)?;
+        let target_unit = parse_unit(self.cx.graph, target, 0)?;
         let source = resolve_map(&unit)?;
         let destination = resolve_map(&target_unit)?;
         if source.dim != destination.dim {
@@ -919,6 +1031,14 @@ impl Kernel for Request1 {
 
 fn install(i: &mut Installer<'_>) -> Result<(), RuleError> {
     let quantity = i.op(OpDescriptor::new("quantity", Arity::Fixed(2)))?;
+    i.graph().ops_mut().set_attr(
+        quantity,
+        crate::graph::dim::UnitResolver(resolve_unit_node),
+    );
+    i.graph().ops_mut().set_attr(
+        quantity,
+        crate::graph::dim::UnitTextResolver(resolve_unit_text),
+    );
     for (name, arity, request) in [
         ("unify_expression", 1, Request::Unify),
         ("convert", 2, Request::Convert),

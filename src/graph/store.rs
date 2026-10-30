@@ -189,6 +189,10 @@ pub struct Graph {
     conflicts: Vec<(Number, Number)>,
     scratch: Vec<u32>,
     assumptions: HashMap<SymbolId, Facts>,
+    /// Interned base dimensions, exponent atoms and dimension variables.
+    pub(crate) dims: std::sync::Arc<std::sync::RwLock<crate::graph::dim::DimArena>>,
+    /// Declared dimensions of symbols.
+    pub(crate) dim_assumptions: HashMap<SymbolId, crate::graph::dim::DimTerm>,
 }
 
 impl Default for Graph {
@@ -225,6 +229,10 @@ impl Graph {
             conflicts: Vec::new(),
             scratch: Vec::new(),
             assumptions: HashMap::new(),
+            dims: std::sync::Arc::new(std::sync::RwLock::new(
+                crate::graph::dim::DimArena::new(),
+            )),
+            dim_assumptions: HashMap::new(),
         }
     }
 

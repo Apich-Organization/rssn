@@ -64,6 +64,8 @@ pub enum RssnStatus {
     Simulation = 10,
     /// rssn panicked; this is a bug.
     Panic = 11,
+    /// A dimension conflict in strict mode.
+    Dimension = 12,
 }
 
 thread_local! {
@@ -91,6 +93,7 @@ pub(crate) const fn status_of(e: &ComputeError) -> RssnStatus {
         | ComputeError::Parse(_) => RssnStatus::Parse,
         | ComputeError::UnknownOperator(_) => RssnStatus::UnknownOperator,
         | ComputeError::NotNumeric(_) => RssnStatus::NotNumeric,
+        | ComputeError::Dimension(_) => RssnStatus::Dimension,
         | ComputeError::Inconsistent(_) => RssnStatus::Inconsistent,
     }
 }

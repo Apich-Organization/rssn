@@ -312,6 +312,15 @@ impl OpTable {
         for desc in builtins {
             table.push(desc);
         }
+        // Core dimensional signatures. They are attributes, like `Partials`,
+        // so they can be overridden by a rule set after registration.
+        for name in ["add", "mul", "pow", "list", "eq", "apply"] {
+            if let Some(id) = table.lookup(name)
+                && let Some(rule) = crate::graph::dim::default_rule(name)
+            {
+                table.set_attr(id, rule);
+            }
+        }
         table
     }
 
@@ -357,6 +366,14 @@ impl OpTable {
         name: &str,
     ) -> Option<OpId> {
         self.by_name.get(name).copied()
+    }
+
+    /// Iterates over the registered operators and their descriptors.
+    pub fn iter(&self) -> impl Iterator<Item = (OpId, &OpDescriptor)> + '_ {
+        self.ops
+            .iter()
+            .enumerate()
+            .map(|(index, descriptor)| (OpId(u32::try_from(index).unwrap_or(u32::MAX)), descriptor))
     }
 
     /// The descriptor of `op`.

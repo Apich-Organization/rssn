@@ -72,6 +72,10 @@ pub struct Config {
     bindings: Vec<(String, f64)>,
     assumptions: Vec<(String, Facts)>,
     budget: Budget,
+    dimension_mode: crate::graph::DimensionMode,
+    dimension_assumptions: Vec<(String, String)>,
+    base_dimensions: Vec<String>,
+    bypass_dimensions: bool,
 }
 
 impl Default for Config {
@@ -90,6 +94,10 @@ impl Config {
             bindings: Vec::new(),
             assumptions: Vec::new(),
             budget: Budget::default(),
+            dimension_mode: crate::graph::DimensionMode::Advisory,
+            dimension_assumptions: Vec::new(),
+            base_dimensions: Vec::new(),
+            bypass_dimensions: false,
         }
     }
 
@@ -102,6 +110,10 @@ impl Config {
             bindings: Vec::new(),
             assumptions: Vec::new(),
             budget: Budget::default(),
+            dimension_mode: crate::graph::DimensionMode::Advisory,
+            dimension_assumptions: Vec::new(),
+            base_dimensions: Vec::new(),
+            bypass_dimensions: false,
         }
     }
 
@@ -162,6 +174,69 @@ impl Config {
         self.budget.clone()
     }
 
+    /// Sets the dimensional checking mode. The default is
+    /// [`DimensionMode::Advisory`].
+    #[must_use]
+    pub const fn dimensions(
+        mut self,
+        mode: crate::graph::DimensionMode,
+    ) -> Self {
+        self.dimension_mode = mode;
+        self
+    }
+
+    /// The dimensional checking mode.
+    #[must_use]
+    pub const fn dimension_mode(&self) -> crate::graph::DimensionMode {
+        self.dimension_mode
+    }
+
+    /// Declares the dimension of a symbol as text: a unit expression
+    /// (`"m/s"`, `"km/h"`), a base-dimension product (`"Length/Time"`), or
+    /// `"any"`.
+    #[must_use]
+    pub fn dimension(
+        mut self,
+        symbol: &str,
+        text: &str,
+    ) -> Self {
+        self.dimension_assumptions
+            .push((symbol.to_owned(), text.to_owned()));
+        self
+    }
+
+    /// Declares the dimension of the value of a function symbol. This is the
+    /// same declaration as [`Config::dimension`]; it exists for readability
+    /// at call sites that describe function values.
+    #[must_use]
+    pub fn dimension_of(
+        self,
+        symbol: &str,
+        text: &str,
+    ) -> Self {
+        self.dimension(symbol, text)
+    }
+
+    /// Registers a user-defined base dimension (for example `Currency`).
+    #[must_use]
+    pub fn define_base_dimension(
+        mut self,
+        name: &str,
+    ) -> Self {
+        self.base_dimensions.push(name.to_owned());
+        self
+    }
+
+    /// Disables hard dimensional errors even in
+    /// [`DimensionMode::Strict`]: dimensions are still inferred and
+    /// reported, but a conflict never fails the computation. This is the
+    /// explicit escape hatch for intentionally non-physical formulas.
+    #[must_use]
+    pub const fn bypass_dimension_checks(mut self) -> Self {
+        self.bypass_dimensions = true;
+        self
+    }
+
     /// Replaces the search budget.
     #[must_use]
     pub const fn budget(
@@ -185,6 +260,8 @@ pub enum ComputeError {
     /// A numeric answer was requested but the term could not be evaluated;
     /// carries the best symbolic form that was reached.
     NotNumeric(String),
+    /// A dimension conflict in strict mode.
+    Dimension(crate::graph::DimError),
     /// The rules derived that two different numbers are equal. This is a
     /// bug in a rule set; the session must be discarded.
     Inconsistent(String),
@@ -202,6 +279,7 @@ impl fmt::Display for ComputeError {
             | Self::NotNumeric(term) => {
                 write!(f, "no numeric value could be determined for `{term}`")
             },
+            | Self::Dimension(error) => write!(f, "{error}"),
             | Self::Inconsistent(what) => write!(f, "rule set is unsound: derived {what}"),
         }
     }
@@ -290,6 +368,12 @@ pub struct Answer<'s> {
     /// Whether the request was fully reduced. `false` means `term` still
     /// contains unevaluated heavy operators.
     pub reduced: bool,
+    /// The inferred dimension of `term` (`None` when dimensional checking is
+    /// off or no dimension could be inferred).
+    pub dimension: Option<crate::graph::Dimension>,
+    /// Dimensional findings of an advisory run (conflicts, coverage gaps,
+    /// unresolved symbols).
+    pub diagnostics: Vec<crate::graph::DimError>,
     /// What the engine did.
     pub report: Report,
 }
@@ -500,6 +584,7 @@ struct Job {
     graph: Graph,
     root: NodeId,
     env: Env,
+    dim_errors: Vec<crate::graph::DimError>,
 }
 
 /// A request after the search: the answer is chosen but not yet copied back
@@ -513,6 +598,8 @@ struct Done {
     best: NodeId,
     reduced: bool,
     witness: Option<crate::graph::Ball>,
+    dimension: Option<crate::graph::Dimension>,
+    diagnostics: Vec<crate::graph::DimError>,
 }
 
 const _: fn() = || {
@@ -550,6 +637,9 @@ fn prepare(
         .templates
         .get(index)
         .map_or_else(Graph::new, |t| t.graph.clone());
+    for name in &config.base_dimensions {
+        graph.define_base_dimension(name);
+    }
     let root = graph.import(&inner.graph, node);
     let mut env = match config.target {
         | Target::Symbolic => Env::symbolic(),
@@ -562,7 +652,19 @@ fn prepare(
         let symbol = graph.interner_mut().symbol(name);
         graph.assume(symbol, *facts);
     }
-    Job { graph, root, env }
+    let mut dim_errors = Vec::new();
+    for (name, text) in &config.dimension_assumptions {
+        let symbol = graph.interner_mut().symbol(name);
+        if let Err(error) = graph.assume_dimension(symbol, text) {
+            dim_errors.push(error);
+        }
+    }
+    Job {
+        graph,
+        root,
+        env,
+        dim_errors,
+    }
 }
 
 /// Runs the engine on the private graph and chooses the answer in it.
@@ -571,7 +673,12 @@ fn run_job(
     job: Job,
     config: &Config,
 ) -> Done {
-    let Job { mut graph, root, env } = job;
+    let Job {
+        mut graph,
+        root,
+        env,
+        dim_errors,
+    } = job;
     let roots = [root];
     let report = match config.target {
         | Target::Symbolic => engine.run(&mut graph, &roots, &env, &Saturate, &config.budget),
@@ -579,7 +686,7 @@ fn run_job(
             engine.run(&mut graph, &roots, &env, &Evaluated, &config.budget)
         },
     };
-    let failure = graph
+    let mut failure = graph
         .conflicts()
         .first()
         .map(|(a, b)| ComputeError::Inconsistent(format!("{a} = {b}")));
@@ -597,6 +704,27 @@ fn run_job(
         };
         (best, reduced)
     };
+    let mut diagnostics = dim_errors;
+    let dimension = if config.dimension_mode == crate::graph::DimensionMode::Off {
+        None
+    } else {
+        let answer = graph.dimension(best);
+        diagnostics.extend(answer.errors);
+        if best != root {
+            let input = graph.dimension(root);
+            diagnostics.extend(input.errors);
+        }
+        let mut seen = std::collections::HashSet::new();
+        diagnostics.retain(|error| seen.insert(error.to_string()));
+        if failure.is_none()
+            && config.dimension_mode == crate::graph::DimensionMode::Strict
+            && !config.bypass_dimensions
+            && let Some(error) = diagnostics.iter().find(|error| error.is_blocking())
+        {
+            failure = Some(ComputeError::Dimension(error.clone()));
+        }
+        Some(answer.dimension)
+    };
     Done {
         graph,
         env,
@@ -606,6 +734,8 @@ fn run_job(
         best,
         reduced,
         witness,
+        dimension,
+        diagnostics,
     }
 }
 
@@ -624,6 +754,8 @@ fn finish<'s>(
         best,
         reduced,
         witness,
+        dimension,
+        diagnostics,
     } = done;
     if let Some(error) = failure {
         return Err(error);
@@ -637,6 +769,8 @@ fn finish<'s>(
                 value: exact,
                 error: exact.map(|_| 0.0),
                 reduced,
+                dimension,
+                diagnostics,
                 report,
             })
         },
@@ -656,6 +790,8 @@ fn finish<'s>(
                 value: Some(ball.mid),
                 error: Some(ball.rad),
                 reduced,
+                dimension,
+                diagnostics,
                 report,
             })
         },
@@ -695,6 +831,25 @@ impl<'s> Term<'s> {
             .graph
             .as_number(self.node)
             .cloned()
+    }
+
+    /// The inferred dimension of the term in this session's graph (without
+    /// the assumptions of a particular [`Config`]; use
+    /// [`Answer::dimension`] for a configured computation).
+    #[must_use]
+    pub fn dimension(self) -> crate::graph::Dimension {
+        self.session
+            .inner
+            .borrow()
+            .graph
+            .dimension(self.node)
+            .dimension
+    }
+
+    /// The inferred dimension together with the conflicts found.
+    #[must_use]
+    pub fn dimension_report(self) -> crate::graph::DimOutcome {
+        self.session.inner.borrow().graph.dimension(self.node)
     }
 
     /// A stable handle for this term within its session, for language
