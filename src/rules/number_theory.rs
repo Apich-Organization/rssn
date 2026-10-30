@@ -14,11 +14,15 @@
 //! rho and larger ones by trial division, perfect-power detection, BPSW and
 //! Lenstra's elliptic-curve method (Montgomery curves, Suyama's
 //! parametrisation, stage 1 with bounds 2 000 / 11 000 / 50 000 and the
-//! standard stage 2): prime factors of up to about 25 digits are found, a
-//! composite cofactor that resists the curves leaves the request
-//! unevaluated. The other operators of `ext` that need a prime
-//! as a machine word (`sqrtmod`, `primitive_root`, `mult_order`, ...) still
-//! stop at 64-bit factors.
+//! standard stage 2): prime factors of up to about 25 digits are found. A
+//! composite cofactor of 40 or more digits, where the curves are unlikely to
+//! help, is attacked by the quadratic sieve / MPQS instead (a factor base
+//! with `(n/p) = 1`, log sieving, a single-large-prime variation and a GF(2)
+//! dependency solve); smaller cofactors fall back to it when the curves are
+//! exhausted. The sieve handles the 40-50 digit range; a cofactor that
+//! resists both leaves the request unevaluated. The other operators of `ext`
+//! that need a prime as a machine word (`sqrtmod`, `primitive_root`,
+//! `mult_order`, ...) still stop at 64-bit factors.
 //!
 //! The core operators are `gcd`, `lcm`, `mod`, `powmod`, `invmod`,
 //! `isprime`, `nextprime`, `totient`, `divisor_count`, `divisor_sum`,
@@ -857,11 +861,41 @@ fn ecm(n: &BigInt) -> Option<BigInt> {
     None
 }
 
+/// Cofactors at least this many decimal digits go to the quadratic sieve
+/// before the elliptic curves: at that size the curves rarely find a factor
+/// within their budget, while the sieve is built for balanced 40-50 digit
+/// semiprimes. Smaller cofactors still try the curves first.
+const QS_FIRST_DIGITS: u32 = 40;
+
+/// Decimal digit count of a positive integer.
+fn decimal_digits(n: &BigInt) -> u32 {
+    u32::try_from(n.to_str_radix(10).len()).unwrap_or(u32::MAX)
+}
+
+/// One quadratic-sieve attempt for a composite cofactor.
+///
+/// `None` when the cofactor is above the sieve's documented range or when
+/// its polynomial budget is exhausted.
+fn qs_stage(m: &BigInt) -> Option<BigInt> {
+    let digits = decimal_digits(m);
+    if digits > crate::kernels::quadratic_sieve::QsLimits::MAX_DIGITS {
+        return None;
+    }
+    crate::kernels::quadratic_sieve::qs_factor(
+        m,
+        crate::kernels::quadratic_sieve::QsLimits::for_digits(digits),
+    )
+}
+
 /// Prime factorisation of any positive integer as ascending
 /// `(prime, exponent)` pairs: the 64-bit path of [`factor`] for small
 /// numbers, otherwise trial division by the primes below 1000, perfect
-/// powers, BPSW primality and [`ecm`] for the rest. `None` for `n <= 0` and
-/// when a composite cofactor resists the curves.
+/// powers, BPSW primality, then Lenstra's ECM and the quadratic sieve.
+///
+/// Cofactors of at least [`QS_FIRST_DIGITS`] digits go to the sieve first
+/// (the curves rarely reach their prime factors); smaller ones go to the
+/// curves first and fall back to the sieve. `None` for `n <= 0` and when a
+/// composite cofactor survives both stages.
 pub(crate) fn factor_big(n: &BigInt) -> Option<Vec<(BigInt, u32)>> {
     if !n.is_positive() {
         return None;
@@ -912,7 +946,13 @@ pub(crate) fn factor_big(n: &BigInt) -> Option<Vec<(BigInt, u32)>> {
             }
             continue;
         }
-        let d = ecm(&m)?;
+        let digits = decimal_digits(&m);
+        let divisor = if digits >= QS_FIRST_DIGITS {
+            qs_stage(&m).or_else(|| ecm(&m))
+        } else {
+            ecm(&m).or_else(|| qs_stage(&m))
+        };
+        let d = divisor?;
         stack.push(&m / &d);
         stack.push(d);
     }
