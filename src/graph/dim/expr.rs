@@ -260,11 +260,7 @@ impl Poly {
             let number = if coefficient.is_integer() {
                 coefficient.to_integer().to_string()
             } else {
-                format!(
-                    "{}/{}",
-                    coefficient.numer(),
-                    coefficient.denom()
-                )
+                format!("{}/{}", coefficient.numer(), coefficient.denom())
             };
             if monomial.is_one() {
                 parts.push(number);
@@ -424,10 +420,7 @@ impl Expo {
         &self,
         other: &Self,
     ) -> Self {
-        Self::normalize(
-            self.num.mul(&other.num),
-            self.den.mul(&other.den),
-        )
+        Self::normalize(self.num.mul(&other.num), self.den.mul(&other.den))
     }
 
     #[cfg(test)]

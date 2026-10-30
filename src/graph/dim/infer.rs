@@ -156,9 +156,7 @@ impl Unifier {
     }
 }
 
-fn solvable(
-    vars: &[(DimVarId, Expo)],
-) -> Option<(DimVarId, BigRational)> {
+fn solvable(vars: &[(DimVarId, Expo)]) -> Option<(DimVarId, BigRational)> {
     for (id, exponent) in vars {
         if let Some(rational) = exponent.is_constant()
             && !rational.is_zero()
@@ -376,19 +374,15 @@ impl<'a> DimInfer<'a> {
         match rule {
             | DimRule::Unspecified => {
                 if self.unannotated.insert(name.to_string()) {
-                    self.errors.push(DimError::Unannotated {
-                        op: name.to_string(),
-                    });
+                    self.errors
+                        .push(DimError::Unannotated { op: name.to_string() });
                 }
                 let id = self.intern_var(&format!("{name}(...)"));
                 DimTerm::var(id)
             },
             | DimRule::NonMetric => DimTerm::non_metric(),
             | DimRule::Any => DimTerm::any(),
-            | DimRule::Same(index) => args
-                .get(index)
-                .cloned()
-                .unwrap_or_else(DimTerm::any),
+            | DimRule::Same(index) => args.get(index).cloned().unwrap_or_else(DimTerm::any),
             | DimRule::Sum => self.sum(args, node),
             | DimRule::Product => args
                 .iter()
@@ -418,9 +412,7 @@ impl<'a> DimInfer<'a> {
                 }
                 DimTerm::dimensionless()
             },
-            | DimRule::Inverse => args
-                .first()
-                .map_or_else(DimTerm::any, DimTerm::inverse),
+            | DimRule::Inverse => args.first().map_or_else(DimTerm::any, DimTerm::inverse),
             | DimRule::Square => args.first().map_or_else(DimTerm::any, |base| {
                 base.pow(&BigRational::from_integer(BigInt::from(2)))
             }),
@@ -796,18 +788,13 @@ impl<'a> DimInfer<'a> {
             | UnifyError::Mismatch(left, right) => {
                 let left = self.text(&left);
                 let right = self.text(&right);
-                self.errors.push(DimError::Mismatch {
-                    left,
-                    right,
-                    context,
-                });
+                self.errors
+                    .push(DimError::Mismatch { left, right, context });
             },
             | UnifyError::Constraint(quotient) => {
                 let constraint = format!("{} = 1", self.text(&quotient));
-                self.errors.push(DimError::SymbolicConstraint {
-                    constraint,
-                    context,
-                });
+                self.errors
+                    .push(DimError::SymbolicConstraint { constraint, context });
             },
         }
     }

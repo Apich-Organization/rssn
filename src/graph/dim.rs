@@ -167,9 +167,9 @@ fn is_simple_exponent(text: &str) -> bool {
         && !text.contains(' ')
         && !text.contains('+')
         && !text.contains('*')
-        && text
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-' | '/' | '?' | '(' | ')'))
+        && text.chars().all(|c| {
+            c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-' | '/' | '?' | '(' | ')')
+        })
 }
 
 /// An error found while inferring dimensions.
@@ -236,10 +236,7 @@ impl DimError {
     /// missing operator rule is a coverage gap, not a conflict.
     #[must_use]
     pub const fn is_blocking(&self) -> bool {
-        !matches!(
-            self,
-            Self::Unannotated { .. } | Self::MixedList { .. }
-        )
+        !matches!(self, Self::Unannotated { .. } | Self::MixedList { .. })
     }
 }
 
@@ -249,19 +246,10 @@ impl fmt::Display for DimError {
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         match self {
-            | Self::Mismatch {
-                left,
-                right,
-                context,
-            } => write!(
-                f,
-                "dimension mismatch in `{context}`: {left} vs {right}"
-            ),
-            | Self::NonDimensionless {
-                op,
-                argument,
-                found,
-            } => write!(
+            | Self::Mismatch { left, right, context } => {
+                write!(f, "dimension mismatch in `{context}`: {left} vs {right}")
+            },
+            | Self::NonDimensionless { op, argument, found } => write!(
                 f,
                 "`{op}` requires a dimensionless argument, found {found} in `{argument}`"
             ),
@@ -610,17 +598,10 @@ impl PartialEq for DimTerm {
         other: &Self,
     ) -> bool {
         match (&self.repr, &other.repr) {
-            | (DimRepr::Any, DimRepr::Any)
-            | (DimRepr::NonMetric, DimRepr::NonMetric) => true,
+            | (DimRepr::Any, DimRepr::Any) | (DimRepr::NonMetric, DimRepr::NonMetric) => true,
             | (
-                DimRepr::Scalar {
-                    bases: ab,
-                    vars: av,
-                },
-                DimRepr::Scalar {
-                    bases: bb,
-                    vars: bv,
-                },
+                DimRepr::Scalar { bases: ab, vars: av },
+                DimRepr::Scalar { bases: bb, vars: bv },
             ) => {
                 ab.len() == bb.len()
                     && av.len() == bv.len()
@@ -644,9 +625,7 @@ impl DimTerm {
     /// The polymorphic scalar (`0`, `oo`).
     #[must_use]
     pub const fn any() -> Self {
-        Self {
-            repr: DimRepr::Any,
-        }
+        Self { repr: DimRepr::Any }
     }
 
     /// A non-scalar value.
@@ -752,14 +731,8 @@ impl DimTerm {
             | (DimRepr::Any, _) | (_, DimRepr::Any) => Self::any(),
             | (DimRepr::NonMetric, _) | (_, DimRepr::NonMetric) => Self::non_metric(),
             | (
-                DimRepr::Scalar {
-                    bases: ab,
-                    vars: av,
-                },
-                DimRepr::Scalar {
-                    bases: bb,
-                    vars: bv,
-                },
+                DimRepr::Scalar { bases: ab, vars: av },
+                DimRepr::Scalar { bases: bb, vars: bv },
             ) => {
                 let mut bases = ab.clone();
                 for (id, exponent) in bb {
@@ -817,14 +790,8 @@ impl DimTerm {
                 if exponent.is_zero() {
                     return Self::dimensionless();
                 }
-                let bases = bases
-                    .iter()
-                    .map(|(id, e)| (*id, e.mul(exponent)))
-                    .collect();
-                let vars = vars
-                    .iter()
-                    .map(|(id, e)| (*id, e.mul(exponent)))
-                    .collect();
+                let bases = bases.iter().map(|(id, e)| (*id, e.mul(exponent))).collect();
+                let vars = vars.iter().map(|(id, e)| (*id, e.mul(exponent))).collect();
                 Self::scalar(bases, vars)
             },
             | _ => self.clone(),
@@ -1035,7 +1002,11 @@ fn parse_base_text(
                     unit: text.to_string(),
                 });
             };
-            let exponent = if sign < 0 { -exponent } else { exponent };
+            let exponent = if sign < 0 {
+                -exponent
+            } else {
+                exponent
+            };
             term = term.mul(&DimTerm::base(base, exponent));
         }
     }
@@ -1093,17 +1064,16 @@ pub fn default_rule(name: &str) -> Option<DimRule> {
         | "pow" => DimRule::Power,
         | "sqrt" => DimRule::Root(2),
         | "cbrt" => DimRule::Root(3),
-        | "abs" | "re" | "im" | "conj" | "floor" | "ceil" | "round" | "trunc"
-        | "limit" | "taylor" | "laurent" | "fourier_series" | "convert" | "unify_expression"
+        | "abs" | "re" | "im" | "conj" | "floor" | "ceil" | "round" | "trunc" | "limit"
+        | "taylor" | "laurent" | "fourier_series" | "convert" | "unify_expression"
         | "simplify_units" => DimRule::Same(0),
-        | "sign" | "arg" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "cot" | "sec"
-        | "csc" | "asin" | "acos" | "atan" | "acot" | "asec" | "acsc" | "sinh" | "cosh"
-        | "tanh" | "coth" | "sech" | "csch" | "asinh" | "acosh" | "atanh" | "acoth"
-        | "asech" | "acsch" | "erf" | "erfc" | "erfi" | "erfcinv" | "gamma" | "lgamma"
-        | "digamma" | "polygamma" | "zeta" | "hurwitz_zeta" | "beta" | "lambertw" | "sinc"
-        | "besselj" | "bessely" | "besseli" | "besselk" | "airy_ai" | "airy_bi"
-        | "airy_aip" | "airy_bip" | "pi" | "e" | "true_pi" | "euler_gamma" | "i"
-        | "golden_ratio" => DimRule::Dimensionless,
+        | "sign" | "arg" | "exp" | "ln" | "log" | "sin" | "cos" | "tan" | "cot" | "sec" | "csc"
+        | "asin" | "acos" | "atan" | "acot" | "asec" | "acsc" | "sinh" | "cosh" | "tanh"
+        | "coth" | "sech" | "csch" | "asinh" | "acosh" | "atanh" | "acoth" | "asech"
+        | "acsch" | "erf" | "erfc" | "erfi" | "erfcinv" | "gamma" | "lgamma" | "digamma"
+        | "polygamma" | "zeta" | "hurwitz_zeta" | "beta" | "lambertw" | "sinc" | "besselj"
+        | "bessely" | "besseli" | "besselk" | "airy_ai" | "airy_bi" | "airy_aip" | "airy_bip"
+        | "pi" | "e" | "true_pi" | "euler_gamma" | "i" | "golden_ratio" => DimRule::Dimensionless,
         | "atan2" => DimRule::Angle,
         | "list" | "tensor" | "vector" | "matrix" => DimRule::List,
         | "eq" | "lt" | "le" | "gt" | "ge" | "ne" => DimRule::Compare,
@@ -1125,27 +1095,52 @@ pub fn default_rule(name: &str) -> Option<DimRule> {
         // zero/pole counts and verification verdicts are pure numbers or
         // verdicts.
         | "I" => DimRule::Dimensionless,
-        | "log_branch" | "sqrt_branch" | "root_branch" | "power_branch" | "asin_branch"
-        | "acos_branch" | "atan_branch" | "asinh_branch" | "acosh_branch" | "atanh_branch"
-        | "continue_along" | "mobius_apply" | "residue" | "contour_integral"
-        | "cauchy_integral" | "contour_integral_residue_theorem" | "distance" => DimRule::Same(0),
+        | "log_branch"
+        | "sqrt_branch"
+        | "root_branch"
+        | "power_branch"
+        | "asin_branch"
+        | "acos_branch"
+        | "atan_branch"
+        | "asinh_branch"
+        | "acosh_branch"
+        | "atanh_branch"
+        | "continue_along"
+        | "mobius_apply"
+        | "residue"
+        | "contour_integral"
+        | "cauchy_integral"
+        | "contour_integral_residue_theorem"
+        | "distance" => DimRule::Same(0),
         | "cauchy_derivative" => DimRule::Diff { f: 0, x: 1 },
         | "radius_of_convergence" => DimRule::Same(1),
         | "count_zeros_poles" | "winding_number" => DimRule::Dimensionless,
-        | "circle" | "path" | "polygon" | "ray" | "poles" | "zeros_of" | "singularity"
-        | "branch_cut" | "mobius_compose" | "mobius_inverse" | "is_inside_contour"
-        | "check_analytic" | "verify_solution" | "verify_integral"
-        | "verify_definite_integral" | "verify_ode_solution" | "verify_inverse"
-        | "verify_derivative" | "verify_limit" => DimRule::NonMetric,
+        | "circle"
+        | "path"
+        | "polygon"
+        | "ray"
+        | "poles"
+        | "zeros_of"
+        | "singularity"
+        | "branch_cut"
+        | "mobius_compose"
+        | "mobius_inverse"
+        | "is_inside_contour"
+        | "check_analytic"
+        | "verify_solution"
+        | "verify_integral"
+        | "verify_definite_integral"
+        | "verify_ode_solution"
+        | "verify_inverse"
+        | "verify_derivative"
+        | "verify_limit" => DimRule::NonMetric,
         | _ => return None,
     };
     Some(rule)
 }
 
 /// Converts a numeric node to an exact exponent, when it is rational.
-pub(crate) fn exact_exponent(
-    number: &crate::graph::Number,
-) -> Option<BigRational> {
+pub(crate) fn exact_exponent(number: &crate::graph::Number) -> Option<BigRational> {
     number.to_rational()
 }
 
@@ -1171,11 +1166,7 @@ mod tests {
         let mut arena = DimArena::new();
         let n = arena.intern_atom("n");
         let length = arena.base_id("Length").unwrap_or(BaseId(0));
-        let term = DimTerm::base(
-            length,
-            BigRational::one(),
-        )
-        .pow_expo(&Expo::atom(n));
+        let term = DimTerm::base(length, BigRational::one()).pow_expo(&Expo::atom(n));
         assert_eq!(term.describe(&arena), "Length^n");
     }
 
@@ -1313,10 +1304,7 @@ mod tests {
         assert_eq!(quantity.dimension.to_string(), "Length/Time");
         assert!(quantity.errors.is_empty(), "{:?}", quantity.errors);
 
-        let derivative = dimension_of(
-            "diff(quantity(3, m/s) * x^2, x)",
-            &[("x", "m")],
-        );
+        let derivative = dimension_of("diff(quantity(3, m/s) * x^2, x)", &[("x", "m")]);
         assert_eq!(derivative.dimension.to_string(), "Length^2/Time");
 
         let integral = dimension_of(
@@ -1346,7 +1334,9 @@ mod tests {
         graph
             .assume_dimension(symbol, "Currency")
             .unwrap_or_else(|error| panic!("{error}"));
-        let root = graph.parse("price^2").unwrap_or_else(|error| panic!("{error}"));
+        let root = graph
+            .parse("price^2")
+            .unwrap_or_else(|error| panic!("{error}"));
         assert_eq!(graph.dimension(root).dimension.to_string(), "Currency^2");
     }
 
