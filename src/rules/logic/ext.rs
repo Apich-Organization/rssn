@@ -549,6 +549,26 @@ impl Extension {
             },
             | _ => args.to_vec(),
         };
+        // Real polynomial formulas are decided by real quantifier
+        // elimination; only genuinely Boolean bodies reach the
+        // decision-diagram path below.
+        if matches!(kind, Kind::Exists | Kind::Forall) {
+            let &[prefix, real_body] = args else {
+                return None;
+            };
+            match crate::rules::solve::qe::try_quantifier(
+                graph,
+                prefix,
+                real_body,
+                kind == Kind::Forall,
+            ) {
+                | crate::rules::solve::qe::Routed::NotReal => {},
+                | crate::rules::solve::qe::Routed::Result(term) => {
+                    return Some(Outcome::Equal(term));
+                },
+                | crate::rules::solve::qe::Routed::Unevaluated => return None,
+            }
+        }
         let Problem { formulas, atoms } = self.read(graph, &flat)?;
         let n = atoms.len();
         let mut bdd = Bdd::new();
